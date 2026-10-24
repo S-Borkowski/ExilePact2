@@ -1,0 +1,221 @@
+{
+  "schema": 1,
+  "game_version": "fixture",
+  "poe2db_fetched": "2026-10-25",
+  "source": "https://poe2db.tw/us/Quest",
+  "source_note": "Synthetic fixture for the qt-engine tests: the quests, steps, lines and rewards are invented to cover every signal kind and every detection value; nothing here is the game's data.",
+  "npcs": ["Renly", "Una", "Beira of the Rotten Pack", "The King in the Mists"],
+  "system_lines": ["Fixture system line: a lute string hums."],
+  "areas": {
+    "G1_1": { "name": "The Riverbank", "act": 1, "evidence": "measured" },
+    "G1_town": { "name": "Clearfell Encampment", "act": 1, "evidence": "measured" },
+    "G1_2": { "name": "Clearfell", "act": 1, "evidence": "measured" },
+    "G1_11": { "name": "Hunting Grounds", "act": 1, "evidence": "measured" },
+    "G1_12": { "name": "Freythorn", "act": 1, "evidence": "measured" },
+    "G1_15": { "name": "Ogham Manor", "act": 1, "evidence": "static" },
+    "G2_town": { "name": "The Ardura Caravan", "act": 2, "evidence": "not-established" }
+  },
+  "quests": [
+    {
+      "id": "fixture-riverbank",
+      "name": "Fixture: Walk the Riverbank",
+      "act": 1,
+      "poe2db_type": "Important",
+      "giver": null,
+      "zones": ["G1_1", "Clearfell Encampment"],
+      "rewards": [{ "category": "story", "text": "The campaign goes on" }],
+      "worth": "yes",
+      "worth_reason": "The story cannot go on without it.",
+      "steps": [
+        {
+          "id": "reach-riverbank",
+          "title": "Reach the riverbank",
+          "text": "Fixture step text.",
+          "signals": [{ "kind": "area", "code": "G1_1" }]
+        },
+        {
+          "id": "reach-encampment",
+          "title": "Reach the encampment",
+          "text": "Fixture step text, matched by the area's display name.",
+          "signals": [{ "kind": "area", "name": "Clearfell Encampment" }]
+        }
+      ],
+      "unlock": [],
+      "done": [
+        {
+          "kind": "npc",
+          "speaker": "Renly",
+          "area": "G1_town",
+          "line": "Fixture line: welcome to the encampment."
+        }
+      ],
+      "window_closes": [],
+      "detection": "auto",
+      "evidence": "measured",
+      "source_url": "https://poe2db.tw/us/Fixture_Riverbank",
+      "fetched": "2026-10-25",
+      "notes": "Done by an exact NPC line in one area; steps by area code and by area name."
+    },
+    {
+      "id": "fixture-beira",
+      "name": "Fixture: The Rotten Pack",
+      "act": 1,
+      "poe2db_type": "Optional",
+      "giver": null,
+      "zones": ["G1_2"],
+      "rewards": [{ "category": "resistance", "text": "+10% to Cold Resistance", "element": "cold" }],
+      "worth": "yes",
+      "worth_reason": "A permanent resistance.",
+      "steps": [
+        {
+          "id": "meet-beira",
+          "title": "Find the pack leader",
+          "text": "Fixture step text.",
+          "signals": [{ "kind": "npc", "speaker": "Beira of the Rotten Pack" }]
+        }
+      ],
+      "unlock": [{ "kind": "area", "code": "G1_2" }],
+      "done": [{ "kind": "reward", "text": "+10% to Cold Resistance", "area": "G1_2" }],
+      "window_closes": [],
+      "detection": "auto",
+      "evidence": "measured",
+      "source_url": "https://poe2db.tw/us/Fixture_Beira",
+      "fetched": "2026-10-25",
+      "notes": "Done by an exact reward text in one area; step by any line of a boss."
+    },
+    {
+      "id": "fixture-crowbell",
+      "name": "Fixture: The Bell",
+      "act": 1,
+      "poe2db_type": "Normal",
+      "giver": null,
+      "zones": ["G1_11"],
+      "rewards": [{ "category": "passive_points", "text": "2 Passive Skill Points" }],
+      "worth": "yes",
+      "worth_reason": "Two passive points.",
+      "steps": [],
+      "unlock": [{ "kind": "area", "code": "G1_11" }],
+      "done": [{ "kind": "points", "type": "passive", "area": "G1_11" }],
+      "window_closes": [],
+      "detection": "auto",
+      "evidence": "measured",
+      "source_url": "https://poe2db.tw/us/Fixture_Crowbell",
+      "fetched": "2026-10-25",
+      "notes": "Done by a points line in one area; no steps."
+    },
+    {
+      "id": "fixture-king",
+      "name": "Fixture: The King in the Mists",
+      "act": 1,
+      "poe2db_type": "Optional",
+      "giver": "Una",
+      "zones": ["G1_12"],
+      "rewards": [{ "category": "spirit", "text": "+30 to Spirit" }],
+      "worth": "yes",
+      "worth_reason": "Permanent spirit.",
+      "steps": [
+        {
+          "id": "enter-freythorn",
+          "title": "Enter Freythorn",
+          "text": "Fixture step text.",
+          "signals": [{ "kind": "area", "code": "G1_12" }]
+        },
+        {
+          "id": "face-the-king",
+          "title": "Face the king",
+          "text": "Fixture step text.",
+          "signals": [{ "kind": "npc", "speaker": "The King in the Mists", "area": "G1_12" }]
+        }
+      ],
+      "unlock": [{ "kind": "quest", "id": "fixture-riverbank", "status": "done" }],
+      "done": [{ "kind": "reward", "category": "spirit" }],
+      "window_closes": [],
+      "detection": "auto",
+      "evidence": "static",
+      "source_url": "https://poe2db.tw/us/Fixture_King",
+      "fetched": "2026-10-25",
+      "notes": "Unlocked by another quest's status; done by a reward category."
+    },
+    {
+      "id": "fixture-lute",
+      "name": "Fixture: The Lost Lute",
+      "act": 1,
+      "poe2db_type": "Normal",
+      "giver": "Una",
+      "zones": ["G1_town"],
+      "rewards": [{ "category": "passive_points", "text": "2 Passive Skill Points" }],
+      "worth": "yes",
+      "worth_reason": "Two passive points.",
+      "steps": [
+        {
+          "id": "hear-the-lute",
+          "title": "Hear the lute",
+          "text": "Fixture step text.",
+          "signals": [
+            { "kind": "system", "line": "Fixture system line: a lute string hums.", "area": "G1_town" }
+          ]
+        },
+        {
+          "id": "return-the-lute",
+          "title": "Return the lute",
+          "text": "Fixture step text; the log does not show it.",
+          "signals": []
+        }
+      ],
+      "unlock": [{ "kind": "npc", "speaker": "Una" }],
+      "done": [],
+      "window_closes": [],
+      "detection": "partial",
+      "evidence": "not-established",
+      "source_url": "https://poe2db.tw/us/Fixture_Lute",
+      "fetched": "2026-10-25",
+      "notes": "Unlock and a step are logged, done is not: the player ticks it."
+    },
+    {
+      "id": "fixture-candles",
+      "name": "Fixture: Candlemass",
+      "act": 1,
+      "poe2db_type": "Optional",
+      "giver": null,
+      "zones": ["G1_15"],
+      "rewards": [{ "category": "life", "text": "+20 to maximum Life" }],
+      "worth": "yes",
+      "worth_reason": "Permanent life.",
+      "steps": [
+        {
+          "id": "light-candles",
+          "title": "Light the candles",
+          "text": "Fixture step text; the log does not show it.",
+          "signals": []
+        }
+      ],
+      "unlock": [{ "kind": "level", "min": 5 }],
+      "done": [],
+      "window_closes": [{ "kind": "area", "code": "G1_12" }],
+      "detection": "manual",
+      "evidence": "not-established",
+      "source_url": "https://poe2db.tw/us/Fixture_Candles",
+      "fetched": "2026-10-25",
+      "notes": "Nothing logged but a level and the area past its window."
+    },
+    {
+      "id": "fixture-caravan",
+      "name": "Fixture: The Caravan",
+      "act": 2,
+      "poe2db_type": "Important",
+      "giver": null,
+      "zones": ["G2_town"],
+      "rewards": [{ "category": "unlock", "text": "The caravan travels on" }],
+      "worth": "optional",
+      "worth_reason": "Opens the next act's town.",
+      "steps": [],
+      "unlock": [{ "kind": "area", "code": "G2_town" }],
+      "done": [],
+      "window_closes": [],
+      "detection": "manual",
+      "evidence": "static",
+      "source_url": "https://poe2db.tw/us/Fixture_Caravan",
+      "fetched": "2026-10-25"
+    }
+  ]
+}

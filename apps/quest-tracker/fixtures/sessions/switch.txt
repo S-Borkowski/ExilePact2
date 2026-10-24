@@ -1,0 +1,10 @@
+2026/03/12 21:00:00 ***** LOG FILE OPENING *****
+2026/03/12 21:00:30 7030000 9a4e0001 [INFO Client 9120] : Corisande_Fell (Witch) is now level 7
+2026/03/12 21:00:40 7040000 9a4e0002 [INFO Client 9120] : Corisande_Fell has received +20 to maximum Life.
+2026/03/12 21:01:00 7060000 9a4e0003 [DEBUG Client 9120] Generating level 15 area "G1_town" with seed 1
+2026/03/12 21:01:01 7061000 9a4e0004 [INFO Client 9120] [SCENE] Set Source [Clearfell Encampment]
+2026/03/12 21:05:00 7300000 9a4e0005 [INFO Client 9120] : Odile_Marsh (Mercenary) is now level 3
+2026/03/12 21:05:30 7330000 9a4e0006 [DEBUG Client 9120] Generating level 2 area "G1_2" with seed 2077351921
+2026/03/12 21:05:31 7331000 9a4e0007 [INFO Client 9120] [SCENE] Set Source [Clearfell]
+2026/03/12 21:07:00 7420000 9a4e0008 [INFO Client 9120] : Odile_Marsh has received +10% to [Resistances|Cold Resistance].
+2026/03/12 21:10:00 7600000 9a4e0009 [INFO Client 9120] : Corisande_Fell (Witch) is now level 8

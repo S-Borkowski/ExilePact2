@@ -2,4 +2,19 @@
 //! events into per-character evidence, applies manual overrides and computes
 //! each quest's status, current step and transitions.
 //!
-//! Scaffold stub; the engine item fills it in.
+//! - [`data`]: the data contract (`data/quests.json`) and its validator,
+//!   whose every refusal names the quest and the field.
+//! - [`engine`]: the state machine, its character detection and the state
+//!   the store persists as `serde_json::Value`.
+
+pub mod data;
+pub mod engine;
+
+pub use data::{
+    classify_stat, Area, DataError, Detection, Element, Evidence, Quest, QuestData, Reward,
+    RewardCategory, Signal, Status, Step, Worth, SCHEMA,
+};
+pub use engine::{
+    CharacterInfo, CharacterState, Engine, EngineError, Overrides, Ownership, QuestAction,
+    QuestState, StepState, Transition,
+};

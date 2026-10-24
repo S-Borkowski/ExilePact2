@@ -1,0 +1,16 @@
+2026/03/10 19:00:00 ***** LOG FILE OPENING *****
+2026/03/10 19:00:20 4020000 7e2c0001 [INFO Client 7120] : Corisande_Fell has received +20 to maximum Life.
+2026/03/10 19:00:40 4040000 7e2c0002 [INFO Client 7120] : Corisande_Fell (Witch) is now level 9
+2026/03/10 19:01:00 4060000 7e2c0003 [INFO Client 7120] : Bram_Holloway has joined the area.
+2026/03/10 19:01:30 4090000 7e2c0004 [INFO Client 7120] : Bram_Holloway (Warrior) is now level 71
+2026/03/10 19:02:00 4120000 7e2c0005 [INFO Client 7120] Connecting to instance server
+2026/03/10 19:02:01 4121000 7e2c0006 [DEBUG Client 7120] Generating level 2 area "G1_2" with seed 2077351921
+2026/03/10 19:02:02 4122000 7e2c0007 [INFO Client 7120] [SCENE] Set Source [Clearfell]
+2026/03/10 19:03:00 4180000 7e2c0008 [INFO Client 7120] : Wren_Ashdown (Ranger) is now level 70
+2026/03/10 19:03:30 4210000 7e2c0009 [INFO Client 7120] Connecting to instance server
+2026/03/10 19:03:31 4211000 7e2c000a [DEBUG Client 7120] Generating level 4 area "G1_11" with seed 993105472
+2026/03/10 19:03:32 4212000 7e2c000b [INFO Client 7120] [SCENE] Set Source [Hunting Grounds]
+2026/03/10 19:04:00 4240000 7e2c000c [INFO Client 7120] : Wren_Ashdown has left the area.
+2026/03/10 19:04:30 4270000 7e2c000d [INFO Client 7120] : Bram_Holloway has been slain.
+2026/03/10 19:05:00 4300000 7e2c000e [INFO Client 7120] : Bram_Holloway has left the area.
+2026/03/10 19:06:00 4360000 7e2c000f [INFO Client 7120] : Corisande_Fell (Witch) is now level 10
