@@ -1,0 +1,22 @@
+{
+  "acts": [],
+  "available_worth_count": 0,
+  "character": null,
+  "characters": [],
+  "detail": null,
+  "frame": "empty-no-character",
+  "mode": "play",
+  "next_up": [],
+  "schema": 1,
+  "settings": {
+    "dock": "right",
+    "hotkey": "Ctrl+Alt+Q",
+    "log_path": null,
+    "only_worth_it": false,
+    "opacity": 0.9,
+    "scale": "auto",
+    "show_skipped": false
+  },
+  "status": null,
+  "view_kind": "next_up"
+}

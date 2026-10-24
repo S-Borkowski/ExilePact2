@@ -1,0 +1,244 @@
+{
+  "acts": [
+    {
+      "act": 1,
+      "done": 2,
+      "expanded": true,
+      "has_available": true,
+      "quests": [
+        {
+          "act": 1,
+          "current_step": null,
+          "detection": "auto",
+          "id": "fixture-riverbank",
+          "name": "Fixture: Walk the Riverbank",
+          "needs_tick": false,
+          "rewards": [
+            {
+              "category": "story",
+              "icon": "reward-story",
+              "text": "The campaign goes on"
+            }
+          ],
+          "status": "done",
+          "worth": "yes"
+        },
+        {
+          "act": 1,
+          "current_step": null,
+          "detection": "auto",
+          "id": "fixture-beira",
+          "name": "Fixture: The Rotten Pack",
+          "needs_tick": false,
+          "rewards": [
+            {
+              "category": "resistance",
+              "icon": "reward-res-cold",
+              "text": "+10% to Cold Resistance"
+            }
+          ],
+          "status": "done",
+          "worth": "yes"
+        },
+        {
+          "act": 1,
+          "current_step": null,
+          "detection": "auto",
+          "id": "fixture-crowbell",
+          "name": "Fixture: The Bell",
+          "needs_tick": false,
+          "rewards": [
+            {
+              "category": "passive_points",
+              "icon": "reward-passive",
+              "text": "2 Passive Skill Points"
+            }
+          ],
+          "status": "available",
+          "worth": "yes"
+        },
+        {
+          "act": 1,
+          "current_step": "Face the king",
+          "detection": "auto",
+          "id": "fixture-king",
+          "name": "Fixture: The King in the Mists",
+          "needs_tick": false,
+          "rewards": [
+            {
+              "category": "spirit",
+              "icon": "reward-spirit",
+              "text": "+30 to Spirit"
+            }
+          ],
+          "status": "in_progress",
+          "worth": "yes"
+        },
+        {
+          "act": 1,
+          "current_step": "Return the lute",
+          "detection": "partial",
+          "id": "fixture-lute",
+          "name": "Fixture: The Lost Lute",
+          "needs_tick": true,
+          "rewards": [
+            {
+              "category": "passive_points",
+              "icon": "reward-passive",
+              "text": "2 Passive Skill Points"
+            }
+          ],
+          "status": "in_progress",
+          "worth": "yes"
+        },
+        {
+          "act": 1,
+          "current_step": null,
+          "detection": "manual",
+          "id": "fixture-candles",
+          "name": "Fixture: Candlemass",
+          "needs_tick": true,
+          "rewards": [
+            {
+              "category": "life",
+              "icon": "reward-life",
+              "text": "+20 to maximum Life"
+            }
+          ],
+          "status": "unknown",
+          "worth": "yes"
+        }
+      ],
+      "title": "Act 1",
+      "total": 6
+    }
+  ],
+  "available_worth_count": 1,
+  "character": {
+    "active": true,
+    "class": "Witch",
+    "level": 5,
+    "name": "Corisande_Fell",
+    "own": true,
+    "pinned": false
+  },
+  "characters": [
+    {
+      "active": true,
+      "class": "Witch",
+      "level": 5,
+      "name": "Corisande_Fell",
+      "own": true,
+      "pinned": false
+    }
+  ],
+  "detail": {
+    "fetched": "2026-10-25",
+    "giver": "Una",
+    "row": {
+      "act": 1,
+      "current_step": "Face the king",
+      "detection": "auto",
+      "id": "fixture-king",
+      "name": "Fixture: The King in the Mists",
+      "needs_tick": false,
+      "rewards": [
+        {
+          "category": "spirit",
+          "icon": "reward-spirit",
+          "text": "+30 to Spirit"
+        }
+      ],
+      "status": "in_progress",
+      "worth": "yes"
+    },
+    "source_url": "https://poe2db.tw/us/Fixture_King",
+    "steps": [
+      {
+        "id": "enter-freythorn",
+        "state": "done",
+        "text": "Fixture step text.",
+        "ticked": false,
+        "title": "Enter Freythorn"
+      },
+      {
+        "id": "face-the-king",
+        "state": "current",
+        "text": "Fixture step text.",
+        "ticked": false,
+        "title": "Face the king"
+      }
+    ],
+    "worth_reason": "Permanent spirit.",
+    "zones": [
+      "Freythorn"
+    ]
+  },
+  "frame": "quest-detail",
+  "mode": "edit",
+  "next_up": [
+    {
+      "act": 1,
+      "current_step": "Face the king",
+      "detection": "auto",
+      "id": "fixture-king",
+      "name": "Fixture: The King in the Mists",
+      "needs_tick": false,
+      "rewards": [
+        {
+          "category": "spirit",
+          "icon": "reward-spirit",
+          "text": "+30 to Spirit"
+        }
+      ],
+      "status": "in_progress",
+      "worth": "yes"
+    },
+    {
+      "act": 1,
+      "current_step": "Return the lute",
+      "detection": "partial",
+      "id": "fixture-lute",
+      "name": "Fixture: The Lost Lute",
+      "needs_tick": true,
+      "rewards": [
+        {
+          "category": "passive_points",
+          "icon": "reward-passive",
+          "text": "2 Passive Skill Points"
+        }
+      ],
+      "status": "in_progress",
+      "worth": "yes"
+    },
+    {
+      "act": 1,
+      "current_step": null,
+      "detection": "auto",
+      "id": "fixture-crowbell",
+      "name": "Fixture: The Bell",
+      "needs_tick": false,
+      "rewards": [
+        {
+          "category": "passive_points",
+          "icon": "reward-passive",
+          "text": "2 Passive Skill Points"
+        }
+      ],
+      "status": "available",
+      "worth": "yes"
+    }
+  ],
+  "schema": 1,
+  "settings": {
+    "dock": "right",
+    "hotkey": "Ctrl+Alt+Q",
+    "log_path": null,
+    "only_worth_it": false,
+    "opacity": 0.9,
+    "scale": "auto",
+    "show_skipped": false
+  },
+  "status": null,
+  "view_kind": "next_up"
+}
