@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "game_version": "unchecked",
+  "poe2db_fetched": "2026-10-25",
+  "source": "https://poe2db.tw/us/Quest",
+  "source_note": "Quest data from poe2db (poe2db.tw, CC BY-NC-SA); quest names, step text, NPC lines and reward text are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Empty until the quest-data item fills it.",
+  "npcs": [],
+  "system_lines": [],
+  "areas": {},
+  "quests": []
+}
