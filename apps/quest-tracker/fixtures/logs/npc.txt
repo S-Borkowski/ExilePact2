@@ -1,0 +1,5 @@
+2026/03/07 10:03:00 51381000 3ef2a1d0 [INFO Client 4120] Renly: Fixture line for the smith, nothing he really says.
+2026/03/07 10:03:01 51382000 3ef2a1d1 [INFO Client 4120] The King in the Mists: A fixture boss line: with a colon inside.
+2026/03/07 10:03:02 51383000 3ef2a1d2 [INFO Client 4120] Half sail!
+2026/03/07 10:03:03 51384000 3ef2a1d3 [INFO Client 4120] Doryani: Not on this fixture's allowlist.
+2026/03/07 10:03:04 51385000 3ef2a1d4 [INFO Client 4120] All stop!

@@ -1,0 +1,8 @@
+2026/03/07 10:04:00 51441000 3ef2a1e0 [INFO Client 4120] : Tessaly_Vane (Witch) is now level 12
+2026/03/07 10:04:01 51442000 3ef2a1e1 [INFO Client 4120] : Tessaly_Vane has been slain.
+2026/03/07 10:04:02 51443000 3ef2a1e2 [INFO Client 4120] : Tessaly_Vane has received +30 to [Spirit|Spirit].
+2026/03/07 10:04:03 51444000 3ef2a1e3 [INFO Client 4120] : Tessaly_Vane has received +20 to maximum Life.
+2026/03/07 10:04:04 51445000 3ef2a1e4 [INFO Client 4120] : Tessaly_Vane has lost 25% increased [StunThreshold|Stun Threshold].
+2026/03/07 10:04:05 51446000 3ef2a1e5 [INFO Client 4120] : Marrowfen_Oak has joined the area.
+2026/03/07 10:04:06 51447000 3ef2a1e6 [INFO Client 4120] : Marrowfen_Oak (Warrior) is now level 71
+2026/03/07 10:04:07 51448000 3ef2a1e7 [INFO Client 4120] : Marrowfen_Oak has left the area.

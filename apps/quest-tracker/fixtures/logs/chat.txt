@@ -1,0 +1,16 @@
+2026/03/07 10:02:00 51321000 3ef2a1c0 [INFO Client 4120] #Pellwick_Dunmore: anyone selling a spare charm slot recipe
+2026/03/07 10:02:01 51322000 3ef2a1c1 [INFO Client 4120] $Corvanne: WTB invented test item, 5 ex
+2026/03/07 10:02:02 51323000 3ef2a1c2 [INFO Client 4120] %Brisket_Lane: party chat line in a fixture
+2026/03/07 10:02:03 51324000 3ef2a1c3 [INFO Client 4120] @From Quillan_Marsh: hi, is your invented item still for sale?
+2026/03/07 10:02:04 51325000 3ef2a1c4 [INFO Client 4120] &Tessaly_Vane: guild message in a fixture
+2026/03/07 10:02:05 51326000 3ef2a1c5 [INFO Client 4120] #Renly: global chat from a player named like an NPC
+2026/03/07 10:02:06 51327000 3ef2a1c6 [INFO Client 4120] Pellwick_Dunmore: local chat shaped exactly like an NPC line
+2026/03/07 10:02:07 51328000 3ef2a1c7 [INFO Client 4120] renly: lower-case speaker is not the allowlisted one
+2026/03/07 10:02:08 51329000 3ef2a1c8 [INFO Client 4120] Queue file to download: Art/Textures/fixture_only.dds
+2026/03/07 10:02:09 51330000 3ef2a1c9 [INFO Client 4120] Tile hash: 1234567890
+2026/03/07 10:02:10 51331000 3ef2a1ca [INFO Client 4120] Connecting to instance server
+2026/03/07 10:02:11 51332000 3ef2a1cb [WARN Client 4120] Something the fixture made up went wrong: code 7
+2026/03/07 10:02:12 51333000 3ef2a1cc [INFO Client 4120] : You have received 2 Atlas Passive Skill Points.
+2026/03/07 10:02:13 51334000 3ef2a1cd [INFO Client 4120] Half sail and a bit more!
+2026/03/07 10:02:14 51335000 3ef2a1ce [INFO Client 4120]
+2026/03/07 10:02:15 garbage without the usual header
