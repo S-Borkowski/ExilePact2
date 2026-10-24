@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- Synthetic quest index for tests/test_quest_tracker_poe2db.py. It has the
+     shape of the site's quest index (tabs; a #Quest tab of quest cards with
+     property lines) but every quest, reward and sentence in it is invented. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Quest index (synthetic)</title></head>
+<body>
+<ul class="nav nav-tabs">
+  <li><a class="nav-link" data-bs-toggle="tab" href="#QuestRewards">Quest Rewards /1 </a></li>
+  <li><a class="nav-link" data-bs-toggle="tab" href="#Quest"> Quest /6 </a></li>
+</ul>
+<div class="tab-content">
+<div id="QuestRewards" class="tab-pane fade"><div class="card mb-2">
+  <table class='table'><thead><tr><th>Quest</th><th>Normal</th></tr></thead><tbody>
+  <tr><td><a class="Quest" href="Rewards_Tab_Decoy">Rewards Tab Decoy</a><div>Act 1</div></td><td><a class="whiteitem" href="Brass_Token">Brass Token</a></td></tr>
+  </tbody></table>
+</div></div>
+<div id="Quest" class="tab-pane fade"><div class="card mb-2">
+  <h5 class="card-header"> Quest /6 </h5>
+  <script>
+  $(document).ready(function () { filterClick($('input[name=filterX]')); });
+  </script>
+  <div class="row row-cols-1 row-cols-lg-2 g-2 bg-dark">
+    <div class="col"><div class="d-flex border-top rounded">
+      <div class="flex-shrink-0"><a class="Quest" href="Trial_of_Echoes"><img loading="lazy" src="/img/echo.webp" alt="Echo" /></a></div>
+      <div class="flex-grow-1 ms-2"><div><a class="Quest" href="Trial_of_Echoes">Trial of Echoes</a></div><div class="property">MasterMission</div></div>
+    </div></div>
+    <div class="col"><div class="d-flex border-top rounded">
+      <div class="flex-shrink-0"><a class="Quest" href="The_Gilded_Kettle"><img loading="lazy" src="/img/kettle.webp" alt="Kettle" /></a></div>
+      <div class="flex-grow-1 ms-2"><div><a class="Quest" href="The_Gilded_Kettle">The Gilded Kettle</a></div><div class="property">Normal</div><div class="property">Act 1</div><div class="property">Reward: <span class='colourDefault'><a class="whiteitem" href="Brass_Token">Brass Token</a>, 2 Passive Skill Points</span></div><div class="property"><span class='colourDefault'><img loading="lazy" src="/img/token.webp" alt="token" class="size64" /></span></div><div class="separator"></div><div class="implicitMod">A tinker lost her kettle to the river. Find it before the floods return.</div></div>
+    </div></div>
+    <div class="col"><div class="d-flex border-top rounded">
+      <div class="flex-shrink-0"><a class="Quest" href="Lanterns_of_Weeping_Pass"><img loading="lazy" src="/img/lantern.webp" alt="Lantern" /></a></div>
+      <div class="flex-grow-1 ms-2"><div><a class="Quest" href="Lanterns_of_Weeping_Pass">Lanterns of Weeping Pass</a></div><div class="property">Optional</div><div class="property">Act 2</div><div class="property">Reward: <span class='colourDefault'><a class="whiteitem" href="Hollow_Charm">Hollow Charm</a>(iLv4)</span></div><div class="separator"></div><div class="implicitMod">Light the lanterns along the pass.</div></div>
+    </div></div>
+    <div class="col"><div class="d-flex border-top rounded">
+      <div class="flex-shrink-0"><a class="Quest" href="The_Sealed_Vault"><img loading="lazy" src="/img/vault.webp" alt="Vault" /></a></div>
+      <div class="flex-grow-1 ms-2"><div><a class="Quest" href="The_Sealed_Vault">The Sealed Vault</a></div><div class="property">Optional</div><div class="property">Act 2</div><div class="separator"></div><div class="implicitMod">Something waits behind the vault door.</div></div>
+    </div></div>
+    <div class="col"><div class="d-flex border-top rounded">
+      <div class="flex-shrink-0"><a class="Quest" href="Lanterns_of_Weeping_Pass"><img loading="lazy" src="/img/lantern.webp" alt="Lantern" /></a></div>
+      <div class="flex-grow-1 ms-2"><div><a class="Quest" href="Lanterns_of_Weeping_Pass">Lanterns of Weeping Pass</a></div><div class="property">Optional</div><div class="property">Act 3</div><div class="separator"></div><div class="implicitMod">Light the lanterns along the pass.</div></div>
+    </div></div>
+    <div class="col"><div class="d-flex border-top rounded">
+      <div class="flex-shrink-0"><a class="Quest" href="Ashen_Pilgrimage"><img loading="lazy" src="/img/ash.webp" alt="Ash" /></a></div>
+      <div class="flex-grow-1 ms-2"><div><a class="Quest" href="Ashen_Pilgrimage">Ashen Pilgrimage</a></div><div class="property">Normal</div><div class="property">Act 10</div><div class="separator"></div><div class="implicitMod">Walk the ash road to its end.</div></div>
+    </div></div>
+  </div>
+</div></div>
+<div id="Subzone" class="tab-pane fade"><table><tbody><tr><td>KettleShallows</td><td>The Copper Shallows<div>Where the river runs thin</div></td></tr></tbody></table></div>
+</div>
+<footer><div class="text-center p-3">Synthetic page for tests.</div></footer>
+</body>
+</html>
