@@ -6,7 +6,9 @@
 //! ([`qt_tailer::read_whole_file`], read-only, every line catch-up), each line
 //! goes through [`qt_engine::Engine::feed_line`], and `import` writes through
 //! [`qt_store::Store`]. The quest data is the `data/quests.json` compiled in,
-//! or the file `--data` names.
+//! or the file `--data` names. A level-1 Riverbank entry whose relog window
+//! is still open at the end of the log is decided the way the overlay's
+//! worker decides it on a quiet log, and the summary says so.
 //!
 //! Privacy: nothing printed is chat, an unknown speaker or another player's
 //! name. `events` prints a name-bearing event only for a character the
@@ -24,8 +26,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use qt_engine::{Engine, QuestData, Status};
-use qt_logline::{parse_line, Allowlist, Event, EventKind, PointPool};
+use qt_engine::{Engine, QuestData, QuestState, Status};
+use qt_logline::{parse_line, Allowlist, Event, EventKind, PointPool, Timestamp};
 use qt_store::{Loaded, Store};
 use qt_tailer::{read_whole_file, Position};
 use serde_json::{json, Map, Value};
@@ -46,7 +48,9 @@ Commands:
   events   one recognised event per line (never chat, unknown speakers or
            other players' names)
   state    the engine over the whole log, no store: per own character its
-           class, level and quests by status per act
+           class, level and quests by status per act, and the unnamed new
+           character if one is open; a relog window still open at the end
+           of the log is closed as the overlay would close it
   import   `state`, then written to the store (QUEST_TRACKER_DIR, else
            %LOCALAPPDATA%\\ExilePact2\\quest-tracker) with the position at the
            end of the log; running it twice leaves the same files
@@ -254,20 +258,48 @@ fn read_log(path: &Path, each: impl FnMut(qt_tailer::Line)) -> Result<Position, 
     })
 }
 
+/// How long after the last line a relog window still open at the end of the
+/// log is closed: the overlay's worker closes it once the quiet log's clock
+/// passes 5 s after the entry, so 6 s after the last line always decides it.
+const QUIET_CLOSE_SECONDS: i64 = 6;
+
 /// What a whole-log replay read.
 struct Replayed {
     position: Position,
     lines: u64,
+    /// A level-1 Riverbank entry's relog window was still open at the end
+    /// of the log, and the replay closed it as the overlay would.
+    closed_at_end: bool,
 }
 
-/// Feeds every line of the log to `engine`, as catch-up.
+/// Feeds every line of the log to `engine`, as catch-up. A relog window
+/// still open at the end is then closed the way the overlay closes it when
+/// the log stays quiet ([`Engine::expire_relog_window`] at a time
+/// [`QUIET_CLOSE_SECONDS`] after the last line), so a log that ends inside
+/// one is decided rather than left with the entry changing nothing.
 fn replay(mut engine: Engine, log: &Path) -> Result<(Engine, Replayed), Failure> {
     let mut lines = 0u64;
+    let mut last_time: Option<Timestamp> = None;
     let position = read_log(log, |line| {
         lines += 1;
+        if let Some(time) = line.text.get(..19).and_then(Timestamp::parse) {
+            last_time = Some(time);
+        }
         engine.feed_line(&line.text, !line.catch_up);
     })?;
-    Ok((engine, Replayed { position, lines }))
+    let mut closed_at_end = false;
+    if let (true, Some(last)) = (engine.relog_window_open(), last_time) {
+        engine.expire_relog_window(last.plus_seconds(QUIET_CLOSE_SECONDS));
+        closed_at_end = !engine.relog_window_open();
+    }
+    Ok((
+        engine,
+        Replayed {
+            position,
+            lines,
+            closed_at_end,
+        },
+    ))
 }
 
 /// The parser allowlist of the data, plus `--speakers`.
@@ -344,28 +376,58 @@ fn kind_name(kind: &EventKind) -> String {
 
 // -- state and import ---------------------------------------------------------
 
-/// The `state` report: per stored character, its quests by status, per act.
+/// One character's quests, in data order: `{<quest id>: <status>}` and,
+/// per act, the quest ids by status.
+fn quests_json(data: &QuestData, states: Vec<QuestState>) -> (Map<String, Value>, Vec<Value>) {
+    let mut quests = Map::new();
+    let mut by_act: BTreeMap<u32, BTreeMap<&'static str, Vec<String>>> = BTreeMap::new();
+    for (quest, state) in data.quests.iter().zip(states) {
+        quests.insert(state.quest_id.clone(), json!(state.status));
+        by_act
+            .entry(quest.act)
+            .or_default()
+            .entry(state.status.as_str())
+            .or_default()
+            .push(state.quest_id);
+    }
+    let acts = by_act
+        .into_iter()
+        .map(|(act, statuses)| json!({ "act": act, "statuses": statuses }))
+        .collect();
+    (quests, acts)
+}
+
+/// The unnamed new character a level-1 entry to The Riverbank started and
+/// no level-up has named yet, while it is open: its level, the events it
+/// took and its quests. `null` when there is none.
+fn new_character_json(engine: &Engine) -> Value {
+    let (Some(state), Some(states)) = (engine.new_character(), engine.new_character_states())
+    else {
+        return Value::Null;
+    };
+    let events = engine
+        .new_character_json()
+        .and_then(|record| record.get("events").and_then(Value::as_u64))
+        .unwrap_or(0);
+    let (quests, acts) = quests_json(engine.data(), states);
+    json!({
+        "class": state.class,
+        "level": state.level,
+        "events": events,
+        "quests": quests,
+        "acts": acts,
+    })
+}
+
+/// The `state` report: per stored character, its quests by status, per act,
+/// and the unnamed new character, if one is open.
 fn state_json(engine: &Engine, replayed: &Replayed) -> Value {
     let data = engine.data();
     let characters: Vec<Value> = engine
         .characters()
         .into_iter()
         .map(|c| {
-            let mut quests = Map::new();
-            let mut by_act: BTreeMap<u32, BTreeMap<&'static str, Vec<String>>> = BTreeMap::new();
-            for (quest, state) in data.quests.iter().zip(engine.quest_states(&c.name)) {
-                quests.insert(state.quest_id.clone(), json!(state.status));
-                by_act
-                    .entry(quest.act)
-                    .or_default()
-                    .entry(state.status.as_str())
-                    .or_default()
-                    .push(state.quest_id);
-            }
-            let acts: Vec<Value> = by_act
-                .into_iter()
-                .map(|(act, statuses)| json!({ "act": act, "statuses": statuses }))
-                .collect();
+            let (quests, acts) = quests_json(data, engine.quest_states(&c.name));
             json!({
                 "name": c.name,
                 "class": c.class,
@@ -387,8 +449,28 @@ fn state_json(engine: &Engine, replayed: &Replayed) -> Value {
         "dropped": engine.dropped_count(),
         "dropped_new_character": engine.dropped_new_character_count(),
         "refused": engine.refused_count(),
+        // A relog window still open at the end of the log, closed as the
+        // overlay would close it on a quiet log.
+        "relog_window_closed_at_end": replayed.closed_at_end,
         "characters": characters,
+        "new_character": new_character_json(engine),
     })
+}
+
+/// Each act's quest ids by status, in status order, not alphabetical.
+fn write_acts(acts: &Value, out: &mut impl Write) -> io::Result<()> {
+    for act in acts.as_array().into_iter().flatten() {
+        writeln!(out, "  act {}", act["act"])?;
+        if let Some(statuses) = act["statuses"].as_object() {
+            for status in Status::NAMES {
+                if let Some(ids) = statuses.get(status).and_then(Value::as_array) {
+                    let ids: Vec<&str> = ids.iter().filter_map(Value::as_str).collect();
+                    writeln!(out, "    {status} ({}): {}", ids.len(), ids.join(", "))?;
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn print_state(
@@ -417,8 +499,16 @@ fn print_state(
         engine.dropped_new_character_count(),
         engine.refused_count()
     )?;
+    if replayed.closed_at_end {
+        writeln!(
+            out,
+            "a relog window was still open: closed at the end of the log, as the \
+             overlay would {QUIET_CLOSE_SECONDS} s after the last line"
+        )?;
+    }
     let characters = report["characters"].as_array().cloned().unwrap_or_default();
-    if characters.is_empty() {
+    let new = &report["new_character"];
+    if characters.is_empty() && new.is_null() {
         writeln!(out, "no character found")?;
     }
     for c in &characters {
@@ -434,18 +524,15 @@ fn print_state(
             c["name"].as_str().unwrap_or(""),
             c["level"]
         )?;
-        for act in c["acts"].as_array().into_iter().flatten() {
-            writeln!(out, "  act {}", act["act"])?;
-            if let Some(statuses) = act["statuses"].as_object() {
-                // Status order, not alphabetical.
-                for status in Status::NAMES {
-                    if let Some(ids) = statuses.get(status).and_then(Value::as_array) {
-                        let ids: Vec<&str> = ids.iter().filter_map(Value::as_str).collect();
-                        writeln!(out, "    {status} ({}): {}", ids.len(), ids.join(", "))?;
-                    }
-                }
-            }
-        }
+        write_acts(&c["acts"], out)?;
+    }
+    if new.is_object() {
+        writeln!(
+            out,
+            "new character (unnamed, level {}, {} events, not stored until a level-up names it)",
+            new["level"], new["events"]
+        )?;
+        write_acts(&new["acts"], out)?;
     }
     if let Some(store) = store {
         writeln!(

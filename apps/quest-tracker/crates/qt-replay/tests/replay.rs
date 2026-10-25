@@ -365,6 +365,151 @@ fn summary_reports_dropped_new_character() {
     );
 }
 
+/// A client line at a given time of 2026/03/14, for the timed cases.
+fn line_at(time: &str, level: &str, message: &str) -> String {
+    format!("2026/03/14 {time} 9000000 abcdef01 [{level} Client 5120] {message}")
+}
+
+#[test]
+fn replay_decides_an_open_relog_window_at_end() {
+    const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
+    let level_up = line_at(
+        "12:00:00",
+        "INFO",
+        &format!(": {CORISANDE} (Witch) is now level 2"),
+    );
+    let entry = line_at(
+        "12:00:10",
+        "INFO",
+        r#"Generating level 1 area "G1_1" with seed 11"#,
+    );
+    let beira = line_at(
+        "12:00:12",
+        "INFO",
+        "Beira of the Rotten Pack: Fixture line: the pack gathers.",
+    );
+    let store = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let data = quests_min();
+    let write = |name: &str, lines: &[&str]| {
+        let log = logs.path().join(name);
+        fs::write(&log, lines.join("\n") + "\n").unwrap();
+        log
+    };
+    let state = |log: &Path, as_json: bool| {
+        let mut args = vec![
+            OsStr::new("state"),
+            log.as_os_str(),
+            OsStr::new("--data"),
+            data.as_os_str(),
+        ];
+        if as_json {
+            args.push(OsStr::new("--json"));
+        }
+        run(store.path(), args)
+    };
+
+    // The log ends 2 s after a level-1 entry, with a line of the window
+    // after it: the engine alone leaves the window undecided at EOF.
+    let open = [MARKER, level_up.as_str(), entry.as_str(), beira.as_str()];
+    let log = write("open.txt", &open);
+    let mut engine = Engine::new(Arc::new(QuestData::load(&data).unwrap()));
+    for line in fs::read_to_string(&log).unwrap().lines() {
+        engine.feed_line(line, false);
+    }
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    // The overlay's quiet-log close, 6 s after the last line.
+    engine.expire_relog_window(qt_engine::Timestamp::parse("2026/03/14 12:00:18").unwrap());
+    assert!(engine.new_character_open());
+    let control = engine.new_character_json().unwrap();
+    let control_states = engine.new_character_states().unwrap();
+    assert!(control["events"].as_u64().unwrap() > 0, "{control}");
+
+    // The replay decides it the same way: the new character is shown,
+    // with the window's events in it, and the summary says why.
+    let report = ok_json(&state(&log, true));
+    assert_eq!(
+        report["relog_window_closed_at_end"],
+        json!(true),
+        "{report}"
+    );
+    let new = &report["new_character"];
+    assert_eq!(new["events"], control["events"], "{report}");
+    assert_eq!(new["level"], json!(1), "{report}");
+    for s in &control_states {
+        assert_eq!(new["quests"][&s.quest_id], json!(s.status), "{report}");
+    }
+    assert_eq!(
+        new["quests"]["fixture-riverbank"],
+        json!("in_progress"),
+        "{report}"
+    );
+    let corisande = &report["characters"][0];
+    assert_eq!(corisande["name"], json!(CORISANDE), "{report}");
+    assert_eq!(corisande["active"], json!(false), "{report}");
+    let text = stdout(&state(&log, false));
+    assert!(
+        text.contains("a relog window was still open: closed at the end of the log"),
+        "{text}"
+    );
+    assert!(
+        text.contains(&format!(
+            "new character (unnamed, level 1, {} events",
+            control["events"]
+        )),
+        "{text}"
+    );
+
+    // Negative control: a later area entry closes the window inside the
+    // log. The new character is there all the same, and the summary does not
+    // claim the end of the log closed it.
+    let clearfell = line_at(
+        "12:00:20",
+        "INFO",
+        r#"Generating level 2 area "G1_2" with seed 7"#,
+    );
+    let closed = [
+        MARKER,
+        level_up.as_str(),
+        entry.as_str(),
+        beira.as_str(),
+        clearfell.as_str(),
+    ];
+    let report = ok_json(&state(&write("closed.txt", &closed), true));
+    assert_eq!(
+        report["relog_window_closed_at_end"],
+        json!(false),
+        "{report}"
+    );
+    assert!(report["new_character"].is_object(), "{report}");
+    let text = stdout(&state(&write("closed.txt", &closed), false));
+    assert!(!text.contains("closed at the end of the log"), "{text}");
+
+    // Negative control: the build line names the stored character within
+    // the window, so the entry was a relog and there is no new character.
+    let relog_line = line_at(
+        "12:00:11",
+        "WARN",
+        &format!("Character {CORISANDE} has unknown build of path: None"),
+    );
+    let relog = [
+        MARKER,
+        level_up.as_str(),
+        entry.as_str(),
+        relog_line.as_str(),
+        beira.as_str(),
+    ];
+    let report = ok_json(&state(&write("relog.txt", &relog), true));
+    assert_eq!(
+        report["relog_window_closed_at_end"],
+        json!(false),
+        "{report}"
+    );
+    assert_eq!(report["new_character"], Value::Null, "{report}");
+    assert_eq!(report["characters"][0]["active"], json!(true), "{report}");
+}
+
 #[test]
 fn events_hide_character_line_of_unstored_name() {
     const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
