@@ -83,7 +83,17 @@ describe('the plain UI', () => {
           expect(frame.startsWith('empty-'), frame).toBe(true);
           expect(root.querySelector(`[data-empty="${frame}"]`), frame).not.toBeNull();
       }
-      if (view.status) expect(text(root)).toContain(view.status.text);
+      // The status line shows the view's status, except over the empty frame
+      // whose body already states that condition (finish review F7).
+      const statedByBody =
+        (frame === 'empty-no-log' && view.status?.kind === 'error') ||
+        (frame === 'empty-waiting' && view.status?.kind === 'info');
+      if (view.status && statedByBody) {
+        expect(root.querySelector('.status-line'), frame).toBeNull();
+        expect(text(root.querySelector(`[data-empty="${frame}"]`)!).trim(), frame).not.toBe('');
+      } else if (view.status) {
+        expect(root.querySelector('.status-line')?.textContent, frame).toContain(view.status.text);
+      }
       rendered.destroy();
       rendered = null;
     }
