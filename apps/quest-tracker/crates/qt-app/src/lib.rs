@@ -31,7 +31,7 @@ use std::sync::Arc;
 use qt_engine::QuestData;
 
 pub use app::{
-    scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, SystemClock, Window,
+    auto_rescale, scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, SystemClock, Window,
     SAVE_INTERVAL_MS, SHUTDOWN_TIMEOUT, WORKER_TICK,
 };
 pub use cli::Options;

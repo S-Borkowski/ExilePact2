@@ -126,6 +126,8 @@ impl Window for FakeWindow {
     }
 
     fn monitor(&self) -> Result<Option<MonitorMetrics>, String> {
+        // Recorded, so a test can see when the monitor was read.
+        self.0.calls.lock().unwrap().push("monitor".to_string());
         Ok(*self.0.monitor.lock().unwrap())
     }
 }
@@ -690,17 +692,23 @@ fn dock_change_places_the_window() {
     assert!(h.stored("settings.json").unwrap().get("window").is_none());
 }
 
+fn scales(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("scale"))
+        .collect()
+}
+
+fn monitor_at(height: u32, dpi_scale: f64) -> Option<MonitorMetrics> {
+    Some(MonitorMetrics { height, dpi_scale })
+}
+
 // The `auto` scale is worked out from the window's monitor wherever the
-// shell applies the scale: at start and when the setting changes.
+// shell applies the scale: at start, when the setting changes, and when the
+// window moves or its DPI scale changes (below).
 #[test]
 fn auto_scale_applied_at_start_and_on_change() {
-    fn scales(h: &Harness) -> Vec<String> {
-        h.window
-            .calls()
-            .into_iter()
-            .filter(|c| c.starts_with("scale"))
-            .collect()
-    }
 
     // Baseline: with no monitor, `auto` (the default) is a zoom of 1.
     let h = harness(Setup::default());
@@ -737,6 +745,116 @@ fn auto_scale_applied_at_start_and_on_change() {
     // zoom alone.
     h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
     assert_eq!(scales(&h).len(), 4);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// At start the monitor is read after the window is placed, so the zoom
+// comes from the monitor the window was placed on; a docked window is placed
+// again once the zoom has resized it.
+#[test]
+fn auto_scale_read_after_placement() {
+    let h = harness(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    let calls = h.window.calls();
+    let index = |what: &str| {
+        calls
+            .iter()
+            .position(|c| c == what)
+            .unwrap_or_else(|| panic!("no {what:?} in {calls:?}"))
+    };
+    let docked = format!("place {:?}", Placement::Docked(Dock::Right));
+    let (place, read, scale) = (index(&docked), index("monitor"), index("scale 1.33"));
+    assert!(place < read && read < scale, "{calls:?}");
+    assert!(
+        calls[scale + 1..].contains(&docked),
+        "docked again after the zoom: {calls:?}"
+    );
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // Negative control: a fixed scale never reads the monitor.
+    let h = harness(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.update_settings(&json!({ "scale": "2" })).unwrap();
+    h.window.calls.lock().unwrap().clear();
+    h.app.start();
+    let calls = h.window.calls();
+    assert!(!calls.contains(&"monitor".to_string()), "{calls:?}");
+    assert_eq!(scales(&h), vec!["scale 2"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// A move re-evaluates `auto` on the window's monitor, in any mode, and
+// applies a zoom only when it differs; a DPI scale change does the same. A
+// fixed scale never follows.
+#[test]
+fn auto_scale_follows_window_to_other_monitor() {
+    let h = harness(Setup {
+        monitor: monitor_at(1080, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(scales(&h), vec!["scale 1"]);
+
+    // Baseline: a move on the same monitor (the shell's own placement, in
+    // play mode) applies nothing.
+    h.app.window_moved(1500, 300);
+    assert_eq!(scales(&h), vec!["scale 1"]);
+
+    // Target: the window is now on a 1440 px monitor; one move gives one
+    // new zoom, and the docked window is placed again.
+    *h.window.monitor.lock().unwrap() = monitor_at(1440, 1.0);
+    let before = h.window.calls().len();
+    h.app.window_moved(3000, 300);
+    assert_eq!(scales(&h), vec!["scale 1", "scale 1.33"]);
+    let after: Vec<String> = h.window.calls()[before..].to_vec();
+    assert_eq!(
+        after,
+        vec![
+            "monitor".to_string(),
+            "scale 1.33".to_string(),
+            format!("place {:?}", Placement::Docked(Dock::Right)),
+        ]
+    );
+    assert!(h.diag_text().contains("scale auto: the window is now on a monitor 1440 px high"));
+    // A second move on the same monitor gives none.
+    h.app.window_moved(3010, 300);
+    assert_eq!(scales(&h), vec!["scale 1", "scale 1.33"]);
+    // Play-mode moves are not saved as a position.
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    assert!(h.stored("settings.json").unwrap().get("window").is_none());
+
+    // A DPI scale change on the same monitor (Windows' setting to 125%).
+    *h.window.monitor.lock().unwrap() = monitor_at(1440, 1.25);
+    h.app.follow_monitor();
+    assert_eq!(scales(&h), vec!["scale 1", "scale 1.33", "scale 1.06"]);
+
+    // An edit-mode drag to a 2160 px monitor: rescaled, the position kept,
+    // and not docked again.
+    h.app.set_mode(Mode::Edit).unwrap();
+    *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.0);
+    let before = h.window.calls().len();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_moved(4000, 200);
+    assert_eq!(h.window.calls()[before..].to_vec(), vec!["monitor", "scale 2"]);
+    assert_eq!(
+        h.stored("settings.json").unwrap().get("window"),
+        Some(&json!({ "x": 4000, "y": 200 }))
+    );
+
+    // Negative control: a fixed scale ignores the monitor and never reads it.
+    h.app.update_settings(&json!({ "scale": "1" })).unwrap();
+    *h.window.monitor.lock().unwrap() = monitor_at(1080, 1.0);
+    let before = h.window.calls().len();
+    h.app.window_moved(100, 100);
+    h.app.follow_monitor();
+    assert_eq!(h.window.calls().len(), before);
+    assert_eq!(scales(&h).last().map(String::as_str), Some("scale 1"));
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 

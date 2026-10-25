@@ -151,6 +151,24 @@ fn auto_zoom(m: MonitorMetrics) -> f64 {
     ((target / dpi * 100.0).round() / 100.0).max(1.0)
 }
 
+/// Whether the window's monitor calls for a new zoom: the `auto` zoom on
+/// `current` when it differs from the one worked out from `applied` (the
+/// monitor the applied zoom came from; `None` when there was none), else
+/// `None`. A fixed scale never changes with the monitor, and with no
+/// current monitor to go on the applied zoom stays.
+pub fn auto_rescale(
+    scale: Scale,
+    applied: Option<MonitorMetrics>,
+    current: Option<MonitorMetrics>,
+) -> Option<f64> {
+    if scale != Scale::Auto {
+        return None;
+    }
+    let current = current?;
+    let zoom = auto_zoom(current);
+    (zoom != scale_factor(Scale::Auto, applied)).then_some(zoom)
+}
+
 /// The status line's remedy when the shortcut fails at launch: with no
 /// shortcut, play mode could not be left, so the overlay starts in edit mode.
 const LAUNCH_REMEDY: &str =
@@ -222,6 +240,9 @@ struct State {
     saved_roster: Option<Value>,
     saved_chars: BTreeMap<String, Value>,
     last_view: Option<View>,
+    /// The monitor the applied `auto` zoom was worked out from (`None`
+    /// when there was none), so a move re-applies only a zoom that differs.
+    scale_monitor: Option<MonitorMetrics>,
 }
 
 impl State {
@@ -296,6 +317,10 @@ pub struct App {
     poll_interval: Duration,
     state: Mutex<State>,
     save_lock: Mutex<()>,
+    /// Held from a monitor read to the zoom it leads to, so two window
+    /// events cannot apply their reads out of order. Taken before the state
+    /// lock, never while holding it.
+    scale_lock: Mutex<()>,
     tx: Sender<TailEvent>,
     rx: Mutex<Option<Receiver<TailEvent>>>,
     tailer: Mutex<Option<Tailer>>,
@@ -451,6 +476,7 @@ impl App {
             saved_roster: None,
             saved_chars: BTreeMap::new(),
             last_view: None,
+            scale_monitor: None,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
         state.dirty = !(had_settings && had_roster);
@@ -485,6 +511,7 @@ impl App {
             poll_interval,
             state: Mutex::new(state),
             save_lock: Mutex::new(()),
+            scale_lock: Mutex::new(()),
             tx,
             rx: Mutex::new(Some(rx)),
             tailer: Mutex::new(None),
@@ -556,16 +583,28 @@ impl App {
         if let Err(e) = self.window.set_click_through(mode == Mode::Play) {
             self.window_error("click-through", &e);
         }
-        let monitor = if scale == Scale::Auto {
-            self.read_monitor()
-        } else {
-            None
-        };
-        if let Err(e) = self.window.set_scale(self.zoom(scale, monitor)) {
-            self.window_error("scale", &e);
-        }
+        // Placed first, so `auto` reads the monitor the window was placed
+        // on; a docked window is placed again once the zoom has resized it,
+        // so its edge keeps the margin to the monitor's side.
         if let Err(e) = self.window.place(placement) {
             self.window_error("placement", &e);
+        }
+        {
+            let _scale = self.scale_lock.lock().unwrap_or_else(|p| p.into_inner());
+            let monitor = if scale == Scale::Auto {
+                self.read_monitor()
+            } else {
+                None
+            };
+            self.lock().scale_monitor = monitor;
+            if let Err(e) = self.window.set_scale(self.zoom(scale, monitor)) {
+                self.window_error("scale", &e);
+            }
+        }
+        if let Placement::Docked(_) = placement {
+            if let Err(e) = self.window.place(placement) {
+                self.window_error("placement", &e);
+            }
         }
         self.start_tailer();
         self.spawn_worker();
@@ -916,17 +955,16 @@ impl App {
     /// applied after the lock is released. A patch that names the scale has
     /// the monitor read first, before the lock, for `auto`.
     pub fn update_settings(&self, patch: &Value) -> Result<View, String> {
-        let monitor = if patch.get("scale").is_some() {
-            self.read_monitor()
-        } else {
-            None
-        };
+        let names_scale = patch.get("scale").is_some();
+        let _scale = names_scale.then(|| self.scale_lock.lock().unwrap_or_else(|p| p.into_inner()));
+        let monitor = if names_scale { self.read_monitor() } else { None };
         self.command("update_settings", |app, st| {
             let new = st.settings.patched(patch)?;
             let old = std::mem::replace(&mut st.settings, new.clone());
             st.dirty = true;
             let mut after = After::default();
             if new.scale != old.scale {
+                st.scale_monitor = monitor;
                 if let Err(e) = app.window.set_scale(app.zoom(new.scale, monitor)) {
                     app.diag(&format!("error: window scale: {e}"));
                 }
@@ -964,17 +1002,66 @@ impl App {
         Ok(())
     }
 
-    /// The window was moved. Only a move in edit mode (a drag) is kept.
+    /// The window was moved, in any mode (a drag in edit mode, a placement
+    /// by the shell): `auto` follows it to its monitor ([`App::follow_monitor`]).
+    /// Only a move in edit mode (a drag) is kept as the position.
     pub fn window_moved(&self, x: i32, y: i32) {
-        {
+        let keep = {
             let mut st = self.lock();
-            if st.ui.mode != Mode::Edit || st.window_pos == Some((x, y)) {
+            let keep = st.ui.mode == Mode::Edit && st.window_pos != Some((x, y));
+            if keep {
+                st.window_pos = Some((x, y));
+                st.dirty = true;
+            }
+            keep
+        };
+        if keep {
+            self.save_if_due(false);
+        }
+        self.follow_monitor();
+    }
+
+    /// Re-evaluates the `auto` scale on the window's monitor, after a move or
+    /// a DPI scale change, and applies the zoom only when it differs from
+    /// the one applied. A fixed scale never reads the monitor. A docked
+    /// window is placed again after a new zoom has resized it.
+    pub fn follow_monitor(&self) {
+        let _scale = self.scale_lock.lock().unwrap_or_else(|p| p.into_inner());
+        if self.lock().settings.scale != Scale::Auto {
+            return;
+        }
+        // Read with no state lock held: Tauri answers it on the main thread.
+        // A failed read changes nothing.
+        let current = match self.window.monitor() {
+            Ok(m) => m,
+            Err(e) => {
+                self.diag(&format!("error: window monitor: {e}"));
                 return;
             }
-            st.window_pos = Some((x, y));
-            st.dirty = true;
+        };
+        let replace = {
+            let mut st = self.lock();
+            let rescale = auto_rescale(st.settings.scale, st.scale_monitor, current);
+            if current.is_some() {
+                st.scale_monitor = current;
+            }
+            let (Some(zoom), Some(m)) = (rescale, current) else {
+                return;
+            };
+            self.diag(&format!(
+                "scale auto: the window is now on a monitor {} px high at DPI scale {} -> zoom {zoom}",
+                m.height, m.dpi_scale
+            ));
+            if let Err(e) = self.window.set_scale(zoom) {
+                self.diag(&format!("error: window scale: {e}"));
+            }
+            st.window_pos.is_none().then_some(Placement::Docked(st.settings.dock))
+        };
+        if let Some(p) = replace {
+            if let Err(e) = self.window.place(p) {
+                self.window_error("placement", &e);
+            }
         }
-        self.save_if_due(false);
     }
 
     /// A second launch was refused by the single-instance guard.
@@ -1521,5 +1608,40 @@ mod tests {
         assert_eq!(scale_factor(Scale::Auto, at(1440, 0.0)), 1.33);
         assert_eq!(scale_factor(Scale::Auto, at(1440, f64::NAN)), 1.33);
         assert_eq!(scale_factor(Scale::Auto, at(0, 1.0)), 1.0);
+    }
+
+    #[test]
+    fn auto_scale_rescales_on_monitor_change() {
+        // The window went from a 1080 px to a 1440 px monitor: 1.33, and
+        // back: 1.
+        assert_eq!(auto_rescale(Scale::Auto, at(1080, 1.0), at(1440, 1.0)), Some(1.33));
+        assert_eq!(auto_rescale(Scale::Auto, at(1440, 1.0), at(1080, 1.0)), Some(1.0));
+        // Same height, another DPI scale (Windows' setting changed, or a
+        // monitor of the same size at 125%).
+        assert_eq!(auto_rescale(Scale::Auto, at(2160, 1.0), at(2160, 1.25)), Some(1.6));
+        // No monitor when the zoom was applied (zoom 1), one now.
+        assert_eq!(auto_rescale(Scale::Auto, None, at(2160, 1.0)), Some(2.0));
+    }
+
+    #[test]
+    fn auto_scale_same_monitor_keeps_zoom() {
+        // A move on the same monitor changes nothing.
+        assert_eq!(auto_rescale(Scale::Auto, at(1440, 1.0), at(1440, 1.0)), None);
+        // Another monitor with the same zoom: nothing to apply either.
+        assert_eq!(auto_rescale(Scale::Auto, at(1080, 1.0), at(1200, 1.0)), None);
+        assert_eq!(auto_rescale(Scale::Auto, at(1440, 1.0), at(2160, 1.5)), None);
+        assert_eq!(auto_rescale(Scale::Auto, None, at(1080, 1.0)), None);
+        // No monitor to go on: the applied zoom stays.
+        assert_eq!(auto_rescale(Scale::Auto, at(1440, 1.0), None), None);
+    }
+
+    #[test]
+    fn fixed_scale_ignores_monitor_change() {
+        for scale in [Scale::X1, Scale::X133, Scale::X2] {
+            assert_eq!(auto_rescale(scale, at(1080, 1.0), at(2160, 1.0)), None, "{scale:?}");
+            assert_eq!(auto_rescale(scale, None, at(1440, 1.0)), None, "{scale:?}");
+        }
+        // Positive control: the same move under `auto` does rescale.
+        assert_eq!(auto_rescale(Scale::Auto, at(1080, 1.0), at(2160, 1.0)), Some(2.0));
     }
 }

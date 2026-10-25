@@ -27,7 +27,11 @@
 //!   default, camelCase on the JavaScript side: `invoke("quest_action",
 //!   { questId, action })`, `invoke("tick_step", { questId, stepId,
 //!   ticked })`, `invoke("update_settings", { patch })`.
-//! - **Main-thread callbacks** (the shortcut, window moves, a second launch)
+//! - **Auto scale**: every window move and every DPI scale change of the
+//!   window has `qt-app` re-read the monitor, which re-applies the zoom only
+//!   when it differs from the one applied.
+//! - **Main-thread callbacks** (the shortcut, window moves, a DPI scale
+//!   change, a second launch)
 //!   hand their work to a blocking task, so the main thread never waits for
 //!   the app's lock while a command holding it waits for the main thread.
 
@@ -359,11 +363,18 @@ pub fn run() {
             no_activate(&window, &shell);
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let WindowEvent::Moved(at) = event {
+        .on_window_event(|window, event| match event {
+            // Every move, in any mode: `auto` follows the window to its
+            // monitor (Tauri has no drag-end event; the shell applies a zoom
+            // only when it differs), and an edit-mode move is kept.
+            WindowEvent::Moved(at) => {
                 let (x, y) = (at.x, at.y);
                 later(window.app_handle(), move |shell| shell.window_moved(x, y));
             }
+            WindowEvent::ScaleFactorChanged { .. } => {
+                later(window.app_handle(), |shell| shell.follow_monitor());
+            }
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             get_view,
