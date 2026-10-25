@@ -10,11 +10,16 @@
 //! status or current step is reported as a [`Transition`] carrying the
 //! line's catch-up/live flag.
 //!
+//! A level-1 entry to The Riverbank (`G1_1`) starts a new character with no
+//! name yet: the session's events go to it, so its Act 1 progress shows at
+//! once, and the first level-up of a name not seen joining or leaving names
+//! it (Context "Post-live fixes (owner scope)").
+//!
 //! What persists ([`Engine::to_json`]) is the characters, the pin and the
 //! active name. Session memory (the names seen joining or leaving, the held
-//! events, the current area, the count of signals refused while the area
-//! was unknown) never does: other players' names are kept in memory for one
-//! session only.
+//! events, the unnamed new character, the current area, the count of signals
+//! refused while the area was unknown) never does: other players' names are
+//! kept in memory for one session only.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
@@ -124,6 +129,8 @@ pub struct QuestState {
 /// A change of one quest's status or current step for one character.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Transition {
+    /// Empty for the new character from The Riverbank, which has no name
+    /// until its first level-up.
     pub character: String,
     pub quest_id: String,
     pub from: Status,
@@ -205,6 +212,39 @@ struct Pending {
     since: Vec<Held>,
 }
 
+/// The area code whose level-1 entry starts a new character.
+const NEW_CHARACTER_AREA: &str = "G1_1";
+
+/// The new character a level-1 entry to The Riverbank starts: its progress
+/// so far, kept in session memory until a level-up names it.
+#[derive(Debug, Clone)]
+struct NewCharacter {
+    /// Its state, with an empty name and level 1.
+    state: CharacterState,
+    /// Events given to it, dropped and counted if the session ends first.
+    events: u64,
+    /// The pin its start released; the character it names is pinned in its
+    /// place.
+    released_pin: Option<String>,
+}
+
+/// Who an event or a change goes to: a stored character, or the unnamed new
+/// character.
+#[derive(Debug, Clone, Copy)]
+enum Target<'a> {
+    Named(&'a str),
+    New,
+}
+
+impl Target<'_> {
+    fn name(&self) -> &str {
+        match self {
+            Target::Named(n) => n,
+            Target::New => "",
+        }
+    }
+}
+
 /// The quest engine: the data, the characters and this session's memory.
 #[derive(Debug, Clone)]
 pub struct Engine {
@@ -220,6 +260,7 @@ pub struct Engine {
     area: Option<String>,
     held: Vec<Held>,
     pending: Option<Pending>,
+    new_char: Option<NewCharacter>,
     dropped: u64,
     client_version: Option<String>,
     /// Area-tied signals refused because the area was unknown: the running
@@ -286,6 +327,7 @@ impl Engine {
             area: None,
             held: Vec::new(),
             pending: None,
+            new_char: None,
             dropped: 0,
             client_version: None,
             refused: 0,
@@ -318,8 +360,11 @@ impl Engine {
         match &ev.kind {
             EventKind::SessionStart => self.end_session(),
             EventKind::ClientVersion { tag } => self.client_version = Some(tag.clone()),
-            EventKind::AreaEntered { code, .. } => {
+            EventKind::AreaEntered { code, level, .. } => {
                 self.area = Some(code.clone());
+                if code == NEW_CHARACTER_AREA && *level == 1 {
+                    self.start_new_character(&mut out);
+                }
                 self.route(ev, live, &mut out);
             }
             EventKind::AreaName { .. }
@@ -341,10 +386,14 @@ impl Engine {
 
     /// Ends the current session (a `LOG FILE OPENING` line does this itself):
     /// events still held with no character to give them to are dropped and
-    /// counted, and the session's memory is cleared.
+    /// counted, as are the events of a new character no level-up named, and
+    /// the session's memory is cleared.
     pub fn end_session(&mut self) {
         self.dropped += self.held.len() as u64;
         self.held.clear();
+        if let Some(nc) = self.new_char.take() {
+            self.dropped += nc.events;
+        }
         self.pending = None;
         self.active = None;
         self.excluded.clear();
@@ -365,69 +414,100 @@ impl Engine {
         self.area.as_deref()
     }
 
-    /// Gives an event to the pinned or active character, or holds it.
+    /// Gives an event to the pinned character, the new character from The
+    /// Riverbank or the active character, or holds it.
     fn route(&mut self, ev: &Event, live: bool, out: &mut Vec<Transition>) {
-        if self.area.is_none() {
-            self.count_refusals(&ev.kind);
-        }
         let held = Held {
             event: ev.clone(),
             area: self.area.clone(),
             live,
         };
-        let target = self.pinned.clone().or_else(|| self.active.clone());
+        if let Some(name) = self.pinned.clone() {
+            self.receive(Target::Named(&name), held, out);
+        } else if self.new_char.is_some() {
+            self.receive(Target::New, held, out);
+        } else if let Some(name) = self.active.clone() {
+            self.receive(Target::Named(&name), held, out);
+        } else {
+            // Held: no character gets it now, so nothing is refused for one.
+            self.held.push(held);
+        }
+    }
+
+    /// Gives a routed event to the character it goes to.
+    fn receive(&mut self, target: Target, held: Held, out: &mut Vec<Transition>) {
+        if held.area.is_none() {
+            self.count_refusals(&held.event.kind, target);
+        }
         match target {
-            Some(name) => {
+            Target::Named(name) => {
                 if let Some(p) = self.pending.as_mut() {
                     if p.name == name {
                         p.since.push(held.clone());
                     }
                 }
-                self.apply_to(&name, &held, out);
             }
-            None => self.held.push(held),
+            Target::New => {
+                if let Some(nc) = self.new_char.as_mut() {
+                    nc.events += 1;
+                }
+            }
         }
+        self.apply_to(target, &held, out);
     }
 
     /// With the area unknown, counts every area-tied signal the event matches
-    /// in all but its area: it is refused, and the shell logs the quest id.
-    /// Counted once per event, when it happens, whichever character later
-    /// gets it. A signal refused because the area is known and different is
-    /// the normal case and is not counted.
-    fn count_refusals(&mut self, ev: &EventKind) {
+    /// in all but its area, of a quest that is neither done nor skipped for
+    /// the character the event goes to: it is refused, and the shell logs the
+    /// quest id. Counted once per event, when it happens. A signal refused
+    /// because the area is known and different is the normal case and is not
+    /// counted, and neither is one of a quest already finished or set aside,
+    /// which the signal could not have changed.
+    fn count_refusals(&mut self, ev: &EventKind, target: Target) {
+        let mut hits: Vec<usize> = Vec::new();
         for (qi, signals) in self.compiled.iter().enumerate() {
             for c in signals {
                 let Some(want) = signal_area(&c.signal) else {
                     continue;
                 };
                 if fires_on(&c.signal, ev, Some(want)) {
-                    self.refused += 1;
-                    self.refused_quests.push(self.data.quests[qi].id.clone());
-                }
-            }
-        }
-    }
-
-    /// Records the event-based signals an event fires as `name`'s evidence.
-    fn apply_to(&mut self, name: &str, held: &Held, out: &mut Vec<Transition>) {
-        let mut hits: Vec<(usize, String)> = Vec::new();
-        for (qi, signals) in self.compiled.iter().enumerate() {
-            for c in signals {
-                if fires_on(&c.signal, &held.event.kind, held.area.as_deref()) {
-                    hits.push((qi, c.id.clone()));
+                    hits.push(qi);
                 }
             }
         }
         if hits.is_empty() {
             return;
         }
-        self.change(name, held.live, out, |e| {
-            let Some(ch) = e.chars.get_mut(name) else {
+        let states = self.states_of(target);
+        for qi in hits {
+            if matches!(states[qi].status, Status::Done | Status::Skipped) {
+                continue;
+            }
+            self.refused += 1;
+            self.refused_quests.push(self.data.quests[qi].id.clone());
+        }
+    }
+
+    /// Records the event-based signals an event fires as the target's
+    /// evidence.
+    fn apply_to(&mut self, target: Target, held: &Held, out: &mut Vec<Transition>) {
+        let mut hits: Vec<(String, String)> = Vec::new();
+        for (qi, signals) in self.compiled.iter().enumerate() {
+            for c in signals {
+                if fires_on(&c.signal, &held.event.kind, held.area.as_deref()) {
+                    hits.push((self.data.quests[qi].id.clone(), c.id.clone()));
+                }
+            }
+        }
+        if hits.is_empty() {
+            return;
+        }
+        self.change_to(target, held.live, out, |e| {
+            let Some(ch) = e.state_mut(target) else {
                 return false;
             };
             let mut changed = false;
-            for (qi, id) in hits {
-                let qid = e.data.quests[qi].id.clone();
+            for (qid, id) in hits {
                 changed |= ch.evidence.entry(qid).or_default().insert(id);
             }
             changed
@@ -446,6 +526,14 @@ impl Engine {
             // Rule 6: while pinned, detection only updates its level.
             if pinned == name {
                 self.set_level(name, class, level, live, out);
+            }
+            return;
+        }
+        if self.new_char.is_some() {
+            // The new character from The Riverbank: the first level-up of a
+            // name not seen joining or leaving this session names it.
+            if !self.excluded.contains(name) {
+                self.close_new_character(name, Some((class, level)), live, out);
             }
             return;
         }
@@ -478,9 +566,82 @@ impl Engine {
                 since: Vec::new(),
             });
             for h in &released {
-                self.apply_to(name, h, out);
+                self.apply_to(Target::Named(name), h, out);
             }
         }
+    }
+
+    /// A level-1 entry to The Riverbank: a new character starts, with no
+    /// name. A pin is released (the named character takes it), the active
+    /// character stops being active, and events held so far in the session
+    /// go to the new character. An entry while one is open changes nothing.
+    fn start_new_character(&mut self, out: &mut Vec<Transition>) {
+        if self.new_char.is_some() {
+            return;
+        }
+        let mut state = CharacterState::new("", Ownership::Own);
+        state.level = 1;
+        self.new_char = Some(NewCharacter {
+            state,
+            events: 0,
+            released_pin: self.pinned.take(),
+        });
+        self.active = None;
+        self.pending = None;
+        let released = std::mem::take(&mut self.held);
+        for h in released {
+            self.receive(Target::New, h, out);
+        }
+    }
+
+    /// Ends the new character's state by giving its progress to `name`: a
+    /// level-up naming it (`level` set, the name becomes own and active, and
+    /// pinned if the start released a pin), or the user pinning a character
+    /// while it is open. A name the engine did not know becomes the new
+    /// character, so only what changes from what it showed is a transition;
+    /// a known one gains its evidence, and the transitions are its own.
+    fn close_new_character(
+        &mut self,
+        name: &str,
+        level: Option<(&str, u32)>,
+        live: bool,
+        out: &mut Vec<Transition>,
+    ) {
+        let Some(nc) = self.new_char.take() else {
+            return;
+        };
+        let before = match self.chars.get(name) {
+            Some(ch) => self.compute(ch),
+            None => self.compute(&nc.state),
+        };
+        match self.chars.get_mut(name) {
+            Some(ch) => {
+                for (quest, ids) in nc.state.evidence {
+                    ch.evidence.entry(quest).or_default().extend(ids);
+                }
+                for (quest, ov) in nc.state.overrides {
+                    ch.overrides.entry(quest).or_insert(ov);
+                }
+            }
+            None => {
+                let mut state = nc.state;
+                state.name = name.to_string();
+                self.chars.insert(name.to_string(), state);
+            }
+        }
+        let ch = self.chars.get_mut(name).expect("inserted");
+        if let Some((class, level)) = level {
+            ch.ownership = Ownership::Own;
+            ch.class = class.to_string();
+            ch.level = level;
+            self.active = Some(name.to_string());
+            self.pending = None;
+            if nc.released_pin.is_some() {
+                self.pinned = Some(name.to_string());
+            }
+        }
+        let after = self.quest_states(name);
+        push_transitions(name, &before, &after, live, out);
     }
 
     fn set_level(
@@ -510,15 +671,17 @@ impl Engine {
         self.active = Some(name.to_string());
         let released = std::mem::take(&mut self.held);
         for h in &released {
-            self.apply_to(name, h, out);
+            self.apply_to(Target::Named(name), h, out);
         }
     }
 
     /// Rule 1: a `has received` or `has lost` line names an own character.
     /// Only a player's own rewards are logged, so the line also names the
-    /// character being played: it becomes active and gets the event.
+    /// character being played: it becomes active and gets the event. While
+    /// pinned, or while a new character from The Riverbank waits for the
+    /// level-up that names it, the event only goes where every event goes.
     fn received(&mut self, name: &str, ev: &Event, live: bool, out: &mut Vec<Transition>) {
-        if self.pinned.is_some() {
+        if self.pinned.is_some() || self.new_char.is_some() {
             self.route(ev, live, out);
             return;
         }
@@ -579,20 +742,29 @@ impl Engine {
     // -- user actions -------------------------------------------------------
 
     /// Pins a known character (it gets every event until unpinned) or, with
-    /// `None`, unpins. Held events go to the newly pinned character.
+    /// `None`, unpins. Held events, and the progress of a new character from
+    /// The Riverbank not yet named, go to the newly pinned character.
+    /// Unpinning while a new character is open also cancels the pin its
+    /// start released, so the character it names is not pinned.
     pub fn pin(&mut self, name: Option<&str>) -> Result<Vec<Transition>, EngineError> {
         let mut out = Vec::new();
         match name {
-            None => self.pinned = None,
+            None => {
+                self.pinned = None;
+                if let Some(nc) = self.new_char.as_mut() {
+                    nc.released_pin = None;
+                }
+            }
             Some(n) => {
                 if !self.chars.contains_key(n) {
                     return Err(EngineError(format!("no character named {n:?}")));
                 }
+                self.close_new_character(n, None, true, &mut out);
                 self.pinned = Some(n.to_string());
                 self.pending = None;
                 let released = std::mem::take(&mut self.held);
                 for h in &released {
-                    self.apply_to(n, h, &mut out);
+                    self.apply_to(Target::Named(n), h, &mut out);
                 }
             }
         }
@@ -740,10 +912,56 @@ impl Engine {
         self.client_version.as_deref()
     }
 
+    /// Whether a level-1 entry to The Riverbank started a new character this
+    /// session that no level-up has named yet. While it is open, events go
+    /// to it (unless the user pins a character), [`Engine::current`] is
+    /// `None`, and it is in neither [`Engine::characters`] nor
+    /// [`Engine::to_json`].
+    pub fn new_character_open(&self) -> bool {
+        self.new_char.is_some()
+    }
+
+    /// The unnamed new character's state (empty name, level 1), while open.
+    pub fn new_character(&self) -> Option<&CharacterState> {
+        self.new_char.as_ref().map(|nc| &nc.state)
+    }
+
+    /// Every quest's state for the unnamed new character, in data order,
+    /// while it is open.
+    pub fn new_character_states(&self) -> Option<Vec<QuestState>> {
+        self.new_character().map(|ch| self.compute(ch))
+    }
+
+    /// The pin the new character's start released, while it is open: the
+    /// character its level-up names is pinned in its place.
+    pub fn new_character_released_pin(&self) -> Option<&str> {
+        self.new_char
+            .as_ref()
+            .and_then(|nc| nc.released_pin.as_deref())
+    }
+
     /// Every quest's state for one character, in data order. A character the
     /// engine does not know has every quest locked.
     pub fn quest_states(&self, name: &str) -> Vec<QuestState> {
-        match self.chars.get(name) {
+        self.states_of(Target::Named(name))
+    }
+
+    fn state(&self, target: Target) -> Option<&CharacterState> {
+        match target {
+            Target::Named(name) => self.chars.get(name),
+            Target::New => self.new_character(),
+        }
+    }
+
+    fn state_mut(&mut self, target: Target) -> Option<&mut CharacterState> {
+        match target {
+            Target::Named(name) => self.chars.get_mut(name),
+            Target::New => self.new_char.as_mut().map(|nc| &mut nc.state),
+        }
+    }
+
+    fn states_of(&self, target: Target) -> Vec<QuestState> {
+        match self.state(target) {
             Some(ch) => self.compute(ch),
             None => self
                 .data
@@ -781,7 +999,8 @@ impl Engine {
     // -- persistence --------------------------------------------------------
 
     /// Everything that persists: `{schema, pinned, active, characters}`.
-    /// Session memory (party names, held events, the area) is not in it.
+    /// Session memory (party names, held events, the unnamed new character,
+    /// the area) is not in it.
     pub fn to_json(&self) -> Value {
         json!({
             "schema": SCHEMA,
@@ -844,24 +1063,23 @@ impl Engine {
         out: &mut Vec<Transition>,
         f: impl FnOnce(&mut Engine) -> bool,
     ) {
-        let before = self.quest_states(name);
-        if !f(self) || !self.chars.contains_key(name) {
+        self.change_to(Target::Named(name), live, out, f);
+    }
+
+    /// [`Engine::change`] for a stored character or the new one.
+    fn change_to(
+        &mut self,
+        target: Target,
+        live: bool,
+        out: &mut Vec<Transition>,
+        f: impl FnOnce(&mut Engine) -> bool,
+    ) {
+        let before = self.states_of(target);
+        if !f(self) || self.state(target).is_none() {
             return;
         }
-        let after = self.quest_states(name);
-        for (b, a) in before.iter().zip(&after) {
-            if b.status != a.status || b.current_step != a.current_step {
-                out.push(Transition {
-                    character: name.to_string(),
-                    quest_id: a.quest_id.clone(),
-                    from: b.status,
-                    to: a.status,
-                    step_from: b.current_step.clone(),
-                    step_to: a.current_step.clone(),
-                    live,
-                });
-            }
-        }
+        let after = self.states_of(target);
+        push_transitions(target.name(), &before, &after, live, out);
     }
 
     fn compute(&self, ch: &CharacterState) -> Vec<QuestState> {
@@ -964,6 +1182,30 @@ impl Engine {
                 },
                 _ => evidence.is_some_and(|e| e.contains(&c.id)),
             })
+    }
+}
+
+/// Records every quest whose status or current step differs between two
+/// computations for `character`.
+fn push_transitions(
+    character: &str,
+    before: &[QuestState],
+    after: &[QuestState],
+    live: bool,
+    out: &mut Vec<Transition>,
+) {
+    for (b, a) in before.iter().zip(after) {
+        if b.status != a.status || b.current_step != a.current_step {
+            out.push(Transition {
+                character: character.to_string(),
+                quest_id: a.quest_id.clone(),
+                from: b.status,
+                to: a.status,
+                step_from: b.current_step.clone(),
+                step_to: a.current_step.clone(),
+                live,
+            });
+        }
     }
 }
 

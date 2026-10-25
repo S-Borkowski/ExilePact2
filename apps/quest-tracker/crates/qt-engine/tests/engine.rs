@@ -844,3 +844,413 @@ fn unknown_area_refusal_is_counted() {
     let saved = engine.to_json().to_string();
     assert!(!saved.contains("refused"), "{saved}");
 }
+
+// -- a new character from The Riverbank, and refusals only where they could
+// matter ---------------------------------------------------------------------
+
+const POINTS: &str = ": You have received 2 Passive Skill Points.";
+
+/// The level-1 entry to The Riverbank a new character starts with.
+fn riverbank_entry() -> String {
+    line(r#"Generating level 1 area "G1_1" with seed 1849302211"#)
+}
+
+/// The walk from The Riverbank to the encampment.
+fn to_the_encampment() -> Vec<String> {
+    vec![
+        line("[SCENE] Set Source [The Riverbank]"),
+        line(r#"Generating level 15 area "G1_town" with seed 1"#),
+        line("[SCENE] Set Source [Clearfell Encampment]"),
+    ]
+}
+
+fn level_up(name: &str, class: &str, level: u32) -> String {
+    line(&format!(": {name} ({class}) is now level {level}"))
+}
+
+#[test]
+fn riverbank_level1_entry_starts_new_character() {
+    // Negative control: an entry to G1_1 at another area level, and a
+    // level-1 entry to another area, start nothing; their events are held.
+    let mut engine = Engine::new(data());
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            area_line("G1_1"),
+            line(r#"Generating level 1 area "G1_2" with seed 7"#),
+        ],
+        true,
+    );
+    assert!(!engine.new_character_open());
+    assert!(engine.new_character().is_none());
+    assert!(engine.new_character_states().is_none());
+    assert_eq!(engine.held_count(), 2);
+
+    // Target: a level-1 entry to The Riverbank starts a new character with
+    // no name, level 1, and its events go to it at once.
+    let mut engine = Engine::new(data());
+    let mut lines = vec![MARKER.to_string(), riverbank_entry()];
+    lines.extend(to_the_encampment());
+    let transitions = feed(&mut engine, &lines, true);
+    assert!(engine.new_character_open());
+    assert_eq!(engine.current(), None);
+    assert!(engine.characters().is_empty());
+    assert_eq!(engine.held_count(), 0);
+    let nc = engine.new_character().expect("open");
+    assert_eq!((nc.name.as_str(), nc.class.as_str(), nc.level), ("", "", 1));
+    let states = engine.new_character_states().expect("open");
+    let riverbank = states
+        .iter()
+        .find(|q| q.quest_id == "fixture-riverbank")
+        .unwrap();
+    assert_eq!(riverbank.status, Status::InProgress);
+    assert_eq!(riverbank.current_step.as_deref(), Some("reach-encampment"));
+    assert!(
+        transitions.iter().any(|t| t.character.is_empty()
+            && t.quest_id == "fixture-riverbank"
+            && t.from == Status::Available
+            && t.to == Status::InProgress
+            && t.live),
+        "{transitions:?}"
+    );
+
+    // Renly's welcome finishes the quest for it, and a second level-1 entry
+    // while it is open keeps its progress.
+    feed(
+        &mut engine,
+        &[
+            line("Renly: Fixture line: welcome to the encampment."),
+            riverbank_entry(),
+        ],
+        true,
+    );
+    let states = engine.new_character_states().unwrap();
+    assert_eq!(states[0].quest_id, "fixture-riverbank");
+    assert_eq!(states[0].status, Status::Done);
+}
+
+#[test]
+fn new_character_named_by_first_level_up_without_pick() {
+    let mut engine = Engine::new(data());
+    let mut lines = vec![MARKER.to_string(), riverbank_entry()];
+    lines.extend(to_the_encampment());
+    feed(&mut engine, &lines, true);
+    let shown = engine.new_character_states().unwrap();
+
+    // The first level-up names it: own and active with no pick, stored,
+    // with the progress it showed, and no transition re-reports that.
+    let transitions = feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], true);
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.current(), Some(ODILE));
+    let chars = engine.characters();
+    assert_eq!(chars.len(), 1, "{chars:?}");
+    let c = &chars[0];
+    assert_eq!(
+        (
+            c.name.as_str(),
+            c.class.as_str(),
+            c.level,
+            c.own,
+            c.active,
+            c.pinned
+        ),
+        (ODILE, "Mercenary", 2, true, true, false)
+    );
+    assert_eq!(engine.quest_states(ODILE), shown);
+    assert!(transitions.is_empty(), "{transitions:?}");
+
+    // It persists with that progress.
+    let restored = Engine::from_json(data(), &engine.to_json()).unwrap();
+    assert_eq!(restored.active(), Some(ODILE));
+    assert_eq!(
+        status(&restored, ODILE, "fixture-riverbank"),
+        Status::InProgress
+    );
+
+    // A known name gains the new character's progress as its own evidence,
+    // and the transitions are its own changes.
+    let mut engine = Engine::new(data());
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            line(COLD_REWARD),
+            level_up(CORISANDE, "Witch", 9),
+        ],
+        false,
+    );
+    let mut lines = vec![MARKER.to_string(), riverbank_entry()];
+    lines.extend(to_the_encampment());
+    feed(&mut engine, &lines, false);
+    let transitions = feed(&mut engine, &[level_up(CORISANDE, "Witch", 10)], false);
+    assert_eq!(names(&engine), [CORISANDE]);
+    assert_eq!(engine.current(), Some(CORISANDE));
+    assert_eq!(engine.character(CORISANDE).unwrap().level, 10);
+    assert_eq!(
+        status(&engine, CORISANDE, "fixture-riverbank"),
+        Status::InProgress
+    );
+    assert!(
+        transitions
+            .iter()
+            .any(|t| t.character == CORISANDE && t.quest_id == "fixture-riverbank"),
+        "{transitions:?}"
+    );
+}
+
+#[test]
+fn party_member_level_up_does_not_name_new_character() {
+    let mut engine = Engine::new(data());
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            riverbank_entry(),
+            line(": Bram_Holloway has joined the area."),
+            level_up("Bram_Holloway", "Warrior", 71),
+            // A reward line before the level-up goes to the new character
+            // and does not name it.
+            line(": Odile_Marsh has received +20 to maximum Life."),
+        ],
+        true,
+    );
+    assert!(engine.new_character_open());
+    assert_eq!(engine.current(), None);
+    assert!(engine.characters().is_empty());
+
+    // The own level-up after it names it.
+    feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], true);
+    assert!(!engine.new_character_open());
+    assert_eq!(names(&engine), [ODILE]);
+    assert_eq!(engine.current(), Some(ODILE));
+    let saved = engine.to_json().to_string();
+    assert!(!saved.contains("Bram_Holloway"), "{saved}");
+}
+
+#[test]
+fn new_character_dropped_at_session_marker() {
+    let mut engine = Engine::new(data());
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            riverbank_entry(),
+            line("[SCENE] Set Source [The Riverbank]"),
+        ],
+        false,
+    );
+    assert!(engine.new_character_open());
+    assert_eq!(engine.dropped_count(), 0);
+
+    // A session marker before any level-up ends it: its events are dropped
+    // and counted, and nothing is stored.
+    engine.feed_line(MARKER, false);
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.dropped_count(), 2);
+    assert!(engine.characters().is_empty());
+
+    // The next session's level-up is the old rule: unconfirmed, and the
+    // dropped session gave it nothing.
+    feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], false);
+    let c = &engine.characters()[0];
+    assert_eq!((c.name.as_str(), c.own, c.active), (ODILE, false, true));
+    let riverbank = engine.quest_state(ODILE, "fixture-riverbank").unwrap();
+    assert!(!riverbank.steps[0].fired, "{riverbank:?}");
+}
+
+#[test]
+fn level_up_without_riverbank_stays_unconfirmed() {
+    // Baseline: with no level-1 G1_1 line in the session (a level-2 entry to
+    // it does not count), a level-up of an unknown name leaves it active
+    // and unconfirmed, as before.
+    let mut engine = Engine::new(data());
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            line(r#"Generating level 15 area "G1_town" with seed 1"#),
+            area_line("G1_1"),
+            level_up(ODILE, "Mercenary", 2),
+        ],
+        true,
+    );
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.current(), Some(ODILE));
+    let c = &engine.characters()[0];
+    assert_eq!((c.name.as_str(), c.own, c.active), (ODILE, false, true));
+}
+
+#[test]
+fn riverbank_entry_moves_pin_to_new_character() {
+    let pinned_corisande = || {
+        let mut engine = Engine::new(data());
+        feed(
+            &mut engine,
+            &[
+                MARKER.to_string(),
+                line(": Corisande_Fell has received +20 to maximum Life."),
+                level_up(CORISANDE, "Witch", 30),
+            ],
+            true,
+        );
+        engine.pin(Some(CORISANDE)).unwrap();
+        engine
+    };
+    let riverbank_fired = |engine: &Engine, name: &str| {
+        engine.quest_state(name, "fixture-riverbank").unwrap().steps[0].fired
+    };
+
+    // The level-1 entry releases the pin, and the named character takes it.
+    let mut engine = pinned_corisande();
+    feed(&mut engine, &[riverbank_entry()], true);
+    assert!(engine.new_character_open());
+    assert_eq!(engine.pinned(), None);
+    assert_eq!(engine.new_character_released_pin(), Some(CORISANDE));
+    assert_eq!(engine.current(), None);
+    feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], true);
+    assert_eq!(engine.pinned(), Some(ODILE));
+    assert_eq!(engine.current(), Some(ODILE));
+    let pins: Vec<(String, bool)> = engine
+        .characters()
+        .into_iter()
+        .map(|c| (c.name, c.pinned))
+        .collect();
+    assert_eq!(
+        pins,
+        [(CORISANDE.to_string(), false), (ODILE.to_string(), true)]
+    );
+    // The Riverbank went to the new character, not to the old pin.
+    assert!(riverbank_fired(&engine, ODILE));
+    assert!(!riverbank_fired(&engine, CORISANDE));
+    let restored = Engine::from_json(data(), &engine.to_json()).unwrap();
+    assert_eq!(restored.pinned(), Some(ODILE));
+
+    // Control: unpinning while it is open cancels the pin it would take.
+    let mut engine = pinned_corisande();
+    feed(&mut engine, &[riverbank_entry()], true);
+    engine.pin(None).unwrap();
+    assert_eq!(engine.new_character_released_pin(), None);
+    feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], true);
+    assert_eq!((engine.pinned(), engine.active()), (None, Some(ODILE)));
+
+    // Pinning a character while it is open gives it the new character's
+    // progress, as held events go to a newly pinned character.
+    let mut engine = pinned_corisande();
+    feed(&mut engine, &[riverbank_entry()], true);
+    engine.pin(Some(CORISANDE)).unwrap();
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.current(), Some(CORISANDE));
+    assert!(riverbank_fired(&engine, CORISANDE));
+}
+
+#[test]
+fn new_character_not_in_store_json() {
+    let fresh = Engine::new(data()).to_json();
+    let mut engine = Engine::new(data());
+    let mut lines = vec![MARKER.to_string(), riverbank_entry()];
+    lines.extend(to_the_encampment());
+    lines.push(line("Renly: Fixture line: welcome to the encampment."));
+    feed(&mut engine, &lines, true);
+    assert_eq!(
+        engine.new_character_states().unwrap()[0].status,
+        Status::Done
+    );
+    assert_eq!(engine.to_json(), fresh);
+    assert!(engine.characters().is_empty());
+    assert!(engine.character("").is_none());
+    assert!(engine.character_json("").is_none());
+    assert_eq!(status(&engine, "", "fixture-riverbank"), Status::Locked);
+
+    // Beside a stored character, its progress is not in that character's
+    // state either.
+    let mut engine = Engine::new(data());
+    feed(
+        &mut engine,
+        &[line(": Corisande_Fell has received +20 to maximum Life.")],
+        true,
+    );
+    feed(&mut engine, &lines, true);
+    assert!(engine.new_character_open());
+    assert_eq!(names(&engine), [CORISANDE]);
+    assert!(!engine.characters()[0].active);
+    let saved = engine.to_json().to_string();
+    assert!(!saved.contains("fixture-riverbank"), "{saved}");
+}
+
+#[test]
+fn refusal_skips_done_and_skipped_quests() {
+    // Positive control: area unknown, the reward goes to Corisande, and
+    // fixture-beira is neither done nor skipped for her: counted.
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &[line(COLD_REWARD)], true);
+    assert_eq!(engine.current(), Some(CORISANDE));
+    assert_eq!(engine.refused_count(), 1);
+
+    // fixture-crowbell done by its own signal, in its area; then, with the
+    // area unknown again, its points line is not a refusal.
+    feed(&mut engine, &[area_line("G1_11"), line(POINTS)], true);
+    assert_eq!(status(&engine, CORISANDE, "fixture-crowbell"), Status::Done);
+    engine.seed_area(None);
+    feed(&mut engine, &[line(POINTS)], true);
+    assert_eq!(engine.refused_count(), 1);
+
+    // Skipped by the user: not counted.
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    feed(&mut engine, &[line(COLD_REWARD)], true);
+    assert_eq!(engine.refused_count(), 1);
+
+    // Marked done by the user: not counted.
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Unskip)
+        .unwrap();
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::MarkDone)
+        .unwrap();
+    feed(&mut engine, &[line(COLD_REWARD)], true);
+    assert_eq!(engine.refused_count(), 1);
+
+    // Reset: open again, so counted again.
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Reset)
+        .unwrap();
+    feed(&mut engine, &[line(COLD_REWARD)], true);
+    assert_eq!(engine.refused_count(), 2);
+    assert_eq!(
+        engine.take_refused(),
+        vec!["fixture-beira".to_string(), "fixture-beira".to_string()]
+    );
+}
+
+#[test]
+fn refusal_needs_a_receiving_character() {
+    // No character: the points line is held, and no refusal is counted.
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &[line(POINTS)], true);
+    assert_eq!(engine.held_count(), 1);
+    assert_eq!(engine.refused_count(), 0);
+    assert!(engine.refused_quests().is_empty());
+
+    // A character takes the held line later: still not counted.
+    feed(
+        &mut engine,
+        &[line(": Corisande_Fell has received +20 to maximum Life.")],
+        true,
+    );
+    assert_eq!(engine.held_count(), 0);
+    assert_eq!(engine.refused_count(), 0);
+
+    // Positive control: the same line, now going to her, is counted.
+    feed(&mut engine, &[line(POINTS)], true);
+    assert_eq!(engine.refused_count(), 1);
+    assert_eq!(engine.refused_quests(), ["fixture-crowbell".to_string()]);
+
+    // The new character from The Riverbank receives events, so it counts.
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &[riverbank_entry()], true);
+    engine.seed_area(None);
+    feed(&mut engine, &[line(POINTS)], true);
+    assert_eq!(engine.refused_count(), 1);
+}
