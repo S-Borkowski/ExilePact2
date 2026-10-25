@@ -11,6 +11,7 @@
           "current_step": null,
           "detection": "auto",
           "id": "fixture-riverbank",
+          "inferred": true,
           "name": "Fixture: Walk the Riverbank",
           "needs_tick": false,
           "rewards": [
@@ -28,6 +29,7 @@
           "current_step": null,
           "detection": "auto",
           "id": "fixture-beira",
+          "inferred": false,
           "name": "Fixture: The Rotten Pack",
           "needs_tick": false,
           "rewards": [
@@ -45,6 +47,7 @@
           "current_step": null,
           "detection": "auto",
           "id": "fixture-crowbell",
+          "inferred": false,
           "name": "Fixture: The Bell",
           "needs_tick": false,
           "rewards": [
@@ -62,6 +65,7 @@
           "current_step": "Face the king",
           "detection": "auto",
           "id": "fixture-king",
+          "inferred": false,
           "name": "Fixture: The King in the Mists",
           "needs_tick": false,
           "rewards": [
@@ -79,6 +83,7 @@
           "current_step": null,
           "detection": "partial",
           "id": "fixture-lute",
+          "inferred": false,
           "name": "Fixture: The Lost Lute",
           "needs_tick": true,
           "rewards": [
@@ -96,6 +101,7 @@
           "current_step": null,
           "detection": "manual",
           "id": "fixture-candles",
+          "inferred": false,
           "name": "Fixture: Candlemass",
           "needs_tick": true,
           "rewards": [
@@ -152,6 +158,7 @@
       "current_step": null,
       "detection": "partial",
       "id": "fixture-lute",
+      "inferred": false,
       "name": "Fixture: The Lost Lute",
       "needs_tick": true,
       "rewards": [
@@ -169,6 +176,7 @@
       "current_step": "Face the king",
       "detection": "auto",
       "id": "fixture-king",
+      "inferred": false,
       "name": "Fixture: The King in the Mists",
       "needs_tick": false,
       "rewards": [

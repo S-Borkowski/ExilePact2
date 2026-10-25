@@ -59,6 +59,21 @@ Status values, per character (the first that applies wins):
   needs none.
 - **locked** — not yet available.
 
+"Probably done" (owner, 2026-10-25, after launch 6): a quest or a step
+shown done because of a later event the log recorded, not its own signal,
+carries a small mark beside its status mark (the row) or its step mark (the
+detail). A quest gets it when its data says its done is such a later event
+(for example a quest done on entering the next area) and the player did not
+mark it done; a step gets it when it shows done but its own signal never
+fired and the player did not tick it (a step a later step implies, or the
+"Use ..." step of a boss quest finished by its reward line). The mark
+differs from the done mark in shape, not only in colour; its tooltip, and
+the same words as its accessible text, say it was inferred from a later
+step the log recorded. It is not a control: it adds no toggle and no tick
+action, and the manual-tick marker does not change. No new icon id or frame
+id; a token for it, if the design needs one, goes under `Optional token
+keys`.
+
 Detection values, per quest: **auto** (the log records the quest's
 completion), **partial** (the log records some of its unlocks or steps but
 not the completion), **manual** (the log records nothing usable). The quest
@@ -74,9 +89,14 @@ the rows without a transition. There are no toasts (owner, 2026-10-25,
 after Live 1).
 
 A new character: a level-1 entry to The Riverbank starts a new character
-that the log does not name until its first level-up. Until then the header
-shows it as "New character" at level 1, with its Act 1 rows; it is not in
-the character picker's list.
+that the log does not name until its first level-up, unless it is a relog.
+A relog inside The Riverbank enters it again at level 1; when the client
+names a character the overlay already knows within a few seconds of that
+entry, the entry is that character's relog and it stays the active one
+(owner, 2026-10-25, after launch 6). Otherwise, until its first level-up
+the header shows the new character as "New character" at level 1, with its
+Act 1 rows; it is not in the character picker's list, and it survives a
+relaunch of the overlay.
 
 Reward categories (one icon each), as measured on poe2db when the quest data
 was planned: passive skill points, weapon-set passive points, spirit,

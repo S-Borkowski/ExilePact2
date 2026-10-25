@@ -49,7 +49,11 @@ Every frame that shows a character shows the same moment of one story
 The moment: act 1 holds one quest in each status. Riverbank done, the pack
 leader (`fixture-beira`) skipped and worth `no`, the bell locked, the king
 in progress and worth `optional`, the lute available (partial, a
-manual-tick row), the candles unknown (manual). The two worth values are
+manual-tick row), the candles unknown (manual). The riverbank is done by
+inference (its data carries `done_inferred`), so its row carries the
+"probably done" mark (`inferred: true`), and the king's first step, which
+leaves no trace in the log, shows done by inference once Freythorn was
+entered. The two worth values are
 changed on the test's own copy of the data; `../quests_min.json` and the
 sessions beside `frames/` stay as the engine, replay and shell tests read
 them.
@@ -65,10 +69,10 @@ counts still cover the whole act, so they can exceed the rows shown.
 
 | File | Built from the story, then |
 |---|---|
-| `panel-campaign.json` | campaign view, "show skipped" on: one act-1 row in each status, `1/5` |
+| `panel-campaign.json` | campaign view, "show skipped" on: one act-1 row in each status, `1/5`; the done row inferred |
 | `panel-next-up.json` | next up: the lute (worth `yes`, available) before the king (`optional`, in progress, its next step); the preview's default frame |
 | `collapsed.json` | the panel folded: the badge counts the one worth-it quest available |
-| `quest-detail.json` | edit mode, the king's detail: one step done, the next current |
+| `quest-detail.json` | edit mode, the king's detail: its first step done by inference, the second done, the third current |
 | `character-picker.json` | edit mode, the picker: Corisande active, Odile the second own character |
 | `settings.json` | edit mode, a log path set |
 | `empty-no-log.json` | nothing read, no log found: an error status |

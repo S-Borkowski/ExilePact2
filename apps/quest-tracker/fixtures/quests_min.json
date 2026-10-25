@@ -54,7 +54,8 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Fixture_Riverbank",
       "fetched": "2026-10-25",
-      "notes": "Done by an exact NPC line in one area; steps by area code and by area name."
+      "notes": "Done by an exact NPC line in one area; steps by area code and by area name. The welcome line is a later event than the walk itself, so its done is inferred.",
+      "done_inferred": true
     },
     {
       "id": "fixture-beira",
@@ -115,6 +116,12 @@
       "worth_reason": "Permanent spirit.",
       "steps": [
         {
+          "id": "hear-of-the-king",
+          "title": "Hear of the king",
+          "text": "Fixture step text; the log does not show it, so a later step implies it.",
+          "signals": []
+        },
+        {
           "id": "enter-freythorn",
           "title": "Enter Freythorn",
           "text": "Fixture step text.",
@@ -134,7 +141,7 @@
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/Fixture_King",
       "fetched": "2026-10-25",
-      "notes": "Unlocked by another quest's status; done by a reward category."
+      "notes": "Unlocked by another quest's status; done by a reward category; its first step leaves no trace."
     },
     {
       "id": "fixture-lute",

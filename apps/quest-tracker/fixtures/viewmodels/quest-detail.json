@@ -11,6 +11,7 @@
           "current_step": null,
           "detection": "auto",
           "id": "fixture-riverbank",
+          "inferred": true,
           "name": "Fixture: Walk the Riverbank",
           "needs_tick": false,
           "rewards": [
@@ -28,6 +29,7 @@
           "current_step": null,
           "detection": "auto",
           "id": "fixture-crowbell",
+          "inferred": false,
           "name": "Fixture: The Bell",
           "needs_tick": false,
           "rewards": [
@@ -45,6 +47,7 @@
           "current_step": "Face the king",
           "detection": "auto",
           "id": "fixture-king",
+          "inferred": false,
           "name": "Fixture: The King in the Mists",
           "needs_tick": false,
           "rewards": [
@@ -62,6 +65,7 @@
           "current_step": null,
           "detection": "partial",
           "id": "fixture-lute",
+          "inferred": false,
           "name": "Fixture: The Lost Lute",
           "needs_tick": true,
           "rewards": [
@@ -79,6 +83,7 @@
           "current_step": null,
           "detection": "manual",
           "id": "fixture-candles",
+          "inferred": false,
           "name": "Fixture: Candlemass",
           "needs_tick": true,
           "rewards": [
@@ -134,6 +139,7 @@
       "current_step": "Face the king",
       "detection": "auto",
       "id": "fixture-king",
+      "inferred": false,
       "name": "Fixture: The King in the Mists",
       "needs_tick": false,
       "rewards": [
@@ -149,7 +155,16 @@
     "source_url": "https://poe2db.tw/us/Fixture_King",
     "steps": [
       {
+        "id": "hear-of-the-king",
+        "inferred": true,
+        "state": "done",
+        "text": "Fixture step text; the log does not show it, so a later step implies it.",
+        "ticked": false,
+        "title": "Hear of the king"
+      },
+      {
         "id": "enter-freythorn",
+        "inferred": false,
         "state": "done",
         "text": "Fixture step text.",
         "ticked": false,
@@ -157,6 +172,7 @@
       },
       {
         "id": "face-the-king",
+        "inferred": false,
         "state": "current",
         "text": "Fixture step text.",
         "ticked": false,
@@ -176,6 +192,7 @@
       "current_step": null,
       "detection": "partial",
       "id": "fixture-lute",
+      "inferred": false,
       "name": "Fixture: The Lost Lute",
       "needs_tick": true,
       "rewards": [
@@ -193,6 +210,7 @@
       "current_step": "Face the king",
       "detection": "auto",
       "id": "fixture-king",
+      "inferred": false,
       "name": "Fixture: The King in the Mists",
       "needs_tick": false,
       "rewards": [

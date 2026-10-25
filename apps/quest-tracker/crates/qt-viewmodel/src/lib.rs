@@ -33,6 +33,12 @@
 //! line (the brief: "its next step"); a quest whose every step is reached
 //! but which is not done shows its last step.
 //!
+//! Inferred: a done row whose quest data says its done is a later event
+//! (`done_inferred`), and a done step whose own signal never fired and that
+//! the user did not tick, carry `inferred`, the UI's "probably done" mark
+//! (Context "Launch 7 fixes (owner scope)"). Neither counts when the user
+//! marked the quest done, and the mark changes nothing the user can do.
+//!
 //! Live changes: a quest becoming available, a step reached or a quest done,
 //! read from a live line, is a [`RowChange`] the shell sends as
 //! `qt:row-change`; the UI animates that row and announces its `text`
@@ -210,6 +216,11 @@ pub struct QuestRow {
     pub detection: Detection,
     /// The manual-tick marker: detection `partial` or `manual`.
     pub needs_tick: bool,
+    /// The "probably done" mark: the quest shows done because of a later
+    /// event its data names (`done_inferred`), not its own completion, and
+    /// the user did not mark it done. A mark only: it changes neither
+    /// `needs_tick` nor what the user can do with the row.
+    pub inferred: bool,
     pub rewards: Vec<RewardView>,
     /// The title of the step to do next, for an in-progress quest only.
     pub current_step: Option<String>,
@@ -230,6 +241,12 @@ pub struct StepView {
     pub text: String,
     pub state: StepPhase,
     pub ticked: bool,
+    /// The "probably done" mark: the step shows done, but its own signal
+    /// never fired and the user did not tick it; a later step, or the
+    /// quest's done, implied it. Not set when the user marked the quest done
+    /// (that is the user's word, not an inference). A mark only: the step
+    /// ticks exactly as it would without it.
+    pub inferred: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -554,6 +571,9 @@ fn row(quest: &Quest, state: &QuestState) -> QuestRow {
         worth: quest.worth,
         detection: quest.detection,
         needs_tick: quest.detection.needs_tick(),
+        inferred: state.status == Status::Done
+            && state.done_override != Some(true)
+            && quest.done_inferred,
         rewards: quest
             .rewards
             .iter()
@@ -569,6 +589,7 @@ fn row(quest: &Quest, state: &QuestState) -> QuestRow {
 
 fn detail(data: &QuestData, quest: &Quest, state: &QuestState) -> QuestDetail {
     let (phases, _) = step_phases(quest, state);
+    let user_done = state.done_override == Some(true);
     QuestDetail {
         row: row(quest, state),
         giver: quest.giver.clone(),
@@ -582,12 +603,18 @@ fn detail(data: &QuestData, quest: &Quest, state: &QuestState) -> QuestDetail {
             .steps
             .iter()
             .zip(phases)
-            .map(|(s, phase)| StepView {
-                id: s.id.clone(),
-                title: s.title.clone(),
-                text: s.text.clone(),
-                state: phase,
-                ticked: state.steps.iter().any(|t| t.id == s.id && t.ticked),
+            .map(|(s, phase)| {
+                let own = state.steps.iter().find(|t| t.id == s.id);
+                let ticked = own.is_some_and(|t| t.ticked);
+                let fired = own.is_some_and(|t| t.fired);
+                StepView {
+                    id: s.id.clone(),
+                    title: s.title.clone(),
+                    text: s.text.clone(),
+                    state: phase,
+                    ticked,
+                    inferred: phase == StepPhase::Done && !fired && !ticked && !user_done,
+                }
             })
             .collect(),
         source_url: quest.source_url.clone(),
@@ -733,30 +760,38 @@ pub fn build_view(engine: &Engine, settings: &Settings, ui: &UiState) -> View {
             c.name
         )));
     }
-    // Evidence the engine could not use: events with no character to go to,
-    // and area-tied signals refused while the area was unknown.
-    let dropped = engine.dropped_count();
-    let refused = engine.refused_count();
+    // Evidence the engine could not use, each in its own words: events of a
+    // session that ended with no character to go to, events of an unnamed
+    // new character that another new character replaced, and area-tied
+    // signals refused while the area was unknown.
     let events = |n: u64| format!("{n} log event{}", if n == 1 { "" } else { "s" });
     let signals = |n: u64| format!("{n} quest signal{}", if n == 1 { "" } else { "s" });
     let were = |n: u64| if n == 1 { "was" } else { "were" };
-    let uncounted = match (dropped, refused) {
-        (0, 0) => None,
-        (d, 0) => Some(format!(
-            "{} came before any character and {} not counted.",
-            events(d),
-            were(d)
-        )),
-        (0, r) => Some(format!(
-            "{} came before the area was known and {} not counted.",
-            signals(r),
-            were(r)
-        )),
-        (d, r) => Some(format!(
-            "{} came before any character and {} before the area was known; \
-             none was counted.",
-            events(d),
-            signals(r)
+    let (dropped, dropped_new, refused) = (
+        engine.dropped_count(),
+        engine.dropped_new_character_count(),
+        engine.refused_count(),
+    );
+    let reasons: Vec<(u64, String)> = [
+        (dropped, format!("{} came before any character", events(dropped))),
+        (
+            dropped_new,
+            format!(
+                "{} belonged to a new character that another new character replaced",
+                events(dropped_new)
+            ),
+        ),
+        (refused, format!("{} came before the area was known", signals(refused))),
+    ]
+    .into_iter()
+    .filter(|(n, _)| *n > 0)
+    .collect();
+    let uncounted = match reasons.as_slice() {
+        [] => None,
+        [(n, one)] => Some(format!("{one} and {} not counted.", were(*n))),
+        many => Some(format!(
+            "{}; none was counted.",
+            many.iter().map(|(_, s)| s.as_str()).collect::<Vec<_>>().join("; ")
         )),
     };
     if let Some(text) = uncounted {

@@ -116,6 +116,25 @@ Used in quest detail only. Resistances use their `color.res-*`.
 Pending: empty box 14, `color.text-secondary`. Current: in-progress glyph,
 text `color.text-primary`. Done: check-in-box, `color.text-muted`.
 
+### "Probably done" mark (QuestRow, StepLine), added after launch 6
+Not in the Figma comps (owner, 2026-10-25, after launch 6): the view marks a
+done row or a done step as inferred (`inferred: true`) when it shows done
+because of a later event the log recorded, not its own signal; the brief's
+"Data the UI shows" says when.
+- Placement: right after the row's status mark 16, and right after the
+  step's done mark 14, gap 4; it never replaces the done mark.
+- Shape: a 10 px dashed ring, 1.5 px stroke, `color.text-muted`, drawn by
+  the UI (no icon id). It differs from the done check in shape, so it reads
+  without colour.
+- Tooltip and accessible text, the same words: "Probably done: inferred from
+  a later step the log recorded."
+- Not a control: no hover outline, no click, no toggle, no tick action; in
+  play mode it is click-through like the rest of the row. The manual-tick
+  marker and the step's tick behave exactly as without it.
+- Tokens: existing ones only (`color.text-muted`); a new one,
+  if the styled layer needs it, goes under the brief's `Optional token
+  keys`.
+
 ### Button — h 28, padding 0/12, gap 8, label Button style, 3 px cut corners
 - primary: fill `color.action-primary-bg`, text `color.text-on-light`;
   hover `…-primary-hover`; pressed `…-primary-pressed`.

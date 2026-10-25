@@ -504,6 +504,280 @@ fn refused_count_in_status() {
     );
 }
 
+/// The level-1 entry to one instance of The Riverbank.
+fn riverbank_entry(seed: u64) -> String {
+    client_line(&format!(r#"Generating level 1 area "G1_1" with seed {seed}"#))
+}
+
+#[test]
+fn status_tells_dropped_new_character_events_apart() {
+    let marker = "2026/03/08 18:30:00 ***** LOG FILE OPENING *****".to_string();
+    let walk = vec![
+        client_line("[SCENE] Set Source [The Riverbank]"),
+        area_line("G1_town"),
+        client_line("[SCENE] Set Source [Clearfell Encampment]"),
+    ];
+
+    // Baseline: events held with no character, dropped at a session marker,
+    // are told as "before any character".
+    let mut held = Engine::new(data());
+    feed(
+        &mut held,
+        &[marker.clone(), area_line("G1_town"), marker.clone()],
+        true,
+    );
+    assert_eq!(
+        (held.dropped_count(), held.dropped_new_character_count()),
+        (1, 0)
+    );
+    let text = build_view(&held, &Settings::default(), &reading(ViewKind::NextUp))
+        .status
+        .expect("a status line for the dropped event")
+        .text;
+    assert_eq!(text, "1 log event came before any character and was not counted.");
+
+    // Target: a new character from The Riverbank parked at a marker, then
+    // replaced by a level-1 entry to another instance. Its events are told
+    // apart, in their own words, not as "before any character".
+    let mut engine = Engine::new(data());
+    let mut lines = vec![marker.clone(), riverbank_entry(11)];
+    lines.push(client_line("[SCENE] Set Source [The Riverbank]"));
+    lines.push(marker.clone());
+    lines.push(riverbank_entry(77));
+    lines.extend(walk.clone());
+    feed(&mut engine, &lines, true);
+    let replaced = engine.dropped_new_character_count();
+    assert!(replaced > 0, "the parked record's events are dropped");
+    assert_eq!(engine.dropped_count(), 0);
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::NextUp));
+    let status = view.status.expect("a status line for the replaced character");
+    assert_eq!(status.kind, StatusKind::Info);
+    assert!(status.text.contains(&format!("{replaced} log event")), "{status:?}");
+    assert!(status.text.contains("new character"), "{status:?}");
+    assert!(!status.text.contains("before any character"), "{status:?}");
+
+    // Both at once: one line, each count with its own reason.
+    let mut both = Engine::new(data());
+    feed(
+        &mut both,
+        &[marker.clone(), area_line("G1_town"), marker.clone()],
+        true,
+    );
+    feed(&mut both, &lines, true);
+    let (d, n) = (both.dropped_count(), both.dropped_new_character_count());
+    assert!(d > 0 && n > 0, "dropped {d}, replaced {n}");
+    let text = build_view(&both, &Settings::default(), &reading(ViewKind::NextUp))
+        .status
+        .expect("a status line")
+        .text;
+    assert!(
+        text.contains(&format!("{d} log event")) && text.contains("before any character"),
+        "{text}"
+    );
+    assert!(
+        text.contains(&format!("{n} log event")) && text.contains("another new character replaced"),
+        "{text}"
+    );
+    assert!(text.ends_with("none was counted."), "{text}");
+}
+
+// ---------------------------------------------------------------------------
+// The inferred mark.
+
+/// The row of a quest in the campaign view.
+fn campaign_row(engine: &Engine, id: &str) -> qt_viewmodel::QuestRow {
+    let view = build_view(engine, &Settings::default(), &reading(ViewKind::Campaign));
+    view.acts
+        .iter()
+        .flat_map(|a| a.quests.iter())
+        .find(|r| r.id == id)
+        .unwrap_or_else(|| panic!("no row {id}: {view:#?}"))
+        .clone()
+}
+
+/// The detail of a quest, opened.
+fn detail_of(engine: &Engine, id: &str) -> qt_viewmodel::QuestDetail {
+    let mut ui = reading(ViewKind::NextUp);
+    ui.mode = Mode::Edit;
+    ui.detail = Some(id.to_string());
+    build_view(engine, &Settings::default(), &ui)
+        .detail
+        .unwrap_or_else(|| panic!("no detail for {id}"))
+}
+
+/// Each step's id with its inferred mark.
+fn step_marks(detail: &qt_viewmodel::QuestDetail) -> Vec<(String, StepPhase, bool)> {
+    detail
+        .steps
+        .iter()
+        .map(|s| (s.id.clone(), s.state, s.inferred))
+        .collect()
+}
+
+#[test]
+fn inferred_done_quest_is_marked() {
+    let data = data();
+    let riverbank = data.quest("fixture-riverbank").unwrap();
+    assert!(riverbank.done_inferred, "the fixture's riverbank carries done_inferred");
+
+    // Baseline: before the welcome line that is its done, the row is in
+    // progress and carries no mark.
+    let lines = session("act1.txt");
+    let welcome = lines
+        .iter()
+        .position(|l| l.contains("Renly: Fixture line: welcome to the encampment."))
+        .expect("act1 has the welcome line");
+    let mut engine = Engine::new(data.clone());
+    feed(&mut engine, &lines[..welcome], false);
+    let row = campaign_row(&engine, "fixture-riverbank");
+    assert_eq!(row.status, Status::InProgress);
+    assert!(!row.inferred, "{row:?}");
+
+    // Target: the welcome line makes it done, and done by inference.
+    feed(&mut engine, &lines[welcome..], false);
+    let row = campaign_row(&engine, "fixture-riverbank");
+    assert_eq!(row.status, Status::Done);
+    assert!(row.inferred, "{row:?}");
+    // A mark only: the manual-tick marker follows the detection alone.
+    assert_eq!(row.needs_tick, riverbank.detection.needs_tick());
+    assert!(!row.needs_tick);
+    // The serialised field is the contract's name.
+    let v = serde_json::to_value(&row).unwrap();
+    assert_eq!(v["inferred"], Value::Bool(true));
+    // The detail's row carries it too; its steps each fired, so none is.
+    let detail = detail_of(&engine, "fixture-riverbank");
+    assert!(detail.row.inferred);
+    assert!(detail.steps.iter().all(|s| !s.inferred), "{:?}", step_marks(&detail));
+}
+
+#[test]
+fn inferred_step_is_marked() {
+    let data = data();
+    let mut engine = replay("act1.txt");
+
+    // A later step fired: the king's first step leaves no trace, so entering
+    // Freythorn shows it done by inference; the step that fired is not.
+    let detail = detail_of(&engine, "fixture-king");
+    assert_eq!(detail.row.status, Status::InProgress);
+    assert!(!detail.row.inferred, "an in-progress row is never inferred");
+    assert_eq!(
+        step_marks(&detail),
+        vec![
+            ("hear-of-the-king".to_string(), StepPhase::Done, true),
+            ("enter-freythorn".to_string(), StepPhase::Done, false),
+            ("face-the-king".to_string(), StepPhase::Current, false),
+        ]
+    );
+    // The row still shows the step to do next.
+    assert_eq!(detail.row.current_step.as_deref(), Some("Face the king"));
+    let v = serde_json::to_value(&detail).unwrap();
+    assert_eq!(v["steps"][0]["inferred"], Value::Bool(true));
+
+    // The quest done by its own signal (a spirit reward): every step it never
+    // saw is inferred, the row is not (the quest has no done_inferred).
+    let reward = client_line(": Corisande_Fell has received +30 to Spirit.");
+    feed(&mut engine, &[reward], true);
+    let detail = detail_of(&engine, "fixture-king");
+    assert_eq!(detail.row.status, Status::Done);
+    assert!(!detail.row.inferred);
+    assert_eq!(
+        step_marks(&detail),
+        vec![
+            ("hear-of-the-king".to_string(), StepPhase::Done, true),
+            ("enter-freythorn".to_string(), StepPhase::Done, false),
+            ("face-the-king".to_string(), StepPhase::Done, true),
+        ]
+    );
+    // The mark changes no tick: none of the steps is ticked, and the row's
+    // manual-tick marker follows the detection alone.
+    assert!(detail.steps.iter().all(|s| !s.ticked));
+    let king = data.quest("fixture-king").unwrap();
+    assert_eq!(detail.row.needs_tick, king.detection.needs_tick());
+
+    // A step the user ticked is the user's word, not an inference; the step
+    // before it, which nothing showed, is inferred.
+    let mut engine = story_engine();
+    let lute = detail_of(&engine, "fixture-lute");
+    assert!(lute.steps.iter().all(|s| s.state != StepPhase::Done), "{lute:?}");
+    engine
+        .tick_step(CORISANDE, "fixture-lute", "return-the-lute", true)
+        .unwrap();
+    let lute = detail_of(&engine, "fixture-lute");
+    assert_eq!(
+        step_marks(&lute),
+        vec![
+            ("hear-the-lute".to_string(), StepPhase::Done, true),
+            ("return-the-lute".to_string(), StepPhase::Done, false),
+        ]
+    );
+    assert!(lute.steps[1].ticked);
+}
+
+#[test]
+fn own_signal_done_is_not_inferred() {
+    // The pack leader is done by its own reward line and carries no
+    // done_inferred: no mark on the row, none on the step that fired.
+    let engine = replay("act1.txt");
+    let row = campaign_row(&engine, "fixture-beira");
+    assert_eq!(row.status, Status::Done);
+    assert!(!row.inferred, "{row:?}");
+    let detail = detail_of(&engine, "fixture-beira");
+    assert_eq!(
+        step_marks(&detail),
+        vec![("meet-beira".to_string(), StepPhase::Done, false)]
+    );
+
+    // Negative control: the same quest data with done_inferred set on the
+    // pack leader marks the same row.
+    let mut v = data_value();
+    for q in v["quests"].as_array_mut().unwrap() {
+        if q["id"] == "fixture-beira" {
+            q["done_inferred"] = Value::Bool(true);
+        }
+    }
+    let flagged = Arc::new(QuestData::from_value(&v).expect("the flagged data validates"));
+    let engine = replay_with(flagged, "act1.txt");
+    assert!(campaign_row(&engine, "fixture-beira").inferred);
+
+    // Rows that are not done carry no mark, whatever their data says.
+    let engine = replay("act1.txt");
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
+    for row in view.acts.iter().flat_map(|a| a.quests.iter()) {
+        if row.status != Status::Done {
+            assert!(!row.inferred, "{row:?}");
+        }
+    }
+}
+
+#[test]
+fn user_marked_done_is_not_inferred() {
+    // A quest the user marked done is done on the user's word: no mark on
+    // the row, even with done_inferred, and none on its steps.
+    let mut engine = replay("act1.txt");
+    engine
+        .quest_action(CORISANDE, "fixture-riverbank", QuestAction::MarkDone)
+        .unwrap();
+    let row = campaign_row(&engine, "fixture-riverbank");
+    assert_eq!(row.status, Status::Done);
+    assert!(!row.inferred, "{row:?}");
+
+    engine
+        .quest_action(CORISANDE, "fixture-king", QuestAction::MarkDone)
+        .unwrap();
+    let detail = detail_of(&engine, "fixture-king");
+    assert_eq!(detail.row.status, Status::Done);
+    assert!(!detail.row.inferred);
+    assert!(detail.steps.iter().all(|s| s.state == StepPhase::Done));
+    assert!(detail.steps.iter().all(|s| !s.inferred), "{:?}", step_marks(&detail));
+
+    // Positive control: reset, the evidence alone shows the riverbank done by
+    // inference again.
+    engine
+        .quest_action(CORISANDE, "fixture-riverbank", QuestAction::Reset)
+        .unwrap();
+    assert!(campaign_row(&engine, "fixture-riverbank").inferred);
+}
+
 #[test]
 fn empty_and_error_states() {
     let data = data();
@@ -540,10 +814,17 @@ fn empty_and_error_states() {
     assert_eq!(view.frame, Frame::EmptyNoCharacter);
     assert!(view.characters.is_empty());
 
-    // A session with no character drops its events and says so.
-    // (Its level-up alone leaves Odile unconfirmed, a warning that would come
-    // first; confirmed, the dropped count is what is left to say.)
-    let mut held = replay("held.txt");
+    // A session with no character drops its events and says so. (`held.txt`'s
+    // first session parks a new character instead of dropping it, so the
+    // second session is ended here, before its level-ups, with its area
+    // lines held. Odile's level-up alone then leaves her unconfirmed, a
+    // warning that would come first; confirmed, the dropped count is what
+    // is left to say.)
+    let lines = session("held.txt");
+    let mut held = Engine::new(data.clone());
+    feed(&mut held, &lines[..6], false);
+    held.end_session();
+    feed(&mut held, &lines[6..], false);
     assert!(held.dropped_count() > 0);
     held.confirm("Odile_Marsh").unwrap();
     let view = build_view(&held, &settings, &reading(ViewKind::NextUp));
@@ -996,6 +1277,37 @@ fn fixtures_match_serialised_views() {
     let mut all: Vec<String> = Status::NAMES.iter().map(|s| s.to_string()).collect();
     all.sort();
     assert_eq!(statuses, all);
+
+    // The "probably done" mark is in the fixtures the UI reads: an inferred
+    // done row in the campaign, an inferred step in the detail, and the
+    // field on every row and step (false elsewhere).
+    let campaign_rows = campaign["acts"][0]["quests"].as_array().unwrap();
+    assert!(
+        campaign_rows
+            .iter()
+            .any(|r| r["inferred"] == true && r["status"] == "done"),
+        "panel-campaign has no inferred done row"
+    );
+    let detail = &values
+        .iter()
+        .find(|(n, _)| n == "quest-detail")
+        .expect("quest-detail")
+        .1;
+    let steps = detail["detail"]["steps"].as_array().unwrap();
+    assert!(
+        steps.iter().any(|s| s["inferred"] == true && s["state"] == "done"),
+        "quest-detail has no inferred step: {steps:#?}"
+    );
+    for (name, view) in &values {
+        for row in rows_of(view) {
+            assert!(row["inferred"].is_boolean(), "{name}: {row}");
+        }
+        if !view["detail"].is_null() {
+            for s in view["detail"]["steps"].as_array().unwrap() {
+                assert!(s["inferred"].is_boolean(), "{name}: {s}");
+            }
+        }
+    }
 }
 
 #[test]

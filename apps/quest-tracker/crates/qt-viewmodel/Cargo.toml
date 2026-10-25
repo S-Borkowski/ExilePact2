@@ -1,6 +1,6 @@
 [package]
 name = "qt-viewmodel"
-description = "What the overlay shows: the View and Toast types of the IPC contract, built in Rust."
+description = "What the overlay shows: the View and RowChange types of the IPC contract, built in Rust."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
