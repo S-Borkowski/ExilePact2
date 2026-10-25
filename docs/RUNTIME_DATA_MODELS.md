@@ -75,7 +75,8 @@ boss kill"): a quest boss's `has received` reward line never came with the
 boss's last voiced line. It came 5 to 465 s later, twice in the next area.
 For Beira of the Rotten Pack it came when the player used the item she
 dropped (measured, one session: 465 s after her last line, across an area
-change), and the log records nothing of picking that item up or using it.
+change), and no line about picking that item up or using it was observed
+(one session, not proof that it is never logged).
 For other bosses the last voiced line can be a combat bark during the
 fight, so a gap of seconds does not show by itself whether the reward
 waits on a later action.
