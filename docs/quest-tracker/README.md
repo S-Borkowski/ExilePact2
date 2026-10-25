@@ -22,7 +22,8 @@ What it is:
 - **One window, `quest-tracker.exe`.** A Tauri app: the log tailer, parser,
   quest engine, view-model and per-character store are Rust crates; the UI is
   Svelte and TypeScript in a transparent, undecorated, always-on-top window
-  that stays off the taskbar and never takes focus from the game.
+  that stays off the taskbar. In play mode it never takes focus from the
+  game; edit mode does, so its fields take typing.
 - **A campaign quest list** (Acts 1 to 6 as poe2db numbers them, 87 quests in
   this version): each quest's status (locked, available, in progress, done,
   skipped, unknown), whether it is worth doing (`yes` for permanent stats such
@@ -35,8 +36,8 @@ What it is:
   typed in): tick steps, mark quests done or skipped, switch or pin a
   character, open settings, drag the panel. The global shortcut (default
   `Ctrl+Alt+Q`) switches between them.
-- **Two views.** *Campaign* lists every act; *Next up* lists only what is
-  available or in progress now.
+- **Two views.** *Next up* lists only what is available or in progress now,
+  grouped by worth; *All* lists every act's quests under the act's header.
 - **Toasts** when a quest becomes available, a step is done or a quest is
   done, while you play (never for lines read as catch-up).
 - **A replay CLI**, `quest-tracker-replay`, that runs the same engine over a
@@ -109,7 +110,7 @@ shows the "no log found" state.
 
 Settings (edit mode, the settings frame) and their defaults: opacity `0.9`
 (0.3 to 1), dock `right` (`left`|`right`), scale `auto` (`auto`|`1`|`1.33`|`2`,
-applied as the webview zoom), show skipped quests (off), only worth-it quests
+applied as the webview zoom; see below), show skipped quests (off), only worth-it quests
 (off), log path (unset: discovery), hotkey `Ctrl+Alt+Q` (the global-shortcut
 plugin's accelerator syntax). A hotkey that cannot be registered keeps the
 old one working and says so in the status line. If the shortcut cannot be
@@ -117,6 +118,14 @@ registered at launch, the overlay starts in edit mode instead of play
 mode, since without a shortcut play mode could not be left: the status line
 says so, and the diagnostic log names the `settings.json` whose `"hotkey"`
 you can change.
+
+Scale `auto` sizes the panel by the monitor the window is on: 1x below
+1440 px of monitor height, 1.33x from 1440 and 2x from 2160 (physical
+pixels), divided by Windows' DPI scale for that monitor (which the webview
+already applies), and never below 1. So a 1440p screen at 100% gets 1.33x,
+a 4K screen at 150% gets 1.33x and at 200% gets 1x, and a 1080p screen at
+150% stays at Windows' 150%. The diagnostic log records what Auto chose
+from (`scale auto: monitor … px high at DPI scale … -> zoom …`).
 
 Build it:
 
@@ -516,45 +525,46 @@ Revisit this feature when:
 
 ## Release notes
 
-### Unreleased
+### 0.1.0 (first version)
 
-- The overlay wears the owner's design, built from the harvested `theme/`
-  files only: Alegreya Sans bundled (no web font), 45° cut corners on the
-  panel, buttons, toasts and badge, soft shadows inside the window's
-  transparent margin, and the background-only opacity setting.
+- The overlay, `quest-tracker.exe`: a transparent, always-on-top Tauri
+  window with play (click-through) and edit modes, toggled by
+  `Ctrl+Alt+Q`; *Next up* and *All* views; quest detail with steps,
+  rewards, worth reason and the poe2db link; character picker with confirm
+  and pin; settings for opacity, dock, scale, filters, log path and hotkey;
+  toasts for quests becoming available, steps and quests done.
+- Play mode never takes focus from the game; edit mode takes keyboard
+  focus, so the Settings fields accept typing. A shortcut that cannot be
+  registered at launch leaves the overlay in edit mode, with the reason in
+  the status line, instead of stuck in click-through play mode.
+- The owner's design: Alegreya Sans bundled (no web font), 45° cut corners
+  on the panel, buttons, toasts and badge, soft shadows inside the
+  window's transparent margin, and the background-only opacity setting.
 - Play mode: the character, class and level, and the view, with no
   control. Edit mode: the accent border, a teal-tinted header with an EDIT
   chip, the character name that opens the picker, a Next up / All switch,
-  collapse and settings buttons, and a footer line back to play mode.
+  collapse and settings buttons, a visible hover outline on rows, and a
+  footer line back to play mode.
 - Quest rows on one line (status mark, name, manual-tick marker, short
-  reward text, worth star), the next step under an in-progress quest on
-  the active band with a blue bar, finished rows compact and muted, skipped
-  ones struck through. Next up groups its rows under "Worth it",
-  "Optional" and "Not worth it".
-- Quest detail with steps (empty box, in progress, done) and a tick box
-  per step in edit mode, reward chips, the worth reason, the poe2db link,
-  and Mark done / Skip / Reset buttons; Reset's confirm shows a 3 s
-  countdown. Settings as label-and-control rows with toggles, a slider and
-  dropdowns. Empty states with a glyph, the fix in edit mode, and the
-  hotkey on a keycap in play mode. The collapsed badge shows the worth-it
-  count in gold, or a warning when the log is in trouble. Toasts carry a
-  coloured bar and icon per kind; the Undo toast drains a 5 s bar.
+  reward labels such as "Spirit" or "Passive · Cold res" with the game's
+  full reward text on hover, worth star), the next step under an
+  in-progress quest on the active band with a blue bar, finished rows
+  compact and muted, skipped ones struck through. Each act's header shows
+  how many of its quests are available beside how many are done. Next up
+  groups its rows under "Worth it", "Optional" and "Not worth it".
+- Quest detail with steps (empty box, in progress, done) whose leading mark
+  is, in edit mode, the step's one tick-by-hand toggle; reward chips, the
+  worth reason, the poe2db link, and Mark done / Skip / Reset buttons;
+  Reset's confirm shows a 3 s countdown. Settings as label-and-control
+  rows with toggles, a slider and dropdowns. Empty states with a glyph,
+  the fix in edit mode, and the hotkey on a keycap in play mode. The
+  collapsed badge shows the worth-it count in gold, or a warning when the
+  log is in trouble. Toasts carry a coloured bar and icon per kind; the
+  Undo toast drains a 5 s bar.
+- Scale Auto sizes the panel by the monitor: 1x, 1.33x from 1440 px of
+  height, 2x from 2160, after Windows' own DPI scale (Command reference).
 - Motion is limited to the toast's entrance, countdown bars and control
-  transitions, and stops under `prefers-reduced-motion`. A missing icon
-  or token falls back to the plain UI's glyph or value.
-- Edit mode takes keyboard focus, so the Settings fields accept typing;
-  play mode still never takes focus from the game. A shortcut that cannot
-  be registered at launch leaves the overlay in edit mode, with the reason
-  in the status line, instead of stuck in click-through play mode.
-
-### 0.1.0 (first version)
-
-- The overlay, `quest-tracker.exe`: a transparent, always-on-top,
-  non-activating Tauri window with play (click-through) and edit modes,
-  toggled by `Ctrl+Alt+Q`; campaign and next-up views; quest detail with
-  steps, rewards, worth reason and the poe2db link; character picker with
-  confirm and pin; settings for opacity, dock, scale, filters, log path and
-  hotkey; toasts for quests becoming available, steps and quests done.
+  transitions, and stops under `prefers-reduced-motion`.
 - Progress per character from `Client.txt` alone, resumed across restarts
   from the saved log position, stored under `%LOCALAPPDATA%` (or
   `QUEST_TRACKER_DIR`).
@@ -564,5 +574,3 @@ Revisit this feature when:
 - `quest-tracker-replay` (`events`, `state`, `import`, `scan`) and the
   developer-only `py -3 -m tools.quest_tracker.poe2db` (`fetch`, `extract`,
   `coverage`).
-- The UI in this version is the plain functional layer fed by the view; the
-  styled layer built from the harvested design follows.
