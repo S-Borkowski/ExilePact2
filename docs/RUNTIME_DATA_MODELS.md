@@ -26,6 +26,11 @@ below was measured on 2026-10-24 from one player's log of 818,412 lines
   `YYYY/MM/DD HH:MM:SS <ms counter> <hex> [<LEVEL> Client <pid>] <message>`,
   with levels `INFO`, `DEBUG`, `WARN` and `CRIT`. Lines without a timestamp
   are continuations of multi-line warnings and carry nothing to read.
+- **The `<pid>` in the header** (measured 2026-10-25, in Live 2). It is
+  the process id of the running game client: the session's `[INFO Client
+  <pid>]` lines carried the same number that Windows' task list gave the
+  `PathOfExile` process (one session). The session marker line has no
+  header and so no pid.
 - **Session marker** (measured 2026-10-24).
   `YYYY/MM/DD HH:MM:SS ***** LOG FILE OPENING *****`, once per launch, but a
   launch can write it two or three times within seconds.
@@ -89,6 +94,19 @@ classified). A 3.5-minute visit to Clearfell Encampment in which the player
 talked to its NPCs recorded no NPC line at all: a talk in a dialogue window
 was not observed to leave anything in the log (one visit, not proof that it
 is never logged).
+
+Una in the Grelwood and the Grim Tangle (measured 2026-10-25, the
+research note's "Per-quest detection"; 7 sessions of the log hold her
+Grelwood lines). Her voiced lines there come in a fixed order. In the
+Grelwood (`G1_4`), her first line each time is "What happened here...?",
+at the Tree of Souls; in 4 sessions (from December 2025 on) "I'll wait
+here. The old magicks will protect me." followed it 2 to 5 s later. "Good.
+Now the others!" came in the Grelwood in 6 sessions, each time after that
+session's visits to the Red Vale (`G1_5`). In the Grim Tangle (`G1_6`),
+"The old magicks still thrive! The way is open. Please, hurry." came in 6
+sessions, each time after "Good. Now the others!". Which quest step each
+line stands for is the quest tracker's reading of that order (research
+note), not part of the measurement.
 
 Character remarks (measured 2026-10-25, the research note's
 [§ "Character remarks"](quest-tracker/quest-tracker-research.md#character-remarks)):

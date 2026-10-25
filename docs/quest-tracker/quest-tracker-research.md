@@ -432,7 +432,8 @@ The relog rule (a design choice, the owner's of 2026-10-25, resting on the
 unknown build of path: None` line is read, in that exact shape only, as a
 character's name. Because that line comes after the entry, the tracker
 waits before it decides (the owner's choice after launch 7, "wait, then
-decide"): a level-1 `G1_1` entry opens a relog window of 5 s and changes
+decide"): a level-1 `G1_1` entry, while no new character is open, opens a
+relog window of 5 s and changes
 nothing else, with no note, the pin and the active character kept, and
 the window's events waiting. Such a line no more than 5 s after the entry,
 before any other area entry, naming a character the tracker already
@@ -440,10 +441,12 @@ stores, makes the entry a relog: the window closes having changed nothing,
 no new character starts and no pin is released, that character is active,
 and the window's events go where routing sends them. Any other such line
 changes nothing. The window otherwise closes on another area entry, a
-line more than 5 s after the entry, a level-up, a session marker, or, on
+line more than 5 s after the entry, a level-up, a session marker, the
+player's pin (which decides it for the pinned character), or, on
 a quiet log, the overlay's clock passing 5 s of log time after the entry
-(at most about 7 s, with the log's one-second resolution and the worker's
-tick); only then does the entry start (or resume) the new character and
+(at most about 7.5 s after it: 6 s counted from the log's whole-second
+timestamps, up to 1 s of offset between a line's stamp and when it was
+written, and two 250 ms polls); only then does the entry start (or resume) the new character and
 release a pin. So a relog never shows a new character, even for a
 moment. The 5 s bound is the measured 1 to 2 s with room to spare; a
 2 s window was rejected for having none. Because the line came for one
@@ -538,6 +541,37 @@ own, sourced to the index page.
 Totals: 32 auto, 42 partial, 13 manual; 32 measured, 44 static, 11
 not-established; 50 worth it, 14 optional, 23 not. No Act 5 quest uses a
 measured signal (see "What poe2db step text matches").
+
+**Secrets in the Dark and The Mysterious Shade** (measured 2026-10-25,
+read-only over the owner's `Client.txt`, unless labelled otherwise). Una's
+voiced lines in the Grelwood (`G1_4`) and the Grim Tangle (`G1_6`), in the
+order they came; 7 sessions of the log hold her Grelwood lines:
+
+| Area | Una's line | Sessions | Where it falls |
+|---|---|---|---|
+| `G1_4` | "What happened here...?" | 7 | her first Grelwood line each time |
+| `G1_4` | "I'll wait here. The old magicks will protect me." | 4 | 2 to 5 s after it (from December 2025 on, and in Live 2) |
+| `G1_4` | "Good. Now the others!" | 6 | after that session's Red Vale (`G1_5`) visits |
+| `G1_6` | "The old magicks still thrive! The way is open. Please, hurry." | 6 | after "Good. Now the others!" each time |
+
+- Secrets in the Dark was *available* from Clearfell (`G1_2`) and in
+  progress only from the Grelwood in Live 2 (measured): its first step's
+  signal is the Grelwood entry, and Renly gives the quest in a talk the
+  log does not record. The data's `start` signal, Reaching Clearfell done
+  (which fires on the Clearfell entry), makes it in progress from there.
+  That start is **inferred**, not measured: the Clearfell entry is the
+  earliest evidence of the talk, not the talk.
+- The first two Grelwood lines come at the Tree of Souls, so they are the
+  signals of "Ask Una for help" (measured: where they fall). That "Good.
+  Now the others!" is "Use the Rune Spikes" is **inferred** from its place
+  after the Red Vale; that the Grim Tangle line is The Mysterious Shade's
+  "Speak to Una about the roots" is **inferred** from the step text.
+- The Mysterious Shade's "Find the Grim Tangle" carried the Grelwood entry
+  as its signal, which fires on the way to Secrets in the Dark, before The
+  Mysterious Shade unlocks; in Live 2 it showed that quest in progress
+  that early (measured). The step now has no signal.
+- Una's town lines match no signal, because each of her signals names its
+  area and its exact line.
 
 | Act | Quest | Worth | Detection | Evidence |
 |---|---|---|---|---|

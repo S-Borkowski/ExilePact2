@@ -24,6 +24,10 @@ What it is:
   Svelte and TypeScript in a transparent, undecorated, always-on-top window
   that stays off the taskbar. In play mode it never takes focus from the
   game; edit mode does, so its fields take typing.
+- **Shown only over the game.** In play mode the overlay is visible only
+  while the game's window or the overlay's own is in front; switch to a
+  browser or the desktop and it hides, switch back and it shows again,
+  without taking focus. In edit mode it is always shown.
 - **A campaign quest list** (Acts 1 to 6 as poe2db numbers them, 87 quests in
   this version): each quest's status (locked, available, in progress, done,
   skipped, unknown), whether it is worth doing (`yes` for permanent stats such
@@ -34,15 +38,17 @@ What it is:
   panel shows no controls, and the window never takes focus from the game.
   *Edit* takes clicks and keyboard focus (so the Settings fields can be
   typed in): tick steps, mark quests done or skipped, switch or pin a
-  character, open settings, drag the panel. The global shortcut (default
+  character, open settings, and move the window by dragging the panel's
+  header (outside its buttons). The global shortcut (default
   `Ctrl+Alt+Q`) switches between them.
 - **Two views.** *Next up* lists only what is available or in progress now,
   grouped by worth; *All* lists every act's quests under the act's header.
-- **The row itself changes** when a quest becomes available, a step is done
-  or a quest is done, while you play: the completed step fades out and the
-  next one fades in, in that quest's row, and a screen reader hears one
-  sentence saying what changed. Lines read as catch-up change rows without
-  the transition.
+- **The row itself changes** when a quest becomes available, is started,
+  has a step done or is done, while you play: the row is highlighted in its
+  new status colour for about 2.5 s, the completed step fades out and the
+  next one fades in, and a screen reader hears one sentence saying what
+  changed. The highlight shows with Windows' animation effects off too;
+  only the fades stop. Lines read as catch-up change rows without either.
 - **A replay CLI**, `quest-tracker-replay`, that runs the same engine over a
   saved log without the game.
 - **A developer-only Python tool**, `py -3 -m tools.quest_tracker.poe2db`,
@@ -111,11 +117,30 @@ Which log it follows: `--log`, else the Settings log path, else the first of
 the standalone and Steam paths above whose file exists. With none, the panel
 shows the "no log found" state.
 
-Settings (edit mode, the settings frame) and their defaults: opacity `0.9`
-(0.3 to 1), dock `right` (`left`|`right`), scale `auto` (`auto`|`1`|`1.33`|`2`,
-applied as the webview zoom; see below), show skipped quests (off), only worth-it quests
-(off), log path (unset: discovery), hotkey `Ctrl+Alt+Q` (the global-shortcut
-plugin's accelerator syntax). A hotkey that cannot be registered keeps the
+Settings (edit mode, the settings frame) and their defaults:
+
+- **Opacity** `0.9`, a slider from 0 to 1 in 0.05 steps. It is the panel
+  background's opacity only: at 0 the background is gone, while text,
+  icons, the panel's border and the edit-mode accent stay fully opaque,
+  so edit mode is still told apart.
+- **Scale** `auto`: an *Auto scale* switch, plus a slider for a fixed
+  factor from 0.75 to 2 in 0.05 steps, applied as the webview zoom (see
+  below). Moving the slider turns Auto off. `settings.json` stores
+  `"auto"` or the factor as a number; the earlier `"1"`, `"1.33"` and
+  `"2"` load as those factors, and a malformed or out-of-range value loads
+  as Auto.
+- **Show skipped quests** (off): with it on, a skipped quest is shown
+  whatever *Only worth-it* says. **Only worth-it quests** (off) hides the
+  quests that are not worth it and not skipped. Neither changes an act's
+  counts.
+- **Log path** (unset: discovery) and **hotkey** `Ctrl+Alt+Q` (the
+  global-shortcut plugin's accelerator syntax).
+
+There is no dock side. A window with no saved position goes to the right
+side of its monitor, below the game's minimap; in edit mode you drag it by the panel's header
+(outside its buttons) and the position is saved. A `dock` key in an older
+`settings.json` is ignored on load, and a settings change that names it is
+refused as unknown. A hotkey that cannot be registered keeps the
 old one working and says so in the status line. If the shortcut cannot be
 registered at launch, the overlay starts in edit mode instead of play
 mode, since without a shortcut play mode could not be left: the status line
@@ -131,8 +156,8 @@ a 4K screen at 150% gets 1.33x and at 200% gets 1x, and a 1080p screen at
 window is placed (so from the monitor it was placed on), when the scale
 setting changes, and again whenever the window moves to another monitor or
 that monitor's DPI scale changes; the zoom is applied only when it differs
-from the one already applied, and a docked window is placed again after
-it. A fixed scale never reads the monitor. The diagnostic log records what
+from the one already applied, and a window at its default place (never
+dragged) is placed again after it. A fixed scale never reads the monitor. The diagnostic log records what
 Auto chose from (`scale auto: monitor … px high at DPI scale … -> zoom …`
 at start, `scale auto: the window is now on a monitor … -> zoom …` after a
 move or a DPI change).
@@ -167,9 +192,10 @@ log. The lines to look for when a quest did not advance:
     on an entry to the same instance as a parked one; either is followed
     by `character: pin on <name> released for the new character` when it
     released a pin. They come when the next line closes the window, or,
-    on a quiet log, when the overlay's clock does: up to about 7 s after
-    the entry (5 s, the log's one-second resolution and one 250 ms worker
-    tick);
+    on a quiet log, when the overlay's clock does: at most about 7.5 s
+    after the entry (6 s counted from the log's whole-second timestamps,
+    up to 1 s of offset between a line's stamp and when it was written,
+    and two 250 ms polls);
   - `character: <name> relogged in The Riverbank, kept` when the character
     build line named a stored character in time: a relog, not a new
     character. A relog writes only this line: no new-character, pin or
@@ -188,7 +214,17 @@ log. The lines to look for when a quest did not advance:
   new character's record: <error>` when it cannot be used.
 - `character: <from> -> <to>` whenever the current character changes.
 - `row change <id> <kind> (<quest id>)` for each live change sent to a
-  row (`available`, `step_done` or `quest_done`).
+  row (`available`, `step_done` or `quest_done`; a quest started by its
+  `start` signal is a `step_done` with no step completed).
+- `visibility: hidden (another window is in front)` when play mode hides
+  the overlay because neither the game's window nor the overlay's own is
+  in front, and `visibility: shown` when it shows again (or edit mode
+  shows it). Each change is written once; no window title or other
+  program's name is ever written. The game's window is told by its
+  process id, the `<pid>` in the `[<LEVEL> Client <pid>]` header of the
+  newest log line read (at start, read back from the log before the start
+  position with the current area). Until a line with that header has been
+  read, the overlay stays shown.
 
 Build it:
 
@@ -222,7 +258,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | Command | Prints |
 |---|---|
 | `events` | One recognised event per line (never chat, unknown speakers or other players' names). |
-| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped before any character, <x> dropped with a replaced new character, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `dropped_new_character` counts, apart from it, the events of an unnamed new character that a level-1 entry to another instance of The Riverbank replaced; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. With `--json`, one object `{"lines", "client_version", "held", "dropped", "dropped_new_character", "refused", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}]}`. |
+| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped before any character, <x> dropped with a replaced new character, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `dropped_new_character` counts, apart from it, the events of an unnamed new character that a level-1 entry to another instance of The Riverbank replaced; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. A level-1 entry to The Riverbank whose relog window is still open at the end of the log is decided as the overlay would decide it on a quiet log, 6 s after the last line, and the summary then adds `a relog window was still open: closed at the end of the log, as the overlay would 6 s after the last line`. With `--json`, one object `{"lines", "client_version", "held", "dropped", "dropped_new_character", "refused", "relog_window_closed_at_end", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}], "new_character"}` (`new_character`: the unnamed new character's class, level, event count, quests and acts, or `null`). |
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
 
@@ -319,13 +355,38 @@ points line, a level-up (`is now level`), a party member joining or leaving,
 a death, a session start, the client version. Chat and anything not recognised are dropped at the parser.
 
 The quest data (`apps/quest-tracker/data/quests.json`) gives each quest
-signal lists: `unlock`, per-step signals, `done`, and `window_closes` (the
-point after which the log can no longer show the quest being done, such as
-entering the next act's town). Status, first match wins: skipped by you;
-done (by you, or a `done` signal fired); unknown (the window closed, it is
-not done, and the log cannot tell); in progress (a step fired or was
-ticked); available (unlocked); locked. Applying the same line twice changes
-nothing, so re-reading a log is safe.
+signal lists: `unlock`, `start`, per-step signals, `done`, and
+`window_closes` (the point after which the log can no longer show the
+quest being done, such as entering the next act's town). Status, first
+match wins: skipped by you; done (by you, or a `done` signal fired);
+unknown (the window closed, it is not done, and the log cannot tell); in
+progress (a step fired or was ticked, or a `start` signal fired);
+available (unlocked); locked. A fired `start` makes a quest in progress
+with no step reached, so its first step is the current one; the row
+changes once, saying the quest started. Applying the same line twice
+changes nothing, so re-reading a log is safe.
+
+**Secrets in the Dark, The Mysterious Shade and Una's Grelwood lines.**
+Renly gives Secrets in the Dark in a talk the log does not record, so the
+quest has a `start` signal instead: Reaching Clearfell being done, which
+happens on entering Clearfell (`G1_2`), the earliest evidence of that talk.
+It is an inference, written in the quest's notes; without it the quest
+stayed *available* from Clearfell and showed in progress only from the
+Grelwood (measured in Live 2). In the Grelwood (`G1_4`), Una's lines move
+the quest on: her first line there, "What happened here...?", and "I'll
+wait here. The old magicks will protect me." a few seconds later complete
+"Ask Una for help" (and so the steps before it), leaving "Find the Red
+Vale" current; her "Good. Now the others!" there completes "Use the Rune
+Spikes" (an inference from where it falls, after the Red Vale). In the
+Grim Tangle (`G1_6`), her "The old magicks still thrive! The way is
+open. Please, hurry." completes The Mysterious Shade's "Speak to Una
+about the roots". The Mysterious Shade is no longer started by entering
+the Grelwood: that entry comes on the way to Secrets in the Dark, before
+The Mysterious Shade unlocks, and had shown it in progress too early.
+Una's town lines move nothing, because each of her signals names its
+area and its exact line. Measurements:
+[`quest-tracker-research.md`](quest-tracker-research.md) § "Per-quest
+detection".
 
 **Characters.** The log has no "logged in as" line, so the active character
 is inferred: a name in a `has received` or `has lost` line is yours; a name
@@ -343,13 +404,21 @@ The Riverbank (`G1_1`), an area of level 1. The area's level says nothing
 about the character, and a character relogging inside The Riverbank enters
 `G1_1` again, with the same instance (the same seed), so the entry alone
 cannot tell a new character from a relog. So an entry to `G1_1` at area
-level 1 first opens a *relog window* of 5 s and changes nothing else: the
-active character and the pin stay, nothing is written, and the events that
-come meanwhile wait. The window closes on the first of a character build
-line that makes the entry a relog (below), another area entry, any line
-more than 5 s after the entry, a level-up, a session marker, or, on a quiet
-log, the overlay's clock passing 5 s of log time after the entry (so the
-decision comes at most about 7 s after the entry). Only when it closes
+level 1, when no new character is already open, first opens a *relog
+window* of 5 s and changes nothing else: the active character and the pin
+stay, nothing is written, and the events that come meanwhile wait. The
+window closes on the first of a character build line that makes the entry
+a relog (below), another area entry, any line more than 5 s after the
+entry, a level-up, a session marker, your pin in the character picker
+(which decides it for the pinned character: no new character starts, and
+the window's events go to it), or, on a quiet log, the overlay's clock
+passing 5 s of log time after the entry. On a quiet log the decision
+comes at most about 7.5 s after the entry: 6 s counted from the log's
+whole-second timestamps, up to 1 s of offset between a line's stamp and
+when it was written, and two 250 ms polls. While the window is open, the
+saved log position stays at the start of the entry line, so an overlay
+closed inside the window reads the entry again on its next start and
+decides it then. Only when it closes
 without a relog does the entry start a *new character* for the session,
 with no pick: the window's events go to it, so Act 1 progress shows from
 the first step. Until something names it, the header shows "New character"
@@ -376,7 +445,8 @@ says so).
   active, with the progress so far, and is stored; if the entry released a
   pin, the named character is pinned in its place. Pinning a character
   yourself while the new one is still unnamed gives that character the
-  progress.
+  progress, and a pin while the relog window is still open closes the
+  window for that character.
 - **Saved across a relaunch.** Until it is named, the new character is one
   provisional record in `new-character.json` ("Privacy"), kept apart from
   your characters, so it never appears in the picker. Closing and
@@ -430,9 +500,12 @@ it (the "Use ..." step of a boss quest finished by its reward line, for
 instance), shows a small dashed ring beside the done mark: the
 "probably done" mark, with the tooltip and accessible text "Probably
 done: inferred from a later step the log recorded." It differs from the done mark in
-shape, not only colour. It is a mark, not a control: it adds no toggle or
-tick, the row's manual-tick marker is unchanged, and a quest you marked
-done yourself never shows it.
+shape, not only colour. It is a mark, not a control: the row's
+manual-tick marker is unchanged, and a quest you marked done yourself
+never shows it. An inferred step has no tick-by-hand toggle in edit mode
+either: its leading mark is plain, and clicking it does nothing. A step
+you ticked yourself is not inferred and keeps its toggle, and the quest's
+Mark done / Unmark done stays, to correct the inference when it is wrong.
 
 **What needs a manual tick.** Each quest carries a `detection` value, and
 the row shows the manual-tick marker for the last two:
@@ -578,8 +651,9 @@ state and never polls. Events, Rust to the `overlay` window:
 - `qt:view` with a `View` (frame, mode, view kind, status line, characters,
   acts, next-up rows, quest detail, settings).
 - `qt:row-change` with a `RowChange`, one per **live** quest transition (a
-  quest becomes available, a step is reached, a quest is done; catch-up
-  sends none): `id` (increasing), `kind`
+  quest becomes available, a step is reached, a quest is started by its
+  `start` signal (a `step_done` with `step_done` null), a quest is done;
+  catch-up sends none): `id` (increasing), `kind`
   (`available`|`step_done`|`quest_done`), `quest_id`, `step_done` (the
   title of the step just completed, or null), `step_next` (the title of the
   step now current, or null) and `text` (one sentence for the screen
@@ -587,7 +661,11 @@ state and never polls. Events, Rust to the `overlay` window:
   `quest_id` plays it (`src/components/QuestRow.svelte`,
   `src/rowchange.ts`): the completed step fades out over 150 ms, then the
   step now current fades in from 0.2 opacity, rising 5 px, over 220 ms,
-  ease-out. A second change to the same row restarts the transition. A
+  ease-out. Every change also highlights the row, motion or not: a tint
+  of the row's new status colour comes on at once, holds 2.5 s
+  (`ROW_HIGHLIGHT_MS`) and fades out by opacity over 220 ms; in the
+  collapsed badge the same highlight tints the badge. A second change to
+  the same row restarts the transition and the hold. A
   row not on screen (its act collapsed, or filtered out) does not play it.
   `src/App.svelte` announces every change's `text` in a polite live
   region, shown row or not.
@@ -655,8 +733,9 @@ take their shadow from `filter: var(--drop-panel)` on a wrapper.
 `src/theme.ts` derives it from the harvested `shadow.panel` at start-up
 (`applyDerivedTokens`). Motion (a row's transition, the countdown bar,
 control transitions) stops under `prefers-reduced-motion: reduce`
-(Windows' "Animation effects" off): a row's change is then instant, and
-still announced. The transition's design check is
+(Windows' "Animation effects" off): a row's step change is then instant,
+and still highlighted (the highlight is colour and opacity only, with no
+movement) and announced. The transition's design check is
 [`design/review-row-transition.md`](design/review-row-transition.md).
 `src/styled.test.ts` checks that every contract token and icon id is
 harvested, that every custom property the UI reads has a plain default and
@@ -699,7 +778,27 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   happens).
 - **"Probably done" is an inference.** A row or step with the
   "probably done" mark was finished by a later signal, not its own, so a player who
-  skipped that step is shown it done too early.
+  skipped that step is shown it done too early. Secrets in the Dark's
+  start on entering Clearfell is an inference of the same kind.
+- **Character remarks are not used.** Your character's own voiced
+  remarks (poe2db lists each class's, keyed by the moment that plays them,
+  such as killing a quest boss) were not observed in `Client.txt`: none
+  of the Mercenary's or the Warrior's remark texts was found in the whole
+  of one player's log, with a speaker or without, while the same search
+  found Una's lines; no speaker is named after a class; and the minute
+  after a Mercenary killed The Bloated Miller held no remark. So no quest
+  moves on a remark. That is "not observed", not "never logged"
+  ([`quest-tracker-research.md`](quest-tracker-research.md) § "Character
+  remarks").
+- **Shown until the game's process is known.** Play mode hides the
+  overlay when another program's window is in front, telling the game's
+  window by the process id in the log lines' `Client <pid>` header. Until
+  the overlay has read a line with that header (at start it reads back
+  the lines before its start position), it does not know the game's id
+  and stays shown over every window. After the game restarts, the id read
+  back is the previous launch's until the new client writes its first
+  line, so the overlay can stay hidden over the new game's window until
+  then. If the window in front cannot be told, it is shown too.
 - **The area after a start mid-zone.** The read-back for the current area
   covers at most 8 MiB of the log before the start position. That is a
   bound, not a guarantee: a zone's area line is normally well inside it,
@@ -780,14 +879,30 @@ Revisit this feature when:
   window with play (click-through) and edit modes, toggled by
   `Ctrl+Alt+Q`; *Next up* and *All* views; quest detail with steps,
   rewards, worth reason and the poe2db link; character picker with confirm
-  and pin; settings for opacity, dock, scale, filters, log path and hotkey.
-- When a quest becomes available, a step is done or a quest is done while
-  you play, its own row changes in place: the completed step fades out,
-  then the next step fades in from low opacity with a small upward move
-  (about 150 ms and 220 ms). A second change restarts it; a row that is not
-  on screen does not animate. With reduced motion (Windows' animation
-  effects off) the change is instant. Every change is announced to a
-  screen reader in one sentence naming the quest and what changed.
+  and pin; settings for opacity, scale, filters, log path and hotkey.
+- In play mode the overlay is shown only while the game's window or its
+  own is in front, and hidden over any other program (`visibility:`
+  lines in the diagnostic log); edit mode always shows it. It stays shown
+  until it has read the game's process id from a log line.
+- In edit mode the window moves by dragging the panel's header, and the
+  position is kept; there is no dock side.
+- When a quest becomes available, is started, has a step done or is done
+  while you play, its own row changes in place: it is highlighted in its
+  new status colour for about 2.5 s, the completed step fades out, then
+  the next step fades in from low opacity with a small upward move (about
+  150 ms and 220 ms). A second change restarts it; a row that is not on
+  screen does not play it, and the collapsed badge is highlighted the same
+  way. With reduced motion (Windows' animation effects off) the step
+  change is instant and the highlight still shows. Every change is
+  announced to a screen reader in one sentence naming the quest and what
+  changed.
+- Settings: opacity from 0 to 1 (at 0 only the panel's background goes;
+  text, icons, the border and the edit accent stay opaque), scale as an
+  Auto switch plus a slider for a fixed factor from 0.75x to 2x, "Show
+  skipped quests", which shows skipped quests even with "Only worth-it"
+  on, and "Only worth-it quests". Settings files from before load as they
+  were: their `1`, `1.33` or `2` scale as that factor, and their dock side
+  ignored.
 - Play mode never takes focus from the game; edit mode takes keyboard
   focus, so the Settings fields accept typing. A shortcut that cannot be
   registered at launch leaves the overlay in edit mode, with the reason in
@@ -809,10 +924,11 @@ Revisit this feature when:
   shows how many are available, and a collapsed one keeps the mark alone.
   Next up groups its rows under "Worth it", "Optional" and "Not worth it".
 - Quest detail with steps (empty box, in progress, done) whose leading mark
-  is, in edit mode, the step's one tick-by-hand toggle; reward chips, the
+  is, in edit mode, the step's one tick-by-hand toggle, except on a step
+  shown "probably done", which has none; reward chips, the
   worth reason, the poe2db link, and Mark done / Skip / Reset buttons;
   Reset's confirm shows a 3 s countdown. Settings as label-and-control
-  rows with toggles, a slider and dropdowns. Empty states with a glyph,
+  rows with toggles and two sliders. Empty states with a glyph,
   the fix in edit mode, and the hotkey on a keycap in play mode. The
   collapsed badge shows the worth-it count in gold, or a warning when the
   log is in trouble.
@@ -823,14 +939,15 @@ Revisit this feature when:
   reference).
 - Motion is limited to a row's transition, the Reset countdown bar and
   control transitions, and stops under reduced motion
-  (`prefers-reduced-motion: reduce`).
+  (`prefers-reduced-motion: reduce`); a row's highlight is colour only and
+  stays.
 - Progress per character from `Client.txt` alone, resumed across restarts
   from the saved log position, stored under `%LOCALAPPDATA%` (or
   `QUEST_TRACKER_DIR`); on start the current area is read back from the
   log before that position (How detection works).
 - A new character is picked up when it enters The Riverbank, with no
   pick: once the 5 s relog window after the entry closes without a relog
-  (at most about 7 s after the entry on a quiet log), Act 1 progress shows
+  (at most about 7.5 s after the entry on a quiet log), Act 1 progress shows
   under "New character", and its first level-up names it and stores it. A
   pinned character's pin passes to the new one then, not at the entry. A
   relog into The Riverbank is told apart when the client's character build
@@ -845,7 +962,13 @@ Revisit this feature when:
   character, in the status line and the replay summary.
 - A quest or step shown done because of a later signal, not its own,
   carries a "probably done" mark (a dashed ring beside the done mark) with
-  a tooltip and the same words as accessible text; it is not a control.
+  a tooltip and the same words as accessible text; it is not a control,
+  and such a step cannot be ticked by hand.
+- Secrets in the Dark shows in progress from Clearfell (a start inferred
+  from Reaching Clearfell), and Una's Grelwood lines move it past "Ask Una
+  for help" and "Use the Rune Spikes"; her Grim Tangle line completes The
+  Mysterious Shade's "Speak to Una about the roots", which no longer shows
+  in progress on the way through the Grelwood.
 - Signals tied to an area that arrive while the area is unknown are
   refused, logged per quest and counted in the status line; only quests
   that could still change for that character count.
@@ -860,7 +983,9 @@ Revisit this feature when:
   the fight", a hint, since that they work the same way is inferred, not
   observed.
 - `quest-tracker-replay` (`events`, `state`, `import`, `scan`; the summary
-  counts held events, the two kinds of dropped event and refused signals) and the developer-only `py -3 -m
+  counts held events, the two kinds of dropped event and refused signals,
+  and decides a relog window still open at the end of the log as the
+  overlay would) and the developer-only `py -3 -m
   tools.quest_tracker.poe2db` (`fetch`, `extract`, `coverage`).
   `npm run release` builds both `quest-tracker.exe` and
   `quest-tracker-replay.exe`.
