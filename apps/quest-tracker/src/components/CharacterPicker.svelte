@@ -14,7 +14,7 @@
 
 <div class="picker">
   <div class="frame-head">
-    <span class="frame-title">Characters</span>
+    <h2 class="frame-title">Characters</h2>
     {#if edit}
       <button type="button" class="icon-btn" aria-label="Close" title="Close" onclick={() => send('open_frame', { frame: null })}>
         <Icon id="ui-close" size="16px" />
@@ -73,7 +73,9 @@
     padding: 0 var(--space-section-gap) 0 var(--space-row-pad);
   }
 
+  /* An `h2` for assistive technology; it looks like the span it replaced. */
   .frame-title {
+    margin: 0;
     font-size: var(--size-title);
     font-weight: var(--font-weight-title);
     line-height: var(--line-title);
@@ -101,12 +103,13 @@
     background: var(--color-select-active-bg);
   }
 
+  /* Inside the 2 px edit border, as the in-progress bar sits, so it shows. */
   .character.active::before {
     content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 0;
+    left: 3px;
     width: var(--border-width-strong);
     background: var(--color-edit-accent);
   }

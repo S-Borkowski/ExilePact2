@@ -22,7 +22,7 @@
 
 <div class="settings">
   <div class="frame-head">
-    <span class="frame-title">Settings</span>
+    <h2 class="frame-title">Settings</h2>
     {#if edit}
       <button type="button" class="icon-btn" aria-label="Close" title="Close" onclick={() => send('open_frame', { frame: null })}>
         <Icon id="ui-close" size="16px" />
@@ -51,7 +51,7 @@
       <span class="label">Click-through (play mode)</span>
       <input type="checkbox" class="toggle" role="switch" checked={false} onchange={() => send('set_mode', { mode: 'play' })} />
     </label>
-    <p class="help">On returns to play mode: the panel passes clicks to the game.</p>
+    <p class="help">On: in play mode the panel passes clicks to the game.</p>
 
     <label class="row">
       <span class="label">Dock side</span>
@@ -109,8 +109,9 @@
       <span class="label">Log file</span>
       <input
         type="text"
-        class="text-input"
+        class="text-input path-input"
         value={s.log_path ?? ''}
+        title={s.log_path ?? undefined}
         placeholder="Client.txt path"
         spellcheck="false"
         onchange={(e) => send('update_settings', { patch: { log_path: e.currentTarget.value.trim() || null } })}
@@ -125,7 +126,7 @@
       <div class="row"><dt>Show skipped quests</dt><dd>{s.show_skipped ? 'On' : 'Off'}</dd></div>
       <div class="row"><dt>Only worth-it quests</dt><dd>{s.only_worth_it ? 'On' : 'Off'}</dd></div>
       <div class="row"><dt>Edit-mode hotkey</dt><dd><span class="keycap">{s.hotkey}</span></dd></div>
-      <div class="field"><dt>Log file</dt><dd class="path">{s.log_path ?? 'found automatically'}</dd></div>
+      <div class="field"><dt>Log file</dt><dd class="path" title={s.log_path ?? undefined}>{s.log_path ?? 'found automatically'}</dd></div>
     </dl>
   {/if}
 </div>
@@ -144,7 +145,9 @@
     padding: 0 var(--space-section-gap) 0 var(--space-row-pad);
   }
 
+  /* An `h2` for assistive technology; it looks like the span it replaced. */
   .frame-title {
+    margin: 0;
     font-size: var(--size-title);
     font-weight: var(--font-weight-title);
     line-height: var(--line-title);
@@ -190,6 +193,18 @@
     font-size: var(--size-caption);
     line-height: var(--line-caption);
     letter-spacing: 0.2px;
+  }
+
+  /* Under a stacked field the help sits 4 px below the input, not on it. */
+  .field + .help {
+    margin-top: 4px;
+  }
+
+  /* A long path ends in an ellipsis; the whole path is in `title`. */
+  .path-input {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .divider {
