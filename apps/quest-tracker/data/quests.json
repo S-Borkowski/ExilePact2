@@ -3950,13 +3950,13 @@
         }
       ],
       "unlock": [{"kind": "area", "code": "G4_2_1"}],
-      "done": [{"kind": "points", "type": "passive", "area": "G4_town"}],
+      "done": [],
       "window_closes": [],
-      "detection": "auto",
-      "evidence": "measured",
+      "detection": "partial",
+      "evidence": "static",
       "source_url": "https://poe2db.tw/us/Dark_Mists",
       "fetched": "2026-10-25",
-      "notes": "Done on the passive points line in Kingsmarch, where the quest's rewards are taken; that these points are this quest's is a static reading of poe2db's quest page and community table. Siege of Oriath also hands out points in Kingsmarch on the newer patch."
+      "notes": "Tick the end by hand. Its 2 passive points are taken from Tujen in Kingsmarch, but a passive points line there is not unique to this quest: the source of the Kingsmarch points in the owner's log is not established, and Siege of Oriath also hands out a reward there on the newer patch. So that line is not a signal, neither for done nor for a step; the steps follow Kedge Bay, Journey's End and Captain Hartlin's voiced lines."
     },
     {
       "id": "trial-of-the-ancestors",
