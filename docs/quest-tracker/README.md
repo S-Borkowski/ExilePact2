@@ -124,8 +124,15 @@ Scale `auto` sizes the panel by the monitor the window is on: 1x below
 pixels), divided by Windows' DPI scale for that monitor (which the webview
 already applies), and never below 1. So a 1440p screen at 100% gets 1.33x,
 a 4K screen at 150% gets 1.33x and at 200% gets 1x, and a 1080p screen at
-150% stays at Windows' 150%. The diagnostic log records what Auto chose
-from (`scale auto: monitor … px high at DPI scale … -> zoom …`).
+150% stays at Windows' 150%. Auto is worked out at start, after the
+window is placed (so from the monitor it was placed on), when the scale
+setting changes, and again whenever the window moves to another monitor or
+that monitor's DPI scale changes; the zoom is applied only when it differs
+from the one already applied, and a docked window is placed again after
+it. A fixed scale never reads the monitor. The diagnostic log records what
+Auto chose from (`scale auto: monitor … px high at DPI scale … -> zoom …`
+at start, `scale auto: the window is now on a monitor … -> zoom …` after a
+move or a DPI change).
 
 Build it:
 
@@ -214,6 +221,22 @@ read-only, read the new bytes and close it again. On start it resumes from
 the saved position when the same file is still there (catch-up), and
 otherwise starts at the end (live) unless `--from-start`. A truncated,
 rewritten or rotated file is read again from its start.
+
+**The current area on start.** A quest's reward or points signal counts
+only in the area the quest data names for it, and the area is otherwise
+known only from an area line read in this run. So whenever it starts following a log at a
+position other than its start (a resume, or a first start at the end), the
+tracker first reads back, read-only, at most 8 MiB of the log before that
+position for the last area line, and takes it as the current area unless a
+session marker follows it (the game restarted, so the area is unknown). The
+diagnostic log says what it found: `area from log: <area code>`, or `area
+from log: none (…)` with the reason. When no area line is within that
+window, or a marker follows it, the area stays unknown, and a quest whose
+signal is tied to an area waits for the next zone's area line: a signal
+refused before then because the area was unknown is not counted (tick the
+quest by hand if it was its `done`), and each is logged as `area unknown:
+refused <quest id>`. A signal refused because you are in a different, known area is the
+normal case and is not logged.
 
 Each complete line is parsed into an event: an area being generated, an NPC
 line from an allowlisted speaker (quest givers and bosses), a system line, a
@@ -550,7 +573,9 @@ Revisit this feature when:
   full reward text on hover, worth star), the next step under an
   in-progress quest on the active band with a blue bar, finished rows
   compact and muted, skipped ones struck through. Each act's header shows
-  how many of its quests are available beside how many are done. Next up
+  how many of its quests are done; only an expanded act's header also
+  shows how many are available, and a collapsed one keeps the mark alone.
+  Next up
   groups its rows under "Worth it", "Optional" and "Not worth it".
 - Quest detail with steps (empty box, in progress, done) whose leading mark
   is, in edit mode, the step's one tick-by-hand toggle; reward chips, the
@@ -562,12 +587,16 @@ Revisit this feature when:
   log is in trouble. Toasts carry a coloured bar and icon per kind; the
   Undo toast drains a 5 s bar.
 - Scale Auto sizes the panel by the monitor: 1x, 1.33x from 1440 px of
-  height, 2x from 2160, after Windows' own DPI scale (Command reference).
+  height, 2x from 2160, after Windows' own DPI scale. It is worked out at
+  start after the window is placed, when the setting changes, and when the
+  window moves to another monitor or its DPI scale changes (Command
+  reference).
 - Motion is limited to the toast's entrance, countdown bars and control
   transitions, and stops under `prefers-reduced-motion`.
 - Progress per character from `Client.txt` alone, resumed across restarts
   from the saved log position, stored under `%LOCALAPPDATA%` (or
-  `QUEST_TRACKER_DIR`).
+  `QUEST_TRACKER_DIR`); on start the current area is read back from the
+  log before that position (How detection works).
 - Quest data for 87 campaign quests, Acts 1 to 6, from poe2db.tw (fetched
   2026-10-25), with signals measured against a real log of client 4.5.3:
   30 detected automatically, 44 partly, 13 by manual tick.

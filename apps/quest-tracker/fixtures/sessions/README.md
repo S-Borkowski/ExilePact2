@@ -1,7 +1,8 @@
 # Synthetic sessions for the quest engine
 
 Hand-written `Client.txt` sessions for the `qt-engine` tests
-(`crates/qt-engine/tests/engine.rs`), read with the synthetic quest data in
+(`crates/qt-engine/tests/engine.rs`) and the `qt-viewmodel` tests
+(`crates/qt-viewmodel/tests/viewmodel.rs`), read with the synthetic quest data in
 `fixtures/quests_min.json`. The line shapes are the parser's
 (`fixtures/logs/README.md`); nothing here comes from a real log. Character
 names, chat text, timestamps and the NPC "lines" are invented, and there are
@@ -15,6 +16,7 @@ no IP addresses.
 | `held.txt` | a session with no character (its events dropped and counted), then a session whose held events go to the first character identified, not to a party member |
 | `switch.txt` | a character switch inside one session, between two own characters |
 | `manual_window.txt` | a manual quest unlocked by level whose window closes on entering a later area |
+| `frames/` | `story.txt`, the one session every view fixture under `fixtures/viewmodels/` is built from by `crates/qt-viewmodel/tests/viewmodel.rs`, so the frames tell one story; its `README.md` tells that story |
 
 `quests_min.json` beside this folder is the matching quest data: seven
 invented quests covering every signal kind (`area` by code and by name,

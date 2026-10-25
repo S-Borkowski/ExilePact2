@@ -61,7 +61,10 @@ a situation this player never reached would be missing from it too.
   the continuations of multi-line warnings. The parser ignores them.
 - **Session marker** (measured). `YYYY/MM/DD HH:MM:SS ***** LOG FILE OPENING
   *****`, 211 times. One launch can write it two or three times within a few
-  seconds, so the tracker treats markers a few seconds apart as one session.
+  seconds. The tracker applies no time window: every marker ends the
+  session (held events are dropped and counted, the current area is
+  cleared), so a launch's second and third markers each end an empty
+  session, which changes nothing.
 - **Client version** (measured). `[HTTP2] User agent: PoE
   poe2_production/tags/<version> Windows x64`. Versions 4.3.0 through 4.5.3
   appear, then 0.5.5 on 2026-10-19, with only a patch check after it. Why the
