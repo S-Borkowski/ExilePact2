@@ -294,6 +294,70 @@ last line in the area to the `has received` line:
   (poe2db, Abandoned Prison and The Prisoner pages, fetched 2026-10-25), so
   those three are unchanged.
 
+### Character remarks
+
+Whether the remarks the player's own character voices (a class's comment on
+reaching a place or killing a boss) leave a line in the log. Measured
+2026-10-25 over the owner's whole log (823,584 lines, up to the end of Live 2
+at 18:38 local time), read-only, by research scripts kept outside the
+repository, and against poe2db.
+
+- **poe2db lists them** (measured). The poe2db tool's cache (the index and
+  74 campaign quest pages) holds no class remark: the class words in it are
+  NPC names and NPC dialogue. Three pages were then fetched by hand, at least
+  4 s apart, and kept outside the repository. Each class page has a "Text
+  Audio" table of the class's voiced lines, each with a key naming the
+  moment that plays it: the Mercenary's has 2,354 entries (1,372 distinct
+  texts), the Warrior's 2,048 (1,275). Many keys name a quest moment, such
+  as `MillerKillComment`, "I've fought some big buggers before, but...
+  blimey." (https://poe2db.tw/us/Mercenary, fetched 2026-10-25). The other
+  classes' pages were not fetched.
+- **No speaker is a class or a character's voice** (measured). None of the
+  log's 249 distinct speaker-shaped prefixes equals one of the 14 class names
+  its level-up lines name (ascendancies included). Three contain a class
+  word: two are NPCs (Ignagduk, the Bog Witch; Dannig, Warrior Skald) and the
+  third is a one-word name no level-up names. Eleven lines have a speaker
+  that a level-up line names as a character, and by their text all eleven
+  are typed local chat (greetings, trade and help requests), not voiced
+  lines.
+- **No class remark was found in the log** (measured). Every distinct
+  Mercenary and Warrior text, normalised for case and spacing, was compared
+  with every INFO message that is not chat, with a speaker or without one.
+  10 Mercenary and 26 Warrior texts equal a logged line and 2 more Warrior
+  texts are part of one, but every such line has an NPC or boss as its
+  speaker and is a short bark many voices share ("Look out!", "Burn!") or a
+  part of that NPC's own sentence. None is logged without a speaker or under
+  a character's name, though both classes level up in the log.
+- **Positive control** (measured). The same match, run with Una's "Text
+  Audio" table (https://poe2db.tw/us/Una, fetched 2026-10-25, 87 distinct
+  texts), finds 19 of her texts in the log, 18 of them under the speaker
+  Una. The instrument finds a voiced line when the log carries one.
+- **Speakerless lines near quest moments** (measured). Within 10 s of an
+  area entry or an NPC line, the only speakerless INFO lines without a `: `
+  prefix are client housekeeping (bundle requests, login server, start-up
+  precalculations). Of the `: ` notices that are not the known event lines,
+  50 shapes come in a campaign area: trade, AFK, item and door messages, the
+  Vaal chants in `G3_16` (the same lines with three different classes), Act 4
+  sailing orders such as "Half sail!" beside Makoru's lines, and one "Oh my,
+  what is this?" in `G3_5`. None of them is in the Mercenary's or the
+  Warrior's table; who voices the sailing orders and that one line is not
+  established.
+- **Live 2** (measured, `Client.txt` from 17:30 to 18:40 local time on
+  2026-10-25: 3,147 lines, 562 of them chat). The only line shapes not seen
+  earlier in the log are the new character's own event lines (level-ups, a
+  death, a reward) and the loading screen of a first-visited area. The new
+  character, a Mercenary, killed The Bloated Miller (the Miller's last line
+  at 17:42:57, the level-up to 2 one second later), the moment poe2db's
+  `MillerKillComment` names; the 60 s after it hold one window-focus line
+  and nothing else. Whether the person heard the remark was not asked.
+- **Not observed** (a negative, not proof of absence): a line carrying the
+  own character's remark, under any speaker or none, anywhere in the log.
+- **Consequence for the data.** None: this is research only and the tracker
+  is unchanged. A remark cannot be a step signal while it is not observed in
+  the log. Live procedure 3 step 16 measures it live: for each remark the
+  person hears, `Client.txt` is read from 10 s before to 10 s after, with an
+  NPC line heard nearby (Wounded Man, Una) as the positive control.
+
 ## Character detection
 
 All of this is measured on 2026-10-24 unless labelled otherwise.

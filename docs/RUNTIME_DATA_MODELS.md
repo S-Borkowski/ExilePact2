@@ -88,3 +88,16 @@ classified). A 3.5-minute visit to Clearfell Encampment in which the player
 talked to its NPCs recorded no NPC line at all: a talk in a dialogue window
 was not observed to leave anything in the log (one visit, not proof that it
 is never logged).
+
+Character remarks (measured 2026-10-25, the research note's
+[§ "Character remarks"](quest-tracker/quest-tracker-research.md#character-remarks)):
+poe2db lists each class's voiced remarks in a "Text Audio" table on the class
+page, each keyed by the moment that plays it (entering an area, killing a
+quest boss). None of the Mercenary's or the Warrior's remark texts was found
+in the log, with a speaker or without one, while the same match found 19 of
+Una's lines from her poe2db table (positive control). No speaker in the log
+is named after a class, and a character's name appears as a speaker only in
+typed local chat. When a Mercenary killed The Bloated Miller, a moment
+poe2db lists a remark for, the next 60 s held no line but a window-focus
+line. The own character's remarks were therefore not observed in the log
+(the whole log, one targeted moment; not proof that they are never logged).
