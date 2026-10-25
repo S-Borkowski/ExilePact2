@@ -1,13 +1,15 @@
 # Quest tracker icons
 
-38 original SVG icons for the [design brief](../ui-design-brief.md).
-This delivery covers icons only. The specimen colours and typography do not
-define the later overlay UI.
+46 original SVG icons for the [design brief](../ui-design-brief.md).
+These are the masters: the Figma harvest copies them, under the brief's
+icon ids, to `apps/quest-tracker/theme/icons/`.
 
-Open [preview.html](preview.html) for the labelled specimen, or view
-[preview.png](preview.png). [manifest.json](manifest.json) maps every icon ID
-to its file and label. [quest-tracker-icons.zip](quest-tracker-icons.zip)
-contains the SVG folders, manifest, this guide and both previews.
+[manifest.json](manifest.json) maps every icon ID to its file and label.
+[preview.html](preview.html), [preview.png](preview.png) and
+[quest-tracker-icons.zip](quest-tracker-icons.zip) show the first delivery
+of 38 icons (2026-10-24). They predate the 2026-10-25 additions and the
+redrawn manual-tick, worth and unknown marks, so the SVGs win where they
+differ.
 
 ## Export specification
 
@@ -24,18 +26,25 @@ contains the SVG folders, manifest, this guide and both previews.
 
 | Folder | Count | Icons |
 |---|---:|---|
-| `reward/` | 15 | Passive point, weapon-set point, spirit, fire/cold/lightning/chaos resistance, life, mana, skill gem, support gem, ascendancy, item/currency, unlock, story-only |
+| `reward/` | 21 | Passive point, weapon-set point, spirit, fire/cold/lightning/chaos/all-elemental resistance, life, mana, attribute, charm, flask, defences, other permanent stat, skill gem, support gem, ascendancy, item/currency, unlock, story-only |
 | `status/` | 6 | Locked, available, in-progress, done, skipped, unknown |
 | `worth/` | 3 | Full (worth it), half (optional), none (not worth it) |
-| `ui/` | 14 | Four chevrons, collapse, expand, settings, close, edit, click-through, external-link, character, refresh, manual-tick |
+| `ui/` | 16 | Four chevrons, collapse, expand, settings, close, edit, click-through, external-link, character, refresh, manual-tick, check, warning |
 
 The four chevrons are directional variants of one mark. Collapse and expand
 are separate exports. Manual-tick is the manual-detection marker named in the
-brief's component table. Refresh also serves the Reset action.
+brief's component table: an eye with a slash ("the log can't see this"),
+redrawn on 2026-10-25 so it no longer looks like a checkbox. Refresh also
+serves the Reset action. Check marks a completed step (toasts, undo);
+warning marks errors and an idle log.
 
 Statuses have distinct shapes: pointed lock, open exclamation frame,
-hourglass, framed check, struck arrow, and question diamond. Worth levels use
-a full star, half star, and diamond with a dash. Colour is supplementary.
+hourglass, framed check, struck arrow, and question diamond (with a bolder
+"?" since 2026-10-25). Worth levels use a solid star, an outline star and a
+plain dash; the half star and the dash in a diamond were dropped because
+they read too close to the solid star and to the unknown diamond at 16 px.
+Colour is supplementary. "Other permanent stat" uses an octagon for the same
+reason.
 
 ## Art references
 
