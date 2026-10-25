@@ -51,16 +51,20 @@ Not observed in that log (measured 2026-10-24, a negative, not proof of
 absence): any line naming a quest, its start, a step or its completion; any
 line marking character select; the dialogue window's text.
 
-A new character's first area (measured 2026-10-25, the research note's
-"Character detection"): every one of the log's 12 entries to The Riverbank
-(`G1_1`) is generated at area level 1. Eight are followed in the same
-session by a level-up to level 2, 23 to 110 lines later and with no other
-level-up between, from a name never seen joining or leaving the area; the
-other four by a session marker first. No line between the entry and that
-level-up names the character, so a level-1 `G1_1` entry marks a new
-character whose name is learned only from its first level-up. An existing
-character entering `G1_1` again was not observed (not proof that it never
-happens).
+The Riverbank (`G1_1`) and new characters (measured 2026-10-25, the research
+note's "Character detection"): every one of the log's 12 entries to
+The Riverbank is generated at area level 1. Level 1 is that area's level,
+not a sign of a new character. Eight entries, one per character, are
+followed in the same session by that character's first level-up to level 2,
+23 to 110 lines later. The other four re-generate one instance (one seed) in
+four consecutive sessions, all for the same character and all before its
+first level-up, which followed its fifth entry to that instance (one of the
+eight): a relog inside The Riverbank generates `G1_1` again, so an existing
+character re-entering `G1_1` was observed, four times. In those four
+sessions a `[WARN] Character <name> has unknown build of path: None` line
+named the character within 2 s of the entry; in the eight others no line but
+the character's own chat named it before the level-up. A `G1_1` entry alone
+therefore does not tell a new character from a relog.
 
 Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): in
 Clearfell Encampment (`G1_town`), all 44 distinct lines logged from Una,
