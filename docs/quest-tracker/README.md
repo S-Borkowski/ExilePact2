@@ -158,16 +158,22 @@ log. The lines to look for when a quest did not advance:
   new character has no name yet.
 - What happened to the new character from The Riverbank ("How detection
   works"), written for catch-up lines as well as live ones, so a pin given
-  up or kept while catching up is explained too:
-  - `character: a new character (The Riverbank)` when a level-1 entry to
-    The Riverbank starts one, and
-    `character: the new character resumed (The Riverbank)` when an entry
-    to the same instance resumes a parked one; either is followed by
-    `character: pin on <name> released for the new character` when it
-    released a pin;
+  up or kept while catching up is explained too. A level-1 entry to The
+  Riverbank writes nothing itself: it opens a 5 s relog window, and these
+  lines are written from what the window decides when it closes:
+  - `character: a new character (The Riverbank)` when the relog window
+    closes without a relog and a new character starts, and
+    `character: the new character resumed (The Riverbank)` when it closes
+    on an entry to the same instance as a parked one; either is followed
+    by `character: pin on <name> released for the new character` when it
+    released a pin. They come when the next line closes the window, or,
+    on a quiet log, when the overlay's clock does: up to about 7 s after
+    the entry (5 s, the log's one-second resolution and one 250 ms worker
+    tick);
   - `character: <name> relogged in The Riverbank, kept` when the character
     build line named a stored character in time: a relog, not a new
-    character;
+    character. A relog writes only this line: no new-character, pin or
+    resumed line comes before or after it;
   - `character: the new character parked at a session start` (with `, pin
     on <name> restored` when it gave a pin back);
   - `character: a parked new character replaced by another instance of The
@@ -336,24 +342,34 @@ character from The Riverbank holds the pin it released (below).
 The Riverbank (`G1_1`), an area of level 1. The area's level says nothing
 about the character, and a character relogging inside The Riverbank enters
 `G1_1` again, with the same instance (the same seed), so the entry alone
-cannot tell a new character from a relog. An entry to `G1_1` at area level
-1 starts a *new character* for the session, with no pick: the session's
-events go to it at once, so Act 1 progress shows from the first step. Until
-something names it, the header shows "New character" at level 1, and it is
-not in the character picker. If a character was pinned, the entry releases
-the pin (the diagnostic log says so).
+cannot tell a new character from a relog. So an entry to `G1_1` at area
+level 1 first opens a *relog window* of 5 s and changes nothing else: the
+active character and the pin stay, nothing is written, and the events that
+come meanwhile wait. The window closes on the first of a character build
+line that makes the entry a relog (below), another area entry, any line
+more than 5 s after the entry, a level-up, a session marker, or, on a quiet
+log, the overlay's clock passing 5 s of log time after the entry (so the
+decision comes at most about 7 s after the entry). Only when it closes
+without a relog does the entry start a *new character* for the session,
+with no pick: the window's events go to it, so Act 1 progress shows from
+the first step. Until something names it, the header shows "New character"
+at level 1, and it is not in the character picker. If a character was
+pinned, the pin is released then, not at the entry (the diagnostic log
+says so).
 
 - **A relog.** When the client's character build line (`Character <name>
   has unknown build of path: None`) comes no more than 5 s after that
   entry, before any other area entry, and names a character the tracker
-  already stores, the entry was a relog: the new character closes as if it
-  never started, the released pin comes back, that character is active
-  again, and the events the entry took go where they would have gone with
-  that pin and that character (`character: <name> relogged in The
-  Riverbank, kept`). The line is read only for this: an unknown name, or
-  the line coming later, changes nothing, and the new character stays open
-  until its level-up. The client wrote that line on some relogs and not
-  on others, so a relog without it still starts a new character (Known
+  already stores, the entry was a relog: the relog window closes having
+  changed nothing, so no new character starts and no pin is released;
+  that character is active, and the events of the window go where they
+  would have gone with the pin and that character (`character: <name>
+  relogged in The Riverbank, kept`, the only line written). A relog never
+  shows "New character". The line is read only for this: an unknown name,
+  or the line coming later, changes nothing, and the window then decides
+  as above, starting a new character that stays open until its level-up.
+  The client wrote that line on some relogs and not on others, so a relog
+  without it still starts a new character once the window closes (Known
   limitations).
 - **Named.** The first level-up after the entry, from a name not seen
   joining or leaving the area, names it: that name becomes your character,
@@ -664,8 +680,9 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   and counted in the status line. Switching characters within a session is
   noticed only at the new character's first reward or level-up. Pin the
   character in the picker when this matters. A brand-new character is the
-  exception: its entry to The Riverbank (an area of level 1) starts it at
-  once. The entry alone cannot tell a new character from one re-entering
+  exception: its entry to The Riverbank (an area of level 1) starts it as
+  soon as the 5 s relog window after the entry closes without a relog
+  (How detection works). The entry alone cannot tell a new character from one re-entering
   The Riverbank, so a relog is recognised only when the client's character
   build line names a stored character within 5 s of the entry. That rule
   rests on one player's log: the line came on 4 sessions' relogs of one
@@ -812,12 +829,14 @@ Revisit this feature when:
   `QUEST_TRACKER_DIR`); on start the current area is read back from the
   log before that position (How detection works).
 - A new character is picked up when it enters The Riverbank, with no
-  pick: Act 1 progress shows at once under "New character", and its first
-  level-up names it and stores it. A pinned character's pin passes to the
-  new one. A relog into The Riverbank is told apart when the client's
-  character build line names a stored character within 5 s of the entry:
-  that character and its pin are kept (Known limitations says when it is
-  not told apart).
+  pick: once the 5 s relog window after the entry closes without a relog
+  (at most about 7 s after the entry on a quiet log), Act 1 progress shows
+  under "New character", and its first level-up names it and stores it. A
+  pinned character's pin passes to the new one then, not at the entry. A
+  relog into The Riverbank is told apart when the client's character build
+  line names a stored character within that window: that character and
+  its pin are kept, nothing else changes, and "New character" never shows
+  (Known limitations says when it is not told apart).
 - The unnamed new character is saved in `new-character.json`: a relaunch
   of the overlay mid-session shows it again with its rows, a game restart
   parks it (and gives a released pin back), and a later entry to the same

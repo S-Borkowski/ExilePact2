@@ -353,8 +353,9 @@ session and never written anywhere. The new character from The Riverbank
 session's events go to it, and a pin its entry released waits for it.
 
 From the Riverbank counts (again a design choice resting on them, not a
-measurement): a level-1 `G1_1` entry starts a new, unnamed character, and
-its events go to it instead of the hold, so Act 1 progress shows at once;
+measurement): a level-1 `G1_1` entry starts a new, unnamed character once
+the relog window below closes without a relog, and its events go to it
+instead of the hold, so Act 1 progress shows within seconds;
 it is never listed among the characters. The first level-up after it,
 from a name not excluded as a party member, names it: that name becomes
 own and active with no pick, takes the progress and is stored. The entry
@@ -365,15 +366,25 @@ new character.
 The relog rule (a design choice, the owner's of 2026-10-25, resting on the
 27 lines and the four sessions above): the `[WARN] Character <name> has
 unknown build of path: None` line is read, in that exact shape only, as a
-character's name. While the new character is open and unnamed, such a
-line no more than 5 s after the `G1_1` entry that opened it, before any
-other area entry, naming a character the tracker already stores, makes
-the entry a relog: the new character closes as if it never opened, the
-released pin comes back, that character is active again, and the events
-the state took go where routing would have sent them. Any other such line
-changes nothing; the 5 s bound is the measured 1 to 2 s with room to
-spare. Because the line came for one character only, its absence proves
-nothing: a relog without it still starts the new character.
+character's name. Because that line comes after the entry, the tracker
+waits before it decides (the owner's choice after launch 7, "wait, then
+decide"): a level-1 `G1_1` entry opens a relog window of 5 s and changes
+nothing else, with no note, the pin and the active character kept, and
+the window's events waiting. Such a line no more than 5 s after the entry,
+before any other area entry, naming a character the tracker already
+stores, makes the entry a relog: the window closes having changed nothing,
+no new character starts and no pin is released, that character is active,
+and the window's events go where routing sends them. Any other such line
+changes nothing. The window otherwise closes on another area entry, a
+line more than 5 s after the entry, a level-up, a session marker, or, on
+a quiet log, the overlay's clock passing 5 s of log time after the entry
+(at most about 7 s, with the log's one-second resolution and the worker's
+tick); only then does the entry start (or resume) the new character and
+release a pin. So a relog never shows a new character, even for a
+moment. The 5 s bound is the measured 1 to 2 s with room to spare; a
+2 s window was rejected for having none. Because the line came for one
+character only, its absence proves nothing: a relog without it still
+starts the new character once the window closes.
 
 The measured relogs were of a character with no level-up yet, so no name
 was stored for the rule to match. For that case the unnamed new character
