@@ -197,7 +197,8 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Reaching_Clearfell",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early."
+      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early.",
+      "done_inferred": true
     },
     {
       "id": "treacherous-ground",
@@ -386,7 +387,8 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Secrets_in_the_Dark",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Bringing the runes to Renly, taking the spikes and both talks with Una happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King."
+      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Bringing the runes to Renly, taking the spikes and both talks with Una happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King.",
+      "done_inferred": true
     },
     {
       "id": "the-mysterious-shade",
@@ -941,7 +943,8 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/The_Mad_Wolf_of_Ogham",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) when the character first enters Vastiri Outskirts (G2_1), which the story opens only after the Count falls."
+      "notes": "Done (inferred) when the character first enters Vastiri Outskirts (G2_1), which the story opens only after the Count falls.",
+      "done_inferred": true
     },
     {
       "id": "the-hunt-begins",
@@ -2857,8 +2860,8 @@
         },
         {
           "id": "use",
-          "title": "Use the item it dropped",
-          "text": "Blackjaw leaves an item behind when he dies. Use it: the Fire Resistance is granted then, not at the kill.",
+          "title": "Use any item left after the fight",
+          "text": "The Fire Resistance line came 5 to 21 s after BlackJaw's last line, not with it. Beira's reward comes on using an item she drops; whether Blackjaw drops one is not established. If no reward came at the kill, look for an item to use where he fell.",
           "signals": []
         }
       ],
@@ -5939,8 +5942,8 @@
         },
         {
           "id": "use",
-          "title": "Use the item it dropped",
-          "text": "Lythara leaves an item behind when she dies. Use it: the Spirit is granted then, not at the kill.",
+          "title": "Use any item left after the fight",
+          "text": "The Spirit line came 10 to 15 s after Lythara's last line, not with it. Beira's reward comes on using an item she drops; whether Lythara drops one is not established. If no reward came at the kill, look for an item to use where she fell.",
           "signals": []
         }
       ],

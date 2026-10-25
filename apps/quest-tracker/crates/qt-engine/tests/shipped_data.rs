@@ -14,10 +14,17 @@
 //! is either completed by a later signal the log records, labelled
 //! `inferred`, or left to the player's tick.
 //!
-//! The last one pins the boss quests whose reward line comes only once the
-//! player uses the item the boss dropped (research note "Rewards after a
-//! boss kill"): after the fight the row shows that step next, and the reward
-//! line still finishes the quest.
+//! `boss_reward_shows_use_step_after_fight` pins the boss quests whose reward
+//! line comes some seconds after the fight, not with it (research note
+//! "Rewards after a boss kill"): after the fight the row shows a "Use ..."
+//! step next, and the reward line still finishes the quest. Only Beira's
+//! step says the boss drops an item; for the others that is not established.
+//!
+//! The rest pin what launch 6 found the tests above could not catch: the
+//! town voices' own lines, which `town_talk.txt` never had
+//! (`town_voice_lines_move_no_quest`), the replay that finishes Secrets in the
+//! Dark on the Cemetery entry (`secrets_in_the_dark_done_on_g1_7`), and the
+//! `done_inferred` flag against the notes (`done_inferred_matches_notes`).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -372,8 +379,11 @@ fn town_talk_session_replay() {
     assert_eq!(status(&engine, "treacherous-ground"), Status::Locked);
     assert_eq!(status(&engine, "finding-the-forge"), Status::Available);
 
-    // The visit itself: whatever the person said to whom, the lines up to
-    // leaving the encampment change no quest.
+    // The visit itself. The Live 1 visit logged no NPC line at all, only chat
+    // and client lines (left out of this fixture), so this loop sees no town
+    // voice and cannot fail on one: `town_voice_lines_move_no_quest` replays
+    // the voices' own lines. What it pins is that the visit's entry and scene
+    // lines move no quest before Clearfell.
     let before = engine.quest_states(TOWN_TALK_CHARACTER);
     for l in &lines[town + 1..clearfell] {
         assert!(engine.feed_line(l, false).is_empty(), "{l}");
@@ -453,9 +463,13 @@ fn talk_steps_are_inferred_or_ticks() {
 }
 
 /// The boss quests whose steps end at the fight and whose `done` is the
-/// reward line, which the log records only after the player uses the item
-/// the boss dropped (measured gaps of 5 s to 8 min after the boss's last
-/// line; Beira's at Live 1, by the owner's observation).
+/// reward line, which the log records 5 s to 8 min after the boss's last
+/// line (measured). For Beira that later action was using the item she
+/// dropped (Live 1, by the owner's observation); for the other two it is an
+/// inference from the timing.
+///
+/// Beira is first: the only one whose "Use ..." step may say the boss drops
+/// an item.
 const USE_ITEM_QUESTS: [&str; 3] = [
     "beira-of-the-rotten-pack",
     "blackjaw-the-remnant",
@@ -490,6 +504,22 @@ fn boss_reward_shows_use_step_after_fight() {
         );
         assert!(q.notes.contains("dropped"), "quest {id}: the notes do not say why the step exists");
         assert_eq!(q.detection, Detection::Auto, "quest {id}");
+    }
+    // Only Beira's drop was observed: the others' step says it is not
+    // established, and neither its title nor its text states a drop.
+    let beira_use = data.quest(USE_ITEM_QUESTS[0]).and_then(|q| q.steps.last()).expect("beira");
+    assert!(beira_use.text.contains("leaves an item behind"), "{:?}", beira_use.text);
+    for id in &USE_ITEM_QUESTS[1..] {
+        let last = data.quest(id).and_then(|q| q.steps.last()).expect("use step");
+        for claim in ["leaves an item behind", "is granted then", "item it dropped"] {
+            assert!(
+                !last.title.contains(claim) && !last.text.contains(claim),
+                "quest {id}: the use step states a drop ({claim:?}): {:?} / {:?}",
+                last.title,
+                last.text
+            );
+        }
+        assert!(last.text.contains("not established"), "quest {id}: {:?}", last.text);
     }
 
     // Beira in the act 1 fixture session, fed through the engine over the
@@ -531,4 +561,209 @@ fn boss_reward_shows_use_step_after_fight() {
     // Target: the reward line, which comes once the item is used, finishes it.
     engine.feed_line(&lines[reward], false);
     assert_eq!(engine.status(ACT1_CHARACTER, "beira-of-the-rotten-pack"), Some(Status::Done));
+}
+
+/// The invented character of `fixtures/sessions/town_voices.txt`.
+const TOWN_VOICES_CHARACTER: &str = "Odile_Brackwater";
+
+/// The town voices `town_voices.txt` quotes: the vendor and gambling lines
+/// the owner's log recorded most often from them in Clearfell Encampment
+/// (research note "Town dialogue").
+const QUOTED_VOICES: [&str; 3] = ["Una", "Finn", "Renly"];
+
+/// A visit to Clearfell Encampment in which Renly, Finn and Una speak, in
+/// the shapes the owner's log recorded. The speakers are not on the shipped
+/// allowlist, so across those lines no quest moves.
+#[test]
+fn town_voice_lines_move_no_quest() {
+    let data = Arc::new(data());
+    let lines = session("town_voices.txt");
+    let town = entry_of(&lines, "G1_town");
+    let clearfell = entry_of(&lines, "G1_2");
+    let visit = &lines[town + 1..clearfell];
+
+    // Positive control: with an allowlist that names the town voices, the
+    // parser reads the visit's voice lines as NPC lines, each of the three
+    // at least once, so the loop below does go over real voice lines.
+    let voices = qt_logline::Allowlist::new(QUOTED_VOICES, Vec::<String>::new());
+    let mut heard: BTreeMap<String, usize> = BTreeMap::new();
+    for l in visit {
+        if let Some(qt_logline::Event {
+            kind: qt_logline::EventKind::NpcLine { speaker, .. },
+            ..
+        }) = qt_logline::parse_line(l, &voices)
+        {
+            *heard.entry(speaker).or_default() += 1;
+        }
+    }
+    for voice in QUOTED_VOICES {
+        assert!(heard.get(voice).is_some_and(|n| *n >= 1), "{voice} never speaks: {heard:?}");
+    }
+    assert_eq!(heard.values().sum::<usize>(), 6, "{heard:?}");
+
+    // Negative control: the shipped allowlist reads none of them.
+    let shipped = qt_logline::Allowlist::new(data.npcs.clone(), data.system_lines.clone());
+    for l in visit {
+        let kind = qt_logline::parse_line(l, &shipped).map(|e| e.kind);
+        assert!(
+            !matches!(kind, Some(qt_logline::EventKind::NpcLine { .. })),
+            "the shipped allowlist reads {l:?} as {kind:?}"
+        );
+    }
+
+    // Target: fed through the engine over the shipped data, the voices
+    // change no quest state and give no transition.
+    let mut engine = Engine::new(Arc::clone(&data));
+    for l in &lines[..=town] {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(engine.active(), Some(TOWN_VOICES_CHARACTER));
+    let before = engine.quest_states(TOWN_VOICES_CHARACTER);
+    for l in visit {
+        let moved = engine.feed_line(l, false);
+        assert!(moved.is_empty(), "{l}: {moved:?}");
+    }
+    assert_eq!(engine.quest_states(TOWN_VOICES_CHARACTER), before);
+
+    // And the session still moves quests where the log does record a signal:
+    // entering Clearfell finishes Reaching Clearfell.
+    for l in &lines[clearfell..] {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(
+        engine.status(TOWN_VOICES_CHARACTER, "reaching-clearfell"),
+        Some(Status::Done)
+    );
+}
+
+/// An area entry in the shape the log writes it, for a session built in the
+/// test (the client prints the level and seed with the code).
+fn entry_lines(clock: &mut u32, code: &str, level: u32, seed: u64, name: &str) -> Vec<String> {
+    *clock += 60;
+    let t = stamp(*clock);
+    vec![
+        format!("{t} [INFO Client 6200] Connecting to instance server"),
+        format!("{t} [DEBUG Client 6200] Generating level {level} area \"{code}\" with seed {seed}"),
+        format!("{t} [INFO Client 6200] [SCENE] Set Source [(null)]"),
+        format!("{t} [INFO Client 6200] [SCENE] Set Source [{name}]"),
+    ]
+}
+
+fn stamp(seconds: u32) -> String {
+    let (h, m, s) = (20 + seconds / 3600, seconds / 60 % 60, seconds % 60);
+    format!("2026/03/22 {h:02}:{m:02}:{s:02} {} 8f3d{seconds:04x}", 5_000_000 + seconds * 1000)
+}
+
+/// The invented character of the Secrets in the Dark replay.
+const SECRETS_CHARACTER: &str = "Ysolde_Marrow";
+
+/// Secrets in the Dark is done on entering the Cemetery of the Eternals
+/// (`G1_7`), inferred (its notes, `done_inferred`): an engine replay over the
+/// shipped data of an Act 1 route in the order every own character in the
+/// owner's log took it. The Grim Tangle (`G1_6`) before it implies nothing.
+#[test]
+fn secrets_in_the_dark_done_on_g1_7() {
+    let data = Arc::new(data());
+    let mut clock = 0;
+    let mut lines = vec![format!("{} ***** LOG FILE OPENING *****", &stamp(clock)[..19])];
+    lines.extend(entry_lines(&mut clock, "G1_1", 1, 1_414_213_562, "The Riverbank"));
+    clock += 200;
+    lines.push(format!(
+        "{} [INFO Client 6200] : {SECRETS_CHARACTER} (Ranger) is now level 2",
+        stamp(clock)
+    ));
+    for (code, level, seed, name) in [
+        ("G1_town", 15, 1, "Clearfell Encampment"),
+        ("G1_2", 2, 1_732_050_807, "Clearfell"),
+        ("G1_town", 15, 1, "Clearfell Encampment"),
+        ("G1_4", 4, 2_645_751_311, "The Grelwood"),
+        ("G1_5", 6, 3_162_277_660, "The Red Vale"),
+    ] {
+        lines.extend(entry_lines(&mut clock, code, level, seed, name));
+    }
+    clock += 90;
+    lines.push(format!("{} [INFO Client 6200] The Rust King: For the clan!", stamp(clock)));
+    for (code, level, seed, name) in [
+        ("G1_town", 15, 1, "Clearfell Encampment"),
+        ("G1_6", 7, 3_316_624_790, "The Grim Tangle"),
+    ] {
+        lines.extend(entry_lines(&mut clock, code, level, seed, name));
+    }
+    let cemetery = entry_lines(&mut clock, "G1_7", 8, 3_605_551_275, "Cemetery of the Eternals");
+
+    let mut engine = Engine::new(Arc::clone(&data));
+    for l in &lines {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(engine.active(), Some(SECRETS_CHARACTER));
+
+    // Baseline: after the Rust King and the Grim Tangle the quest is still in
+    // progress at the boss, the talks with Renly and Una after him unseen.
+    let state = engine
+        .quest_state(SECRETS_CHARACTER, "secrets-in-the-dark")
+        .expect("state");
+    assert_eq!(state.status, Status::InProgress);
+    assert_eq!(state.current_step.as_deref(), Some("step-19"));
+
+    // Target: the Cemetery entry finishes it, with a transition to done.
+    let mut moved = Vec::new();
+    for l in &cemetery {
+        moved.extend(engine.feed_line(l, false));
+    }
+    assert_eq!(
+        engine.status(SECRETS_CHARACTER, "secrets-in-the-dark"),
+        Some(Status::Done)
+    );
+    assert!(
+        moved
+            .iter()
+            .any(|t| t.quest_id == "secrets-in-the-dark" && t.to == Status::Done),
+        "no transition to done: {moved:?}"
+    );
+    // The data says the done is inferred, so the panel can say so.
+    assert!(data.quest("secrets-in-the-dark").expect("quest").done_inferred);
+}
+
+/// The phrase a quest's notes open its inferred done with.
+const INFERRED_DONE: &str = "Done (inferred)";
+
+/// `done_inferred` is set on exactly the quests whose notes call their done
+/// inferred, and on none whose done is a reward or points line (the quest's
+/// own signal).
+#[test]
+fn done_inferred_matches_notes() {
+    let data = data();
+    let mut flagged = BTreeSet::new();
+    for q in &data.quests {
+        let said = q.notes.contains(INFERRED_DONE);
+        assert_eq!(
+            q.done_inferred, said,
+            "quest {}: done_inferred {} but the notes {} call its done inferred",
+            q.id,
+            q.done_inferred,
+            if said { "do" } else { "do not" }
+        );
+        if q.done_inferred {
+            flagged.insert(q.id.as_str());
+            assert!(
+                !q.done.is_empty()
+                    && q.done
+                        .iter()
+                        .all(|s| !matches!(s, Signal::Reward { .. } | Signal::Points { .. })),
+                "quest {}: inferred, but its done is its own reward line: {:?}",
+                q.id,
+                q.done
+            );
+        }
+    }
+    // The three Context names, so the match above is not vacuous.
+    assert_eq!(
+        flagged,
+        BTreeSet::from(["reaching-clearfell", "secrets-in-the-dark", "the-mad-wolf-of-ogham"])
+    );
+    // Negative control: a boss quest whose notes infer a step, not the done
+    // (its done is the reward line), carries no flag.
+    let blackjaw = data.quest("blackjaw-the-remnant").expect("blackjaw");
+    assert!(blackjaw.notes.contains("inferred"), "{:?}", blackjaw.notes);
+    assert!(!blackjaw.done_inferred);
 }
