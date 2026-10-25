@@ -5,7 +5,8 @@
 //!
 //! `src-tauri` is glue around this crate: it implements [`Emitter`] (the
 //! `qt:view` and `qt:toast` events) and [`Window`] (click-through, zoom,
-//! placement, the global shortcut, opening a link) and forwards each IPC
+//! placement, the global shortcut, opening a link, the monitor's metrics
+//! for the `auto` scale) and forwards each IPC
 //! command to the [`App`] method of the same name. Keeping the logic here
 //! means it tests with a fake emitter, clock and window, without a WebView
 //! or a built UI.
@@ -28,7 +29,7 @@ use std::sync::Arc;
 use qt_engine::QuestData;
 
 pub use app::{
-    scale_factor, App, AppConfig, Clock, Emitter, Placement, SystemClock, Window,
+    scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, SystemClock, Window,
     SAVE_INTERVAL_MS, SHUTDOWN_TIMEOUT, WORKER_TICK,
 };
 pub use cli::Options;

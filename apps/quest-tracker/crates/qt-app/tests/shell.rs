@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 use qt_app::cli::{self, Options};
 use qt_app::discover::{self, LogSource};
-use qt_app::{App, AppConfig, Clock, Emitter, Placement, Window};
+use qt_app::{App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, Window};
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
@@ -76,6 +76,8 @@ impl Emitter for FakeEmitter {
 struct WindowLog {
     calls: Mutex<Vec<String>>,
     hotkey_fails: AtomicBool,
+    /// The monitor the fake window reports; `None` is no monitor.
+    monitor: Mutex<Option<MonitorMetrics>>,
 }
 
 impl WindowLog {
@@ -121,6 +123,10 @@ impl Window for FakeWindow {
     fn open_url(&self, url: &str) -> Result<(), String> {
         self.0.calls.lock().unwrap().push(format!("open {url}"));
         Ok(())
+    }
+
+    fn monitor(&self) -> Result<Option<MonitorMetrics>, String> {
+        Ok(*self.0.monitor.lock().unwrap())
     }
 }
 
@@ -177,6 +183,8 @@ struct Setup {
     options: Options,
     candidates: Vec<PathBuf>,
     hotkey_fails: bool,
+    /// The monitor the window reports; `None` is no monitor.
+    monitor: Option<MonitorMetrics>,
     /// Files to write before the app starts: (relative path, content).
     files: Vec<(&'static str, String)>,
 }
@@ -187,6 +195,7 @@ impl Default for Setup {
             options: Options::default(),
             candidates: Vec::new(),
             hotkey_fails: false,
+            monitor: None,
             files: Vec::new(),
         }
     }
@@ -203,6 +212,7 @@ fn harness(setup: Setup) -> Harness {
     let views = Arc::new(Recorder::default());
     let window = Arc::new(WindowLog::default());
     window.hotkey_fails.store(setup.hotkey_fails, Ordering::SeqCst);
+    *window.monitor.lock().unwrap() = setup.monitor;
     let clock = Arc::new(AtomicU64::new(100_000));
     let mut options = setup.options;
     options.log = options.log.map(|p| root.join(p));
@@ -650,4 +660,54 @@ fn dock_change_places_the_window() {
         .calls()
         .contains(&format!("place {:?}", Placement::Docked(Dock::Left))));
     assert!(h.stored("settings.json").unwrap().get("window").is_none());
+}
+
+// The `auto` scale is worked out from the window's monitor wherever the
+// shell applies the scale: at start and when the setting changes.
+#[test]
+fn auto_scale_applied_at_start_and_on_change() {
+    fn scales(h: &Harness) -> Vec<String> {
+        h.window
+            .calls()
+            .into_iter()
+            .filter(|c| c.starts_with("scale"))
+            .collect()
+    }
+
+    // Baseline: with no monitor, `auto` (the default) is a zoom of 1.
+    let h = harness(Setup::default());
+    h.app.start();
+    assert_eq!(scales(&h), vec!["scale 1"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // Target: a 2560x1440 monitor at 100% DPI starts at 1.33.
+    let h = harness(Setup {
+        monitor: Some(MonitorMetrics {
+            height: 1440,
+            dpi_scale: 1.0,
+        }),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(scales(&h), vec!["scale 1.33"]);
+    assert!(h.diag_text().contains("scale auto"), "{}", h.diag_text());
+
+    // A fixed setting ignores the monitor; going back to `auto` asks it again.
+    h.app.update_settings(&json!({ "scale": "2" })).unwrap();
+    h.app.update_settings(&json!({ "scale": "1" })).unwrap();
+    *h.window.monitor.lock().unwrap() = Some(MonitorMetrics {
+        height: 2160,
+        dpi_scale: 1.5,
+    });
+    h.app.update_settings(&json!({ "scale": "auto" })).unwrap();
+    assert_eq!(
+        scales(&h),
+        vec!["scale 1.33", "scale 2", "scale 1", "scale 1.33"]
+    );
+
+    // Negative control: a settings change that is not the scale leaves the
+    // zoom alone.
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    assert_eq!(scales(&h).len(), 4);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
 }

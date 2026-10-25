@@ -34,8 +34,8 @@
 use std::sync::{Arc, Mutex};
 
 use qt_app::{
-    App, AppConfig, Dock, Frame, Mode, Options, Placement, QuestAction, Store, SystemClock,
-    Toast, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
+    App, AppConfig, Dock, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, Store,
+    SystemClock, Toast, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
 use tauri::{
@@ -168,6 +168,20 @@ impl qt_app::Window for TauriWindow {
             .opener()
             .open_url(url, None::<&str>)
             .map_err(|e| e.to_string())
+    }
+
+    fn monitor(&self) -> Result<Option<MonitorMetrics>, String> {
+        let w = self.window()?;
+        let monitor = match w.current_monitor().map_err(|e| e.to_string())? {
+            Some(m) => Some(m),
+            None => w.primary_monitor().map_err(|e| e.to_string())?,
+        };
+        // `size()` is in physical pixels; `scale_factor()` is Windows' DPI
+        // scale for that monitor, which the webview already applies.
+        Ok(monitor.map(|m| MonitorMetrics {
+            height: m.size().height,
+            dpi_scale: m.scale_factor(),
+        }))
     }
 }
 

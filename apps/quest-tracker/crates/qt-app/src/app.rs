@@ -83,6 +83,18 @@ pub trait Window: Send + Sync + 'static {
     fn register_hotkey(&self, hotkey: &str) -> Result<(), String>;
     /// Opens `url` in the user's default browser.
     fn open_url(&self, url: &str) -> Result<(), String>;
+    /// The monitor the window is on, for the `auto` scale; `None` when the
+    /// window has no monitor.
+    fn monitor(&self) -> Result<Option<MonitorMetrics>, String>;
+}
+
+/// What the `auto` scale reads from the window's monitor.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MonitorMetrics {
+    /// The monitor's height in physical pixels.
+    pub height: u32,
+    /// Windows' DPI scale for the monitor: 1 at 100%, 1.5 at 150%.
+    pub dpi_scale: f64,
 }
 
 /// Milliseconds on a monotonic clock, for the debounce and the toasts.
@@ -106,14 +118,36 @@ impl Clock for SystemClock {
     }
 }
 
-/// The webview zoom for a `scale` setting. `auto` is 1: Tauri already
-/// follows the monitor's DPI.
-pub fn scale_factor(scale: Scale) -> f64 {
+/// The webview zoom for a `scale` setting on `monitor`. `1`, `1.33` and `2`
+/// are what they say. `auto` targets 1 below 1440 physical pixels of
+/// monitor height, 1.33 from 1440 and 2 from 2160, divided by the monitor's
+/// DPI scale (the webview already applies that), rounded to hundredths and
+/// never below 1, so Auto never shrinks the panel under what Windows' own
+/// DPI setting gives. With no monitor, `auto` is 1.
+pub fn scale_factor(scale: Scale, monitor: Option<MonitorMetrics>) -> f64 {
     match scale {
-        Scale::Auto | Scale::X1 => 1.0,
+        Scale::Auto => monitor.map_or(1.0, auto_zoom),
+        Scale::X1 => 1.0,
         Scale::X133 => 1.33,
         Scale::X2 => 2.0,
     }
+}
+
+fn auto_zoom(m: MonitorMetrics) -> f64 {
+    let target = if m.height >= 2160 {
+        2.0
+    } else if m.height >= 1440 {
+        1.33
+    } else {
+        1.0
+    };
+    // A DPI scale that is not one (zero, negative, NaN) divides nothing out.
+    let dpi = if m.dpi_scale.is_finite() && m.dpi_scale > 0.0 {
+        m.dpi_scale
+    } else {
+        1.0
+    };
+    ((target / dpi * 100.0).round() / 100.0).max(1.0)
 }
 
 /// The status line's remedy when the shortcut fails at launch: with no
@@ -521,7 +555,12 @@ impl App {
         if let Err(e) = self.window.set_click_through(mode == Mode::Play) {
             self.window_error("click-through", &e);
         }
-        if let Err(e) = self.window.set_scale(scale_factor(scale)) {
+        let monitor = if scale == Scale::Auto {
+            self.read_monitor()
+        } else {
+            None
+        };
+        if let Err(e) = self.window.set_scale(self.zoom(scale, monitor)) {
             self.window_error("scale", &e);
         }
         if let Err(e) = self.window.place(placement) {
@@ -598,6 +637,34 @@ impl App {
         if let Some(s) = &self.store {
             let _ = s.diag().write(message);
         }
+    }
+
+    /// The window's monitor, for the `auto` scale. Called with no lock held:
+    /// Tauri answers it on the main thread. A failed read is logged and
+    /// counts as no monitor.
+    fn read_monitor(&self) -> Option<MonitorMetrics> {
+        match self.window.monitor() {
+            Ok(m) => m,
+            Err(e) => {
+                self.diag(&format!("error: window monitor: {e}"));
+                None
+            }
+        }
+    }
+
+    /// The zoom for `scale` on `monitor`; logs what `auto` chose from.
+    fn zoom(&self, scale: Scale, monitor: Option<MonitorMetrics>) -> f64 {
+        let zoom = scale_factor(scale, monitor);
+        if scale == Scale::Auto {
+            self.diag(&match monitor {
+                Some(m) => format!(
+                    "scale auto: monitor {} px high at DPI scale {} -> zoom {zoom}",
+                    m.height, m.dpi_scale
+                ),
+                None => format!("scale auto: no monitor -> zoom {zoom}"),
+            });
+        }
+        zoom
     }
 
     // -- the worker ----------------------------------------------------------
@@ -842,15 +909,21 @@ impl App {
 
     /// `update_settings`: applies a patch of settings fields. The scale goes
     /// to the window at once; a new dock side, shortcut or log path is
-    /// applied after the lock is released.
+    /// applied after the lock is released. A patch that names the scale has
+    /// the monitor read first, before the lock, for `auto`.
     pub fn update_settings(&self, patch: &Value) -> Result<View, String> {
+        let monitor = if patch.get("scale").is_some() {
+            self.read_monitor()
+        } else {
+            None
+        };
         self.command("update_settings", |app, st| {
             let new = st.settings.patched(patch)?;
             let old = std::mem::replace(&mut st.settings, new.clone());
             st.dirty = true;
             let mut after = After::default();
             if new.scale != old.scale {
-                if let Err(e) = app.window.set_scale(scale_factor(new.scale)) {
+                if let Err(e) = app.window.set_scale(app.zoom(new.scale, monitor)) {
                     app.diag(&format!("error: window scale: {e}"));
                 }
             }
@@ -1300,6 +1373,9 @@ mod tests {
         fn open_url(&self, _: &str) -> Result<(), String> {
             Ok(())
         }
+        fn monitor(&self) -> Result<Option<MonitorMetrics>, String> {
+            Ok(None)
+        }
     }
 
     struct ZeroClock;
@@ -1352,5 +1428,56 @@ mod tests {
         assert_eq!(status.kind, StatusKind::Error);
         assert!(status.text.contains("Ctrl+Alt+Q"), "{}", status.text);
         assert!(status.text.contains("stays in edit mode"), "{}", status.text);
+    }
+
+    fn at(height: u32, dpi_scale: f64) -> Option<MonitorMetrics> {
+        Some(MonitorMetrics { height, dpi_scale })
+    }
+
+    #[test]
+    fn auto_scale_by_monitor_height() {
+        // At 100% DPI the target is the zoom: 1 below 1440, 1.33 from 1440,
+        // 2 from 2160 physical pixels.
+        for (height, zoom) in [
+            (1080, 1.0),
+            (1439, 1.0),
+            (1440, 1.33),
+            (1600, 1.33),
+            (2159, 1.33),
+            (2160, 2.0),
+            (2880, 2.0),
+        ] {
+            assert_eq!(scale_factor(Scale::Auto, at(height, 1.0)), zoom, "{height}");
+        }
+        // Negative control: a fixed setting ignores the monitor.
+        assert_eq!(scale_factor(Scale::X1, at(2160, 1.0)), 1.0);
+        assert_eq!(scale_factor(Scale::X133, at(1080, 1.0)), 1.33);
+        assert_eq!(scale_factor(Scale::X2, at(1080, 1.0)), 2.0);
+        assert_eq!(scale_factor(Scale::X2, None), 2.0);
+    }
+
+    #[test]
+    fn auto_scale_divides_out_dpi() {
+        // The webview already applies Windows' DPI scale, so Auto adds only
+        // what is missing: a 4K screen at 150% gets 1.33, not 2 on top of
+        // 1.5; at 125% it gets 1.6.
+        assert_eq!(scale_factor(Scale::Auto, at(2160, 1.5)), 1.33);
+        assert_eq!(scale_factor(Scale::Auto, at(2160, 1.25)), 1.6);
+        assert_eq!(scale_factor(Scale::Auto, at(1440, 1.25)), 1.06);
+        assert_eq!(scale_factor(Scale::Auto, at(2160, 2.0)), 1.0);
+    }
+
+    #[test]
+    fn auto_scale_never_below_one() {
+        // Auto never shrinks the panel under what the DPI setting gives.
+        assert_eq!(scale_factor(Scale::Auto, at(1080, 1.5)), 1.0);
+        assert_eq!(scale_factor(Scale::Auto, at(1440, 1.5)), 1.0);
+        assert_eq!(scale_factor(Scale::Auto, at(2160, 2.5)), 1.0);
+        // No monitor, or a DPI scale that is not a scale: zoom 1, or the
+        // height rule alone.
+        assert_eq!(scale_factor(Scale::Auto, None), 1.0);
+        assert_eq!(scale_factor(Scale::Auto, at(1440, 0.0)), 1.33);
+        assert_eq!(scale_factor(Scale::Auto, at(1440, f64::NAN)), 1.33);
+        assert_eq!(scale_factor(Scale::Auto, at(0, 1.0)), 1.0);
     }
 }
