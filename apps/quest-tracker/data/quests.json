@@ -191,13 +191,13 @@
         }
       ],
       "unlock": [{"kind": "area", "code": "G1_1"}],
-      "done": [],
-      "window_closes": [{"kind": "area", "code": "G2_town"}],
-      "detection": "partial",
-      "evidence": "static",
+      "done": [{"kind": "area", "code": "G1_2"}],
+      "window_closes": [],
+      "detection": "auto",
+      "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Reaching_Clearfell",
       "fetched": "2026-10-25",
-      "notes": ""
+      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early."
     },
     {
       "id": "treacherous-ground",
@@ -251,7 +251,7 @@
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/Treacherous_Ground",
       "fetched": "2026-10-25",
-      "notes": ""
+      "notes": "The reward talk with Renly is not recorded in the log, and nothing later implies it: tick it."
     },
     {
       "id": "secrets-in-the-dark",
@@ -380,13 +380,13 @@
         }
       ],
       "unlock": [{"kind": "quest", "id": "reaching-clearfell", "status": "done"}, {"kind": "area", "code": "G1_4"}],
-      "done": [],
-      "window_closes": [{"kind": "area", "code": "G2_town"}],
-      "detection": "partial",
-      "evidence": "static",
+      "done": [{"kind": "area", "code": "G1_7"}],
+      "window_closes": [],
+      "detection": "auto",
+      "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Secrets_in_the_Dark",
       "fetched": "2026-10-25",
-      "notes": ""
+      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Bringing the runes to Renly, taking the spikes and both talks with Una happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King."
     },
     {
       "id": "the-mysterious-shade",
@@ -470,7 +470,7 @@
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/The_Mysterious_Shade",
       "fetched": "2026-10-25",
-      "notes": ""
+      "notes": "Bringing the ring to Una is not recorded in the log, and the Hunting Grounds do not imply it: one of the owner's 6 characters went there from the Cemetery without visiting Clearfell Encampment (measured 2026-10-25). Tick it."
     },
     {
       "id": "finding-the-forge",
@@ -515,7 +515,7 @@
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/Finding_the_Forge",
       "fetched": "2026-10-25",
-      "notes": ""
+      "notes": "Talking to Renly is not recorded in the log. Entering Ogham Village moves past the first talk; bringing the tools back is a tick."
     },
     {
       "id": "the-lost-lute",
@@ -872,7 +872,7 @@
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/The_Trail_of_Corruption",
       "fetched": "2026-10-25",
-      "notes": ""
+      "notes": "The talks with Leitis are not recorded in the log, and the Manor does not imply them: 5 of the owner's 6 characters went on to the Manor Ramparts without visiting Clearfell Encampment (measured 2026-10-25). Tick it."
     },
     {
       "id": "the-mad-wolf-of-ogham",
@@ -941,7 +941,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/The_Mad_Wolf_of_Ogham",
       "fetched": "2026-10-25",
-      "notes": "Done when the character first enters Vastiri Outskirts (G2_1), which the story opens only after the Count falls."
+      "notes": "Done (inferred) when the character first enters Vastiri Outskirts (G2_1), which the story opens only after the Count falls."
     },
     {
       "id": "the-hunt-begins",

@@ -1,0 +1,24 @@
+2026/03/20 19:00:00 ***** LOG FILE OPENING *****
+2026/03/20 19:00:01 3001000 6d1b0001 [INFO Client 4410] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/03/20 19:00:09 3009000 6d1b0002 [INFO Client 4410] [SCENE] Set Source [(unknown)]
+2026/03/20 19:02:24 3144000 6d1b0003 [INFO Client 4410] [SCENE] Set Source [(null)]
+2026/03/20 19:02:24 3144020 6d1b0004 [INFO Client 4410] Connecting to instance server
+2026/03/20 19:02:25 3144200 6d1b0005 [DEBUG Client 4410] Generating level 1 area "G1_1" with seed 2718306455
+2026/03/20 19:02:25 3144500 6d1b0006 [INFO Client 4410] [SCENE] Set Source [The Riverbank]
+2026/03/20 19:02:46 3165000 6d1b0007 [INFO Client 4410] Wounded Man: By the First Ones! You're alive!
+2026/03/20 19:04:59 3298000 6d1b0008 [INFO Client 4410] Wounded Man: Reach... Clearfell... Find the Miller...
+2026/03/20 19:06:06 3365000 6d1b0009 [INFO Client 4410] Mortimer: Foundling! We need your strength!
+2026/03/20 19:06:07 3366500 6d1b000a [INFO Client 4410] The Bloated Miller: Saw you in half!
+2026/03/20 19:06:12 3371400 6d1b000b [INFO Client 4410] The Bloated Miller: Split you!
+2026/03/20 19:06:23 3382300 6d1b000c [INFO Client 4410] The Bloated Miller: Die!
+2026/03/20 19:06:41 3400100 6d1b000d [INFO Client 4410] The Bloated Miller: Split you!
+2026/03/20 19:06:49 3408000 6d1b000e [INFO Client 4410] : Maelis_Thornby (Warrior) is now level 2
+2026/03/20 19:06:49 3408100 6d1b000f [INFO Client 4410] Mortimer: Well done! Please come inside.
+2026/03/20 19:07:42 3461000 6d1b0010 [INFO Client 4410] Connecting to instance server
+2026/03/20 19:07:42 3461100 6d1b0011 [DEBUG Client 4410] Generating level 15 area "G1_town" with seed 1
+2026/03/20 19:07:42 3461300 6d1b0012 [INFO Client 4410] [SCENE] Set Source [(null)]
+2026/03/20 19:07:42 3461320 6d1b0013 [INFO Client 4410] [SCENE] Set Source [Clearfell Encampment]
+2026/03/20 19:11:17 3676000 6d1b0014 [INFO Client 4410] Connecting to instance server
+2026/03/20 19:11:17 3676100 6d1b0015 [DEBUG Client 4410] Generating level 2 area "G1_2" with seed 3305871204
+2026/03/20 19:11:17 3676300 6d1b0016 [INFO Client 4410] [SCENE] Set Source [(null)]
+2026/03/20 19:11:17 3676300 6d1b0017 [INFO Client 4410] [SCENE] Set Source [Clearfell]

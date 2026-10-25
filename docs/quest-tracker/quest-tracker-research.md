@@ -180,6 +180,64 @@ the active one. A quest whose steps happen inside a dialogue window or an
 interaction leaves nothing in the log until its reward, and a quest with no
 logged reward and no named area or speaker is manual: the player ticks it.
 
+### Town dialogue
+
+What the log records of talking to the NPCs in a town, measured 2026-10-25
+over the owner's whole log with `quest-tracker-replay scan --speakers` and a
+research script kept outside the repository that splits each town into
+visits (an area entry to the next one). Counted are lines from the town's
+own NPCs; chat, client lines and other players are left out.
+
+| Town | Visits | Visits with an NPC line | NPC lines | Speakers |
+|---|---|---|---|---|
+| Clearfell Encampment (`G1_town`) | 100 | 44 | 140 | Una 51, Finn 49, Renly 34, Mortimer 6 |
+| The Ardura Caravan (`G2_town`) | 103 | 42 | 139 | Zarka, Shambrin, Risu, Balbala |
+| Ziggurat Encampment (`G3_town`) | 77 | 37 | 107 | Servi, Alva, Doryani, Oswald |
+| Kingsmarch (`G4_town`) | 91 | 70 | 353 | Rog, Jacob, the Town Crier, Dannig, Tavakai and others |
+
+- **What the lines are** (measured). All 44 distinct lines of Una, Finn,
+  Renly and Mortimer in Clearfell Encampment are vendor and gambling lines
+  ("Here's what I've got.", "Feelin' lucky?", "I will treasure it.") or
+  Mortimer's farewell warning. None is a quest's talk, and none of the four
+  speakers is on the quest data's speaker allowlist.
+- **Live 1** (measured, `Client.txt` from offset 125256687 to the end of that
+  session, 11:12Z-11:45Z on 2026-10-25). The character was in Clearfell
+  Encampment for one visit, 3 min 35 s, between the level-up to 2 and the
+  entry to Clearfell, and the person talked to the NPCs there. The log
+  recorded no NPC line in that visit: only chat and client lines. The talk
+  happened in dialogue windows, whose text was not observed in the log (see
+  "What poe2db step text matches"). This is one visit: "not observed", not
+  "never logged".
+- **Consequence for the data.** A talk step cannot have a signal of its own.
+  A town NPC's greeting is not evidence of a quest talk, so none is a step
+  signal. A talk step is completed by the next signal the log records that
+  the game produces only after it, where poe2db's step order or every own
+  character's history in the log supports that order; the quest's `notes`
+  then say `inferred` and why. Otherwise the step stays a tick.
+- **Orders measured for Act 1** (2026-10-25, the own characters that started
+  at The Riverbank; 7 reached Clearfell, 6 went on to the Cemetery):
+  - Every one entered Clearfell Encampment before Clearfell (`G1_2`) and
+    stayed 83 to 363 s on that first visit. Reaching Clearfell (talk to
+    Renly, take his reward) is inferred done on entering Clearfell. A player
+    who leaves without the talk is shown done too early.
+  - Every one entered the Cemetery of the Eternals (`G1_7`) only after The
+    Rust King's lines and a later visit to the encampment; The Mysterious
+    Shade's steps put Una's last talk of Secrets in the Dark before she clears
+    the Grim Tangle's roots. Secrets in the Dark is inferred done on entering
+    the Cemetery. The Grim Tangle (`G1_6`) is no such signal: 3 of the 6
+    entered it before the Rust King.
+  - One of the 6 went from the Cemetery to the Hunting Grounds without a
+    visit to the encampment, so the Hunting Grounds do not imply bringing
+    the ring to Una (The Mysterious Shade stays a tick). 5 of 6 went from the
+    Executioner to the Manor Ramparts without one, so the Manor does not
+    imply the talks with Leitis (The Trail of Corruption stays a tick).
+  - Talk steps followed by a step the log records (Finding the Forge's
+    "Speak to Renly" before Ogham Village, Secrets in the Dark's "Ask Una for
+    help" before the Red Vale) need no change: the engine takes the highest
+    step reached, so the later signal completes them. The reward talks of
+    Treacherous Ground and Finding the Forge have nothing after them and stay
+    ticks.
+
 ## Character detection
 
 All of this is measured on 2026-10-24 unless labelled otherwise.
@@ -267,7 +325,9 @@ own, sourced to the index page.
   reward line, a points line or an area entry in the area the scan counted
   it); `partial` when only its unlock or steps are (area entries, a boss's
   voiced line), so the player ticks the end; `manual` when nothing about it
-  was measured.
+  was measured. "auto (inferred)" in the table marks a completion that is a
+  later area entry standing for steps the log does not record, such as a
+  talk ("Town dialogue" above); the quest's `notes` say why.
 - **Evidence**: `measured` when the completion signal is; `static` when the
   steps and areas come from poe2db's page alone; `not-established` when the
   page has no steps table either, so only the quest's name, act and rewards
@@ -276,22 +336,22 @@ own, sourced to the index page.
   story; `optional` for gems, lasting items and unlocks; `no` for story-only
   or currency-only side content.
 
-Totals: 30 auto, 44 partial, 13 manual; 30 measured, 46 static, 11
+Totals: 32 auto, 42 partial, 13 manual; 32 measured, 44 static, 11
 not-established; 50 worth it, 14 optional, 23 not. No Act 5 quest uses a
 measured signal (see "What poe2db step text matches").
 
 | Act | Quest | Worth | Detection | Evidence |
 |---|---|---|---|---|
-| 1 | Reaching Clearfell | yes | partial | static |
+| 1 | Reaching Clearfell | yes | auto (inferred) | measured |
 | 1 | Treacherous Ground | optional | partial | static |
-| 1 | Secrets in the Dark | yes | partial | static |
+| 1 | Secrets in the Dark | yes | auto (inferred) | measured |
 | 1 | The Mysterious Shade | yes | partial | static |
 | 1 | Finding the Forge | optional | partial | static |
 | 1 | The Lost Lute | yes | auto | measured |
 | 1 | Sorrow Among Stones | yes | partial | static |
 | 1 | Ominous Altars | yes | auto | measured |
 | 1 | The Trail of Corruption | yes | partial | static |
-| 1 | The Mad Wolf of Ogham | yes | auto | measured |
+| 1 | The Mad Wolf of Ogham | yes | auto (inferred) | measured |
 | 1 | The Hunt Begins | no | partial | static |
 | 1 | Blank Runes | optional | manual | not-established |
 | 1 | Cracks in the Earth | optional | manual | not-established |

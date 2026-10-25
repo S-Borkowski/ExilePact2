@@ -50,3 +50,10 @@ Event lines a mod can read, all measured 2026-10-24:
 Not observed in that log (measured 2026-10-24, a negative, not proof of
 absence): any line naming a quest, its start, a step or its completion; any
 line marking character select; the dialogue window's text.
+
+Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): a
+town NPC's logged lines are vendor and greeting lines, never a quest's talk,
+and a 3.5-minute visit to Clearfell Encampment in which the player talked to
+its NPCs recorded no NPC line at all, so a talk in a dialogue window leaves
+nothing in the log (not observed in one visit, not proof that it is never
+logged).

@@ -8,11 +8,19 @@
 //!
 //! Baseline: the empty file the scaffold wrote validates but fails
 //! `campaign_acts_present`. Target: the curated file passes all five.
+//!
+//! The last two pin the talk steps of Act 1 (research note "Town dialogue"):
+//! the log records nothing of a talk in Clearfell Encampment, so a talk step
+//! is either completed by a later signal the log records, labelled
+//! `inferred`, or left to the player's tick.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use qt_engine::{Detection, Evidence, Quest, QuestData, RewardCategory, Signal, Worth};
+use qt_engine::{
+    Detection, Engine, Evidence, Quest, QuestData, RewardCategory, Signal, Status, Worth,
+};
 
 /// The campaign acts as poe2db numbers them (its Act 6 is the interludes).
 const CAMPAIGN_ACTS: std::ops::RangeInclusive<u32> = 1..=6;
@@ -287,5 +295,154 @@ fn every_quest_has_worth_and_detection() {
                 q.detection
             );
         }
+    }
+}
+
+/// The invented character of `fixtures/sessions/town_talk.txt`.
+const TOWN_TALK_CHARACTER: &str = "Maelis_Thornby";
+
+/// The town voices of Clearfell Encampment: what the log records of them is
+/// greetings and vendor lines, never a quest's talk (research note "Town
+/// dialogue"), so none of them is a speaker the data matches.
+const TOWN_VOICES: [&str; 4] = ["Una", "Finn", "Renly", "Mortimer"];
+
+/// A session's lines, split the way the tailer hands them over.
+fn session(name: &str) -> Vec<String> {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../fixtures/sessions")
+        .join(name);
+    let bytes = std::fs::read(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let text = String::from_utf8_lossy(&bytes).into_owned();
+    let mut lines: Vec<String> = text.split('\n').map(str::to_string).collect();
+    if lines.last().is_some_and(|l| l.is_empty()) {
+        lines.pop();
+    }
+    lines
+}
+
+fn entry_of(lines: &[String], code: &str) -> usize {
+    let needle = format!("area \"{code}\"");
+    lines
+        .iter()
+        .position(|l| l.contains(&needle))
+        .unwrap_or_else(|| panic!("the session never enters {code}"))
+}
+
+fn status(engine: &Engine, quest: &str) -> Status {
+    engine
+        .status(TOWN_TALK_CHARACTER, quest)
+        .unwrap_or_else(|| panic!("no state for quest {quest}"))
+}
+
+/// The live session's start, as the log recorded it (Live 1, 2026-10-25):
+/// The Riverbank, The Bloated Miller, the level-up to 2, a visit to
+/// Clearfell Encampment in which the person talked to the NPCs and the log
+/// recorded no NPC line, then Clearfell. Fed through the engine over the
+/// shipped data.
+#[test]
+fn town_talk_session_replay() {
+    let data = Arc::new(data());
+    let lines = session("town_talk.txt");
+    let town = entry_of(&lines, "G1_town");
+    let clearfell = entry_of(&lines, "G1_2");
+    let mut engine = Engine::new(Arc::clone(&data));
+    for l in &lines[..=town] {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(engine.active(), Some(TOWN_TALK_CHARACTER));
+
+    // Baseline: entering the encampment reaches "Enter town", and the step to
+    // do now is the talk with the Blacksmith, which no signal can show.
+    let rc = data.quest("reaching-clearfell").expect("reaching-clearfell");
+    let state = engine
+        .quest_state(TOWN_TALK_CHARACTER, "reaching-clearfell")
+        .expect("state");
+    assert_eq!(state.status, Status::InProgress);
+    assert_eq!(state.current_step.as_deref(), Some("step-3"));
+    let reached = rc.steps.iter().position(|s| s.id == "step-3").expect("step-3");
+    let talk = &rc.steps[reached + 1];
+    assert_eq!(talk.title, "Talk to the Blacksmith");
+    assert!(talk.signals.is_empty(), "the talk step has a signal: {:?}", talk.signals);
+    assert_eq!(status(&engine, "secrets-in-the-dark"), Status::Locked);
+    assert_eq!(status(&engine, "treacherous-ground"), Status::Locked);
+    assert_eq!(status(&engine, "finding-the-forge"), Status::Available);
+
+    // The visit itself: whatever the person said to whom, the lines up to
+    // leaving the encampment change no quest.
+    let before = engine.quest_states(TOWN_TALK_CHARACTER);
+    for l in &lines[town + 1..clearfell] {
+        assert!(engine.feed_line(l, false).is_empty(), "{l}");
+    }
+    assert_eq!(engine.quest_states(TOWN_TALK_CHARACTER), before);
+
+    // Target: entering Clearfell completes Reaching Clearfell, whose talk
+    // steps it implies (inferred), and moves the quests that follow it.
+    for l in &lines[clearfell..] {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(status(&engine, "reaching-clearfell"), Status::Done);
+    assert_eq!(status(&engine, "secrets-in-the-dark"), Status::Available);
+    let tg = engine
+        .quest_state(TOWN_TALK_CHARACTER, "treacherous-ground")
+        .expect("state");
+    assert_eq!(tg.status, Status::InProgress);
+    assert_eq!(tg.current_step.as_deref(), Some("step-1"));
+    // A talk step nothing later implies stays the player's tick: Finding the
+    // Forge waits on "Speak to Renly", and its row carries the tick marker.
+    let forge = engine
+        .quest_state(TOWN_TALK_CHARACTER, "finding-the-forge")
+        .expect("state");
+    assert_eq!(forge.status, Status::Available);
+    assert_eq!(forge.current_step, None);
+    assert!(data.quest("finding-the-forge").expect("forge").detection.needs_tick());
+}
+
+/// In Act 1, a step with no signal (a talk, mostly) either belongs to a quest
+/// the player finishes by hand, or is implied by a later step or a done
+/// signal the log records. A done that is only an area entry stands for the
+/// talk before it, and the quest's notes say `inferred`.
+#[test]
+fn talk_steps_are_inferred_or_ticks() {
+    let data = data();
+    for voice in TOWN_VOICES {
+        assert!(
+            !data.npcs.iter().any(|n| n == voice),
+            "{voice}'s greetings are on the speaker allowlist"
+        );
+    }
+    for q in data.quests.iter().filter(|q| q.act == 1) {
+        let done_logged = any_measured(&data, &q.done);
+        for (k, step) in q.steps.iter().enumerate() {
+            if !step.signals.is_empty() {
+                continue;
+            }
+            let later_logged = q.steps[k + 1..].iter().any(|s| any_measured(&data, &s.signals));
+            assert!(
+                q.detection.needs_tick() || later_logged || done_logged,
+                "quest {}: step {} ({:?}) has no signal, nothing later the log records implies it, and the quest is {:?}",
+                q.id,
+                step.id,
+                step.title,
+                q.detection
+            );
+        }
+        let area_only = !q.done.is_empty() && q.done.iter().all(|s| matches!(s, Signal::Area { .. }));
+        if q.detection == Detection::Auto && area_only {
+            assert!(
+                q.notes.contains("inferred"),
+                "quest {}: done is an area entry the notes do not label inferred",
+                q.id
+            );
+        }
+    }
+    // The two talk endings the town dialogue measurement let the data infer.
+    for (id, code) in [("reaching-clearfell", "G1_2"), ("secrets-in-the-dark", "G1_7")] {
+        let q = data.quest(id).unwrap_or_else(|| panic!("no quest {id}"));
+        assert!(
+            q.done.iter().any(|s| area_codes(s).contains(&code)),
+            "quest {id}: done is not the entry to {code}: {:?}",
+            q.done
+        );
+        assert_eq!(q.detection, Detection::Auto, "quest {id}");
     }
 }
