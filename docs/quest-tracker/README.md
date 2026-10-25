@@ -156,10 +156,31 @@ log. The lines to look for when a quest did not advance:
   left the tracker in (the area may have changed without a live area
   line); the character reads `a new character (The Riverbank)` while the
   new character has no name yet.
-- `character: a new character (The Riverbank)` when a level-1 entry to The
-  Riverbank starts one, `character: pin on <name> released for the new
-  character` when that start released a pin, and `character: <from> ->
-  <to>` whenever the current character changes.
+- What happened to the new character from The Riverbank ("How detection
+  works"), written for catch-up lines as well as live ones, so a pin given
+  up or kept while catching up is explained too:
+  - `character: a new character (The Riverbank)` when a level-1 entry to
+    The Riverbank starts one, and
+    `character: the new character resumed (The Riverbank)` when an entry
+    to the same instance resumes a parked one; either is followed by
+    `character: pin on <name> released for the new character` when it
+    released a pin;
+  - `character: <name> relogged in The Riverbank, kept` when the character
+    build line named a stored character in time: a relog, not a new
+    character;
+  - `character: the new character parked at a session start` (with `, pin
+    on <name> restored` when it gave a pin back);
+  - `character: a parked new character replaced by another instance of The
+    Riverbank, <n> events dropped`;
+  - `character: the new character named <name> by a level-up`, or
+    `character: the new character's progress given to <name>, pinned` when
+    you pinned a character while it was open.
+- At start, when `new-character.json` holds a record: `character: the new
+  character reopened from its record` or `character: a parked new
+  character loaded from its record`; `character: the new character's
+  record could not be read and was set aside` (quarantined) or `error: the
+  new character's record: <error>` when it cannot be used.
+- `character: <from> -> <to>` whenever the current character changes.
 - `row change <id> <kind> (<quest id>)` for each live change sent to a
   row (`available`, `step_done` or `quest_done`).
 
@@ -195,7 +216,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | Command | Prints |
 |---|---|
 | `events` | One recognised event per line (never chat, unknown speakers or other players' names). |
-| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. With `--json`, one object `{"lines", "client_version", "held", "dropped", "refused", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}]}`. |
+| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped before any character, <x> dropped with a replaced new character, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `dropped_new_character` counts, apart from it, the events of an unnamed new character that a level-1 entry to another instance of The Riverbank replaced; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. With `--json`, one object `{"lines", "client_version", "held", "dropped", "dropped_new_character", "refused", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}]}`. |
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
 
@@ -308,32 +329,61 @@ level-up of an unknown name makes it active but *unconfirmed* until a reward
 line or you confirm it in the character picker. Events before any active
 character are held for the first one that becomes active in that session,
 and dropped and counted in the status line if none does. A character you pin
-in the picker gets every event until you unpin it.
+in the picker gets every event until you unpin it, except while a new
+character from The Riverbank holds the pin it released (below).
 
 **A new character from The Riverbank.** A new character's first area is
 The Riverbank (`G1_1`), an area of level 1. The area's level says nothing
 about the character, and a character relogging inside The Riverbank enters
-`G1_1` again, so the entry alone cannot tell a new character from a relog.
-The tracker does not try: every entry to `G1_1` at area level 1
-starts a *new character* for the session, with no pick: the session's
+`G1_1` again, with the same instance (the same seed), so the entry alone
+cannot tell a new character from a relog. An entry to `G1_1` at area level
+1 starts a *new character* for the session, with no pick: the session's
 events go to it at once, so Act 1 progress shows from the first step. Until
-something names it, the header shows "New character" at level 1; it is not
-written to the store and is not in the character picker. The first
-level-up after it in the same session, from a name not seen joining or
-leaving the area, names it: that name becomes your character, active, with
-the progress so far, and is stored. A session marker before any level-up
-ends the state, and its events are dropped and counted, as held events are.
-If a character was pinned, the entry releases the pin (the diagnostic log
-says so) and the named new character is pinned in its place; pinning a
-character yourself while the new one is still unnamed gives it the
-progress. Measurements and reasons:
+something names it, the header shows "New character" at level 1, and it is
+not in the character picker. If a character was pinned, the entry releases
+the pin (the diagnostic log says so).
+
+- **A relog.** When the client's character build line (`Character <name>
+  has unknown build of path: None`) comes no more than 5 s after that
+  entry, before any other area entry, and names a character the tracker
+  already stores, the entry was a relog: the new character closes as if it
+  never started, the released pin comes back, that character is active
+  again, and the events the entry took go where they would have gone with
+  that pin and that character (`character: <name> relogged in The
+  Riverbank, kept`). The line is read only for this: an unknown name, or
+  the line coming later, changes nothing, and the new character stays open
+  until its level-up. The client wrote that line on some relogs and not
+  on others, so a relog without it still starts a new character (Known
+  limitations).
+- **Named.** The first level-up after the entry, from a name not seen
+  joining or leaving the area, names it: that name becomes your character,
+  active, with the progress so far, and is stored; if the entry released a
+  pin, the named character is pinned in its place. Pinning a character
+  yourself while the new one is still unnamed gives that character the
+  progress.
+- **Saved across a relaunch.** Until it is named, the new character is one
+  provisional record in `new-character.json` ("Privacy"), kept apart from
+  your characters, so it never appears in the picker. Closing and
+  restarting the overlay mid-session reopens it, with its rows. A session
+  marker (the game restarted) *parks* it instead of dropping it, and gives
+  back the pin it released. A later level-1 entry to the **same** instance
+  of The Riverbank resumes it (`character: the new character resumed (The
+  Riverbank)`); an entry to another instance replaces it, and the replaced
+  one's events are counted as dropped, apart from the events dropped
+  before any character (status line and replay summary). A level-up
+  naming it, a relog, or your pin closes it and removes the file.
+
+Measurements and reasons:
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Character
 detection".
 
-**Talking to NPCs in town.** The log does not record a quest talk: the
-talk happens in a dialogue window, whose text is not written to
-`Client.txt`, and the voiced lines town NPCs do log are vendor and greeting
-lines. So a talk step cannot advance from the talk itself. Where the game
+**Talking to NPCs in town.** A quest talk was not observed in the log: the
+talk happens in a dialogue window, whose text was not seen in `Client.txt`
+(one measured visit to Clearfell Encampment in which the player talked to
+its NPCs logged no NPC line), and the voiced lines Clearfell Encampment's
+NPCs did log are vendor, gambling and farewell lines. That is not proof
+that a talk is never logged, but the tracker cannot count on it, so a talk
+step does not advance from the talk itself. Where the game
 can only produce the next recorded signal after the talk (for example
 entering Clearfell after talking to Renly in Clearfell Encampment), that
 signal completes the talk step too, and the quest's notes say `inferred`;
@@ -342,14 +392,31 @@ recorded follows the talk (the reward talks of Treacherous Ground and
 Finding the Forge, for instance), the step stays a manual tick. See
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Town dialogue".
 
-**Using the item a boss dropped.** For Beira of the Rotten Pack, Blackjaw,
-the Remnant and Lythara, the Wayward Spear the reward line comes only after
-you use the item the boss dropped, which can be minutes after the kill.
-Their last step is "Use the item it dropped": after the boss's line the row
-shows the fight as reached and the use as the step to do, and the reward
-line finishes the quest. See
+**Using the item a boss dropped.** For Beira of the Rotten Pack the reward
+line comes only after you use the item she dropped, which can be minutes
+after the kill (seen once, in Live 1); her last step is "Use the item it
+dropped". For Blackjaw, the Remnant and Lythara, the Wayward Spear the
+reward line also came seconds after the boss's last line, never with it,
+but whether they drop an item to use is not established, so their last
+step is "Use any item left after the fight", worded as a hint. After the
+boss's line the row shows the fight as reached and the use as the step to
+do, and the reward line finishes the quest. See
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Rewards after a
 boss kill".
+
+**"Probably done".** Some quests are shown done because of a later event
+the log recorded, not their own completion: Reaching Clearfell (done on
+entering Clearfell), Secrets in the Dark (done on entering the Cemetery of
+the Eternals) and The Mad Wolf of Ogham (done on entering Vastiri
+Outskirts) carry `done_inferred` in the quest data. Such a row, and any
+step shown done although its own signal never fired and you did not tick
+it (the "Use ..." step of a boss quest finished by its reward line, for
+instance), shows a small dashed ring beside the done mark: the
+"probably done" mark, with the tooltip and accessible text "Probably
+done: inferred from a later step the log recorded." It differs from the done mark in
+shape, not only colour. It is a mark, not a control: it adds no toggle or
+tick, the row's manual-tick marker is unchanged, and a quest you marked
+done yourself never shows it.
 
 **What needs a manual tick.** Each quest carries a `detection` value, and
 the row shows the manual-tick marker for the last two:
@@ -383,11 +450,16 @@ What is stored, and where:
 - `settings.json`; `position.json` (the log's path, fingerprint and read
   offset); `characters.json` (your character names with class, level, own
   or unconfirmed, pinned); `characters/<name>.json` (one character's quest
-  evidence, overrides and ticks); `overlay.log`, the diagnostic log, rotated
+  evidence, overrides and ticks); `new-character.json` (only while a new
+  character from The Riverbank has no name yet: its progress, its event
+  count, the pin it released, the seed of its Riverbank instance and
+  whether it is open; it has no name of its own, and it is removed once a level-up,
+  a relog or your pin closes it); `overlay.log`, the diagnostic log, rotated
   at 1 MB into `overlay.log.1`. JSON files are written atomically (a
   temporary file, synced, renamed over the old one); one that cannot be read
   back is renamed `<file>.corrupt-<timestamp>` and the status line says so.
-- Only your own and unconfirmed-active character names are ever written.
+- Only your own and unconfirmed-active character names are ever written
+  (the pin `new-character.json` keeps is one of yours).
   Names seen in join or leave lines (party members) live in memory for one
   session and are never written to disk or to the diagnostic log.
 - Chat is ignored: chat lines are dropped by the parser, and no chat text,
@@ -594,15 +666,23 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   character in the picker when this matters. A brand-new character is the
   exception: its entry to The Riverbank (an area of level 1) starts it at
   once. The entry alone cannot tell a new character from one re-entering
-  The Riverbank, and in one player's log a character was seen doing so
-  four times, relogging there before its first level-up. That character
-  is still unnamed, so "New character" is right for it, but each session
-  that ends before its first level-up drops its events, counted in the
-  status line. A character past level 1 re-entering The Riverbank was not
-  observed (not proof that it never happens); one that does shows as "New
-  character" until its next level-up, which hands the progress back to it
-  by name (and takes over a pin the entry released), and a session that
-  ends first drops those events, counted in the status line.
+  The Riverbank, so a relog is recognised only when the client's character
+  build line names a stored character within 5 s of the entry. That rule
+  rests on one player's log: the line came on 4 sessions' relogs of one
+  instance by one character, still unnamed then, and not on that
+  character's fifth entry or for any of the 7 other new characters, so it
+  is not a general signal. A relog the line does not follow, or one by a
+  character the tracker never stored, starts a "New character" instead;
+  its next level-up hands the progress back to it by name (and takes over
+  a pin the entry released). The measured relogs were of the second kind
+  (the character had no level-up yet, so no name was stored): there each
+  session that ends parks the new character rather than dropping it, and
+  the next entry to the same instance resumes it. A character past level
+  1 re-entering The Riverbank was not observed (not proof that it never
+  happens).
+- **"Probably done" is an inference.** A row or step with the
+  "probably done" mark was finished by a later signal, not its own, so a player who
+  skipped that step is shown it done too early.
 - **The area after a start mid-zone.** The read-back for the current area
   covers at most 8 MiB of the log before the start position. That is a
   bound, not a guarantee: a zone's area line is normally well inside it,
@@ -610,10 +690,16 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   session marker follows it, the area stays unknown until the next zone,
   and an area-tied step in the current zone needs a manual tick (the
   diagnostic log names each refused quest).
-- **Town talk.** Talking to an NPC in a dialogue window leaves nothing in
-  the log. A talk step is completed by the next recorded signal only where
-  the game cannot produce that signal without the talk; otherwise it is a
-  manual tick ("How detection works").
+- **Town talk.** Talking to an NPC in a dialogue window was not observed
+  in the log (one measured visit; not proof that it is never logged), so
+  the tracker does not rely on it. A talk step is completed by the next
+  recorded signal only where the game cannot produce that signal without
+  the talk; otherwise it is a manual tick ("How detection works").
+- **The "Use" step after Blackjaw and Lythara.** Only Beira's reward was
+  seen to come on using an item she dropped. That Blackjaw, the Remnant
+  and Lythara, the Wayward Spear work the same way is an inference from
+  their reward lines coming seconds after the fight, not a measurement, so
+  their last step only suggests using any item left where the boss fell.
 - **Patch changes.** The parser reads English templates and the quest data
   keys on area codes; a patch that changes either makes quests stop
   advancing rather than crash. The shipped data mixes poe2db's current
@@ -704,8 +790,7 @@ Revisit this feature when:
   compact and muted, skipped ones struck through. Each act's header shows
   how many of its quests are done; only an expanded act's header also
   shows how many are available, and a collapsed one keeps the mark alone.
-  Next up
-  groups its rows under "Worth it", "Optional" and "Not worth it".
+  Next up groups its rows under "Worth it", "Optional" and "Not worth it".
 - Quest detail with steps (empty box, in progress, done) whose leading mark
   is, in edit mode, the step's one tick-by-hand toggle; reward chips, the
   worth reason, the poe2db link, and Mark done / Skip / Reset buttons;
@@ -729,9 +814,19 @@ Revisit this feature when:
 - A new character is picked up when it enters The Riverbank, with no
   pick: Act 1 progress shows at once under "New character", and its first
   level-up names it and stores it. A pinned character's pin passes to the
-  new one. Any entry to The Riverbank at area level 1 starts this, a relog
-  there included
-  (Known limitations).
+  new one. A relog into The Riverbank is told apart when the client's
+  character build line names a stored character within 5 s of the entry:
+  that character and its pin are kept (Known limitations says when it is
+  not told apart).
+- The unnamed new character is saved in `new-character.json`: a relaunch
+  of the overlay mid-session shows it again with its rows, a game restart
+  parks it (and gives a released pin back), and a later entry to the same
+  Riverbank instance resumes it. Events of a new character that another
+  one replaced are counted apart from those that came before any
+  character, in the status line and the replay summary.
+- A quest or step shown done because of a later signal, not its own,
+  carries a "probably done" mark (a dashed ring beside the done mark) with
+  a tooltip and the same words as accessible text; it is not a control.
 - Signals tied to an area that arrive while the area is unknown are
   refused, logged per quest and counted in the status line; only quests
   that could still change for that character count.
@@ -740,11 +835,13 @@ Revisit this feature when:
   32 detected automatically, 42 partly, 13 by manual tick. Talk steps the
   log cannot show are completed by the next signal the game can only
   produce after them where the order is supported, and otherwise stay a
-  tick. Beira of the Rotten Pack, Blackjaw, the Remnant and Lythara, the
-  Wayward Spear end with a "Use the item it dropped" step, since their
-  reward comes when that item is used.
+  tick. Beira of the Rotten Pack ends with a "Use the item it dropped"
+  step, since her reward came when that item was used; Blackjaw, the
+  Remnant and Lythara, the Wayward Spear end with "Use any item left after
+  the fight", a hint, since that they work the same way is inferred, not
+  observed.
 - `quest-tracker-replay` (`events`, `state`, `import`, `scan`; the summary
-  counts held, dropped and refused events) and the developer-only `py -3 -m
+  counts held events, the two kinds of dropped event and refused signals) and the developer-only `py -3 -m
   tools.quest_tracker.poe2db` (`fetch`, `extract`, `coverage`).
   `npm run release` builds both `quest-tracker.exe` and
   `quest-tracker-replay.exe`.

@@ -35,8 +35,8 @@ The four chevrons are directional variants of one mark. Collapse and expand
 are separate exports. Manual-tick is the manual-detection marker named in the
 brief's component table: an eye with a slash ("the log can't see this"),
 redrawn on 2026-10-25 so it no longer looks like a checkbox. Refresh also
-serves the Reset action. Check marks a completed step (toasts, undo);
-warning marks errors and an idle log.
+serves the Reset action. Check marks the tracked character in the picker
+and an `ok` status line; warning marks errors and an idle log.
 
 Statuses have distinct shapes: pointed lock, open exclamation frame,
 hourglass, framed check, struck arrow, and question diamond (with a bolder

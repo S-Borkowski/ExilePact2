@@ -63,6 +63,18 @@ IconButton `7:181`, ViewSwitch `7:192`, PanelHeader `7:224`, ActHeader
 - **Variants:** PanelHeader `mode=log-idle`; CollapsedBadge
   `state=warning`; Toast `type=undo`; Button `variant=danger,state=confirm`.
 
+**Note, 2026-10-25, after Live 1.** This record is left as harvested. The
+owner replaced toasts with the row's own transition after Live 1, so the
+toast parts were removed from the app: the `toast` frame id and the
+`color.toast-bg` token key left the brief's export contract, and
+`color.toast-bg`, `shadow.toast`, `size.toast-width`, `size.toast-height`,
+`bar.toast`, `chamfer.toast`, `motion.toast-ms` and `motion.undo-ms` left
+`theme.json` and `tokens.css`. No UI uses the Toast component or its
+`type=undo` variant. `ui-check` stays, for the tracked character and the
+`ok` status line. The `toast` frame images and the Toast variant images
+remain under `frames/` and `components/Toast/` as the record of what the
+comps held.
+
 ## Not harvested, and why
 
 - **Backdrops:** the bright desert and dark crypt images are placeholders

@@ -16,7 +16,8 @@ It holds two sessions:
    leader becomes available), reaches level 5 (the candles unlock), enters
    Freythorn (the king's first step; the candles' window closes) and returns
    to town, where Una's line makes the lute available. That last line is
-   the one the toast fixture feeds live.
+   the one the test feeds live for the frames' row change
+   (`story_row_change`).
 
 The test then skips the pack leader, so act 1 holds one quest in each status:
 riverbank done, pack leader skipped, bell locked, king in progress, lute

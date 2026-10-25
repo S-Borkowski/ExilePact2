@@ -252,23 +252,40 @@ last line in the area to the `has received` line:
 | The King in the Mists | 7 to 37 s |
 | Ignagduk, the Bog Witch | 14 to 30 s |
 
-- **The reward is not the kill** (measured). No gap is zero: the reward line
-  never comes with the boss's last line, and Beira's comes up to almost
-  eight minutes later and, twice, in the next area. That fits a player action
-  after the kill rather than the kill itself.
+- **The reward never comes with the boss's last line** (measured). No gap
+  is zero, and Beira's reward comes up to almost eight minutes later and,
+  twice, in the next area. That last line is not the kill, though: for
+  Beira and BlackJaw it is a combat bark, voiced during the fight, so a gap
+  of 5 to 36 s fits the rest of the fight just as well as a player action
+  after it. The gaps alone do not tell "the reward comes on a later
+  action" from "the reward comes at the end of the fight". Only two things
+  in the log do: Live 1 (465 s, across an area change, below) and
+  Lythara's death cry.
+- **Lythara's death cries** (measured). Her gaps (10 to 15 s) are timed from
+  a death cry, not a bark, so for her the line does mark the end of the
+  fight, and the reward still came seconds later. Two more of her death
+  cries in the log have no reward line after them at all. A reward granted
+  at the kill would follow every death cry; these two fit a reward that
+  waits on something the player did not do, though why none came is not
+  established.
 - **Live 1** (the owner's observation, 2026-10-25). Beira's last line was at
   12:31:50 local time and her reward line at 12:39:35 (465 s); no line in
   between concerns the quest (the first 100 s hold only chat and window focus
   lines). The owner saw the reward come
   when the item Beira dropped was used, not at the kill. The log records
   nothing of picking the item up or using it.
-- **Blackjaw and Lythara** (inference). Their gaps have the same shape, so the
-  data reads them the same way: the reward follows the use of an item the boss
-  dropped. Not observed in play.
+- **Blackjaw and Lythara** (inference). That their reward also follows the
+  use of an item the boss dropped is read from the above, not observed in
+  play: Blackjaw's gaps are timed from a bark and cannot separate the two
+  readings, and Lythara's death cries point the same way as Beira but
+  name no item. Whether either boss drops one is not established.
 - **Consequence for the data.** Beira of the Rotten Pack, Blackjaw, the
   Remnant and Lythara, the Wayward Spear, whose steps ended at the fight and
-  whose `done` is the reward line, get a last step "Use the item it dropped"
-  with no signal: poe2db does not name the item. After the boss's line the
+  whose `done` is the reward line, get a last step with no signal (poe2db
+  does not name the item): Beira's is "Use the item it dropped"; Blackjaw's
+  and Lythara's is "Use any item left after the fight", whose text gives
+  their measured gaps and says that an item is not established for them.
+  After the boss's line the
   row shows the fight as the step reached and the use as the step to do; the
   reward line still finishes the quest. The King in the Mists (Ominous
   Altars) and Ignagduk (Tribal Vengeance) already have steps after the fight
@@ -316,8 +333,9 @@ All of this is measured on 2026-10-24 unless labelled otherwise.
   `[WARN] Character <name> has unknown build of path: None` line named the
   character 1 to 2 s after the entry. That line is not a general signal:
   the whole log holds 27 of them, all for this one character, in five
-  sessions. A `G1_1` entry alone therefore does not tell a new character
-  from a relog. A character past level 1 entering `G1_1` was not observed,
+  sessions; none followed that character's fifth entry (the one before its
+  level-up), and none came for any of the 7 other new characters. A `G1_1`
+  entry alone therefore does not tell a new character from a relog. A character past level 1 entering `G1_1` was not observed,
   which is not proof that it never happens.
 
 From those counts the tracker's rules are (a design choice built on the
@@ -330,31 +348,47 @@ active character are held for the first one that becomes active in the
 session, and dropped and counted at session end if none does; a character the
 player pins gets every event; `has been slain` never changes the active
 character. Names seen only in join or leave lines are kept in memory for one
-session and never written anywhere.
+session and never written anywhere. The new character from The Riverbank
+(below) is the one exception to the pin and the hold: while it is open, the
+session's events go to it, and a pin its entry released waits for it.
 
 From the Riverbank counts (again a design choice resting on them, not a
-measurement): a level-1 `G1_1` entry starts a new, unnamed character for
-the session, and its events go to it instead of the hold, so Act 1 progress
-shows at once; it is never stored and never listed among the characters.
-The first level-up after it in the same session, from a name not excluded
-as a party member, names it: that name becomes own and active with no pick,
-takes the progress and is stored. A session marker before that ends the
-state, and its events are dropped and counted, as held events are. The
-entry releases a pin, and the named character is pinned in its place,
-because the pin a player sets on one character would otherwise hide every
-later new character.
+measurement): a level-1 `G1_1` entry starts a new, unnamed character, and
+its events go to it instead of the hold, so Act 1 progress shows at once;
+it is never listed among the characters. The first level-up after it,
+from a name not excluded as a party member, names it: that name becomes
+own and active with no pick, takes the progress and is stored. The entry
+releases a pin, and the named character is pinned in its place, because
+the pin a player sets on one character would otherwise hide every later
+new character.
 
-The rule treats every level-1 `G1_1` entry alike, so it also starts the
-state on the measured relog. That case costs no wrong attribution: a
-character relogging before its first level-up is still unnamed, so "New
-character" is what the tracker can say of it, and each session that ends
-before the level-up drops and counts its events, as for a held event. A
-known character re-entering `G1_1` (not observed past level 1) would show
-as "New character" until its next level-up, which names it, gives it the
-progress and takes over a pin the entry released; a session that ends
-first drops those events. The `[WARN] … unknown build` line is not read:
-it named one character only, so it is not established as a signal that
-tells a relog from a new character.
+The relog rule (a design choice, the owner's of 2026-10-25, resting on the
+27 lines and the four sessions above): the `[WARN] Character <name> has
+unknown build of path: None` line is read, in that exact shape only, as a
+character's name. While the new character is open and unnamed, such a
+line no more than 5 s after the `G1_1` entry that opened it, before any
+other area entry, naming a character the tracker already stores, makes
+the entry a relog: the new character closes as if it never opened, the
+released pin comes back, that character is active again, and the events
+the state took go where routing would have sent them. Any other such line
+changes nothing; the 5 s bound is the measured 1 to 2 s with room to
+spare. Because the line came for one character only, its absence proves
+nothing: a relog without it still starts the new character.
+
+The measured relogs were of a character with no level-up yet, so no name
+was stored for the rule to match. For that case the unnamed new character
+is kept as one provisional record (its progress, its event count, the pin
+it released, the seed of its `G1_1` instance, and whether it is open),
+saved apart from the characters. A session marker parks it instead of
+dropping its events, and gives the pin back; a later level-1 entry to the
+**same** instance (same seed, as the four measured relogs had) resumes it,
+and one to another instance replaces it, counting the replaced record's
+events as dropped apart from those that came before any character. A
+level-up naming it, a relog by the rule above or the player's pin closes
+the record. A known character past level 1 re-entering `G1_1` (not
+observed) with no build line would show as "New character" until its
+next level-up, which names it, gives it the progress and takes over a pin
+the entry released.
 
 ## What poe2db step text matches
 

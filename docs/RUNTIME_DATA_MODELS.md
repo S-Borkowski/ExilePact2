@@ -63,14 +63,28 @@ eight): a relog inside The Riverbank generates `G1_1` again, so an existing
 character re-entering `G1_1` was observed, four times. In those four
 sessions a `[WARN] Character <name> has unknown build of path: None` line
 named the character within 2 s of the entry; in the eight others no line but
-the character's own chat named it before the level-up. A `G1_1` entry alone
-therefore does not tell a new character from a relog.
+the character's own chat named it before the level-up. That `[WARN]` line is
+**not a general new-character signal**: the log's 27 such lines all name
+that one character, it did not follow the character's fifth entry, and it
+never came for the 7 other new characters. Where it comes, it names who
+entered; its absence says nothing. A `G1_1` entry alone therefore
+does not tell a new character from a relog.
+
+A boss's reward (measured 2026-10-25, the research note's "Rewards after a
+boss kill"): a quest boss's `has received` reward line never came with the
+boss's last voiced line. It came 5 to 465 s later, twice in the next area.
+For Beira of the Rotten Pack it came when the player used the item she
+dropped (measured, one session: 465 s after her last line, across an area
+change), and the log records nothing of picking that item up or using it.
+For other bosses the last voiced line can be a combat bark during the
+fight, so a gap of seconds does not show by itself whether the reward
+waits on a later action.
 
 Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): in
 Clearfell Encampment (`G1_town`), all 44 distinct lines logged from Una,
 Finn, Renly and Mortimer are vendor, gambling or farewell lines; no quest's
 talk was observed among them (the other towns' NPC lines were counted, not
 classified). A 3.5-minute visit to Clearfell Encampment in which the player
-talked to its NPCs recorded no NPC line at all, so a talk in a dialogue
-window leaves nothing in the log (not observed in one visit, not proof that
-it is never logged).
+talked to its NPCs recorded no NPC line at all: a talk in a dialogue window
+was not observed to leave anything in the log (one visit, not proof that it
+is never logged).

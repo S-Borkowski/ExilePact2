@@ -4,9 +4,11 @@ Hand-written `Client.txt` sessions for the `qt-engine` tests
 (`crates/qt-engine/tests/engine.rs`) and the `qt-viewmodel` tests
 (`crates/qt-viewmodel/tests/viewmodel.rs`), read with the synthetic quest data in
 `fixtures/quests_min.json`. The line shapes are the parser's
-(`fixtures/logs/README.md`); nothing here comes from a real log. Character
-names, chat text, timestamps and the NPC "lines" are invented, and there are
-no IP addresses.
+(`fixtures/logs/README.md`); nothing here is copied from a real log.
+Character names, chat text and timestamps are invented, and there are no IP
+addresses. The NPC "lines" are invented too, except in `town_voices.txt`,
+which quotes town NPCs' voiced lines in the shapes a real log recorded (NPC
+lines may be quoted; its character is invented).
 
 | File | What it holds |
 |---|---|
@@ -16,7 +18,8 @@ no IP addresses.
 | `held.txt` | a session with no character (its events dropped and counted), then a session whose held events go to the first character identified, not to a party member |
 | `switch.txt` | a character switch inside one session, between two own characters |
 | `manual_window.txt` | a manual quest unlocked by level whose window closes on entering a later area |
-| `town_talk.txt` | the shape of the Live 1 session's start (2026-10-25), with an invented character: a level-1 entry to The Riverbank, The Bloated Miller, the level-up to 2, a visit to Clearfell Encampment in which the player talked to its NPCs and the log recorded no NPC line, then Clearfell. Unlike the others it is read against the shipped `data/quests.json`, by `town_talk_session_replay` in `crates/qt-engine/tests/shipped_data.rs`: what a town talk the log cannot show leaves the talk steps at, and which later area entry completes them (research note "Town dialogue") |
+| `town_talk.txt` | the shape of the Live 1 session's start (2026-10-25), with an invented character: a level-1 entry to The Riverbank with no character build line after it (so, by the relog rule, a new character, named by its level-up, not a relog), The Bloated Miller, the level-up to 2, a visit to Clearfell Encampment in which the player talked to its NPCs and the log recorded no NPC line, then Clearfell. Unlike the others it is read against the shipped `data/quests.json`, by `town_talk_session_replay` in `crates/qt-engine/tests/shipped_data.rs`: what a town talk the log did not show leaves the talk steps at, and which later area entry completes them (research note "Town dialogue"). Since that visit logged no NPC line, its "changes no quest" check cannot fail; `town_voices.txt` is the one that can |
+| `town_voices.txt` | a visit to Clearfell Encampment (`G1_town`) in which Renly, Finn and Una speak, with an invented character, between a level-1 entry to The Riverbank and Clearfell. Read against the shipped data by `town_voice_lines_move_no_quest` in `crates/qt-engine/tests/shipped_data.rs`: its positive control parses each voice line as an NPC line under an allowlist that names the three speakers, then with the shipped data no quest changes across them (research note "Town dialogue") |
 | `frames/` | `story.txt`, the one session every view fixture under `fixtures/viewmodels/` is built from by `crates/qt-viewmodel/tests/viewmodel.rs`, so the frames tell one story; its `README.md` tells that story |
 
 `quests_min.json` beside this folder is the matching quest data: seven
