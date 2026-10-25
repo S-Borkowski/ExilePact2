@@ -177,6 +177,30 @@ impl Harness {
         let v: Value = serde_json::from_str(&text).expect("stored JSON");
         v.get("data").cloned()
     }
+
+    /// Waits up to five seconds for the diagnostic log to hold every one of
+    /// `parts` on one line, and returns that line.
+    fn wait_diag(&self, parts: &[&str]) -> String {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let text = self.diag_text();
+            if let Some(l) = text.lines().find(|l| parts.iter().all(|p| l.contains(p))) {
+                return l.to_string();
+            }
+            assert!(
+                Instant::now() < deadline,
+                "no diagnostic line with {parts:?} within 5 s:\n{text}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    /// A second run over the same folder (store and log), once this one has
+    /// shut down and saved.
+    fn rerun(self, setup: Setup) -> Harness {
+        assert!(self.app.shutdown(Duration::from_secs(2)), "first run ended");
+        harness_in(self._dir, setup)
+    }
 }
 
 struct Setup {
@@ -204,7 +228,11 @@ impl Default for Setup {
 /// An app over a fresh temporary folder. `options.log` and the candidates
 /// may name paths relative to that folder.
 fn harness(setup: Setup) -> Harness {
-    let dir = tempfile::tempdir().expect("temp dir");
+    harness_in(tempfile::tempdir().expect("temp dir"), setup)
+}
+
+/// An app over `dir`, which may hold an earlier run's store and log.
+fn harness_in(dir: tempfile::TempDir, setup: Setup) -> Harness {
     let root = dir.path().to_path_buf();
     for (rel, content) in &setup.files {
         fs::write(root.join(rel), content).expect("write fixture file");
@@ -709,5 +737,169 @@ fn auto_scale_applied_at_start_and_on_change() {
     // zoom alone.
     h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
     assert_eq!(scales(&h).len(), 4);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// ---------------------------------------------------------------------------
+// The area after a restart: read back from the log before the tailer's start
+// position, and a refusal while it is unknown leaves a trace.
+
+const BEIRA: &str = "fixture-beira";
+
+/// A session that ends mid-zone in `G1_2`, before the zone's reward.
+fn mid_zone_lines() -> Vec<String> {
+    let mut lines = own_character_lines();
+    lines.extend([
+        "2026/03/10 19:04:00 4240000 7e2c0007 [INFO Client 7120] Connecting to instance server".to_string(),
+        "2026/03/10 19:04:01 4241000 7e2c0008 [DEBUG Client 7120] Generating level 2 area \"G1_2\" with seed 2077351921".to_string(),
+        "2026/03/10 19:04:02 4242000 7e2c0009 [INFO Client 7120] [SCENE] Set Source [Clearfell]".to_string(),
+        "2026/03/10 19:05:30 4330000 7e2c000a [INFO Client 7120] Beira of the Rotten Pack: Fixture line: the pack gathers.".to_string(),
+    ]);
+    lines
+}
+
+/// The zone's reward, `+10% to Cold Resistance`, which finishes
+/// `fixture-beira` only in `G1_2`.
+fn cold_reward() -> Vec<String> {
+    vec![format!(
+        "2026/03/10 19:06:15 4375000 7e2c000b [INFO Client 7120] : {OWN} has received +10% to [Resistances|Cold Resistance]."
+    )]
+}
+
+fn log_setup(content: String, from_start: bool) -> Setup {
+    Setup {
+        options: Options {
+            log: Some(PathBuf::from("Client.txt")),
+            from_start,
+            ..Options::default()
+        },
+        files: vec![("Client.txt", content)],
+        ..Setup::default()
+    }
+}
+
+fn text(lines: &[String]) -> String {
+    lines.join("\n") + "\n"
+}
+
+/// Beira's status for the current character, through the view.
+fn beira_status(h: &Harness) -> Status {
+    let view = h
+        .app
+        .open_detail(Some(BEIRA.to_string()))
+        .expect("Beira's detail");
+    view.detail.expect("a detail").row.status
+}
+
+#[test]
+fn restart_mid_zone_then_reward_marks_done() {
+    // First run: the whole session up to mid-zone in G1_2, read from the
+    // start; reading from 0 needs no seed.
+    let h = harness(log_setup(text(&mid_zone_lines()), true));
+    h.app.start();
+    h.views.wait_for("naming the character", |v| {
+        v.character
+            .as_ref()
+            .is_some_and(|c| c.name == OWN && c.level == 9)
+    });
+    h.wait_diag(&["area from log: not read", "offset 0"]);
+    // Every line read: Beira's line in G1_2 put her quest in progress, and
+    // nothing finished it.
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while beira_status(&h) != Status::InProgress {
+        assert!(Instant::now() < deadline, "Beira's quest never went in progress");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let log = h.root.join("Client.txt");
+    let len = fs::metadata(&log).unwrap().len();
+
+    // Second run over the same store and log: it resumes from the saved
+    // position, mid-zone, and never reads the area line again.
+    let setup = Setup {
+        options: Options {
+            log: Some(PathBuf::from("Client.txt")),
+            ..Options::default()
+        },
+        ..Setup::default()
+    };
+    let h = h.rerun(setup);
+    assert_eq!(
+        h.stored("position.json").expect("position.json")["offset"],
+        len
+    );
+    h.app.start();
+    h.wait_diag(&["log: following", &format!("from offset {len}"), "resuming"]);
+    h.wait_diag(&["area from log: G1_2"]);
+
+    append(&log, &cold_reward());
+    h.wait_diag(&["quest fixture-beira:", "-> done", "(live)"]);
+    assert_eq!(beira_status(&h), Status::Done);
+    let diag = h.diag_text();
+    assert!(!diag.contains("area unknown: refused"), "{diag}");
+    assert!(!diag.contains("Cold Resistance"), "{diag}");
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn first_start_mid_zone_then_reward_marks_done() {
+    // A first run (no saved position) starts at the end of a log that ends
+    // mid-zone in G1_2: the area line is before the start.
+    let h = harness(log_setup(text(&mid_zone_lines()), false));
+    h.app.start();
+    h.wait_diag(&["log: following", "no saved position"]);
+    let line = h.wait_diag(&["area from log: "]);
+    assert!(line.ends_with("area from log: G1_2"), "{line}");
+
+    append(&h.root.join("Client.txt"), &cold_reward());
+    h.wait_diag(&["quest fixture-beira:", "-> done", "(live)"]);
+    assert_eq!(beira_status(&h), Status::Done);
+    assert!(
+        !h.diag_text().contains("area unknown: refused"),
+        "{}",
+        h.diag_text()
+    );
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn area_unknown_refusal_is_logged() {
+    // The game restarted after the last area line: the area is unknown.
+    let mut lines = mid_zone_lines();
+    lines.push("2026/03/10 20:00:00 ***** LOG FILE OPENING *****".to_string());
+    let h = harness(log_setup(text(&lines), false));
+    h.app.start();
+    h.wait_diag(&["log: following", "no saved position"]);
+    h.wait_diag(&[
+        "area from log: none",
+        "a session marker follows the last area line",
+    ]);
+
+    // Baseline: the zone's reward with the area unknown is refused, and the
+    // refusal names the quest, not the line.
+    let log = h.root.join("Client.txt");
+    append(&log, &cold_reward());
+    h.wait_diag(&["area unknown: refused fixture-beira"]);
+    assert_ne!(beira_status(&h), Status::Done);
+    assert!(
+        !h.diag_text().contains("Cold Resistance"),
+        "{}",
+        h.diag_text()
+    );
+
+    // Positive control, same run: once an area line names G1_2, the same
+    // reward finishes the quest and nothing more is refused.
+    append(
+        &log,
+        &["2026/03/10 20:01:01 4900000 7e2c0010 [DEBUG Client 7120] Generating level 2 area \"G1_2\" with seed 7".to_string()],
+    );
+    append(&log, &cold_reward());
+    h.wait_diag(&["quest fixture-beira:", "-> done", "(live)"]);
+    assert_eq!(beira_status(&h), Status::Done);
+    assert_eq!(
+        h.diag_text().matches("area unknown: refused").count(),
+        1,
+        "{}",
+        h.diag_text()
+    );
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }

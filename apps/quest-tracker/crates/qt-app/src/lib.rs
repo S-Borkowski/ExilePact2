@@ -16,11 +16,13 @@
 //! - [`cli`]: `--log PATH`, `--data PATH`, `--from-start`.
 //! - [`discover`]: which `Client.txt` to follow.
 //! - [`diag`]: what the diagnostic log may say.
+//! - [`seed`]: the current area read back from the log when a tailer starts.
 
 pub mod app;
 pub mod cli;
 pub mod diag;
 pub mod discover;
+pub mod seed;
 
 use std::collections::BTreeMap;
 use std::path::Path;

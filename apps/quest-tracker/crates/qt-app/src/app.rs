@@ -41,6 +41,7 @@ use serde_json::{json, Map, Value};
 use crate::cli::Options;
 use crate::diag;
 use crate::discover;
+use crate::seed;
 
 /// The shortest time between two saves.
 pub const SAVE_INTERVAL_MS: u64 = 2_000;
@@ -713,6 +714,9 @@ impl App {
                         }
                         let before = st.engine.current().map(str::to_string);
                         let ts = st.engine.apply(&ev, live);
+                        for quest_id in st.engine.take_refused() {
+                            self.diag(&diag::refused(&quest_id));
+                        }
                         let after = st.engine.current().map(str::to_string);
                         if live && before != after {
                             self.diag(&diag::decision(
@@ -1158,6 +1162,7 @@ impl App {
             from_start: self.options.from_start,
             poll_interval: self.poll_interval,
         };
+        self.seed_area(&config);
         let stop = Arc::new(AtomicBool::new(false));
         match qt_tailer::spawn(config, TailerClock, self.tx.clone(), Arc::clone(&stop)) {
             Ok(handle) => {
@@ -1176,6 +1181,43 @@ impl App {
                     Source::Log,
                     Some(StatusLine::error(format!("The log reader did not start: {e}"))),
                 );
+            }
+        }
+    }
+
+    /// Seeds the engine's area from the log before where a tailer started
+    /// with `config` begins reading (the tailer's own decision,
+    /// [`qt_tailer::start_position`]), before the tailer exists, so before
+    /// any of its lines reaches the engine. A start at 0, or a log not there
+    /// yet, seeds nothing: the tailer reads the area lines itself. A read
+    /// that fails leaves the area unknown.
+    fn seed_area(&self, config: &qt_tailer::Config) {
+        let start = match qt_tailer::start_position(config) {
+            Ok(Some(start)) if start.offset > 0 => start,
+            Ok(Some(_)) => {
+                self.diag("area from log: not read (the tailer reads the log from offset 0)");
+                return;
+            }
+            Ok(None) => {
+                self.diag("area from log: not read (the log does not exist yet)");
+                return;
+            }
+            Err(e) => {
+                self.diag(&format!("error: area from log: {e}; the area is unknown"));
+                self.lock().engine.seed_area(None);
+                return;
+            }
+        };
+        let found = seed::area_before(&config.path, start.offset);
+        let mut st = self.lock();
+        match found {
+            Ok(found) => {
+                st.engine.seed_area(found.code());
+                self.diag(&diag::seeded_area(&found, start.offset));
+            }
+            Err(e) => {
+                st.engine.seed_area(None);
+                self.diag(&format!("error: area from log: {e}; the area is unknown"));
             }
         }
     }

@@ -15,6 +15,9 @@
 //! - [`read_whole_file`] is the replay mode: 0 to EOF once, every line
 //!   catch-up, no thread.
 //!
+//! [`start_position`] answers, without starting anything, where a follower
+//! started now would begin reading: the same rule its first poll applies.
+//!
 //! Each poll first stats the path. When the size and modification time are
 //! what the last read left, nothing is opened. Otherwise the file is opened
 //! read-only ([`open_read_only`]), its fingerprint checked, the new bytes
@@ -500,22 +503,12 @@ impl Follower {
         sink: &mut dyn FnMut(TailEvent) -> bool,
     ) -> io::Result<bool> {
         let len = seen.len;
-        let saved = self.saved.as_ref().filter(|s| s.path == self.path);
-        let (pos, reason, skip_to_newline) = if self.from_start {
-            (0, Reason::FromStart, false)
-        } else if let Some(saved) = saved {
-            if saved.offset <= len && saved.fingerprint.matches(head) {
-                (saved.offset, Reason::Resumed, false)
-            } else {
-                (0, Reason::SavedMismatch, false)
-            }
-        } else {
-            (
-                len,
-                Reason::AtEnd,
-                len > 0 && last_byte(&mut file, len)? != b'\n',
-            )
-        };
+        let StartAt {
+            offset: pos,
+            reason,
+        } = decide_start(&self.path, self.saved.as_ref(), self.from_start, head, len);
+        let skip_to_newline =
+            reason == Reason::AtEnd && len > 0 && last_byte(&mut file, len)? != b'\n';
         self.phase = Phase::Following(Tracked {
             pos,
             partial: Vec::new(),
@@ -594,6 +587,61 @@ impl Follower {
     }
 }
 
+/// Where a tailer begins reading an existing file, and why.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StartAt {
+    pub offset: u64,
+    pub reason: Reason,
+}
+
+/// Where a tailer started now with `config` would begin reading: the
+/// decision [`Follower`] makes on its first poll, for a caller that has to
+/// agree with it (the shell reads the log before this offset for the
+/// current area). `None` when the file does not exist: the tailer waits for
+/// it and then reads it from 0. Opens the file read-only and closes it
+/// before returning.
+pub fn start_position(config: &Config) -> io::Result<Option<StartAt>> {
+    let mut file = match open_read_only(&config.path) {
+        Ok(file) => file,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e),
+    };
+    let len = file.metadata()?.len();
+    let head = read_head(&mut file)?;
+    Ok(Some(decide_start(
+        &config.path,
+        config.saved.as_ref(),
+        config.from_start,
+        &head,
+        len,
+    )))
+}
+
+/// The start rule: `from_start` reads from 0; a saved position for this
+/// path resumes from its offset while its fingerprint still matches and the
+/// file is not shorter, else the whole file is read; with none, reading
+/// starts at the end of the file.
+fn decide_start(
+    path: &Path,
+    saved: Option<&Position>,
+    from_start: bool,
+    head: &[u8],
+    len: u64,
+) -> StartAt {
+    let (offset, reason) = if from_start {
+        (0, Reason::FromStart)
+    } else if let Some(saved) = saved.filter(|s| s.path == path) {
+        if saved.offset <= len && saved.fingerprint.matches(head) {
+            (saved.offset, Reason::Resumed)
+        } else {
+            (0, Reason::SavedMismatch)
+        }
+    } else {
+        (len, Reason::AtEnd)
+    };
+    StartAt { offset, reason }
+}
+
 /// Up to the first [`FINGERPRINT_BYTES`] bytes of a freshly opened file.
 fn read_head(file: &mut File) -> io::Result<Vec<u8>> {
     let mut head = Vec::with_capacity(FINGERPRINT_BYTES);
@@ -616,4 +664,111 @@ fn decode(raw: &[u8]) -> String {
     let raw = raw.strip_suffix(b"\n").unwrap_or(raw);
     let raw = raw.strip_suffix(b"\r").unwrap_or(raw);
     String::from_utf8_lossy(raw).into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    //! [`start_position`] against the follower's own first `Following`
+    //! event, in every way a start can go.
+
+    use super::*;
+
+    /// The follower's first `Following` event for `config`.
+    fn follower_start(config: &Config) -> Option<StartAt> {
+        let mut follower = Follower::new(config.clone());
+        let mut first = None;
+        follower.poll(&mut |event| {
+            if let TailEvent::Following { offset, reason } = event {
+                first.get_or_insert(StartAt { offset, reason });
+            }
+            true
+        });
+        first
+    }
+
+    #[test]
+    fn start_position_agrees_with_the_follower() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("Client.txt");
+        let config = Config::new(&path);
+
+        // A missing file: nothing to read back; the tailer waits.
+        assert_eq!(start_position(&config).unwrap(), None);
+
+        fs::write(&path, b"one\ntwo\nthree\n").unwrap();
+        let len = 14;
+        let saved = |offset: u64, head: &[u8]| Position {
+            path: path.clone(),
+            fingerprint: Fingerprint::of(head),
+            offset,
+        };
+        let cases = [
+            (
+                Config::new(&path),
+                StartAt {
+                    offset: len,
+                    reason: Reason::AtEnd,
+                },
+            ),
+            (
+                Config {
+                    from_start: true,
+                    saved: Some(saved(4, b"one\ntwo\nthree\n")),
+                    ..Config::new(&path)
+                },
+                StartAt {
+                    offset: 0,
+                    reason: Reason::FromStart,
+                },
+            ),
+            (
+                Config {
+                    saved: Some(saved(8, b"one\ntwo\nthree\n")),
+                    ..Config::new(&path)
+                },
+                StartAt {
+                    offset: 8,
+                    reason: Reason::Resumed,
+                },
+            ),
+            (
+                Config {
+                    saved: Some(saved(8, b"other\n")),
+                    ..Config::new(&path)
+                },
+                StartAt {
+                    offset: 0,
+                    reason: Reason::SavedMismatch,
+                },
+            ),
+            (
+                Config {
+                    saved: Some(saved(99, b"one\ntwo\nthree\n")),
+                    ..Config::new(&path)
+                },
+                StartAt {
+                    offset: 0,
+                    reason: Reason::SavedMismatch,
+                },
+            ),
+            // A position saved for another path is not this file's.
+            (
+                Config {
+                    saved: Some(Position {
+                        path: dir.path().join("Other.txt"),
+                        ..saved(8, b"one\ntwo\nthree\n")
+                    }),
+                    ..Config::new(&path)
+                },
+                StartAt {
+                    offset: len,
+                    reason: Reason::AtEnd,
+                },
+            ),
+        ];
+        for (config, want) in cases {
+            assert_eq!(start_position(&config).unwrap(), Some(want), "{config:?}");
+            assert_eq!(follower_start(&config), Some(want), "{config:?}");
+        }
+    }
 }

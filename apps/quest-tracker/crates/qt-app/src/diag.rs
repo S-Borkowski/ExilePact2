@@ -10,10 +10,12 @@
 //! be the player's own; one only taken to be by a level-up is "an
 //! unconfirmed character".
 
-use qt_engine::{Engine, Ownership, Transition};
+use qt_engine::{Engine, LogArea, Ownership, Transition};
 use qt_logline::{Event, EventKind};
 use qt_tailer::Reason;
 use qt_viewmodel::Toast;
+
+use crate::seed::MAX_SEED_BYTES;
 
 /// How a character appears in the log: its name when it is own, else a
 /// placeholder (a level-up alone does not prove the name is the player's).
@@ -76,6 +78,26 @@ pub fn toast(t: &Toast) -> String {
         .and_then(|v| v.as_str().map(str::to_string))
         .unwrap_or_default();
     format!("toast {} {} ({})", t.id, kind, t.quest_id)
+}
+
+/// The area seeded from the log before a tailer's start position: its code,
+/// or `none` with why. Never a line of the log.
+pub fn seeded_area(found: &LogArea, offset: u64) -> String {
+    match found {
+        LogArea::Area(code) => format!("area from log: {code}"),
+        LogArea::NoAreaLine => format!(
+            "area from log: none (no area line in the {} bytes before offset {offset})",
+            offset.min(MAX_SEED_BYTES)
+        ),
+        LogArea::MarkerAfter => {
+            "area from log: none (a session marker follows the last area line)".to_string()
+        }
+    }
+}
+
+/// A signal refused because the area was unknown.
+pub fn refused(quest_id: &str) -> String {
+    format!("area unknown: refused {quest_id}")
 }
 
 /// Why reading starts where it does, in words.
