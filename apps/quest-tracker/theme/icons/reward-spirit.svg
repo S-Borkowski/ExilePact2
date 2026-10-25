@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" role="img" aria-labelledby="qt-reward-spirit-title">
+  <title id="qt-reward-spirit-title">Spirit</title>
+  <path d="M8 4H6L4 8v7l4 3v3h8v-3l4-3V8l-2-4h-2"/>
+  <path d="m12 2 2 3-2 3-2-3Z"/>
+  <path d="m7 10 3 1-1 3H7Zm10 0-3 1 1 3h2Zm-5 4 1.5 3h-3Z" fill="currentColor" stroke="none"/>
+  <path d="M10 19v2m4-2v2"/>
+</svg>
