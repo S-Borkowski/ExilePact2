@@ -24,7 +24,7 @@ use qt_app::{App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, Window};
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
-use qt_viewmodel::{Dock, Frame, Mode, StatusKind, Toast, View, ViewKind};
+use qt_viewmodel::{Dock, Frame, Mode, RowChange, RowChangeKind, StatusKind, View, ViewKind};
 use serde_json::{json, Value};
 
 const OWN: &str = "Corisande_Fell";
@@ -35,7 +35,7 @@ const OWN: &str = "Corisande_Fell";
 #[derive(Default)]
 struct Recorder {
     views: Mutex<Vec<View>>,
-    toasts: Mutex<Vec<Toast>>,
+    row_changes: Mutex<Vec<RowChange>>,
 }
 
 impl Recorder {
@@ -67,8 +67,8 @@ impl Emitter for FakeEmitter {
         self.0.views.lock().unwrap().push(view.clone());
     }
 
-    fn toast(&self, toast: &Toast) {
-        self.0.toasts.lock().unwrap().push(toast.clone());
+    fn row_change(&self, change: &RowChange) {
+        self.0.row_changes.lock().unwrap().push(change.clone());
     }
 }
 
@@ -285,12 +285,14 @@ fn events(lines: &[String], catch_up: bool) -> Vec<TailEvent> {
         .collect()
 }
 
+/// A new character's first minutes: The Riverbank at area level 1 starts
+/// it, and its first level-up names it.
 fn own_character_lines() -> Vec<String> {
     vec![
         "2026/03/10 19:00:00 ***** LOG FILE OPENING *****".to_string(),
+        "2026/03/10 19:00:05 4005000 7e2c0006 [DEBUG Client 7120] Generating level 1 area \"G1_1\" with seed 2077351921".to_string(),
         format!("2026/03/10 19:00:20 4020000 7e2c0001 [INFO Client 7120] : {OWN} has received +20 to maximum Life."),
         format!("2026/03/10 19:00:40 4040000 7e2c0002 [INFO Client 7120] : {OWN} (Witch) is now level 9"),
-        "2026/03/10 19:02:01 4121000 7e2c0006 [DEBUG Client 7120] Generating level 1 area \"G1_1\" with seed 2077351921".to_string(),
     ]
 }
 
@@ -1020,4 +1022,220 @@ fn area_unknown_refusal_is_logged() {
         h.diag_text()
     );
     assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// ---------------------------------------------------------------------------
+// After Live 1: row changes, no old-path lines, the area after catch-up, and
+// the new character. (The start decided once is `qt-tailer`'s
+// `seed_reads_to_the_tailers_own_start`.)
+
+fn row_changes(h: &Harness) -> Vec<RowChange> {
+    h.views.row_changes.lock().unwrap().clone()
+}
+
+fn g1_2_entry() -> String {
+    "2026/03/10 19:04:01 4241000 7e2c0008 [DEBUG Client 7120] Generating level 2 area \"G1_2\" with seed 2077351921".to_string()
+}
+
+#[test]
+fn live_transition_emits_row_change() {
+    let h = harness(Setup::default());
+    // Baseline: catch-up moves quests but changes no row on screen.
+    h.app.handle_tail_events(events(&own_character_lines(), true));
+    assert_eq!(h.views.last().character.as_ref().unwrap().name, OWN);
+    assert!(row_changes(&h).is_empty(), "{:?}", row_changes(&h));
+
+    // Live: entering Clearfell makes Beira's quest available, and her
+    // reward line there finishes it.
+    h.app.handle_tail_events(events(&[g1_2_entry()], false));
+    let changes = row_changes(&h);
+    let first = changes
+        .iter()
+        .find(|c| c.quest_id == BEIRA)
+        .cloned()
+        .unwrap_or_else(|| panic!("no row change for {BEIRA}: {changes:?}"));
+    assert_eq!(first.kind, RowChangeKind::Available);
+    assert!(!first.text.is_empty());
+
+    h.app.handle_tail_events(events(&cold_reward(), false));
+    let changes = row_changes(&h);
+    let done = changes.last().cloned().expect("a row change for the reward");
+    assert_eq!((done.kind, done.quest_id.as_str()), (RowChangeKind::QuestDone, BEIRA));
+    assert!(done.id > first.id, "ids increase: {changes:?}");
+
+    // Each one is in the diagnostic log by id, kind and quest only.
+    let diag = h.diag_text();
+    assert!(
+        diag.contains(&format!("row change {} available ({BEIRA})", first.id)),
+        "{diag}"
+    );
+    assert!(
+        diag.contains(&format!("row change {} quest_done ({BEIRA})", done.id)),
+        "{diag}"
+    );
+    assert!(!diag.contains("toast"), "{diag}");
+
+    // Negative control: the same reward again, as catch-up, sends nothing.
+    let n = row_changes(&h).len();
+    h.app.handle_tail_events(events(&cold_reward(), true));
+    assert_eq!(row_changes(&h).len(), n);
+}
+
+#[test]
+fn path_change_drops_old_tailer_lines() {
+    let h = harness(Setup {
+        candidates: vec![PathBuf::from("Client.txt")],
+        files: vec![("Client.txt", String::new()), ("Other.txt", String::new())],
+        ..Setup::default()
+    });
+    h.app.start();
+    h.wait_diag(&["log: following", "Client.txt"]);
+    let old = h.app.tail_generation();
+
+    // The log path changes: the first tailer is stopped and another starts.
+    let other = h.root.join("Other.txt");
+    h.app
+        .update_settings(&json!({ "log_path": other.to_string_lossy() }))
+        .unwrap();
+    h.wait_diag(&["log: following", "Other.txt"]);
+    assert!(h.app.tail_generation() > old);
+
+    // What the first tailer had queued before it stopped arrives now.
+    let queued: Vec<(u64, TailEvent)> = events(&own_character_lines(), false)
+        .into_iter()
+        .map(|e| (old, e))
+        .collect();
+    h.app.handle_tail_events_of(queued.clone());
+    assert!(
+        h.app.get_view().character.is_none(),
+        "an old line reached the engine"
+    );
+    h.wait_diag(&["events of a stopped log reader dropped"]);
+    // Nothing became the new path's position: a save now writes none.
+    h.clock
+        .fetch_add(10 * qt_app::SAVE_INTERVAL_MS, Ordering::SeqCst);
+    h.app.set_view_kind(ViewKind::Campaign).unwrap();
+    assert!(
+        h.stored("position.json").is_none(),
+        "{:?}",
+        h.stored("position.json")
+    );
+
+    // Positive control: the same lines from the tailer running now count,
+    // and their position is the new path's.
+    let current = h.app.tail_generation();
+    h.app
+        .handle_tail_events_of(queued.into_iter().map(|(_, e)| (current, e)).collect());
+    assert_eq!(h.app.get_view().character.unwrap().name, OWN);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    let pos = h.stored("position.json").expect("position.json");
+    assert_eq!(
+        Path::new(pos["path"].as_str().unwrap()).file_name().unwrap(),
+        "Other.txt"
+    );
+}
+
+#[test]
+fn catch_up_logs_the_area_it_left() {
+    // First run: the session up to mid-zone in G1_2, read from the start.
+    let h = harness(log_setup(text(&mid_zone_lines()), true));
+    h.app.start();
+    h.views.wait_for("naming the character", |v| {
+        v.character.as_ref().is_some_and(|c| c.name == OWN)
+    });
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while beira_status(&h) != Status::InProgress {
+        assert!(Instant::now() < deadline, "Beira's quest never went in progress");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    let log = h.root.join("Client.txt");
+    let len = fs::metadata(&log).unwrap().len();
+
+    // While the overlay is closed, the player walks on to G1_3 (Live 1).
+    append(
+        &log,
+        &["2026/03/10 19:07:30 4450000 7e2c000c [DEBUG Client 7120] Generating level 3 area \"G1_3\" with seed 1234".to_string()],
+    );
+    let setup = Setup {
+        options: Options {
+            log: Some(PathBuf::from("Client.txt")),
+            ..Options::default()
+        },
+        ..Setup::default()
+    };
+    let h = harness_in(h._dir, setup);
+    assert_eq!(h.stored("position.json").expect("position.json")["offset"], len);
+    h.app.start();
+    // The seed reads up to the saved position: G1_2.
+    h.wait_diag(&["area from log: G1_2"]);
+    // The catch-up reads the G1_3 line, and its summary says so.
+    let line = h.wait_diag(&["catch-up: 1 lines read"]);
+    assert!(line.contains(", character "), "{line}");
+    assert!(line.ends_with(", area G1_3"), "{line}");
+    // No live area line was written for it: the summary is the trace.
+    assert!(!h.diag_text().contains("area G1_3 (level"), "{}", h.diag_text());
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn riverbank_new_character_is_logged() {
+    const NEW: &str = "character: a new character (The Riverbank)";
+    let riverbank = || {
+        vec![
+            "2026/03/12 10:00:00 ***** LOG FILE OPENING *****".to_string(),
+            "2026/03/12 10:00:05 6005000 9a1c0001 [DEBUG Client 7120] Generating level 1 area \"G1_1\" with seed 31".to_string(),
+        ]
+    };
+
+    // Baseline: read as catch-up, the start leaves no live line, but the
+    // catch-up summary names the new character.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&riverbank(), true));
+    let diag = h.diag_text();
+    assert!(!diag.contains(NEW), "{diag}");
+    assert!(
+        diag.contains("character a new character (The Riverbank), area G1_1"),
+        "{diag}"
+    );
+
+    // Live: the line is logged when the state starts, the view shows the
+    // provisional character, and the level-up names it.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&riverbank(), false));
+    assert_eq!(h.diag_text().matches(NEW).count(), 1, "{}", h.diag_text());
+    let c = h.views.last().character.expect("the new character");
+    assert!(c.provisional && c.name.is_empty(), "{c:?}");
+    h.app.handle_tail_events(events(
+        &[format!(
+            "2026/03/12 10:01:00 6060000 9a1c0002 [INFO Client 7120] : {OWN} (Witch) is now level 2"
+        )],
+        false,
+    ));
+    let c = h.views.last().character.expect("the named character");
+    assert_eq!((c.name.as_str(), c.provisional), (OWN, false));
+
+    // A pinned character: the next Riverbank start releases the pin, and
+    // says so.
+    h.app.pin_character(Some(OWN)).unwrap();
+    h.app.handle_tail_events(events(&riverbank(), false));
+    let diag = h.diag_text();
+    assert_eq!(diag.matches(NEW).count(), 2, "{diag}");
+    assert!(
+        diag.contains(&format!("character: pin on {OWN} released for the new character")),
+        "{diag}"
+    );
+
+    // Negative control: another area at level 1, or The Riverbank at a
+    // higher area level, starts nothing.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(
+        &[
+            "2026/03/12 11:00:00 ***** LOG FILE OPENING *****".to_string(),
+            "2026/03/12 11:00:05 7005000 9a1c0003 [DEBUG Client 7120] Generating level 1 area \"G1_town\" with seed 32".to_string(),
+            "2026/03/12 11:00:09 7009000 9a1c0004 [DEBUG Client 7120] Generating level 40 area \"G1_1\" with seed 33".to_string(),
+        ],
+        false,
+    ));
+    assert!(!h.diag_text().contains(NEW), "{}", h.diag_text());
 }

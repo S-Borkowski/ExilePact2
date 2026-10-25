@@ -9,14 +9,19 @@
 //!   [`Config::poll_interval`] through an injected [`Clock`], sends
 //!   [`TailEvent`]s over an `std::sync::mpsc` channel and ends when the stop
 //!   flag is set (checked before and after every poll, and between lines), or
-//!   when the receiver is dropped.
+//!   when the receiver is dropped. [`spawn_follower`] runs a [`Follower`]
+//!   built by the caller and hands its events to a closure instead.
 //! - [`Follower`] is the same state machine without the thread: one
 //!   [`Follower::poll`] per call. The thread is a loop around it.
 //! - [`read_whole_file`] is the replay mode: 0 to EOF once, every line
 //!   catch-up, no thread.
 //!
-//! [`start_position`] answers, without starting anything, where a follower
-//! started now would begin reading: the same rule its first poll applies.
+//! [`decide`] makes the start decision once, before anything runs: where
+//! reading begins, and why. A caller that must agree with the follower (the
+//! shell reads the log before that offset for the current area) hands the
+//! same [`Start`] to [`Follower::with_start`], whose first poll then follows
+//! it instead of deciding again, so a file that grows in between cannot
+//! move the start.
 //!
 //! Each poll first stats the path. When the size and modification time are
 //! what the last read left, nothing is opened. Otherwise the file is opened
@@ -270,17 +275,42 @@ pub fn spawn<C: Clock>(
     events: Sender<TailEvent>,
     stop: Arc<AtomicBool>,
 ) -> io::Result<JoinHandle<()>> {
-    thread::Builder::new()
-        .name("qt-tailer".to_string())
-        .spawn(move || run(config, clock, events, stop))
+    spawn_follower(
+        Follower::new(config),
+        clock,
+        move |event| events.send(event).is_ok(),
+        stop,
+    )
 }
 
-fn run<C: Clock>(config: Config, clock: C, events: Sender<TailEvent>, stop: Arc<AtomicBool>) {
-    let interval = config.poll_interval;
-    let mut follower = Follower::new(config);
+/// Runs `follower` on its own thread (named `qt-tailer`), polling every
+/// [`Config::poll_interval`], and hands every event to `sink`, which returns
+/// false once nobody listens. Ends within one poll interval of `stop` being
+/// set, or as soon as `sink` returns false.
+pub fn spawn_follower<C, S>(
+    follower: Follower,
+    clock: C,
+    sink: S,
+    stop: Arc<AtomicBool>,
+) -> io::Result<JoinHandle<()>>
+where
+    C: Clock,
+    S: FnMut(TailEvent) -> bool + Send + 'static,
+{
+    thread::Builder::new()
+        .name("qt-tailer".to_string())
+        .spawn(move || run(follower, clock, sink, stop))
+}
+
+fn run<C: Clock>(
+    mut follower: Follower,
+    clock: C,
+    mut sink: impl FnMut(TailEvent) -> bool,
+    stop: Arc<AtomicBool>,
+) {
+    let interval = follower.poll_interval;
     while !stop.load(Ordering::Acquire) {
-        let go =
-            follower.poll(&mut |event| !stop.load(Ordering::Acquire) && events.send(event).is_ok());
+        let go = follower.poll(&mut |event| !stop.load(Ordering::Acquire) && sink(event));
         if !go || stop.load(Ordering::Acquire) {
             break;
         }
@@ -325,14 +355,17 @@ pub struct Follower {
     path: PathBuf,
     saved: Option<Position>,
     from_start: bool,
+    poll_interval: Duration,
     phase: Phase,
     last_error: Option<String>,
 }
 
 #[derive(Debug)]
 enum Phase {
-    /// Nothing polled yet.
+    /// Nothing polled yet; the first poll decides where to start.
     Start,
+    /// Nothing polled yet; the start was decided by [`decide`].
+    Decided(Start),
     /// The file is missing; it is read from 0 once it appears.
     Waiting,
     Following(Tracked),
@@ -380,13 +413,29 @@ fn file_id(meta: &Metadata) -> Option<FileId> {
 }
 
 impl Follower {
+    /// A follower whose first poll decides where to start, by the rule
+    /// [`decide`] applies.
     pub fn new(config: Config) -> Self {
         Follower {
             path: config.path,
             saved: config.saved,
             from_start: config.from_start,
+            poll_interval: config.poll_interval,
             phase: Phase::Start,
             last_error: None,
+        }
+    }
+
+    /// A follower that starts where `start` (made by [`decide`] for the same
+    /// `config`) says, without deciding again. Its first poll still checks
+    /// that the file is the one decided on: a file that is gone is waited
+    /// for, and one that was truncated, rewritten or rotated in between is
+    /// read from 0, as on any later poll. A file decided missing that exists
+    /// by the first poll is read from 0 (it appeared).
+    pub fn with_start(config: Config, start: Start) -> Self {
+        Follower {
+            phase: Phase::Decided(start),
+            ..Follower::new(config)
         }
     }
 
@@ -433,7 +482,7 @@ impl Follower {
         let identity = file_id(&meta);
 
         let restart = match &self.phase {
-            Phase::Start => None,
+            Phase::Start | Phase::Decided(_) => None,
             Phase::Waiting => Some(Reason::Appeared),
             Phase::Following(t) => {
                 if matches!((t.identity, identity), (Some(a), Some(b)) if a != b) {
@@ -456,8 +505,23 @@ impl Follower {
         };
         let head = read_head(&mut file)?;
 
-        if matches!(self.phase, Phase::Start) {
-            return self.start(file, &head, seen, identity, sink);
+        match std::mem::replace(&mut self.phase, Phase::Start) {
+            Phase::Start => {
+                let start = start_on(
+                    &self.path,
+                    self.saved.as_ref(),
+                    self.from_start,
+                    &mut file,
+                    &head,
+                    seen.len,
+                    identity,
+                )?;
+                return self.start(file, &head, seen, identity, start, sink);
+            }
+            Phase::Decided(start) => {
+                return self.start(file, &head, seen, identity, start, sink);
+            }
+            other => self.phase = other,
         }
         let reason = match (&self.phase, restart) {
             (_, Some(reason)) => Some(reason),
@@ -494,27 +558,39 @@ impl Follower {
         sink(TailEvent::Waiting)
     }
 
+    /// The first poll that finds the file: follows `start`, unless the file
+    /// is no longer the one it was decided on.
     fn start(
         &mut self,
-        mut file: File,
+        file: File,
         head: &[u8],
         seen: Seen,
         identity: Option<FileId>,
+        start: Start,
         sink: &mut dyn FnMut(TailEvent) -> bool,
     ) -> io::Result<bool> {
-        let len = seen.len;
-        let StartAt {
-            offset: pos,
-            reason,
-        } = decide_start(&self.path, self.saved.as_ref(), self.from_start, head, len);
-        let skip_to_newline =
-            reason == Reason::AtEnd && len > 0 && last_byte(&mut file, len)? != b'\n';
+        let from_zero = |reason| (StartAt { offset: 0, reason }, false, 0);
+        let (StartAt { offset: pos, reason }, skip_to_newline, catch_up_end) = match start.file {
+            // Decided while the file was missing: it has appeared since.
+            None => from_zero(Reason::Appeared),
+            Some(f) => {
+                if matches!((f.identity, identity), (Some(a), Some(b)) if a != b) {
+                    from_zero(Reason::Rotated)
+                } else if seen.len < f.len {
+                    from_zero(Reason::Truncated)
+                } else if !f.fingerprint.matches(head) {
+                    from_zero(Reason::Replaced)
+                } else {
+                    (f.at, f.skip_to_newline, f.len)
+                }
+            }
+        };
         self.phase = Phase::Following(Tracked {
             pos,
             partial: Vec::new(),
             skip_to_newline,
             fingerprint: Fingerprint::of(head),
-            catch_up_end: len,
+            catch_up_end,
             seen: None,
             identity,
         });
@@ -594,40 +670,71 @@ pub struct StartAt {
     pub reason: Reason,
 }
 
-/// Where a tailer started now with `config` would begin reading: the
-/// decision [`Follower`] makes on its first poll, for a caller that has to
-/// agree with it (the shell reads the log before this offset for the
-/// current area). `None` when the file does not exist: the tailer waits for
-/// it and then reads it from 0. Opens the file read-only and closes it
-/// before returning.
-pub fn start_position(config: &Config) -> io::Result<Option<StartAt>> {
+/// A start decided once, by [`decide`], for [`Follower::with_start`]: where
+/// reading begins and why, and the file it was decided on.
+#[derive(Clone, Debug)]
+pub struct Start {
+    /// `None` when the file did not exist.
+    file: Option<DecidedOn>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct DecidedOn {
+    at: StartAt,
+    /// The file's length then: lines ending at or before it are catch-up.
+    len: u64,
+    fingerprint: Fingerprint,
+    identity: Option<FileId>,
+    /// Started at the end of a file whose last line was unfinished.
+    skip_to_newline: bool,
+}
+
+impl Start {
+    /// Where reading begins, and why; `None` when the file did not exist:
+    /// the tailer waits for it and then reads it from 0.
+    pub fn at(&self) -> Option<StartAt> {
+        self.file.map(|f| f.at)
+    }
+}
+
+/// Decides, once, where a tailer started with `config` begins reading, for
+/// [`Follower::with_start`] and for a caller that must agree with it (the
+/// shell reads the log before this offset for the current area). The rule:
+/// `from_start` reads from 0; a saved position for this path resumes from
+/// its offset while its fingerprint still matches and the file is not
+/// shorter, else the whole file is read; with none, reading starts at the
+/// end of the file. Opens the file read-only and closes it before
+/// returning.
+pub fn decide(config: &Config) -> io::Result<Start> {
     let mut file = match open_read_only(&config.path) {
         Ok(file) => file,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Start { file: None }),
         Err(e) => return Err(e),
     };
-    let len = file.metadata()?.len();
+    let meta = file.metadata()?;
     let head = read_head(&mut file)?;
-    Ok(Some(decide_start(
+    start_on(
         &config.path,
         config.saved.as_ref(),
         config.from_start,
+        &mut file,
         &head,
-        len,
-    )))
+        meta.len(),
+        file_id(&meta),
+    )
 }
 
-/// The start rule: `from_start` reads from 0; a saved position for this
-/// path resumes from its offset while its fingerprint still matches and the
-/// file is not shorter, else the whole file is read; with none, reading
-/// starts at the end of the file.
-fn decide_start(
+/// The start rule (see [`decide`]) applied to an open file of `len` bytes
+/// whose first bytes are `head`.
+fn start_on(
     path: &Path,
     saved: Option<&Position>,
     from_start: bool,
+    file: &mut File,
     head: &[u8],
     len: u64,
-) -> StartAt {
+    identity: Option<FileId>,
+) -> io::Result<Start> {
     let (offset, reason) = if from_start {
         (0, Reason::FromStart)
     } else if let Some(saved) = saved.filter(|s| s.path == path) {
@@ -639,7 +746,16 @@ fn decide_start(
     } else {
         (len, Reason::AtEnd)
     };
-    StartAt { offset, reason }
+    let skip_to_newline = reason == Reason::AtEnd && len > 0 && last_byte(file, len)? != b'\n';
+    Ok(Start {
+        file: Some(DecidedOn {
+            at: StartAt { offset, reason },
+            len,
+            fingerprint: Fingerprint::of(head),
+            identity,
+            skip_to_newline,
+        }),
+    })
 }
 
 /// Up to the first [`FINGERPRINT_BYTES`] bytes of a freshly opened file.
@@ -668,14 +784,14 @@ fn decode(raw: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    //! [`start_position`] against the follower's own first `Following`
-    //! event, in every way a start can go.
+    //! [`decide`] against the follower's own first `Following` event, in
+    //! every way a start can go: a follower that decides on its first poll
+    //! and one handed the decision agree with it.
 
     use super::*;
 
-    /// The follower's first `Following` event for `config`.
-    fn follower_start(config: &Config) -> Option<StartAt> {
-        let mut follower = Follower::new(config.clone());
+    /// The first `Following` event of `follower`'s first poll.
+    fn first_following(mut follower: Follower) -> Option<StartAt> {
         let mut first = None;
         follower.poll(&mut |event| {
             if let TailEvent::Following { offset, reason } = event {
@@ -693,7 +809,7 @@ mod tests {
         let config = Config::new(&path);
 
         // A missing file: nothing to read back; the tailer waits.
-        assert_eq!(start_position(&config).unwrap(), None);
+        assert_eq!(decide(&config).unwrap().at(), None);
 
         fs::write(&path, b"one\ntwo\nthree\n").unwrap();
         let len = 14;
@@ -767,8 +883,18 @@ mod tests {
             ),
         ];
         for (config, want) in cases {
-            assert_eq!(start_position(&config).unwrap(), Some(want), "{config:?}");
-            assert_eq!(follower_start(&config), Some(want), "{config:?}");
+            let start = decide(&config).unwrap();
+            assert_eq!(start.at(), Some(want), "{config:?}");
+            assert_eq!(
+                first_following(Follower::new(config.clone())),
+                Some(want),
+                "{config:?}"
+            );
+            assert_eq!(
+                first_following(Follower::with_start(config.clone(), start)),
+                Some(want),
+                "{config:?}"
+            );
         }
     }
 }

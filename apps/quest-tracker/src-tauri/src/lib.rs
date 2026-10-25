@@ -1,6 +1,6 @@
 //! Tauri glue for the quest-tracker overlay: the `overlay` window, the
 //! commands as thin wrappers over `qt-app`, and the emitter that sends
-//! `qt:view` and `qt:toast`. Every decision is `qt-app`'s; this file only
+//! `qt:view` and `qt:row-change`. Every decision is `qt-app`'s; this file only
 //! connects it to Tauri.
 //!
 //! - **Window**: the one `overlay` window of `tauri.conf.json` (transparent,
@@ -38,8 +38,8 @@
 use std::sync::{Arc, Mutex};
 
 use qt_app::{
-    App, AppConfig, Dock, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, Store,
-    SystemClock, Toast, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
+    App, AppConfig, Dock, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, RowChange,
+    Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
 use tauri::{
@@ -75,8 +75,8 @@ impl qt_app::Emitter for TauriEmitter {
         let _ = self.0.emit_to(OVERLAY, "qt:view", view);
     }
 
-    fn toast(&self, toast: &Toast) {
-        let _ = self.0.emit_to(OVERLAY, "qt:toast", toast);
+    fn row_change(&self, change: &RowChange) {
+        let _ = self.0.emit_to(OVERLAY, "qt:row-change", change);
     }
 }
 

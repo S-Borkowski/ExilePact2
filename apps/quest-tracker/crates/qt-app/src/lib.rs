@@ -4,7 +4,7 @@
 //! command-line options and log path discovery.
 //!
 //! `src-tauri` is glue around this crate: it implements [`Emitter`] (the
-//! `qt:view` and `qt:toast` events) and [`Window`] (click-through, zoom,
+//! `qt:view` and `qt:row-change` events) and [`Window`] (click-through, zoom,
 //! placement, the global shortcut, opening a link, the monitor's metrics
 //! for the `auto` scale) and forwards each IPC
 //! command to the [`App`] method of the same name. Keeping the logic here
@@ -39,7 +39,7 @@ pub use cli::Options;
 pub use qt_engine::QuestAction;
 pub use qt_store::Store;
 pub use qt_tailer::DEFAULT_POLL_INTERVAL;
-pub use qt_viewmodel::{Dock, Frame, Mode, Toast, View, ViewKind};
+pub use qt_viewmodel::{Dock, Frame, Mode, RowChange, View, ViewKind};
 
 /// The quest data built into the executable.
 pub const EMBEDDED_DATA: &str = include_str!("../../../data/quests.json");

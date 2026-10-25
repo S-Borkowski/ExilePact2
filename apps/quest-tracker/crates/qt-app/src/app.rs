@@ -33,8 +33,8 @@ use qt_logline::parse_line;
 use qt_store::{Loaded, Store, StoreError};
 use qt_tailer::{Position, SystemClock as TailerClock, TailEvent};
 use qt_viewmodel::{
-    build_view, Dock, Frame, LogState, Mode, Scale, Settings, StatusKind, StatusLine, Toast,
-    ToastQueue, View, ViewKind,
+    build_view, Dock, Frame, LogState, Mode, RowChange, RowChanges, Scale, Settings, StatusKind,
+    StatusLine, View, ViewKind,
 };
 use serde_json::{json, Map, Value};
 
@@ -55,10 +55,10 @@ pub const BATCH_EVENTS: usize = 2_000;
 /// How long [`App::shutdown`] waits for the threads by default.
 pub const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 
-/// Sends `qt:view` and `qt:toast` to the `overlay` window.
+/// Sends `qt:view` and `qt:row-change` to the `overlay` window.
 pub trait Emitter: Send + Sync + 'static {
     fn view(&self, view: &View);
-    fn toast(&self, toast: &Toast);
+    fn row_change(&self, change: &RowChange);
 }
 
 /// Where the window goes: docked to a side of its monitor, or where the
@@ -98,7 +98,7 @@ pub struct MonitorMetrics {
     pub dpi_scale: f64,
 }
 
-/// Milliseconds on a monotonic clock, for the debounce and the toasts.
+/// Milliseconds on a monotonic clock, for the save debounce.
 pub trait Clock: Send + Sync + 'static {
     fn now_ms(&self) -> u64;
 }
@@ -228,7 +228,10 @@ struct State {
     /// Where the user dragged the window, saved with the settings.
     window_pos: Option<(i32, i32)>,
     ui: qt_viewmodel::UiState,
-    toasts: ToastQueue,
+    row_changes: RowChanges,
+    /// Which tailer's events count: raised each time a tailer is started or
+    /// stopped, so lines an earlier tailer queued are dropped.
+    tail_gen: u64,
     statuses: BTreeMap<Source, StatusLine>,
     log_path: Option<PathBuf>,
     position: Option<Position>,
@@ -321,8 +324,10 @@ pub struct App {
     /// events cannot apply their reads out of order. Taken before the state
     /// lock, never while holding it.
     scale_lock: Mutex<()>,
-    tx: Sender<TailEvent>,
-    rx: Mutex<Option<Receiver<TailEvent>>>,
+    /// Every tailer's events, tagged with the generation it was started
+    /// under (`State::tail_gen`).
+    tx: Sender<(u64, TailEvent)>,
+    rx: Mutex<Option<Receiver<(u64, TailEvent)>>>,
     tailer: Mutex<Option<Tailer>>,
     worker: Mutex<Option<JoinHandle<()>>>,
     worker_stop: Arc<AtomicBool>,
@@ -465,7 +470,8 @@ impl App {
             settings,
             window_pos,
             ui,
-            toasts: ToastQueue::new(),
+            row_changes: RowChanges::new(),
+            tail_gen: 0,
             statuses: BTreeMap::new(),
             log_path: log_path.as_ref().map(|(p, _)| p.clone()),
             position,
@@ -724,17 +730,49 @@ impl App {
         }
     }
 
-    /// One batch of tailer events, as the worker hands them over: each line
-    /// is parsed with the data's allowlist and fed to the engine, the
-    /// position kept, and then one fresh view is emitted (when it differs
-    /// from the last) followed by any toasts the live transitions made.
+    /// One batch of events from the tailer running now: each line is parsed
+    /// with the data's allowlist and fed to the engine, the position kept,
+    /// and then one fresh view is emitted (when it differs from the last)
+    /// followed by one `qt:row-change` per live transition that changed a
+    /// row.
     pub fn handle_tail_events(&self, events: Vec<TailEvent>) {
-        let now = self.clock.now_ms();
-        let mut st = self.lock();
+        let st = self.lock();
+        let generation = st.tail_gen;
+        self.apply_tail_events(st, generation, events.into_iter().map(|e| (generation, e)));
+    }
+
+    /// The generation of the tailer running now. Events tagged with an
+    /// earlier one came from a tailer since stopped.
+    pub fn tail_generation(&self) -> u64 {
+        self.lock().tail_gen
+    }
+
+    /// A batch of tailer events as the worker drains them, each tagged with
+    /// the generation of the tailer that sent it. Those of a tailer since
+    /// stopped (one that followed the log before a path change) are dropped
+    /// under the same lock that changed the path: none reaches the engine,
+    /// and none becomes the saved position of the new path.
+    pub fn handle_tail_events_of(&self, events: Vec<(u64, TailEvent)>) {
+        let st = self.lock();
+        let generation = st.tail_gen;
+        self.apply_tail_events(st, generation, events.into_iter());
+    }
+
+    fn apply_tail_events(
+        &self,
+        mut st: MutexGuard<'_, State>,
+        generation: u64,
+        events: impl Iterator<Item = (u64, TailEvent)>,
+    ) {
         let path = st.log_path.clone().unwrap_or_default();
+        let mut stale = 0usize;
         let mut transitions: Vec<Transition> = Vec::new();
         let mut caught_up = 0usize;
-        for event in events {
+        for (tag, event) in events {
+            if tag != generation {
+                stale += 1;
+                continue;
+            }
             match event {
                 TailEvent::Line(line) => {
                     if st.ui.log != LogState::Reading {
@@ -752,7 +790,14 @@ impl App {
                             }
                         }
                         let before = st.engine.current().map(str::to_string);
+                        let was_new = st.engine.new_character_open();
                         let ts = st.engine.apply(&ev, live);
+                        if live && !was_new && st.engine.new_character_open() {
+                            self.diag(diag::NEW_CHARACTER);
+                            if let Some(pin) = st.engine.new_character_released_pin() {
+                                self.diag(&diag::pin_released(&st.engine, pin));
+                            }
+                        }
                         for quest_id in st.engine.take_refused() {
                             self.diag(&diag::refused(&quest_id));
                         }
@@ -800,23 +845,22 @@ impl App {
                 }
             }
         }
+        if stale > 0 {
+            self.diag(&format!("log: {stale} events of a stopped log reader dropped"));
+        }
         if caught_up > 0 {
-            let current = st.engine.current().map(str::to_string);
-            self.diag(&format!(
-                "catch-up: {caught_up} lines read, character {}",
-                diag::character(&st.engine, current.as_deref())
-            ));
+            self.diag(&diag::catch_up(&st.engine, caught_up));
         }
         let data = st.engine.data().clone();
-        let toasts = st.toasts.push(&data, &transitions, now);
+        let changes = st.row_changes.make(&data, &transitions);
         let view = self.build(&st);
         if st.last_view.as_ref() != Some(&view) {
             self.emitter.view(&view);
             st.last_view = Some(view);
         }
-        for t in &toasts {
-            self.emitter.toast(t);
-            self.diag(&diag::toast(t));
+        for c in &changes {
+            self.emitter.row_change(c);
+            self.diag(&diag::row_change(c));
         }
     }
 
@@ -1225,6 +1269,8 @@ impl App {
         }
         let Some((path, source)) = chosen else {
             let mut st = self.lock();
+            // Whatever the stopped tailer queued is not this log's.
+            st.tail_gen += 1;
             st.log_path = None;
             st.ui.log = LogState::Missing;
             st.set_status(Source::Log, None);
@@ -1232,8 +1278,12 @@ impl App {
             self.diag("log: no Client.txt found; set the log path in Settings");
             return;
         };
-        {
+        let generation = {
             let mut st = self.lock();
+            // From here on, only the new tailer's events count: whatever the
+            // stopped one queued is dropped, under this lock, before it can
+            // reach the engine or be saved as a position of this path.
+            st.tail_gen += 1;
             if st.log_path.as_deref() != Some(path.as_path()) || st.ui.log == LogState::Missing {
                 st.ui.log = LogState::Waiting;
                 st.set_status(
@@ -1242,16 +1292,33 @@ impl App {
                 );
             }
             st.log_path = Some(path.clone());
-        }
+            st.tail_gen
+        };
         let config = qt_tailer::Config {
             path: path.clone(),
             saved: saved.filter(|p| p.path == path),
             from_start: self.options.from_start,
             poll_interval: self.poll_interval,
         };
-        self.seed_area(&config);
+        // The start is decided once, here: the seed reads the log up to
+        // exactly where the tailer begins, and the tailer begins there.
+        let follower = match qt_tailer::decide(&config) {
+            Ok(start) => {
+                self.seed_area(&config.path, start.at());
+                qt_tailer::Follower::with_start(config, start)
+            }
+            Err(e) => {
+                // The tailer decides on its first poll and reports the
+                // failure itself, as it does for any later read.
+                self.diag(&format!("error: area from log: {e}; the area is unknown"));
+                self.lock().engine.seed_area(None);
+                qt_tailer::Follower::new(config)
+            }
+        };
         let stop = Arc::new(AtomicBool::new(false));
-        match qt_tailer::spawn(config, TailerClock, self.tx.clone(), Arc::clone(&stop)) {
+        let tx = self.tx.clone();
+        let sink = move |event| tx.send((generation, event)).is_ok();
+        match qt_tailer::spawn_follower(follower, TailerClock, sink, Arc::clone(&stop)) {
             Ok(handle) => {
                 self.diag(&format!(
                     "log: tailer started on {} (from {}{})",
@@ -1272,30 +1339,25 @@ impl App {
         }
     }
 
-    /// Seeds the engine's area from the log before where a tailer started
-    /// with `config` begins reading (the tailer's own decision,
-    /// [`qt_tailer::start_position`]), before the tailer exists, so before
-    /// any of its lines reaches the engine. A start at 0, or a log not there
-    /// yet, seeds nothing: the tailer reads the area lines itself. A read
-    /// that fails leaves the area unknown.
-    fn seed_area(&self, config: &qt_tailer::Config) {
-        let start = match qt_tailer::start_position(config) {
-            Ok(Some(start)) if start.offset > 0 => start,
-            Ok(Some(_)) => {
+    /// Seeds the engine's area from the log at `path` before `start`, where
+    /// the tailer about to run begins reading (the decision it is handed,
+    /// [`qt_tailer::decide`]), before the tailer exists, so before any of
+    /// its lines reaches the engine. A start at 0, or a log not there yet,
+    /// seeds nothing: the tailer reads the area lines itself. A read that
+    /// fails leaves the area unknown.
+    fn seed_area(&self, path: &std::path::Path, start: Option<qt_tailer::StartAt>) {
+        let start = match start {
+            Some(start) if start.offset > 0 => start,
+            Some(_) => {
                 self.diag("area from log: not read (the tailer reads the log from offset 0)");
                 return;
             }
-            Ok(None) => {
+            None => {
                 self.diag("area from log: not read (the log does not exist yet)");
                 return;
             }
-            Err(e) => {
-                self.diag(&format!("error: area from log: {e}; the area is unknown"));
-                self.lock().engine.seed_area(None);
-                return;
-            }
         };
-        let found = seed::area_before(&config.path, start.offset);
+        let found = seed::area_before(path, start.offset);
         let mut st = self.lock();
         match found {
             Ok(found) => {
@@ -1440,7 +1502,7 @@ fn join_by(handle: JoinHandle<()>, deadline: Instant) -> bool {
 /// The worker: drains the tailer's channel in batches into
 /// [`App::handle_tail_events`], and ticks between them. Ends within one
 /// [`WORKER_TICK`] of `stop` being set.
-fn run_worker(app: Arc<App>, rx: Receiver<TailEvent>, stop: Arc<AtomicBool>) {
+fn run_worker(app: Arc<App>, rx: Receiver<(u64, TailEvent)>, stop: Arc<AtomicBool>) {
     while !stop.load(Ordering::Acquire) {
         match rx.recv_timeout(WORKER_TICK) {
             Ok(first) => {
@@ -1451,7 +1513,7 @@ fn run_worker(app: Arc<App>, rx: Receiver<TailEvent>, stop: Arc<AtomicBool>) {
                         Err(_) => break,
                     }
                 }
-                app.handle_tail_events(batch);
+                app.handle_tail_events_of(batch);
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
@@ -1472,7 +1534,7 @@ mod tests {
 
     impl Emitter for NoEmitter {
         fn view(&self, _: &View) {}
-        fn toast(&self, _: &Toast) {}
+        fn row_change(&self, _: &RowChange) {}
     }
 
     struct FakeWindow {

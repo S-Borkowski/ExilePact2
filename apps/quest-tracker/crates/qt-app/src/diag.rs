@@ -3,7 +3,7 @@
 //!
 //! The log is for a bug report: start and stop, the log path and mode, the
 //! window handle, session starts, areas, character decisions, transitions,
-//! toasts, the shortcut and errors. It never holds chat, an NPC line's text,
+//! row changes, the shortcut and errors. It never holds chat, an NPC line's text,
 //! or another player's name: an event is described by its kind and the
 //! fields that name a place or a quest, never by its line; party lines are
 //! not described at all; and a character is named only when it is known to
@@ -13,7 +13,7 @@
 use qt_engine::{Engine, LogArea, Ownership, Transition};
 use qt_logline::{Event, EventKind};
 use qt_tailer::Reason;
-use qt_viewmodel::Toast;
+use qt_viewmodel::RowChange;
 
 use crate::seed::MAX_SEED_BYTES;
 
@@ -72,12 +72,38 @@ pub fn transition(t: &Transition) -> String {
     )
 }
 
-pub fn toast(t: &Toast) -> String {
-    let kind = serde_json::to_value(t.kind)
-        .ok()
-        .and_then(|v| v.as_str().map(str::to_string))
-        .unwrap_or_default();
-    format!("toast {} {} ({})", t.id, kind, t.quest_id)
+/// A live row change sent as `qt:row-change`: its id, kind and quest, never
+/// its step titles or text.
+pub fn row_change(c: &RowChange) -> String {
+    format!("row change {} {} ({})", c.id, c.kind.as_str(), c.quest_id)
+}
+
+/// A level-1 entry to The Riverbank started a new, still unnamed character.
+pub const NEW_CHARACTER: &str = "character: a new character (The Riverbank)";
+
+/// The new character's start released a pin; the character its level-up
+/// names is pinned in its place.
+pub fn pin_released(engine: &Engine, pinned: &str) -> String {
+    format!(
+        "character: pin on {} released for the new character",
+        character(engine, Some(pinned))
+    )
+}
+
+/// The summary of a batch of catch-up lines: how many, the character they
+/// left current and the area they left (the one the engine now holds,
+/// which the catch-up may have changed without a live area line).
+pub fn catch_up(engine: &Engine, lines: usize) -> String {
+    let current = engine.current();
+    let who = if current.is_none() && engine.new_character_open() {
+        "a new character (The Riverbank)".to_string()
+    } else {
+        character(engine, current)
+    };
+    format!(
+        "catch-up: {lines} lines read, character {who}, area {}",
+        engine.current_area().unwrap_or("unknown")
+    )
 }
 
 /// The area seeded from the log before a tailer's start position: its code,

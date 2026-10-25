@@ -1,10 +1,10 @@
-//! The tailer's contract, on temporary files. Every test but the two that need
+//! The tailer's contract, on temporary files. Every test but the few that need
 //! real timing drives the tailer thread through an injected clock: each
 //! `poll()` lets exactly one poll run and returns what it sent, so no test
 //! sleeps.
 
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -13,8 +13,8 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use qt_tailer::{
-    open_read_only, read_whole_file, spawn, Clock, Config, Fingerprint, Line, Position, Reason,
-    SystemClock, TailEvent,
+    decide, open_read_only, read_whole_file, spawn, spawn_follower, Clock, Config, Fingerprint,
+    Follower, Line, Position, Reason, SystemClock, TailEvent,
 };
 
 const WAIT: Duration = Duration::from_secs(10);
@@ -546,4 +546,115 @@ fn stop_flag_ends_thread_within_one_poll() {
         took < interval + Duration::from_millis(250),
         "stopping took {took:?}"
     );
+}
+
+/// One poll of `follower`, and what it sent.
+fn poll_once(follower: &mut Follower) -> Vec<TailEvent> {
+    let mut sent = Vec::new();
+    follower.poll(&mut |event| {
+        sent.push(event);
+        true
+    });
+    sent
+}
+
+#[test]
+fn seed_reads_to_the_tailers_own_start() {
+    // The shell decides the start once, reads the log before it for the
+    // area, and hands the same decision to the follower. Lines the game
+    // writes in between are neither lost nor read twice.
+    let dir = tempfile::tempdir().unwrap();
+    let path = log_in(&dir);
+    let existing = "2026/10/25 10:00:00 one\n2026/10/25 10:00:01 two\n";
+    fs::write(&path, existing).unwrap();
+    let config = Config::new(&path);
+
+    let start = decide(&config).unwrap();
+    let at = start.at().expect("the file exists");
+    assert_eq!((at.offset, at.reason), (existing.len() as u64, Reason::AtEnd));
+    // What the seed reads: every byte before the start, and nothing after.
+    let mut before = String::new();
+    open_read_only(&path)
+        .unwrap()
+        .take(at.offset)
+        .read_to_string(&mut before)
+        .unwrap();
+    assert_eq!(before, existing);
+
+    // The game writes a line before the follower's first poll.
+    append(&path, b"2026/10/25 10:00:02 three\n");
+    let mut decided = Follower::with_start(config.clone(), start.clone());
+    let first = poll_once(&mut decided);
+    assert_eq!(following(&first), vec![(at.offset, Reason::AtEnd)]);
+    assert_eq!(texts(&first), vec!["2026/10/25 10:00:02 three"]);
+    assert!(!lines(&first)[0].catch_up, "a line written after the start is live");
+
+    // Negative control: a follower that decides again on its first poll
+    // starts at the new end, after the seed's offset, and never sends the
+    // line written in between.
+    let mut again = Follower::new(config.clone());
+    let first = poll_once(&mut again);
+    assert_eq!(
+        following(&first),
+        vec![(fs::metadata(&path).unwrap().len(), Reason::AtEnd)]
+    );
+    assert!(lines(&first).is_empty());
+
+    // The same decision on a thread.
+    let (tx, rx) = mpsc::channel();
+    let stop = Arc::new(AtomicBool::new(false));
+    let thread = spawn_follower(
+        Follower::with_start(config.clone(), start),
+        SystemClock,
+        move |event| tx.send(event).is_ok(),
+        stop.clone(),
+    )
+    .unwrap();
+    let mut got = Vec::new();
+    let deadline = Instant::now() + WAIT;
+    while lines(&got).is_empty() {
+        assert!(Instant::now() < deadline, "the thread sent no line: {got:?}");
+        if let Ok(event) = rx.recv_timeout(Duration::from_millis(50)) {
+            got.push(event);
+        }
+    }
+    stop.store(true, Ordering::SeqCst);
+    thread.join().unwrap();
+    assert_eq!(following(&got), vec![(at.offset, Reason::AtEnd)]);
+    assert_eq!(texts(&got), vec!["2026/10/25 10:00:02 three"]);
+}
+
+#[test]
+fn decided_start_rechecks_the_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = log_in(&dir);
+    fs::write(&path, "2026/10/25 10:00:00 one\n2026/10/25 10:00:01 two\n").unwrap();
+    let config = Config::new(&path);
+
+    // Rewritten between the decision and the first poll: read from 0.
+    let start = decide(&config).unwrap();
+    fs::write(&path, "2026/10/25 11:00:00 other start of a longer file\n").unwrap();
+    let first = poll_once(&mut Follower::with_start(config.clone(), start));
+    assert_eq!(following(&first), vec![(0, Reason::Replaced)]);
+    assert_eq!(texts(&first), vec!["2026/10/25 11:00:00 other start of a longer file"]);
+
+    // Shorter than when decided: read from 0.
+    let start = decide(&config).unwrap();
+    fs::write(&path, "2026/10/25 11:00:00\n").unwrap();
+    let first = poll_once(&mut Follower::with_start(config.clone(), start));
+    assert_eq!(following(&first), vec![(0, Reason::Truncated)]);
+
+    // Decided missing, there by the first poll: it appeared, read from 0.
+    fs::remove_file(&path).unwrap();
+    let start = decide(&config).unwrap();
+    assert_eq!(start.at(), None);
+    fs::write(&path, "2026/10/25 12:00:00 new\n").unwrap();
+    let first = poll_once(&mut Follower::with_start(config.clone(), start.clone()));
+    assert_eq!(following(&first), vec![(0, Reason::Appeared)]);
+    assert_eq!(texts(&first), vec!["2026/10/25 12:00:00 new"]);
+
+    // Decided missing and still missing: it waits, as an undecided one does.
+    fs::remove_file(&path).unwrap();
+    let first = poll_once(&mut Follower::with_start(config, start));
+    assert_eq!(first, vec![TailEvent::Waiting]);
 }
