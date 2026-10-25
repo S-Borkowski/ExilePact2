@@ -2,7 +2,7 @@
   "acts": [
     {
       "act": 1,
-      "done": 2,
+      "done": 1,
       "expanded": true,
       "has_available": true,
       "quests": [
@@ -27,23 +27,6 @@
           "act": 1,
           "current_step": null,
           "detection": "auto",
-          "id": "fixture-beira",
-          "name": "Fixture: The Rotten Pack",
-          "needs_tick": false,
-          "rewards": [
-            {
-              "category": "resistance",
-              "icon": "reward-res-cold",
-              "text": "+10% to Cold Resistance"
-            }
-          ],
-          "status": "done",
-          "worth": "yes"
-        },
-        {
-          "act": 1,
-          "current_step": null,
-          "detection": "auto",
           "id": "fixture-crowbell",
           "name": "Fixture: The Bell",
           "needs_tick": false,
@@ -54,7 +37,7 @@
               "text": "2 Passive Skill Points"
             }
           ],
-          "status": "available",
+          "status": "locked",
           "worth": "yes"
         },
         {
@@ -72,11 +55,11 @@
             }
           ],
           "status": "in_progress",
-          "worth": "yes"
+          "worth": "optional"
         },
         {
           "act": 1,
-          "current_step": "Return the lute",
+          "current_step": null,
           "detection": "partial",
           "id": "fixture-lute",
           "name": "Fixture: The Lost Lute",
@@ -88,7 +71,7 @@
               "text": "2 Passive Skill Points"
             }
           ],
-          "status": "in_progress",
+          "status": "available",
           "worth": "yes"
         },
         {
@@ -110,7 +93,7 @@
         }
       ],
       "title": "Act 1",
-      "total": 6
+      "total": 5
     }
   ],
   "available_worth_count": 1,
@@ -130,12 +113,37 @@
       "name": "Corisande_Fell",
       "own": true,
       "pinned": false
+    },
+    {
+      "active": false,
+      "class": "Mercenary",
+      "level": 3,
+      "name": "Odile_Marsh",
+      "own": true,
+      "pinned": false
     }
   ],
   "detail": null,
   "frame": "collapsed",
   "mode": "play",
   "next_up": [
+    {
+      "act": 1,
+      "current_step": null,
+      "detection": "partial",
+      "id": "fixture-lute",
+      "name": "Fixture: The Lost Lute",
+      "needs_tick": true,
+      "rewards": [
+        {
+          "category": "passive_points",
+          "icon": "reward-passive",
+          "text": "2 Passive Skill Points"
+        }
+      ],
+      "status": "available",
+      "worth": "yes"
+    },
     {
       "act": 1,
       "current_step": "Face the king",
@@ -151,41 +159,7 @@
         }
       ],
       "status": "in_progress",
-      "worth": "yes"
-    },
-    {
-      "act": 1,
-      "current_step": "Return the lute",
-      "detection": "partial",
-      "id": "fixture-lute",
-      "name": "Fixture: The Lost Lute",
-      "needs_tick": true,
-      "rewards": [
-        {
-          "category": "passive_points",
-          "icon": "reward-passive",
-          "text": "2 Passive Skill Points"
-        }
-      ],
-      "status": "in_progress",
-      "worth": "yes"
-    },
-    {
-      "act": 1,
-      "current_step": null,
-      "detection": "auto",
-      "id": "fixture-crowbell",
-      "name": "Fixture: The Bell",
-      "needs_tick": false,
-      "rewards": [
-        {
-          "category": "passive_points",
-          "icon": "reward-passive",
-          "text": "2 Passive Skill Points"
-        }
-      ],
-      "status": "available",
-      "worth": "yes"
+      "worth": "optional"
     }
   ],
   "schema": 1,

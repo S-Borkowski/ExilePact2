@@ -2,7 +2,7 @@
   "acts": [
     {
       "act": 1,
-      "done": 6,
+      "done": 5,
       "expanded": true,
       "has_available": false,
       "quests": [
@@ -18,23 +18,6 @@
               "category": "story",
               "icon": "reward-story",
               "text": "The campaign goes on"
-            }
-          ],
-          "status": "done",
-          "worth": "yes"
-        },
-        {
-          "act": 1,
-          "current_step": null,
-          "detection": "auto",
-          "id": "fixture-beira",
-          "name": "Fixture: The Rotten Pack",
-          "needs_tick": false,
-          "rewards": [
-            {
-              "category": "resistance",
-              "icon": "reward-res-cold",
-              "text": "+10% to Cold Resistance"
             }
           ],
           "status": "done",
@@ -72,7 +55,7 @@
             }
           ],
           "status": "done",
-          "worth": "yes"
+          "worth": "optional"
         },
         {
           "act": 1,
@@ -110,7 +93,7 @@
         }
       ],
       "title": "Act 1",
-      "total": 6
+      "total": 5
     }
   ],
   "available_worth_count": 0,
@@ -128,6 +111,14 @@
       "class": "Witch",
       "level": 5,
       "name": "Corisande_Fell",
+      "own": true,
+      "pinned": false
+    },
+    {
+      "active": false,
+      "class": "Mercenary",
+      "level": 3,
+      "name": "Odile_Marsh",
       "own": true,
       "pinned": false
     }

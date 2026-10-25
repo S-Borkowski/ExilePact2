@@ -5,8 +5,10 @@
 //! in, its progress and its rows, filtered by the settings, with toasts only
 //! for live transitions. `fixtures_match_serialised_views` pins one view per
 //! frame id (and one toast) to `fixtures/viewmodels/<frame id>.json`, which
-//! the UI tests read; `QT_UPDATE_FIXTURES=1` rewrites them. All character
-//! names are invented.
+//! the UI tests and the browser preview read, all built from one story
+//! (`fixtures/sessions/frames/story.txt`); `QT_UPDATE_FIXTURES=1` rewrites
+//! them, and two more tests hold the set consistent and varied. All
+//! character names are invented.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -439,34 +441,49 @@ fn empty_and_error_states() {
 // ---------------------------------------------------------------------------
 // The fixtures the UI tests read.
 
-/// act1.txt without Beira's line, the reward line and the Hunting Grounds,
-/// so act 1 holds one quest in each status once the lute is skipped:
-/// riverbank done, beira available, crowbell locked, king in progress, lute
-/// skipped, candles unknown.
-fn every_status_engine() -> Engine {
-    let lines: Vec<String> = session("act1.txt")
-        .into_iter()
-        .filter(|l| {
-            !(l.contains("Beira of the Rotten Pack:")
-                || l.contains("has received")
-                || l.contains("\"G1_11\"")
-                || l.contains("[Hunting Grounds]"))
-        })
-        .collect();
-    let mut engine = Engine::new(data());
-    feed(&mut engine, &lines, false);
-    engine.confirm(CORISANDE).unwrap();
+/// The data the frames are built on: the fixture data with two quests' worth
+/// (and its reason) changed on this copy, so the rows carry every worth.
+/// `fixtures/quests_min.json` itself stays as the engine and replay tests
+/// read it.
+fn frames_data() -> Arc<QuestData> {
+    let mut v = data_value();
+    for q in v["quests"].as_array_mut().unwrap() {
+        let (worth, reason) = match q["id"].as_str() {
+            Some("fixture-king") => ("optional", "Spirit, but a long fight for it this early."),
+            Some("fixture-beira") => ("no", "The same resistance comes cheaper later."),
+            _ => continue,
+        };
+        q["worth"] = Value::String(worth.into());
+        q["worth_reason"] = Value::String(reason.into());
+    }
+    Arc::new(QuestData::from_value(&v).expect("the frames' data validates"))
+}
+
+/// The frames' one session (`fixtures/sessions/frames/story.txt`).
+fn story_lines() -> Vec<String> {
+    session("frames/story.txt")
+}
+
+/// The story read to its end, the pack leader then skipped: act 1 holds one
+/// quest in each status (riverbank done, beira skipped, crowbell locked, king
+/// in progress, lute available, candles unknown), for Corisande at level 5,
+/// with Odile as the second own character.
+fn story_engine() -> Engine {
+    let mut engine = Engine::new(frames_data());
+    feed(&mut engine, &story_lines(), false);
     engine
-        .quest_action(CORISANDE, "fixture-lute", QuestAction::Skip)
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Skip)
         .unwrap();
     engine
 }
 
-/// One serialised value per frame id of the brief, plus `toast`.
+/// One serialised value per frame id of the brief, plus `toast`. Every frame
+/// that shows a character is the same story at the same point; only
+/// `empty-act-done` moves it on, by marking the rest of act 1 done.
 fn fixture_values() -> Vec<(String, Value)> {
     let to = |v: &View| serde_json::to_value(v).unwrap();
     let mut out: Vec<(String, Value)> = Vec::new();
-    let act1 = replay("act1.txt");
+    let story = story_engine();
 
     let shown = Settings {
         show_skipped: true,
@@ -474,26 +491,25 @@ fn fixture_values() -> Vec<(String, Value)> {
     };
     out.push((
         "panel-campaign".into(),
-        to(&build_view(&every_status_engine(), &shown, &reading(ViewKind::Campaign))),
+        to(&build_view(&story, &shown, &reading(ViewKind::Campaign))),
     ));
     out.push((
         "panel-next-up".into(),
-        to(&build_view(&act1, &Settings::default(), &reading(ViewKind::NextUp))),
+        to(&build_view(&story, &Settings::default(), &reading(ViewKind::NextUp))),
     ));
     let mut ui = reading(ViewKind::NextUp);
     ui.collapsed = true;
-    out.push(("collapsed".into(), to(&build_view(&act1, &Settings::default(), &ui))));
+    out.push(("collapsed".into(), to(&build_view(&story, &Settings::default(), &ui))));
 
     let mut ui = reading(ViewKind::NextUp);
     ui.mode = Mode::Edit;
     ui.detail = Some("fixture-king".into());
-    out.push(("quest-detail".into(), to(&build_view(&act1, &Settings::default(), &ui))));
+    out.push(("quest-detail".into(), to(&build_view(&story, &Settings::default(), &ui))));
 
-    let switch = replay("switch.txt");
     let mut ui = reading(ViewKind::NextUp);
     ui.mode = Mode::Edit;
     ui.open_frame(Some(Frame::CharacterPicker)).unwrap();
-    out.push(("character-picker".into(), to(&build_view(&switch, &Settings::default(), &ui))));
+    out.push(("character-picker".into(), to(&build_view(&story, &Settings::default(), &ui))));
 
     let mut ui = reading(ViewKind::NextUp);
     ui.mode = Mode::Edit;
@@ -504,7 +520,7 @@ fn fixture_values() -> Vec<(String, Value)> {
         ),
         ..Settings::default()
     };
-    out.push(("settings".into(), to(&build_view(&act1, &settings, &ui))));
+    out.push(("settings".into(), to(&build_view(&story, &settings, &ui))));
 
     let fresh = Engine::new(data());
     let missing = UiState {
@@ -521,7 +537,9 @@ fn fixture_values() -> Vec<(String, Value)> {
         to(&build_view(&replay("baseline.txt"), &Settings::default(), &reading(ViewKind::NextUp))),
     ));
 
-    let mut done = replay("act1.txt");
+    // The same story with the rest of act 1 marked done (the pack leader stays
+    // skipped, which leaves the act's total).
+    let mut done = story_engine();
     for id in ["fixture-crowbell", "fixture-king", "fixture-lute", "fixture-candles"] {
         done.quest_action(CORISANDE, id, QuestAction::MarkDone).unwrap();
     }
@@ -530,20 +548,196 @@ fn fixture_values() -> Vec<(String, Value)> {
         to(&build_view(&done, &Settings::default(), &reading(ViewKind::NextUp))),
     ));
 
-    // The toast: the bell's area entered live, after a catch-up of the rest.
-    let data = data();
-    let lines = session("act1.txt");
-    let at = lines.iter().position(|l| l.contains("\"G1_11\"")).unwrap();
+    // The toast: the story's last line (Una's, which makes the lute
+    // available) read live after a catch-up of the rest.
+    let data = frames_data();
+    let lines = story_lines();
+    let (last, before) = lines.split_last().unwrap();
     let mut engine = Engine::new(data.clone());
-    feed(&mut engine, &lines[..at], false);
-    let live = engine.feed_line(&lines[at], true);
+    feed(&mut engine, before, false);
+    let live = engine.feed_line(last, true);
     let toast = ToastQueue::new()
         .push(&data, &live, 0)
         .into_iter()
         .next()
-        .expect("entering the hunting grounds live makes the bell available");
+        .expect("Una's line read live makes the lute available");
     out.push(("toast".into(), serde_json::to_value(&toast).unwrap()));
     out
+}
+
+fn update_fixtures() -> bool {
+    std::env::var("QT_UPDATE_FIXTURES").is_ok_and(|v| v == "1")
+}
+
+/// The view fixtures as the UI reads them: the files on disk, or, while
+/// `QT_UPDATE_FIXTURES=1` rewrites them, the values being written (which
+/// `fixtures_match_serialised_views` otherwise holds equal to the files).
+fn generated_fixtures() -> Vec<(String, Value)> {
+    if update_fixtures() {
+        return fixture_values();
+    }
+    let dir = fixtures().join("viewmodels");
+    let mut out: Vec<(String, Value)> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "json"))
+        .map(|p| {
+            let name = p.file_stem().unwrap().to_string_lossy().into_owned();
+            let text = std::fs::read_to_string(&p).unwrap();
+            (name, serde_json::from_str(&text).unwrap())
+        })
+        .collect();
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    assert!(out.len() > 1, "no view fixtures in {}", dir.display());
+    out
+}
+
+/// Every quest row a view carries: the acts' rows, next up and the detail's.
+fn rows_of(view: &Value) -> Vec<&Value> {
+    let mut rows: Vec<&Value> = view["acts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|a| a["quests"].as_array().unwrap())
+        .collect();
+    rows.extend(view["next_up"].as_array().unwrap());
+    if !view["detail"].is_null() {
+        rows.push(&view["detail"]["row"]);
+    }
+    rows
+}
+
+fn text(v: &Value) -> String {
+    match v {
+        Value::String(s) => s.clone(),
+        other => other.to_string(),
+    }
+}
+
+#[test]
+fn fixture_frames_share_one_character_state() {
+    let files = generated_fixtures();
+    let views: Vec<&(String, Value)> = files.iter().filter(|(n, _)| n != "toast").collect();
+
+    // One active character in every frame that shows one, and each character
+    // at one class and level wherever it is listed (the picker's other
+    // character too).
+    let mut active = std::collections::BTreeSet::new();
+    let mut seen: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        Default::default();
+    for (name, view) in &views {
+        let listed = view["characters"].as_array().unwrap();
+        if !view["character"].is_null() {
+            let ch = &view["character"];
+            active.insert(text(&ch["name"]));
+            let marked: Vec<&Value> = listed.iter().filter(|c| c["active"] == true).collect();
+            assert_eq!(marked, vec![ch], "{name}: the listed active character is the header's");
+        }
+        for c in listed.iter().chain(std::iter::once(&view["character"])) {
+            if c.is_null() {
+                continue;
+            }
+            let at = format!("{} {} own={}", text(&c["class"]), text(&c["level"]), c["own"]);
+            seen.entry(text(&c["name"])).or_default().insert(at);
+        }
+    }
+    assert_eq!(active.len(), 1, "one active character across the frames: {active:?}");
+    for (who, at) in &seen {
+        assert_eq!(at.len(), 1, "{who} differs between frames: {at:?}");
+    }
+    assert!(seen.len() > 1, "the picker has a second character: {seen:?}");
+
+    // One status (and worth and next step) per quest across the frames,
+    // except the frame whose scenario moves the story on.
+    let mut quests: std::collections::BTreeMap<String, std::collections::BTreeSet<String>> =
+        Default::default();
+    for (name, view) in &views {
+        if name == "empty-act-done" {
+            continue;
+        }
+        for row in rows_of(view) {
+            let state = format!(
+                "{} worth={} step={}",
+                text(&row["status"]),
+                text(&row["worth"]),
+                text(&row["current_step"])
+            );
+            quests.entry(text(&row["id"])).or_default().insert(state);
+        }
+    }
+    assert!(!quests.is_empty());
+    for (id, states) in &quests {
+        assert_eq!(states.len(), 1, "{id} differs between frames: {states:?}");
+    }
+
+    // An act's progress is counted from its rows: done rows over every row
+    // but the skipped ones (the viewmodel's rule; "show skipped" lists a
+    // skipped row without counting it). Checked where no filter hides rows.
+    for (name, view) in &views {
+        if view["settings"]["only_worth_it"] == true {
+            continue;
+        }
+        for act in view["acts"].as_array().unwrap() {
+            if act["expanded"] != true {
+                continue;
+            }
+            let rows = act["quests"].as_array().unwrap();
+            let done = rows.iter().filter(|r| r["status"] == "done").count();
+            let counted = rows.iter().filter(|r| r["status"] != "skipped").count();
+            assert_eq!(act["done"], Value::from(done), "{name} act {}", act["act"]);
+            assert_eq!(act["total"], Value::from(counted), "{name} act {}", act["act"]);
+        }
+    }
+
+    // The toast announces what the frames show.
+    let toast = &files.iter().find(|(n, _)| n == "toast").expect("toast.json").1;
+    let shown_as = match toast["kind"].as_str().unwrap() {
+        "available" => "available",
+        "step_done" => "in_progress",
+        "quest_done" => "done",
+        other => panic!("toast kind {other}"),
+    };
+    let quest = text(&toast["quest_id"]);
+    let states = quests.get(&quest).unwrap_or_else(|| panic!("no frame shows {quest}"));
+    assert!(
+        states.iter().all(|s| s.starts_with(&format!("{shown_as} "))),
+        "the toast says {quest} is {shown_as}; the frames show {states:?}"
+    );
+}
+
+#[test]
+fn fixture_rows_cover_every_worth() {
+    let files = generated_fixtures();
+    let mut worth = std::collections::BTreeSet::new();
+    let mut detection = std::collections::BTreeSet::new();
+    let mut ticks = std::collections::BTreeSet::new();
+    for (name, view) in &files {
+        if name == "toast" {
+            continue;
+        }
+        for row in rows_of(view) {
+            worth.insert(text(&row["worth"]));
+            detection.insert(text(&row["detection"]));
+            ticks.insert(row["needs_tick"].as_bool().unwrap());
+        }
+    }
+    let names = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(worth, names(&Worth::NAMES), "every worth across the rows");
+    assert_eq!(
+        detection,
+        names(&qt_engine::Detection::NAMES),
+        "every detection across the rows"
+    );
+    assert_eq!(ticks.len(), 2, "auto and manual-tick rows: {ticks:?}");
+
+    // The preview's default frame shows both an auto row and a manual-tick
+    // one, and more than one worth.
+    let next = &files.iter().find(|(n, _)| n == "panel-next-up").expect("panel-next-up.json").1;
+    let rows = next["next_up"].as_array().unwrap();
+    assert!(rows.iter().any(|r| r["needs_tick"] == true), "{rows:#?}");
+    assert!(rows.iter().any(|r| r["needs_tick"] == false), "{rows:#?}");
+    let worths: std::collections::BTreeSet<String> = rows.iter().map(|r| text(&r["worth"])).collect();
+    assert!(worths.len() > 1, "{worths:?}");
 }
 
 /// The frame ids of the brief's `## Export contract`.
@@ -577,7 +771,7 @@ fn fixtures_match_serialised_views() {
     have.sort();
     assert_eq!(have, want);
 
-    let update = std::env::var("QT_UPDATE_FIXTURES").is_ok_and(|v| v == "1");
+    let update = update_fixtures();
     if update {
         std::fs::create_dir_all(&dir).unwrap();
     }

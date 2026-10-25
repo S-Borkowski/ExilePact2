@@ -37,8 +37,8 @@
               "text": "+10% to Cold Resistance"
             }
           ],
-          "status": "available",
-          "worth": "yes"
+          "status": "skipped",
+          "worth": "no"
         },
         {
           "act": 1,
@@ -72,7 +72,7 @@
             }
           ],
           "status": "in_progress",
-          "worth": "yes"
+          "worth": "optional"
         },
         {
           "act": 1,
@@ -88,7 +88,7 @@
               "text": "2 Passive Skill Points"
             }
           ],
-          "status": "skipped",
+          "status": "available",
           "worth": "yes"
         },
         {
@@ -130,12 +130,37 @@
       "name": "Corisande_Fell",
       "own": true,
       "pinned": false
+    },
+    {
+      "active": false,
+      "class": "Mercenary",
+      "level": 3,
+      "name": "Odile_Marsh",
+      "own": true,
+      "pinned": false
     }
   ],
   "detail": null,
   "frame": "panel-campaign",
   "mode": "play",
   "next_up": [
+    {
+      "act": 1,
+      "current_step": null,
+      "detection": "partial",
+      "id": "fixture-lute",
+      "name": "Fixture: The Lost Lute",
+      "needs_tick": true,
+      "rewards": [
+        {
+          "category": "passive_points",
+          "icon": "reward-passive",
+          "text": "2 Passive Skill Points"
+        }
+      ],
+      "status": "available",
+      "worth": "yes"
+    },
     {
       "act": 1,
       "current_step": "Face the king",
@@ -151,24 +176,7 @@
         }
       ],
       "status": "in_progress",
-      "worth": "yes"
-    },
-    {
-      "act": 1,
-      "current_step": null,
-      "detection": "auto",
-      "id": "fixture-beira",
-      "name": "Fixture: The Rotten Pack",
-      "needs_tick": false,
-      "rewards": [
-        {
-          "category": "resistance",
-          "icon": "reward-res-cold",
-          "text": "+10% to Cold Resistance"
-        }
-      ],
-      "status": "available",
-      "worth": "yes"
+      "worth": "optional"
     }
   ],
   "schema": 1,

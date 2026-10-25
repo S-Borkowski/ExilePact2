@@ -2,13 +2,13 @@
   "acts": [
     {
       "act": 1,
-      "done": 0,
+      "done": 1,
       "expanded": true,
       "has_available": true,
       "quests": [
         {
           "act": 1,
-          "current_step": "Reach the encampment",
+          "current_step": null,
           "detection": "auto",
           "id": "fixture-riverbank",
           "name": "Fixture: Walk the Riverbank",
@@ -20,24 +20,7 @@
               "text": "The campaign goes on"
             }
           ],
-          "status": "in_progress",
-          "worth": "yes"
-        },
-        {
-          "act": 1,
-          "current_step": null,
-          "detection": "auto",
-          "id": "fixture-beira",
-          "name": "Fixture: The Rotten Pack",
-          "needs_tick": false,
-          "rewards": [
-            {
-              "category": "resistance",
-              "icon": "reward-res-cold",
-              "text": "+10% to Cold Resistance"
-            }
-          ],
-          "status": "locked",
+          "status": "done",
           "worth": "yes"
         },
         {
@@ -59,7 +42,7 @@
         },
         {
           "act": 1,
-          "current_step": null,
+          "current_step": "Face the king",
           "detection": "auto",
           "id": "fixture-king",
           "name": "Fixture: The King in the Mists",
@@ -71,8 +54,8 @@
               "text": "+30 to Spirit"
             }
           ],
-          "status": "locked",
-          "worth": "yes"
+          "status": "in_progress",
+          "worth": "optional"
         },
         {
           "act": 1,
@@ -88,7 +71,7 @@
               "text": "2 Passive Skill Points"
             }
           ],
-          "status": "locked",
+          "status": "available",
           "worth": "yes"
         },
         {
@@ -105,19 +88,19 @@
               "text": "+20 to maximum Life"
             }
           ],
-          "status": "available",
+          "status": "unknown",
           "worth": "yes"
         }
       ],
       "title": "Act 1",
-      "total": 6
+      "total": 5
     }
   ],
   "available_worth_count": 1,
   "character": {
     "active": true,
     "class": "Witch",
-    "level": 8,
+    "level": 5,
     "name": "Corisande_Fell",
     "own": true,
     "pinned": false
@@ -126,7 +109,7 @@
     {
       "active": true,
       "class": "Witch",
-      "level": 8,
+      "level": 5,
       "name": "Corisande_Fell",
       "own": true,
       "pinned": false
@@ -146,37 +129,37 @@
   "next_up": [
     {
       "act": 1,
-      "current_step": "Reach the encampment",
-      "detection": "auto",
-      "id": "fixture-riverbank",
-      "name": "Fixture: Walk the Riverbank",
-      "needs_tick": false,
-      "rewards": [
-        {
-          "category": "story",
-          "icon": "reward-story",
-          "text": "The campaign goes on"
-        }
-      ],
-      "status": "in_progress",
-      "worth": "yes"
-    },
-    {
-      "act": 1,
       "current_step": null,
-      "detection": "manual",
-      "id": "fixture-candles",
-      "name": "Fixture: Candlemass",
+      "detection": "partial",
+      "id": "fixture-lute",
+      "name": "Fixture: The Lost Lute",
       "needs_tick": true,
       "rewards": [
         {
-          "category": "life",
-          "icon": "reward-life",
-          "text": "+20 to maximum Life"
+          "category": "passive_points",
+          "icon": "reward-passive",
+          "text": "2 Passive Skill Points"
         }
       ],
       "status": "available",
       "worth": "yes"
+    },
+    {
+      "act": 1,
+      "current_step": "Face the king",
+      "detection": "auto",
+      "id": "fixture-king",
+      "name": "Fixture: The King in the Mists",
+      "needs_tick": false,
+      "rewards": [
+        {
+          "category": "spirit",
+          "icon": "reward-spirit",
+          "text": "+30 to Spirit"
+        }
+      ],
+      "status": "in_progress",
+      "worth": "optional"
     }
   ],
   "schema": 1,
