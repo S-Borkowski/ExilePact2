@@ -311,7 +311,10 @@ and dropped and counted in the status line if none does. A character you pin
 in the picker gets every event until you unpin it.
 
 **A new character from The Riverbank.** A new character's first area is
-The Riverbank (`G1_1`) at area level 1, so an entry to `G1_1` at level 1
+The Riverbank (`G1_1`), an area of level 1. The area's level says nothing
+about the character, and a character relogging inside The Riverbank enters
+`G1_1` again, so the entry alone cannot tell a new character from a relog.
+The tracker does not try: every entry to `G1_1` at area level 1
 starts a *new character* for the session, with no pick: the session's
 events go to it at once, so Act 1 progress shows from the first step. Until
 something names it, the header shows "New character" at level 1; it is not
@@ -589,13 +592,17 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   and counted in the status line. Switching characters within a session is
   noticed only at the new character's first reward or level-up. Pin the
   character in the picker when this matters. A brand-new character is the
-  exception: its level-1 entry to The Riverbank starts it at once. That
-  rule rests on counts from one player's log, where no existing character
-  was seen entering The Riverbank (not observed, which is not proof that
-  it never happens). If one does, the panel shows "New character" until
-  that character's next level-up, which hands the progress back to it by
-  name (and takes over a pin the entry released); a session that ends
-  first drops those events, counted in the status line.
+  exception: its entry to The Riverbank (an area of level 1) starts it at
+  once. The entry alone cannot tell a new character from one re-entering
+  The Riverbank, and in one player's log a character was seen doing so
+  four times, relogging there before its first level-up. That character
+  is still unnamed, so "New character" is right for it, but each session
+  that ends before its first level-up drops its events, counted in the
+  status line. A character past level 1 re-entering The Riverbank was not
+  observed (not proof that it never happens); one that does shows as "New
+  character" until its next level-up, which hands the progress back to it
+  by name (and takes over a pin the entry released), and a session that
+  ends first drops those events, counted in the status line.
 - **The area after a start mid-zone.** The read-back for the current area
   covers at most 8 MiB of the log before the start position. That is a
   bound, not a guarantee: a zone's area line is normally well inside it,
@@ -719,10 +726,12 @@ Revisit this feature when:
   from the saved log position, stored under `%LOCALAPPDATA%` (or
   `QUEST_TRACKER_DIR`); on start the current area is read back from the
   log before that position (How detection works).
-- A new character is picked up when it first enters The Riverbank, with no
+- A new character is picked up when it enters The Riverbank, with no
   pick: Act 1 progress shows at once under "New character", and its first
   level-up names it and stores it. A pinned character's pin passes to the
-  new one.
+  new one. Any entry to The Riverbank at area level 1 starts this, a relog
+  there included
+  (Known limitations).
 - Signals tied to an area that arrive while the area is unknown are
   refused, logged per quest and counted in the status line; only quests
   that could still change for that character count.

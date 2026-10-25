@@ -295,16 +295,30 @@ All of this is measured on 2026-10-24 unless labelled otherwise.
 - **A new character's first area** (measured 2026-10-25, over the owner's
   whole log, read-only). The log holds 12 entries to The Riverbank
   (`G1_1`), and every one is generated at area level 1 (`Generating level
-  1 area "G1_1"`). Eight of them are followed, in the same session, by a
-  level-up to level 2 23 to 110 lines later, with no other level-up in
-  between; the name in that level-up never joined or left the area, and 7
-  of the 8 names later appear in a `has received` line. The other four
-  entries are followed by a session marker before any level-up. Between
-  the entry and the level-up nothing names the character: in the Live 1
-  session (11:12Z-11:19Z on 2026-10-25) the only lines there are NPC lines
-  (Wounded Man, Mortimer, The Bloated Miller), chat and client lines. An
-  existing character entering `G1_1` again was not observed, which is not
-  proof that it never happens.
+  1 area "G1_1"`): level 1 is the area's level, not a sign of a new
+  character. Eight of the entries, one per character, are followed in the
+  same session by that character's first level-up, to level 2, 23 to 110
+  lines later, with no other level-up in between; the name in that
+  level-up never joined or left the area, and 7 of the 8 names later
+  appear in a `has received` line. Between those eight entries and their
+  level-ups no `[WARN] … unknown build` line or other client line names
+  the character: in the Live 1 session (11:12Z-11:19Z on 2026-10-25) the
+  only lines there are NPC lines (Wounded Man, Mortimer, The Bloated
+  Miller), chat and client lines.
+- **A relog inside The Riverbank** (measured 2026-10-25, same log). The
+  other four entries re-generate one instance (one seed) in four
+  consecutive sessions, each ended by a session marker before any
+  level-up. All four are the same character, still at level 1: its first
+  level-up followed its fifth entry to that instance, in the next session
+  (that fifth entry is one of the eight above). So an existing character
+  re-entering `G1_1` was observed, four times, each a relog of a
+  character that had not yet levelled. In each of those four sessions a
+  `[WARN] Character <name> has unknown build of path: None` line named the
+  character 1 to 2 s after the entry. That line is not a general signal:
+  the whole log holds 27 of them, all for this one character, in five
+  sessions. A `G1_1` entry alone therefore does not tell a new character
+  from a relog. A character past level 1 entering `G1_1` was not observed,
+  which is not proof that it never happens.
 
 From those counts the tracker's rules are (a design choice built on the
 measurements, not a measurement): a name in a `has received` or `has lost`
@@ -329,6 +343,18 @@ state, and its events are dropped and counted, as held events are. The
 entry releases a pin, and the named character is pinned in its place,
 because the pin a player sets on one character would otherwise hide every
 later new character.
+
+The rule treats every level-1 `G1_1` entry alike, so it also starts the
+state on the measured relog. That case costs no wrong attribution: a
+character relogging before its first level-up is still unnamed, so "New
+character" is what the tracker can say of it, and each session that ends
+before the level-up drops and counts its events, as for a held event. A
+known character re-entering `G1_1` (not observed past level 1) would show
+as "New character" until its next level-up, which names it, gives it the
+progress and takes over a pin the entry released; a session that ends
+first drops those events. The `[WARN] … unknown build` line is not read:
+it named one character only, so it is not established as a signal that
+tells a relog from a new character.
 
 ## What poe2db step text matches
 
