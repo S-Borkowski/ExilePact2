@@ -1,57 +1,32 @@
 <script lang="ts">
-  // The overlay's root: renders the last `View` the bridge delivered and the
-  // toast stack below it. Which frame, which mode, which rows and in what
-  // order are the view's to say; this component only draws them.
+  // The overlay's root: renders the last `View` the bridge delivered. Which
+  // frame, which mode, which rows and in what order are the view's to say;
+  // this component only draws them. A live change of a quest's row
+  // (`qt:row-change`) is played by that row (`QuestRow`) and announced here,
+  // in a polite live region, whether the row is on screen or not.
   import { onDestroy, onMount } from 'svelte';
   import type { Bridge, Send } from './bridge';
-  import type { QuestAction, Toast, View } from './ipc';
-  import { type ShownToast, TOAST_MS, UNDO_MS, dropToast, fromToast, pushToast } from './toasts';
+  import type { RowChange, View } from './ipc';
+  import { ANNOUNCED_KEEP, RowChanges, setRowChanges } from './rowchange';
   import Collapsed from './components/Collapsed.svelte';
   import Panel from './components/Panel.svelte';
-  import Toasts from './components/Toasts.svelte';
 
   let { bridge }: { bridge: Bridge } = $props();
 
   let view = $state<View | null>(null);
-  let toasts = $state<ShownToast[]>([]);
-  const timers = new Set<ReturnType<typeof setTimeout>>();
+  let announced = $state<Array<{ id: number; text: string }>>([]);
+  const changes = setRowChanges(new RowChanges());
   let stop: (() => void) | null = null;
-  let undoSeq = 0;
 
   const send: Send = (name, args) => {
     void bridge.command(name, args);
   };
 
-  function show(toast: ShownToast, ms: number): void {
-    toasts = pushToast(toasts, toast);
-    if (bridge.holdToasts) return;
-    const timer = setTimeout(() => {
-      timers.delete(timer);
-      toasts = dropToast(toasts, toast.key);
-    }, ms);
-    timers.add(timer);
-  }
-
-  function onToast(toast: Toast): void {
-    show(fromToast(toast), TOAST_MS);
-  }
-
-  // Mark done and Skip in edit mode offer an Undo for 5 s (the brief).
-  const UNDO: Partial<Record<QuestAction, { action: QuestAction; text: string; icon: string }>> = {
-    mark_done: { action: 'unmark_done', text: 'Marked done', icon: 'status-done' },
-    skip: { action: 'unskip', text: 'Skipped', icon: 'status-skipped' },
-  };
-
-  function onAction(questId: string, action: QuestAction): void {
-    const undo = UNDO[action];
-    if (!undo) return;
-    undoSeq += 1;
-    show({ key: `undo-${undoSeq}`, kind: 'undo', text: undo.text, icon: undo.icon, undo: { questId, action: undo.action } }, UNDO_MS);
-  }
-
-  function onUndo(toast: ShownToast): void {
-    if (toast.undo) send('quest_action', toast.undo);
-    toasts = dropToast(toasts, toast.key);
+  function onRowChange(change: RowChange): void {
+    changes.add(change);
+    // Each change is a new node: a polite region reads additions, so the
+    // same sentence twice is still read twice.
+    announced = [...announced, { id: change.id, text: change.text }].slice(-ANNOUNCED_KEEP);
   }
 
   onMount(() => {
@@ -61,7 +36,7 @@
         (next) => {
           view = next;
         },
-        onToast,
+        onRowChange,
       )
       .then(
         (unsubscribe) => {
@@ -77,8 +52,6 @@
 
   onDestroy(() => {
     stop?.();
-    for (const timer of timers) clearTimeout(timer);
-    timers.clear();
   });
 </script>
 
@@ -93,14 +66,18 @@
     {#if view.frame === 'collapsed'}
       <Collapsed {view} {send} />
     {:else}
-      <Panel {view} {send} {onAction} />
+      <Panel {view} {send} />
     {/if}
   {/if}
-  <Toasts {toasts} edit={view?.mode === 'edit'} {onUndo} />
+  <div class="announcer sr-only" aria-live="polite" aria-atomic="false">
+    {#each announced as a (a.id)}
+      <p>{a.text}</p>
+    {/each}
+  </div>
 </div>
 
 <style>
-  /* The window's transparent margin holds the panel's and the toasts' shadows. */
+  /* The window's transparent margin holds the panel's shadow. */
   .overlay {
     display: flex;
     flex-direction: column;
@@ -122,5 +99,9 @@
 
   .overlay :global(input[type='text']) {
     user-select: text;
+  }
+
+  .announcer p {
+    margin: 0;
   }
 </style>

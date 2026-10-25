@@ -36,7 +36,7 @@ function settingsView(mode: Mode, logPath: string | null): View {
 function pickerView(mode: Mode): View {
   const view = fixtureView('character-picker', mode);
   view.frame = 'character-picker';
-  const one = { name: 'InventedTester', class: 'Monk', level: 7, own: true, pinned: false, active: true };
+  const one = { name: 'InventedTester', class: 'Monk', level: 7, own: true, pinned: false, active: true, provisional: false };
   view.characters = [one];
   view.character = one;
   return view;

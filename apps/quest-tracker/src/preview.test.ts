@@ -38,14 +38,9 @@ describe('the browser preview', () => {
 
     // The brief's non-View frames have stand-ins, and an unknown frame says so.
     expect((await previewFixture('mode-edit', null)).view.mode).toBe('edit');
-    expect((await previewFixture('toast', null)).toasts).toHaveLength(1);
     const unknown = await previewFixture('no-such-frame', null);
     expect(unknown.view.status?.text).toMatch(/no frame "no-such-frame"/);
-
-    // The toast frame keeps its toast up for a screenshot.
-    const toastBridge = previewBridge('?frame=toast');
-    expect(toastBridge.holdToasts).toBe(true);
-    rendered = await renderApp(toastBridge);
-    expect(rendered.root.querySelectorAll('.toast')).toHaveLength(1);
+    // `toast` is no frame any more (owner, 2026-10-25, after Live 1).
+    expect((await previewFixture('toast', null)).view.status?.text).toMatch(/no frame "toast"/);
   });
 });

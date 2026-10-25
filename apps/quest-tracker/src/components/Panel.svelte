@@ -4,7 +4,7 @@
   // background at the opacity setting while text and icons stay opaque, a
   // 1 px border that edit mode turns into the 2 px accent.
   import type { Send } from '../bridge';
-  import type { QuestAction, QuestRow as Row, StatusKind, View, Worth } from '../ipc';
+  import type { QuestRow as Row, StatusKind, View, Worth } from '../ipc';
   import { WORTH_LABEL } from '../labels';
   import ActSection from './ActSection.svelte';
   import CharacterPicker from './CharacterPicker.svelte';
@@ -15,7 +15,7 @@
   import QuestRow from './QuestRow.svelte';
   import Settings from './Settings.svelte';
 
-  let { view, send, onAction }: { view: View; send: Send; onAction: (questId: string, action: QuestAction) => void } = $props();
+  let { view, send }: { view: View; send: Send } = $props();
 
   const edit = $derived(view.mode === 'edit');
   const STATUS_ICON = { ok: 'ui-check', info: null, warn: 'ui-warning', error: 'ui-warning' } as const;
@@ -71,8 +71,7 @@
           {/each}
         {/if}
       {:else if view.frame === 'quest-detail' && view.detail}
-        {@const detail = view.detail}
-        <QuestDetail {detail} {edit} {send} onAction={(action) => onAction(detail.row.id, action)} />
+        <QuestDetail detail={view.detail} {edit} {send} />
       {:else if view.frame === 'character-picker'}
         <CharacterPicker {view} {send} />
       {:else if view.frame === 'settings'}

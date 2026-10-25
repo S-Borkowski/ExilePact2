@@ -1,6 +1,7 @@
 // The one door between the UI and the Rust shell. Rust decides, the UI
 // renders: the shell pushes a fresh `View` on `qt:view` after every change
-// and a `Toast` on `qt:toast`; the UI calls commands and waits for the next
+// and a `RowChange` on `qt:row-change` for each live change of a quest's
+// row; the UI calls commands and waits for the next
 // `qt:view`, never polling and never patching its copy of the view.
 //
 // Command argument keys are camelCase (`questId`, `stepId`): Tauri 2 maps a
@@ -13,15 +14,15 @@ import {
   type Mode,
   type QuestAction,
   type Scale,
-  type Toast,
+  type RowChange,
   type View,
   type ViewKind,
-  toastProblems,
+  rowChangeProblems,
   viewProblems,
 } from './ipc';
 
 export const VIEW_EVENT = 'qt:view';
-export const TOAST_EVENT = 'qt:toast';
+export const ROW_CHANGE_EVENT = 'qt:row-change';
 
 /** The frames `open_frame` opens over the panel. */
 export type OverlayFrame = 'character-picker' | 'settings';
@@ -59,10 +60,8 @@ export type Send = <C extends Command>(name: C, args: CommandArgs[C]) => void;
 export interface Bridge {
   /** `tauri` inside the app, `preview` in a browser over the dev server. */
   readonly kind: 'tauri' | 'preview';
-  /** Keep toasts up until replaced (the preview's screenshots), instead of ~3 s. */
-  readonly holdToasts: boolean;
   /** Subscribes to both events, then delivers the current view; resolves to an unsubscribe. */
-  start(onView: (view: View) => void, onToast: (toast: Toast) => void): Promise<() => void>;
+  start(onView: (view: View) => void, onRowChange: (change: RowChange) => void): Promise<() => void>;
   /** Sends one command. A failure is logged; the next `qt:view` shows the state either way. */
   command<C extends Command>(name: C, args: CommandArgs[C]): Promise<void>;
 }
@@ -75,15 +74,14 @@ function warnIfOff(what: string, problems: string[]): void {
 export function tauriBridge(): Bridge {
   return {
     kind: 'tauri',
-    holdToasts: false,
-    async start(onView, onToast) {
+    async start(onView, onRowChange) {
       const offView = await listen<View>(VIEW_EVENT, (event) => {
         warnIfOff('a qt:view', viewProblems(event.payload));
         onView(event.payload);
       });
-      const offToast = await listen<Toast>(TOAST_EVENT, (event) => {
-        warnIfOff('a qt:toast', toastProblems(event.payload));
-        onToast(event.payload);
+      const offRowChange = await listen<RowChange>(ROW_CHANGE_EVENT, (event) => {
+        warnIfOff('a qt:row-change', rowChangeProblems(event.payload));
+        onRowChange(event.payload);
       });
       // Subscribed first, so a view pushed while this call runs is not lost;
       // the later of the two simply wins.
@@ -92,7 +90,7 @@ export function tauriBridge(): Bridge {
       onView(view);
       return () => {
         offView();
-        offToast();
+        offRowChange();
       };
     },
     async command(name, args) {

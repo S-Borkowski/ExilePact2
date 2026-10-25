@@ -4,9 +4,18 @@
   // quest. In progress: the active band with a 3 px bar inside the left edge.
   // Finished (done, skipped, locked): a compact, muted row. In edit mode the
   // row opens the quest's detail, with an outline on hover.
+  //
+  // A live change of this quest (`qt:row-change`, `../rowchange.ts`) plays
+  // here: the completed step fades out, then the step now current (or, with
+  // none, the row's title in its new status) fades in from 0.2 opacity,
+  // rising 5 px. A second change restarts it from the start; under reduced
+  // motion the change is instant. Changes from before the row was on screen
+  // (its act folded, or filtered out) are not played: App announced them.
+  import { onDestroy, untrack } from 'svelte';
   import type { Send } from '../bridge';
-  import type { QuestRow } from '../ipc';
+  import type { QuestRow, RowChange } from '../ipc';
   import { rewardShortText, rewardText } from '../labels';
+  import { ROW_STEP_IN_MS, ROW_STEP_OUT_MS, type RowPhase, getRowChanges, prefersReducedMotion } from '../rowchange';
   import Icon from './Icon.svelte';
   import StatusMark from './StatusMark.svelte';
   import WorthMark from './WorthMark.svelte';
@@ -17,11 +26,58 @@
   const rewardShort = $derived(rewardShortText(row.rewards));
   const rewardFull = $derived(rewardText(row.rewards));
   const finished = $derived(row.status === 'done' || row.status === 'skipped' || row.status === 'locked');
+
+  const changes = getRowChanges();
+  // The last change this row played, or saw before it was shown.
+  let played = changes?.latest ?? 0;
+  let phase = $state<RowPhase>('idle');
+  let leaving = $state<string | null>(null);
+  // Keys the row's content, so a restart starts every animation from zero.
+  let run = $state(0);
+  let timers: Array<ReturnType<typeof setTimeout>> = [];
+
+  function stopTimers(): void {
+    for (const timer of timers) clearTimeout(timer);
+    timers = [];
+  }
+
+  function after(ms: number, then: () => void): void {
+    timers.push(setTimeout(then, ms));
+  }
+
+  function play(change: RowChange): void {
+    stopTimers();
+    run = change.id;
+    leaving = null;
+    phase = 'idle';
+    if (prefersReducedMotion()) return;
+    const enter = () => {
+      leaving = null;
+      phase = 'in';
+      after(ROW_STEP_IN_MS, () => (phase = 'idle'));
+    };
+    if (change.step_done) {
+      leaving = change.step_done;
+      phase = 'out';
+      after(ROW_STEP_OUT_MS, enter);
+    } else {
+      enter();
+    }
+  }
+
+  $effect(() => {
+    const change = changes?.byQuest.get(row.id);
+    if (!change || change.id <= played) return;
+    played = change.id;
+    untrack(() => play(change));
+  });
+
+  onDestroy(stopTimers);
 </script>
 
-{#snippet body()}
+{#snippet content()}
   <StatusMark status={row.status} />
-  <span class="title">
+  <span class="title" class:entering={phase === 'in' && !row.current_step}>
     <span class="name">{row.name}</span>
     {#if row.needs_tick}
       <span class="manual" title="Needs a manual tick">
@@ -31,7 +87,15 @@
   </span>
   <span class="rewards" title={rewardFull || undefined}>{rewardShort}</span>
   <WorthMark worth={row.worth} />
-  {#if row.current_step}<span class="step">{row.current_step}</span>{/if}
+  {#if phase === 'out' && leaving}
+    <span class="step leaving" aria-hidden="true">{leaving}</span>
+  {:else if row.current_step}
+    <span class="step" class:entering={phase === 'in'}>{row.current_step}</span>
+  {/if}
+{/snippet}
+
+{#snippet body()}
+  {#key run}{@render content()}{/key}
 {/snippet}
 
 {#if edit}
@@ -42,12 +106,24 @@
     data-quest={row.id}
     data-status={row.status}
     data-worth={row.worth}
+    data-change={phase === 'idle' ? undefined : phase}
+    style:--row-out-ms={`${ROW_STEP_OUT_MS}ms`}
+    style:--row-in-ms={`${ROW_STEP_IN_MS}ms`}
     onclick={() => send('open_detail', { questId: row.id })}
   >
     {@render body()}
   </button>
 {:else}
-  <div class="row" class:finished data-quest={row.id} data-status={row.status} data-worth={row.worth}>
+  <div
+    class="row"
+    class:finished
+    data-quest={row.id}
+    data-status={row.status}
+    data-worth={row.worth}
+    data-change={phase === 'idle' ? undefined : phase}
+    style:--row-out-ms={`${ROW_STEP_OUT_MS}ms`}
+    style:--row-in-ms={`${ROW_STEP_IN_MS}ms`}
+  >
     {@render body()}
   </div>
 {/if}
@@ -178,5 +254,39 @@
 
   .row[data-status='skipped'] .name {
     text-decoration: line-through;
+  }
+
+  /* The row transition: opacity and a 5 px rise only, on a strong ease-out. */
+  .row {
+    --row-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .leaving {
+    animation: row-step-out var(--row-out-ms) var(--row-ease) forwards;
+  }
+
+  .entering {
+    animation: row-step-in var(--row-in-ms) var(--row-ease) both;
+  }
+
+  @keyframes row-step-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes row-step-in {
+    from {
+      opacity: 0.2;
+      transform: translateY(5px);
+    }
+  }
+
+  /* Windows animations off: the change is instant (the script plays no phase either). */
+  @media (prefers-reduced-motion: reduce) {
+    .leaving,
+    .entering {
+      animation: none;
+    }
   }
 </style>

@@ -13,7 +13,7 @@
 // in `vite build`, so the release bundle carries none of them.
 
 import type { Bridge, Command, CommandArgs } from './bridge';
-import { type Mode, type Toast, type View, MODES } from './ipc';
+import { type Mode, type View, MODES } from './ipc';
 
 type Loader = () => Promise<unknown>;
 
@@ -25,10 +25,9 @@ const FIXTURES: Record<string, Loader> = import.meta.env.DEV
 export const DEFAULT_PREVIEW_FRAME = 'panel-next-up';
 
 /** Brief frame ids that are not a `View` frame, and the fixture each is shown on. */
-const STAND_INS: Record<string, { fixture: string; mode?: Mode; toast?: boolean }> = {
+const STAND_INS: Record<string, { fixture: string; mode?: Mode }> = {
   'mode-play': { fixture: 'panel-campaign', mode: 'play' },
   'mode-edit': { fixture: 'panel-campaign', mode: 'edit' },
-  toast: { fixture: 'panel-next-up', toast: true },
 };
 
 export const PREVIEW_SCALES = ['1', '1.33', '2'] as const;
@@ -57,16 +56,15 @@ async function loadFixture(name: string): Promise<unknown> {
   return JSON.parse(JSON.stringify(await load()));
 }
 
-/** The view, and the toasts to show over it, for one brief frame id. */
-export async function previewFixture(frame: string, mode: Mode | null): Promise<{ view: View; toasts: Toast[] }> {
+/** The view for one brief frame id. */
+export async function previewFixture(frame: string, mode: Mode | null): Promise<{ view: View }> {
   const standIn = STAND_INS[frame];
   const known = standIn || FIXTURES[`../fixtures/viewmodels/${frame}.json`];
   const view = (await loadFixture(standIn ? standIn.fixture : known ? frame : 'panel-campaign')) as View;
   const forced = mode ?? standIn?.mode ?? null;
   if (forced) view.mode = forced;
   if (!known) view.status = { kind: 'warn', text: `Preview: no frame "${frame}"` };
-  const toasts = standIn?.toast ? [(await loadFixture('toast')) as Toast] : [];
-  return { view, toasts };
+  return { view };
 }
 
 /** The bridge in a browser: a fixture view from the URL query, commands logged. */
@@ -77,16 +75,14 @@ export function previewBridge(search: string, root: HTMLElement = document.docum
   const calls: Array<{ name: Command; args: unknown }> = [];
   return {
     kind: 'preview',
-    holdToasts: true,
     calls,
-    async start(onView, onToast) {
+    async start(onView) {
       if (query.scale) {
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
       }
-      const { view, toasts } = await previewFixture(query.frame, query.mode);
+      const { view } = await previewFixture(query.frame, query.mode);
       onView(view);
-      for (const toast of toasts) onToast(toast);
       return () => {};
     },
     async command<C extends Command>(name: C, args: CommandArgs[C]) {

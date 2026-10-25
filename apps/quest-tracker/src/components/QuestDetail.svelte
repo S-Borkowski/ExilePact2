@@ -14,12 +14,7 @@
 
   const CONFIRM_MS = 3000;
 
-  let {
-    detail,
-    edit,
-    send,
-    onAction = () => {},
-  }: { detail: QuestDetail; edit: boolean; send: Send; onAction?: (action: QuestAction) => void } = $props();
+  let { detail, edit, send }: { detail: QuestDetail; edit: boolean; send: Send } = $props();
 
   const row = $derived(detail.row);
   const facts = $derived(
@@ -38,7 +33,6 @@
 
   function act(action: QuestAction): void {
     send('quest_action', { questId: row.id, action });
-    onAction(action);
   }
 
   function reset(): void {

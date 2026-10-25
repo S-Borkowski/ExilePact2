@@ -1,21 +1,19 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import brief from '../../../docs/quest-tracker/ui-design-brief.md?raw';
 import { contractList } from './contract';
 import { FRAMES, type View } from './ipc';
 import { previewFixture } from './preview';
-import { pushToast, type ShownToast, MAX_TOASTS, TOAST_MS } from './toasts';
-import { CONTROL_SELECTOR, type Rendered, fakeBridge, fixtureToast, fixtureView, renderApp } from './test-support';
+import { CONTROL_SELECTOR, type Rendered, fakeBridge, fixtureView, renderApp, rowChangeFor } from './test-support';
 
 let rendered: Rendered | null = null;
 
 afterEach(() => {
   rendered?.destroy();
   rendered = null;
-  vi.useRealTimers();
 });
 
-async function render(view: View, holdToasts = false) {
-  const bridge = fakeBridge(view, holdToasts);
+async function render(view: View) {
+  const bridge = fakeBridge(view);
   rendered = await renderApp(bridge);
   return { root: rendered.root, bridge };
 }
@@ -25,13 +23,13 @@ const text = (el: Element) => el.textContent ?? '';
 describe('the plain UI', () => {
   it('renders_every_frame_from_fixture', async () => {
     const frames = contractList(brief, 'Frame ids');
-    expect(frames).toHaveLength(13);
+    expect(frames).toHaveLength(12);
+    expect(frames).not.toContain('toast');
 
     for (const frame of frames) {
-      const { view, toasts } = await previewFixture(frame, null);
-      const bridge = fakeBridge(view, true);
+      const { view } = await previewFixture(frame, null);
+      const bridge = fakeBridge(view);
       rendered = await renderApp(bridge);
-      for (const toast of toasts) bridge.pushToast(toast);
       const root = rendered.root;
       const overlay = root.querySelector('.overlay');
       expect(overlay?.getAttribute('data-frame'), frame).toBe(view.frame);
@@ -75,10 +73,6 @@ describe('the plain UI', () => {
           expect(text(root)).toContain('Settings');
           expect(root.querySelector('input[type="range"]') ?? root.querySelector('.values')).not.toBeNull();
           break;
-        case 'toast':
-          expect(toasts).toHaveLength(1);
-          expect(root.querySelector('.toast')?.textContent).toContain(toasts[0].text);
-          break;
         default:
           expect(frame.startsWith('empty-'), frame).toBe(true);
           expect(root.querySelector(`[data-empty="${frame}"]`), frame).not.toBeNull();
@@ -102,8 +96,12 @@ describe('the plain UI', () => {
   it('play_mode_has_no_controls', async () => {
     for (const frame of FRAMES) {
       const play = await render(fixtureView(frame, 'play'));
-      // A toast too: the stack below the panel holds no control in play mode either.
-      play.bridge.pushToast(fixtureToast());
+      // A row change too: the row it plays on and the live region that
+      // announces it hold no control in play mode either.
+      const view = fixtureView(frame, 'play');
+      const row = [...view.next_up, ...view.acts.flatMap((a) => a.quests), ...(view.detail ? [view.detail.row] : [])][0];
+      if (row) play.bridge.pushRowChange(rowChangeFor(row, 1, 'A step just done'));
+      expect(play.root.querySelector('[aria-live="polite"]')?.textContent, frame).toContain(row ? 'A step just done' : '');
       expect(play.root.querySelector('.overlay')?.getAttribute('data-mode')).toBe('play');
       const controls = [...play.root.querySelectorAll(CONTROL_SELECTOR)].map((el) => el.outerHTML.slice(0, 80));
       expect(controls, `${frame} in play mode`).toEqual([]);
@@ -149,33 +147,5 @@ describe('the plain UI', () => {
       rendered!.destroy();
       rendered = null;
     }
-  });
-
-  it('toasts_stack_at_most_three', async () => {
-    // The stack itself: the newest three, a repeated id replaced, not doubled.
-    const t = (n: number): ShownToast => ({ key: `qt-${n}`, kind: 'available', text: `toast ${n}`, icon: 'status-available' });
-    let stack: ShownToast[] = [];
-    for (let n = 1; n <= 5; n++) stack = pushToast(stack, t(n));
-    expect(MAX_TOASTS).toBe(3);
-    expect(stack.map((s) => s.key)).toEqual(['qt-3', 'qt-4', 'qt-5']);
-    expect(pushToast(stack, t(5)).map((s) => s.key)).toEqual(['qt-3', 'qt-4', 'qt-5']);
-
-    // As rendered from `qt:toast` events: three at most, below the panel, gone after ~3 s.
-    const { root, bridge } = await render(fixtureView('panel-next-up', 'play'));
-    vi.useFakeTimers();
-    for (let n = 1; n <= 5; n++) bridge.pushToast({ ...fixtureToast(), id: n, text: `Toast ${n}` });
-    const shown = [...root.querySelectorAll('.toast')].map((el) => el.textContent?.trim());
-    expect(shown).toEqual(['Toast 3', 'Toast 4', 'Toast 5']);
-
-    const panel = root.querySelector('.panel')!;
-    const list = root.querySelector('.toasts')!;
-    expect(panel.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-
-    vi.advanceTimersByTime(TOAST_MS - 1);
-    bridge.pushView(fixtureView('panel-next-up', 'play'));
-    expect(root.querySelectorAll('.toast')).toHaveLength(3);
-    vi.advanceTimersByTime(1);
-    bridge.pushView(fixtureView('panel-next-up', 'play'));
-    expect(root.querySelectorAll('.toast')).toHaveLength(0);
   });
 });

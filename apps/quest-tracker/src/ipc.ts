@@ -1,6 +1,6 @@
 // The IPC contract, mirrored from the Rust types that `serde` serialises
 // (`qt-viewmodel` and `qt-engine`). Field names are snake_case exactly as the
-// shell sends them in `qt:view` and `qt:toast`. The UI renders these values;
+// shell sends them in `qt:view` and `qt:row-change`. The UI renders these values;
 // it never re-derives a status, a filter or a frame from them.
 //
 // The runtime checkers below walk the same field lists the types declare, so
@@ -69,8 +69,8 @@ export type Dock = (typeof DOCKS)[number];
 export const SCALES = ['auto', '1', '1.33', '2'] as const;
 export type Scale = (typeof SCALES)[number];
 
-export const TOAST_KINDS = ['available', 'step_done', 'quest_done'] as const;
-export type ToastKind = (typeof TOAST_KINDS)[number];
+export const ROW_CHANGE_KINDS = ['available', 'step_done', 'quest_done'] as const;
+export type RowChangeKind = (typeof ROW_CHANGE_KINDS)[number];
 
 export const QUEST_ACTIONS = ['mark_done', 'unmark_done', 'skip', 'unskip', 'reset'] as const;
 export type QuestAction = (typeof QUEST_ACTIONS)[number];
@@ -87,6 +87,8 @@ export interface CharacterView {
   own: boolean;
   pinned: boolean;
   active: boolean;
+  /** The new character from The Riverbank no level-up has named yet: an empty name, level 1 (shown as "New character"). */
+  provisional: boolean;
 }
 
 export interface RewardView {
@@ -164,12 +166,18 @@ export interface View {
   available_worth_count: number;
 }
 
-export interface Toast {
+/** One live change of one quest's row, sent as `qt:row-change`. */
+export interface RowChange {
+  /** Increasing, from 1, for the shell's lifetime. */
   id: number;
-  kind: ToastKind;
+  kind: RowChangeKind;
   quest_id: string;
+  /** The title of the step just completed, or null. */
+  step_done: string | null;
+  /** The title of the step now current, or null. */
+  step_next: string | null;
+  /** One sentence for the screen reader, naming the quest and what changed. */
   text: string;
-  icon: string;
 }
 
 /** The schema version this UI renders. */
@@ -235,7 +243,15 @@ function record<T>(spec: Spec<T>): Check {
 }
 
 const statusLine = record<StatusLine>({ kind: oneOf(STATUS_KINDS), text: str });
-const character = record<CharacterView>({ name: str, class: str, level: uint, own: bool, pinned: bool, active: bool });
+const character = record<CharacterView>({
+  name: str,
+  class: str,
+  level: uint,
+  own: bool,
+  pinned: bool,
+  active: bool,
+  provisional: bool,
+});
 const reward = record<RewardView>({ category: oneOf(REWARD_CATEGORIES), icon: str, text: str });
 const questRow = record<QuestRow>({
   id: str,
@@ -290,7 +306,14 @@ const view = record<View>({
   settings,
   available_worth_count: uint,
 });
-const toast = record<Toast>({ id: uint, kind: oneOf(TOAST_KINDS), quest_id: str, text: str, icon: str });
+const rowChange = record<RowChange>({
+  id: uint,
+  kind: oneOf(ROW_CHANGE_KINDS),
+  quest_id: str,
+  step_done: nullable(str),
+  step_next: nullable(str),
+  text: str,
+});
 
 /** Every way `value` differs from a `View`; empty when it is one. */
 export function viewProblems(value: unknown): string[] {
@@ -299,10 +322,10 @@ export function viewProblems(value: unknown): string[] {
   return out;
 }
 
-/** Every way `value` differs from a `Toast`; empty when it is one. */
-export function toastProblems(value: unknown): string[] {
+/** Every way `value` differs from a `RowChange`; empty when it is one. */
+export function rowChangeProblems(value: unknown): string[] {
   const out: string[] = [];
-  toast(value, 'toast', out);
+  rowChange(value, 'row_change', out);
   return out;
 }
 
@@ -310,6 +333,6 @@ export function isView(value: unknown): value is View {
   return viewProblems(value).length === 0;
 }
 
-export function isToast(value: unknown): value is Toast {
-  return toastProblems(value).length === 0;
+export function isRowChange(value: unknown): value is RowChange {
+  return rowChangeProblems(value).length === 0;
 }

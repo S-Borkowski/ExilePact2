@@ -58,7 +58,6 @@
   --color-res-cold: #91C9DE;
   --color-res-lightning: #E3C76F;
   --color-res-chaos: #BA9ACD;
-  --color-toast-bg: #1F2326;
   --font-family: "Alegreya Sans", sans-serif;
   --font-file: url("fonts/AlegreyaSans-Medium.woff2");
   --size-title: 16px;
@@ -73,7 +72,6 @@
   --border-width: 1px;
   --opacity-default: 0.92;
   --shadow-panel: 0 0 0 1px rgba(0,0,0,0.63), 0 4px 12px rgba(0,0,0,0.5);
-  --shadow-toast: 0 0 0 1px rgba(0,0,0,0.63), 0 4px 12px rgba(0,0,0,0.5);
   --radius-row: 0px;
   --radius-button: 0px;
   --font-weight-title: 700;
@@ -123,19 +121,13 @@
   --size-act-header: 28px;
   --size-badge: 48px;
   --size-panel-width: 320px;
-  --size-toast-width: 300px;
-  --size-toast-height: 44px;
   --border-width-strong: 2px;
   --bar-in-progress: 3px;
-  --bar-toast: 3px;
   --bar-countdown: 2px;
   --chamfer-panel: 6px;
   --chamfer-button: 3px;
-  --chamfer-toast: 4px;
   --chamfer-badge: 4px;
   --opacity-min: 0.3;
   --opacity-stale-rows: 0.55;
-  --motion-toast-ms: 3000ms;
-  --motion-undo-ms: 5000ms;
   --motion-confirm-ms: 3000ms;
 }

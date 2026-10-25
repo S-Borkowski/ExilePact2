@@ -4,15 +4,20 @@
   // with the EDIT chip, the character name that opens the picker, the view
   // switch, and the collapse and settings buttons. With no character the name
   // reads "Quest tracker", muted, with no picker and no switch. The name is
-  // the panel's h1 in every variant, styled as before.
+  // the panel's h1 in every variant, styled as before. A new character from
+  // The Riverbank that no level-up has named yet (`provisional`) reads "New
+  // character", level 1.
   import type { Send } from '../bridge';
   import type { View } from '../ipc';
+  import { NEW_CHARACTER } from '../labels';
   import Icon from './Icon.svelte';
 
   let { view, send }: { view: View; send: Send } = $props();
 
   const edit = $derived(view.mode === 'edit');
   const character = $derived(view.character);
+  const who = $derived(character?.provisional ? NEW_CHARACTER : (character?.name ?? ''));
+  const meta = $derived(character ? `${character.class || 'Level'} ${character.level}${character.pinned ? ' · pinned' : ''}` : '');
   const kind = $derived(
     view.view_kind === 'next_up' ? 'Next up' : view.acts.length === 1 ? `All · ${view.acts[0].title}` : 'All',
   );
@@ -27,10 +32,10 @@
           type="button"
           class="who"
           title="Characters"
-          aria-label={`${character.name}: choose the character`}
+          aria-label={`${who}: choose the character`}
           onclick={() => send('open_frame', { frame: 'character-picker' })}
         >
-          <span class="name">{character.name}</span>
+          <span class="name" class:provisional={character.provisional}>{who}</span>
           <Icon id="ui-chevron-down" size="12px" />
         </button>
       </h1>
@@ -53,8 +58,8 @@
   {:else}
     <span class="mark"><Icon id="ui-character" size="16px" /></span>
     {#if character}
-      <h1 class="name">{character.name}</h1>
-      <span class="meta">{character.class} {character.level}{character.pinned ? ' · pinned' : ''}</span>
+      <h1 class="name" class:provisional={character.provisional}>{who}</h1>
+      <span class="meta">{meta}</span>
       <span class="kind">{kind}</span>
     {:else}
       <h1 class="name none">Quest tracker</h1>

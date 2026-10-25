@@ -90,7 +90,7 @@ describe('the styled layer', () => {
     const sources = { ...SVELTE, ...TS, ...(await appCss()) };
     const local = new Set<string>();
     for (const [path, text] of Object.entries(sources)) if (path !== './defaults.css') for (const n of varsSet(text)) local.add(n);
-    const allowed = new Set([...Object.keys(theme).map(cssName), ...optional.map(cssName), '--drop-panel', '--drop-toast']);
+    const allowed = new Set([...Object.keys(theme).map(cssName), ...optional.map(cssName), '--drop-panel']);
     const invented: string[] = [];
     for (const [path, text] of Object.entries(sources)) {
       if (path === './defaults.css') continue;
@@ -181,10 +181,9 @@ describe('the styled layer', () => {
     const root = document.createElement('div');
     applyDerivedTokens(root, null);
     expect(root.style.getPropertyValue('--drop-panel')).toBe('');
-    expect(plain.has('--drop-panel') && plain.has('--drop-toast')).toBe(true);
+    expect(plain.has('--drop-panel')).toBe(true);
     applyDerivedTokens(root, { 'shadow.panel': '0 0 0 1px rgba(0,0,0,0.63), 0 4px 12px rgba(0,0,0,0.5)' });
     expect(root.style.getPropertyValue('--drop-panel')).toBe('drop-shadow(0 0 1px rgba(0,0,0,0.63)) drop-shadow(0 4px 12px rgba(0,0,0,0.5))');
-    expect(root.style.getPropertyValue('--drop-toast')).toBe('');
     expect(dropShadowFilter('inset 0 1px 0 #fff, 2px 3px 4px #000')).toBe('drop-shadow(2px 3px 4px #000)');
   });
 

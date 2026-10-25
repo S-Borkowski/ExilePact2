@@ -104,7 +104,7 @@ function splitTopLevel(value: string): string[] {
 
 /**
  * A `box-shadow` list as a CSS `filter` of `drop-shadow()`s. The panel, the
- * badge and the toasts have cut corners (`clip-path`), which clips their own
+ * badge have cut corners (`clip-path`), which clips their own
  * `box-shadow`; a drop shadow on a wrapper follows the cut shape instead.
  * `drop-shadow` has no spread, so a layer's spread is added to its blur; inset
  * layers have no outer equivalent and are dropped.
@@ -125,15 +125,13 @@ export function dropShadowFilter(boxShadow: string): string {
 
 /**
  * Sets the custom properties derived from the harvested theme rather than
- * copied from it: the drop-shadow filters of `shadow.panel` and
- * `shadow.toast`. Without the harvest nothing is set and `defaults.css`
+ * copied from it: the drop-shadow filter of `shadow.panel`. Without the harvest nothing is set and `defaults.css`
  * applies.
  */
 export function applyDerivedTokens(root: HTMLElement, theme: ThemeValues | null = THEME): void {
   if (!theme) return;
   const derived: Array<[string, string]> = [
     ['shadow.panel', '--drop-panel'],
-    ['shadow.toast', '--drop-toast'],
   ];
   for (const [key, property] of derived) {
     const value = theme[key];

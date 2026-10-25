@@ -3,6 +3,9 @@
 
 import type { QuestStatus, RewardCategory, RewardView, StepPhase, Worth } from './ipc';
 
+/** The header's name for the new character no level-up has named yet (`provisional`). */
+export const NEW_CHARACTER = 'New character';
+
 export const STATUS_LABEL: Record<QuestStatus, string> = {
   locked: 'Locked',
   available: 'Available',
