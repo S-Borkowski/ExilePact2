@@ -12,7 +12,10 @@
 //!   one changes (click-through does), and derives `WS_EX_NOACTIVATE` from
 //!   "not focusable".
 //! - **Click-through**: `set_ignore_cursor_events`, which Tauri's Windows
-//!   backend implements with `WS_EX_TRANSPARENT | WS_EX_LAYERED`.
+//!   backend implements with `WS_EX_TRANSPARENT | WS_EX_LAYERED`. Edit mode
+//!   also makes the window focusable (dropping `WS_EX_NOACTIVATE`), because
+//!   a window that cannot be activated never receives keys and the Settings
+//!   fields must be typed in; play mode makes it unfocusable again.
 //! - **Shortcut**: one system hotkey through `tauri-plugin-global-shortcut`
 //!   (default Ctrl+Alt+Q), which toggles play and edit mode. No keyboard
 //!   hook; nothing is sent to the game.
@@ -89,9 +92,12 @@ impl TauriWindow {
 
 impl qt_app::Window for TauriWindow {
     fn set_click_through(&self, on: bool) -> Result<(), String> {
-        self.window()?
-            .set_ignore_cursor_events(on)
-            .map_err(|e| e.to_string())
+        let w = self.window()?;
+        // Play mode: not focusable, which Tauri's Windows backend turns into
+        // `WS_EX_NOACTIVATE`, so the game keeps focus. Edit mode: focusable,
+        // so a click activates the window and Settings' fields take keys.
+        w.set_focusable(!on).map_err(|e| e.to_string())?;
+        w.set_ignore_cursor_events(on).map_err(|e| e.to_string())
     }
 
     fn set_scale(&self, factor: f64) -> Result<(), String> {
@@ -165,15 +171,18 @@ impl qt_app::Window for TauriWindow {
     }
 }
 
-/// Adds `WS_EX_NOACTIVATE` to the window, so clicking it never takes focus
-/// from the game, and logs the handle with the extended style before and
-/// after (the live check reads the bits from this line).
+/// Adds `WS_EX_NOACTIVATE` to the window in play mode, so clicking it never
+/// takes focus from the game, and logs the handle with the extended style
+/// before and after (the live check reads the bits from this line). A launch
+/// that fell back to edit mode (no shortcut) leaves the bit off, so the
+/// window can take keys.
 #[cfg(windows)]
 fn no_activate(window: &WebviewWindow, shell: &App) {
     use windows_sys::Win32::Foundation::HWND;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
     };
+    let play = shell.get_view().mode == Mode::Play;
     match window.hwnd() {
         Ok(handle) => {
             let hwnd = handle.0 as HWND;
@@ -181,7 +190,9 @@ fn no_activate(window: &WebviewWindow, shell: &App) {
             // written on the main thread that owns it.
             let (before, after) = unsafe {
                 let before = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, before | WS_EX_NOACTIVATE as isize);
+                if play {
+                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, before | WS_EX_NOACTIVATE as isize);
+                }
                 (before, GetWindowLongPtrW(hwnd, GWL_EXSTYLE))
             };
             shell.diag(&format!(
