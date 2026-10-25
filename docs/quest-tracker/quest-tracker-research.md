@@ -273,7 +273,7 @@ own, sourced to the index page.
   story; `optional` for gems, lasting items and unlocks; `no` for story-only
   or currency-only side content.
 
-Totals: 31 auto, 43 partial, 13 manual; 31 measured, 45 static, 11
+Totals: 30 auto, 44 partial, 13 manual; 30 measured, 46 static, 11
 not-established; 50 worth it, 14 optional, 23 not. No Act 5 quest uses a
 measured signal (see "What poe2db step text matches").
 
@@ -333,7 +333,7 @@ measured signal (see "What poe2db step text matches").
 | 4 | Abandoned Prison | yes | auto | measured |
 | 4 | The Prisoner | no | partial | static |
 | 4 | Tribal Medicine | yes | auto | measured |
-| 4 | Dark Mists | yes | auto | measured |
+| 4 | Dark Mists | yes | partial | static |
 | 4 | Trial of the Ancestors | yes | auto | measured |
 | 4 | Greater Blank Runes | optional | partial | not-established |
 | 4 | Tawhoa's Test | yes | auto | measured |
