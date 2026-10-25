@@ -35,6 +35,14 @@ a situation this player never reached would be missing from it too.
   `https://poe2db.tw/us/Quest` and eleven quest pages; the pages stayed in a
   scratch folder and are not tracked. `robots.txt` reads `User-agent: *` and
   disallows only `/*/marked` and `/*/markdown_history`.
+- **poe2db, every campaign page** (measured 2026-10-25). `py -3 -m
+  tools.quest_tracker.poe2db fetch` cached the index and 74 campaign quest
+  pages (default 3 s delay) outside the repository; `extract` drafted them
+  and `coverage` measured their dialogue against the log. The replay tool's
+  `scan` and a research script kept outside the repository, both run
+  read-only over the same log, gave the per-area names, speakers, reward and
+  points lines that `apps/quest-tracker/data/quests.json` is curated from
+  (see "Per-quest detection").
 - **The client executable** (static reading). Its ASCII and UTF-16 strings
   were searched for the reward and level-up message templates; see "Negative
   results". No decompiler or disassembler was used for this feature.
@@ -90,7 +98,7 @@ counts are measured on 2026-10-24 unless the line says otherwise.
   the Mists, Count Geonor, Beira of the Rotten Pack, Kabala, Constrictor
   Queen, Ignagduk, the Bog Witch, BlackJaw, Lythara, The Wayward Spear and
   others). What is logged is short voiced lines: vendor greetings, remarks on
-  entering a zone, boss lines. The dialogue window's text is not logged (see
+  entering a zone, boss lines. The dialogue window's text was not observed (see
   "What poe2db step text matches"). A boss's voiced line in its own area is
   the closest thing the log has to "this fight happened".
 - **Chat** (to be dropped). Other players' chat has the NPC shape with a
@@ -210,30 +218,154 @@ session and never written anywhere.
   steps table: per step a title, text, `Area:` with the area name, optionally
   `NPC:` names, a dialogue topic and the dialogue split into snippets; then a
   reward table.
-- **Act 5 and Act 6** (not established). Act 5 quests (for example The Siege
-  of Oriath, Pinned Down) and Act 6 quests (Recruit the Ezomytes, Maraketh
-  and Vaal, Clearing the Way, Howling Winds, the Ritual quests) have no area
-  in the owner's log. Whether poe2db's "Act 6" is the interludes is not
-  established.
-- **Dialogue against the log** (measured 2026-10-24). Over eleven quest pages
-  (Reaching_Clearfell, The_Lost_Lute, Sorrow_Among_Stones,
-  Treacherous_Ground, The_Mysterious_Shade, Secrets_in_the_Dark,
-  Ancient_Vows, Legacy_of_the_Vaal, Trial_of_the_Ancestors, Earning_Passage,
-  The_Search), 1 of 232 dialogue snippets equals or contains a line the same
-  NPC was logged saying, and 3 of 120 dialogue blocks share any run of four
-  words with that NPC's logged lines. For example, none of Renly's 34 logged
-  lines (10 distinct, all vendor lines) is his step-6 dialogue in Reaching
-  Clearfell. poe2db shows the dialogue window, and the client does not log
-  the dialogue window.
-- **What does match** (measured 2026-10-24). A step's `Area:` name equals the
-  `[SCENE] Set Source` name of that area (checked for `Clearfell
-  Encampment` and `The Riverbank`); the step's NPC and boss names are the
-  speaker names of the log; and the reward text matches the `has received`
-  lines once the markup is stripped. That the area names match for every
-  quest is not established: two were checked.
+- **The campaign pages** (measured 2026-10-25). `fetch` cached 74 campaign
+  quest pages for poe2db's Acts 1 to 6 (16 in Act 1, 13 in Act 2, 7 in Act
+  3, 23 in Act 4, 7 in Act 5, 8 in Act 6), 709 steps in all. 11 of the 74
+  pages carry no steps table (Back in the Bottle, Blank Runes, Cracks in the
+  Earth, Greater Blank Runes, Infiltrating Oriath, No Rest for the Blighted,
+  Pinned Down, Pleasure and Pain, Siren Pearl, The Blind Beast, The
+  Forgotten Prisoner); `extract` drafts them with zero steps and names them.
+- **poe2db's Act 6 is the interludes** (measured 2026-10-25). Every one of
+  the 21 distinct `Area:` names on its Act 6 pages (Recruit the Ezomytes,
+  Maraketh and Vaal, Clearing the Way, Howling Winds and the rest) is the
+  `[SCENE] Set Source` name of a `P1_*`, `P2_*` or `P3_*` area in the log.
+  **Act 5** (measured 2026-10-25): its pages name no `Area:` at all, and the
+  log has no area for it; what its quests leave in the log is not
+  established, so the data file ticks them by hand.
+- **Dialogue against the log** (measured 2026-10-25, `coverage` over every
+  fetched page). Over the 74 pages, 28 of which carry dialogue, 2 of 582
+  dialogue snippets equal or contain a line the same NPC was logged saying,
+  and 5 share a run of four words with one; 17 of the pages' NPCs have any
+  line in the log at all. For example, none of Renly's 34 logged lines (10
+  distinct, all vendor lines) is his step-6 dialogue in Reaching Clearfell
+  (measured 2026-10-24). poe2db shows the dialogue window's text, and that
+  text was not observed in the log.
+- **What does match** (measured 2026-10-25). A step's `Area:` name equals the
+  `[SCENE] Set Source` name of that area: 83 of the 85 distinct `Area:`
+  names on the pages are names the log shows; the two that are not, Lightless
+  Passage and The Well of Souls (both from the Act 2 quest The Well of
+  Souls), are areas this log never entered. The step's NPC and boss names are the speaker names of
+  the log, and the reward text matches the `has received` lines once the
+  markup is stripped.
 - **Consequence.** Step text is for display. Matching uses the area, the
   speaker names and the reward text; an NPC-line signal in the quest data
   comes from a line seen in the log, never from poe2db's dialogue.
+
+## Per-quest detection
+
+What `apps/quest-tracker/data/quests.json` claims for each campaign quest
+(curated 2026-10-25). The file was built by hand from `extract`'s draft of
+the 74 pages above and a read-only scan of the owner's log, not generated by
+the tool; the 13 rows marked "community table" are permanent rewards that
+poe2db's index lists in its community table without a quest page of their
+own, sourced to the index page.
+
+- **Detection**: `auto` when the quest's completion is a measured signal (a
+  reward line, a points line or an area entry in the area the scan counted
+  it); `partial` when only its unlock or steps are (area entries, a boss's
+  voiced line), so the player ticks the end; `manual` when nothing about it
+  was measured.
+- **Evidence**: `measured` when the completion signal is; `static` when the
+  steps and areas come from poe2db's page alone; `not-established` when the
+  page has no steps table either, so only the quest's name, act and rewards
+  are known.
+- **Worth**: `yes` for a permanent character stat, an ascendancy or the main
+  story; `optional` for gems, lasting items and unlocks; `no` for story-only
+  or currency-only side content.
+
+Totals: 31 auto, 43 partial, 13 manual; 31 measured, 45 static, 11
+not-established; 50 worth it, 14 optional, 23 not. No Act 5 quest uses a
+measured signal (see "What poe2db step text matches").
+
+| Act | Quest | Worth | Detection | Evidence |
+|---|---|---|---|---|
+| 1 | Reaching Clearfell | yes | partial | static |
+| 1 | Treacherous Ground | optional | partial | static |
+| 1 | Secrets in the Dark | yes | partial | static |
+| 1 | The Mysterious Shade | yes | partial | static |
+| 1 | Finding the Forge | optional | partial | static |
+| 1 | The Lost Lute | yes | auto | measured |
+| 1 | Sorrow Among Stones | yes | partial | static |
+| 1 | Ominous Altars | yes | auto | measured |
+| 1 | The Trail of Corruption | yes | partial | static |
+| 1 | The Mad Wolf of Ogham | yes | auto | measured |
+| 1 | The Hunt Begins | no | partial | static |
+| 1 | Blank Runes | optional | manual | not-established |
+| 1 | Cracks in the Earth | optional | manual | not-established |
+| 1 | Ancient Beacons | no | manual | static |
+| 1 | Grim Portents | no | manual | static |
+| 1 | Grave Tidings | no | manual | static |
+| 1 | Beira of the Rotten Pack (community table) | yes | auto | measured |
+| 1 | The Crowbell (community table) | yes | auto | measured |
+| 1 | Candlemass, the Living Rite (community table) | yes | auto | measured |
+| 2 | Earning Passage | yes | auto | measured |
+| 2 | The City of Seven Waters | yes | partial | static |
+| 2 | A Theft of Ivory | yes | partial | static |
+| 2 | A Crown of Stone | yes | partial | static |
+| 2 | The Forgotten Prisoner | no | partial | not-established |
+| 2 | Back in the Bottle | no | partial | not-established |
+| 2 | Tradition's Toll | yes | auto | measured |
+| 2 | Ancient Vows | yes | auto | measured |
+| 2 | Ascent to Power | yes | partial | static |
+| 2 | The Trial of Time | no | partial | static |
+| 2 | The Well of Souls | no | partial | static |
+| 2 | Desert Omens | no | partial | static |
+| 2 | Ash and Bone | no | partial | static |
+| 2 | Kabala, Constrictor Queen (community table) | yes | auto | measured |
+| 2 | Sisters of Garukhan Shrine (community table) | yes | auto | measured |
+| 3 | Legacy of the Vaal | yes | auto | measured |
+| 3 | The Slithering Dead | yes | auto | measured |
+| 3 | Treasures of Utzaal | optional | partial | static |
+| 3 | Tribal Vengeance | yes | auto | measured |
+| 3 | The Trials of Chaos | yes | partial | static |
+| 3 | Savage Wilds | no | partial | static |
+| 3 | Blood Offerings | no | partial | static |
+| 3 | Mighty Silverfist (community table) | yes | auto | measured |
+| 3 | Blackjaw, the Remnant (community table) | yes | auto | measured |
+| 3 | Sacrificial Heart (community table) | yes | auto | measured |
+| 4 | The Runeseeker | optional | partial | static |
+| 4 | The Search | yes | partial | static |
+| 4 | The Blind Beast | optional | partial | not-established |
+| 4 | Shrike Island | optional | partial | static |
+| 4 | Land of the Kin | yes | partial | static |
+| 4 | Utopia | yes | partial | static |
+| 4 | Whakapanu Island | optional | partial | static |
+| 4 | Abandoned Prison | yes | auto | measured |
+| 4 | The Prisoner | no | partial | static |
+| 4 | Tribal Medicine | yes | auto | measured |
+| 4 | Dark Mists | yes | auto | measured |
+| 4 | Trial of the Ancestors | yes | auto | measured |
+| 4 | Greater Blank Runes | optional | partial | not-established |
+| 4 | Tawhoa's Test | yes | auto | measured |
+| 4 | Tasalio's Test | yes | auto | measured |
+| 4 | Ngamahu's Test | yes | auto | measured |
+| 4 | Siren Pearl | optional | partial | not-established |
+| 4 | Siege of Oriath | yes | manual | static |
+| 4 | Hostile Takeover | optional | partial | static |
+| 4 | Follow Tavakai | no | partial | static |
+| 4 | Fate of the Vaal | no | partial | static |
+| 4 | Blood in the Water | no | partial | static |
+| 4 | Tidal Omens | no | partial | static |
+| 4 | Navali's Rest (community table) | yes | auto | measured |
+| 5 | The Siege of Oriath | yes | manual | static |
+| 5 | Infiltrating Oriath | yes | manual | not-established |
+| 5 | Plumbing the Depths | no | manual | static |
+| 5 | Trarthan Gladiator | optional | manual | static |
+| 5 | Pinned Down | optional | manual | not-established |
+| 5 | Pleasure and Pain | no | manual | not-established |
+| 5 | No Rest for the Blighted | no | manual | not-established |
+| 6 | Recruit the Ezomytes | yes | partial | static |
+| 6 | Recruit the Maraketh | yes | partial | static |
+| 6 | Recruit the Vaal | yes | partial | static |
+| 6 | Clearing the Way | yes | auto | measured |
+| 6 | Howling Winds | yes | auto | measured |
+| 6 | Shadow Over Ogham | no | partial | static |
+| 6 | Sands of Ruin | no | partial | static |
+| 6 | Death in the Ranges | no | partial | static |
+| 6 | Oswin, the Dread Warden (community table) | yes | auto | measured |
+| 6 | Skullmaw Stairway (community table) | yes | auto | measured |
+| 6 | Qimah Boons (community table) | yes | auto | measured |
+| 6 | Lythara, the Wayward Spear (community table) | yes | auto | measured |
 
 ## Negative results
 
@@ -244,10 +376,10 @@ not happen".
   `INFO` system messages there is no quest template at all.
 - No line marks character select; one in-session character switch was seen
   in fourteen months.
-- The dialogue window's text is not logged; only short voiced lines are (see
-  above).
-- No `G5_*` or `G6_*` area code, and no area for poe2db's Act 5 and Act 6
-  quests.
+- The dialogue window's text was not observed in the log; only short voiced
+  lines were (see above).
+- No `G5_*` or `G6_*` area code, and no area for poe2db's Act 5 quests
+  (its Act 6 quests are the interludes, whose `P*_` areas the log has).
 - No guild chat (`&`) line.
 - The client executable's ASCII and UTF-16 strings hold quest-flag script
   names but none of the reward or level-up message templates (static
@@ -276,6 +408,14 @@ not happen".
 - **poe2db changes independently of the game** (not established how often).
   The fetch tool records a source URL and fetch date per quest, so a stale
   entry can be found and refetched after a patch.
+- **The quest data mixes two patches** (static reading). poe2db, fetched
+  2026-10-25, describes the current patch, newer than the log's last
+  gameplay on the 4.5.x client (4.5.3, the data file's `game_version`).
+  Quests, steps and rewards come from the newer patch; every measured signal
+  comes from the older one. Act 5 and Siege of Oriath have no gameplay in
+  the log at all, and a reward or area the newer patch moved shows up as a
+  quest that stops advancing, to be re-measured with the replay tool's
+  `scan` over a fresh log.
 - **The log file** (measured). It only grows and is shared with the client,
   which keeps writing it; the tracker opens it read-only and never moves,
   truncates or locks it.

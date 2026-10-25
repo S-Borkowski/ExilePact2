@@ -21,9 +21,12 @@ quests are fetched (no Act 10, no act-less MasterMission) unless
 
 `extract` turns the cached pages into a draft JSON file, one entry per quest,
 for a person to curate into `apps/quest-tracker/data/quests.json`. It stops
-with a non-zero exit, naming the slug, when the index yields no quest or a
-page has no steps table: a changed site fails loudly rather than drafting
-nothing.
+with a non-zero exit, naming the slug, when the index yields no quest, a
+steps table has no or malformed step rows, or no page in the cache has a
+steps table: a changed site fails loudly rather than drafting nothing. A
+single page without a steps table (some real campaign pages have none) is
+drafted with zero steps and its slug named on stderr; `coverage` counts it
+the same way.
 
 `coverage` measures how far a page's dialogue matches the lines a saved
 `Client.txt` logged for the same NPC, and prints counts only, never text.
@@ -639,13 +642,14 @@ def _parse_step(number: int, cell: Node, with_dialogue: bool) -> dict:
 
 
 def parse_quest_page(slug: str, text: str, with_dialogue: bool = False) -> dict:
-    """One quest page, https://poe2db.tw/us/<slug>. Raises ExtractError naming the slug."""
+    """One quest page, https://poe2db.tw/us/<slug>. Raises ExtractError naming the slug.
+
+    A page with no steps table (a table headed '#' and 'Name') is a quest with
+    zero steps and `steps_table` false: some real campaign pages carry none.
+    The callers fail loudly when no page in the cache has one.
+    """
     root = parse_html(text)
     table = _steps_table(root)
-    if table is None:
-        raise ExtractError(
-            "%s: the page has no steps table (a table headed '#' and 'Name'); "
-            "the site's structure may have changed" % slug)
     name_node = root.find("div", cls="itemName")
     name = name_node.text() if name_node is not None else ""
     if not name:
@@ -654,7 +658,7 @@ def parse_quest_page(slug: str, text: str, with_dialogue: bool = False) -> dict:
     info = _properties([p for p in stats.elements() if p.has_class("property")] if stats else [])
     description = stats.find("div", cls="implicitMod") if stats is not None else None
     steps = []
-    for row in table.find_all("tr"):
+    for row in table.find_all("tr") if table is not None else ():
         cells = [c for c in row.elements() if c.tag == "td"]
         if len(cells) < 2:
             continue
@@ -662,7 +666,7 @@ def parse_quest_page(slug: str, text: str, with_dialogue: bool = False) -> dict:
         if not number.isdigit():
             raise ExtractError("%s: a steps-table row starts with %r, not a step number" % (slug, number))
         steps.append(_parse_step(int(number), cells[1], with_dialogue))
-    if not steps:
+    if table is not None and not steps:
         raise ExtractError("%s: the steps table has no step rows" % slug)
     return {
         "name": name,
@@ -671,7 +675,20 @@ def parse_quest_page(slug: str, text: str, with_dialogue: bool = False) -> dict:
         "rewards": info["rewards"],
         "description": description.text() if description is not None else None,
         "steps": steps,
+        "steps_table": table is not None,
     }
+
+
+def _check_steps_tables(pages: list[tuple[str, dict]], stderr) -> list[str]:
+    """Name each page without a steps table on stderr; fail when none has one."""
+    missing = [slug for slug, page in pages if not page["steps_table"]]
+    if pages and len(missing) == len(pages):
+        raise ExtractError(
+            "%s: no page in the cache has a steps table (a table headed '#' and 'Name'); "
+            "the site's structure may have changed" % INDEX_SLUG)
+    for slug in missing:
+        print("%s: no steps table; recorded with zero steps" % slug, file=stderr)
+    return missing
 
 
 def _cached_quest_pages(cache: Path, index: dict) -> list[tuple[str, dict]]:
@@ -686,9 +703,10 @@ def _require_cache_index(cache: Path) -> dict:
 
 
 def extract(cache: Path, out: Path | None = None, with_dialogue: bool = False,
-            clock=None, stdout=None) -> dict:
+            clock=None, stdout=None, stderr=None) -> dict:
     """Draft one JSON entry per cached quest page and write it to `out`."""
     stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
     cache = Path(cache)
     out = Path(out) if out is not None else cache / DRAFT_NAME
     refuse_inside_git(out, "draft")
@@ -702,10 +720,12 @@ def extract(cache: Path, out: Path | None = None, with_dialogue: bool = False,
         by_slug.setdefault(entry["slug"], []).append(entry)
     cached = dict(_cached_quest_pages(cache, index))
     order = [s for s in by_slug if s in cached] + [s for s in cached if s not in by_slug]
+    pages = [(slug, parse_quest_page(slug, _read_cached(cache, cached[slug]), with_dialogue))
+             for slug in order]
+    no_steps_table = _check_steps_tables(pages, stderr)
     quests = []
-    for slug in order:
+    for slug, page in pages:
         record = cached[slug]
-        page = parse_quest_page(slug, _read_cached(cache, record), with_dialogue)
         listed = by_slug.get(slug, [])
         acts = sorted(set(page["acts"]) | {e["act"] for e in listed if e["act"] is not None})
         first = listed[0] if listed else {}
@@ -729,6 +749,7 @@ def extract(cache: Path, out: Path | None = None, with_dialogue: bool = False,
         "index_fetched": index_record["fetched"],
         "extracted": (clock or SystemClock()).today().isoformat(),
         "with_dialogue": with_dialogue,
+        "no_steps_table": no_steps_table,
         "quests": quests,
     }
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -771,10 +792,11 @@ def npc_lines_from_log(log: Path, speakers: set[str]) -> dict[str, set[str]]:
     return said
 
 
-def coverage(cache: Path, log: Path, stdout=None) -> dict:
+def coverage(cache: Path, log: Path, stdout=None, stderr=None) -> dict:
     """Per cached page: dialogue snippets, how many equal or contain a logged line
     of the same NPC, how many share a 4-word run with one. Counts only."""
     stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
     cache = Path(cache)
     index = _require_cache_index(cache)
     pages = sorted(_cached_quest_pages(cache, index))
@@ -782,6 +804,7 @@ def coverage(cache: Path, log: Path, stdout=None) -> dict:
         raise ExtractError("%s: no quest page in the cache; run `fetch` first" % INDEX_SLUG)
     parsed = [(slug, parse_quest_page(slug, _read_cached(cache, rec), with_dialogue=True))
               for slug, rec in pages]
+    _check_steps_tables(parsed, stderr)
     speakers = {d["npc"] for _, page in parsed for step in page["steps"] for d in step["dialogue"]}
     said = npc_lines_from_log(Path(log), speakers)
     logged = {s: {_norm(line) for line in lines} for s, lines in said.items()}

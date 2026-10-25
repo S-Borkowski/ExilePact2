@@ -319,15 +319,69 @@ class ExtractTests(Poe2dbTestCase):
         slugs = [q["slug"] for q in json.loads((self.tmp / "d2.json").read_text("utf-8"))["quests"]]
         self.assertEqual(slugs, [KETTLE, LANTERNS])
 
+    def test_extract_records_a_page_without_steps_table(self):
+        # Some real campaign pages carry no steps table at all (11 of 74 on
+        # 2026-10-25). Such a page is a quest with zero steps, named on
+        # stderr, not a failure, as long as another page still has the table.
+        cache = make_cache(self.tmp / "nosteps", {"Quest": "Quest.html", LANTERNS: "Lanterns_of_Weeping_Pass.html",
+                                                   KETTLE: "Broken_Structure.html"})
+        out_path = self.tmp / "draft.json"
+        code, out, err = run(["extract", "--cache", str(cache), "--out", str(out_path)])
+        self.assertEqual(code, 0, err)
+        self.assertIn(KETTLE, err)
+        self.assertIn("no steps table", err)
+        self.assertNotIn(LANTERNS, err, "only the page without a table is named")
+        draft = json.loads(out_path.read_text("utf-8"))
+        by_slug = {q["slug"]: q for q in draft["quests"]}
+        self.assertEqual(sorted(by_slug), sorted([KETTLE, LANTERNS]))
+        kettle = by_slug[KETTLE]
+        self.assertEqual(kettle["name"], "The Gilded Kettle")
+        self.assertEqual(kettle["type"], "Normal")
+        self.assertEqual(kettle["act"], 1)
+        self.assertEqual(kettle["steps"], [])
+        self.assertEqual(draft["no_steps_table"], [KETTLE])
+        self.assertTrue(by_slug[LANTERNS]["steps"], "the page with a table keeps its steps")
+
+        # coverage counts it the same way: zero snippets, the page still listed.
+        log = self.tmp / "Client.txt"
+        log.write_bytes(SYNTHETIC_LOG.encode("utf-8"))
+        code, out, err = run(["coverage", "--log", str(log), "--cache", str(cache)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("%s\tsnippets=0\tequal_or_contain=0\tshared_4word_run=0" % KETTLE, out.splitlines())
+        self.assertIn("TOTAL\tpages=2\t", out)
+        self.assertIn(KETTLE, err)
+        self.assertIn("no steps table", err)
+
+        # Negative control: with every page well-formed, stderr names nothing.
+        cache = make_cache(self.tmp / "good", GOOD_CACHE)
+        code, out, err = run(["extract", "--cache", str(cache), "--out", str(out_path)])
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("no steps table", err)
+        self.assertEqual(json.loads(out_path.read_text("utf-8"))["no_steps_table"], [])
+
     def test_extract_fails_loudly_on_unknown_structure(self):
-        # A quest page whose steps are no longer the table extract knows.
-        cache = make_cache(self.tmp / "broken", {"Quest": "Quest.html", LANTERNS: "Lanterns_of_Weeping_Pass.html",
+        # No page in the cache has a steps table: the site changed, not one quest.
+        cache = make_cache(self.tmp / "broken", {"Quest": "Quest.html", LANTERNS: "Broken_Structure.html",
                                                   KETTLE: "Broken_Structure.html"})
         out_path = self.tmp / "draft.json"
         code, out, err = run(["extract", "--cache", str(cache), "--out", str(out_path)])
         self.assertNotEqual(code, 0)
+        self.assertIn("no page in the cache has a steps table", err)
+        self.assertFalse(out_path.exists(), "no partial draft")
+        log = self.tmp / "Client.txt"
+        log.write_bytes(SYNTHETIC_LOG.encode("utf-8"))
+        code, out, err = run(["coverage", "--log", str(log), "--cache", str(cache)])
+        self.assertNotEqual(code, 0)
+        self.assertIn("no page in the cache has a steps table", err)
+        self.assertNotIn("TOTAL", out)
+
+        # A steps table whose rows do not start with a step number.
+        cache = make_cache(self.tmp / "malformed", {"Quest": "Quest.html", LANTERNS: "Lanterns_of_Weeping_Pass.html",
+                                                     KETTLE: "Malformed_Steps.html"})
+        code, out, err = run(["extract", "--cache", str(cache), "--out", str(out_path)])
+        self.assertNotEqual(code, 0)
         self.assertIn(KETTLE, err)
-        self.assertIn("steps table", err)
+        self.assertIn("not a step number", err)
         self.assertFalse(out_path.exists(), "no partial draft")
 
         # An index page that yields no quest.
