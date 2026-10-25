@@ -1,18 +1,21 @@
 <script lang="ts">
   // One quest row: status mark, name and the manual-tick marker, the short
-  // reward text, the worth marker, and the next step under an in-progress
+  // reward labels, the worth marker, and the next step under an in-progress
   // quest. In progress: the active band with a 3 px bar inside the left edge.
   // Finished (done, skipped, locked): a compact, muted row. In edit mode the
   // row opens the quest's detail, with an outline on hover.
   import type { Send } from '../bridge';
   import type { QuestRow } from '../ipc';
+  import { rewardShortText, rewardText } from '../labels';
   import Icon from './Icon.svelte';
   import StatusMark from './StatusMark.svelte';
   import WorthMark from './WorthMark.svelte';
 
   let { row, edit, send }: { row: QuestRow; edit: boolean; send: Send } = $props();
 
-  const rewardText = $derived(row.rewards.map((r) => r.text).join(' · '));
+  // The column shows the short labels; the game's full text is the title.
+  const rewardShort = $derived(rewardShortText(row.rewards));
+  const rewardFull = $derived(rewardText(row.rewards));
   const finished = $derived(row.status === 'done' || row.status === 'skipped' || row.status === 'locked');
 </script>
 
@@ -26,7 +29,7 @@
       </span>
     {/if}
   </span>
-  <span class="rewards" title={rewardText}>{rewardText}</span>
+  <span class="rewards" title={rewardFull || undefined}>{rewardShort}</span>
   <WorthMark worth={row.worth} />
   {#if row.current_step}<span class="step">{row.current_step}</span>{/if}
 {/snippet}
@@ -133,7 +136,8 @@
     white-space: nowrap;
   }
 
-  /* In progress: the active band, the bar 3 px inside the left edge (so it shows inside the edit border). */
+  /* In progress: the active band, the bar 3 px inside the left edge (so it shows inside the edit border)
+     and 4 px in from the top and bottom, so two in-progress rows in a row show two bars, not one. */
   .row[data-status='in_progress'] {
     min-height: var(--size-row-height-tall);
     padding-bottom: 10px;
@@ -143,8 +147,8 @@
   .row[data-status='in_progress']::before {
     content: '';
     position: absolute;
-    top: 0;
-    bottom: 0;
+    top: 4px;
+    bottom: 4px;
     left: 3px;
     width: var(--bar-in-progress);
     background: var(--color-status-in-progress);

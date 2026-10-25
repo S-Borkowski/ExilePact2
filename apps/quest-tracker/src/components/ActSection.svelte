@@ -1,20 +1,28 @@
 <script lang="ts">
-  // An act's header (chevron, "Act 1" in small capitals, the available mark
-  // and "done/total done") on the raised band and, when expanded, its rows.
+  // An act's header (chevron, "Act 1" in small capitals, the available mark,
+  // "n available ·" and "done/total done") on the raised band and, when
+  // expanded, its rows.
   import type { Send } from '../bridge';
   import type { ActView } from '../ipc';
   import Icon from './Icon.svelte';
   import QuestRow from './QuestRow.svelte';
 
   let { act, edit, send }: { act: ActView; edit: boolean; send: Send } = $props();
+
+  // Counted from the act's rows, which the view carries only while the act
+  // is expanded; a collapsed act shows the mark (`has_available`) alone.
+  const available = $derived(act.quests.filter((q) => q.status === 'available').length);
 </script>
 
 {#snippet header()}
   <Icon id={act.expanded ? 'ui-chevron-down' : 'ui-chevron'} size="12px" />
   <span class="title">{act.title}</span>
   <span class="spacer"></span>
-  {#if act.has_available}
+  {#if act.has_available || available > 0}
     <span class="available"><Icon id="status-available" label="Has available quests" size="12px" /></span>
+  {/if}
+  {#if available > 0}
+    <span class="available-count">{available} available ·</span>
   {/if}
   <span class="progress">{act.done}/{act.total} done</span>
 {/snippet}
@@ -81,6 +89,7 @@
     color: var(--color-status-available);
   }
 
+  .available-count,
   .progress {
     color: var(--color-text-muted);
     font-size: var(--size-caption);
