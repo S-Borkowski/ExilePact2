@@ -89,5 +89,7 @@ export function previewBridge(search: string, root: HTMLElement = document.docum
       calls.push({ name, args });
       console.info(`quest-tracker preview: ${name}`, args);
     },
+    // A browser tab has no overlay window to move.
+    startDrag() {},
   };
 }

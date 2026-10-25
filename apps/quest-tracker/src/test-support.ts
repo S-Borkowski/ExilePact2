@@ -36,6 +36,8 @@ export function rowChangeFor(row: QuestRow, id: number, done: string | null, nex
 
 export interface FakeBridge extends Bridge {
   calls: Array<{ name: Command; args: unknown }>;
+  /** How many times the UI asked to start a window drag. */
+  readonly drags: number;
   pushView(view: View): void;
   pushRowChange(change: RowChange): void;
 }
@@ -44,9 +46,16 @@ export function fakeBridge(initial: View | null): FakeBridge {
   let onView: ((view: View) => void) | null = null;
   let onRowChange: ((change: RowChange) => void) | null = null;
   const calls: Array<{ name: Command; args: unknown }> = [];
+  let drags = 0;
   return {
     kind: 'tauri',
     calls,
+    get drags() {
+      return drags;
+    },
+    startDrag() {
+      drags += 1;
+    },
     async start(v, c) {
       onView = v;
       onRowChange = c;

@@ -75,6 +75,16 @@ toast parts were removed from the app: the `toast` frame id and the
 remain under `frames/` and `components/Toast/` as the record of what the
 comps held.
 
+**Note, 2026-10-25, after Live 2.** `opacity.min` changed from 0.3 to 0 in
+`theme.json` and `tokens.css`, by the owner's decision after Live 2: the
+background opacity slider now runs from 0%, where the panel's background is
+gone and its text, icons, border and edit-mode accent stay fully opaque.
+The Settings frame's harvested reference (`reference/settings.tsx`) and
+image stay as the record of the comps, with the old "Floor 30%" helper text,
+the Dock side row and a single Scale choice; the app now has an Auto scale
+switch plus a scale slider and no dock setting. No other token changed: the row
+highlight added after Live 2 uses the existing status colours.
+
 ## Not harvested, and why
 
 - **Backdrops:** the bright desert and dark crypt images are placeholders

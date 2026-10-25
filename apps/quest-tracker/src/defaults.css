@@ -101,7 +101,7 @@
   --chamfer-panel: 0px;
   --chamfer-button: 0px;
   --chamfer-badge: 0px;
-  --opacity-min: 0.3;
+  --opacity-min: 0;
   --opacity-stale-rows: 0.55;
   --motion-confirm-ms: 3000ms;
 

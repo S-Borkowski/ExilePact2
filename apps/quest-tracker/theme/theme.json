@@ -85,7 +85,7 @@
   "chamfer.panel": 6,
   "chamfer.button": 3,
   "chamfer.badge": 4,
-  "opacity.min": 0.3,
+  "opacity.min": 0,
   "opacity.stale-rows": 0.55,
   "motion.confirm-ms": 3000
 }

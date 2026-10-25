@@ -100,26 +100,50 @@ describe('the "probably done" mark', () => {
     }
   });
 
-  it('inferred_step_is_not_a_toggle', async () => {
-    // Edit mode: the flagged step keeps exactly the one toggle every step has
-    // (its leading mark, the hand tick), and a click on the ring sends nothing.
-    const edit = await render(detailView('edit'));
-    for (const id of ['step-inferred', 'step-own']) {
+  it('inferred_step_offers_no_toggle', async () => {
+    // Edit mode (owner, after Live 2: an inferred step "stays untickable"):
+    // the flagged step has no control at all, and a click on its mark or its
+    // ring sends nothing. A step the log saw, and one ticked by hand, keep
+    // their one toggle, the leading mark.
+    const view = detailView('edit');
+    view.detail!.steps.push({ id: 'step-ticked', title: 'Ticked step', text: '', state: 'pending', ticked: true, inferred: false });
+    const edit = await render(view);
+    const inferred = el(edit.root, '.step[data-step="step-inferred"]');
+    expect(inferred.querySelectorAll('button'), 'no button in the inferred step').toHaveLength(0);
+    expect(inferred.querySelectorAll(CONTROL_SELECTOR), 'no control in the inferred step').toHaveLength(0);
+    const before = edit.bridge.calls.length;
+    el(inferred, '.mark').click();
+    marks(inferred)[0].click();
+    inferred.click();
+    expect(edit.bridge.calls.slice(before), 'clicks on the inferred step').toEqual([]);
+    expect(edit.bridge.calls.some((c) => c.name === 'tick_step')).toBe(false);
+    // Its mark still reads as done, labelled, as in play mode.
+    expect(el(inferred, '.mark [aria-label]').getAttribute('aria-label')).toBeTruthy();
+
+    // Positive controls: the own and the ticked step keep the toggle, and it sends.
+    for (const [id, ticked] of [
+      ['step-own', true],
+      ['step-ticked', false],
+    ] as const) {
       const step = el(edit.root, `.step[data-step="${id}"]`);
       const controls = [...step.querySelectorAll<HTMLElement>(CONTROL_SELECTOR)];
       expect(controls.map((c) => c.className.split(' ')[0]), id).toEqual(['mark']);
+      const at = edit.bridge.calls.length;
+      el(step, 'button.mark').click();
+      expect(edit.bridge.calls.slice(at), id).toEqual([{ name: 'tick_step', args: { questId: 'test-quest', stepId: id, ticked } }]);
     }
-    const ring = marks(el(edit.root, '.step[data-step="step-inferred"]'))[0];
-    expect(ring.matches(CONTROL_SELECTOR), 'the ring is no control').toBe(false);
-    expect(ring.closest('button'), 'the ring is not inside the tick').toBeNull();
-    const before = edit.bridge.calls.length;
-    ring.click();
-    expect(edit.bridge.calls.slice(before), 'a click on the ring').toEqual([]);
-    // Positive control: the same step's tick does send.
-    el(edit.root, '.step[data-step="step-inferred"] .mark').click();
-    expect(edit.bridge.calls.slice(before)).toEqual([
-      { name: 'tick_step', args: { questId: 'test-quest', stepId: 'step-inferred', ticked: true } },
-    ]);
+    // Mark done stays: the player's correction when the inference is wrong.
+    const markDone = [...edit.root.querySelectorAll<HTMLButtonElement>('.actions button')].find((b) => b.textContent?.trim() === 'Mark done');
+    expect(markDone, 'Mark done').toBeTruthy();
+    close();
+
+    // A row done by inference: Unmark done stays, the inferred step still has no toggle.
+    const done = await render(detailView('edit', true));
+    const unmark = [...done.root.querySelectorAll<HTMLButtonElement>('.actions button')].find((b) => b.textContent?.trim() === 'Unmark done');
+    expect(unmark, 'Unmark done').toBeTruthy();
+    unmark!.click();
+    expect(done.bridge.calls).toEqual([{ name: 'quest_action', args: { questId: 'test-quest', action: 'unmark_done' } }]);
+    expect(el(done.root, '.step[data-step="step-inferred"]').querySelectorAll('button')).toHaveLength(0);
     close();
 
     // Edit mode, the row: the ring adds no control; the row stays one button.

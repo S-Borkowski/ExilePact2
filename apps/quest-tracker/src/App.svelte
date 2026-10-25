@@ -21,6 +21,7 @@
   const send: Send = (name, args) => {
     void bridge.command(name, args);
   };
+  const drag = (): void => bridge.startDrag();
 
   function onRowChange(change: RowChange): void {
     changes.add(change);
@@ -59,14 +60,13 @@
   class="overlay"
   data-frame={view?.frame ?? 'none'}
   data-mode={view?.mode ?? 'play'}
-  data-dock={view?.settings.dock ?? 'right'}
   style:--panel-opacity={view?.settings.opacity ?? null}
 >
   {#if view}
     {#if view.frame === 'collapsed'}
       <Collapsed {view} {send} />
     {:else}
-      <Panel {view} {send} />
+      <Panel {view} {send} {drag} />
     {/if}
   {/if}
   <div class="announcer sr-only" aria-live="polite" aria-atomic="false">
@@ -77,7 +77,9 @@
 </div>
 
 <style>
-  /* The window's transparent margin holds the panel's shadow. */
+  /* The window's transparent margin holds the panel's shadow. The panel sits
+     at the window's right edge: with no saved position the shell places the
+     window where the old right dock did (the dock setting went after Live 2). */
   .overlay {
     display: flex;
     flex-direction: column;
@@ -91,10 +93,6 @@
     font-kerning: normal;
     -webkit-font-smoothing: antialiased;
     user-select: none;
-  }
-
-  .overlay[data-dock='left'] {
-    align-items: flex-start;
   }
 
   .overlay :global(input[type='text']) {

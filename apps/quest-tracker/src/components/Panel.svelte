@@ -2,7 +2,9 @@
   // The expanded panel: header, the status line, the body the view's frame
   // names, and in edit mode the way back to play mode. Cut corners (6 px), the
   // background at the opacity setting while text and icons stay opaque, a
-  // 1 px border that edit mode turns into the 2 px accent.
+  // 1 px border that edit mode turns into the 2 px accent. At opacity 0 the
+  // background is gone and the border and accent still draw: they are the
+  // ring (`.cut::after`), which the setting does not touch.
   import type { Send } from '../bridge';
   import type { QuestRow as Row, StatusKind, View, Worth } from '../ipc';
   import { WORTH_LABEL } from '../labels';
@@ -15,7 +17,7 @@
   import QuestRow from './QuestRow.svelte';
   import Settings from './Settings.svelte';
 
-  let { view, send }: { view: View; send: Send } = $props();
+  let { view, send, drag = () => {} }: { view: View; send: Send; drag?: () => void } = $props();
 
   const edit = $derived(view.mode === 'edit');
   const STATUS_ICON = { ok: 'ui-check', info: null, warn: 'ui-warning', error: 'ui-warning' } as const;
@@ -46,7 +48,7 @@
 
 <div class="panel-shadow">
   <div class="panel cut" class:edit>
-    <Header {view} {send} />
+    <Header {view} {send} {drag} />
     {#if status}
       {@const icon = STATUS_ICON[status.kind]}
       <p class="status-line" role="status" data-kind={status.kind}>

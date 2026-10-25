@@ -7,12 +7,22 @@
   // the panel's h1 in every variant, styled as before. A new character from
   // The Riverbank that no level-up has named yet (`provisional`) reads "New
   // character", level 1.
+  //
+  // In edit mode a press on the bar, outside its buttons, moves the window
+  // (`drag`, the bridge's window drag). Play mode never drags: the window is
+  // click-through there.
   import type { Send } from '../bridge';
   import type { View } from '../ipc';
   import { NEW_CHARACTER } from '../labels';
   import Icon from './Icon.svelte';
 
-  let { view, send }: { view: View; send: Send } = $props();
+  let { view, send, drag = () => {} }: { view: View; send: Send; drag?: () => void } = $props();
+
+  function press(event: PointerEvent): void {
+    if (view.mode !== 'edit' || event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest('button, input, select, textarea, a')) return;
+    drag();
+  }
 
   const edit = $derived(view.mode === 'edit');
   const character = $derived(view.character);
@@ -23,7 +33,10 @@
   );
 </script>
 
-<header class="header" class:edit>
+<!-- The drag is a mouse gesture on the window's own title bar, which the
+     keyboard has no use for; the bar's controls stay buttons. -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<header class="header" class:edit onpointerdown={edit ? press : undefined}>
   {#if edit}
     <span class="chip"><Icon id="ui-edit" size="12px" /><span class="mode-tag">Edit</span></span>
     {#if character}
@@ -82,6 +95,7 @@
   .header.edit {
     gap: 6px;
     background: var(--color-edit-tint);
+    cursor: move;
   }
 
   .mark {

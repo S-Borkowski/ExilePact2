@@ -63,11 +63,15 @@ export type RewardCategory = (typeof REWARD_CATEGORIES)[number];
 export const STEP_PHASES = ['pending', 'current', 'done'] as const;
 export type StepPhase = (typeof STEP_PHASES)[number];
 
-export const DOCKS = ['left', 'right'] as const;
-export type Dock = (typeof DOCKS)[number];
-
-export const SCALES = ['auto', '1', '1.33', '2'] as const;
-export type Scale = (typeof SCALES)[number];
+/**
+ * The UI scale: `auto`, or a fixed factor from `SCALE_MIN` to `SCALE_MAX`
+ * (the settings slider moves in `SCALE_STEP`s). The shell normalises a
+ * stored or patched value, so the view only ever carries one of the two.
+ */
+export type Scale = 'auto' | number;
+export const SCALE_MIN = 0.75;
+export const SCALE_MAX = 2;
+export const SCALE_STEP = 0.05;
 
 export const ROW_CHANGE_KINDS = ['available', 'step_done', 'quest_done'] as const;
 export type RowChangeKind = (typeof ROW_CHANGE_KINDS)[number];
@@ -145,9 +149,8 @@ export interface QuestDetail {
 }
 
 export interface Settings {
-  /** The panel background's opacity, 0.3-1; text and icons stay opaque. */
+  /** The panel background's opacity, 0-1; text, icons, the border and the edit accent stay opaque. */
   opacity: number;
-  dock: Dock;
   scale: Scale;
   show_skipped: boolean;
   only_worth_it: boolean;
@@ -215,6 +218,9 @@ const oneOf =
   (v, p, out) => {
     if (typeof v !== 'string' || !values.includes(v)) out.push(`${p}: ${JSON.stringify(v)} is not one of ${values.join('|')}`);
   };
+const scale: Check = (v, p, out) => {
+  if (v !== 'auto' && (typeof v !== 'number' || !Number.isFinite(v))) out.push(`${p}: ${JSON.stringify(v)} is not "auto" or a number`);
+};
 const nullable =
   (inner: Check): Check =>
   (v, p, out) => {
@@ -290,8 +296,7 @@ const detail = record<QuestDetail>({
 });
 const settings = record<Settings>({
   opacity: num,
-  dock: oneOf(DOCKS),
-  scale: oneOf(SCALES),
+  scale,
   show_skipped: bool,
   only_worth_it: bool,
   log_path: nullable(str),

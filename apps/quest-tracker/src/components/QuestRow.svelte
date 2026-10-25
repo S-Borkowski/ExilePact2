@@ -12,11 +12,23 @@
   // rising 5 px. A second change restarts it from the start; under reduced
   // motion the change is instant. Changes from before the row was on screen
   // (its act folded, or filtered out) are not played: App announced them.
+  //
+  // Every change also highlights the row, motion or not (owner, after Live 2):
+  // a tint of the row's new status colour comes on at once, holds
+  // `ROW_HIGHLIGHT_MS` and fades out; a second change restarts the hold.
   import { onDestroy, untrack } from 'svelte';
   import type { Send } from '../bridge';
   import type { QuestRow, RowChange } from '../ipc';
   import { rewardShortText, rewardText } from '../labels';
-  import { ROW_STEP_IN_MS, ROW_STEP_OUT_MS, type RowPhase, getRowChanges, prefersReducedMotion } from '../rowchange';
+  import {
+    ROW_HIGHLIGHT_MS,
+    ROW_HIGHLIGHT_OUT_MS,
+    ROW_STEP_IN_MS,
+    ROW_STEP_OUT_MS,
+    type RowPhase,
+    getRowChanges,
+    prefersReducedMotion,
+  } from '../rowchange';
   import Icon from './Icon.svelte';
   import InferredMark from './InferredMark.svelte';
   import StatusMark from './StatusMark.svelte';
@@ -33,6 +45,7 @@
   // The last change this row played, or saw before it was shown.
   let played = changes?.latest ?? 0;
   let phase = $state<RowPhase>('idle');
+  let highlight = $state(false);
   let leaving = $state<string | null>(null);
   // Keys the row's content, so a restart starts every animation from zero.
   let run = $state(0);
@@ -52,6 +65,10 @@
     run = change.id;
     leaving = null;
     phase = 'idle';
+    // The highlight shows whatever the motion setting says; only the step's
+    // fade below depends on it.
+    highlight = true;
+    after(ROW_HIGHLIGHT_MS, () => (highlight = false));
     if (prefersReducedMotion()) return;
     const enter = () => {
       leaving = null;
@@ -110,8 +127,10 @@
     data-status={row.status}
     data-worth={row.worth}
     data-change={phase === 'idle' ? undefined : phase}
+    data-highlight={highlight ? '' : undefined}
     style:--row-out-ms={`${ROW_STEP_OUT_MS}ms`}
     style:--row-in-ms={`${ROW_STEP_IN_MS}ms`}
+    style:--row-highlight-out-ms={`${ROW_HIGHLIGHT_OUT_MS}ms`}
     onclick={() => send('open_detail', { questId: row.id })}
   >
     {@render body()}
@@ -124,8 +143,10 @@
     data-status={row.status}
     data-worth={row.worth}
     data-change={phase === 'idle' ? undefined : phase}
+    data-highlight={highlight ? '' : undefined}
     style:--row-out-ms={`${ROW_STEP_OUT_MS}ms`}
     style:--row-in-ms={`${ROW_STEP_IN_MS}ms`}
+    style:--row-highlight-out-ms={`${ROW_HIGHLIGHT_OUT_MS}ms`}
   >
     {@render body()}
   </div>
@@ -288,6 +309,60 @@
       opacity: 0.2;
       transform: translateY(5px);
     }
+  }
+
+  /*
+   * The highlight: the row's new status colour laid over its background
+   * (and under its content: the row isolates, the tint sits at z -1), on at
+   * once and faded out by opacity after the hold. Colour only, no movement,
+   * so reduced motion keeps it.
+   */
+  .row {
+    --row-tint: var(--color-status-in-progress);
+    isolation: isolate;
+  }
+
+  .row::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--row-tint);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--row-highlight-out-ms) var(--row-ease);
+  }
+
+  .row[data-highlight]::after {
+    opacity: 0.2;
+    transition: none;
+  }
+
+  /* A finished row's muted text keeps 4.5:1 on a lighter tint (0.2 would take
+     it to 4.1:1 on the done colour; review-live2-fixes.md). */
+  .row.finished[data-highlight]::after {
+    opacity: 0.14;
+  }
+
+  .row[data-status='available'] {
+    --row-tint: var(--color-status-available);
+  }
+
+  .row[data-status='done'] {
+    --row-tint: var(--color-status-done);
+  }
+
+  .row[data-status='skipped'] {
+    --row-tint: var(--color-status-skipped);
+  }
+
+  .row[data-status='locked'] {
+    --row-tint: var(--color-status-locked);
+  }
+
+  .row[data-status='unknown'] {
+    --row-tint: var(--color-status-unknown);
   }
 
   /* Windows animations off: the change is instant (the script plays no phase either). */

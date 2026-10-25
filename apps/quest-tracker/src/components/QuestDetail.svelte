@@ -5,8 +5,11 @@
   // the poe2db source, and in edit mode the actions. Reset asks twice: the
   // first click turns it into "Confirm reset", filled, with a 3 s countdown.
   // A quest or step done by inference (`inferred`) carries the "probably
-  // done" mark after its status or step mark; it adds no control, and the
-  // step's hand tick works as without it.
+  // done" mark after its status or step mark. An inferred step has no hand
+  // tick in edit mode either: its leading mark is plain, and a click on it
+  // sends nothing (owner: it "stays untickable"). A step the player ticked is
+  // not inferred and keeps its toggle; Mark done / Unmark done stays, as the
+  // player's correction when the inference is wrong.
   import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
   import type { Detection, QuestAction, QuestDetail, StepPhase, StepView } from '../ipc';
@@ -54,7 +57,7 @@
 
   // The leading mark draws what the step reads as: the check in a box when the
   // log finished it or it was ticked by hand, else its own phase. In edit mode
-  // it is also the step's one toggle (the hand tick).
+  // it is also the step's one toggle (the hand tick), unless the step is inferred.
   function markPhase(step: StepView): StepPhase {
     return step.state === 'done' || step.ticked ? 'done' : step.state;
   }
@@ -102,7 +105,7 @@
     {#each detail.steps as step (step.id)}
       {@const phase = markPhase(step)}
       <li class="step" data-state={step.state} data-step={step.id} data-ticked={step.ticked}>
-        {#if edit}
+        {#if edit && !step.inferred}
           <button
             type="button"
             class="mark"

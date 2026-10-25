@@ -9,8 +9,8 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
-  type Dock,
   type Mode,
   type QuestAction,
   type Scale,
@@ -27,10 +27,9 @@ export const ROW_CHANGE_EVENT = 'qt:row-change';
 /** The frames `open_frame` opens over the panel. */
 export type OverlayFrame = 'character-picker' | 'settings';
 
-/** A partial settings object for `update_settings`; Rust refuses unknown keys. */
+/** A partial settings object for `update_settings`; Rust refuses unknown keys (`dock` among them since Live 2). */
 export interface SettingsPatch {
   opacity?: number;
-  dock?: Dock;
   scale?: Scale;
   show_skipped?: boolean;
   only_worth_it?: boolean;
@@ -64,6 +63,12 @@ export interface Bridge {
   start(onView: (view: View) => void, onRowChange: (change: RowChange) => void): Promise<() => void>;
   /** Sends one command. A failure is logged; the next `qt:view` shows the state either way. */
   command<C extends Command>(name: C, args: CommandArgs[C]): Promise<void>;
+  /**
+   * Starts moving the overlay window with the pressed mouse button (edit
+   * mode's header). The shell keeps a move made in edit mode. A no-op in the
+   * preview; the test bridge records it.
+   */
+  startDrag(): void;
 }
 
 function warnIfOff(what: string, problems: string[]): void {
@@ -99,6 +104,11 @@ export function tauriBridge(): Bridge {
       } catch (error) {
         console.error(`quest-tracker: ${name} failed`, error);
       }
+    },
+    startDrag() {
+      getCurrentWindow()
+        .startDragging()
+        .catch((error) => console.error('quest-tracker: the window drag failed', error));
     },
   };
 }

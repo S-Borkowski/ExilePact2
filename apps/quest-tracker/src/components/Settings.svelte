@@ -4,20 +4,29 @@
   // sends `update_settings` with the one field it changes and shows what the
   // next `qt:view` says; the UI keeps no copy of its own. Play mode lists the
   // values with no control.
+  //
+  // After Live 2 (owner): opacity runs from 0 (no background; text, icons,
+  // the border and the edit accent stay opaque), scale is an Auto switch plus
+  // a slider for a fixed factor (moving it turns Auto off), and the dock side
+  // is gone (the window is dragged by its header in edit mode).
   import type { Send } from '../bridge';
-  import { type Dock, type Scale, type View, DOCKS, SCALES } from '../ipc';
+  import { type Scale, type View, SCALE_MAX, SCALE_MIN, SCALE_STEP } from '../ipc';
   import Icon from './Icon.svelte';
 
   let { view, send }: { view: View; send: Send } = $props();
 
   const s = $derived(view.settings);
   const edit = $derived(view.mode === 'edit');
-  const MIN_OPACITY = 0.3;
+  /** The factor the slider rests on while Auto is on, and where turning Auto off starts. */
+  const AUTO_REST = 1;
 
-  const SCALE_LABEL: Record<Scale, string> = { auto: 'Auto', '1': '1×', '1.33': '1.33×', '2': '2×' };
-  const DOCK_LABEL: Record<Dock, string> = { left: 'Left', right: 'Right' };
   const percent = (v: number) => `${Math.round(v * 100)}%`;
-  const fill = $derived(`${Math.round(((s.opacity - MIN_OPACITY) / (1 - MIN_OPACITY)) * 100)}%`);
+  const factorText = (f: number) => `${Number(f.toFixed(2))}×`;
+  const scaleText = (sc: Scale) => (sc === 'auto' ? 'Auto' : factorText(sc));
+  const auto = $derived(s.scale === 'auto');
+  const factor = $derived(s.scale === 'auto' ? AUTO_REST : s.scale);
+  const opacityFill = $derived(percent(s.opacity));
+  const scaleFill = $derived(percent((factor - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)));
 </script>
 
 <div class="settings">
@@ -36,16 +45,17 @@
       <input
         type="range"
         class="slider"
-        min={MIN_OPACITY}
+        min="0"
         max="1"
         step="0.05"
         value={s.opacity}
-        style:--fill={fill}
+        aria-valuetext={percent(s.opacity)}
+        style:--fill={opacityFill}
         onchange={(e) => send('update_settings', { patch: { opacity: Number(e.currentTarget.value) } })}
       />
       <span class="value">{percent(s.opacity)}</span>
     </label>
-    <p class="help">Text and icons always stay fully opaque. Floor {percent(MIN_OPACITY)}.</p>
+    <p class="help">Text, icons and the panel's border always stay fully opaque.</p>
 
     <label class="row">
       <span class="label">Click-through (play mode)</span>
@@ -54,23 +64,32 @@
     <p class="help">On: in play mode the panel passes clicks to the game.</p>
 
     <label class="row">
-      <span class="label">Dock side</span>
-      <span class="select-wrap">
-        <select class="select" value={s.dock} onchange={(e) => send('update_settings', { patch: { dock: e.currentTarget.value as Dock } })}>
-          {#each DOCKS as d (d)}<option value={d}>{DOCK_LABEL[d]}</option>{/each}
-        </select>
-        <Icon id="ui-chevron-down" size="12px" />
-      </span>
+      <span class="label">Auto scale</span>
+      <input
+        type="checkbox"
+        class="toggle"
+        role="switch"
+        checked={auto}
+        onchange={() => send('update_settings', { patch: { scale: auto ? AUTO_REST : 'auto' } })}
+      />
     </label>
     <label class="row">
       <span class="label">Scale</span>
-      <span class="select-wrap">
-        <select class="select" value={s.scale} onchange={(e) => send('update_settings', { patch: { scale: e.currentTarget.value as Scale } })}>
-          {#each SCALES as sc (sc)}<option value={sc}>{SCALE_LABEL[sc]}</option>{/each}
-        </select>
-        <Icon id="ui-chevron-down" size="12px" />
-      </span>
+      <input
+        type="range"
+        class="slider"
+        class:resting={auto}
+        min={SCALE_MIN}
+        max={SCALE_MAX}
+        step={SCALE_STEP}
+        value={factor}
+        aria-valuetext={scaleText(s.scale)}
+        style:--fill={scaleFill}
+        onchange={(e) => send('update_settings', { patch: { scale: Number(e.currentTarget.value) } })}
+      />
+      <span class="value">{scaleText(s.scale)}</span>
     </label>
+    <p class="help">Moving the slider sets a fixed scale and turns Auto off.</p>
     <label class="row">
       <span class="label">Show skipped quests</span>
       <input
@@ -121,8 +140,7 @@
   {:else}
     <dl class="values">
       <div class="row"><dt>Background opacity</dt><dd>{percent(s.opacity)}</dd></div>
-      <div class="row"><dt>Dock side</dt><dd>{DOCK_LABEL[s.dock]}</dd></div>
-      <div class="row"><dt>Scale</dt><dd>{SCALE_LABEL[s.scale]}</dd></div>
+      <div class="row"><dt>Scale</dt><dd>{scaleText(s.scale)}</dd></div>
       <div class="row"><dt>Show skipped quests</dt><dd>{s.show_skipped ? 'On' : 'Off'}</dd></div>
       <div class="row"><dt>Only worth-it quests</dt><dd>{s.only_worth_it ? 'On' : 'Off'}</dd></div>
       <div class="row"><dt>Edit-mode hotkey</dt><dd><span class="keycap">{s.hotkey}</span></dd></div>
@@ -211,6 +229,11 @@
     height: var(--border-width);
     margin: var(--space-unit) 0;
     background: var(--color-panel-divider);
+  }
+
+  /* Auto on: the slider rests at 1× and its thumb steps back, until moved. */
+  .slider.resting::-webkit-slider-thumb {
+    background: var(--color-text-muted);
   }
 
   .hotkey {
