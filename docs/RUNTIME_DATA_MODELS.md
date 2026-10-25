@@ -62,9 +62,11 @@ character whose name is learned only from its first level-up. An existing
 character entering `G1_1` again was not observed (not proof that it never
 happens).
 
-Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): a
-town NPC's logged lines are vendor and greeting lines, never a quest's talk,
-and a 3.5-minute visit to Clearfell Encampment in which the player talked to
-its NPCs recorded no NPC line at all, so a talk in a dialogue window leaves
-nothing in the log (not observed in one visit, not proof that it is never
-logged).
+Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): in
+Clearfell Encampment (`G1_town`), all 44 distinct lines logged from Una,
+Finn, Renly and Mortimer are vendor, gambling or farewell lines; no quest's
+talk was observed among them (the other towns' NPC lines were counted, not
+classified). A 3.5-minute visit to Clearfell Encampment in which the player
+talked to its NPCs recorded no NPC line at all, so a talk in a dialogue
+window leaves nothing in the log (not observed in one visit, not proof that
+it is never logged).
