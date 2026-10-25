@@ -94,5 +94,18 @@ export async function renderApp(bridge: Bridge): Promise<Rendered> {
   };
 }
 
+/**
+ * A file's text read from disk, `path` relative to this folder (`src/`).
+ * Vitest blanks CSS imports, `?raw` ones too, so the CSS the tests check is
+ * read this way. `node:fs` is reached by a dynamic import: the UI's
+ * TypeScript config carries no Node types, and the app never imports it.
+ */
+export async function readText(path: string): Promise<string> {
+  const fs = (await import(/* @vite-ignore */ 'node:fs' as string)) as {
+    readFileSync(file: URL, encoding: 'utf8'): string;
+  };
+  return fs.readFileSync(new URL(path, import.meta.url), 'utf8');
+}
+
 /** The interactive elements play mode must not have. */
 export const CONTROL_SELECTOR = 'button, input, select, textarea, a[href], [role="button"], [tabindex]';

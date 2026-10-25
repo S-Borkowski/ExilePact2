@@ -1,0 +1,367 @@
+/*
+ * The styled layer's shared rules, from the harvested design
+ * (`docs/quest-tracker/design/component-spec.md` and `frames/`): the
+ * cut-corner shape, buttons, form controls, keycaps, labels and the countdown
+ * bar. Every value is a token: the harvest's `theme/tokens.css` when present,
+ * else the plain value in `defaults.css`. Components keep their own layout
+ * in their `<style>` blocks.
+ */
+
+/*
+ * Cut corners: 45° on the top-left and bottom-right, `--cut` long. The
+ * element is clipped to that shape, and its ::after draws the border as a
+ * ring of the same shape (`--ring` wide, `--ring-color`): a CSS border would
+ * be cut off at the diagonals. The clip also cuts off the element's own
+ * box-shadow, so a shadow comes from `filter: var(--drop-…)` on a wrapper.
+ * 0.4142 (√2 − 1) moves the inner diagonal inward by exactly the ring width.
+ */
+.cut {
+  --cut: 0px;
+  --ring: var(--border-width);
+  --ring-color: transparent;
+  --ring-in: calc(var(--cut) + var(--ring) * 0.4142);
+  position: relative;
+  clip-path: polygon(
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut)
+  );
+}
+
+.cut::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--ring-color);
+  clip-path: polygon(
+    evenodd,
+    var(--cut) 0,
+    100% 0,
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    0 100%,
+    0 var(--cut),
+    var(--cut) 0,
+    var(--ring-in) var(--ring),
+    calc(100% - var(--ring)) var(--ring),
+    calc(100% - var(--ring)) calc(100% - var(--ring-in)),
+    calc(100% - var(--ring-in)) calc(100% - var(--ring)),
+    var(--ring) calc(100% - var(--ring)),
+    var(--ring) var(--ring-in),
+    var(--ring-in) var(--ring)
+  );
+}
+
+/* Buttons: 28 high, 3 px cut corners, the Button text style. */
+.btn {
+  --cut: var(--chamfer-button);
+  --ring-color: var(--color-panel-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-section-gap);
+  box-sizing: border-box;
+  height: var(--size-button);
+  padding: 0 var(--space-row-pad);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--size-button-text);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-caption);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--motion-duration) var(--motion-easing);
+}
+
+.btn:hover {
+  background: var(--color-action-secondary-hover);
+}
+
+.btn:active {
+  background: var(--color-action-secondary-pressed);
+}
+
+.btn.primary {
+  --ring-color: transparent;
+  background: var(--color-action-primary-bg);
+  color: var(--color-text-on-light);
+}
+
+.btn.primary:hover {
+  background: var(--color-action-primary-hover);
+}
+
+.btn.primary:active {
+  background: var(--color-action-primary-pressed);
+}
+
+.btn.danger {
+  --ring-color: var(--color-action-danger);
+  background: transparent;
+  color: var(--color-action-danger);
+}
+
+.btn.danger.confirm {
+  min-width: 120px;
+  background: var(--color-action-danger);
+  color: var(--color-panel-sunken);
+}
+
+.btn:disabled {
+  --ring-color: transparent;
+  background: var(--color-action-disabled-bg);
+  color: var(--color-action-disabled-fg);
+  cursor: default;
+}
+
+.btn:focus-visible {
+  --ring: var(--border-width-strong);
+  --ring-color: var(--color-edit-accent);
+  outline: none;
+}
+
+/* Icon buttons: 24 × 24, the icon alone. */
+.icon-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-control);
+  height: var(--size-control);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--motion-duration) var(--motion-easing);
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  background: var(--color-panel-raised);
+  color: var(--color-text-primary);
+  outline: none;
+}
+
+.icon-btn:focus-visible {
+  box-shadow: inset 0 0 0 var(--border-width) var(--color-edit-accent);
+}
+
+/* The Act text style: small capitals, for act headers and group labels. */
+.group-label {
+  margin: 0;
+  padding: var(--space-section-gap) var(--space-row-pad) var(--space-unit);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-caps);
+  font-size: var(--size-act);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-caption);
+  letter-spacing: 0.03em;
+}
+
+/* The Caption text style. */
+.caption {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--size-caption);
+  font-weight: var(--font-weight-row);
+  line-height: var(--line-caption);
+  letter-spacing: 0.2px;
+}
+
+/* A key name, as on a keycap: "Press [Ctrl+Alt+Q]". */
+.keycap {
+  display: inline-block;
+  padding: 0 6px;
+  border: var(--border-width) solid var(--color-panel-border);
+  background: var(--color-panel-sunken);
+  color: var(--color-text-primary);
+  font-size: var(--size-caption);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-caption);
+  white-space: nowrap;
+}
+
+/* A text link inside the panel (edit mode only: play mode has no control). */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-unit);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-edit-accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Toggle, 36 × 24, square: on is the accent track with the thumb right. */
+.toggle {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: var(--size-control);
+  margin: 0;
+  border: var(--border-width) solid var(--color-panel-border);
+  background: var(--color-panel-sunken);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color var(--motion-duration) var(--motion-easing);
+}
+
+.toggle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: var(--color-text-secondary);
+  transform: translateY(-50%);
+  transition: left var(--motion-duration) var(--motion-easing);
+}
+
+.toggle:checked {
+  border-color: var(--color-edit-accent);
+  background: var(--color-edit-accent);
+}
+
+.toggle:checked::before {
+  left: calc(100% - 17px);
+  background: var(--color-panel-sunken);
+}
+
+/* Slider: the accent fills the track up to the value (`--fill`, set inline). */
+.slider {
+  flex: 1;
+  min-width: 0;
+  height: var(--size-control);
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--color-edit-accent) var(--fill),
+    var(--color-panel-divider) var(--fill)
+  );
+}
+
+.slider::-webkit-slider-thumb {
+  width: 8px;
+  height: 16px;
+  margin-top: -6px;
+  border: 0;
+  background: var(--color-text-primary);
+  appearance: none;
+}
+
+/* Dropdown, 140 × 24, with a chevron drawn over its right end. */
+.select-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--color-text-secondary);
+}
+
+.select-wrap > :last-child {
+  position: absolute;
+  right: 6px;
+  pointer-events: none;
+}
+
+.select,
+.text-input {
+  box-sizing: border-box;
+  height: var(--size-control);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: 0;
+  background: var(--color-panel-sunken);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--size-label);
+  font-weight: var(--font-weight-row);
+}
+
+.select {
+  width: 140px;
+  padding: 0 24px 0 var(--space-section-gap);
+  appearance: none;
+  cursor: pointer;
+}
+
+.text-input {
+  width: 100%;
+  height: var(--size-button);
+  padding: 0 var(--space-section-gap);
+}
+
+.select:focus-visible,
+.text-input:focus-visible,
+.toggle:focus-visible,
+.slider:focus-visible {
+  outline: var(--border-width) solid var(--color-edit-accent);
+  outline-offset: 1px;
+}
+
+/* A countdown: a 2 px bar along the bottom that drains over `--countdown`. */
+.countdown {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--bar-countdown);
+  background: currentColor;
+  transform-origin: left;
+  animation: qt-drain var(--countdown) linear forwards;
+}
+
+@keyframes qt-drain {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Text for assistive technology only. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Motion is decoration here: with reduced motion nothing slides or drains. */
+@media (prefers-reduced-motion: reduce) {
+  .countdown {
+    animation: none;
+  }
+
+  .btn,
+  .icon-btn,
+  .toggle,
+  .toggle::before {
+    transition: none;
+  }
+}

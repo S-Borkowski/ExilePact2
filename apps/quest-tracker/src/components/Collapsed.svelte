@@ -1,6 +1,9 @@
 <script lang="ts">
-  // The collapsed badge: the count of worth-it quests available now. In edit
-  // mode it expands the panel.
+  // The collapsed badge, 48 × 48 with 4 px cut corners. Has new: a gold
+  // border, a star and the count of worth-it quests available now. Idle: the
+  // plain border and the expand glyph. Warning (the status line warns or
+  // errs): the warning border and glyph. In edit mode it expands the panel,
+  // and its border is the edit accent.
   import type { Send } from '../bridge';
   import type { View } from '../ipc';
   import Icon from './Icon.svelte';
@@ -8,53 +11,81 @@
   let { view, send }: { view: View; send: Send } = $props();
 
   const count = $derived(view.available_worth_count);
-  const label = $derived(`${count} worth-it ${count === 1 ? 'quest' : 'quests'} available`);
+  const warning = $derived(view.status?.kind === 'warn' || view.status?.kind === 'error');
+  const state = $derived(warning ? 'warning' : count > 0 ? 'has-new' : 'idle');
+  const label = $derived(
+    `${count} worth-it ${count === 1 ? 'quest' : 'quests'} available${warning && view.status ? `; ${view.status.text}` : ''}`,
+  );
 </script>
 
 {#snippet face()}
-  <Icon id="worth-yes" size="16px" />
-  <span class="count">{count}</span>
+  {#if state === 'warning'}
+    <Icon id="ui-warning" size="20px" />
+  {:else if state === 'has-new'}
+    <Icon id="worth-yes" size="14px" />
+  {:else}
+    <Icon id="ui-expand" size="20px" />
+  {/if}
+  <span class="count" class:sr-only={state !== 'has-new'}>{count}</span>
 {/snippet}
 
-{#if view.mode === 'edit'}
-  <button type="button" class="badge" class:has-new={count > 0} aria-label={`${label}; expand`} title="Expand" onclick={() => send('set_collapsed', { collapsed: false })}>
-    {@render face()}
-  </button>
-{:else}
-  <div class="badge" class:has-new={count > 0} role="status" aria-label={label}>{@render face()}</div>
-{/if}
+<div class="badge-shadow">
+  {#if view.mode === 'edit'}
+    <button type="button" class="badge cut edit" data-state={state} aria-label={`${label}; expand`} title="Expand" onclick={() => send('set_collapsed', { collapsed: false })}>
+      {@render face()}
+    </button>
+  {:else}
+    <div class="badge cut" data-state={state} role="status" aria-label={label}>{@render face()}</div>
+  {/if}
+</div>
 
 <style>
+  .badge-shadow {
+    filter: var(--drop-panel);
+  }
+
   .badge {
+    --cut: var(--chamfer-badge);
+    --ring-color: var(--color-panel-border);
     display: inline-flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    gap: 2px;
     box-sizing: border-box;
+    width: var(--size-badge);
+    height: var(--size-badge);
     padding: 0;
-    border: var(--border-width) solid var(--color-panel-border);
+    border: 0;
     border-radius: var(--radius);
-    background: color-mix(in srgb, var(--color-panel-bg) calc(var(--panel-opacity, 0.9) * 100%), transparent);
-    box-shadow: var(--shadow-panel);
-    color: var(--color-text-muted);
+    background: color-mix(in srgb, var(--color-panel-bg) calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent);
+    color: var(--color-text-secondary);
     font: inherit;
   }
 
-  .badge.has-new {
+  .badge[data-state='has-new'] {
+    --ring: var(--border-width-strong);
+    --ring-color: var(--color-worth-gold);
     color: var(--color-worth-gold);
+  }
+
+  .badge[data-state='warning'] {
+    --ring-color: var(--color-warning);
+    color: var(--color-warning);
   }
 
   button.badge {
     cursor: pointer;
-    border-color: var(--color-edit-accent);
+  }
+
+  .badge.edit {
+    --ring: var(--border-width-strong);
+    --ring-color: var(--color-edit-accent);
   }
 
   .count {
-    font-size: var(--size-title);
-    font-weight: var(--font-weight-title);
+    font-size: var(--size-badge-count);
+    font-weight: 800;
+    line-height: 24px;
     font-variant-numeric: tabular-nums;
-    color: var(--color-text-primary);
   }
 </style>

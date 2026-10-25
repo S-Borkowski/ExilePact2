@@ -100,16 +100,27 @@
 </div>
 
 <style>
+  /* The window's transparent margin holds the panel's and the toasts' shadows. */
   .overlay {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
     padding: 12px;
-    font-family: var(--font-family);
     color: var(--color-text-primary);
+    font-family: var(--font-family);
+    font-size: var(--size-step);
+    font-weight: var(--font-weight-row);
+    line-height: var(--line-step);
+    font-kerning: normal;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
   }
 
   .overlay[data-dock='left'] {
     align-items: flex-start;
+  }
+
+  .overlay :global(input[type='text']) {
+    user-select: text;
   }
 </style>

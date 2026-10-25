@@ -1,10 +1,11 @@
 <script lang="ts">
-  // A quest's detail: every step with its tick, every reward, giver and
-  // zones, the worth reason, the poe2db source, and in edit mode the actions.
-  // Reset asks twice: the first click relabels it "Confirm reset" for 3 s.
+  // A quest's detail: back to the act, the title, giver and zones, the manual
+  // note, the worth reason, every step with its tick, every reward as a chip,
+  // the poe2db source, and in edit mode the actions. Reset asks twice: the
+  // first click turns it into "Confirm reset", filled, with a 3 s countdown.
   import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
-  import type { QuestAction, QuestDetail } from '../ipc';
+  import type { Detection, QuestAction, QuestDetail } from '../ipc';
   import { STEP_ICON, STEP_LABEL, WORTH_LABEL } from '../labels';
   import Icon from './Icon.svelte';
   import StatusMark from './StatusMark.svelte';
@@ -20,6 +21,17 @@
   }: { detail: QuestDetail; edit: boolean; send: Send; onAction?: (action: QuestAction) => void } = $props();
 
   const row = $derived(detail.row);
+  const facts = $derived(
+    [detail.giver ? `Giver: ${detail.giver}` : null, detail.zones.length > 0 ? `${detail.zones.length === 1 ? 'Zone' : 'Zones'}: ${detail.zones.join(', ')}` : null]
+      .filter(Boolean)
+      .join(' · '),
+  );
+  const MANUAL_NOTE: Record<Detection, string> = {
+    auto: '',
+    partial: 'Partly tracked by the log: tick the steps it misses',
+    manual: 'Manual: not tracked by the log; tick steps as you go',
+  };
+
   let confirming = $state(false);
   let confirmTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -43,52 +55,57 @@
 </script>
 
 <div class="detail" data-quest={row.id}>
-  <div class="head">
-    <StatusMark status={row.status} />
-    <span class="name">{row.name}</span>
-    <span class="spacer"></span>
-    <WorthMark worth={row.worth} />
+  <div class="content">
     {#if edit}
-      <button type="button" class="icon-button" aria-label="Close" title="Close" onclick={() => send('open_detail', { questId: null })}>
-        <Icon id="ui-close" />
+      <button type="button" class="back" onclick={() => send('open_detail', { questId: null })}>
+        <Icon id="ui-chevron-left" size="12px" /> Act {row.act}
       </button>
+    {:else}
+      <span class="back">Act {row.act}</span>
     {/if}
+
+    <div class="head">
+      <StatusMark status={row.status} />
+      <h2 class="name">{row.name}</h2>
+    </div>
+    {#if facts}<p class="caption">{facts}</p>{/if}
+    {#if row.needs_tick}
+      <p class="caption manual"><Icon id="manual-tick" size="12px" /> {MANUAL_NOTE[row.detection] || MANUAL_NOTE.manual}</p>
+    {/if}
+
+    <div class="worth" data-worth={row.worth}>
+      <WorthMark worth={row.worth} />
+      <div class="worth-body">
+        <p class="worth-label">{WORTH_LABEL[row.worth]}</p>
+        <p class="reason">{detail.worth_reason}</p>
+      </div>
+    </div>
   </div>
 
-  <dl class="facts">
-    {#if detail.giver}<dt>Giver</dt><dd>{detail.giver}</dd>{/if}
-    {#if detail.zones.length > 0}<dt>Zones</dt><dd>{detail.zones.join(', ')}</dd>{/if}
-    <dt>{WORTH_LABEL[row.worth]}</dt>
-    <dd>{detail.worth_reason}</dd>
-    {#if row.needs_tick}
-      <dt><Icon id="manual-tick" size="12px" /> Manual</dt>
-      <dd>The log does not record all of this quest: tick its steps by hand.</dd>
-    {/if}
-  </dl>
-
-  {#if row.rewards.length > 0}
-    <ul class="rewards">
-      {#each row.rewards as reward, i (i)}
-        <li data-category={reward.category}><Icon id={reward.icon} size="20px" /> {reward.text}</li>
-      {/each}
-    </ul>
-  {/if}
-
+  <h3 class="group-label">Steps</h3>
   <ol class="steps">
     {#each detail.steps as step (step.id)}
       <li class="step" data-state={step.state}>
-        <Icon id={STEP_ICON[step.state]} label={STEP_LABEL[step.state]} size="14px" />
+        {#if step.state === 'pending'}
+          <span class="box" role="img" aria-label={STEP_LABEL.pending}></span>
+        {:else}
+          <Icon id={STEP_ICON[step.state]} label={STEP_LABEL[step.state]} size="14px" />
+        {/if}
         <span class="step-body">
           <span class="step-title">{step.title}</span>
           {#if step.text}<span class="step-text">{step.text}</span>{/if}
         </span>
         {#if edit}
-          <input
-            type="checkbox"
-            checked={step.ticked}
+          <button
+            type="button"
+            class="tick"
+            aria-pressed={step.ticked}
             aria-label={`Ticked by hand: ${step.title}`}
-            onchange={() => send('tick_step', { questId: row.id, stepId: step.id, ticked: !step.ticked })}
-          />
+            title="Tick by hand"
+            onclick={() => send('tick_step', { questId: row.id, stepId: step.id, ticked: !step.ticked })}
+          >
+            {#if step.ticked}<Icon id="ui-check" size="12px" />{/if}
+          </button>
         {:else if step.ticked}
           <span class="ticked">ticked</span>
         {/if}
@@ -96,30 +113,46 @@
     {/each}
   </ol>
 
-  <div class="source">
+  {#if row.rewards.length > 0}
+    <h3 class="group-label">Rewards</h3>
+    <ul class="chips">
+      {#each row.rewards as reward, i (i)}
+        <li class="chip" data-category={reward.category} data-icon={reward.icon}>
+          <Icon id={reward.icon} size="20px" />
+          <span>{reward.text}</span>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+
+  <p class="caption source">
     {#if edit}
       <button type="button" class="link" onclick={() => send('open_source', { questId: row.id })}>
-        poe2db <Icon id="ui-external-link" size="12px" />
+        Open on poe2db <Icon id="ui-external-link" size="12px" />
       </button>
     {:else}
       <span>poe2db</span>
     {/if}
-    <span class="fetched">fetched {detail.fetched}</span>
-  </div>
+    <span>fetched {detail.fetched}</span>
+  </p>
 
   {#if edit}
     <div class="actions">
       {#if row.status === 'done'}
-        <button type="button" class="primary" onclick={() => act('unmark_done')}>Unmark done</button>
+        <button type="button" class="btn cut primary" onclick={() => act('unmark_done')}>Unmark done</button>
       {:else}
-        <button type="button" class="primary" onclick={() => act('mark_done')}>Mark done</button>
+        <button type="button" class="btn cut primary" onclick={() => act('mark_done')}>Mark done</button>
       {/if}
       {#if row.status === 'skipped'}
-        <button type="button" onclick={() => act('unskip')}>Unskip</button>
+        <button type="button" class="btn cut" onclick={() => act('unskip')}>Unskip</button>
       {:else}
-        <button type="button" onclick={() => act('skip')}>Skip</button>
+        <button type="button" class="btn cut" onclick={() => act('skip')}>Skip</button>
       {/if}
-      <button type="button" class="danger" onclick={reset}>{confirming ? 'Confirm reset' : 'Reset'}</button>
+      <button type="button" class="btn cut danger" class:confirm={confirming} onclick={reset}>
+        <Icon id="ui-refresh" size="14px" />
+        {confirming ? 'Confirm reset' : 'Reset'}
+        {#if confirming}<span class="countdown" style:--countdown="var(--motion-confirm-ms)"></span>{/if}
+      </button>
     </div>
   {/if}
 </div>
@@ -128,138 +161,252 @@
   .detail {
     display: flex;
     flex-direction: column;
-    gap: var(--space-section-gap);
-    padding: var(--space-unit) var(--space-row-pad);
-    font-size: var(--size-step);
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-unit);
+    padding: var(--space-section-gap) var(--space-row-pad) 0;
+  }
+
+  .back {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: var(--space-unit);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-family: var(--font-family);
+    font-size: var(--size-caption);
+    font-weight: var(--font-weight-row);
+    line-height: var(--line-caption);
+  }
+
+  button.back {
+    cursor: pointer;
+  }
+
+  button.back:hover,
+  button.back:focus-visible {
+    color: var(--color-text-primary);
+    outline: none;
   }
 
   .head {
     display: flex;
     align-items: center;
-    gap: var(--space-unit);
+    gap: var(--space-section-gap);
   }
 
   .name {
-    font-size: var(--size-row);
+    margin: 0;
+    color: var(--color-text-primary);
+    font-size: 20px;
     font-weight: var(--font-weight-title);
+    line-height: 24px;
   }
 
-  .spacer {
-    flex: 1;
-  }
-
-  .facts {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 2px var(--space-section-gap);
-    margin: 0;
-  }
-
-  dt {
-    color: var(--color-text-muted);
-    font-size: var(--size-caption);
-  }
-
-  dd {
-    margin: 0;
-    color: var(--color-text-secondary);
-  }
-
-  .rewards,
-  .steps {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-unit);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .rewards li {
+  .manual {
     display: flex;
     align-items: center;
     gap: var(--space-unit);
   }
 
+  .worth {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-section-gap);
+    margin-top: var(--space-unit);
+  }
+
+  .worth-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .worth p {
+    margin: 0;
+  }
+
+  .worth-label {
+    font-size: var(--size-label);
+    font-weight: var(--font-weight-row);
+    line-height: var(--line-caption);
+  }
+
+  .worth[data-worth='yes'] .worth-label {
+    color: var(--color-worth-gold);
+  }
+
+  .worth[data-worth='optional'] .worth-label,
+  .worth[data-worth='no'] .worth-label {
+    color: var(--color-text-secondary);
+  }
+
+  .reason {
+    color: var(--color-text-secondary);
+    font-size: var(--size-step);
+    font-weight: 400;
+    line-height: var(--line-step);
+  }
+
+  .steps,
+  .chips {
+    display: flex;
+    margin: 0;
+    padding: 0 var(--space-row-pad);
+    list-style: none;
+  }
+
+  .steps {
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .step {
     display: flex;
     align-items: flex-start;
-    gap: var(--space-unit);
+    gap: var(--space-section-gap);
+    min-height: 20px;
+    padding: 2px 0;
+    color: var(--color-text-muted);
   }
 
-  .step[data-state='done'] {
-    color: var(--color-status-done);
+  .step > :global(.icon),
+  .box {
+    margin-top: 2px;
+  }
+
+  .box {
+    flex: none;
+    box-sizing: border-box;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--color-text-secondary);
   }
 
   .step[data-state='current'] {
     color: var(--color-status-in-progress);
   }
 
-  .step[data-state='pending'] {
-    color: var(--color-text-secondary);
-  }
-
   .step-body {
     display: flex;
     flex: 1;
     flex-direction: column;
+    min-width: 0;
   }
 
   .step-title {
+    font-size: var(--size-step);
+    font-weight: 400;
+    line-height: var(--line-step);
+  }
+
+  .step[data-state='pending'] .step-title {
+    color: var(--color-text-secondary);
+  }
+
+  .step[data-state='current'] .step-title {
     color: var(--color-text-primary);
   }
 
+  .step[data-state='done'] .step-title {
+    color: var(--color-text-muted);
+  }
+
   .step-text,
-  .ticked,
-  .fetched {
+  .ticked {
     color: var(--color-text-muted);
     font-size: var(--size-caption);
+    line-height: var(--line-caption);
+  }
+
+  .tick {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    padding: 0;
+    border: var(--border-width) solid var(--color-panel-border);
+    background: var(--color-panel-sunken);
+    color: var(--color-edit-accent);
+    cursor: pointer;
+  }
+
+  .tick:hover,
+  .tick:focus-visible {
+    border-color: var(--color-edit-accent);
+    outline: none;
+  }
+
+  .chips {
+    flex-wrap: wrap;
+    gap: var(--space-unit);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    box-sizing: border-box;
+    padding: var(--space-unit) var(--space-section-gap);
+    background: var(--color-panel-raised);
+    color: var(--color-text-primary);
+    font-size: var(--size-label);
+    font-weight: var(--font-weight-row);
+    line-height: var(--line-caption);
+  }
+
+  .chip :global(.icon) {
+    color: var(--color-text-secondary);
+  }
+
+  .chip[data-icon='reward-res-fire'] :global(.icon) {
+    color: var(--color-res-fire);
+  }
+
+  .chip[data-icon='reward-res-cold'] :global(.icon) {
+    color: var(--color-res-cold);
+  }
+
+  .chip[data-icon='reward-res-lightning'] :global(.icon) {
+    color: var(--color-res-lightning);
+  }
+
+  .chip[data-icon='reward-res-chaos'] :global(.icon) {
+    color: var(--color-res-chaos);
+  }
+
+  .chip[data-icon='reward-spirit'] :global(.icon),
+  .chip[data-icon='reward-passive'] :global(.icon) {
+    color: var(--color-worth-gold);
   }
 
   .source {
     display: flex;
     align-items: center;
     gap: var(--space-section-gap);
+    padding: var(--space-section-gap) var(--space-row-pad) 0;
   }
 
   .actions {
     display: flex;
-    gap: var(--space-unit);
+    gap: var(--space-section-gap);
+    margin-top: var(--space-section-gap);
+    padding: var(--space-section-gap) var(--space-row-pad) 0;
+    border-top: var(--border-width) solid var(--color-panel-divider);
   }
 
-  button {
-    padding: 4px var(--space-section-gap);
-    border: var(--border-width) solid var(--color-panel-border);
-    border-radius: var(--radius-button);
-    background: transparent;
-    color: var(--color-text-primary);
-    font: inherit;
-    font-size: var(--size-caption);
-    cursor: pointer;
-  }
-
-  button.primary {
-    border-color: var(--color-text-primary);
-  }
-
-  button.danger {
-    border-color: var(--color-res-fire);
-    color: var(--color-res-fire);
-  }
-
-  button.link,
-  .icon-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    border: 0;
-    padding: 0;
-    color: var(--color-text-secondary);
-  }
-
-  .icon-button {
-    width: 24px;
-    height: 24px;
-    justify-content: center;
+  .actions .primary {
+    flex: 1;
   }
 </style>

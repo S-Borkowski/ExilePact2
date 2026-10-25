@@ -406,7 +406,39 @@ package is a decision, not a side effect of a change.
 **The look.** The design is the owner's, made in Figma from
 [`ui-design-brief.md`](ui-design-brief.md) and harvested once into `theme/`
 and [`design/`](design/). UI work reads those files, never Figma, and uses
-only the brief's icon ids, frame ids and token keys.
+only the brief's icon ids, frame ids and token keys, plus the extras the
+harvest lists in [`design/harvest.md`](design/harvest.md). The picture to
+match is `design/frames/` and `design/component-spec.md`;
+`design/reference/*.tsx` is reference only and never imported.
+
+The UI's CSS comes in three layers, loaded by `src/main.ts` in this order:
+
+- `src/defaults.css`: a plain value for every custom property the UI
+  reads, contract keys and the harvest's extras alike. Without
+  `theme/tokens.css`, or with a key missing from it, the UI renders from
+  these; a missing icon SVG falls back to a text glyph (`src/theme.ts`).
+- `theme/tokens.css`: the harvested values and the `@font-face` rules for
+  the bundled Alegreya Sans faces. Generated from `theme/theme.json`; never
+  edited by hand.
+- `src/styled.css`: the shared rules every component uses: the cut-corner
+  shape (`.cut`: a `clip-path` plus an `::after` ring for the border), the
+  buttons, toggles, slider, dropdowns, keycaps, group labels and countdown
+  bars. Each component keeps its own layout in its `<style>` block.
+
+Cut corners clip an element's own `box-shadow`, so the panel, the badge and
+the toast stack take their shadow from `filter: var(--drop-panel)` or
+`var(--drop-toast)` on a wrapper. `src/theme.ts` derives both from the
+harvested `shadow.panel` and `shadow.toast` at start-up
+(`applyDerivedTokens`). Motion (the toast's entrance, the countdown bars,
+control transitions) stops under `prefers-reduced-motion`.
+`src/styled.test.ts` checks that every contract token and icon id is
+harvested, that every custom property the UI reads has a plain default and
+comes from the harvest (no token invented in code), and that fonts and
+assets load only from the bundle.
+
+To preview a frame in a browser, run `npm --prefix apps/quest-tracker run
+dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
+(`&scale=2` for the 2× zoom); see `src/preview.ts`.
 
 ## Known limitations
 
@@ -438,6 +470,15 @@ only the brief's icon ids, frame ids and token keys.
   nothing; window-level acrylic over a topmost window is not established.
   The panel uses transparency, gradients and shadows instead.
 - **Hover only in edit mode.** Play mode passes the mouse to the game.
+- **Parts of the comps the view does not carry yet.** The design shows
+  four rebindable hotkeys (F8 edit mode, F7 collapse, F6 switch view, F1
+  icon key), an icon-key panel, Browse… and Retry on the missing-log
+  state, a "New character" button, a log-idle header ("No log update · 5
+  min") with stale rows, and a footer counting hidden quests. The shell has
+  one hotkey (`Ctrl+Alt+Q` by default, toggling edit mode) and no command
+  or `View` field for the rest, so the styled UI shows the one hotkey from
+  the settings, "Open settings" instead of Browse…/Retry, the character
+  picker instead of "New character", and the status line for log trouble.
 - **Exclusive fullscreen** cannot show the overlay (see "Platforms and
   prerequisites").
 - **Steam install path** is unverified.
@@ -468,6 +509,33 @@ Revisit this feature when:
   game: record it under "Known limitations".
 
 ## Release notes
+
+### Unreleased
+
+- The overlay wears the owner's design, built from the harvested `theme/`
+  files only: Alegreya Sans bundled (no web font), 45° cut corners on the
+  panel, buttons, toasts and badge, soft shadows inside the window's
+  transparent margin, and the background-only opacity setting.
+- Play mode: the character, class and level, and the view, with no
+  control. Edit mode: the accent border, a teal-tinted header with an EDIT
+  chip, the character name that opens the picker, a Next up / All switch,
+  collapse and settings buttons, and a footer line back to play mode.
+- Quest rows on one line (status mark, name, manual-tick marker, short
+  reward text, worth star), the next step under an in-progress quest on
+  the active band with a blue bar, finished rows compact and muted, skipped
+  ones struck through. Next up groups its rows under "Worth it",
+  "Optional" and "Not worth it".
+- Quest detail with steps (empty box, in progress, done) and a tick box
+  per step in edit mode, reward chips, the worth reason, the poe2db link,
+  and Mark done / Skip / Reset buttons; Reset's confirm shows a 3 s
+  countdown. Settings as label-and-control rows with toggles, a slider and
+  dropdowns. Empty states with a glyph, the fix in edit mode, and the
+  hotkey on a keycap in play mode. The collapsed badge shows the worth-it
+  count in gold, or a warning when the log is in trouble. Toasts carry a
+  coloured bar and icon per kind; the Undo toast drains a 5 s bar.
+- Motion is limited to the toast's entrance, countdown bars and control
+  transitions, and stops under `prefers-reduced-motion`. A missing icon
+  or token falls back to the plain UI's glyph or value.
 
 ### 0.1.0 (first version)
 

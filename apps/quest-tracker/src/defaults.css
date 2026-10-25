@@ -50,6 +50,76 @@
   --font-weight-row: 500;
   --motion-duration: 150ms;
   --motion-easing: ease-out;
+
+  /*
+   * The harvest's extras the styled layer reads (`theme.json` lists them;
+   * `docs/quest-tracker/design/harvest.md` says what each is for), with the
+   * plain look's values: no cut corners, plain greys.
+   */
+  --color-panel-raised: #1c1c1c;
+  --color-panel-sunken: #0c0c0c;
+  --color-panel-divider: #2a2a2a;
+  --color-text-on-light: #141414;
+  --color-edit-tint: #10302f;
+  --color-row-active-bg: #1a1a1a;
+  --color-select-active-bg: #1a2a2a;
+  --color-hover-outline: #3a3a3a;
+  --color-worth-none: #959595;
+  --color-action-primary-bg: #ececec;
+  --color-action-primary-hover: #ffffff;
+  --color-action-primary-pressed: #cfcfcf;
+  --color-action-secondary-bg: #1c1c1c;
+  --color-action-secondary-hover: #2a2a2a;
+  --color-action-secondary-pressed: #0c0c0c;
+  --color-action-danger: #e99568;
+  --color-action-disabled-bg: #1c1c1c;
+  --color-action-disabled-fg: #6a6a6a;
+  --color-warning: #e99568;
+  --font-family-caps: var(--font-family);
+  --line-title: 20px;
+  --line-row: 20px;
+  --line-step: 18px;
+  --line-caption: 16px;
+  --size-act: 12px;
+  --size-label: 13px;
+  --size-button-text: 12px;
+  --size-badge-count: 16px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 20px;
+  --size-icon-lg: 24px;
+  --size-manual-tick: 12px;
+  --size-control: 24px;
+  --size-button: 26px;
+  --size-row-height: 36px;
+  --size-row-height-tall: 52px;
+  --size-row-height-finished: 30px;
+  --size-header: 32px;
+  --size-act-header: 26px;
+  --size-badge: 48px;
+  --size-panel-width: 320px;
+  --size-toast-width: 300px;
+  --size-toast-height: 40px;
+  --border-width-strong: 2px;
+  --bar-in-progress: 3px;
+  --bar-toast: 3px;
+  --bar-countdown: 2px;
+  --chamfer-panel: 0px;
+  --chamfer-button: 0px;
+  --chamfer-toast: 0px;
+  --chamfer-badge: 0px;
+  --opacity-min: 0.3;
+  --opacity-stale-rows: 0.55;
+  --motion-toast-ms: 3000ms;
+  --motion-undo-ms: 5000ms;
+  --motion-confirm-ms: 3000ms;
+
+  /*
+   * Derived, not harvested: `shadow.panel` and `shadow.toast` as `filter`
+   * drop shadows, which follow a cut-corner shape where `box-shadow` is
+   * clipped. `theme.ts` sets them from `theme.json`; these are the plain ones.
+   */
+  --drop-panel: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+  --drop-toast: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
 }
 
 /* The window is transparent; only the panel, the badge and the toasts draw. */

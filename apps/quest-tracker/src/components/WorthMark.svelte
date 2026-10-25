@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The "worth it" marker: solid star, outline star or dash.
+  // The "worth it" marker: solid gold star, outline star or dash.
   import type { Worth } from '../ipc';
   import { WORTH_ICON, WORTH_LABEL } from '../labels';
   import Icon from './Icon.svelte';
@@ -15,9 +15,8 @@
   .worth-mark {
     display: inline-flex;
     flex: none;
-    color: var(--color-worth-gold);
   }
-  [data-worth='no'] {
-    color: var(--color-text-muted);
-  }
+  [data-worth='yes'] { color: var(--color-worth-gold); }
+  [data-worth='optional'] { color: var(--color-text-secondary); }
+  [data-worth='no'] { color: var(--color-worth-none); }
 </style>

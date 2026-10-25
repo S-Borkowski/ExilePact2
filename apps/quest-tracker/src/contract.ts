@@ -11,3 +11,15 @@ export function contractList(brief: string, label: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+/** The custom properties a CSS text declares in its `:root` blocks. */
+export function rootProperties(css: string): Set<string> {
+  const out = new Set<string>();
+  for (const block of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
+    for (const decl of block[1].matchAll(/(--[a-z0-9-]+)\s*:/g)) out.add(decl[1]);
+  }
+  return out;
+}
+
+/** A token key's custom property: the dot replaced by a dash (`color.panel-bg` -> `--color-panel-bg`). */
+export const cssName = (key: string): string => `--${key.replace('.', '-')}`;

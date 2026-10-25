@@ -1,7 +1,9 @@
 <script lang="ts">
-  // One quest row: status mark, name, the manual-tick marker, the reward
-  // text, the worth marker, and the next step under an in-progress quest.
-  // In edit mode the row opens the quest's detail.
+  // One quest row: status mark, name and the manual-tick marker, the short
+  // reward text, the worth marker, and the next step under an in-progress
+  // quest. In progress: the active band with a 3 px bar inside the left edge.
+  // Finished (done, skipped, locked): a compact, muted row. In edit mode the
+  // row opens the quest's detail, with an outline on hover.
   import type { Send } from '../bridge';
   import type { QuestRow } from '../ipc';
   import Icon from './Icon.svelte';
@@ -11,48 +13,59 @@
   let { row, edit, send }: { row: QuestRow; edit: boolean; send: Send } = $props();
 
   const rewardText = $derived(row.rewards.map((r) => r.text).join(' · '));
+  const finished = $derived(row.status === 'done' || row.status === 'skipped' || row.status === 'locked');
 </script>
 
 {#snippet body()}
-  <span class="line">
-    <StatusMark status={row.status} />
+  <StatusMark status={row.status} />
+  <span class="title">
     <span class="name">{row.name}</span>
     {#if row.needs_tick}
       <span class="manual" title="Needs a manual tick">
         <Icon id="manual-tick" label="Needs a manual tick" size="12px" />
       </span>
     {/if}
-    <span class="spacer"></span>
-    <WorthMark worth={row.worth} />
   </span>
-  {#if rewardText}<span class="sub rewards">{rewardText}</span>{/if}
-  {#if row.current_step}<span class="sub step">Next: {row.current_step}</span>{/if}
+  <span class="rewards" title={rewardText}>{rewardText}</span>
+  <WorthMark worth={row.worth} />
+  {#if row.current_step}<span class="step">{row.current_step}</span>{/if}
 {/snippet}
 
 {#if edit}
-  <button type="button" class="row" data-quest={row.id} data-status={row.status} onclick={() => send('open_detail', { questId: row.id })}>
+  <button
+    type="button"
+    class="row"
+    class:finished
+    data-quest={row.id}
+    data-status={row.status}
+    data-worth={row.worth}
+    onclick={() => send('open_detail', { questId: row.id })}
+  >
     {@render body()}
   </button>
 {:else}
-  <div class="row" data-quest={row.id} data-status={row.status}>
+  <div class="row" class:finished data-quest={row.id} data-status={row.status} data-worth={row.worth}>
     {@render body()}
   </div>
 {/if}
 
 <style>
   .row {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    width: 100%;
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--size-icon-sm) minmax(0, 1fr) auto var(--size-icon-sm);
+    align-content: center;
+    align-items: start;
+    column-gap: var(--space-section-gap);
     box-sizing: border-box;
-    padding: calc(var(--space-row-pad) / 2) var(--space-row-pad);
+    width: 100%;
+    min-height: var(--size-row-height);
+    padding: calc(var(--space-unit) * 2) var(--space-row-pad);
     border: 0;
     border-radius: var(--radius-row);
     background: transparent;
-    color: inherit;
-    font: inherit;
-    font-size: var(--size-row);
+    color: var(--color-text-primary);
+    font-family: var(--font-family);
     text-align: left;
   }
 
@@ -60,46 +73,106 @@
     cursor: pointer;
   }
 
-  button.row:hover,
+  button.row:hover {
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-hover-outline);
+  }
+
   button.row:focus-visible {
-    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 0 0 var(--border-width) var(--color-edit-accent);
     outline: none;
   }
 
-  .line {
+  /* The marks are 16 on a 20 line. */
+  .row > :global(.status-mark),
+  .row > :global(.worth-mark) {
+    margin-top: 2px;
+  }
+
+  .title {
     display: flex;
     align-items: center;
     gap: var(--space-unit);
+    min-width: 0;
   }
 
   .name {
-    font-weight: var(--font-weight-row);
+    min-width: 0;
     overflow: hidden;
+    font-size: var(--size-row);
+    font-weight: var(--font-weight-row);
+    line-height: var(--line-row);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .manual {
     display: inline-flex;
+    flex: none;
     color: var(--color-text-muted);
   }
 
-  .spacer {
-    flex: 1;
-  }
-
-  .sub {
-    padding-left: calc(16px + var(--space-unit));
-    font-size: var(--size-caption);
+  .rewards {
+    max-width: 132px;
+    overflow: hidden;
     color: var(--color-text-secondary);
+    font-size: var(--size-label);
+    font-weight: var(--font-weight-row);
+    line-height: var(--line-row);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .step {
-    color: var(--color-status-in-progress);
+    grid-column: 2 / 4;
+    overflow: hidden;
+    color: var(--color-text-primary);
+    font-size: var(--size-step);
+    font-weight: 400;
+    line-height: var(--line-step);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  [data-status='done'] .name,
-  [data-status='skipped'] .name {
+  /* In progress: the active band, the bar 3 px inside the left edge (so it shows inside the edit border). */
+  .row[data-status='in_progress'] {
+    min-height: var(--size-row-height-tall);
+    padding-bottom: 10px;
+    background: var(--color-row-active-bg);
+  }
+
+  .row[data-status='in_progress']::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 3px;
+    width: var(--bar-in-progress);
+    background: var(--color-status-in-progress);
+  }
+
+  /* Not worth it, still to do: the name steps back. */
+  .row[data-worth='no']:not(.finished) .name {
+    color: var(--color-text-secondary);
+  }
+
+  /* Finished: 32 high, name 14, every text and marker muted. */
+  .row.finished {
+    min-height: var(--size-row-height-finished);
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .row.finished .name {
     color: var(--color-text-muted);
+    font-size: var(--size-step);
+  }
+
+  .row.finished .rewards,
+  .row.finished > :global(.worth-mark) {
+    color: var(--color-text-muted);
+  }
+
+  .row[data-status='skipped'] .name {
+    text-decoration: line-through;
   }
 </style>

@@ -3,21 +3,10 @@ import { describe, expect, it } from 'vitest';
 import brief from '../../../docs/quest-tracker/ui-design-brief.md?raw';
 import defaults from './defaults.css?raw';
 import StatusMark from './components/StatusMark.svelte';
-import { contractList } from './contract';
+import { contractList, cssName, rootProperties } from './contract';
 import { QUEST_STATUSES } from './ipc';
 import { STATUS_ICON } from './labels';
 import { GLYPHS, iconGlyph, iconSvg } from './theme';
-
-/** The custom properties a CSS text declares in its `:root` blocks. */
-function rootProperties(css: string): Set<string> {
-  const out = new Set<string>();
-  for (const block of css.matchAll(/:root\s*\{([^}]*)\}/g)) {
-    for (const decl of block[1].matchAll(/(--[a-z0-9-]+)\s*:/g)) out.add(decl[1]);
-  }
-  return out;
-}
-
-const cssName = (key: string) => `--${key.replace('.', '-')}`;
 
 describe('the theme', () => {
   it('defaults_cover_every_token_key', () => {
