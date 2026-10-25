@@ -6,7 +6,8 @@
 //! `src-tauri` is glue around this crate: it implements [`Emitter`] (the
 //! `qt:view` and `qt:row-change` events) and [`Window`] (click-through, zoom,
 //! placement, the global shortcut, opening a link, the monitor's metrics
-//! for the `auto` scale) and forwards each IPC
+//! for the `auto` scale, the pid of the window in front and showing or
+//! hiding the overlay for it) and forwards each IPC
 //! command to the [`App`] method of the same name. Keeping the logic here
 //! means it tests with a fake emitter, clock and window, without a WebView
 //! or a built UI.
@@ -31,15 +32,15 @@ use std::sync::Arc;
 use qt_engine::QuestData;
 
 pub use app::{
-    auto_rescale, scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, SystemClock, Window,
-    SAVE_INTERVAL_MS, SHUTDOWN_TIMEOUT, WORKER_TICK,
+    auto_rescale, overlay_shown, scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement,
+    SystemClock, Window, HIDDEN_LINE, SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT, WORKER_TICK,
 };
 pub use cli::Options;
 // What the glue names without depending on the library crates itself.
 pub use qt_engine::QuestAction;
 pub use qt_store::Store;
 pub use qt_tailer::DEFAULT_POLL_INTERVAL;
-pub use qt_viewmodel::{Dock, Frame, Mode, RowChange, View, ViewKind};
+pub use qt_viewmodel::{Frame, Mode, RowChange, View, ViewKind};
 
 /// The quest data built into the executable.
 pub const EMBEDDED_DATA: &str = include_str!("../../../data/quests.json");

@@ -29,11 +29,11 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use qt_engine::{Engine, QuestAction, QuestData, Transition};
-use qt_logline::{parse_line, Timestamp};
+use qt_logline::{client_pid, parse_line, Timestamp};
 use qt_store::{Loaded, Store, StoreError};
 use qt_tailer::{Position, SystemClock as TailerClock, TailEvent};
 use qt_viewmodel::{
-    build_view, Dock, Frame, LogState, Mode, RowChange, RowChanges, Scale, Settings, StatusKind,
+    build_view, Frame, LogState, Mode, RowChange, RowChanges, Scale, Settings, StatusKind,
     StatusLine, View, ViewKind,
 };
 use serde_json::{json, Map, Value};
@@ -61,11 +61,13 @@ pub trait Emitter: Send + Sync + 'static {
     fn row_change(&self, change: &RowChange);
 }
 
-/// Where the window goes: docked to a side of its monitor, or where the
-/// user dragged it.
+/// Where the window goes: its default place (the right side of its
+/// monitor, below the game's minimap), or where the user dragged it. There
+/// is no dock side any more (owner, after Live 2): a window with no saved
+/// position goes where the right-hand dock used to put it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Placement {
-    Docked(Dock),
+    Default,
     At { x: i32, y: i32 },
 }
 
@@ -87,7 +89,31 @@ pub trait Window: Send + Sync + 'static {
     /// The monitor the window is on, for the `auto` scale; `None` when the
     /// window has no monitor.
     fn monitor(&self) -> Result<Option<MonitorMetrics>, String>;
+    /// The process id of the window in front (the foreground window); `None`
+    /// when there is none or its process cannot be told. Only the id: no
+    /// title, class or process name is read.
+    fn foreground_pid(&self) -> Option<u32>;
+    /// Shows the window without activating it (`true`), so the game keeps
+    /// focus, or hides it (`false`).
+    fn set_visible(&self, shown: bool) -> Result<(), String>;
 }
+
+/// Whether the overlay is shown (Context "Live 2 fixes (owner scope)"):
+/// always in edit mode; in play mode only while the window in front is the
+/// game's (`game`, the pid of the newest log line's header) or the overlay's
+/// own (`own`). While the game's pid or the window in front is unknown it is
+/// shown (fail open), so a log without headers never hides the overlay.
+pub fn overlay_shown(mode: Mode, game: Option<u32>, foreground: Option<u32>, own: u32) -> bool {
+    match (mode, game, foreground) {
+        (Mode::Edit, _, _) | (_, None, _) | (_, _, None) => true,
+        (Mode::Play, Some(game), Some(front)) => front == game || front == own,
+    }
+}
+
+/// What the diagnostic log says when the overlay is hidden and shown again.
+/// No title or name of the window in front is ever written.
+pub const HIDDEN_LINE: &str = "visibility: hidden (another window is in front)";
+pub const SHOWN_LINE: &str = "visibility: shown";
 
 /// What the `auto` scale reads from the window's monitor.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -119,18 +145,17 @@ impl Clock for SystemClock {
     }
 }
 
-/// The webview zoom for a `scale` setting on `monitor`. `1`, `1.33` and `2`
-/// are what they say. `auto` targets 1 below 1440 physical pixels of
-/// monitor height, 1.33 from 1440 and 2 from 2160, divided by the monitor's
-/// DPI scale (the webview already applies that), rounded to hundredths and
-/// never below 1, so Auto never shrinks the panel under what Windows' own
-/// DPI setting gives. With no monitor, `auto` is 1.
+/// The webview zoom for a `scale` setting on `monitor`. A fixed scale is
+/// its factor (0.75 to 2, brought back in range by
+/// [`Scale::normalised`], else Auto). `auto` targets 1 below 1440 physical
+/// pixels of monitor height, 1.33 from 1440 and 2 from 2160, divided by the
+/// monitor's DPI scale (the webview already applies that), rounded to
+/// hundredths and never below 1, so Auto never shrinks the panel under what
+/// Windows' own DPI setting gives. With no monitor, `auto` is 1.
 pub fn scale_factor(scale: Scale, monitor: Option<MonitorMetrics>) -> f64 {
-    match scale {
-        Scale::Auto => monitor.map_or(1.0, auto_zoom),
-        Scale::X1 => 1.0,
-        Scale::X133 => 1.33,
-        Scale::X2 => 2.0,
+    match scale.factor() {
+        Some(factor) => factor,
+        None => monitor.map_or(1.0, auto_zoom),
     }
 }
 
@@ -161,7 +186,7 @@ pub fn auto_rescale(
     applied: Option<MonitorMetrics>,
     current: Option<MonitorMetrics>,
 ) -> Option<f64> {
-    if scale != Scale::Auto {
+    if scale.factor().is_some() {
         return None;
     }
     let current = current?;
@@ -254,6 +279,19 @@ struct State {
     /// was, and whether it was live: what "now" in log time is worked out
     /// from when the worker's tick closes a quiet relog window.
     log_clock: Option<LogClock>,
+    /// The game client's pid, from the header of the newest line handled
+    /// (live, catch-up, or read back before the tailer's start); `None`
+    /// until one is seen.
+    game_pid: Option<u32>,
+    /// Whether the window is shown, as last applied (it is created shown).
+    shown: bool,
+    /// While a relog window is open, the position at the start of the line
+    /// that opened it: what is saved instead of [`State::position`], so a
+    /// relaunch reads the entry again and decides it. `None` when that start
+    /// is not known (the first line of a tailer that began at the end of the
+    /// log, or of another file): nothing newer than the position on disk is
+    /// saved then.
+    relog_entry: Option<Position>,
 }
 
 /// The last handled line's place in log time (see `State::log_clock`).
@@ -317,7 +355,17 @@ impl State {
     fn placement(&self) -> Placement {
         match self.window_pos {
             Some((x, y)) => Placement::At { x, y },
-            None => Placement::Docked(self.settings.dock),
+            None => Placement::Default,
+        }
+    }
+
+    /// The log position to save: the end of the last line handled, except
+    /// while a relog window is open (see [`State::relog_entry`]).
+    fn position_to_save(&self) -> Option<&Position> {
+        if self.engine.relog_window_open() {
+            self.relog_entry.as_ref()
+        } else {
+            self.position.as_ref()
         }
     }
 }
@@ -325,7 +373,6 @@ impl State {
 /// What a command leaves to do once the lock is released.
 #[derive(Default)]
 struct After {
-    place: Option<Placement>,
     hotkey: Option<String>,
     retail: bool,
 }
@@ -559,6 +606,9 @@ impl App {
             last_view: None,
             scale_monitor: None,
             log_clock: None,
+            game_pid: None,
+            shown: true,
+            relog_entry: None,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
         state.dirty = !(had_settings && had_roster);
@@ -669,8 +719,8 @@ impl App {
             self.window_error("click-through", &e);
         }
         // Placed first, so `auto` reads the monitor the window was placed
-        // on; a docked window is placed again once the zoom has resized it,
-        // so its edge keeps the margin to the monitor's side.
+        // on; a window at its default place is placed again once the zoom
+        // has resized it, so its edge keeps the margin to the monitor's side.
         if let Err(e) = self.window.place(placement) {
             self.window_error("placement", &e);
         }
@@ -686,7 +736,7 @@ impl App {
                 self.window_error("scale", &e);
             }
         }
-        if let Placement::Docked(_) = placement {
+        if placement == Placement::Default {
             if let Err(e) = self.window.place(placement) {
                 self.window_error("placement", &e);
             }
@@ -874,6 +924,12 @@ impl App {
                             live,
                         });
                     }
+                    // The game's pid: every line with a client header,
+                    // whether or not it gives an event.
+                    if let Some(pid) = client_pid(&line.text) {
+                        st.game_pid = Some(pid);
+                    }
+                    let window_was_open = st.engine.relog_window_open();
                     if let Some(ev) = parsed {
                         if live {
                             if let Some(m) = diag::event(&ev) {
@@ -901,7 +957,17 @@ impl App {
                         }
                         transitions.extend(ts);
                     }
-                    st.position = Some(line.position(&path));
+                    let end = line.position(&path);
+                    if !window_was_open && st.engine.relog_window_open() {
+                        // This line opened a relog window: it starts where
+                        // the line before it, of the same file, ended.
+                        st.relog_entry = st.position.clone().filter(|p| {
+                            p.path == end.path
+                                && p.fingerprint == end.fingerprint
+                                && p.offset < end.offset
+                        });
+                    }
+                    st.position = Some(end);
                     st.dirty = true;
                 }
                 TailEvent::Following { offset, reason } => {
@@ -958,10 +1024,46 @@ impl App {
     }
 
     /// The worker's housekeeping between batches: a quiet relog window
-    /// decided, then a save when one is due.
+    /// decided, the window shown or hidden for what is in front, then a save
+    /// when one is due.
     pub fn tick(&self) {
         self.close_quiet_relog_window();
+        self.follow_foreground();
         self.save_if_due(false);
+    }
+
+    /// Shows or hides the window by [`overlay_shown`]: in play mode it reads
+    /// the pid of the window in front, and hides the overlay unless that is
+    /// the game or the overlay itself. Each change is applied and logged
+    /// once ([`HIDDEN_LINE`], [`SHOWN_LINE`]); showing never activates the
+    /// window, so the game keeps focus.
+    pub fn follow_foreground(&self) {
+        let (mode, game) = {
+            let st = self.lock();
+            (st.ui.mode, st.game_pid)
+        };
+        // Only read when it can decide anything.
+        let front = if mode == Mode::Play && game.is_some() {
+            self.window.foreground_pid()
+        } else {
+            None
+        };
+        let shown = overlay_shown(mode, game, front, std::process::id());
+        let mut st = self.lock();
+        if st.shown == shown {
+            return;
+        }
+        // The decision stands only for the state it was made on.
+        if st.ui.mode != mode || st.game_pid != game {
+            return;
+        }
+        st.shown = shown;
+        // Tauri only posts this to its event loop, so it runs under the lock,
+        // in order with any other change.
+        if let Err(e) = self.window.set_visible(shown) {
+            self.diag(&format!("error: window visibility: {e}"));
+        }
+        self.diag(if shown { SHOWN_LINE } else { HIDDEN_LINE });
     }
 
     /// Closes a relog window the log has gone quiet on: with no line since
@@ -1126,9 +1228,10 @@ impl App {
     }
 
     /// `update_settings`: applies a patch of settings fields. The scale goes
-    /// to the window at once; a new dock side, shortcut or log path is
-    /// applied after the lock is released. A patch that names the scale has
-    /// the monitor read first, before the lock, for `auto`.
+    /// to the window at once; a new shortcut or log path is applied after
+    /// the lock is released. A patch that names the scale has the monitor
+    /// read first, before the lock, for `auto`. A key the settings do not
+    /// have (the old `dock` side among them) refuses the whole patch.
     pub fn update_settings(&self, patch: &Value) -> Result<View, String> {
         let names_scale = patch.get("scale").is_some();
         let _scale = names_scale.then(|| self.scale_lock.lock().unwrap_or_else(|p| p.into_inner()));
@@ -1143,10 +1246,6 @@ impl App {
                 if let Err(e) = app.window.set_scale(app.zoom(new.scale, monitor)) {
                     app.diag(&format!("error: window scale: {e}"));
                 }
-            }
-            if new.dock != old.dock {
-                st.window_pos = None;
-                after.place = Some(Placement::Docked(new.dock));
             }
             if new.hotkey != old.hotkey {
                 after.hotkey = Some(new.hotkey.clone());
@@ -1198,8 +1297,8 @@ impl App {
 
     /// Re-evaluates the `auto` scale on the window's monitor, after a move or
     /// a DPI scale change, and applies the zoom only when it differs from
-    /// the one applied. A fixed scale never reads the monitor. A docked
-    /// window is placed again after a new zoom has resized it.
+    /// the one applied. A fixed scale never reads the monitor. A window at
+    /// its default place is placed again after a new zoom has resized it.
     pub fn follow_monitor(&self) {
         let _scale = self.scale_lock.lock().unwrap_or_else(|p| p.into_inner());
         if self.lock().settings.scale != Scale::Auto {
@@ -1230,7 +1329,7 @@ impl App {
             if let Err(e) = self.window.set_scale(zoom) {
                 self.diag(&format!("error: window scale: {e}"));
             }
-            st.window_pos.is_none().then_some(Placement::Docked(st.settings.dock))
+            st.window_pos.is_none().then_some(Placement::Default)
         };
         if let Some(p) = replace {
             if let Err(e) = self.window.place(p) {
@@ -1287,12 +1386,7 @@ impl App {
             }
         };
         self.save_if_due(false);
-        let again = after.hotkey.is_some() || after.retail || after.place.is_some();
-        if let Some(p) = after.place {
-            if let Err(e) = self.window.place(p) {
-                self.window_error("placement", &e);
-            }
-        }
+        let again = after.hotkey.is_some() || after.retail;
         if let Some(h) = after.hotkey {
             self.register_hotkey(&h, "change it in Settings");
         }
@@ -1503,8 +1597,12 @@ impl App {
         let mut st = self.lock();
         match found {
             Ok(found) => {
-                st.engine.seed_area(found.code());
-                self.diag(&diag::seeded_area(&found, start.offset));
+                st.engine.seed_area(found.area.code());
+                self.diag(&diag::seeded_area(&found.area, start.offset));
+                // Before any line of this tailer, so a newer line still wins.
+                if found.pid.is_some() {
+                    st.game_pid = found.pid;
+                }
             }
             Err(e) => {
                 st.engine.seed_area(None);
@@ -1540,7 +1638,10 @@ impl App {
                 st.saved_settings = Some(settings.clone());
                 writes.push((Write::Settings, settings));
             }
-            if let Some(pos) = st.position.as_ref().and_then(|p| serde_json::to_value(p).ok()) {
+            // Inside a relog window, the start of its entry line: a relaunch
+            // then reads the entry again and decides it (events are
+            // idempotent, so re-reading changes nothing else).
+            if let Some(pos) = st.position_to_save().and_then(|p| serde_json::to_value(p).ok()) {
                 if st.saved_position.as_ref() != Some(&pos) {
                     st.saved_position = Some(pos.clone());
                     writes.push((Write::Position, pos));
@@ -1725,6 +1826,13 @@ mod tests {
         fn monitor(&self) -> Result<Option<MonitorMetrics>, String> {
             Ok(None)
         }
+        fn foreground_pid(&self) -> Option<u32> {
+            None
+        }
+        fn set_visible(&self, shown: bool) -> Result<(), String> {
+            self.calls.lock().unwrap().push(format!("visible {shown}"));
+            Ok(())
+        }
     }
 
     struct ZeroClock;
@@ -1799,10 +1907,35 @@ mod tests {
             assert_eq!(scale_factor(Scale::Auto, at(height, 1.0)), zoom, "{height}");
         }
         // Negative control: a fixed setting ignores the monitor.
-        assert_eq!(scale_factor(Scale::X1, at(2160, 1.0)), 1.0);
-        assert_eq!(scale_factor(Scale::X133, at(1080, 1.0)), 1.33);
-        assert_eq!(scale_factor(Scale::X2, at(1080, 1.0)), 2.0);
-        assert_eq!(scale_factor(Scale::X2, None), 2.0);
+        assert_eq!(scale_factor(Scale::fixed(1.0), at(2160, 1.0)), 1.0);
+        assert_eq!(scale_factor(Scale::fixed(1.33), at(1080, 1.0)), 1.33);
+        assert_eq!(scale_factor(Scale::fixed(2.0), at(1080, 1.0)), 2.0);
+        assert_eq!(scale_factor(Scale::fixed(2.0), None), 2.0);
+    }
+
+    #[test]
+    fn fixed_scale_is_its_factor() {
+        // Any factor of the slider's range, below 1 too.
+        for f in [0.75, 0.8, 1.25, 1.5, 1.95, 2.0] {
+            assert_eq!(scale_factor(Scale::fixed(f), at(2160, 1.0)), f, "{f}");
+        }
+        // A factor out of range never reaches the window as is: it is Auto.
+        assert_eq!(scale_factor(Scale::Fixed(3.0), at(1440, 1.0)), 1.33);
+        assert_eq!(scale_factor(Scale::Fixed(f64::NAN), None), 1.0);
+    }
+
+    #[test]
+    fn overlay_shown_rule() {
+        let own = 4242;
+        // Play mode: shown only with the game or the overlay in front.
+        assert!(overlay_shown(Mode::Play, Some(15660), Some(15660), own));
+        assert!(overlay_shown(Mode::Play, Some(15660), Some(own), own));
+        assert!(!overlay_shown(Mode::Play, Some(15660), Some(999), own));
+        // Fail open: no game pid yet, or nothing known in front.
+        assert!(overlay_shown(Mode::Play, None, Some(999), own));
+        assert!(overlay_shown(Mode::Play, Some(15660), None, own));
+        // Edit mode: always.
+        assert!(overlay_shown(Mode::Edit, Some(15660), Some(999), own));
     }
 
     #[test]
@@ -1857,7 +1990,7 @@ mod tests {
 
     #[test]
     fn fixed_scale_ignores_monitor_change() {
-        for scale in [Scale::X1, Scale::X133, Scale::X2] {
+        for scale in [Scale::fixed(1.0), Scale::fixed(1.33), Scale::fixed(2.0), Scale::fixed(0.75)] {
             assert_eq!(auto_rescale(scale, at(1080, 1.0), at(2160, 1.0)), None, "{scale:?}");
             assert_eq!(auto_rescale(scale, None, at(1440, 1.0)), None, "{scale:?}");
         }

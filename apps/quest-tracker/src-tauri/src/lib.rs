@@ -16,6 +16,11 @@
 //!   also makes the window focusable (dropping `WS_EX_NOACTIVATE`), because
 //!   a window that cannot be activated never receives keys and the Settings
 //!   fields must be typed in; play mode makes it unfocusable again.
+//! - **Visibility**: on every worker tick `qt-app` asks for the pid of the
+//!   foreground window (`GetForegroundWindow`, `GetWindowThreadProcessId`;
+//!   only the id is read) and, in play mode, hides the overlay unless that
+//!   is the game's or its own. Showing uses `SW_SHOWNOACTIVATE`, so the game
+//!   keeps focus; hiding `SW_HIDE`.
 //! - **Shortcut**: one system hotkey through `tauri-plugin-global-shortcut`
 //!   (default Ctrl+Alt+Q), which toggles play and edit mode. No keyboard
 //!   hook; nothing is sent to the game.
@@ -38,8 +43,8 @@
 use std::sync::{Arc, Mutex};
 
 use qt_app::{
-    App, AppConfig, Dock, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, RowChange,
-    Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
+    App, AppConfig, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, RowChange, Store,
+    SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
 use tauri::{
@@ -56,12 +61,14 @@ const OVERLAY: &str = "overlay";
 const WIDTH: f64 = 360.0;
 const HEIGHT: f64 = 640.0;
 
-/// Docking: the gap to the monitor's side, in logical pixels, and how far
-/// down the monitor the window's top sits, so it clears the game's minimap
-/// in the top-right corner. Not measured against the game; the person moves
-/// the window in edit mode and the position is kept.
-const DOCK_MARGIN: f64 = 16.0;
-const DOCK_TOP: f64 = 0.30;
+/// The default place, for a window with no saved position (where the
+/// right-hand dock put it before the dock side was dropped): the gap to the
+/// monitor's right side, in logical pixels, and how far down the monitor
+/// the window's top sits, so it clears the game's minimap in the top-right
+/// corner. Not measured against the game; the person moves the window in
+/// edit mode and the position is kept.
+const EDGE_MARGIN: f64 = 16.0;
+const TOP_FRACTION: f64 = 0.30;
 
 type Shell<'a> = tauri::State<'a, Arc<App>>;
 
@@ -115,7 +122,7 @@ impl qt_app::Window for TauriWindow {
         let w = self.window()?;
         let (x, y) = match placement {
             Placement::At { x, y } => (x, y),
-            Placement::Docked(dock) => {
+            Placement::Default => {
                 let monitor = match w.current_monitor().map_err(|e| e.to_string())? {
                     Some(m) => m,
                     None => w
@@ -125,12 +132,9 @@ impl qt_app::Window for TauriWindow {
                 };
                 let (at, size) = (monitor.position(), monitor.size());
                 let outer = w.outer_size().map_err(|e| e.to_string())?;
-                let margin = (DOCK_MARGIN * monitor.scale_factor()).round() as i32;
-                let x = match dock {
-                    Dock::Right => at.x + size.width as i32 - outer.width as i32 - margin,
-                    Dock::Left => at.x + margin,
-                };
-                (x, at.y + (f64::from(size.height) * DOCK_TOP).round() as i32)
+                let margin = (EDGE_MARGIN * monitor.scale_factor()).round() as i32;
+                let x = at.x + size.width as i32 - outer.width as i32 - margin;
+                (x, at.y + (f64::from(size.height) * TOP_FRACTION).round() as i32)
             }
         };
         w.set_position(PhysicalPosition::new(x, y))
@@ -187,6 +191,64 @@ impl qt_app::Window for TauriWindow {
             dpi_scale: m.scale_factor(),
         }))
     }
+
+    fn foreground_pid(&self) -> Option<u32> {
+        foreground_pid()
+    }
+
+    fn set_visible(&self, shown: bool) -> Result<(), String> {
+        let w = self.window()?;
+        show_without_activating(&self.app, &w, shown)
+    }
+}
+
+/// The process id of the foreground window: only the id, never its title,
+/// class or process name. `None` when there is no foreground window (focus
+/// is moving) or its process cannot be read.
+#[cfg(windows)]
+fn foreground_pid() -> Option<u32> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+    // SAFETY: both calls take no pointer but the out-parameter, a live local.
+    let pid = unsafe {
+        let hwnd = GetForegroundWindow();
+        if hwnd.is_null() {
+            return None;
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(hwnd, &mut pid);
+        pid
+    };
+    (pid != 0).then_some(pid)
+}
+
+#[cfg(not(windows))]
+fn foreground_pid() -> Option<u32> {
+    None
+}
+
+/// Shows the overlay with `SW_SHOWNOACTIVATE`, so showing never takes focus
+/// from the game, or hides it with `SW_HIDE`. Posted to the main thread,
+/// which owns the window, so the caller (the worker, under the app's lock)
+/// never waits for it.
+#[cfg(windows)]
+fn show_without_activating(app: &AppHandle, window: &WebviewWindow, shown: bool) -> Result<(), String> {
+    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE, SW_SHOWNOACTIVATE};
+    // A raw handle is not `Send`; its value is carried to the main thread.
+    let handle = window.hwnd().map_err(|e| e.to_string())?.0 as isize;
+    app.run_on_main_thread(move || {
+        // SAFETY: the overlay's own window, shown or hidden on the main
+        // thread that owns it.
+        unsafe {
+            ShowWindow(handle as HWND, if shown { SW_SHOWNOACTIVATE } else { SW_HIDE });
+        }
+    })
+    .map_err(|e| e.to_string())
+}
+
+#[cfg(not(windows))]
+fn show_without_activating(_app: &AppHandle, window: &WebviewWindow, shown: bool) -> Result<(), String> {
+    if shown { window.show() } else { window.hide() }.map_err(|e| e.to_string())
 }
 
 /// Adds `WS_EX_NOACTIVATE` to the window in play mode, so clicking it never

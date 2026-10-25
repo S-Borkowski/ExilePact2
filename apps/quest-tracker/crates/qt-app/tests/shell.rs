@@ -20,13 +20,13 @@ use std::time::{Duration, Instant};
 
 use qt_app::cli::{self, Options};
 use qt_app::discover::{self, LogSource};
-use qt_app::{App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, Window};
+use qt_app::{
+    App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, Window, HIDDEN_LINE, SHOWN_LINE,
+};
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
-use qt_viewmodel::{
-    Dock, Frame, Mode, RowChange, RowChangeKind, Scale, StatusKind, View, ViewKind,
-};
+use qt_viewmodel::{Frame, Mode, RowChange, RowChangeKind, Scale, StatusKind, View, ViewKind};
 use serde_json::{json, Value};
 
 const OWN: &str = "Corisande_Fell";
@@ -80,6 +80,8 @@ struct WindowLog {
     hotkey_fails: AtomicBool,
     /// The monitor the fake window reports; `None` is no monitor.
     monitor: Mutex<Option<MonitorMetrics>>,
+    /// The pid of the window in front; `None` is none known.
+    foreground: Mutex<Option<u32>>,
 }
 
 impl WindowLog {
@@ -131,6 +133,16 @@ impl Window for FakeWindow {
         // Recorded, so a test can see when the monitor was read.
         self.0.calls.lock().unwrap().push("monitor".to_string());
         Ok(*self.0.monitor.lock().unwrap())
+    }
+
+    // Not recorded: the worker reads it on every tick.
+    fn foreground_pid(&self) -> Option<u32> {
+        *self.0.foreground.lock().unwrap()
+    }
+
+    fn set_visible(&self, shown: bool) -> Result<(), String> {
+        self.0.calls.lock().unwrap().push(format!("visible {shown}"));
+        Ok(())
     }
 }
 
@@ -679,21 +691,150 @@ fn diag_log_never_holds_chat_or_party_names() {
     }
 }
 
-// Dock changes move the window and drop a dragged position.
+// ---------------------------------------------------------------------------
+// No dock side (owner, after Live 2): a window with no saved position goes
+// where dock-right put it, old settings files that carry `dock` still load,
+// and a fixed scale is any factor of the slider.
+
+fn places(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("place"))
+        .collect()
+}
+
+/// A store folder holding a `settings.json` with `settings`, written by the
+/// store itself, as an earlier version would have left it.
+fn store_with_settings(settings: Value) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("temp dir");
+    Store::open(dir.path().join("store"))
+        .expect("store")
+        .save_settings(&settings)
+        .expect("settings written");
+    dir
+}
+
 #[test]
-fn dock_change_places_the_window() {
+fn no_saved_position_places_at_the_default() {
+    let default = format!("place {:?}", Placement::Default);
+    // Baseline: a first run has no position: the default place (the right
+    // side, below the minimap), before and after the zoom.
     let h = harness(Setup::default());
+    h.app.start();
+    assert_eq!(places(&h), vec![default.clone(), default.clone()]);
+
+    // An edit-mode drag is kept, and the next run goes there, once.
     h.app.set_mode(Mode::Edit).unwrap();
     h.clock.fetch_add(5_000, Ordering::SeqCst);
     h.app.window_moved(10, 20);
-    assert!(h.stored("settings.json").unwrap().get("window").is_some());
+    let h = h.rerun(Setup::default());
+    h.app.start();
+    assert_eq!(places(&h), vec![format!("place {:?}", Placement::At { x: 10, y: 20 })]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // An old file that docked left, with no position: the default place
+    // all the same; the old side is not kept.
+    let h = harness_in(store_with_settings(json!({ "dock": "left" })), Setup::default());
+    h.app.start();
+    assert_eq!(places(&h), vec![default.clone(), default]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn old_settings_with_dock_load() {
+    // A settings file from before Live 2: a dock side, the old three-way
+    // scale as a string, a dragged position.
+    let dir = store_with_settings(json!({
+        "opacity": 0.4,
+        "dock": "left",
+        "scale": "1.33",
+        "show_skipped": true,
+        "only_worth_it": false,
+        "window": { "x": 10, "y": 20 }
+    }));
+    let h = harness_in(dir, Setup::default());
+    let v = h.app.get_view();
+    // Loaded whole: nothing refused, nothing reset to its default.
+    // (The status line says only that this test has no log.)
+    assert!(
+        v.status.as_ref().is_none_or(|s| s.text.contains("No Client.txt")),
+        "{:?}",
+        v.status
+    );
+    assert_eq!(
+        (v.settings.opacity, v.settings.scale, v.settings.show_skipped),
+        (0.4, Scale::fixed(1.33), true)
+    );
+    h.app.start();
+    let calls = h.window.calls();
+    assert!(calls.contains(&format!("place {:?}", Placement::At { x: 10, y: 20 })), "{calls:?}");
+    assert!(calls.contains(&"scale 1.33".to_string()), "{calls:?}");
+
+    // A patch that names the dock side is refused as unknown, and changes
+    // nothing.
+    let err = h.app.update_settings(&json!({ "dock": "right" })).unwrap_err();
+    assert!(err.contains("unknown setting"), "{err}");
+    let err = h
+        .app
+        .update_settings(&json!({ "opacity": 0.9, "dock": "left" }))
+        .unwrap_err();
+    assert!(err.contains("dock"), "{err}");
+    assert_eq!(h.app.get_view().settings.opacity, 0.4);
+
+    // The next save writes no dock key, and keeps the position.
     h.clock.fetch_add(5_000, Ordering::SeqCst);
-    h.app.update_settings(&json!({ "dock": "left" })).unwrap();
-    assert!(h
-        .window
-        .calls()
-        .contains(&format!("place {:?}", Placement::Docked(Dock::Left))));
-    assert!(h.stored("settings.json").unwrap().get("window").is_none());
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    let stored = h.stored("settings.json").expect("settings.json");
+    assert!(stored.get("dock").is_none(), "{stored}");
+    assert_eq!(stored["window"], json!({ "x": 10, "y": 20 }));
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn fixed_scale_sets_that_zoom() {
+    let h = harness(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    // Baseline: Auto on a 1440 px monitor, as before.
+    assert_eq!(scales(&h), vec!["scale 1.33"]);
+
+    // Target: a fixed factor of the slider is that zoom, below 1 too, as a
+    // number or as the old stored strings.
+    for (patch, zoom) in [
+        (json!(1.25), "scale 1.25"),
+        (json!(0.75), "scale 0.75"),
+        (json!(2.0), "scale 2"),
+        (json!("1"), "scale 1"),
+        (json!(1.85), "scale 1.85"),
+    ] {
+        h.app.update_settings(&json!({ "scale": patch })).unwrap();
+        assert_eq!(scales(&h).last().map(String::as_str), Some(zoom), "{patch}");
+    }
+    assert_eq!(h.app.get_view().settings.scale, Scale::fixed(1.85));
+    // A fixed factor never reads the monitor, and a move leaves it.
+    let before = h.window.calls().len();
+    *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.0);
+    h.app.window_moved(50, 50);
+    assert_eq!(h.window.calls().len(), before);
+
+    // Out of range: Auto, from the monitor (2160 px: 2).
+    h.app.update_settings(&json!({ "scale": 5 })).unwrap();
+    assert_eq!(h.app.get_view().settings.scale, Scale::Auto);
+    assert_eq!(scales(&h).last().map(String::as_str), Some("scale 2"));
+    // Auto is unchanged: back on 1440 px it follows the window.
+    *h.window.monitor.lock().unwrap() = monitor_at(1440, 1.0);
+    h.app.window_moved(60, 60);
+    assert_eq!(scales(&h).last().map(String::as_str), Some("scale 1.33"));
+
+    // The factor survives a relaunch as the same zoom.
+    h.app.update_settings(&json!({ "scale": 1.4 })).unwrap();
+    let h = h.rerun(Setup::default());
+    h.app.start();
+    assert_eq!(scales(&h), vec!["scale 1.4"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 
 fn scales(h: &Harness) -> Vec<String> {
@@ -753,8 +894,8 @@ fn auto_scale_applied_at_start_and_on_change() {
 }
 
 // At start the monitor is read after the window is placed, so the zoom
-// comes from the monitor the window was placed on; a docked window is placed
-// again once the zoom has resized it.
+// comes from the monitor the window was placed on; a window at its default
+// place is placed again once the zoom has resized it.
 #[test]
 fn auto_scale_read_after_placement() {
     let h = harness(Setup {
@@ -769,7 +910,7 @@ fn auto_scale_read_after_placement() {
             .position(|c| c == what)
             .unwrap_or_else(|| panic!("no {what:?} in {calls:?}"))
     };
-    let docked = format!("place {:?}", Placement::Docked(Dock::Right));
+    let docked = format!("place {:?}", Placement::Default);
     let (place, read, scale) = (index(&docked), index("monitor"), index("scale 1.33"));
     assert!(place < read && read < scale, "{calls:?}");
     assert!(
@@ -810,7 +951,7 @@ fn auto_scale_follows_window_to_other_monitor() {
     assert_eq!(scales(&h), vec!["scale 1"]);
 
     // Target: the window is now on a 1440 px monitor; one move gives one
-    // new zoom, and the docked window is placed again.
+    // new zoom, and the window at its default place is placed again.
     *h.window.monitor.lock().unwrap() = monitor_at(1440, 1.0);
     let before = h.window.calls().len();
     h.app.window_moved(3000, 300);
@@ -821,7 +962,7 @@ fn auto_scale_follows_window_to_other_monitor() {
         vec![
             "monitor".to_string(),
             "scale 1.33".to_string(),
-            format!("place {:?}", Placement::Docked(Dock::Right)),
+            format!("place {:?}", Placement::Default),
         ]
     );
     assert!(h.diag_text().contains("scale auto: the window is now on a monitor 1440 px high"));
@@ -839,7 +980,7 @@ fn auto_scale_follows_window_to_other_monitor() {
     assert_eq!(scales(&h), vec!["scale 1", "scale 1.33", "scale 1.06"]);
 
     // An edit-mode drag to a 2160 px monitor: rescaled, the position kept,
-    // and not docked again.
+    // and not placed again.
     h.app.set_mode(Mode::Edit).unwrap();
     *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.0);
     let before = h.window.calls().len();
@@ -1624,8 +1765,8 @@ fn ticks_skips_and_settings_survive_relaunch() {
     // Baseline: defaults, nothing ticked or skipped.
     let v = h.app.get_view();
     assert_eq!(
-        (v.settings.dock, v.settings.scale, v.settings.show_skipped, v.settings.only_worth_it),
-        (Dock::Right, Scale::Auto, false, false)
+        (v.settings.scale, v.settings.show_skipped, v.settings.only_worth_it),
+        (Scale::Auto, false, false)
     );
     let step = |h: &Harness| {
         h.app.open_detail(Some(CANDLES.to_string())).unwrap().detail.unwrap().steps[0].ticked
@@ -1642,13 +1783,11 @@ fn ticks_skips_and_settings_survive_relaunch() {
     h.app
         .update_settings(&json!({
             "opacity": 0.5,
-            "dock": "left",
             "scale": "2",
             "show_skipped": true,
             "only_worth_it": true
         }))
         .unwrap();
-    // Dragged after the dock change, which drops a dragged position.
     h.app.window_moved(10, 20);
     assert!(step(&h));
 
@@ -1657,8 +1796,8 @@ fn ticks_skips_and_settings_survive_relaunch() {
     assert_eq!(v.character.as_ref().map(|c| c.name.as_str()), Some(OWN));
     assert_eq!(v.settings.opacity, 0.5);
     assert_eq!(
-        (v.settings.dock, v.settings.scale, v.settings.show_skipped, v.settings.only_worth_it),
-        (Dock::Left, Scale::X2, true, true)
+        (v.settings.scale, v.settings.show_skipped, v.settings.only_worth_it),
+        (Scale::fixed(2.0), true, true)
     );
     assert!(step(&h), "the tick survived");
     assert_eq!(status(&h, CARAVAN), Status::Skipped);
@@ -1667,4 +1806,265 @@ fn ticks_skips_and_settings_survive_relaunch() {
     assert!(h.window.calls().contains(&at), "{:?}", h.window.calls());
     assert!(h.window.calls().contains(&"scale 2".to_string()), "{:?}", h.window.calls());
     assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// ---------------------------------------------------------------------------
+// Visible only while the game or the overlay is in front (owner, after Live
+// 2). The game's pid is the one in the newest log line's header; the fake
+// window reports the pid of the window in front.
+
+/// The pid in `own_character_lines()`' headers.
+const GAME: u32 = 7120;
+/// Another program's window.
+const OTHER: u32 = 9_999;
+
+fn visibility(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("visible"))
+        .collect()
+}
+
+fn in_front(h: &Harness, pid: Option<u32>) {
+    *h.window.foreground.lock().unwrap() = pid;
+    h.app.tick();
+}
+
+/// An app that has read the game's lines (pid [`GAME`]), with no worker.
+fn game_running() -> Harness {
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), false));
+    h
+}
+
+#[test]
+fn play_mode_hides_when_another_app_is_in_front() {
+    let h = game_running();
+    // Baseline: the game in front, in play mode: shown, and nothing sent
+    // (the window is created shown).
+    in_front(&h, Some(GAME));
+    assert!(visibility(&h).is_empty());
+    assert_eq!(h.app.get_view().mode, Mode::Play);
+
+    // Target: another program in front hides the overlay.
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    // The game in front again shows it.
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+}
+
+#[test]
+fn shown_when_the_game_or_the_overlay_is_in_front() {
+    let h = game_running();
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    // The overlay's own window in front (this process): shown.
+    in_front(&h, Some(std::process::id()));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+    in_front(&h, Some(OTHER));
+    in_front(&h, Some(GAME));
+    assert_eq!(
+        visibility(&h),
+        vec!["visible false", "visible true", "visible false", "visible true"]
+    );
+    // Negative control: with the game in front, ticks change nothing.
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h).len(), 4);
+}
+
+#[test]
+fn edit_mode_is_always_shown() {
+    let h = game_running();
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    // The shortcut to edit mode: shown, whatever is in front.
+    h.app.toggle_mode().unwrap();
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+    in_front(&h, None);
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h).len(), 2);
+    // Back to play mode with another program in front: hidden again.
+    h.app.set_mode(Mode::Play).unwrap();
+    in_front(&h, Some(OTHER));
+    assert_eq!(
+        visibility(&h),
+        vec!["visible false", "visible true", "visible false"]
+    );
+}
+
+#[test]
+fn unknown_game_pid_keeps_the_overlay_shown() {
+    let h = harness(Setup::default());
+    // No line read: the game's pid is unknown, so the overlay stays shown
+    // (fail open) whatever is in front.
+    in_front(&h, Some(OTHER));
+    // Lines with no client header (a session marker) tell no pid either.
+    h.app.handle_tail_events(events(
+        &["2026/03/10 19:00:00 ***** LOG FILE OPENING *****".to_string()],
+        false,
+    ));
+    in_front(&h, Some(OTHER));
+    assert!(visibility(&h).is_empty());
+    assert!(!h.diag_text().contains("visibility:"), "{}", h.diag_text());
+
+    // Nothing known in front, with the game's pid known: shown too.
+    h.app.handle_tail_events(events(&own_character_lines(), false));
+    in_front(&h, None);
+    assert!(visibility(&h).is_empty());
+    // Positive control: the same program in front, now that the game's pid
+    // is known, hides it.
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+}
+
+#[test]
+fn game_pid_comes_from_the_newest_log_line() {
+    let h = game_running();
+    in_front(&h, Some(GAME));
+    assert!(visibility(&h).is_empty());
+    // The game restarted under another pid: the newest header wins, live or
+    // catch-up, even on a line that gives no event.
+    h.app.handle_tail_events(events(
+        &[
+            "2026/03/10 20:00:00 ***** LOG FILE OPENING *****".to_string(),
+            "2026/03/10 20:00:01 5000000 7e2c0010 [INFO Client 15660] Connecting to instance server".to_string(),
+        ],
+        true,
+    ));
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    in_front(&h, Some(15_660));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+
+    // A start mid-log: the pid is read back from the log before the
+    // tailer's start, with the area, before any new line.
+    let h = harness(log_setup(text(&own_character_lines()), false));
+    h.app.start();
+    h.wait_diag(&["area from log:"]);
+    *h.window.foreground.lock().unwrap() = Some(OTHER);
+    h.wait_diag(&[HIDDEN_LINE]);
+    *h.window.foreground.lock().unwrap() = Some(GAME);
+    h.wait_diag(&[SHOWN_LINE]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn visibility_change_is_logged_once() {
+    // What the fake program in front is called. The window reports only its
+    // pid, so this must never reach the log.
+    const TITLE: &str = "Notepad - shopping list.txt";
+    let h = game_running();
+    let lines = |h: &Harness| -> Vec<String> {
+        h.diag_text()
+            .lines()
+            .filter(|l| l.contains("visibility"))
+            .map(str::to_string)
+            .collect()
+    };
+    // Baseline: shown from the start, nothing logged.
+    in_front(&h, Some(GAME));
+    assert!(lines(&h).is_empty());
+
+    for _ in 0..4 {
+        in_front(&h, Some(OTHER));
+    }
+    let log = lines(&h);
+    assert_eq!(log.len(), 1, "{log:?}");
+    assert!(log[0].ends_with(HIDDEN_LINE), "{log:?}");
+    for _ in 0..4 {
+        in_front(&h, Some(GAME));
+    }
+    in_front(&h, Some(std::process::id()));
+    let log = lines(&h);
+    assert_eq!(log.len(), 2, "{log:?}");
+    assert!(log[1].ends_with(SHOWN_LINE), "{log:?}");
+    in_front(&h, Some(OTHER));
+    let text = h.diag_text();
+    assert_eq!(text.matches(HIDDEN_LINE).count(), 2, "{text}");
+    assert_eq!(text.matches(SHOWN_LINE).count(), 1, "{text}");
+    // Each line is the fixed text: no title, no other program's pid.
+    assert!(!text.contains(TITLE), "{text}");
+    for l in lines(&h) {
+        assert!(l.ends_with(HIDDEN_LINE) || l.ends_with(SHOWN_LINE), "{l}");
+        assert!(!l.contains(&OTHER.to_string()), "{l}");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// While a relog window is open the saved log position stays at the start of
+// the entry line, so a relaunch reads the entry again and decides it (Round
+// 3's finding).
+
+/// Waits up to five seconds for `position.json` to hold `offset`.
+fn wait_position(h: &Harness, offset: u64) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let saved = h.stored("position.json").map(|p| p["offset"].clone());
+        if saved == Some(json!(offset)) {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "position.json holds {saved:?}, not offset {offset}, within 5 s"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn shutdown_inside_relog_window_saves_the_entry_position() {
+    // The character's lines, then, live, a new session and a level-1 entry
+    // to The Riverbank, the last line of the log.
+    let head = text(&own_character_lines());
+    let riverbank = riverbank_at("10:00", 31);
+    let entry_start = (head.len() + riverbank[0].len() + 1) as u64;
+    let end = (head.len() + text(&riverbank).len()) as u64;
+
+    let h = harness(log_setup(head.clone(), true));
+    h.app.start();
+    h.wait_diag(&["catch-up:"]);
+    // (The head's own Riverbank entry started a character, named since.)
+    let started = h.diag_text().matches(NEW_LINE).count();
+    append(&h.root.join("Client.txt"), &riverbank);
+    h.wait_diag(&["area G1_1 (level 1)"]);
+    // A debounced save inside the window (2.5 s on the test clock: due, and
+    // still inside the 5 s window) keeps the entry's start.
+    h.clock.fetch_add(2_500, Ordering::SeqCst);
+    wait_position(&h, entry_start);
+    assert_eq!(h.diag_text().matches(NEW_LINE).count(), started, "{}", h.diag_text());
+    // So does the save on exit.
+    let setup = || Setup {
+        options: Options {
+            log: Some(PathBuf::from("Client.txt")),
+            ..Options::default()
+        },
+        ..Setup::default()
+    };
+    let h = h.rerun(setup());
+    assert_eq!(h.stored("position.json").unwrap()["offset"], json!(entry_start));
+
+    // The relaunch resumes there, reads the entry again (as catch-up) and,
+    // the log quiet, decides it: the new character starts, and the position
+    // moves to the end of the log.
+    let read = h.diag_text().matches("catch-up:").count();
+    h.app.start();
+    h.wait_diag(&["resuming from the saved position"]);
+    wait_count(&h, "catch-up:", read + 1);
+    assert_eq!(h.diag_text().matches(NEW_LINE).count(), started, "{}", h.diag_text());
+    h.clock.fetch_add(6_000, Ordering::SeqCst);
+    wait_count(&h, NEW_LINE, started + 1);
+    wait_position(&h, end);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    assert_eq!(h.stored("position.json").unwrap()["offset"], json!(end));
+
+    // Negative control: a log that ends with no relog window open saves its
+    // end at once.
+    let h = harness(log_setup(head.clone(), true));
+    h.app.start();
+    h.wait_diag(&["catch-up:"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    assert_eq!(h.stored("position.json").unwrap()["offset"], json!(head.len() as u64));
 }
