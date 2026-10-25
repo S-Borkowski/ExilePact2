@@ -80,6 +80,34 @@ impl Timestamp {
         self.seconds() - earlier.seconds()
     }
 
+    /// This time advanced by `seconds` (back, when negative) on the same
+    /// wall clock, carrying into minutes, hours, days, months and years. The
+    /// shell uses it for "now" in log time: the last line's timestamp plus
+    /// the whole seconds elapsed since it was handled.
+    pub fn plus_seconds(&self, seconds: i64) -> Timestamp {
+        let total = self.seconds() + seconds;
+        let (days, secs) = (total.div_euclid(86_400), total.rem_euclid(86_400));
+        // The civil date from days since 1970-01-01, the inverse of
+        // `seconds` (Howard Hinnant's algorithm).
+        let z = days + 719_468;
+        let era = z.div_euclid(146_097);
+        let doe = z - era * 146_097;
+        let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        let mp = (5 * doy + 2) / 153;
+        let day = doy - (153 * mp + 2) / 5 + 1;
+        let month = if mp < 10 { mp + 3 } else { mp - 9 };
+        let year = yoe + era * 400 + i64::from(month <= 2);
+        Timestamp {
+            year: year as u16,
+            month: month as u8,
+            day: day as u8,
+            hour: (secs / 3_600) as u8,
+            minute: (secs % 3_600 / 60) as u8,
+            second: (secs % 60) as u8,
+        }
+    }
+
     /// Seconds since 1970-01-01 00:00:00 of the same wall clock.
     fn seconds(&self) -> i64 {
         // Days from the civil date (proleptic Gregorian), Howard Hinnant's
@@ -450,6 +478,40 @@ mod tests {
             t("2027/01/01 00:00:00").seconds_since(&t("2026/12/31 23:59:59")),
             1
         );
+    }
+
+    #[test]
+    fn timestamp_plus_seconds_carries() {
+        let t = |s: &str| Timestamp::parse(s).unwrap();
+        let entry = t("2026/03/14 12:00:00");
+        assert_eq!(entry.plus_seconds(0), entry);
+        assert_eq!(entry.plus_seconds(5), t("2026/03/14 12:00:05"));
+        assert_eq!(entry.plus_seconds(-1), t("2026/03/14 11:59:59"));
+        // Across midnight, a month end, a leap day and a year end.
+        assert_eq!(
+            t("2026/03/31 23:59:58").plus_seconds(4),
+            t("2026/04/01 00:00:02")
+        );
+        assert_eq!(
+            t("2028/02/28 23:59:59").plus_seconds(1),
+            t("2028/02/29 00:00:00")
+        );
+        assert_eq!(
+            t("2027/02/28 23:59:59").plus_seconds(1),
+            t("2027/03/01 00:00:00")
+        );
+        assert_eq!(
+            t("2026/12/31 23:59:59").plus_seconds(1),
+            t("2027/01/01 00:00:00")
+        );
+        assert_eq!(
+            t("2027/01/01 00:00:00").plus_seconds(-1),
+            t("2026/12/31 23:59:59")
+        );
+        // It is the inverse of seconds_since.
+        for step in [1_i64, 59, 3_601, 86_399, 86_400 * 40 + 7, -86_400 * 400 - 3] {
+            assert_eq!(entry.plus_seconds(step).seconds_since(&entry), step);
+        }
     }
 
     #[test]

@@ -22,3 +22,5 @@ pub use engine::{
     CharacterInfo, CharacterNote, CharacterState, Engine, EngineError, Overrides, Ownership,
     QuestAction, QuestState, StepState, Transition,
 };
+/// The log time [`Engine::expire_relog_window`] takes.
+pub use qt_logline::Timestamp;

@@ -15,7 +15,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use qt_engine::{Engine, QuestAction, QuestData, RewardCategory, Status, Transition, Worth};
+use qt_engine::{
+    Engine, QuestAction, QuestData, RewardCategory, Status, Timestamp, Transition, Worth,
+};
 use qt_viewmodel::{
     build_view, reward_icon, Frame, LogState, Mode, RowChange, RowChangeKind, RowChanges,
     Settings, StatusKind, StepPhase, UiState, View, ViewKind,
@@ -414,9 +416,18 @@ fn new_character_view_before_level_2() {
     assert_eq!(view.frame, Frame::EmptyNoCharacter);
     assert!(view.character.is_none());
 
-    // Target: from the level-1 entry the new character is the active one,
-    // unnamed and provisional, with its act 1 rows, never in the list.
+    // While the entry's relog window is open nothing changes yet.
     feed(&mut engine, &lines[riverbank..level2], false);
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::NextUp));
+    assert_eq!(view.frame, Frame::EmptyNoCharacter);
+
+    // Target: once the window closes (here the shell's expiry call, 6 s
+    // after the entry) the new character is the active one, unnamed and
+    // provisional, with its act 1 rows, never in the list.
+    let entry = Timestamp::parse(&lines[riverbank][..19]).unwrap();
+    engine.expire_relog_window(entry.plus_seconds(6));
     assert!(engine.new_character_open());
     let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
     assert_eq!(view.frame, Frame::PanelCampaign, "{view:#?}");

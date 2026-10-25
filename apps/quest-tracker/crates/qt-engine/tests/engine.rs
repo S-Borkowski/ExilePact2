@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use qt_engine::{
     area_from_log, CharacterNote, DataError, Detection, Engine, LogArea, QuestAction, QuestData,
-    Status, Transition,
+    Status, Timestamp, Transition,
 };
 use serde_json::Value;
 
@@ -880,6 +880,17 @@ fn level_up(name: &str, class: &str, level: u32) -> String {
     line(&format!(": {name} ({class}) is now level {level}"))
 }
 
+/// A log time of 2026/03/14, the day every inline line is written on.
+fn at(time: &str) -> Timestamp {
+    Timestamp::parse(&format!("2026/03/14 {time}")).unwrap()
+}
+
+/// Closes the relog window of an entry written by `line` (12:00:00) the way
+/// the shell's worker tick does when the log stays quiet: 6 s on.
+fn expire(engine: &mut Engine) -> Vec<Transition> {
+    engine.expire_relog_window(at("12:00:06"))
+}
+
 #[test]
 fn riverbank_level1_entry_starts_new_character() {
     // Negative control: an entry to G1_1 at another area level, and a
@@ -900,11 +911,17 @@ fn riverbank_level1_entry_starts_new_character() {
     assert_eq!(engine.held_count(), 2);
 
     // Target: a level-1 entry to The Riverbank starts a new character with
-    // no name, level 1, and its events go to it at once.
+    // no name, level 1, once its relog window has closed (here, the walk to
+    // the encampment is another area entry); the window's events go to it.
     let mut engine = Engine::new(data());
     let mut lines = vec![MARKER.to_string(), riverbank_entry()];
     lines.extend(to_the_encampment());
-    let transitions = feed(&mut engine, &lines, true);
+    let mut transitions = feed(&mut engine, &lines[..3], true);
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert!(engine.take_character_notes().is_empty());
+    transitions.extend(feed(&mut engine, &lines[3..], true));
+    assert!(!engine.relog_window_open());
     assert!(engine.new_character_open());
     assert_eq!(engine.current(), None);
     assert!(engine.characters().is_empty());
@@ -1052,11 +1069,14 @@ fn session_end_parks_new_character_and_restores_pin() {
         ],
         false,
     );
-    assert!(engine.new_character_open());
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
 
-    // A session marker before any level-up parks it: nothing is dropped or
-    // stored, and the record keeps its progress, closed.
+    // A session marker before any level-up first lets the entry take effect,
+    // then parks the new character: nothing is dropped or stored, and the
+    // record keeps its progress, closed.
     engine.feed_line(MARKER, false);
+    assert!(!engine.relog_window_open());
     assert!(!engine.new_character_open());
     assert!(engine.new_character().is_none());
     assert!(engine.new_character_states().is_none());
@@ -1089,6 +1109,8 @@ fn session_end_parks_new_character_and_restores_pin() {
     feed(&mut engine, &[MARKER.to_string(), line(COLD_REWARD)], true);
     engine.pin(Some(CORISANDE)).unwrap();
     feed(&mut engine, &[MARKER.to_string(), riverbank_entry()], true);
+    assert_eq!(engine.pinned(), Some(CORISANDE), "kept while undecided");
+    expire(&mut engine);
     assert_eq!(engine.pinned(), None);
     assert_eq!(engine.new_character_released_pin(), Some(CORISANDE));
     engine.feed_line(MARKER, true);
@@ -1161,9 +1183,12 @@ fn riverbank_entry_moves_pin_to_new_character() {
         engine.quest_state(name, "fixture-riverbank").unwrap().steps[0].fired
     };
 
-    // The level-1 entry releases the pin, and the named character takes it.
+    // The level-1 entry releases the pin once its window closes, and the
+    // named character takes it.
     let mut engine = pinned_corisande();
     feed(&mut engine, &[riverbank_entry()], true);
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+    expire(&mut engine);
     assert!(engine.new_character_open());
     assert_eq!(engine.pinned(), None);
     assert_eq!(engine.new_character_released_pin(), Some(CORISANDE));
@@ -1189,6 +1214,7 @@ fn riverbank_entry_moves_pin_to_new_character() {
     // Control: unpinning while it is open cancels the pin it would take.
     let mut engine = pinned_corisande();
     feed(&mut engine, &[riverbank_entry()], true);
+    expire(&mut engine);
     engine.pin(None).unwrap();
     assert_eq!(engine.new_character_released_pin(), None);
     feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], true);
@@ -1198,10 +1224,26 @@ fn riverbank_entry_moves_pin_to_new_character() {
     // progress, as held events go to a newly pinned character.
     let mut engine = pinned_corisande();
     feed(&mut engine, &[riverbank_entry()], true);
+    expire(&mut engine);
     engine.pin(Some(CORISANDE)).unwrap();
     assert!(!engine.new_character_open());
     assert_eq!(engine.current(), Some(CORISANDE));
     assert!(riverbank_fired(&engine, CORISANDE));
+
+    // Pinning while the entry is still undecided decides it for the pin: no
+    // new character starts, no note, and the window's events go to her.
+    let mut engine = pinned_corisande();
+    engine.take_character_notes();
+    feed(&mut engine, &[riverbank_entry()], true);
+    assert!(!riverbank_fired(&engine, CORISANDE), "the entry waits");
+    engine.pin(Some(CORISANDE)).unwrap();
+    assert!(!engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert!(riverbank_fired(&engine, CORISANDE));
+    assert!(engine.take_character_notes().is_empty());
+    expire(&mut engine);
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
 }
 
 #[test]
@@ -1254,6 +1296,9 @@ fn new_character_saved_apart_from_characters() {
     feed(&mut engine, &[MARKER.to_string(), line(COLD_REWARD)], true);
     engine.pin(Some(CORISANDE)).unwrap();
     feed(&mut engine, &[MARKER.to_string(), riverbank_entry()], true);
+    // No record while the entry is undecided, so a save then writes none.
+    assert!(engine.new_character_json().is_none());
+    expire(&mut engine);
     let record = engine.new_character_json().unwrap();
     assert_eq!(record["released_pin"], CORISANDE);
     let saved = engine.to_json();
@@ -1368,11 +1413,14 @@ fn refusal_needs_a_receiving_character() {
         ]
     );
 
-    // The new character from The Riverbank receives events, so it counts.
+    // The new character from The Riverbank receives events, so it counts,
+    // once its entry is decided and the window's events reach it.
     let mut engine = Engine::new(data());
     feed(&mut engine, &[riverbank_entry()], true);
     engine.seed_area(None);
     feed(&mut engine, &[line(POINTS)], true);
+    assert_eq!(engine.refused_count(), 0);
+    expire(&mut engine);
     assert_eq!(engine.refused_count(), 1);
 }
 
@@ -1428,32 +1476,53 @@ fn riverbank_fired(engine: &Engine, name: &str) -> bool {
 
 #[test]
 fn riverbank_relog_of_stored_character_keeps_pin_and_active() {
+    // A relog from the character select: the client keeps its log open, so
+    // no session marker comes first.
     let relog = |name: &str| {
         vec![
-            MARKER.to_string(),
             riverbank_entry_at("12:00:00", RIVERBANK_SEED),
             line_at("12:00:01", "INFO", "[SCENE] Set Source [The Riverbank]"),
             character_line("12:00:02", name),
         ]
     };
 
-    // Baseline: without the name line the entry opens the new-character
-    // state and releases the pin.
+    // Baseline: without the name line the entry, once its window has
+    // closed, opens the new-character state and releases the pin.
     let mut engine = with_corisande(true);
     let mut lines = relog(CORISANDE);
     lines.pop();
     feed(&mut engine, &lines, true);
+    expire(&mut engine);
     assert!(engine.new_character_open());
     assert_eq!(engine.pinned(), None);
 
     // Target: the line names Corisande, a stored character, 2 s after the
-    // entry: a relog. The state closes as if it never opened, the pin comes
-    // back, she is active, and the entry went to her.
+    // entry: a relog. The entry never took effect: the pin and the active
+    // character are the same right after the entry and after the name line,
+    // the only note is the relog, and the entry went to her.
     let mut engine = with_corisande(true);
-    let transitions = feed(&mut engine, &relog(CORISANDE), true);
+    let lines = relog(CORISANDE);
+    let before = (
+        engine.pinned().map(str::to_string),
+        engine.active().map(str::to_string),
+    );
+    assert_eq!(before, (Some(CORISANDE.into()), Some(CORISANDE.into())));
+    let mut transitions = feed(&mut engine, &lines[..2], true);
+    let now = (
+        engine.pinned().map(str::to_string),
+        engine.active().map(str::to_string),
+    );
+    assert_eq!(now, before, "unchanged right after the entry");
+    assert!(engine.relog_window_open());
     assert!(!engine.new_character_open());
-    assert_eq!(engine.pinned(), Some(CORISANDE));
-    assert_eq!(engine.active(), Some(CORISANDE));
+    transitions.extend(feed(&mut engine, &lines[2..], true));
+    let now = (
+        engine.pinned().map(str::to_string),
+        engine.active().map(str::to_string),
+    );
+    assert_eq!(now, before, "unchanged after the name line");
+    assert!(!engine.relog_window_open());
+    assert!(!engine.new_character_open());
     assert_eq!(engine.current(), Some(CORISANDE));
     assert_eq!(names(&engine), [CORISANDE]);
     assert!(riverbank_fired(&engine, CORISANDE));
@@ -1463,29 +1532,33 @@ fn riverbank_relog_of_stored_character_keeps_pin_and_active() {
             .any(|t| t.character == CORISANDE && t.quest_id == "fixture-riverbank"),
         "{transitions:?}"
     );
-    assert!(engine.new_character_json().is_none(), "record cleared");
+    assert!(engine.new_character_json().is_none(), "no record");
     assert_eq!(engine.dropped_count(), 0);
     assert_eq!(engine.dropped_new_character_count(), 0);
     assert_eq!(
         engine.take_character_notes(),
-        [
-            CharacterNote::Started {
-                released_pin: Some(CORISANDE.to_string())
-            },
-            CharacterNote::Relogged {
-                name: CORISANDE.to_string()
-            },
-        ]
+        [CharacterNote::Relogged {
+            name: CORISANDE.to_string()
+        }]
     );
+    // Nothing more once the window would have expired.
+    assert!(expire(&mut engine).is_empty());
+    assert!(engine.take_character_notes().is_empty());
     let saved = Engine::from_json(data(), &engine.to_json()).unwrap();
     assert_eq!(saved.pinned(), Some(CORISANDE));
 
-    // Unpinned: she becomes active, nothing is pinned, and later events go
+    // Unpinned: she stays active, nothing is pinned, and later events go
     // to her.
     let mut engine = with_corisande(false);
     feed(&mut engine, &relog(CORISANDE), true);
     assert!(!engine.new_character_open());
     assert_eq!((engine.pinned(), engine.active()), (None, Some(CORISANDE)));
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: CORISANDE.to_string()
+        }]
+    );
     assert!(riverbank_fired(&engine, CORISANDE));
     feed(
         &mut engine,
@@ -1512,17 +1585,25 @@ fn riverbank_entry_with_unknown_name_stays_new_character() {
         ],
         true,
     );
-    // An unknown name in the window leaves the new character open, unnamed
-    // and unstored.
+    // An unknown name in the window changes nothing: the window stays open.
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+    assert!(engine.take_character_notes().is_empty());
+
+    // Once it closes the new character is open, unnamed and unstored.
+    engine.expire_relog_window(at("12:00:06"));
     assert!(engine.new_character_open());
     assert_eq!(engine.current(), None);
     assert_eq!(names(&engine), [CORISANDE]);
     assert_eq!(engine.new_character().unwrap().name, "");
     assert_eq!(engine.new_character_released_pin(), Some(CORISANDE));
-    assert!(!engine
-        .take_character_notes()
-        .iter()
-        .any(|n| matches!(n, CharacterNote::Relogged { .. })));
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Started {
+            released_pin: Some(CORISANDE.to_string())
+        }]
+    );
 
     // Its level-up names it, as before.
     feed(&mut engine, &[level_up(ODILE, "Mercenary", 2)], true);
@@ -1631,9 +1712,12 @@ fn parked_new_character_resumes_on_same_seed() {
     assert_eq!(engine.pinned(), Some(CORISANDE));
     engine.take_character_notes();
 
-    // A relog into the same instance resumes it, with its rows, and
-    // releases the pin again.
+    // A relog into the same instance resumes it once the window closes, with
+    // its rows, and releases the pin again.
     feed(&mut engine, &[MARKER.to_string(), riverbank_entry()], true);
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+    expire(&mut engine);
     assert!(engine.new_character_open());
     assert_eq!(engine.new_character_states().unwrap(), shown);
     assert_eq!(engine.pinned(), None);
@@ -1655,8 +1739,8 @@ fn parked_new_character_resumes_on_same_seed() {
     assert!(engine.new_character_json().is_none());
     assert_eq!(engine.dropped_new_character_count(), 0);
 
-    // A relog of a stored character into the resumed instance gives the
-    // record back parked, as it was, and the pin to her.
+    // A relog of a stored character into the parked record's instance never
+    // resumes it: the record stays parked, as it was, and the pin hers.
     let mut engine = with_corisande(true);
     feed(&mut engine, &lines, true);
     engine.feed_line(MARKER, true);
@@ -1724,8 +1808,8 @@ fn parked_new_character_replaced_by_other_seed_counts_dropped() {
     let counts = (engine.dropped_count(), engine.dropped_new_character_count());
     assert_eq!(counts, (1, 0));
 
-    // A relog of a stored character into the other instance undoes the
-    // entry: the parked record is back and nothing is dropped.
+    // A relog of a stored character into the other instance never replaces
+    // the parked record: it stays, and nothing is dropped.
     let mut engine = with_corisande(false);
     feed(
         &mut engine,
@@ -1747,6 +1831,318 @@ fn parked_new_character_replaced_by_other_seed_counts_dropped() {
     assert_eq!(engine.new_character_json().unwrap()["seed"], RIVERBANK_SEED);
     assert_eq!(engine.dropped_new_character_count(), 0);
     assert_eq!(engine.active(), Some(CORISANDE));
+}
+
+// -- the relog window decides before any note or pin release (Context
+// "Launch 7 fixes (owner scope)", "Launch 8: wait, then decide") -----------
+
+/// The note a level-1 entry posts when it takes effect over Corisande's pin.
+fn started_over_corisande() -> Vec<CharacterNote> {
+    vec![CharacterNote::Started {
+        released_pin: Some(CORISANDE.to_string()),
+    }]
+}
+
+#[test]
+fn relog_window_posts_nothing_and_keeps_pin_until_closed() {
+    let mut engine = with_corisande(true);
+    let saved = engine.to_json();
+    let transitions = feed(
+        &mut engine,
+        &[
+            riverbank_entry_at("12:00:00", RIVERBANK_SEED),
+            line_at("12:00:01", "INFO", "[SCENE] Set Source [The Riverbank]"),
+        ],
+        true,
+    );
+    // Before any close: no note, the pin held, nothing given to anyone.
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert!(engine.take_character_notes().is_empty());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+    assert_eq!(engine.active(), Some(CORISANDE));
+    assert_eq!(engine.current(), Some(CORISANDE));
+    assert!(engine.new_character().is_none());
+    assert!(engine.new_character_json().is_none(), "no record to save");
+    assert!(transitions.is_empty(), "{transitions:?}");
+    assert!(!riverbank_fired(&engine, CORISANDE), "the entry waits");
+    assert_eq!(engine.to_json(), saved);
+
+    // At 5 s it is still undecided.
+    assert!(engine.expire_relog_window(at("12:00:05")).is_empty());
+    assert!(engine.relog_window_open());
+    assert!(engine.take_character_notes().is_empty());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+
+    // Closed without a relog: only now the note and the pin release.
+    let transitions = engine.expire_relog_window(at("12:00:06"));
+    assert!(!engine.relog_window_open());
+    assert!(engine.new_character_open());
+    assert_eq!(engine.take_character_notes(), started_over_corisande());
+    assert_eq!(engine.pinned(), None);
+    assert_eq!(engine.new_character_released_pin(), Some(CORISANDE));
+    assert!(
+        transitions
+            .iter()
+            .any(|t| t.character.is_empty() && t.quest_id == "fixture-riverbank" && t.live),
+        "{transitions:?}"
+    );
+    assert_eq!(engine.new_character_json().unwrap()["events"], 2);
+}
+
+#[test]
+fn relog_posts_only_relogged() {
+    // A parked record of one instance, then a relog into another.
+    let mut engine = with_corisande(true);
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            riverbank_entry(),
+            line("[SCENE] Set Source [The Riverbank]"),
+            MARKER.to_string(),
+        ],
+        true,
+    );
+    let parked = engine.new_character_json().expect("parked");
+    assert_eq!(parked["open"], Value::Bool(false));
+    engine.take_character_notes();
+
+    feed(
+        &mut engine,
+        &[
+            riverbank_entry_at("12:00:10", 77),
+            line_at("12:00:11", "INFO", "[SCENE] Set Source [The Riverbank]"),
+            character_line("12:00:12", CORISANDE),
+        ],
+        true,
+    );
+    // The relog is the only note: nothing started, replaced or released.
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: CORISANDE.to_string()
+        }]
+    );
+    assert_eq!(engine.new_character_json().unwrap(), parked);
+    assert_eq!(engine.dropped_new_character_count(), 0);
+    assert_eq!(
+        (engine.pinned(), engine.active()),
+        (Some(CORISANDE), Some(CORISANDE))
+    );
+
+    // Later lines and the expiry add none.
+    feed(
+        &mut engine,
+        &[line_at(
+            "12:00:30",
+            "INFO",
+            r#"Generating level 15 area "G1_town" with seed 1"#,
+        )],
+        true,
+    );
+    assert!(engine.expire_relog_window(at("12:01:00")).is_empty());
+    assert!(engine.take_character_notes().is_empty());
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.new_character_json().unwrap(), parked);
+}
+
+#[test]
+fn relog_window_expires_on_call_after_five_seconds() {
+    // No window: the call changes nothing.
+    let mut engine = with_corisande(true);
+    assert!(engine.expire_relog_window(at("12:30:00")).is_empty());
+    assert!(!engine.relog_window_open());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+
+    // At or under 5 s after the entry (or before it): nothing.
+    feed(
+        &mut engine,
+        &[riverbank_entry_at("12:00:00", RIVERBANK_SEED)],
+        true,
+    );
+    for t in ["11:59:58", "12:00:00", "12:00:04", "12:00:05"] {
+        assert!(engine.expire_relog_window(at(t)).is_empty(), "{t}");
+        assert!(engine.relog_window_open(), "{t}");
+    }
+    assert!(engine.take_character_notes().is_empty());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+
+    // More than 5 s after it: the entry takes effect.
+    let transitions = engine.expire_relog_window(at("12:00:00").plus_seconds(6));
+    assert!(!engine.relog_window_open());
+    assert!(engine.new_character_open());
+    assert_eq!(engine.take_character_notes(), started_over_corisande());
+    assert!(
+        transitions
+            .iter()
+            .any(|t| t.character.is_empty() && t.quest_id == "fixture-riverbank"),
+        "{transitions:?}"
+    );
+    // A name line after that is no relog.
+    feed(&mut engine, &[character_line("12:00:07", CORISANDE)], true);
+    assert!(engine.new_character_open());
+    assert!(engine.take_character_notes().is_empty());
+
+    // Across a minute boundary.
+    let mut engine = with_corisande(false);
+    feed(
+        &mut engine,
+        &[riverbank_entry_at("12:00:58", RIVERBANK_SEED)],
+        true,
+    );
+    engine.expire_relog_window(at("12:01:03"));
+    assert!(engine.relog_window_open());
+    engine.expire_relog_window(at("12:01:04"));
+    assert!(!engine.relog_window_open());
+    assert!(engine.new_character_open());
+}
+
+#[test]
+fn relog_window_closed_by_area_line_level_up_or_marker() {
+    let opened = || {
+        let mut engine = with_corisande(true);
+        feed(
+            &mut engine,
+            &[riverbank_entry_at("12:00:00", RIVERBANK_SEED)],
+            true,
+        );
+        assert!(engine.relog_window_open());
+        assert!(engine.take_character_notes().is_empty());
+        engine
+    };
+
+    // Another area entry, within 5 s: the entry takes effect, then the new
+    // area's entry goes to the new character.
+    let mut engine = opened();
+    feed(
+        &mut engine,
+        &[line_at(
+            "12:00:01",
+            "INFO",
+            r#"Generating level 15 area "G1_town" with seed 1"#,
+        )],
+        true,
+    );
+    assert!(!engine.relog_window_open());
+    assert!(engine.new_character_open());
+    assert_eq!(engine.pinned(), None);
+    assert_eq!(engine.current_area(), Some("G1_town"));
+    assert_eq!(engine.take_character_notes(), started_over_corisande());
+    assert_eq!(engine.new_character_json().unwrap()["events"], 2);
+
+    // Any line more than 5 s after the entry: closed first, then the line
+    // goes to the new character.
+    let mut engine = opened();
+    feed(
+        &mut engine,
+        &[line_at(
+            "12:00:06",
+            "INFO",
+            "[SCENE] Set Source [The Riverbank]",
+        )],
+        true,
+    );
+    assert!(!engine.relog_window_open());
+    assert!(engine.new_character_open());
+    assert_eq!(engine.take_character_notes(), started_over_corisande());
+    assert_eq!(engine.new_character_json().unwrap()["events"], 2);
+
+    // A level-up: the entry takes effect, then the level-up names it, and
+    // the released pin moves to it.
+    let mut engine = opened();
+    feed(
+        &mut engine,
+        &[line_at(
+            "12:00:01",
+            "INFO",
+            &format!(": {ODILE} (Mercenary) is now level 2"),
+        )],
+        true,
+    );
+    assert!(!engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert_eq!(
+        (engine.pinned(), engine.active()),
+        (Some(ODILE), Some(ODILE))
+    );
+    assert!(riverbank_fired(&engine, ODILE));
+    assert!(!riverbank_fired(&engine, CORISANDE));
+    let mut notes = started_over_corisande();
+    notes.push(CharacterNote::Named {
+        name: ODILE.to_string(),
+    });
+    assert_eq!(engine.take_character_notes(), notes);
+
+    // A session marker: the entry takes effect, then the marker parks the
+    // new character and gives the pin back.
+    let mut engine = opened();
+    engine.feed_line(MARKER, true);
+    assert!(!engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.pinned(), Some(CORISANDE));
+    let record = engine.new_character_json().expect("parked");
+    assert_eq!(
+        (record["open"].as_bool(), record["events"].as_u64()),
+        (Some(false), Some(1))
+    );
+    let mut notes = started_over_corisande();
+    notes.push(CharacterNote::Parked {
+        restored_pin: Some(CORISANDE.to_string()),
+    });
+    assert_eq!(engine.take_character_notes(), notes);
+}
+
+#[test]
+fn relog_window_events_count_refusals_once() {
+    // A points line held before the entry (no character yet this session)
+    // and one in the window, both with the area unknown: fixture-crowbell's
+    // area-tied signal is refused for each, once they reach a character.
+    let setup = || {
+        let mut engine = with_corisande(false);
+        feed(
+            &mut engine,
+            &[MARKER.to_string(), line_at("11:59:30", "INFO", POINTS)],
+            true,
+        );
+        assert_eq!(engine.held_count(), 1);
+        feed(
+            &mut engine,
+            &[riverbank_entry_at("12:00:00", RIVERBANK_SEED)],
+            true,
+        );
+        engine.seed_area(None);
+        feed(&mut engine, &[line_at("12:00:01", "INFO", POINTS)], true);
+        assert_eq!(engine.refused_count(), 0, "given to no one yet");
+        engine
+    };
+    let twice = vec![
+        "fixture-crowbell".to_string(),
+        "fixture-crowbell".to_string(),
+    ];
+
+    // Decided as a relog: counted for Corisande, once each.
+    let mut engine = setup();
+    feed(&mut engine, &[character_line("12:00:02", CORISANDE)], true);
+    assert_eq!(engine.current(), Some(CORISANDE));
+    assert_eq!(engine.held_count(), 0);
+    assert_eq!(engine.refused_count(), 2);
+    assert_eq!(engine.take_refused(), twice);
+    engine.expire_relog_window(at("12:00:30"));
+    assert_eq!(engine.refused_count(), 2);
+    assert!(engine.refused_quests().is_empty());
+
+    // Decided as a new character: counted for it, once each.
+    let mut engine = setup();
+    expire(&mut engine);
+    assert!(engine.new_character_open());
+    assert_eq!(engine.held_count(), 0);
+    assert_eq!(engine.refused_count(), 2);
+    assert_eq!(engine.take_refused(), twice);
+    expire(&mut engine);
+    feed(&mut engine, &[character_line("12:00:07", CORISANDE)], true);
+    assert_eq!(engine.refused_count(), 2);
+    assert!(engine.refused_quests().is_empty());
 }
 
 #[test]
