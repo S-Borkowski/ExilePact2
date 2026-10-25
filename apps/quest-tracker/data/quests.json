@@ -1217,6 +1217,12 @@
           "title": "Fight Beira of the Rotten Pack",
           "text": "",
           "signals": [{"kind": "npc", "speaker": "Beira of the Rotten Pack", "area": "G1_2"}]
+        },
+        {
+          "id": "use",
+          "title": "Use the item it dropped",
+          "text": "Beira leaves an item behind when she dies. Use it: the Cold Resistance is granted then, not at the kill.",
+          "signals": []
         }
       ],
       "unlock": [],
@@ -1229,7 +1235,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line, counted in Clearfell five times and once in Mud Burrow. Listed in poe2db's community table of permanent rewards, not as a quest page."
+      "notes": "Done on the reward line, counted in Clearfell five times and once in Mud Burrow. Listed in poe2db's community table of permanent rewards, not as a quest page. The last step exists because the reward line comes only once the item Beira dropped is used (the owner's observation at Live 1, about 8 minutes after the kill); the log records nothing of that use, so the step has no signal and the reward line finishes the quest. poe2db does not name the item."
     },
     {
       "id": "the-crowbell",
@@ -2848,6 +2854,12 @@
           "title": "Fight Blackjaw, the Remnant",
           "text": "",
           "signals": [{"kind": "npc", "speaker": "BlackJaw", "area": "G3_6_1"}]
+        },
+        {
+          "id": "use",
+          "title": "Use the item it dropped",
+          "text": "Blackjaw leaves an item behind when he dies. Use it: the Fire Resistance is granted then, not at the kill.",
+          "signals": []
         }
       ],
       "unlock": [{"kind": "area", "code": "G3_1"}],
@@ -2857,7 +2869,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in Jiquani's Machinarium. Listed in poe2db's community table of permanent rewards, not as a quest page."
+      "notes": "Done on the reward line in Jiquani's Machinarium. Listed in poe2db's community table of permanent rewards, not as a quest page. The last step exists because the reward line follows BlackJaw's last line by 5 to 21 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest. poe2db does not name the item."
     },
     {
       "id": "sacrificial-heart",
@@ -5924,6 +5936,12 @@
           "title": "Fight Lythara, the Wayward Spear",
           "text": "",
           "signals": [{"kind": "npc", "speaker": "Lythara, The Wayward Spear", "area": "P3_2"}]
+        },
+        {
+          "id": "use",
+          "title": "Use the item it dropped",
+          "text": "Lythara leaves an item behind when she dies. Use it: the Spirit is granted then, not at the kill.",
+          "signals": []
         }
       ],
       "unlock": [{"kind": "area", "code": "P3_2"}],
@@ -5933,7 +5951,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page."
+      "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page. The last step exists because the reward line follows Lythara's last line by 10 to 15 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest. poe2db does not name the item."
     }
   ]
 }

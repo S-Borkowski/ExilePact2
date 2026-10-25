@@ -238,6 +238,45 @@ own NPCs; chat, client lines and other players are left out.
     Treacherous Ground and Finding the Forge have nothing after them and stay
     ticks.
 
+### Rewards after a boss kill
+
+How long after a boss's last voiced line its reward line comes, measured
+2026-10-25 over the owner's whole log, per own character, from the boss's
+last line in the area to the `has received` line:
+
+| Quest | Gaps (measured) |
+|---|---|
+| Beira of the Rotten Pack | 7, 8, 9, 19 and 36 s in Clearfell (`G1_2`); 134 and 465 s in Mud Burrow (`G1_3`) |
+| Blackjaw, the Remnant | 5 to 21 s |
+| Lythara, the Wayward Spear | 10 to 15 s |
+| The King in the Mists | 7 to 37 s |
+| Ignagduk, the Bog Witch | 14 to 30 s |
+
+- **The reward is not the kill** (measured). No gap is zero: the reward line
+  never comes with the boss's last line, and Beira's comes up to almost
+  eight minutes later and, twice, in the next area. That fits a player action
+  after the kill rather than the kill itself.
+- **Live 1** (the owner's observation, 2026-10-25). Beira's last line was at
+  12:31:50 local time and her reward line at 12:39:35 (465 s); no line in
+  between concerns the quest (the first 100 s hold only chat and window focus
+  lines). The owner saw the reward come
+  when the item Beira dropped was used, not at the kill. The log records
+  nothing of picking the item up or using it.
+- **Blackjaw and Lythara** (inference). Their gaps have the same shape, so the
+  data reads them the same way: the reward follows the use of an item the boss
+  dropped. Not observed in play.
+- **Consequence for the data.** Beira of the Rotten Pack, Blackjaw, the
+  Remnant and Lythara, the Wayward Spear, whose steps ended at the fight and
+  whose `done` is the reward line, get a last step "Use the item it dropped"
+  with no signal: poe2db does not name the item. After the boss's line the
+  row shows the fight as the step reached and the use as the step to do; the
+  reward line still finishes the quest. The King in the Mists (Ominous
+  Altars) and Ignagduk (Tribal Vengeance) already have steps after the fight
+  that lead to the reward, and Abandoned Prison's reward comes from the
+  Goddess of Justice in the prison, not from an item the Prisoner drops
+  (poe2db, Abandoned Prison and The Prisoner pages, fetched 2026-10-25), so
+  those three are unchanged.
+
 ## Character detection
 
 All of this is measured on 2026-10-24 unless labelled otherwise.

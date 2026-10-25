@@ -13,6 +13,11 @@
 //! the log records nothing of a talk in Clearfell Encampment, so a talk step
 //! is either completed by a later signal the log records, labelled
 //! `inferred`, or left to the player's tick.
+//!
+//! The last one pins the boss quests whose reward line comes only once the
+//! player uses the item the boss dropped (research note "Rewards after a
+//! boss kill"): after the fight the row shows that step next, and the reward
+//! line still finishes the quest.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -445,4 +450,85 @@ fn talk_steps_are_inferred_or_ticks() {
         );
         assert_eq!(q.detection, Detection::Auto, "quest {id}");
     }
+}
+
+/// The boss quests whose steps end at the fight and whose `done` is the
+/// reward line, which the log records only after the player uses the item
+/// the boss dropped (measured gaps of 5 s to 8 min after the boss's last
+/// line; Beira's at Live 1, by the owner's observation).
+const USE_ITEM_QUESTS: [&str; 3] = [
+    "beira-of-the-rotten-pack",
+    "blackjaw-the-remnant",
+    "lythara-the-wayward-spear",
+];
+
+/// The invented character of `fixtures/sessions/act1.txt`.
+const ACT1_CHARACTER: &str = "Corisande_Fell";
+
+#[test]
+fn boss_reward_shows_use_step_after_fight() {
+    let data = Arc::new(data());
+    // The shape: a fight step the boss's line moves, then a "Use ..." step no
+    // signal can show, and the reward line as `done`.
+    for id in USE_ITEM_QUESTS {
+        let q = data.quest(id).unwrap_or_else(|| panic!("no quest {id}"));
+        let n = q.steps.len();
+        assert!(n >= 2, "quest {id}: {n} steps");
+        let (fight, last) = (&q.steps[n - 2], &q.steps[n - 1]);
+        assert!(
+            fight.signals.iter().any(|s| matches!(s, Signal::Npc { .. })),
+            "quest {id}: step {} is not the boss's line: {:?}",
+            fight.id,
+            fight.signals
+        );
+        assert!(last.title.starts_with("Use "), "quest {id}: last step {:?}", last.title);
+        assert!(last.signals.is_empty(), "quest {id}: the use step has a signal: {:?}", last.signals);
+        assert!(
+            !q.done.is_empty() && q.done.iter().all(|s| matches!(s, Signal::Reward { .. })),
+            "quest {id}: done is not the reward line: {:?}",
+            q.done
+        );
+        assert!(q.notes.contains("dropped"), "quest {id}: the notes do not say why the step exists");
+        assert_eq!(q.detection, Detection::Auto, "quest {id}");
+    }
+
+    // Beira in the act 1 fixture session, fed through the engine over the
+    // shipped data.
+    let lines = session("act1.txt");
+    let beira = lines
+        .iter()
+        .position(|l| l.contains("] Beira of the Rotten Pack: "))
+        .expect("the session has Beira's line");
+    let reward = lines
+        .iter()
+        .position(|l| l.contains("has received +10% to [Resistances|Cold Resistance]"))
+        .expect("the session has the cold resistance reward");
+    assert!(entry_of(&lines, "G1_2") < beira && beira < reward);
+    let mut engine = Engine::new(Arc::clone(&data));
+    for l in &lines[..=beira] {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(engine.active(), Some(ACT1_CHARACTER));
+
+    // Baseline: the boss's line puts the quest in progress at the fight, and
+    // the step the row shows next is the use of the dropped item.
+    let q = data.quest("beira-of-the-rotten-pack").expect("beira");
+    let state = engine
+        .quest_state(ACT1_CHARACTER, "beira-of-the-rotten-pack")
+        .expect("state");
+    assert_eq!(state.status, Status::InProgress);
+    assert_eq!(state.current_step.as_deref(), Some("fight"));
+    let at = q.steps.iter().position(|s| s.id == "fight").expect("fight");
+    let next = q.steps.get(at + 1).expect("a step after the fight");
+    assert!(next.title.starts_with("Use "), "the step after the fight is {:?}", next.title);
+
+    // The lines between the fight and the reward leave it there.
+    for l in &lines[beira + 1..reward] {
+        engine.feed_line(l, false);
+    }
+    assert_eq!(engine.status(ACT1_CHARACTER, "beira-of-the-rotten-pack"), Some(Status::InProgress));
+
+    // Target: the reward line, which comes once the item is used, finishes it.
+    engine.feed_line(&lines[reward], false);
+    assert_eq!(engine.status(ACT1_CHARACTER, "beira-of-the-rotten-pack"), Some(Status::Done));
 }
