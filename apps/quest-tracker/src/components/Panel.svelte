@@ -4,7 +4,7 @@
   // background at the opacity setting while text and icons stay opaque, a
   // 1 px border that edit mode turns into the 2 px accent.
   import type { Send } from '../bridge';
-  import type { QuestAction, QuestRow as Row, View, Worth } from '../ipc';
+  import type { QuestAction, QuestRow as Row, StatusKind, View, Worth } from '../ipc';
   import { WORTH_LABEL } from '../labels';
   import ActSection from './ActSection.svelte';
   import CharacterPicker from './CharacterPicker.svelte';
@@ -33,16 +33,25 @@
   }
 
   const groups = $derived(byWorth(view.next_up));
+
+  // The empty frames whose body already states the condition, and the status
+  // kind the shell sends for it: the line over them would say it twice
+  // (finish review F7). Any other kind there is another problem and shows.
+  const STATED_BY_BODY: Partial<Record<View['frame'], StatusKind>> = {
+    'empty-no-log': 'error',
+    'empty-waiting': 'info',
+  };
+  const status = $derived(view.status && STATED_BY_BODY[view.frame] === view.status.kind ? null : view.status);
 </script>
 
 <div class="panel-shadow">
   <div class="panel cut" class:edit>
     <Header {view} {send} />
-    {#if view.status}
-      {@const icon = STATUS_ICON[view.status.kind]}
-      <p class="status-line" data-kind={view.status.kind}>
+    {#if status}
+      {@const icon = STATUS_ICON[status.kind]}
+      <p class="status-line" role="status" data-kind={status.kind}>
         {#if icon}<Icon id={icon} size="14px" />{/if}
-        <span>{view.status.text}</span>
+        <span>{status.text}</span>
       </p>
     {/if}
     <div class="body">

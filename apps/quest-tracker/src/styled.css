@@ -181,13 +181,15 @@
 /* A key name, as on a keycap: "Press [Ctrl+Alt+Q]". */
 .keycap {
   display: inline-block;
-  padding: 0 6px;
+  /* On the text's middle, no taller than its line (finish review F8). */
+  vertical-align: middle;
+  padding: 1px 6px;
   border: var(--border-width) solid var(--color-panel-border);
   background: var(--color-panel-sunken);
   color: var(--color-text-primary);
   font-size: var(--size-caption);
   font-weight: var(--font-weight-title);
-  line-height: var(--line-caption);
+  line-height: 14px;
   white-space: nowrap;
 }
 

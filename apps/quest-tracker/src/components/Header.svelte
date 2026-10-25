@@ -3,7 +3,8 @@
   // the view in use, with no control at all. Edit mode: the accent-tinted bar
   // with the EDIT chip, the character name that opens the picker, the view
   // switch, and the collapse and settings buttons. With no character the name
-  // reads "Quest tracker", muted, with no picker and no switch.
+  // reads "Quest tracker", muted, with no picker and no switch. The name is
+  // the panel's h1 in every variant, styled as before.
   import type { Send } from '../bridge';
   import type { View } from '../ipc';
   import Icon from './Icon.svelte';
@@ -21,18 +22,20 @@
   {#if edit}
     <span class="chip"><Icon id="ui-edit" size="12px" /><span class="mode-tag">Edit</span></span>
     {#if character}
-      <button
-        type="button"
-        class="who"
-        title="Characters"
-        aria-label={`${character.name}: choose the character`}
-        onclick={() => send('open_frame', { frame: 'character-picker' })}
-      >
-        <span class="name">{character.name}</span>
-        <Icon id="ui-chevron-down" size="12px" />
-      </button>
+      <h1 class="title">
+        <button
+          type="button"
+          class="who"
+          title="Characters"
+          aria-label={`${character.name}: choose the character`}
+          onclick={() => send('open_frame', { frame: 'character-picker' })}
+        >
+          <span class="name">{character.name}</span>
+          <Icon id="ui-chevron-down" size="12px" />
+        </button>
+      </h1>
     {:else}
-      <span class="name none">Quest tracker</span>
+      <h1 class="name none">Quest tracker</h1>
     {/if}
     <span class="spacer"></span>
     {#if character}
@@ -50,11 +53,11 @@
   {:else}
     <span class="mark"><Icon id="ui-character" size="16px" /></span>
     {#if character}
-      <span class="name">{character.name}</span>
+      <h1 class="name">{character.name}</h1>
       <span class="meta">{character.class} {character.level}{character.pinned ? ' · pinned' : ''}</span>
       <span class="kind">{kind}</span>
     {:else}
-      <span class="name none">Quest tracker</span>
+      <h1 class="name none">Quest tracker</h1>
     {/if}
   {/if}
 </header>
@@ -81,8 +84,17 @@
     color: var(--color-text-secondary);
   }
 
+  /* The h1 around the picker button: no look of its own. */
+  .title {
+    display: flex;
+    min-width: 0;
+    margin: 0;
+    font: inherit;
+  }
+
   .name {
     min-width: 0;
+    margin: 0;
     overflow: hidden;
     color: var(--color-text-primary);
     font-size: var(--size-title);
@@ -94,6 +106,11 @@
 
   .name.none {
     color: var(--color-text-muted);
+  }
+
+  /* Muted is 4.3:1 on the edit tint, under AA for 16 px text (finish review F5). */
+  .header.edit .name.none {
+    color: var(--color-text-secondary);
   }
 
   .meta,
@@ -140,6 +157,8 @@
     gap: var(--space-unit);
     min-width: 0;
     max-width: 104px;
+    /* A 24 px target (finish review F14); transparent, so it looks the same. */
+    min-height: 24px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -165,14 +184,22 @@
   .switch {
     display: flex;
     flex: none;
+    isolation: isolate;
     padding: 1px;
     border: var(--border-width) solid var(--color-panel-border);
     background: var(--color-panel-sunken);
   }
 
+  /*
+   * Each button is a 24 px target (finish review F14) that still looks 20 px
+   * high: 2 px of padding above and below, taken back by a negative margin so
+   * the switch keeps its size, and the pressed face drawn 2 px in by ::before.
+   */
   .switch button {
-    height: 20px;
-    padding: 0 var(--space-section-gap);
+    position: relative;
+    min-height: 24px;
+    margin: -2px 0;
+    padding: 2px var(--space-section-gap);
     border: 0;
     background: transparent;
     color: var(--color-text-muted);
@@ -183,9 +210,16 @@
   }
 
   .switch button[aria-pressed='true'] {
+    color: var(--color-text-primary);
+  }
+
+  .switch button[aria-pressed='true']::before {
+    position: absolute;
+    z-index: -1;
+    inset: 2px 0;
     background: var(--color-panel-raised);
     box-shadow: inset 0 0 0 var(--border-width) var(--color-panel-border);
-    color: var(--color-text-primary);
+    content: '';
   }
 
   .switch button:hover,
