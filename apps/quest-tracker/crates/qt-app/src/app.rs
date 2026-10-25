@@ -100,14 +100,39 @@ pub trait Window: Send + Sync + 'static {
 
 /// Whether the overlay is shown (Context "Live 2 fixes (owner scope)"):
 /// always in edit mode; in play mode only while the window in front is the
-/// game's (`game`, the pid of the newest log line's header) or the overlay's
-/// own (`own`). While the game's pid or the window in front is unknown it is
+/// game's (`game`, the pid of the newest log line's header, `None` while it
+/// is not trusted: [`UNCONFIRMED_PID_GRACE_MS`]) or the overlay's own
+/// (`own`). While the game's pid or the window in front is unknown it is
 /// shown (fail open), so a log without headers never hides the overlay.
 pub fn overlay_shown(mode: Mode, game: Option<u32>, foreground: Option<u32>, own: u32) -> bool {
     match (mode, game, foreground) {
         (Mode::Edit, _, _) | (_, None, _) | (_, _, None) => true,
         (Mode::Play, Some(game), Some(front)) => front == game || front == own,
     }
+}
+
+/// How long a game pid read only from catch-up or the seed may hide the
+/// overlay before it is confirmed. A live line with that header, or that
+/// pid's window in front, confirms it. A log the running game does not write
+/// to (an old install's `Client.txt`, a wrong `log_path`) gives a pid no
+/// running game has, and no live line ever replaces it: without this bound
+/// play mode would hide the overlay over the real game for the whole session.
+/// After it, that pid is not used to hide (fail open) until it is confirmed.
+pub const UNCONFIRMED_PID_GRACE_MS: u64 = 10_000;
+
+/// How far the game pid in [`State::game_pid`] is trusted by the visibility
+/// rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PidTrust {
+    /// Read from a live line, or its window was seen in front: the running
+    /// game's.
+    Confirmed,
+    /// Read only from catch-up or the seed, at this [`Clock`] reading: used
+    /// for [`UNCONFIRMED_PID_GRACE_MS`].
+    Unconfirmed { since_ms: u64 },
+    /// Not confirmed within the grace: not used to hide the overlay, until a
+    /// live line or its window in front confirms it.
+    Stale,
 }
 
 /// What the diagnostic log says when the overlay is hidden and shown again.
@@ -121,8 +146,10 @@ pub const SHOWN_LINE: &str = "visibility: shown";
 /// compares with changes, and where it was read (`from`): a live line, a
 /// catch-up line, or the log before the tailer's start. A pid read only from
 /// catch-up or the seed may be a stale log's, which no running game has: the
-/// line lets a report tell that apart from another window really in front.
-/// The pid is the user's own game client's, never another program's.
+/// line lets a report tell that apart from another window really in front,
+/// and such a pid hides the overlay only within [`UNCONFIRMED_PID_GRACE_MS`]
+/// unless it is confirmed. The pid is the user's own game client's, never
+/// another program's.
 fn game_pid_line(pid: u32, from: &str) -> String {
     format!("game pid: {pid} (from {from})")
 }
@@ -295,6 +322,8 @@ struct State {
     /// (live, catch-up, or read back before the tailer's start); `None`
     /// until one is seen. Each change is logged ([`game_pid_line`]).
     game_pid: Option<u32>,
+    /// Whether [`State::game_pid`] may hide the overlay ([`PidTrust`]).
+    pid_trust: PidTrust,
     /// Whether the window is shown, as last applied (it is created shown).
     shown: bool,
     /// While a relog window is open, the position at the start of the line
@@ -619,6 +648,7 @@ impl App {
             scale_monitor: None,
             log_clock: None,
             game_pid: None,
+            pid_trust: PidTrust::Stale,
             shown: true,
             relog_entry: None,
         };
@@ -942,7 +972,9 @@ impl App {
                         });
                     }
                     // The game's pid: every line with a client header,
-                    // whether or not it gives an event.
+                    // whether or not it gives an event. A live line's is the
+                    // running game's; a catch-up line's is trusted only for
+                    // a while ([`PidTrust`]).
                     if let Some(pid) = client_pid(&line.text) {
                         if st.game_pid != Some(pid) {
                             pid_from = if live {
@@ -950,6 +982,14 @@ impl App {
                             } else {
                                 "a catch-up line's header"
                             };
+                            if !live {
+                                st.pid_trust = PidTrust::Unconfirmed {
+                                    since_ms: self.clock.now_ms(),
+                                };
+                            }
+                        }
+                        if live {
+                            st.pid_trust = PidTrust::Confirmed;
                         }
                         st.game_pid = Some(pid);
                     }
@@ -1064,7 +1104,10 @@ impl App {
     /// the pid of the window in front, and hides the overlay unless that is
     /// the game or the overlay itself. Each change is applied and logged
     /// once ([`HIDDEN_LINE`], [`SHOWN_LINE`]); showing never activates the
-    /// window, so the game keeps focus.
+    /// window, so the game keeps focus. A game pid read only from catch-up
+    /// or the seed is confirmed when its window is in front, and stops
+    /// hiding the overlay when it is not confirmed within
+    /// [`UNCONFIRMED_PID_GRACE_MS`]; both are logged once.
     pub fn follow_foreground(&self) {
         let (mode, game) = {
             let st = self.lock();
@@ -1076,13 +1119,36 @@ impl App {
         } else {
             None
         };
-        let shown = overlay_shown(mode, game, front, std::process::id());
+        let now = self.clock.now_ms();
         let mut st = self.lock();
-        if st.shown == shown {
-            return;
-        }
         // The decision stands only for the state it was made on.
         if st.ui.mode != mode || st.game_pid != game {
+            return;
+        }
+        if let Some(pid) = game {
+            match st.pid_trust {
+                PidTrust::Confirmed => {}
+                _ if front == Some(pid) => {
+                    st.pid_trust = PidTrust::Confirmed;
+                    self.diag(&format!("game pid: {pid} confirmed (its window is in front)"));
+                }
+                PidTrust::Unconfirmed { since_ms }
+                    if now.saturating_sub(since_ms) >= UNCONFIRMED_PID_GRACE_MS =>
+                {
+                    st.pid_trust = PidTrust::Stale;
+                    self.diag(&format!(
+                        "game pid: {pid} not used to hide the overlay (no live line and no \
+                         window of it in front for {} s: the log may be one the running game \
+                         does not write to)",
+                        UNCONFIRMED_PID_GRACE_MS / 1000
+                    ));
+                }
+                _ => {}
+            }
+        }
+        let used = if st.pid_trust == PidTrust::Stale { None } else { game };
+        let shown = overlay_shown(mode, used, front, std::process::id());
+        if st.shown == shown {
             return;
         }
         st.shown = shown;
@@ -1631,6 +1697,9 @@ impl App {
                 if let Some(pid) = found.pid {
                     if st.game_pid != Some(pid) {
                         self.diag(&game_pid_line(pid, "the log before the tailer's start"));
+                        st.pid_trust = PidTrust::Unconfirmed {
+                            since_ms: self.clock.now_ms(),
+                        };
                     }
                     st.game_pid = Some(pid);
                 }
@@ -1830,6 +1899,8 @@ mod tests {
     struct FakeWindow {
         calls: Arc<Mutex<Vec<String>>>,
         hotkey_fails: bool,
+        /// The pid of the window in front.
+        front: Arc<Mutex<Option<u32>>>,
     }
 
     impl Window for FakeWindow {
@@ -1858,11 +1929,19 @@ mod tests {
             Ok(None)
         }
         fn foreground_pid(&self) -> Option<u32> {
-            None
+            *self.front.lock().unwrap()
         }
         fn set_visible(&self, shown: bool) -> Result<(), String> {
             self.calls.lock().unwrap().push(format!("visible {shown}"));
             Ok(())
+        }
+    }
+
+    struct ManualClock(Arc<AtomicU64>);
+
+    impl Clock for ManualClock {
+        fn now_ms(&self) -> u64 {
+            self.0.load(Ordering::SeqCst)
         }
     }
 
@@ -1889,6 +1968,7 @@ mod tests {
             window: Box::new(FakeWindow {
                 calls: Arc::clone(&calls),
                 hotkey_fails,
+                front: Arc::default(),
             }),
             clock: Box::new(ZeroClock),
         });
@@ -1987,6 +2067,7 @@ mod tests {
             window: Box::new(FakeWindow {
                 calls: Arc::new(Mutex::new(Vec::new())),
                 hotkey_fails: false,
+                front: Arc::default(),
             }),
             clock: Box::new(ZeroClock),
         });
@@ -2041,6 +2122,111 @@ mod tests {
         assert!(found[1].ends_with("game pid: 2244 (from a live line's header)"), "{found:?}");
         // The shell's visibility filters stay clean: no pid line reads as one.
         assert!(found.iter().all(|l| !l.contains("visibility")), "{found:?}");
+    }
+
+    #[test]
+    fn stale_log_pid_stops_hiding_the_overlay() {
+        // A followed log the running game does not write to: its newest
+        // header is an old client's pid (15660), while the real game runs
+        // as 7120 and writes elsewhere, so no live line ever comes.
+        const STALE: u32 = 15_660;
+        const REAL_GAME: u32 = 7_120;
+        const OTHER: u32 = 9_999;
+        let dir = tempfile::tempdir().expect("temp dir");
+        let store = dir.path().join("store");
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let front = Arc::new(Mutex::new(None));
+        let clock = Arc::new(AtomicU64::new(100_000));
+        let app = App::new(AppConfig {
+            options: Options::default(),
+            options_error: None,
+            store: Store::open(store.clone()).map_err(|e| e.to_string()),
+            data: None,
+            candidates: Vec::new(),
+            poll_interval: Duration::from_millis(20),
+            emitter: Box::new(NoEmitter),
+            window: Box::new(FakeWindow {
+                calls: Arc::clone(&calls),
+                hotkey_fails: false,
+                front: Arc::clone(&front),
+            }),
+            clock: Box::new(ManualClock(Arc::clone(&clock))),
+        });
+        let fingerprint = qt_tailer::Fingerprint::of(b"fixture log");
+        let line = |pid: u32, catch_up: bool| -> Vec<TailEvent> {
+            vec![TailEvent::Line(qt_tailer::Line {
+                text: format!(
+                    "2026/03/10 19:00:01 1 7e2c0010 [INFO Client {pid}] Connecting to instance server"
+                ),
+                end_offset: 1,
+                catch_up,
+                fingerprint,
+            })]
+        };
+        let in_front = |pid: u32| {
+            *front.lock().unwrap() = Some(pid);
+            app.follow_foreground();
+        };
+        let visible = || -> Vec<String> {
+            calls.lock().unwrap().iter().filter(|c| c.starts_with("visible")).cloned().collect()
+        };
+        let log = || std::fs::read_to_string(store.join("overlay.log")).unwrap_or_default();
+
+        app.handle_tail_events(line(STALE, true));
+        // Within the grace the catch-up pid is used: the real game in front
+        // looks like another program, and the overlay is hidden.
+        in_front(REAL_GAME);
+        assert_eq!(visible(), vec!["visible false"]);
+        clock.fetch_add(UNCONFIRMED_PID_GRACE_MS - 1, Ordering::SeqCst);
+        in_front(REAL_GAME);
+        assert_eq!(visible(), vec!["visible false"]);
+        // Target: not confirmed within the grace, the pid stops hiding the
+        // overlay, and the log says why, once.
+        clock.fetch_add(1, Ordering::SeqCst);
+        in_front(REAL_GAME);
+        assert_eq!(visible(), vec!["visible false", "visible true"]);
+        for _ in 0..3 {
+            clock.fetch_add(60_000, Ordering::SeqCst);
+            in_front(REAL_GAME);
+            in_front(OTHER);
+        }
+        assert_eq!(visible().len(), 2, "{:?}", visible());
+        let text = log();
+        assert_eq!(
+            text.matches(&format!("game pid: {STALE} not used to hide the overlay")).count(),
+            1,
+            "{text}"
+        );
+        assert!(!text.contains(&REAL_GAME.to_string()), "{text}");
+
+        // Its window in front confirms a stale pid again: from then on the
+        // rule hides as before, whatever the clock says.
+        in_front(STALE);
+        assert!(log().contains(&format!("game pid: {STALE} confirmed (its window is in front)")));
+        clock.fetch_add(60_000, Ordering::SeqCst);
+        in_front(OTHER);
+        assert_eq!(visible(), vec!["visible false", "visible true", "visible false"]);
+
+        // Negative control: a pid from a live line is the running game's
+        // from the start, and never expires.
+        in_front(STALE);
+        app.handle_tail_events(line(REAL_GAME, false));
+        clock.fetch_add(60_000, Ordering::SeqCst);
+        in_front(OTHER);
+        clock.fetch_add(60_000, Ordering::SeqCst);
+        in_front(OTHER);
+        assert_eq!(
+            visible(),
+            vec!["visible false", "visible true", "visible false", "visible true", "visible false"]
+        );
+        // A catch-up pid that its window confirms within the grace hides
+        // after it too.
+        app.handle_tail_events(line(4_242, true));
+        in_front(4_242);
+        clock.fetch_add(60_000, Ordering::SeqCst);
+        in_front(OTHER);
+        assert_eq!(visible().len(), 7, "{:?}", visible());
+        assert_eq!(visible().last().map(String::as_str), Some("visible false"));
     }
 
     #[test]
