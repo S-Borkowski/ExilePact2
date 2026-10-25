@@ -24,7 +24,9 @@ use qt_app::{App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, Window};
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
-use qt_viewmodel::{Dock, Frame, Mode, RowChange, RowChangeKind, StatusKind, View, ViewKind};
+use qt_viewmodel::{
+    Dock, Frame, Mode, RowChange, RowChangeKind, Scale, StatusKind, View, ViewKind,
+};
 use serde_json::{json, Value};
 
 const OWN: &str = "Corisande_Fell";
@@ -1188,12 +1190,12 @@ fn riverbank_new_character_is_logged() {
         ]
     };
 
-    // Baseline: read as catch-up, the start leaves no live line, but the
+    // Read as catch-up, the start is logged too (launch 7), and the
     // catch-up summary names the new character.
     let h = harness(Setup::default());
     h.app.handle_tail_events(events(&riverbank(), true));
     let diag = h.diag_text();
-    assert!(!diag.contains(NEW), "{diag}");
+    assert_eq!(diag.matches(NEW).count(), 1, "{diag}");
     assert!(
         diag.contains("character a new character (The Riverbank), area G1_1"),
         "{diag}"
@@ -1238,4 +1240,267 @@ fn riverbank_new_character_is_logged() {
         false,
     ));
     assert!(!h.diag_text().contains(NEW), "{}", h.diag_text());
+}
+
+// ---------------------------------------------------------------------------
+// After launch 6: the new character's record across a relaunch, the
+// character lines in catch-up, the Riverbank relog, and what else a
+// relaunch keeps.
+
+const NEW_LINE: &str = "character: a new character (The Riverbank)";
+
+/// A session start at `at` (`HH:MM`) and, 5 s later, a level-1 entry to The
+/// Riverbank instance `seed`.
+fn riverbank_at(at: &str, seed: u64) -> Vec<String> {
+    vec![
+        format!("2026/03/12 {at}:00 ***** LOG FILE OPENING *****"),
+        format!("2026/03/12 {at}:05 6005000 9a1c0001 [DEBUG Client 7120] Generating level 1 area \"G1_1\" with seed {seed}"),
+    ]
+}
+
+/// The character build line the client writes for `name` at `at`
+/// (`HH:MM:SS`).
+fn build_line(at: &str, name: &str) -> String {
+    format!(
+        "2026/03/12 {at} 6006000 9a1c0002 [WARN Client 7120] Character {name} has unknown build of path: None"
+    )
+}
+
+/// Every quest row's id and status in the view, act by act.
+fn rows(v: &View) -> Vec<(String, Status)> {
+    v.acts
+        .iter()
+        .flat_map(|a| a.quests.iter().map(|q| (q.id.clone(), q.status)))
+        .collect()
+}
+
+#[test]
+fn provisional_character_survives_relaunch() {
+    // First run: a level-1 entry to The Riverbank and no level-up yet.
+    let h = harness(log_setup(text(&riverbank_at("10:00", 31)), true));
+    // Baseline: nothing saved before the run.
+    assert!(h.stored("new-character.json").is_none());
+    h.app.start();
+    h.wait_diag(&["catch-up:", "area G1_1"]);
+    let before = h.app.get_view();
+    let c = before.character.clone().expect("the new character");
+    assert!(c.provisional && c.name.is_empty(), "{c:?}");
+    let before_rows = rows(&before);
+    assert!(
+        before_rows.contains(&("fixture-riverbank".to_string(), Status::InProgress)),
+        "{before_rows:?}"
+    );
+
+    // Closed with no level-up: the record is saved, open, with its seed.
+    let setup = || Setup {
+        options: Options {
+            log: Some(PathBuf::from("Client.txt")),
+            ..Options::default()
+        },
+        ..Setup::default()
+    };
+    let h = h.rerun(setup());
+    let record = h.stored("new-character.json").expect("new-character.json");
+    assert_eq!((record["open"].clone(), record["seed"].clone()), (json!(true), json!(31)));
+    // It never names a character: the roster does not hold it.
+    assert_eq!(h.stored("characters.json"), Some(json!({})));
+
+    // Second run over the same store and log, before any line is read: the
+    // view shows the provisional character with the same rows.
+    let after = h.app.get_view();
+    let c = after.character.clone().expect("the new character after relaunch");
+    assert!(c.provisional && c.name.is_empty(), "{c:?}");
+    assert_eq!(rows(&after), before_rows);
+    assert!(after.characters.is_empty(), "{:?}", after.characters);
+    h.app.start();
+    h.wait_diag(&["character: the new character reopened from its record"]);
+
+    // Negative control: a level-up names it, and the record is cleared.
+    append(
+        &h.root.join("Client.txt"),
+        &[format!(
+            "2026/03/12 10:01:00 6060000 9a1c0003 [INFO Client 7120] : {OWN} (Witch) is now level 2"
+        )],
+    );
+    h.views.wait_for("the named character", |v| {
+        v.character
+            .as_ref()
+            .is_some_and(|c| c.name == OWN && !c.provisional)
+    });
+    h.wait_diag(&[&format!("character: the new character named {OWN} by a level-up")]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    assert!(h.stored("new-character.json").is_none());
+    assert!(!h.store_dir().join("new-character.json").exists());
+    // The named character is an ordinary saved one: in the roster, with its
+    // progress, and in the picker after a relaunch.
+    assert_eq!(h.stored("characters.json").expect("roster")[OWN]["own"], true);
+    let h = harness_in(h._dir, setup());
+    let v = h.app.get_view();
+    assert!(v.characters.iter().any(|c| c.name == OWN && !c.provisional), "{:?}", v.characters);
+    assert!(v.character.as_ref().is_none_or(|c| !c.provisional), "{:?}", v.character);
+
+    // A record that cannot be read is set aside and told in the status line.
+    let dir = tempfile::tempdir().expect("temp dir");
+    fs::create_dir_all(dir.path().join("store")).unwrap();
+    fs::write(dir.path().join("store/new-character.json"), "{ not json").unwrap();
+    let h = harness_in(dir, Setup::default());
+    let status = h.app.get_view().status.expect("a status line");
+    assert_eq!(status.kind, StatusKind::Warn, "{status:?}");
+    assert!(status.text.contains("could not be read"), "{status:?}");
+    assert!(h.app.get_view().character.is_none());
+    assert!(!h.store_dir().join("new-character.json").exists());
+}
+
+#[test]
+fn catch_up_logs_new_character_and_released_pin() {
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), true));
+    h.app.pin_character(Some(OWN)).unwrap();
+    let base = h.diag_text().matches(NEW_LINE).count();
+
+    // A later Riverbank start read as catch-up: the start and the pin it
+    // released are logged, as they are for live lines.
+    h.app.handle_tail_events(events(&riverbank_at("10:00", 31), true));
+    let diag = h.diag_text();
+    assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "{diag}");
+    let released = format!("character: pin on {OWN} released for the new character");
+    assert_eq!(diag.matches(&released).count(), 1, "{diag}");
+    assert!(h.app.get_view().character.unwrap().provisional);
+
+    // A session marker in catch-up parks it and gives the pin back.
+    h.app.handle_tail_events(events(
+        &["2026/03/12 11:00:00 ***** LOG FILE OPENING *****".to_string()],
+        true,
+    ));
+    let diag = h.diag_text();
+    assert!(
+        diag.contains(&format!(
+            "character: the new character parked at a session start, pin on {OWN} restored"
+        )),
+        "{diag}"
+    );
+    let c = h.app.get_view().character.expect("the pinned character");
+    assert_eq!((c.name.as_str(), c.pinned), (OWN, true));
+
+    // The same instance again, in catch-up: resumed, the pin released again.
+    h.app.handle_tail_events(events(&riverbank_at("11:01", 31)[1..], true));
+    let diag = h.diag_text();
+    assert_eq!(
+        diag.matches("character: the new character resumed (The Riverbank)").count(),
+        1,
+        "{diag}"
+    );
+    assert_eq!(diag.matches(&released).count(), 2, "{diag}");
+    // Resuming is not a second start.
+    assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "{diag}");
+
+    // Negative control: a Riverbank entry at a higher area level, in
+    // catch-up, writes no character line.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(
+        &["2026/03/12 12:00:05 7005000 9a1c0004 [DEBUG Client 7120] Generating level 40 area \"G1_1\" with seed 33".to_string()],
+        true,
+    ));
+    assert!(!h.diag_text().contains("character:"), "{}", h.diag_text());
+}
+
+#[test]
+fn riverbank_relog_is_logged() {
+    let relogged = format!("character: {OWN} relogged in The Riverbank, kept");
+    for catch_up in [false, true] {
+        let h = harness(Setup::default());
+        h.app.handle_tail_events(events(&own_character_lines(), true));
+        h.app.pin_character(Some(OWN)).unwrap();
+
+        // A relog inside The Riverbank: the entry, then the build line
+        // naming the stored character 1 s later. The pin is kept.
+        let mut lines = riverbank_at("10:00", 31);
+        lines.push(build_line("10:00:06", OWN));
+        h.app.handle_tail_events(events(&lines, catch_up));
+        let diag = h.diag_text();
+        assert_eq!(diag.matches(&relogged).count(), 1, "catch-up {catch_up}:\n{diag}");
+        let c = h.app.get_view().character.expect("the kept character");
+        assert_eq!(
+            (c.name.as_str(), c.pinned, c.provisional),
+            (OWN, true, false),
+            "catch-up {catch_up}"
+        );
+        assert!(h.app.get_view().character.is_some());
+
+        // Negative control: a build line with a name not stored leaves the
+        // new character open and unnamed, logs no relog, and never writes
+        // the name.
+        let mut lines = riverbank_at("11:00", 32);
+        lines.push(build_line("11:00:06", "Odile_Marsh"));
+        h.app.handle_tail_events(events(&lines, catch_up));
+        let diag = h.diag_text();
+        assert_eq!(diag.matches(&relogged).count(), 1, "catch-up {catch_up}:\n{diag}");
+        assert!(!diag.contains("Odile_Marsh"), "{diag}");
+        assert!(h.app.get_view().character.unwrap().provisional);
+
+        // A build line naming the stored character 10 s after the entry is
+        // past the window: no relog either.
+        let mut lines = riverbank_at("12:00", 33);
+        lines.push(build_line("12:00:15", OWN));
+        h.app.handle_tail_events(events(&lines, catch_up));
+        assert_eq!(h.diag_text().matches(&relogged).count(), 1);
+        assert!(h.app.get_view().character.unwrap().provisional);
+    }
+}
+
+#[test]
+fn ticks_skips_and_settings_survive_relaunch() {
+    const CANDLES: &str = "fixture-candles";
+    const CARAVAN: &str = "fixture-caravan";
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), true));
+    // Pinned, so the character is current after the relaunch before any log
+    // line names it (the active character is not saved; the pin is).
+    h.app.pin_character(Some(OWN)).unwrap();
+    // Baseline: defaults, nothing ticked or skipped.
+    let v = h.app.get_view();
+    assert_eq!(
+        (v.settings.dock, v.settings.scale, v.settings.show_skipped, v.settings.only_worth_it),
+        (Dock::Right, Scale::Auto, false, false)
+    );
+    let step = |h: &Harness| {
+        h.app.open_detail(Some(CANDLES.to_string())).unwrap().detail.unwrap().steps[0].ticked
+    };
+    let status = |h: &Harness, id: &str| {
+        h.app.open_detail(Some(id.to_string())).unwrap().detail.unwrap().row.status
+    };
+    assert!(!step(&h));
+    assert_ne!(status(&h, CARAVAN), Status::Skipped);
+
+    h.app.tick_step(CANDLES, "light-candles", true).unwrap();
+    h.app.quest_action(CARAVAN, QuestAction::Skip).unwrap();
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.app
+        .update_settings(&json!({
+            "opacity": 0.5,
+            "dock": "left",
+            "scale": "2",
+            "show_skipped": true,
+            "only_worth_it": true
+        }))
+        .unwrap();
+    // Dragged after the dock change, which drops a dragged position.
+    h.app.window_moved(10, 20);
+    assert!(step(&h));
+
+    let h = h.rerun(Setup::default());
+    let v = h.app.get_view();
+    assert_eq!(v.character.as_ref().map(|c| c.name.as_str()), Some(OWN));
+    assert_eq!(v.settings.opacity, 0.5);
+    assert_eq!(
+        (v.settings.dock, v.settings.scale, v.settings.show_skipped, v.settings.only_worth_it),
+        (Dock::Left, Scale::X2, true, true)
+    );
+    assert!(step(&h), "the tick survived");
+    assert_eq!(status(&h, CARAVAN), Status::Skipped);
+    h.app.start();
+    let at = format!("place {:?}", Placement::At { x: 10, y: 20 });
+    assert!(h.window.calls().contains(&at), "{:?}", h.window.calls());
+    assert!(h.window.calls().contains(&"scale 2".to_string()), "{:?}", h.window.calls());
+    assert!(h.app.shutdown(Duration::from_secs(2)));
 }

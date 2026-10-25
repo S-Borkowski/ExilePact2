@@ -242,6 +242,10 @@ struct State {
     saved_position: Option<Value>,
     saved_roster: Option<Value>,
     saved_chars: BTreeMap<String, Value>,
+    /// What `new-character.json` holds, as last read or written: `Some(None)`
+    /// is no file, `None` unknown (a failed read or write), so the next save
+    /// writes or clears it.
+    saved_new_char: Option<Option<Value>>,
     last_view: Option<View>,
     /// The monitor the applied `auto` zoom was worked out from (`None`
     /// when there was none), so a move re-applies only a zoom that differs.
@@ -397,6 +401,10 @@ impl App {
         let mut position = None;
         // Which files exist, so a first run writes its settings and roster.
         let (mut had_settings, mut had_roster) = (false, false);
+        // What `new-character.json` holds (`Some(None)`: no record), and the
+        // diagnostic line its load leaves.
+        let mut saved_new_char: Option<Option<Value>> = None;
+        let mut new_char_diag: Option<String> = None;
         if let Some(s) = &store {
             if let Some(v) = load(&mut store_note, "the settings", s.load_settings()) {
                 had_settings = true;
@@ -435,6 +443,50 @@ impl App {
                     let _ = engine.pin(Some(&p));
                 }
             }
+            // The unnamed new character's record, after the characters and
+            // the pin: an open one reopens, so a relaunch mid-session keeps
+            // showing it, and takes the pin as the one its start released.
+            match s.load_new_character() {
+                Ok(l) => {
+                    if let Some(q) = &l.quarantined {
+                        store_note = Some(StatusLine::warn(q.status_text()));
+                        new_char_diag = Some(
+                            "character: the new character's record could not be read and was set aside"
+                                .to_string(),
+                        );
+                    }
+                    saved_new_char = Some(None);
+                    if let Some(v) = l.value {
+                        match engine.load_new_character(&v) {
+                            Ok(()) => {
+                                new_char_diag = Some(if engine.new_character_open() {
+                                    "character: the new character reopened from its record"
+                                        .to_string()
+                                } else {
+                                    "character: a parked new character loaded from its record"
+                                        .to_string()
+                                });
+                                saved_new_char = Some(Some(v));
+                            }
+                            // Left on disk as it is, like a character file
+                            // the engine refuses; a new record replaces it.
+                            Err(e) => {
+                                store_note = Some(StatusLine::warn(format!(
+                                    "The new character's saved record could not be used: {e}"
+                                )));
+                                new_char_diag =
+                                    Some(format!("error: the new character's record: {e}"));
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    store_note = Some(StatusLine::error(format!(
+                        "Cannot read the new character's record: {e}"
+                    )));
+                }
+            }
+            let _ = engine.take_character_notes();
             if let Some(v) = load(&mut store_note, "the log position", s.load_position()) {
                 position = serde_json::from_value::<Position>(v).ok();
             }
@@ -481,6 +533,7 @@ impl App {
             saved_position: None,
             saved_roster: None,
             saved_chars: BTreeMap::new(),
+            saved_new_char,
             last_view: None,
             scale_monitor: None,
         };
@@ -531,6 +584,9 @@ impl App {
         }
         if let Some(e) = &store_error {
             app.diag(&format!("store unavailable: {e}"));
+        }
+        if let Some(line) = &new_char_diag {
+            app.diag(line);
         }
         app
     }
@@ -790,14 +846,10 @@ impl App {
                             }
                         }
                         let before = st.engine.current().map(str::to_string);
-                        let was_new = st.engine.new_character_open();
                         let ts = st.engine.apply(&ev, live);
-                        if live && !was_new && st.engine.new_character_open() {
-                            self.diag(diag::NEW_CHARACTER);
-                            if let Some(pin) = st.engine.new_character_released_pin() {
-                                self.diag(&diag::pin_released(&st.engine, pin));
-                            }
-                        }
+                        // Catch-up as well as live: a pin given up or kept
+                        // while catching up is explained too.
+                        self.log_character_notes(&mut st);
                         for quest_id in st.engine.take_refused() {
                             self.diag(&diag::refused(&quest_id));
                         }
@@ -1201,7 +1253,18 @@ impl App {
         Ok(())
     }
 
+    /// Logs what happened to the new character from The Riverbank since the
+    /// last call, one line per [`qt_engine::CharacterNote`].
+    fn log_character_notes(&self, st: &mut State) {
+        for note in st.engine.take_character_notes() {
+            for line in diag::character_note(&st.engine, &note) {
+                self.diag(&line);
+            }
+        }
+    }
+
     fn engine_changed(&self, st: &mut State, ts: &[Transition]) {
+        self.log_character_notes(st);
         for t in ts {
             self.diag(&diag::transition(t));
         }
@@ -1417,6 +1480,16 @@ impl App {
                 st.saved_roster = Some(roster.clone());
                 writes.push((Write::Roster, roster));
             }
+            // The new character's record: written while there is one,
+            // cleared once the engine has closed it.
+            let record = st.engine.new_character_json();
+            if st.saved_new_char.as_ref() != Some(&record) {
+                st.saved_new_char = Some(record.clone());
+                writes.push(match record {
+                    Some(v) => (Write::NewCharacter, v),
+                    None => (Write::ClearNewCharacter, Value::Null),
+                });
+            }
             if !writes.is_empty() {
                 st.last_save_ms = Some(now);
             }
@@ -1431,6 +1504,8 @@ impl App {
                 Write::Position => store.save_position(value),
                 Write::Roster => store.save_characters(value),
                 Write::Character(name) => store.save_character(name, value),
+                Write::NewCharacter => store.save_new_character(value),
+                Write::ClearNewCharacter => store.clear_new_character(),
             };
             if let Err(e) = r {
                 failed.push((what.clone(), e.to_string()));
@@ -1453,6 +1528,7 @@ impl App {
                     Write::Character(n) => {
                         st.saved_chars.remove(n);
                     }
+                    Write::NewCharacter | Write::ClearNewCharacter => st.saved_new_char = None,
                 }
             }
             st.dirty = true;
@@ -1477,6 +1553,8 @@ enum Write {
     Position,
     Roster,
     Character(String),
+    NewCharacter,
+    ClearNewCharacter,
 }
 
 /// The character a quest command applies to: the pinned one, else the

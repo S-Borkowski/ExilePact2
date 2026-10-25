@@ -10,7 +10,7 @@
 //! be the player's own; one only taken to be by a level-up is "an
 //! unconfirmed character".
 
-use qt_engine::{Engine, LogArea, Ownership, Transition};
+use qt_engine::{CharacterNote, Engine, LogArea, Ownership, Transition};
 use qt_logline::{Event, EventKind};
 use qt_tailer::Reason;
 use qt_viewmodel::RowChange;
@@ -81,6 +81,10 @@ pub fn row_change(c: &RowChange) -> String {
 /// A level-1 entry to The Riverbank started a new, still unnamed character.
 pub const NEW_CHARACTER: &str = "character: a new character (The Riverbank)";
 
+/// A level-1 entry to the instance of The Riverbank a parked new character
+/// was in resumed it.
+pub const NEW_CHARACTER_RESUMED: &str = "character: the new character resumed (The Riverbank)";
+
 /// The new character's start released a pin; the character its level-up
 /// names is pinned in its place.
 pub fn pin_released(engine: &Engine, pinned: &str) -> String {
@@ -88,6 +92,45 @@ pub fn pin_released(engine: &Engine, pinned: &str) -> String {
         "character: pin on {} released for the new character",
         character(engine, Some(pinned))
     )
+}
+
+/// What happened to the new character from The Riverbank, one line each,
+/// for catch-up lines as well as live ones, so a pin given up or kept
+/// during catch-up is explained.
+pub fn character_note(engine: &Engine, note: &CharacterNote) -> Vec<String> {
+    let opened = |line: &str, released_pin: &Option<String>| {
+        let mut lines = vec![line.to_string()];
+        if let Some(pin) = released_pin {
+            lines.push(pin_released(engine, pin));
+        }
+        lines
+    };
+    match note {
+        CharacterNote::Started { released_pin } => opened(NEW_CHARACTER, released_pin),
+        CharacterNote::Resumed { released_pin } => opened(NEW_CHARACTER_RESUMED, released_pin),
+        CharacterNote::Replaced { events } => vec![format!(
+            "character: a parked new character replaced by another instance of The Riverbank, {events} events dropped"
+        )],
+        CharacterNote::Parked { restored_pin } => vec![match restored_pin {
+            Some(pin) => format!(
+                "character: the new character parked at a session start, pin on {} restored",
+                character(engine, Some(pin))
+            ),
+            None => "character: the new character parked at a session start".to_string(),
+        }],
+        CharacterNote::Relogged { name } => vec![format!(
+            "character: {} relogged in The Riverbank, kept",
+            character(engine, Some(name))
+        )],
+        CharacterNote::Named { name } => vec![format!(
+            "character: the new character named {} by a level-up",
+            character(engine, Some(name))
+        )],
+        CharacterNote::Pinned { name } => vec![format!(
+            "character: the new character's progress given to {}, pinned",
+            character(engine, Some(name))
+        )],
+    }
 }
 
 /// The summary of a batch of catch-up lines: how many, the character they
