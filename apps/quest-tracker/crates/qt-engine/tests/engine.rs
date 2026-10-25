@@ -9,7 +9,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use qt_engine::{DataError, Detection, Engine, QuestAction, QuestData, Status, Transition};
+use qt_engine::{
+    area_from_log, DataError, Detection, Engine, LogArea, QuestAction, QuestData, Status,
+    Transition,
+};
 use serde_json::Value;
 
 const CORISANDE: &str = "Corisande_Fell";
@@ -685,4 +688,159 @@ fn validator_rejects_malformed_data() {
 
     // Unparseable text is refused too, without a panic.
     assert!(QuestData::parse("{ not json").is_err());
+}
+
+// -- the area from the log before the start, and a counted refusal ----------
+
+const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
+const COLD_REWARD: &str = ": Corisande_Fell has received +10% to [Resistances|Cold Resistance].";
+
+fn area_line(code: &str) -> String {
+    line(&format!(r#"Generating level 2 area "{code}" with seed 7"#))
+}
+
+#[test]
+fn last_area_before_offset_is_found() {
+    // The last area line wins; chat, NPC and reward lines after it do not
+    // change it, and a marker before it does not either.
+    let before = vec![
+        MARKER.to_string(),
+        area_line("G1_1"),
+        line("Renly: Fixture line: welcome to the encampment."),
+        area_line("G1_2"),
+        line("#Bram_Holloway: anyone selling G1_11 maps"),
+        line(": Odile_Marsh (Mercenary) is now level 3"),
+    ];
+    let found = area_from_log(&before);
+    assert_eq!(found, LogArea::Area("G1_2".into()));
+    assert_eq!(found.code(), Some("G1_2"));
+
+    // Owned strings and string slices are both accepted, oldest first.
+    let slices: Vec<&str> = before.iter().map(String::as_str).collect();
+    assert_eq!(area_from_log(slices), LogArea::Area("G1_2".into()));
+
+    // A line cut at the read window's start is just not recognised.
+    let cut = vec![
+        r#"area "G1_11" with seed 7"#.to_string(),
+        area_line("G1_town"),
+    ];
+    assert_eq!(area_from_log(&cut).code(), Some("G1_town"));
+}
+
+#[test]
+fn last_area_stops_at_session_marker() {
+    // A marker after the last area line: the game restarted, area unknown.
+    let restarted = vec![
+        area_line("G1_2"),
+        line(": Corisande_Fell has been slain."),
+        MARKER.to_string(),
+    ];
+    let found = area_from_log(&restarted);
+    assert_eq!(found, LogArea::MarkerAfter);
+    assert_eq!(found.code(), None);
+
+    // An area line after the marker is the new session's area again.
+    let mut again = restarted.clone();
+    again.push(area_line("G1_11"));
+    assert_eq!(area_from_log(&again), LogArea::Area("G1_11".into()));
+
+    // No area line at all, with or without a marker.
+    let none: Vec<String> = Vec::new();
+    assert_eq!(area_from_log(&none), LogArea::NoAreaLine);
+    assert_eq!(area_from_log(&[MARKER.to_string()]), LogArea::NoAreaLine);
+    assert_eq!(area_from_log(&[line(COLD_REWARD)]).code(), None);
+}
+
+#[test]
+fn seeded_area_lets_area_tied_reward_count() {
+    // Baseline: the tailer starts mid-zone in G1_2 and the engine never saw
+    // the area line, so the area-tied reward is refused.
+    let mut unseeded = Engine::new(data());
+    assert_eq!(unseeded.current_area(), None);
+    feed(&mut unseeded, &[line(COLD_REWARD)], true);
+    assert_ne!(status(&unseeded, CORISANDE, "fixture-beira"), Status::Done);
+
+    // Target: the area read back from the log before the start position.
+    let before = vec![MARKER.to_string(), area_line("G1_town"), area_line("G1_2")];
+    let mut engine = Engine::new(data());
+    let fresh = engine.to_json();
+    engine.seed_area(area_from_log(&before).code());
+
+    // The seed sets the area and nothing else: no character, no evidence,
+    // nothing persisted, no refusal.
+    assert_eq!(engine.current_area(), Some("G1_2"));
+    assert!(engine.characters().is_empty());
+    assert_eq!(engine.to_json(), fresh);
+    assert_eq!(engine.refused_count(), 0);
+
+    let transitions = feed(&mut engine, &[line(COLD_REWARD)], true);
+    assert_eq!(status(&engine, CORISANDE, "fixture-beira"), Status::Done);
+    assert!(
+        transitions
+            .iter()
+            .any(|t| t.quest_id == "fixture-beira" && t.to == Status::Done && t.live),
+        "{transitions:?}"
+    );
+    assert_eq!(engine.refused_count(), 0);
+
+    // A session marker after the seed clears it, as for an area read live.
+    engine.feed_line(MARKER, true);
+    assert_eq!(engine.current_area(), None);
+
+    // Seeding "none" leaves (or makes) the area unknown.
+    let mut engine = Engine::new(data());
+    engine.seed_area(Some("G1_2"));
+    engine.seed_area(area_from_log(&[area_line("G1_2"), MARKER.to_string()]).code());
+    assert_eq!(engine.current_area(), None);
+}
+
+#[test]
+fn unknown_area_refusal_is_counted() {
+    let mut engine = Engine::new(data());
+    assert_eq!(engine.refused_count(), 0);
+    assert!(engine.refused_quests().is_empty());
+
+    // Area unknown: the reward matches fixture-beira's done signal in all
+    // but its area, so it is refused and counted once, with the quest id.
+    feed(&mut engine, &[line(COLD_REWARD)], false);
+    assert_ne!(status(&engine, CORISANDE, "fixture-beira"), Status::Done);
+    assert_eq!(engine.refused_count(), 1);
+    assert_eq!(engine.refused_quests(), ["fixture-beira".to_string()]);
+
+    // A points line with the area unknown is fixture-crowbell's refusal.
+    feed(
+        &mut engine,
+        &[line(": You have received 2 Passive Skill Points.")],
+        false,
+    );
+    assert_eq!(engine.refused_count(), 2);
+    assert_eq!(
+        engine.take_refused(),
+        vec!["fixture-beira".to_string(), "fixture-crowbell".to_string()]
+    );
+    assert!(engine.refused_quests().is_empty(), "taken");
+    assert_eq!(engine.refused_count(), 2, "the count is cumulative");
+
+    // Negative control: in a known, different area the same reward is the
+    // normal refusal and is not counted.
+    feed(&mut engine, &[area_line("G1_11"), line(COLD_REWARD)], false);
+    assert_ne!(status(&engine, CORISANDE, "fixture-beira"), Status::Done);
+    assert_eq!(engine.refused_count(), 2);
+    assert!(engine.refused_quests().is_empty());
+
+    // A line no area-tied signal matches in any area is not a refusal.
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            line(": Corisande_Fell has received +20 to maximum Life."),
+        ],
+        false,
+    );
+    assert_eq!(engine.current_area(), None);
+    assert_eq!(engine.refused_count(), 2);
+
+    // The count and the ids are session memory, never persisted.
+    let saved = engine.to_json().to_string();
+    assert!(!saved.contains("refused"), "{saved}");
 }

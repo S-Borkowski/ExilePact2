@@ -12,8 +12,9 @@
 //!
 //! What persists ([`Engine::to_json`]) is the characters, the pin and the
 //! active name. Session memory (the names seen joining or leaving, the held
-//! events, the current area) never does: other players' names are kept in
-//! memory for one session only.
+//! events, the current area, the count of signals refused while the area
+//! was unknown) never does: other players' names are kept in memory for one
+//! session only.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
@@ -221,6 +222,10 @@ pub struct Engine {
     pending: Option<Pending>,
     dropped: u64,
     client_version: Option<String>,
+    /// Area-tied signals refused because the area was unknown: the running
+    /// count, and the quest ids not yet taken by the shell.
+    refused: u64,
+    refused_quests: Vec<String>,
 }
 
 impl Engine {
@@ -283,6 +288,8 @@ impl Engine {
             pending: None,
             dropped: 0,
             client_version: None,
+            refused: 0,
+            refused_quests: Vec::new(),
         }
     }
 
@@ -344,8 +351,25 @@ impl Engine {
         self.area = None;
     }
 
+    /// Seeds the session's current area, as read back from the log before a
+    /// tailer's start position ([`crate::area_from_log`]); `None` makes it
+    /// unknown. It sets the area only: no event is routed, no evidence
+    /// recorded and no transition made, and like an area read live it stays
+    /// session memory, out of [`Engine::to_json`].
+    pub fn seed_area(&mut self, code: Option<&str>) {
+        self.area = code.map(str::to_string);
+    }
+
+    /// The session's current area code, `None` while unknown.
+    pub fn current_area(&self) -> Option<&str> {
+        self.area.as_deref()
+    }
+
     /// Gives an event to the pinned or active character, or holds it.
     fn route(&mut self, ev: &Event, live: bool, out: &mut Vec<Transition>) {
+        if self.area.is_none() {
+            self.count_refusals(&ev.kind);
+        }
         let held = Held {
             event: ev.clone(),
             area: self.area.clone(),
@@ -362,6 +386,25 @@ impl Engine {
                 self.apply_to(&name, &held, out);
             }
             None => self.held.push(held),
+        }
+    }
+
+    /// With the area unknown, counts every area-tied signal the event matches
+    /// in all but its area: it is refused, and the shell logs the quest id.
+    /// Counted once per event, when it happens, whichever character later
+    /// gets it. A signal refused because the area is known and different is
+    /// the normal case and is not counted.
+    fn count_refusals(&mut self, ev: &EventKind) {
+        for (qi, signals) in self.compiled.iter().enumerate() {
+            for c in signals {
+                let Some(want) = signal_area(&c.signal) else {
+                    continue;
+                };
+                if fires_on(&c.signal, ev, Some(want)) {
+                    self.refused += 1;
+                    self.refused_quests.push(self.data.quests[qi].id.clone());
+                }
+            }
         }
     }
 
@@ -675,6 +718,24 @@ impl Engine {
         self.dropped
     }
 
+    /// How many area-tied signals were refused because the area was unknown,
+    /// over the engine's life (never reset by a session marker).
+    pub fn refused_count(&self) -> u64 {
+        self.refused
+    }
+
+    /// The quest id of each refusal not yet taken, oldest first, one entry
+    /// per refused signal.
+    pub fn refused_quests(&self) -> &[String] {
+        &self.refused_quests
+    }
+
+    /// Takes the refusals' quest ids, for the shell to log each once; the
+    /// count stays.
+    pub fn take_refused(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.refused_quests)
+    }
+
     pub fn client_version(&self) -> Option<&str> {
         self.client_version.as_deref()
     }
@@ -911,6 +972,17 @@ fn store_overrides(ch: &mut CharacterState, quest_id: &str, ov: Overrides) {
         ch.overrides.remove(quest_id);
     } else {
         ch.overrides.insert(quest_id.to_string(), ov);
+    }
+}
+
+/// The area an event-based signal is tied to, if any.
+fn signal_area(signal: &Signal) -> Option<&str> {
+    match signal {
+        Signal::Npc { area, .. }
+        | Signal::System { area, .. }
+        | Signal::Reward { area, .. }
+        | Signal::Points { area, .. } => area.as_deref(),
+        Signal::Area { .. } | Signal::Level { .. } | Signal::Quest { .. } => None,
     }
 }
 

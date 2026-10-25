@@ -6,10 +6,14 @@
 //!   whose every refusal names the quest and the field.
 //! - [`engine`]: the state machine, its character detection and the state
 //!   the store persists as `serde_json::Value`.
+//! - [`area`]: the current area read back from the log before a tailer's
+//!   start position, to seed the engine with.
 
+pub mod area;
 pub mod data;
 pub mod engine;
 
+pub use area::{area_from_log, LogArea};
 pub use data::{
     classify_stat, Area, DataError, Detection, Element, Evidence, Quest, QuestData, Reward,
     RewardCategory, Signal, Status, Step, Worth, SCHEMA,
