@@ -20,8 +20,9 @@ use the same name with the dot as a dash: `color.panel-bg` →
   shadow `shadow.panel`, a 1 px inner top highlight of white at 5%. Edit
   mode: border 2 px `color.edit-accent` (solid), header `color.edit-tint`.
 - **Opacity:** the Settings slider sets the opacity of the panel background
-  only (`opacity.default` 0.92, floor `opacity.min` 0.3). Text, icons and
-  borders stay opaque.
+  only (`opacity.default` 0.92, from `opacity.min` 0 to 1 in 0.05 steps;
+  the 0.3 floor went after Live 2, owner, 2026-10-25). At 0 the background
+  is gone; text, icons, the border and the edit-mode accent stay opaque.
 - **Type:** Alegreya Sans (`font.family`), act headers in Alegreya Sans SC
   Bold (`font.family-caps`). Nothing under 12 px.
 
@@ -98,8 +99,13 @@ it became available, a step was reached, or it is done) plays on that row.
   the row settles into its finished variant.
 - A second change to the same row restarts the transition cleanly; nothing
   queues or stacks.
-- `prefers-reduced-motion: reduce` (Windows animations off): the change is
-  instant.
+- Highlight (after Live 2): every change also tints the row's band or
+  background with an existing token (the new status colour or
+  `color.edit-accent`) for ~2.5 s, then clears; a second change restarts
+  the hold. Colour or opacity only, never a flash. The collapsed badge
+  shows it too.
+- `prefers-reduced-motion: reduce` (Windows animations off): the step swap
+  is instant and nothing moves; the highlight still shows.
 - Every change is announced once in a polite live region
   (`aria-live="polite"`), the change's one sentence. A row not on screen
   (its act folded, or filtered out) is announced and not animated.
@@ -152,8 +158,15 @@ Square (radius 0). On = `color.edit-accent` track. Slider track
 ### SettingRow — 320×40
 Padding 0/12; label (Label) left, control right. Helper text below a row
 (Caption, `color.text-muted`, padding 0/12/6): under opacity "Text and icons
-always stay fully opaque. Floor 30%."; under click-through "Off: the panel
+always stay fully opaque."; under click-through "Off: the panel
 blocks clicks to the game."
+
+Rows after Live 2 (owner, 2026-10-25): opacity is a Slider from 0% to 100%
+in 5% steps with its value as a percentage; scale is a Toggle "Auto" and a
+Slider for a fixed factor from 0.75× to 2× in 0.05 steps, its value shown
+as `1.25×`, and moving the slider turns Auto off; "Show skipped quests" is a
+Toggle whose helper says a skipped quest shows even with "Only worth-it" on.
+There is no dock-side row: the panel is dragged by its header in edit mode.
 
 ### Hotkeys block (Settings)
 Heading "Hotkeys · click a key to rebind" (Label); rows label (Label,

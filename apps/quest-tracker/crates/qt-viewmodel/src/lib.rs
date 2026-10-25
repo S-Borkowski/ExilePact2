@@ -39,8 +39,13 @@
 //! (Context "Launch 7 fixes (owner scope)"). Neither counts when the user
 //! marked the quest done, and the mark changes nothing the user can do.
 //!
-//! Live changes: a quest becoming available, a step reached or a quest done,
-//! read from a live line, is a [`RowChange`] the shell sends as
+//! Filters: "only worth-it" hides quests that are not worth it; "show
+//! skipped" shows a skipped quest whatever "only worth-it" says. Neither
+//! changes an act's counts, and next up never lists a skipped quest.
+//!
+//! Live changes: a quest becoming available, a step reached, a quest started
+//! by its `start` signal with no step reached, or a quest done, read from a
+//! live line, is a [`RowChange`] the shell sends as
 //! `qt:row-change`; the UI animates that row and announces its `text`
 //! (Context "Post-live fixes (owner scope)"). There is no queue, cap or
 //! expiry, and catch-up makes none.
@@ -261,35 +266,92 @@ pub struct QuestDetail {
     pub fetched: String,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Dock {
-    Left,
-    #[default]
-    Right,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// The panel's zoom: Auto (from the monitor) or a fixed factor from
+/// [`Scale::MIN`] to [`Scale::MAX`], which the settings slider moves in
+/// [`Scale::STEP`]s (Context "Live 2 fixes (owner scope)").
+///
+/// Serialised as the string `"auto"` or the factor as a JSON number
+/// (`1.25`). It loads from either, and from a number in a string, so the
+/// stored `"1"`, `"1.33"` and `"2"` of the old three-way choice load as the
+/// same factor. A factor is kept to two decimals (1.33 stays 1.33); a value
+/// out of range or of any other shape loads as Auto, never as an error.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum Scale {
     #[default]
-    #[serde(rename = "auto")]
     Auto,
-    #[serde(rename = "1")]
-    X1,
-    #[serde(rename = "1.33")]
-    X133,
-    #[serde(rename = "2")]
-    X2,
+    Fixed(f64),
+}
+
+impl Scale {
+    pub const MIN: f64 = 0.75;
+    pub const MAX: f64 = 2.0;
+    /// The slider's step; a stored factor need not sit on it.
+    pub const STEP: f64 = 0.05;
+
+    /// A fixed factor, rounded to two decimals; Auto when that is not
+    /// finite or outside `MIN..=MAX`.
+    pub fn fixed(factor: f64) -> Scale {
+        let f = (factor * 100.0).round() / 100.0;
+        if f.is_finite() && (Scale::MIN..=Scale::MAX).contains(&f) {
+            Scale::Fixed(f)
+        } else {
+            Scale::Auto
+        }
+    }
+
+    /// The fixed factor, or `None` for Auto.
+    pub fn factor(self) -> Option<f64> {
+        match self.normalised() {
+            Scale::Auto => None,
+            Scale::Fixed(f) => Some(f),
+        }
+    }
+
+    /// This scale with a fixed factor brought back in range (else Auto).
+    pub fn normalised(self) -> Scale {
+        match self {
+            Scale::Auto => Scale::Auto,
+            Scale::Fixed(f) => Scale::fixed(f),
+        }
+    }
+
+    /// The scale a stored or patched JSON value means (type docs).
+    pub fn from_value(value: &Value) -> Scale {
+        let factor = match value {
+            Value::String(s) if s.trim() == "auto" => return Scale::Auto,
+            Value::String(s) => s.trim().parse::<f64>().ok(),
+            Value::Number(n) => n.as_f64(),
+            _ => None,
+        };
+        factor.map_or(Scale::Auto, Scale::fixed)
+    }
+}
+
+impl Serialize for Scale {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self.normalised() {
+            Scale::Auto => s.serialize_str("auto"),
+            Scale::Fixed(f) => s.serialize_f64(f),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Scale {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Scale, D::Error> {
+        Ok(Scale::from_value(&Value::deserialize(d)?))
+    }
 }
 
 /// The user's settings, as `settings.json` stores them and the settings
-/// frame shows them. A missing field takes its default.
+/// frame shows them. A missing field takes its default; a key this struct
+/// does not have, such as the `dock` side files written before Live 2
+/// carry, is ignored on load (and refused in a patch).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
-    /// The panel background's opacity, 0.3-1 (text and icons stay opaque).
+    /// The panel background's opacity, 0-1. At 0 the background is gone;
+    /// text, icons, the border and the edit-mode accent stay opaque.
     pub opacity: f64,
-    pub dock: Dock,
     pub scale: Scale,
     pub show_skipped: bool,
     pub only_worth_it: bool,
@@ -303,7 +365,6 @@ impl Default for Settings {
     fn default() -> Settings {
         Settings {
             opacity: Settings::DEFAULT_OPACITY,
-            dock: Dock::Right,
             scale: Scale::Auto,
             show_skipped: false,
             only_worth_it: false,
@@ -314,19 +375,22 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// The brief's floor for the opacity slider.
-    pub const MIN_OPACITY: f64 = 0.3;
+    /// The opacity slider's low end: no background at all (owner, after
+    /// Live 2; it was a 30% floor before).
+    pub const MIN_OPACITY: f64 = 0.0;
     pub const DEFAULT_OPACITY: f64 = 0.9;
     pub const DEFAULT_HOTKEY: &'static str = "Ctrl+Alt+Q";
 
-    /// The settings with every value in range: opacity clamped to 0.3-1 (a
-    /// non-number becomes the default), an empty hotkey or log path unset.
+    /// The settings with every value in range: opacity clamped to 0-1 (a
+    /// non-number becomes the default), a fixed scale out of range Auto, an
+    /// empty hotkey or log path unset.
     pub fn normalised(mut self) -> Settings {
         self.opacity = if self.opacity.is_finite() {
             self.opacity.clamp(Settings::MIN_OPACITY, 1.0)
         } else {
             Settings::DEFAULT_OPACITY
         };
+        self.scale = self.scale.normalised();
         if self.hotkey.trim().is_empty() {
             self.hotkey = Settings::DEFAULT_HOTKEY.to_string();
         }
@@ -647,9 +711,15 @@ fn panel(data: &QuestData, states: &[QuestState], settings: &Settings, ui: &UiSt
         .zip(states)
         .filter(|(q, _)| q.act == act)
         .collect();
+    // "Show skipped" shows a skipped quest whatever "only worth-it" says
+    // (Live 2: the only skipped quest was optional, so the toggle showed
+    // nothing); "only worth-it" still hides the rest that is not worth it.
     let shown = |q: &Quest, s: &QuestState| {
-        (s.status != Status::Skipped || settings.show_skipped)
-            && (!settings.only_worth_it || q.worth == Worth::Yes)
+        if s.status == Status::Skipped {
+            settings.show_skipped
+        } else {
+            !settings.only_worth_it || q.worth == Worth::Yes
+        }
     };
     let rows: Vec<QuestRow> = in_act
         .iter()
@@ -864,7 +934,8 @@ fn shown_step(quest: &Quest, reached: Option<&String>) -> Option<String> {
 
 /// What a transition changes in its row, if anything the UI shows as a
 /// change: only a live one, and only a quest becoming available, a step
-/// reached, or a quest done (the choice the toasts had). Returns the kind,
+/// reached, a quest started by its `start` signal (a `step_done` change with
+/// no step completed), or a quest done. Returns the kind,
 /// the step completed, the step now current and the announcement.
 fn row_change_for(
     data: &QuestData,
@@ -893,6 +964,19 @@ fn row_change_for(
             None,
             format!("Now available: {}.", quest.name),
         ));
+    }
+    if t.to == Status::InProgress
+        && matches!(t.from, Status::Locked | Status::Available)
+        && t.step_to.is_none()
+    {
+        // Started by its `start` signal, no step reached: nothing completed,
+        // and the first step is the one the row now shows.
+        let next = quest.steps.first().map(|s| s.title.clone());
+        let text = match &next {
+            Some(next) => format!("Quest started: {}; next: {next}.", quest.name),
+            None => format!("Quest started: {}.", quest.name),
+        };
+        return Some((RowChangeKind::StepDone, None, next, text));
     }
     if t.to == Status::InProgress && t.step_to.is_some() && t.step_to != t.step_from {
         let reached = step_index(quest, t.step_to.as_ref())?;

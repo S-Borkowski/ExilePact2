@@ -174,7 +174,6 @@
   ],
   "schema": 1,
   "settings": {
-    "dock": "right",
     "hotkey": "Ctrl+Alt+Q",
     "log_path": "C:\\Program Files (x86)\\Grinding Gear Games\\Path of Exile 2\\logs\\Client.txt",
     "only_worth_it": false,

@@ -19,7 +19,7 @@ use qt_engine::{
     Engine, QuestAction, QuestData, RewardCategory, Status, Timestamp, Transition, Worth,
 };
 use qt_viewmodel::{
-    build_view, reward_icon, Frame, LogState, Mode, RowChange, RowChangeKind, RowChanges,
+    build_view, reward_icon, Frame, LogState, Mode, RowChange, RowChangeKind, RowChanges, Scale,
     Settings, StatusKind, StepPhase, UiState, View, ViewKind,
 };
 use serde_json::Value;
@@ -268,6 +268,224 @@ fn only_worth_it_filter() {
     assert_eq!(row_ids(&all).len(), 6);
 }
 
+#[test]
+fn only_worth_it_still_hides_unskipped_optional_quests() {
+    // Baseline for the filter "show skipped" leaves alone: with nothing
+    // skipped, "only worth-it" hides the optional king and the not-worth-it
+    // lute whether "show skipped" is on or off, and the act still counts them.
+    let engine = replay_with(
+        data_with_worth(&[("fixture-lute", "no"), ("fixture-king", "optional")]),
+        "act1.txt",
+    );
+    for show_skipped in [false, true] {
+        let only = Settings {
+            only_worth_it: true,
+            show_skipped,
+            ..Settings::default()
+        };
+        let campaign = build_view(&engine, &only, &reading(ViewKind::Campaign));
+        assert_eq!(
+            row_ids(&campaign),
+            ids(&[
+                "fixture-riverbank",
+                "fixture-beira",
+                "fixture-crowbell",
+                "fixture-candles",
+            ]),
+            "show_skipped={show_skipped}"
+        );
+        assert_eq!((campaign.acts[0].done, campaign.acts[0].total), (2, 6));
+        let next = build_view(&engine, &only, &reading(ViewKind::NextUp));
+        assert_eq!(next_ids(&next), ids(&["fixture-crowbell"]), "show_skipped={show_skipped}");
+    }
+}
+
+#[test]
+fn show_skipped_shows_skipped_quest_under_only_worth_it() {
+    // Live 2: the only skipped quest was optional and "only worth-it" was on,
+    // so "show skipped" showed nothing. Crowbell is made optional and
+    // skipped here; the king, optional and not skipped, is the control.
+    let mut engine = replay_with(
+        data_with_worth(&[("fixture-crowbell", "optional"), ("fixture-king", "optional")]),
+        "act1.txt",
+    );
+    engine
+        .quest_action(CORISANDE, "fixture-crowbell", QuestAction::Skip)
+        .unwrap();
+    let ui = reading(ViewKind::Campaign);
+    let both = Settings {
+        only_worth_it: true,
+        show_skipped: true,
+        ..Settings::default()
+    };
+    let view = build_view(&engine, &both, &ui);
+    assert_eq!(
+        row_ids(&view),
+        ids(&[
+            "fixture-riverbank",
+            "fixture-beira",
+            "fixture-crowbell",
+            "fixture-lute",
+            "fixture-candles",
+        ]),
+        "the skipped optional quest shows, the unskipped optional one does not"
+    );
+    let crowbell = view.acts[0]
+        .quests
+        .iter()
+        .find(|r| r.id == "fixture-crowbell")
+        .unwrap();
+    assert_eq!(crowbell.status, Status::Skipped);
+    // Next up never lists a skipped quest.
+    let next = build_view(&engine, &both, &reading(ViewKind::NextUp));
+    assert!(!next_ids(&next).contains(&"fixture-crowbell".to_string()), "{next:#?}");
+
+    // "Show skipped" off: hidden again. The act's counts are the same either
+    // way (a skipped quest leaves the total).
+    let only = Settings {
+        only_worth_it: true,
+        ..Settings::default()
+    };
+    let hidden = build_view(&engine, &only, &ui);
+    assert!(!row_ids(&hidden).contains(&"fixture-crowbell".to_string()));
+    assert_eq!(
+        (hidden.acts[0].done, hidden.acts[0].total),
+        (view.acts[0].done, view.acts[0].total)
+    );
+    assert_eq!((view.acts[0].done, view.acts[0].total), (2, 5));
+}
+
+// ---------------------------------------------------------------------------
+// Settings after Live 2: opacity to 0, a scale factor, no dock.
+
+#[test]
+fn opacity_zero_is_kept() {
+    assert_eq!(Settings::MIN_OPACITY, 0.0);
+    let clear = Settings {
+        opacity: 0.0,
+        ..Settings::default()
+    };
+    assert_eq!(clear.clone().normalised().opacity, 0.0);
+    let view = build_view(&replay("act1.txt"), &clear, &reading(ViewKind::NextUp));
+    assert_eq!(view.settings.opacity, 0.0);
+    let patched = Settings::default()
+        .patched(&serde_json::json!({"opacity": 0}))
+        .unwrap();
+    assert_eq!(patched.opacity, 0.0);
+    // The old floor is an ordinary value now, and loads as it is.
+    let old: Settings = serde_json::from_value(serde_json::json!({"opacity": 0.3})).unwrap();
+    assert_eq!(old.normalised().opacity, 0.3);
+    // Outside 0-1 is clamped; a non-number is the default.
+    let at = |o: f64| Settings { opacity: o, ..Settings::default() }.normalised().opacity;
+    assert_eq!(at(-0.5), 0.0);
+    assert_eq!(at(1.5), 1.0);
+    assert_eq!(at(f64::NAN), Settings::DEFAULT_OPACITY);
+}
+
+#[test]
+fn old_settings_with_dock_and_scale_strings_load() {
+    // A settings.json written before Live 2: a dock side and a scale string.
+    for (stored, want) in [
+        ("auto", Scale::Auto),
+        ("1", Scale::Fixed(1.0)),
+        ("1.33", Scale::Fixed(1.33)),
+        ("2", Scale::Fixed(2.0)),
+    ] {
+        let old = serde_json::json!({
+            "opacity": 0.3,
+            "dock": "left",
+            "scale": stored,
+            "show_skipped": true,
+            "only_worth_it": false,
+            "log_path": null,
+            "hotkey": "F8",
+        });
+        let s: Settings = serde_json::from_value(old).expect("an old file loads");
+        let s = s.normalised();
+        assert_eq!(s.scale, want, "{stored:?}");
+        assert_eq!((s.opacity, s.show_skipped, s.hotkey.as_str()), (0.3, true, "F8"));
+        // Written back, it has no dock and the scale's new form.
+        let v = serde_json::to_value(&s).unwrap();
+        assert!(v.get("dock").is_none(), "{v}");
+        let back: Settings = serde_json::from_value(v).unwrap();
+        assert_eq!(back.scale, want, "{stored:?}");
+    }
+    // A patch that names the dock is refused as unknown and changes nothing.
+    let err = Settings::default()
+        .patched(&serde_json::json!({"dock": "left"}))
+        .unwrap_err();
+    assert!(err.contains("dock"), "{err}");
+    let err = Settings::default()
+        .patched(&serde_json::json!({"dock": "right", "opacity": 0.5}))
+        .unwrap_err();
+    assert!(err.contains("dock"), "{err}");
+}
+
+#[test]
+fn scale_fixed_factor_roundtrips_and_clamps() {
+    // Serialised form: the string "auto", or the factor as a JSON number.
+    assert_eq!(serde_json::to_value(Scale::Auto).unwrap(), Value::String("auto".into()));
+    assert_eq!(serde_json::to_value(Scale::Fixed(1.25)).unwrap(), serde_json::json!(1.25));
+    assert_eq!(Settings::default().scale, Scale::Auto);
+    assert_eq!(Scale::Auto.factor(), None);
+    assert_eq!(Scale::Fixed(1.5).factor(), Some(1.5));
+
+    // Every slider position, 0.75 to 2.0 in 0.05 steps, survives a round trip.
+    let steps = ((Scale::MAX - Scale::MIN) / Scale::STEP).round() as u32;
+    assert_eq!(steps, 25);
+    for k in 0..=steps {
+        let f = Scale::MIN + Scale::STEP * k as f64;
+        let s = Scale::fixed(f);
+        let want = (f * 100.0).round() / 100.0;
+        assert_eq!(s, Scale::Fixed(want), "{f}");
+        let back: Scale = serde_json::from_value(serde_json::to_value(s).unwrap()).unwrap();
+        assert_eq!(back, s, "{f}");
+    }
+
+    // The slider moved: a patch with a number turns Auto off.
+    let patched = Settings::default()
+        .patched(&serde_json::json!({"scale": 1.5}))
+        .unwrap();
+    assert_eq!(patched.scale, Scale::Fixed(1.5));
+    let auto = patched.patched(&serde_json::json!({"scale": "auto"})).unwrap();
+    assert_eq!(auto.scale, Scale::Auto);
+    // A slider's float noise lands on the 0.01 grid, the edges included.
+    assert_eq!(Scale::fixed(1.1500000000000001), Scale::Fixed(1.15));
+    assert_eq!(Scale::fixed(2.0000000001), Scale::Fixed(2.0));
+    assert_eq!(Scale::fixed(0.7499999999), Scale::Fixed(0.75));
+
+    // Out of 0.75-2.0, or malformed: Auto (Context "Live 2 fixes").
+    for bad in [
+        serde_json::json!(0.7),
+        serde_json::json!(2.05),
+        serde_json::json!(5),
+        serde_json::json!(-1),
+        serde_json::json!("0.5"),
+        serde_json::json!("NaN"),
+        serde_json::json!("inf"),
+        serde_json::json!("big"),
+        serde_json::json!(""),
+        serde_json::json!(true),
+        serde_json::json!(null),
+        serde_json::json!([1]),
+        serde_json::json!({"factor": 1}),
+    ] {
+        let s: Scale = serde_json::from_value(bad.clone()).unwrap();
+        assert_eq!(s, Scale::Auto, "{bad}");
+        let patched = Settings::default()
+            .patched(&serde_json::json!({ "scale": bad.clone() }))
+            .unwrap();
+        assert_eq!(patched.scale, Scale::Auto, "{bad}");
+    }
+    // A fixed value built out of range normalises to Auto too.
+    let wild = Settings {
+        scale: Scale::Fixed(3.0),
+        ..Settings::default()
+    };
+    assert_eq!(wild.normalised().scale, Scale::Auto);
+    assert_eq!(Scale::fixed(f64::NAN), Scale::Auto);
+}
+
 /// Each row change as (kind, quest id).
 fn change_kinds(made: &[RowChange]) -> Vec<(RowChangeKind, &str)> {
     made.iter().map(|c| (c.kind, c.quest_id.as_str())).collect()
@@ -394,6 +612,94 @@ fn row_change_carries_steps_and_announcement() {
     assert_eq!(v["kind"], Value::String("step_done".into()));
     assert_eq!(RowChangeKind::QuestDone.as_str(), "quest_done");
     assert_eq!(serde_json::to_value(&made[1]).unwrap()["step_done"], Value::Null);
+}
+
+/// The fixture data with a `start` on fixture-beira: fixture-riverbank done.
+fn data_with_beira_start() -> Arc<QuestData> {
+    let mut v = data_value();
+    for q in v["quests"].as_array_mut().unwrap() {
+        if q["id"] == "fixture-beira" {
+            q["start"] = serde_json::json!([
+                { "kind": "quest", "id": "fixture-riverbank", "status": "done" }
+            ]);
+        }
+    }
+    Arc::new(QuestData::from_value(&v).expect("a start list validates"))
+}
+
+#[test]
+fn started_quest_makes_a_row_change() {
+    let lines = session("act1.txt");
+    let renly = lines
+        .iter()
+        .position(|l| l.contains("Renly: "))
+        .expect("act1 has Renly's line");
+    let live_renly = |data: &Arc<QuestData>| {
+        let mut engine = Engine::new(data.clone());
+        feed(&mut engine, &lines[..renly], false);
+        let t = engine.feed_line(&lines[renly], true);
+        (engine, RowChanges::new().make(data, &t))
+    };
+
+    // Control: with no start, Renly's line read live changes no row of the
+    // pack leader's quest.
+    let (_, made) = live_renly(&data());
+    assert!(made.iter().all(|c| c.quest_id != "fixture-beira"), "{made:#?}");
+
+    // The start fires: one row change, a step change with no step completed
+    // and the first step now current, naming the quest as started.
+    let data = data_with_beira_start();
+    let (mut engine, made) = live_renly(&data);
+    let beira: Vec<&RowChange> = made.iter().filter(|c| c.quest_id == "fixture-beira").collect();
+    assert_eq!(beira.len(), 1, "{made:#?}");
+    let started = beira[0];
+    assert_eq!(started.kind, RowChangeKind::StepDone);
+    assert_eq!(started.step_done, None);
+    assert_eq!(started.step_next.as_deref(), Some("Find the pack leader"));
+    let name = &data.quest("fixture-beira").unwrap().name;
+    assert!(started.text.contains(name.as_str()), "{:?} lacks {name:?}", started.text);
+    assert!(started.text.contains("started"), "{:?}", started.text);
+    assert!(started.text.contains("Find the pack leader"), "{:?}", started.text);
+    // The other changes of that line are the ones without the start.
+    assert_eq!(
+        change_kinds(&made)
+            .into_iter()
+            .filter(|(_, q)| *q != "fixture-beira")
+            .collect::<Vec<_>>(),
+        vec![
+            (RowChangeKind::QuestDone, "fixture-riverbank"),
+            (RowChangeKind::Available, "fixture-king"),
+        ]
+    );
+    // The row shows what the change says: in progress at its first step.
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
+    let row = view.acts[0].quests.iter().find(|r| r.id == "fixture-beira").unwrap();
+    assert_eq!(row.status, Status::InProgress);
+    assert_eq!(row.current_step.as_deref(), Some("Find the pack leader"));
+
+    // Entering its unlock area later changes nothing of the row; its step
+    // signal then makes an ordinary step change.
+    let rest = &lines[renly + 1..];
+    let g1_2 = rest.iter().position(|l| l.contains("area \"G1_2\"")).unwrap();
+    let mut changes = RowChanges::new();
+    let t = feed(&mut engine, &rest[..=g1_2], true);
+    assert!(
+        changes.make(&data, &t).iter().all(|c| c.quest_id != "fixture-beira"),
+        "{t:#?}"
+    );
+    let pack = rest.iter().position(|l| l.contains("the pack gathers")).unwrap();
+    let t = feed(&mut engine, &rest[g1_2 + 1..=pack], true);
+    let step = changes.make(&data, &t);
+    let step: Vec<&RowChange> = step.iter().filter(|c| c.quest_id == "fixture-beira").collect();
+    assert_eq!(step.len(), 1, "{step:#?}");
+    assert_eq!(step[0].kind, RowChangeKind::StepDone);
+    assert_eq!(step[0].step_done.as_deref(), Some("Find the pack leader"));
+
+    // Read in catch-up, the start makes no row change.
+    let mut engine = Engine::new(data.clone());
+    let t = feed(&mut engine, &lines[..=renly], false);
+    assert!(t.iter().any(|t| t.quest_id == "fixture-beira" && t.to == Status::InProgress));
+    assert!(RowChanges::new().make(&data, &t).is_empty());
 }
 
 #[test]
@@ -891,7 +1197,7 @@ fn empty_and_error_states() {
     let mut ui = reading(ViewKind::NextUp);
     ui.collapsed = true;
     let wild = Settings {
-        opacity: 0.05,
+        opacity: -0.05,
         ..Settings::default()
     };
     let view = build_view(&replay("act1.txt"), &wild, &ui);
@@ -901,12 +1207,9 @@ fn empty_and_error_states() {
         .patched(&serde_json::json!({"no_such_setting": 1}))
         .is_err());
     let patched = Settings::default()
-        .patched(&serde_json::json!({"dock": "left", "scale": "1.33"}))
+        .patched(&serde_json::json!({"scale": "1.33"}))
         .unwrap();
-    assert_eq!(
-        serde_json::to_value(&patched).unwrap()["scale"],
-        Value::String("1.33".into())
-    );
+    assert_eq!(serde_json::to_value(&patched).unwrap()["scale"], serde_json::json!(1.33));
 }
 
 // ---------------------------------------------------------------------------

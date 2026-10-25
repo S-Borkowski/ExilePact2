@@ -16,12 +16,20 @@ web's means; the names in [Export contract](#export-contract) are final.
   scenes. Every text and icon must stay legible on pure white and pure black
   backgrounds alike: use a solid or near-solid panel background, not
   see-through text.
-- **Small and out of the way.** Default docked to a screen edge (right side,
-  below the minimap area). Collapsed it must be no bigger than ~48×48 px;
-  expanded, about 320 px wide and at most 60% of screen height.
+- **Small and out of the way.** Placed at the right edge of the screen by
+  default (below the minimap area), and dragged anywhere by its header in
+  edit mode; it is not docked to an edge, and the place it is dragged to is
+  kept (owner, 2026-10-25, after Live 2). Collapsed it must be no bigger
+  than ~48×48 px; expanded, about 320 px wide and at most 60% of screen
+  height.
+- **Only over the game.** In play mode the overlay is visible only while
+  the game or the overlay itself is the window in front; when another
+  window comes to the front it hides, and it comes back, without taking
+  focus from the game, when the game is in front again. In edit mode it is
+  always visible (owner, 2026-10-25, after Live 2).
 - **Scales.** Design at 1920×1080 (1×). It will be scaled to 1440p (1.33×)
-  and 4K (2×) by the webview's zoom, so keep icons as vectors and sizes on a
-  4 px grid.
+  and 4K (2×) by the webview's zoom, or to any factor from 0.75× to 2× the
+  player sets, so keep icons as vectors and sizes on a 4 px grid.
 - **What the web UI can do over the game.** The window is transparent per
   pixel, so these all work and may be designed for: rounded corners, soft
   shadows (drawn by CSS inside a transparent margin around the panel; the
@@ -93,10 +101,14 @@ that the log does not name until its first level-up, unless it is a relog.
 A relog inside The Riverbank enters it again at level 1; when the client
 names a character the overlay already knows within a few seconds of that
 entry, the entry is that character's relog and it stays the active one
-(owner, 2026-10-25, after launch 6). Otherwise, until its first level-up
-the header shows the new character as "New character" at level 1, with its
-Act 1 rows; it is not in the character picker's list, and it survives a
-relaunch of the overlay.
+(owner, 2026-10-25, after launch 6). Deciding which it is takes a
+moment: for up to 5 s after the entry (the relog window; up to about 7.5 s
+when the log goes quiet, as the guide says), the previous frame stays on
+screen, with the character and rows it showed before, and nothing about a
+new character is shown yet. Otherwise, once the window closes and until its
+first level-up, the header shows the new character as "New character" at
+level 1, with its Act 1 rows; it is not in the character picker's list, and
+it survives a relaunch of the overlay.
 
 Reward categories (one icon each), as measured on poe2db when the quest data
 was planned: passive skill points, weapon-set passive points, spirit,
@@ -121,19 +133,26 @@ frame exactly that.
 
 In every view, an in-progress quest always shows its next step as a second
 line under its name (owner, 2026-10-25).
-3. **Collapsed state** [`collapsed`]. The small docked button/badge, with a
-   count of worth-it quests currently available.
+3. **Collapsed state** [`collapsed`]. The small button/badge, with a
+   count of worth-it quests currently available. A live change of a row
+   shows the same highlight on the badge (frame 9).
 4. **Quest detail** [`quest-detail`]. What opens when a row is clicked: all
    steps with a tick per step, every reward, giver and zone, the "worth it"
    reason, the poe2db link, and the buttons Mark done / Skip / Reset.
 5. **Character picker** [`character-picker`]. The overlay tracks progress
    per character; a list of detected characters (name, class, level), the
    active one highlighted, and "new character".
-6. **Settings** [`settings`]. Background opacity slider (it fades the panel
-   background only; text and icons stay fully opaque; floor 30%),
-   click-through toggle, dock side (left/right), scale (auto/1×/1.33×/2×),
-   "show skipped quests", "only worth-it quests", a Hotkeys section, log file
-   path with a status line, and a link to the icon key (owner, 2026-10-25).
+6. **Settings** [`settings`]. Background opacity slider from 0% to 100% in
+   5% steps (it fades the panel background only; at 0% the background is
+   gone, and text, icons, the panel border and the edit-mode accent stay
+   fully opaque, so edit mode still reads as edit mode), click-through
+   toggle, scale as an "Auto" switch plus a slider for a fixed factor from
+   0.75× to 2× in 0.05 steps (moving the slider turns Auto off), "show
+   skipped quests" (a skipped quest shows even with "only worth-it" on),
+   "only worth-it quests", a Hotkeys section, log file path with a status
+   line, and a link to the icon key (owner, 2026-10-25). There is no
+   dock-side setting: the panel is dragged in edit mode (owner, 2026-10-25,
+   after Live 2).
 7. **Edit mode vs. play mode** [`mode-play`, `mode-edit`]. The same panel in
    both. Play mode is click-through (mouse goes to the game) and shows no
    buttons; edit mode (hotkey) accepts clicks and shows the controls. The
@@ -149,13 +168,23 @@ line under its name (owner, 2026-10-25).
    changes: the completed step fades out over about 150 ms, then the next
    step fades in from about 0.2 opacity with a 4-6 px upward move over
    about 220 ms, ease-out. A second change to the same row restarts the
-   transition cleanly; nothing queues and nothing stacks. With
-   `prefers-reduced-motion: reduce` (Windows animations off) the change is
-   instant. Every change is announced once in a polite live region
-   (`aria-live="polite"`), one sentence naming the quest and what changed;
-   a row that is not on screen (its act folded, or filtered out) is
-   announced and not animated. Mark done and Skip are undone from the quest
-   detail (Unmark done, Unskip); there is no Undo toast.
+   transition cleanly; nothing queues and nothing stacks. A quest started
+   with no step reached yet makes the same change, with nothing going out
+   and its first step coming in. Every change also highlights the row: its
+   band or background is tinted with an existing token (the new status
+   colour or `color.edit-accent`) for about 2.5 s and then clears; a second
+   change restarts the hold. The highlight is colour or opacity only, never
+   a flash (one per change, never more than three a second). With
+   `prefers-reduced-motion: reduce` (Windows animations off) the step swap
+   is instant and nothing moves, but the highlight still shows, so the
+   change is seen with animations off (owner, 2026-10-25, after Live 2:
+   Live 2's change went unseen on a machine with animations off). Every
+   change is announced once in a polite live region (`aria-live="polite"`),
+   one sentence naming the quest and what changed. In the `collapsed`
+   frame the badge shows the highlight; a row that is not on screen (its
+   act folded, or filtered out) is announced only. Mark done and Skip are
+   undone from the quest detail (Unmark done, Unskip); there is no Undo
+   toast.
 
 Also designed, beyond the frame ids above: an icon key (every status, worth
 and manual mark, opened from Settings or with F1), play-mode versions of the
@@ -179,7 +208,7 @@ closes detail, settings, the picker and the icon key (owner, 2026-10-25).
 | Button | primary / secondary / danger; default / hover / pressed / disabled; danger also confirm | h 28 | Mark done, Skip, Reset. Reset asks twice: the first click relabels it "Confirm reset" for 3 s |
 | Toggle, slider, dropdown | standard states | h 24 | Settings |
 | Collapsed badge | idle / has-new (count) | 48×48 | Count of available worth-it quests |
-| Row transition | step out / step in; reduced motion (instant) | the quest row | Not a component of its own: the quest row's step line. The completed step fades out (~150 ms), the next fades in from ~0.2 opacity rising 4-6 px (~220 ms, ease-out); instant under `prefers-reduced-motion: reduce`; announced in a polite live region |
+| Row transition | step out / step in; highlight; reduced motion (instant swap, highlight kept) | the quest row | Not a component of its own: the quest row's step line and band. The completed step fades out (~150 ms), the next fades in from ~0.2 opacity rising 4-6 px (~220 ms, ease-out); the row is highlighted with an existing token for ~2.5 s, also under `prefers-reduced-motion: reduce`, where the swap is instant; the collapsed badge shows the highlight too; announced in a polite live region |
 
 ## Icons (24×24 grid, SVG only, single colour unless noted)
 
