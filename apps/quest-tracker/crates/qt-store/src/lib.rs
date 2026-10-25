@@ -7,8 +7,10 @@
 //! - `settings.json`, `position.json` (the tailer's path, fingerprint and
 //!   offset), `characters.json` (name -> class, level, own or unconfirmed,
 //!   pinned) and `characters/<safe name>.json` (one character's engine
-//!   state). Each is written as `{"schema": 1, "data": <value>}`; what goes
-//!   in `data` is the caller's.
+//!   state), and `new-character.json` (the one provisional record of a new
+//!   character not yet named, present only while there is one; clearing it
+//!   removes the file). Each is written as `{"schema": 1, "data": <value>}`;
+//!   what goes in `data` is the caller's.
 //! - `overlay.log`, the diagnostic log, rotated at 1 MB into `overlay.log.1`.
 //!
 //! Every JSON write goes to `<file>.tmp` in the same folder, is synced, and
@@ -40,6 +42,7 @@ pub const SETTINGS_FILE: &str = "settings.json";
 pub const POSITION_FILE: &str = "position.json";
 pub const CHARACTERS_FILE: &str = "characters.json";
 pub const CHARACTERS_DIR: &str = "characters";
+pub const NEW_CHARACTER_FILE: &str = "new-character.json";
 pub const DIAG_FILE: &str = "overlay.log";
 
 /// What can go wrong opening or writing the store.
@@ -201,6 +204,34 @@ impl Store {
 
     pub fn save_character(&self, name: &str, value: &Value) -> Result<(), StoreError> {
         self.save(&self.character_path(name)?, value)
+    }
+
+    /// `new-character.json`: the provisional record of a new character that
+    /// no level-up has named yet. Kept apart from `characters.json` and the
+    /// `characters/` folder, so it never names a character.
+    pub fn new_character_path(&self) -> PathBuf {
+        self.dir.join(NEW_CHARACTER_FILE)
+    }
+
+    /// The provisional record, or no value when there is none.
+    pub fn load_new_character(&self) -> Result<Loaded, StoreError> {
+        self.load(&self.new_character_path())
+    }
+
+    pub fn save_new_character(&self, value: &Value) -> Result<(), StoreError> {
+        self.save(&self.new_character_path(), value)
+    }
+
+    /// Removes the provisional record. No record (or no folder yet) is not
+    /// an error.
+    pub fn clear_new_character(&self) -> Result<(), StoreError> {
+        let path = self.new_character_path();
+        let _guard = self.write_lock.lock().unwrap_or_else(|p| p.into_inner());
+        match fs::remove_file(&path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(StoreError::io(&path, e)),
+        }
     }
 
     fn save(&self, path: &Path, value: &Value) -> Result<(), StoreError> {

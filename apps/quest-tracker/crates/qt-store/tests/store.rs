@@ -333,6 +333,145 @@ fn log_position_roundtrip() {
     assert_eq!(store.load_position().unwrap().value, Some(pos2));
 }
 
+/// A provisional record as the engine hands it out: what the store keeps is
+/// opaque to it, so any JSON value stands in.
+fn new_character_record() -> Value {
+    json!({
+        "state": {"quests": {"a1q1": "in_progress"}},
+        "events": 3,
+        "released_pin": "Mira_Ranger",
+        "seed": 1234567,
+        "open": true,
+    })
+}
+
+#[test]
+fn new_character_file_roundtrip() {
+    let t = tmp();
+    let store = Store::open(t.path()).unwrap();
+    let file = t.path().join("new-character.json");
+    assert_eq!(store.new_character_path(), file);
+
+    // No record yet: nothing, and that is not an error.
+    let none = store.load_new_character().unwrap();
+    assert_eq!(none.value, None);
+    assert_eq!(none.quarantined, None);
+
+    let rec = new_character_record();
+    store.save_new_character(&rec).unwrap();
+    let back = store.load_new_character().unwrap();
+    assert_eq!(back.quarantined, None);
+    assert_eq!(back.value, Some(rec.clone()));
+    // The same wrapper and schema number as every other file, written
+    // atomically: no temporary file is left behind.
+    assert_eq!(on_disk(&file), json!({"schema": SCHEMA, "data": rec}));
+    assert_eq!(names_in(t.path()), vec!["new-character.json"]);
+
+    // A later save replaces the record whole (a parked record).
+    let parked = json!({"state": {}, "events": 0, "released_pin": null, "seed": 7, "open": false});
+    store.save_new_character(&parked).unwrap();
+    assert_eq!(store.load_new_character().unwrap().value, Some(parked));
+
+    // It is its own file: no character file and no roster entry appear,
+    // and the roster's file is not touched.
+    store.save_characters(&json!({})).unwrap();
+    assert!(!t.path().join("characters").exists());
+    assert_eq!(store.load_characters().unwrap().value, Some(json!({})));
+}
+
+#[test]
+fn new_character_file_cleared() {
+    let t = tmp();
+    let store = Store::open(t.path()).unwrap();
+    let file = t.path().join("new-character.json");
+
+    store.save_settings(&json!({"dock": "left"})).unwrap();
+    store.save_new_character(&new_character_record()).unwrap();
+    assert!(file.is_file());
+
+    // Clearing removes the file; loading then returns no record.
+    store.clear_new_character().unwrap();
+    assert!(!file.exists());
+    let none = store.load_new_character().unwrap();
+    assert_eq!(none.value, None);
+    assert_eq!(none.quarantined, None);
+    // Nothing else in the folder went with it.
+    assert_eq!(names_in(t.path()), vec!["settings.json"]);
+    assert_eq!(
+        store.load_settings().unwrap().value,
+        Some(json!({"dock": "left"}))
+    );
+
+    // Clearing when there is no record (or no folder yet) is not an error.
+    store.clear_new_character().unwrap();
+    let fresh = Store::open(t.path().join("never-written")).unwrap();
+    fresh.clear_new_character().unwrap();
+    assert!(!t.path().join("never-written").exists());
+
+    // A record saved after a clear is read back as usual.
+    store.save_new_character(&json!({"open": true})).unwrap();
+    assert_eq!(
+        store.load_new_character().unwrap().value,
+        Some(json!({"open": true}))
+    );
+}
+
+#[test]
+fn corrupt_new_character_file_is_quarantined() {
+    let t = tmp();
+    let store = Store::open(t.path()).unwrap();
+    let file = t.path().join("new-character.json");
+    fs::write(&file, b"{\"schema\": 1, \"data\": {\"ope").unwrap();
+
+    let loaded = store.load_new_character().unwrap();
+    assert_eq!(loaded.value, None);
+    let q = loaded.quarantined.expect("quarantined");
+    assert_eq!(q.file, file);
+    assert!(!file.exists());
+    let moved = q
+        .moved_to
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    assert!(is_quarantine_name(&moved, "new-character.json"), "{moved}");
+    assert_eq!(
+        fs::read(&q.moved_to).unwrap(),
+        b"{\"schema\": 1, \"data\": {\"ope".to_vec()
+    );
+    // Told in words for the status line, and in the diagnostic log.
+    let status = q.status_text();
+    assert!(
+        status.contains("new-character.json") && status.contains(&moved),
+        "{status}"
+    );
+    let log = fs::read_to_string(t.path().join("overlay.log")).unwrap();
+    assert!(log.contains(&moved), "{log}");
+
+    // Another schema is not read either.
+    fs::write(&file, b"{\"schema\": 99, \"data\": {}}").unwrap();
+    let q2 = store
+        .load_new_character()
+        .unwrap()
+        .quarantined
+        .expect("quarantined");
+    assert!(q2.reason.contains("99"), "{}", q2.reason);
+
+    // Then the slot is free: no record, and saving afterwards works.
+    assert_eq!(
+        store.load_new_character().unwrap(),
+        qt_store::Loaded {
+            value: None,
+            quarantined: None,
+        }
+    );
+    store.save_new_character(&new_character_record()).unwrap();
+    assert_eq!(
+        store.load_new_character().unwrap().value,
+        Some(new_character_record())
+    );
+}
+
 #[test]
 fn diag_log_rotates_at_one_mb() {
     let t = tmp();
