@@ -65,6 +65,19 @@ not the completion), **manual** (the log records nothing usable). The quest
 row's manual variant covers both partial and manual; the manual-tick marker
 shows on both.
 
+Live changes: when a line the game writes while the overlay runs makes a
+quest available, reaches one of its steps or completes it, the quest's own
+row shows the change in place (the row transition, frame 9): the step just
+completed, the step now current, and one sentence naming the quest and what
+changed, for the screen reader. Lines read at start-up to catch up change
+the rows without a transition. There are no toasts (owner, 2026-10-25,
+after Live 1).
+
+A new character: a level-1 entry to The Riverbank starts a new character
+that the log does not name until its first level-up. Until then the header
+shows it as "New character" at level 1, with its Act 1 rows; it is not in
+the character picker's list.
+
 Reward categories (one icon each), as measured on poe2db when the quest data
 was planned: passive skill points, weapon-set passive points, spirit,
 resistance (fire / cold / lightning / chaos, four icons, plus one for all
@@ -110,11 +123,19 @@ line under its name (owner, 2026-10-25).
    the game hasn't written anything yet [`empty-waiting`]; no character
    detected yet [`empty-no-character`]; all quests in this act done
    [`empty-act-done`].
-9. **Toast** [`toast`]. A short notification when a quest becomes available
-   or a step completes (~3 s, stacks at most 3). Toasts stack below the
-   panel's bottom edge, never above it, so they don't cover the minimap and
-   never push the rows (owner, 2026-10-25). In edit mode, Mark done and Skip
-   show an Undo toast for 5 s.
+9. **Row transition** (no frame id: it happens inside the quest row; owner,
+   2026-10-25, after Live 1, in place of the toasts). When a quest becomes
+   available, a step is reached or the quest is done, the row itself
+   changes: the completed step fades out over about 150 ms, then the next
+   step fades in from about 0.2 opacity with a 4-6 px upward move over
+   about 220 ms, ease-out. A second change to the same row restarts the
+   transition cleanly; nothing queues and nothing stacks. With
+   `prefers-reduced-motion: reduce` (Windows animations off) the change is
+   instant. Every change is announced once in a polite live region
+   (`aria-live="polite"`), one sentence naming the quest and what changed;
+   a row that is not on screen (its act folded, or filtered out) is
+   announced and not animated. Mark done and Skip are undone from the quest
+   detail (Unmark done, Unskip); there is no Undo toast.
 
 Also designed, beyond the frame ids above: an icon key (every status, worth
 and manual mark, opened from Settings or with F1), play-mode versions of the
@@ -138,7 +159,7 @@ closes detail, settings, the picker and the icon key (owner, 2026-10-25).
 | Button | primary / secondary / danger; default / hover / pressed / disabled; danger also confirm | h 28 | Mark done, Skip, Reset. Reset asks twice: the first click relabels it "Confirm reset" for 3 s |
 | Toggle, slider, dropdown | standard states | h 24 | Settings |
 | Collapsed badge | idle / has-new (count) | 48×48 | Count of available worth-it quests |
-| Toast | quest available / step done / quest done / undo | 300×44 | Icon + one line; undo adds an "Undo" action |
+| Row transition | step out / step in; reduced motion (instant) | the quest row | Not a component of its own: the quest row's step line. The completed step fades out (~150 ms), the next fades in from ~0.2 opacity rising 4-6 px (~220 ms, ease-out); instant under `prefers-reduced-motion: reduce`; announced in a polite live region |
 
 ## Icons (24×24 grid, SVG only, single colour unless noted)
 
@@ -174,14 +195,14 @@ Name each variable after its token key in [Export contract](#export-contract).
 
 - **Colours:** panel background, panel border, text primary/secondary/muted,
   edit-mode accent, one colour per status, worth-it gold, four resistance
-  colours, toast background. Check text contrast at least 4.5:1 against the
+  colours. Check text contrast at least 4.5:1 against the
   panel background.
 - **Type:** one free font with a licence that allows bundling (e.g. from
   Google Fonts; a variable font is fine); sizes for title, row name, step
   text, caption; optionally the weights for title and row.
 - **Spacing:** 4 px grid; row padding, section gap, panel padding.
 - **Radius and border width**, and the default window opacity.
-- **Optional, when designed:** panel and toast shadows, panel and header
+- **Optional, when designed:** the panel shadow, panel and header
   gradients, row and button radii, and one motion duration and easing.
 
 ## Export contract
@@ -193,11 +214,11 @@ moment the comps exist, and nothing after the harvest reads Figma.
 
 Icon ids: reward-passive, reward-weapon-set, reward-spirit, reward-res-fire, reward-res-cold, reward-res-lightning, reward-res-chaos, reward-res-all, reward-life, reward-mana, reward-attribute, reward-charm, reward-flask, reward-defences, reward-other, reward-skill-gem, reward-support-gem, reward-ascendancy, reward-item, reward-unlock, reward-story, status-locked, status-available, status-in-progress, status-done, status-skipped, status-unknown, worth-yes, worth-optional, worth-no, manual-tick, ui-chevron, ui-collapse, ui-expand, ui-settings, ui-close, ui-edit, ui-click-through, ui-external-link, ui-character, ui-refresh
 
-Frame ids: panel-campaign, panel-next-up, collapsed, quest-detail, character-picker, settings, mode-play, mode-edit, empty-no-log, empty-waiting, empty-no-character, empty-act-done, toast
+Frame ids: panel-campaign, panel-next-up, collapsed, quest-detail, character-picker, settings, mode-play, mode-edit, empty-no-log, empty-waiting, empty-no-character, empty-act-done
 
-Token keys: color.panel-bg, color.panel-border, color.text-primary, color.text-secondary, color.text-muted, color.edit-accent, color.status-locked, color.status-available, color.status-in-progress, color.status-done, color.status-skipped, color.status-unknown, color.worth-gold, color.res-fire, color.res-cold, color.res-lightning, color.res-chaos, color.toast-bg, font.family, font.file, size.title, size.row, size.step, size.caption, space.unit, space.row-pad, space.section-gap, space.panel-pad, radius, border-width, opacity.default
+Token keys: color.panel-bg, color.panel-border, color.text-primary, color.text-secondary, color.text-muted, color.edit-accent, color.status-locked, color.status-available, color.status-in-progress, color.status-done, color.status-skipped, color.status-unknown, color.worth-gold, color.res-fire, color.res-cold, color.res-lightning, color.res-chaos, font.family, font.file, size.title, size.row, size.step, size.caption, space.unit, space.row-pad, space.section-gap, space.panel-pad, radius, border-width, opacity.default
 
-Optional token keys: shadow.panel, shadow.toast, gradient.panel, gradient.header, radius.row, radius.button, font.weight-title, font.weight-row, motion.duration, motion.easing
+Optional token keys: shadow.panel, gradient.panel, gradient.header, radius.row, radius.button, font.weight-title, font.weight-row, motion.duration, motion.easing
 
 Icon sources: each icon id and the owner's delivered file (under
 `docs/quest-tracker/icons/`) the harvest copies to it. A Figma version of an

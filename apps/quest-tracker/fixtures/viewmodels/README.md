@@ -2,9 +2,13 @@
 
 One file per frame id of the brief's `## Export contract`
 (`docs/quest-tracker/ui-design-brief.md`), each a `View` exactly as
-`qt-viewmodel` serialises it and the shell sends it as `qt:view`, plus
-`toast.json`, one `Toast` as sent as `qt:toast`. `mode-play` and `mode-edit`
-have no file: they are the same panel with `mode` set to `play` or `edit`.
+`qt-viewmodel` serialises it and the shell sends it as `qt:view`, and
+nothing else: `fixtures_match_serialised_views` fails on any other JSON file
+here. `mode-play` and `mode-edit` have no file: they are the same panel with
+`mode` set to `play` or `edit`. The toasts and `toast.json` are gone (owner,
+2026-10-25, after Live 1): a live change is a `RowChange` sent as
+`qt:row-change`, and the row the frames' story ends on is built in the test
+(`story_row_change`), not stored.
 
 The views are built by `crates/qt-viewmodel/tests/viewmodel.rs`
 (`fixtures_match_serialised_views`) from the engine's synthetic data
@@ -22,8 +26,7 @@ Two files read these views: the UI tests (`src/*.test.ts`), which is what
 keeps the TypeScript types in step with the Rust ones, and the browser
 preview (`npm --prefix apps/quest-tracker run dev`, then
 `http://127.0.0.1:1420/?frame=<frame id>`, `src/preview.ts`), which draws
-any frame without the game; `?frame=toast` shows `toast.json` over
-`panel-next-up.json`.
+any frame without the game.
 
 ## One story
 
@@ -35,8 +38,9 @@ Every frame that shows a character shows the same moment of one story
   and level in every frame (the picker's second character, `Odile_Marsh`,
   level 3, is listed everywhere); each quest has one status, worth and next
   step in every frame but `empty-act-done`, whose scenario marks the rest of
-  the act done; each act's counts follow its rows (below); and the toast
-  announces a status the frames show.
+  the act done; each act's counts follow its rows (below); and the row
+  change the story ends on (Una's line read live: the lute becomes
+  available) announces a status the frames show.
 - `fixture_rows_cover_every_worth`: across the set the rows carry every
   worth (`yes`, `optional`, `no`), every detection (`auto`, `partial`,
   `manual`) and both auto and manual-tick rows; `panel-next-up` alone shows
@@ -71,4 +75,3 @@ counts still cover the whole act, so they can exceed the rows shown.
 | `empty-waiting.json` | nothing read, the log there |
 | `empty-no-character.json` | `../sessions/baseline.txt`: lines, but no character |
 | `empty-act-done.json` | the rest of act 1 marked done (the pack leader stays skipped): `5/5` |
-| `toast.json` | the story's last line, Una's, read live after a catch-up of the rest: the lute becomes available |

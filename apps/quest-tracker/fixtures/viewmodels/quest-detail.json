@@ -103,7 +103,8 @@
     "level": 5,
     "name": "Corisande_Fell",
     "own": true,
-    "pinned": false
+    "pinned": false,
+    "provisional": false
   },
   "characters": [
     {
@@ -112,7 +113,8 @@
       "level": 5,
       "name": "Corisande_Fell",
       "own": true,
-      "pinned": false
+      "pinned": false,
+      "provisional": false
     },
     {
       "active": false,
@@ -120,7 +122,8 @@
       "level": 3,
       "name": "Odile_Marsh",
       "own": true,
-      "pinned": false
+      "pinned": false,
+      "provisional": false
     }
   ],
   "detail": {

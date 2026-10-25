@@ -1,5 +1,5 @@
 //! View-model: from engine state, quest data and settings to the `View` and
-//! `Toast` the UI renders, deciding in Rust which frame shows.
+//! `RowChange` the UI renders, deciding in Rust which frame shows.
 //!
 //! Rust decides, the UI renders (Context "IPC contract"): the shell calls
 //! [`build_view`] after every change and sends the result as `qt:view`; the
@@ -14,7 +14,9 @@
 //! 2. `collapsed`, when the panel is folded to its badge;
 //! 3. `empty-no-log` when no `Client.txt` was found;
 //! 4. with no current character, `empty-waiting` while the log has nothing
-//!    new, else `empty-no-character`;
+//!    new, else `empty-no-character`. A new character from The Riverbank
+//!    that no level-up has named yet is a current character here: it shows
+//!    as `provisional`, with an empty name and level 1, and its rows;
 //! 5. `quest-detail` when a quest the data knows is open;
 //! 6. in the next-up view, `empty-act-done` when every quest of the act is
 //!    done or skipped, else `panel-next-up`; in the campaign view
@@ -30,8 +32,14 @@
 //! one to do next. That is the step an in-progress row shows as its second
 //! line (the brief: "its next step"); a quest whose every step is reached
 //! but which is not done shows its last step.
+//!
+//! Live changes: a quest becoming available, a step reached or a quest done,
+//! read from a live line, is a [`RowChange`] the shell sends as
+//! `qt:row-change`; the UI animates that row and announces its `text`
+//! (Context "Post-live fixes (owner scope)"). There is no queue, cap or
+//! expiry, and catch-up makes none.
 
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::BTreeSet;
 
 use qt_engine::{
     Detection, Element, Engine, Quest, QuestData, QuestState, Reward, RewardCategory, Status,
@@ -43,18 +51,12 @@ use serde_json::Value;
 /// The `schema` number of every `View`.
 pub const SCHEMA: u32 = 1;
 
-/// How long a toast shows, in milliseconds.
-pub const TOAST_MS: u64 = 3_000;
-
-/// The most toasts stacked at once.
-pub const MAX_TOASTS: usize = 3;
-
 // ---------------------------------------------------------------------------
 // The contract's types.
 
 /// A frame id of the brief's `## Export contract`. `mode-play` and
-/// `mode-edit` are the same panel in each [`Mode`], and `toast` is its own
-/// event, so neither is a frame here.
+/// `mode-edit` are the same panel in each [`Mode`], so neither is a frame
+/// here.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Frame {
@@ -168,6 +170,10 @@ pub struct CharacterView {
     pub own: bool,
     pub pinned: bool,
     pub active: bool,
+    /// The new character from The Riverbank that no level-up has named yet:
+    /// an empty name, level 1, never in `characters` (the UI labels it "New
+    /// character").
+    pub provisional: bool,
 }
 
 /// One act's header and its rows (empty while the act is folded).
@@ -355,33 +361,43 @@ pub struct View {
     pub available_worth_count: u32,
 }
 
+/// What a live transition changed in a quest's row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ToastKind {
+pub enum RowChangeKind {
     Available,
     StepDone,
     QuestDone,
 }
 
-impl ToastKind {
-    /// The icon id of the brief a toast of this kind shows.
-    pub fn icon(self) -> &'static str {
+impl RowChangeKind {
+    /// The contract's word, as `serde` writes it (and the shell's
+    /// diagnostic line `row change <id> <kind> (<quest id>)` uses).
+    pub fn as_str(self) -> &'static str {
         match self {
-            ToastKind::Available => "status-available",
-            ToastKind::StepDone => "status-in-progress",
-            ToastKind::QuestDone => "status-done",
+            RowChangeKind::Available => "available",
+            RowChangeKind::StepDone => "step_done",
+            RowChangeKind::QuestDone => "quest_done",
         }
     }
 }
 
-/// A short notification. The shell sends it as `qt:toast`.
+/// One live change of one quest's row. The shell sends it as
+/// `qt:row-change`; the UI animates the row whose `id` is `quest_id` (the
+/// completed step out, the next one in) and announces `text` in a polite
+/// live region.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Toast {
+pub struct RowChange {
+    /// Increasing, from 1, for the shell's lifetime.
     pub id: u64,
-    pub kind: ToastKind,
+    pub kind: RowChangeKind,
     pub quest_id: String,
+    /// The title of the step just completed, or `None`.
+    pub step_done: Option<String>,
+    /// The title of the step now current, or `None`.
+    pub step_next: Option<String>,
+    /// One sentence for the screen reader, naming the quest and what changed.
     pub text: String,
-    pub icon: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -661,16 +677,36 @@ pub fn build_view(engine: &Engine, settings: &Settings, ui: &UiState) -> View {
             own: c.own,
             pinned: c.pinned,
             active: c.active,
+            provisional: false,
         })
         .collect();
-    let character = engine
+    let named = engine
         .current()
         .and_then(|n| characters.iter().find(|c| c.name == n).cloned());
-
-    let states = character
-        .as_ref()
-        .map(|c| engine.quest_states(&c.name))
-        .unwrap_or_default();
+    // With no named character, the new character from The Riverbank, while
+    // no level-up has named it, is the one progress goes to.
+    let (character, states) = match (named, engine.new_character_states()) {
+        (Some(c), _) => {
+            let states = engine.quest_states(&c.name);
+            (Some(c), states)
+        }
+        (None, Some(states)) => (
+            Some(CharacterView {
+                name: String::new(),
+                class: engine
+                    .new_character()
+                    .map(|c| c.class.clone())
+                    .unwrap_or_default(),
+                level: 1,
+                own: true,
+                pinned: false,
+                active: true,
+                provisional: true,
+            }),
+            states,
+        ),
+        (None, None) => (None, Vec::new()),
+    };
     let panel = character
         .as_ref()
         .and_then(|_| panel(data, &states, &settings, ui));
@@ -697,11 +733,34 @@ pub fn build_view(engine: &Engine, settings: &Settings, ui: &UiState) -> View {
             c.name
         )));
     }
+    // Evidence the engine could not use: events with no character to go to,
+    // and area-tied signals refused while the area was unknown.
     let dropped = engine.dropped_count();
-    if dropped > 0 {
-        derived.push(StatusLine::info(format!(
-            "{dropped} log events came before any character and were not counted."
-        )));
+    let refused = engine.refused_count();
+    let events = |n: u64| format!("{n} log event{}", if n == 1 { "" } else { "s" });
+    let signals = |n: u64| format!("{n} quest signal{}", if n == 1 { "" } else { "s" });
+    let were = |n: u64| if n == 1 { "was" } else { "were" };
+    let uncounted = match (dropped, refused) {
+        (0, 0) => None,
+        (d, 0) => Some(format!(
+            "{} came before any character and {} not counted.",
+            events(d),
+            were(d)
+        )),
+        (0, r) => Some(format!(
+            "{} came before the area was known and {} not counted.",
+            signals(r),
+            were(r)
+        )),
+        (d, r) => Some(format!(
+            "{} came before any character and {} before the area was known; \
+             none was counted.",
+            events(d),
+            signals(r)
+        )),
+    };
+    if let Some(text) = uncounted {
+        derived.push(StatusLine::info(text));
     }
 
     let frame = match ui.open_frame {
@@ -749,92 +808,107 @@ pub fn build_view(engine: &Engine, settings: &Settings, ui: &UiState) -> View {
 }
 
 // ---------------------------------------------------------------------------
-// Toasts.
+// Row changes.
 
-/// The toast a transition makes, if any: only a live one, and only a quest
-/// becoming available, a step reached, or a quest done.
-fn toast_for(data: &QuestData, t: &Transition) -> Option<(ToastKind, String)> {
+/// The index of a step id in a quest's steps.
+fn step_index(quest: &Quest, id: Option<&String>) -> Option<usize> {
+    id.and_then(|id| quest.steps.iter().position(|s| &s.id == id))
+}
+
+/// The step title an in-progress row shows with `reached` as its furthest
+/// step reached: the one after it, or the last one when every step is
+/// reached (the same rule as the row's `current_step`).
+fn shown_step(quest: &Quest, reached: Option<&String>) -> Option<String> {
+    let r = step_index(quest, reached);
+    let next = r.map_or(0, |r| r + 1);
+    (next < quest.steps.len())
+        .then_some(next)
+        .or(r)
+        .map(|i| quest.steps[i].title.clone())
+}
+
+/// What a transition changes in its row, if anything the UI shows as a
+/// change: only a live one, and only a quest becoming available, a step
+/// reached, or a quest done (the choice the toasts had). Returns the kind,
+/// the step completed, the step now current and the announcement.
+fn row_change_for(
+    data: &QuestData,
+    t: &Transition,
+) -> Option<(RowChangeKind, Option<String>, Option<String>, String)> {
     if !t.live {
         return None;
     }
     let quest = data.quest(&t.quest_id)?;
     if t.to == Status::Done && t.from != Status::Done {
-        return Some((ToastKind::QuestDone, format!("Quest done: {}", quest.name)));
+        // The step the row showed, if it showed one, is the one completed.
+        let done = (t.from == Status::InProgress)
+            .then(|| shown_step(quest, t.step_from.as_ref()))
+            .flatten();
+        return Some((
+            RowChangeKind::QuestDone,
+            done,
+            None,
+            format!("Quest done: {}.", quest.name),
+        ));
     }
     if t.to == Status::Available && t.from == Status::Locked {
-        return Some((ToastKind::Available, format!("Now available: {}", quest.name)));
+        return Some((
+            RowChangeKind::Available,
+            None,
+            None,
+            format!("Now available: {}.", quest.name),
+        ));
     }
     if t.to == Status::InProgress && t.step_to.is_some() && t.step_to != t.step_from {
-        let step = quest
-            .steps
-            .iter()
-            .find(|s| Some(&s.id) == t.step_to.as_ref())?;
-        return Some((
-            ToastKind::StepDone,
-            format!("{}: {}", quest.name, step.title),
-        ));
+        let reached = step_index(quest, t.step_to.as_ref())?;
+        let done = quest.steps[reached].title.clone();
+        let next = quest.steps.get(reached + 1).map(|s| s.title.clone());
+        let text = match &next {
+            Some(next) => format!("{}: {done} done; next: {next}.", quest.name),
+            None => format!("{}: {done} done.", quest.name),
+        };
+        return Some((RowChangeKind::StepDone, Some(done), next, text));
     }
     None
 }
 
-/// The toast stack: each toast shows once, for [`TOAST_MS`], at most
-/// [`MAX_TOASTS`] at a time; a newer toast pushes the oldest out.
-#[derive(Debug, Clone, Default)]
-pub struct ToastQueue {
+/// Numbers the row changes: one [`RowChange`] per live transition that
+/// changes a row, each sent once. No queue, no cap and no expiry: the UI
+/// restarts a row's animation when a second change for it arrives.
+#[derive(Debug, Clone)]
+pub struct RowChanges {
     next_id: u64,
-    shown: VecDeque<(Toast, u64)>,
 }
 
-impl ToastQueue {
-    pub fn new() -> ToastQueue {
-        ToastQueue {
-            next_id: 1,
-            shown: VecDeque::new(),
-        }
+impl Default for RowChanges {
+    fn default() -> RowChanges {
+        RowChanges::new()
+    }
+}
+
+impl RowChanges {
+    pub fn new() -> RowChanges {
+        RowChanges { next_id: 1 }
     }
 
-    /// Turns a batch of transitions into toasts at `now_ms` and returns the
-    /// new ones for the shell to send: the newest [`MAX_TOASTS`] at most.
-    /// Catch-up transitions make none.
-    pub fn push(&mut self, data: &QuestData, transitions: &[Transition], now_ms: u64) -> Vec<Toast> {
-        self.expire(now_ms);
-        let mut made: Vec<(ToastKind, &Transition, String)> = transitions
+    /// The row changes a batch of transitions makes, in order, for the shell
+    /// to send. Catch-up transitions make none.
+    pub fn make(&mut self, data: &QuestData, transitions: &[Transition]) -> Vec<RowChange> {
+        transitions
             .iter()
-            .filter_map(|t| toast_for(data, t).map(|(k, text)| (k, t, text)))
-            .collect();
-        if made.len() > MAX_TOASTS {
-            made.drain(..made.len() - MAX_TOASTS);
-        }
-        let mut out = Vec::with_capacity(made.len());
-        for (kind, t, text) in made {
-            let toast = Toast {
-                id: self.next_id.max(1),
-                kind,
-                quest_id: t.quest_id.clone(),
-                text,
-                icon: kind.icon().to_string(),
-            };
-            self.next_id = toast.id + 1;
-            self.shown.push_back((toast.clone(), now_ms + TOAST_MS));
-            while self.shown.len() > MAX_TOASTS {
-                self.shown.pop_front();
-            }
-            out.push(toast);
-        }
-        out
-    }
-
-    /// Drops the toasts whose time is up.
-    pub fn expire(&mut self, now_ms: u64) {
-        self.shown.retain(|(_, until)| *until > now_ms);
-    }
-
-    /// The toasts on screen at `now_ms`, oldest first.
-    pub fn visible(&self, now_ms: u64) -> Vec<Toast> {
-        self.shown
-            .iter()
-            .filter(|(_, until)| *until > now_ms)
-            .map(|(t, _)| t.clone())
+            .filter_map(|t| {
+                let (kind, step_done, step_next, text) = row_change_for(data, t)?;
+                let id = self.next_id;
+                self.next_id += 1;
+                Some(RowChange {
+                    id,
+                    kind,
+                    quest_id: t.quest_id.clone(),
+                    step_done,
+                    step_next,
+                    text,
+                })
+            })
             .collect()
     }
 }

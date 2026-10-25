@@ -2,9 +2,11 @@
 //! data (`fixtures/quests_min.json`) and sessions (`fixtures/sessions/`).
 //! Baseline: an engine that has seen nothing shows an empty state, never a
 //! panel. Target: after `act1.txt` the panel lists the act the character is
-//! in, its progress and its rows, filtered by the settings, with toasts only
-//! for live transitions. `fixtures_match_serialised_views` pins one view per
-//! frame id (and one toast) to `fixtures/viewmodels/<frame id>.json`, which
+//! in, its progress and its rows, filtered by the settings, with row changes
+//! only for live transitions; a level-1 Riverbank entry shows the new
+//! character before its first level-up names it; refused signals are counted
+//! in the status. `fixtures_match_serialised_views` pins one view per
+//! frame id to `fixtures/viewmodels/<frame id>.json`, which
 //! the UI tests and the browser preview read, all built from one story
 //! (`fixtures/sessions/frames/story.txt`); `QT_UPDATE_FIXTURES=1` rewrites
 //! them, and two more tests hold the set consistent and varied. All
@@ -15,8 +17,8 @@ use std::sync::Arc;
 
 use qt_engine::{Engine, QuestAction, QuestData, RewardCategory, Status, Transition, Worth};
 use qt_viewmodel::{
-    build_view, reward_icon, Frame, LogState, Mode, Settings, StatusKind, StepPhase, Toast,
-    ToastKind, ToastQueue, UiState, View, ViewKind, MAX_TOASTS, TOAST_MS,
+    build_view, reward_icon, Frame, LogState, Mode, RowChange, RowChangeKind, RowChanges,
+    Settings, StatusKind, StepPhase, UiState, View, ViewKind,
 };
 use serde_json::Value;
 
@@ -264,16 +266,21 @@ fn only_worth_it_filter() {
     assert_eq!(row_ids(&all).len(), 6);
 }
 
+/// Each row change as (kind, quest id).
+fn change_kinds(made: &[RowChange]) -> Vec<(RowChangeKind, &str)> {
+    made.iter().map(|c| (c.kind, c.quest_id.as_str())).collect()
+}
+
 #[test]
-fn toasts_only_for_live_transitions_max_three() {
+fn row_changes_only_for_live_transitions() {
     let data = data();
-    // Catch-up (the lines were already in the log): no toast at all.
+    // Baseline, catch-up (the lines were already in the log): the engine
+    // reports transitions, and not one of them is a row change.
     let mut engine = Engine::new(data.clone());
     let catch_up = feed(&mut engine, &session("act1.txt"), false);
     assert!(!catch_up.is_empty());
-    let mut queue = ToastQueue::new();
-    assert!(queue.push(&data, &catch_up, 0).is_empty());
-    assert!(queue.visible(0).is_empty());
+    let mut changes = RowChanges::new();
+    assert!(changes.make(&data, &catch_up).is_empty());
 
     // One live line: the riverbank is done and that unlocks the king.
     let lines = session("act1.txt");
@@ -284,50 +291,217 @@ fn toasts_only_for_live_transitions_max_three() {
     let mut engine = Engine::new(data.clone());
     feed(&mut engine, &lines[..renly], false);
     let live = engine.feed_line(&lines[renly], true);
-    let mut queue = ToastQueue::new();
-    let shown = queue.push(&data, &live, 1_000);
-    let kinds: Vec<(ToastKind, &str, &str)> = shown
-        .iter()
-        .map(|t| (t.kind, t.quest_id.as_str(), t.icon.as_str()))
-        .collect();
+    let made = RowChanges::new().make(&data, &live);
     assert_eq!(
-        kinds,
+        change_kinds(&made),
         vec![
-            (ToastKind::QuestDone, "fixture-riverbank", "status-done"),
-            (ToastKind::Available, "fixture-king", "status-available"),
+            (RowChangeKind::QuestDone, "fixture-riverbank"),
+            (RowChangeKind::Available, "fixture-king"),
         ],
         "{live:#?}"
     );
-    assert_eq!(shown[0].id + 1, shown[1].id);
-    assert!(shown[1].text.contains("Fixture: The King in the Mists"));
+    assert_eq!((made[0].id, made[1].id), (1, 2));
+    assert!(made[1].text.contains("Fixture: The King in the Mists"));
 
-    // A whole act live in one batch: at most three, the newest kept.
+    // A whole act live in one batch: every change, in order, no cap of
+    // three and nothing dropped.
     let mut engine = Engine::new(data.clone());
     let burst = feed(&mut engine, &lines, true);
-    let mut queue = ToastQueue::new();
-    let shown = queue.push(&data, &burst, 5_000);
-    assert_eq!(shown.len(), MAX_TOASTS);
-    assert_eq!(queue.visible(5_000), shown);
-    let last: Vec<String> = shown.iter().map(|t| t.quest_id.clone()).collect();
-    assert_eq!(last.last().map(String::as_str), Some("fixture-king"));
-    // They go after about three seconds.
-    assert_eq!(queue.visible(5_000 + TOAST_MS - 1).len(), MAX_TOASTS);
-    assert!(queue.visible(5_000 + TOAST_MS).is_empty());
+    let mut changes = RowChanges::new();
+    let all = changes.make(&data, &burst);
+    assert!(all.len() > 3, "{all:#?}");
+    assert!(all.iter().any(|c| c.kind == RowChangeKind::StepDone));
+    assert_eq!(
+        all.iter().map(|c| c.id).collect::<Vec<_>>(),
+        (1..=all.len() as u64).collect::<Vec<_>>(),
+        "ids increase from 1"
+    );
+    assert_eq!(all.last().map(|c| c.quest_id.as_str()), Some("fixture-king"));
+    // The ids keep increasing across batches.
+    let again = changes.make(&data, &live);
+    assert_eq!(again[0].id, all.len() as u64 + 1);
 
-    // Line by line, the stack never grows past three.
+    // Line by line: the same changes as the batch, one per transition.
     let mut engine = Engine::new(data.clone());
-    let mut queue = ToastQueue::new();
-    let mut seen: Vec<Toast> = Vec::new();
-    for (i, line) in lines.iter().enumerate() {
+    let mut changes = RowChanges::new();
+    let mut seen: Vec<RowChange> = Vec::new();
+    for line in &lines {
         let t = engine.feed_line(line, true);
-        seen.extend(queue.push(&data, &t, i as u64 * 10));
-        assert!(queue.visible(i as u64 * 10).len() <= MAX_TOASTS);
+        seen.extend(changes.make(&data, &t));
     }
-    assert!(seen.len() > MAX_TOASTS, "{seen:#?}");
-    assert!(seen.iter().any(|t| t.kind == ToastKind::StepDone));
-    let mut ids: Vec<u64> = seen.iter().map(|t| t.id).collect();
-    ids.dedup();
-    assert_eq!(ids.len(), seen.len(), "toast ids are unique");
+    assert_eq!(seen, all);
+
+    // Catch-up and live mixed in one batch: only the live ones count.
+    let mut mixed = catch_up.clone();
+    mixed.extend(live.iter().cloned());
+    assert_eq!(
+        change_kinds(&RowChanges::new().make(&data, &mixed)),
+        change_kinds(&made)
+    );
+}
+
+#[test]
+fn row_change_carries_steps_and_announcement() {
+    let data = data();
+    let lines = session("act1.txt");
+    let at = |needle: &str| {
+        lines
+            .iter()
+            .position(|l| l.contains(needle))
+            .unwrap_or_else(|| panic!("act1 has {needle:?}"))
+    };
+    let live_at = |i: usize| {
+        let mut engine = Engine::new(data.clone());
+        feed(&mut engine, &lines[..i], false);
+        let t = engine.feed_line(&lines[i], true);
+        RowChanges::new().make(&data, &t)
+    };
+
+    // A step reached: the step completed goes out, the next step comes in.
+    let made = live_at(at("a lute string hums"));
+    let lute = made
+        .iter()
+        .find(|c| c.quest_id == "fixture-lute")
+        .unwrap_or_else(|| panic!("the lute's step is a row change: {made:#?}"));
+    assert_eq!(lute.kind, RowChangeKind::StepDone);
+    assert_eq!(lute.step_done.as_deref(), Some("Hear the lute"));
+    assert_eq!(lute.step_next.as_deref(), Some("Return the lute"));
+    for part in ["Fixture: The Lost Lute", "Hear the lute", "Return the lute"] {
+        assert!(lute.text.contains(part), "{:?} lacks {part:?}", lute.text);
+    }
+
+    // A quest done: the step its row showed goes out, nothing comes in.
+    let made = live_at(at("Renly: "));
+    let riverbank = &made[0];
+    assert_eq!(riverbank.kind, RowChangeKind::QuestDone);
+    assert_eq!(riverbank.step_done.as_deref(), Some("Reach the encampment"));
+    assert_eq!(riverbank.step_next, None);
+    let name = &data.quest("fixture-riverbank").unwrap().name;
+    assert!(riverbank.text.contains(name.as_str()), "{:?} lacks {name:?}", riverbank.text);
+    // Available: no step on either side, and the sentence names the quest.
+    let king = &made[1];
+    assert_eq!(king.kind, RowChangeKind::Available);
+    assert_eq!((king.step_done.as_deref(), king.step_next.as_deref()), (None, None));
+    assert!(king.text.contains("Fixture: The King in the Mists"));
+
+    // The payload is the contract's, exactly as serde writes it.
+    let v = serde_json::to_value(lute).unwrap();
+    let mut keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
+    keys.sort();
+    assert_eq!(keys, vec!["id", "kind", "quest_id", "step_done", "step_next", "text"]);
+    assert_eq!(v["kind"], Value::String("step_done".into()));
+    assert_eq!(RowChangeKind::QuestDone.as_str(), "quest_done");
+    assert_eq!(serde_json::to_value(&made[1]).unwrap()["step_done"], Value::Null);
+}
+
+#[test]
+fn new_character_view_before_level_2() {
+    let lines = session("act1.txt");
+    let riverbank = lines
+        .iter()
+        .position(|l| l.contains("Generating level 1 area \"G1_1\""))
+        .expect("act1 enters The Riverbank at level 1");
+    let level2 = lines
+        .iter()
+        .position(|l| l.contains("is now level 2"))
+        .expect("act1 has the first level-up");
+    assert!(riverbank < level2);
+
+    // Baseline: before the Riverbank entry there is no character.
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &lines[..riverbank], false);
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::NextUp));
+    assert_eq!(view.frame, Frame::EmptyNoCharacter);
+    assert!(view.character.is_none());
+
+    // Target: from the level-1 entry the new character is the active one,
+    // unnamed and provisional, with its act 1 rows, never in the list.
+    feed(&mut engine, &lines[riverbank..level2], false);
+    assert!(engine.new_character_open());
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
+    assert_eq!(view.frame, Frame::PanelCampaign, "{view:#?}");
+    let ch = view.character.clone().expect("the new character shows");
+    assert!(ch.provisional && ch.own && ch.active && !ch.pinned, "{ch:?}");
+    assert_eq!((ch.name.as_str(), ch.level), ("", 1));
+    assert!(view.characters.is_empty(), "{:?}", view.characters);
+    assert_eq!(view.acts.len(), 1);
+    assert_eq!(view.acts[0].act, 1);
+    let row = view.acts[0]
+        .quests
+        .iter()
+        .find(|r| r.id == "fixture-riverbank")
+        .expect("the riverbank row");
+    assert_eq!(row.status, Status::InProgress);
+    assert_eq!(row.current_step.as_deref(), Some("Reach the encampment"));
+    // Not "not confirmed": the new character is the player's own.
+    assert_ne!(view.status.as_ref().map(|s| s.kind), Some(StatusKind::Warn));
+    let v = serde_json::to_value(&view).unwrap();
+    assert_eq!(v["character"]["provisional"], Value::Bool(true));
+    assert_eq!(v["character"]["name"], Value::String(String::new()));
+    // Its detail opens like any character's.
+    let mut ui = reading(ViewKind::NextUp);
+    ui.detail = Some("fixture-riverbank".into());
+    let view = build_view(&engine, &Settings::default(), &ui);
+    assert_eq!(view.frame, Frame::QuestDetail);
+
+    // The first level-up names it: no longer provisional, listed, same rows.
+    feed(&mut engine, &lines[level2..=level2], false);
+    assert!(!engine.new_character_open());
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
+    let ch = view.character.clone().expect("the named character");
+    assert_eq!((ch.name.as_str(), ch.level, ch.provisional), (CORISANDE, 2, false));
+    assert!(ch.own && ch.active);
+    assert_eq!(view.characters, vec![ch]);
+    let row = view.acts[0]
+        .quests
+        .iter()
+        .find(|r| r.id == "fixture-riverbank")
+        .unwrap();
+    assert_eq!(row.status, Status::InProgress);
+}
+
+/// A client line, for the inline cases.
+fn client_line(text: &str) -> String {
+    format!("2026/03/08 18:20:00 2800000 5c0a0041 [INFO Client 5120] {text}")
+}
+
+#[test]
+fn refused_count_in_status() {
+    let data = data();
+    // Baseline: an own character's reward with the area known is no refusal
+    // and says nothing.
+    let reward = client_line(": Corisande_Fell has received +10% to [Resistances|Cold Resistance].");
+    let mut known = Engine::new(data.clone());
+    feed(&mut known, &[area_line("G1_2"), reward.clone()], true);
+    assert_eq!(known.refused_count(), 0);
+    assert!(build_view(&known, &Settings::default(), &reading(ViewKind::Campaign))
+        .status
+        .is_none());
+
+    // Target: the same reward before any area line. The pack leader's reward
+    // is tied to its area, the area is unknown, so the signal is refused and
+    // the status says how many.
+    let mut engine = Engine::new(data.clone());
+    feed(&mut engine, &[reward.clone()], true);
+    assert_eq!((engine.refused_count(), engine.dropped_count()), (1, 0));
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
+    let status = view.status.expect("a status line for the refused signal");
+    assert_eq!(status.kind, StatusKind::Info);
+    assert!(status.text.contains("1 quest signal "), "{status:?}");
+    assert!(status.text.contains("area"), "{status:?}");
+
+    // Dropped and refused together: one line names both counts.
+    let opening = "2026/03/08 18:30:00 ***** LOG FILE OPENING *****".to_string();
+    let npc = client_line("Renly: Fixture line: welcome to the encampment.");
+    feed(&mut engine, &[opening.clone(), npc, opening], true);
+    let (dropped, refused) = (engine.dropped_count(), engine.refused_count());
+    assert!(dropped > 0 && refused > 0, "dropped {dropped}, refused {refused}");
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::Campaign));
+    let text = view.status.expect("a status line").text;
+    assert!(
+        text.contains(&format!("{dropped} log event")) && text.contains(&format!("{refused} quest signal")),
+        "{text}"
+    );
 }
 
 #[test]
@@ -407,7 +581,12 @@ fn empty_and_error_states() {
     assert_eq!(view.status.unwrap().text, "Shortcut Ctrl+Alt+Q is taken");
 
     // A level-up alone makes an unconfirmed character: the panel says so.
-    let lines = session("act1.txt");
+    // (Without the level-1 Riverbank entry, which would start a new
+    // character that the level-up names as the player's own.)
+    let lines: Vec<String> = session("act1.txt")
+        .into_iter()
+        .filter(|l| !l.contains("area \"G1_1\""))
+        .collect();
     let first_received = lines.iter().position(|l| l.contains("has received")).unwrap();
     let mut engine = Engine::new(data.clone());
     feed(&mut engine, &lines[..first_received], false);
@@ -477,7 +656,7 @@ fn story_engine() -> Engine {
     engine
 }
 
-/// One serialised value per frame id of the brief, plus `toast`. Every frame
+/// One serialised value per frame id of the brief. Every frame
 /// that shows a character is the same story at the same point; only
 /// `empty-act-done` moves it on, by marking the rest of act 1 done.
 fn fixture_values() -> Vec<(String, Value)> {
@@ -547,22 +726,23 @@ fn fixture_values() -> Vec<(String, Value)> {
         "empty-act-done".into(),
         to(&build_view(&done, &Settings::default(), &reading(ViewKind::NextUp))),
     ));
+    out
+}
 
-    // The toast: the story's last line (Una's, which makes the lute
-    // available) read live after a catch-up of the rest.
+/// The story's last line (Una's, which makes the lute available) read live
+/// after a catch-up of the rest: the row change the frames' moment ends on.
+fn story_row_change() -> RowChange {
     let data = frames_data();
     let lines = story_lines();
     let (last, before) = lines.split_last().unwrap();
     let mut engine = Engine::new(data.clone());
     feed(&mut engine, before, false);
     let live = engine.feed_line(last, true);
-    let toast = ToastQueue::new()
-        .push(&data, &live, 0)
+    RowChanges::new()
+        .make(&data, &live)
         .into_iter()
         .next()
-        .expect("Una's line read live makes the lute available");
-    out.push(("toast".into(), serde_json::to_value(&toast).unwrap()));
-    out
+        .expect("Una's line read live makes the lute available")
 }
 
 fn update_fixtures() -> bool {
@@ -617,7 +797,7 @@ fn text(v: &Value) -> String {
 #[test]
 fn fixture_frames_share_one_character_state() {
     let files = generated_fixtures();
-    let views: Vec<&(String, Value)> = files.iter().filter(|(n, _)| n != "toast").collect();
+    let views: Vec<&(String, Value)> = files.iter().collect();
 
     // One active character in every frame that shows one, and each character
     // at one class and level wherever it is listed (the picker's other
@@ -689,19 +869,18 @@ fn fixture_frames_share_one_character_state() {
         }
     }
 
-    // The toast announces what the frames show.
-    let toast = &files.iter().find(|(n, _)| n == "toast").expect("toast.json").1;
-    let shown_as = match toast["kind"].as_str().unwrap() {
-        "available" => "available",
-        "step_done" => "in_progress",
-        "quest_done" => "done",
-        other => panic!("toast kind {other}"),
+    // The row change the story ends on announces what the frames show.
+    let change = story_row_change();
+    let shown_as = match change.kind {
+        RowChangeKind::Available => "available",
+        RowChangeKind::StepDone => "in_progress",
+        RowChangeKind::QuestDone => "done",
     };
-    let quest = text(&toast["quest_id"]);
+    let quest = change.quest_id.clone();
     let states = quests.get(&quest).unwrap_or_else(|| panic!("no frame shows {quest}"));
     assert!(
         states.iter().all(|s| s.starts_with(&format!("{shown_as} "))),
-        "the toast says {quest} is {shown_as}; the frames show {states:?}"
+        "the row change says {quest} is {shown_as}; the frames show {states:?}"
     );
 }
 
@@ -711,10 +890,7 @@ fn fixture_rows_cover_every_worth() {
     let mut worth = std::collections::BTreeSet::new();
     let mut detection = std::collections::BTreeSet::new();
     let mut ticks = std::collections::BTreeSet::new();
-    for (name, view) in &files {
-        if name == "toast" {
-            continue;
-        }
+    for (_, view) in &files {
         for row in rows_of(view) {
             worth.insert(text(&row["worth"]));
             detection.insert(text(&row["detection"]));
@@ -777,10 +953,8 @@ fn fixtures_match_serialised_views() {
     }
     let mut stale = Vec::new();
     for (name, value) in &values {
-        if name != "toast" {
-            assert_eq!(value["frame"], Value::String(name.clone()), "{name}");
-            assert_eq!(value["schema"], Value::from(1));
-        }
+        assert_eq!(value["frame"], Value::String(name.clone()), "{name}");
+        assert_eq!(value["schema"], Value::from(1));
         let path = dir.join(format!("{name}.json"));
         if update {
             let text = serde_json::to_string_pretty(value).unwrap() + "\n";
@@ -799,6 +973,16 @@ fn fixtures_match_serialised_views() {
         stale.is_empty(),
         "stale view fixtures {stale:?}: run with QT_UPDATE_FIXTURES=1 and review the diff"
     );
+    // No other JSON file sits beside them (`toast.json` left with the toasts).
+    let mut extra: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "json"))
+        .map(|p| p.file_stem().unwrap().to_string_lossy().into_owned())
+        .filter(|n| !values.iter().any(|(v, _)| v == n))
+        .collect();
+    extra.sort();
+    assert!(extra.is_empty(), "view fixtures no frame id names: {extra:?}");
 
     // The campaign fixture shows one row in each status (the brief's ask).
     let campaign = &values[0].1;
@@ -831,8 +1015,13 @@ fn frames_and_icons_are_the_brief_ids() {
             assert!(icons.contains(&reward_icon(r).to_string()), "{r:?}");
         }
     }
-    for kind in [ToastKind::Available, ToastKind::StepDone, ToastKind::QuestDone] {
-        assert!(icons.contains(&kind.icon().to_string()), "{kind:?}");
+    // The `toast` frame left the contract with the toasts.
+    assert!(!frames.contains(&"toast".to_string()), "{frames:?}");
+    for kind in [RowChangeKind::Available, RowChangeKind::StepDone, RowChangeKind::QuestDone] {
+        assert_eq!(
+            serde_json::to_value(kind).unwrap(),
+            Value::String(kind.as_str().to_string())
+        );
     }
     // Every reward category and element maps to an icon of the brief.
     for name in RewardCategory::NAMES {

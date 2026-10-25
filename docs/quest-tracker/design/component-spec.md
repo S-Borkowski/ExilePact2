@@ -13,7 +13,7 @@ use the same name with the dot as a dash: `color.panel-bg` →
   height at most 60% of the screen (648 at 1×); the panel scrolls beyond it.
 - **Shape:** radius 0 everywhere (`radius`, `radius.row`, `radius.button`).
   Corners are cut at 45° on the top-left and bottom-right only: panel 6 px
-  (`chamfer.panel`), buttons 3 px, toasts and the badge 4 px. In CSS, a
+  (`chamfer.panel`), buttons 3 px, the badge 4 px. In CSS, a
   `clip-path: polygon(...)` on the element plus an inner pseudo-element for
   the border.
 - **Surface:** panel `color.panel-bg`, border 1 px `color.panel-border`,
@@ -44,8 +44,11 @@ use the same name with the dot as a dash: `color.panel-bg` →
 - **Worth:** worth it = solid star `color.worth-gold`; optional = outline
   star `color.text-secondary`; not worth it = dash `color.worth-none`. On
   done, skipped and locked rows every marker is `color.text-muted`.
-- **Motion:** toast 3 s (`motion.toast-ms`), undo 5 s (`motion.undo-ms`),
-  Reset confirm 3 s (`motion.confirm-ms`); each countdown drains a 2 px bar.
+- **Motion:** the row transition (below, after QuestRow): the completed
+  step out over ~150 ms, the next step in over ~220 ms, ease-out; instant
+  under `prefers-reduced-motion: reduce`. Reset confirm 3 s
+  (`motion.confirm-ms`); its countdown drains a 2 px bar. There are no
+  toasts and no Undo toast (owner, 2026-10-25, after Live 1).
 
 ## Components
 
@@ -85,6 +88,21 @@ Status mark 16 · body (fills): name (Row) + manual marker 12 after the name
   change; click opens quest detail.
 Variants: status (6) × worth (3) × detection (auto/manual). Manual covers
 "partial".
+
+### Row transition (QuestRow, in place of the toasts)
+Not a component of its own: a live change of a quest's row (`qt:row-change`:
+it became available, a step was reached, or it is done) plays on that row.
+- Step out: the completed step's line fades to 0 over ~150 ms.
+- Step in: then the next step's line fades in from ~0.2 opacity, moving up
+  4-6 px into place, over ~220 ms, ease-out. A quest done has no next step:
+  the row settles into its finished variant.
+- A second change to the same row restarts the transition cleanly; nothing
+  queues or stacks.
+- `prefers-reduced-motion: reduce` (Windows animations off): the change is
+  instant.
+- Every change is announced once in a polite live region
+  (`aria-live="polite"`), the change's one sentence. A row not on screen
+  (its act folded, or filtered out) is announced and not animated.
 
 ### StatusMark 16, WorthMarker 16, ManualTick 12
 Icon instances, colour from the tokens above. ManualTick is the eye with a
@@ -134,13 +152,6 @@ left bar and "Tracking". Hover: `#181B1E`.
 - `has-new`: 2 px `color.worth-gold`, solid star 14 + count (22 ExtraBold,
   gold).
 - `warning` (log missing or idle): 1 px `color.warning`, warning glyph 20.
-
-### Toast — 300×44, 4 px cut corners
-`color.toast-bg`, 3 px left bar and 20 px icon in the type colour, one line
-(Row). Types: quest available (available colour, available glyph), step
-done (in-progress blue, bare check), quest done (done colour, check in a
-box), undo (teal, check, "Undo" action in Bold teal, 2 px countdown, 5 s,
-edit mode only). At most 3, stacked 4 px apart **below** the panel.
 
 ### Empty and error states
 Body padding 16, gap 8: glyph 24, title (Title), body (Step,
