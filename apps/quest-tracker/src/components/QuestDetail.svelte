@@ -1,11 +1,12 @@
 <script lang="ts">
   // A quest's detail: back to the act, the title, giver and zones, the manual
-  // note, the worth reason, every step with its tick, every reward as a chip,
+  // note, the worth reason, every step with its leading mark (in edit mode the
+  // step's one toggle, the hand tick), every reward as a chip,
   // the poe2db source, and in edit mode the actions. Reset asks twice: the
   // first click turns it into "Confirm reset", filled, with a 3 s countdown.
   import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
-  import type { Detection, QuestAction, QuestDetail } from '../ipc';
+  import type { Detection, QuestAction, QuestDetail, StepPhase, StepView } from '../ipc';
   import { STEP_ICON, STEP_LABEL, WORTH_LABEL } from '../labels';
   import Icon from './Icon.svelte';
   import StatusMark from './StatusMark.svelte';
@@ -52,7 +53,22 @@
   }
 
   onDestroy(() => clearTimeout(confirmTimer));
+
+  // The leading mark draws what the step reads as: the check in a box when the
+  // log finished it or it was ticked by hand, else its own phase. In edit mode
+  // it is also the step's one toggle (the hand tick).
+  function markPhase(step: StepView): StepPhase {
+    return step.state === 'done' || step.ticked ? 'done' : step.state;
+  }
 </script>
+
+{#snippet mark(phase: StepPhase, labelled: boolean)}
+  {#if phase === 'pending'}
+    <span class="box" role={labelled ? 'img' : undefined} aria-label={labelled ? STEP_LABEL.pending : undefined} aria-hidden={labelled ? undefined : 'true'}></span>
+  {:else}
+    <Icon id={STEP_ICON[phase]} label={labelled ? STEP_LABEL[phase] : null} size="14px" />
+  {/if}
+{/snippet}
 
 <div class="detail" data-quest={row.id}>
   <div class="content">
@@ -85,30 +101,27 @@
   <h3 class="group-label">Steps</h3>
   <ol class="steps">
     {#each detail.steps as step (step.id)}
-      <li class="step" data-state={step.state}>
-        {#if step.state === 'pending'}
-          <span class="box" role="img" aria-label={STEP_LABEL.pending}></span>
+      {@const phase = markPhase(step)}
+      <li class="step" data-state={step.state} data-step={step.id} data-ticked={step.ticked}>
+        {#if edit}
+          <button
+            type="button"
+            class="mark"
+            aria-pressed={step.ticked}
+            aria-label={`${step.title}: ${STEP_LABEL[phase]}. Tick by hand`}
+            title={step.ticked ? 'Ticked by hand: click to untick' : 'Tick by hand'}
+            onclick={() => send('tick_step', { questId: row.id, stepId: step.id, ticked: !step.ticked })}
+          >
+            {@render mark(phase, false)}
+          </button>
         {:else}
-          <Icon id={STEP_ICON[step.state]} label={STEP_LABEL[step.state]} size="14px" />
+          <span class="mark">{@render mark(phase, true)}</span>
         {/if}
         <span class="step-body">
           <span class="step-title">{step.title}</span>
           {#if step.text}<span class="step-text">{step.text}</span>{/if}
         </span>
-        {#if edit}
-          <button
-            type="button"
-            class="tick"
-            aria-pressed={step.ticked}
-            aria-label={`Ticked by hand: ${step.title}`}
-            title="Tick by hand"
-            onclick={() => send('tick_step', { questId: row.id, stepId: step.id, ticked: !step.ticked })}
-          >
-            {#if step.ticked}<Icon id="ui-check" size="12px" />{/if}
-          </button>
-        {:else if step.ticked}
-          <span class="ticked">ticked</span>
-        {/if}
+        {#if step.ticked}<span class="ticked">ticked</span>{/if}
       </li>
     {/each}
   </ol>
@@ -276,9 +289,33 @@
     color: var(--color-text-muted);
   }
 
-  .step > :global(.icon),
-  .box {
+  .mark {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
     margin-top: 2px;
+  }
+
+  /* Edit mode: the mark is the hand tick. The hit area is 24x24 around the
+     14 px glyph; the negative margins keep the glyph where play mode draws it. */
+  button.mark {
+    box-sizing: border-box;
+    min-width: 24px;
+    min-height: 24px;
+    margin: -3px -5px;
+    padding: 0;
+    border: var(--border-width) solid transparent;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  button.mark:hover,
+  button.mark:focus-visible {
+    border-color: var(--color-edit-accent);
+    color: var(--color-edit-accent);
+    outline: none;
   }
 
   .box {
@@ -323,28 +360,6 @@
     color: var(--color-text-muted);
     font-size: var(--size-caption);
     line-height: var(--line-caption);
-  }
-
-  .tick {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    box-sizing: border-box;
-    width: 16px;
-    height: 16px;
-    margin-top: 1px;
-    padding: 0;
-    border: var(--border-width) solid var(--color-panel-border);
-    background: var(--color-panel-sunken);
-    color: var(--color-edit-accent);
-    cursor: pointer;
-  }
-
-  .tick:hover,
-  .tick:focus-visible {
-    border-color: var(--color-edit-accent);
-    outline: none;
   }
 
   .chips {
