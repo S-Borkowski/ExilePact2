@@ -293,7 +293,7 @@ fn patterns() -> &'static Patterns {
         Patterns {
             // `<ms counter> <hex> [<LEVEL> Client <pid>] <message>`; the
             // message may be empty.
-            header: re(r"^\d+ (?:[0-9A-Fa-f]+ )?\[([A-Z]+) Client \d+\](?: (.*))?$"),
+            header: re(r"^\d+ (?:[0-9A-Fa-f]+ )?\[([A-Z]+) Client (\d+)\](?: (.*))?$"),
             area: re(r#"^Generating level (\d+) area "([^"]+)" with seed (\d+)$"#),
             scene: re(r"^\[SCENE\] Set Source \[(.*)\]$"),
             act: re(r"^Act \d+$"),
@@ -323,11 +323,7 @@ pub fn strip_markup(text: &str) -> String {
 /// unknown speaker, a continuation line and anything else not recognised.
 /// A trailing `\r\n` (or a leading byte-order mark) is tolerated.
 pub fn parse_line(line: &str, allow: &Allowlist) -> Option<Event> {
-    let line = line.strip_prefix('\u{feff}').unwrap_or(line);
-    let line = line.trim_end_matches(['\r', '\n']);
-    // Continuation lines carry no timestamp.
-    let time = Timestamp::parse(line.get(..19)?)?;
-    let rest = line[19..].strip_prefix(' ')?;
+    let (time, rest) = timed(line)?;
     if rest.trim_end() == "***** LOG FILE OPENING *****" {
         return Some(Event {
             time,
@@ -335,7 +331,7 @@ pub fn parse_line(line: &str, allow: &Allowlist) -> Option<Event> {
         });
     }
     let caps = patterns().header.captures(rest)?;
-    let message = caps.get(2).map_or("", |m| m.as_str());
+    let message = caps.get(3).map_or("", |m| m.as_str());
     if &caps[1] == "WARN" {
         if let Some(c) = patterns().character_build.captures(message) {
             return Some(Event {
@@ -347,6 +343,25 @@ pub fn parse_line(line: &str, allow: &Allowlist) -> Option<Event> {
         }
     }
     parse_message(message, allow).map(|kind| Event { time, kind })
+}
+
+/// The process id in a line's `[<LEVEL> Client <pid>]` header, which is the
+/// game client's own pid (Context "Live 2 fixes (owner scope)"). `None` for
+/// a continuation line, a session marker and any other shape. Independent of
+/// [`parse_line`]: a line that gives no event still gives its pid.
+pub fn client_pid(line: &str) -> Option<u32> {
+    let (_, rest) = timed(line)?;
+    patterns().header.captures(rest)?[2].parse().ok()
+}
+
+/// A line's timestamp and the text after it, with a leading byte-order mark
+/// and a trailing `\r\n` removed. Continuation lines carry no timestamp.
+fn timed(line: &str) -> Option<(Timestamp, &str)> {
+    let line = line.strip_prefix('\u{feff}').unwrap_or(line);
+    let line = line.trim_end_matches(['\r', '\n']);
+    let time = Timestamp::parse(line.get(..19)?)?;
+    let rest = line[19..].strip_prefix(' ')?;
+    Some((time, rest))
 }
 
 fn parse_message(message: &str, allow: &Allowlist) -> Option<EventKind> {

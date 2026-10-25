@@ -313,6 +313,11 @@ pub struct Quest {
     pub worth_reason: String,
     pub steps: Vec<Step>,
     pub unlock: Vec<Signal>,
+    /// Signals that make the quest in progress before any step fires (a
+    /// talk the log does not record, read from a later event); absent in
+    /// the file means empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub start: Vec<Signal>,
     pub done: Vec<Signal>,
     pub window_closes: Vec<Signal>,
     pub detection: Detection,
@@ -628,7 +633,7 @@ impl Checker<'_> {
                 "source_url",
                 "fetched",
             ],
-            &["notes", "done_inferred"],
+            &["notes", "done_inferred", "start"],
         )?;
         self.nonempty(&q["name"], "name")?;
         self.positive(&q["act"], "act")?;
@@ -681,6 +686,9 @@ impl Checker<'_> {
             self.signals(&m["signals"], &join(&p, "signals"))?;
         }
         self.signals(&q["unlock"], "unlock")?;
+        if let Some(st) = q.get("start") {
+            self.signals(st, "start")?;
+        }
         self.signals(&q["done"], "done")?;
         self.signals(&q["window_closes"], "window_closes")?;
         self.one_of(&q["detection"], "detection", &Detection::NAMES)?;

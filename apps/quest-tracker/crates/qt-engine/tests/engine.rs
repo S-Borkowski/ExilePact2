@@ -2222,3 +2222,215 @@ fn validator_reads_done_inferred() {
     assert_eq!(err.quest.as_deref(), Some("fixture-beira"), "{err}");
     assert_eq!(err.field, "done_inferred", "{err}");
 }
+
+// -- a quest started by a signal (Context "Live 2 fixes (owner scope)") ------
+
+/// The fixture data with a `start` list on fixture-beira (`quests[1]`).
+fn data_with_beira_start(start: Value) -> Arc<QuestData> {
+    let mut v: Value = serde_json::from_str(&data_text()).unwrap();
+    v["quests"][1]["start"] = start;
+    Arc::new(QuestData::from_value(&v).expect("a valid start list is accepted"))
+}
+
+/// The `start` the target cases give fixture-beira: fixture-riverbank done.
+fn riverbank_done_start() -> Value {
+    serde_json::json!([{ "kind": "quest", "id": "fixture-riverbank", "status": "done" }])
+}
+
+/// Corisande, an own character at level 30, over the given data.
+fn corisande_over(data: Arc<QuestData>) -> Engine {
+    let mut engine = Engine::new(data);
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            line(": Corisande_Fell has received +20 to maximum Life."),
+            level_up(CORISANDE, "Witch", 30),
+        ],
+        true,
+    );
+    engine.take_character_notes();
+    engine
+}
+
+/// The entry to G1_2, which unlocks fixture-beira.
+fn beira_area() -> String {
+    line(r#"Generating level 2 area "G1_2" with seed 2"#)
+}
+
+/// Renly's line in the encampment: fixture-riverbank's done signal.
+fn renly_done() -> Vec<String> {
+    vec![
+        line(r#"Generating level 15 area "G1_town" with seed 1"#),
+        line("Renly: Fixture line: welcome to the encampment."),
+    ]
+}
+
+fn beira_state(engine: &Engine) -> (Status, Option<String>) {
+    let q = engine.quest_state(CORISANDE, "fixture-beira").unwrap();
+    (q.status, q.current_step)
+}
+
+#[test]
+fn quest_without_start_stays_available_until_a_step() {
+    // Baseline: the fixture as it is, with no `start` on fixture-beira.
+    let d = data();
+    assert!(d.quests[1].start.is_empty(), "absent start is empty");
+    let mut engine = corisande_over(d);
+    feed(&mut engine, &[beira_area()], true);
+    assert_eq!(beira_state(&engine), (Status::Available, None));
+
+    // fixture-riverbank done moves nothing of fixture-beira.
+    let got = feed(&mut engine, &renly_done(), true);
+    assert_eq!(
+        status(&engine, CORISANDE, "fixture-riverbank"),
+        Status::Done
+    );
+    assert_eq!(beira_state(&engine), (Status::Available, None));
+    assert!(got.iter().all(|t| t.quest_id != "fixture-beira"), "{got:?}");
+
+    // Only a step signal makes it in progress, at that step.
+    feed(
+        &mut engine,
+        &[line(
+            "Beira of the Rotten Pack: Fixture line: the pack gathers.",
+        )],
+        true,
+    );
+    assert_eq!(
+        beira_state(&engine),
+        (Status::InProgress, Some("meet-beira".to_string()))
+    );
+}
+
+#[test]
+fn start_signal_puts_quest_in_progress_at_first_step() {
+    let mut engine = corisande_over(data_with_beira_start(riverbank_done_start()));
+    // The start has not fired: the quest is only available.
+    feed(&mut engine, &[beira_area()], true);
+    assert_eq!(beira_state(&engine), (Status::Available, None));
+
+    // Another quest's done fires the start: in progress, no step reached,
+    // so the first step is the current one; reported as one transition.
+    let got = feed(&mut engine, &renly_done(), true);
+    assert_eq!(beira_state(&engine), (Status::InProgress, None));
+    let beira = engine.quest_state(CORISANDE, "fixture-beira").unwrap();
+    assert!(
+        beira.steps.iter().all(|s| !s.fired && !s.ticked),
+        "{beira:?}"
+    );
+    let started: Vec<&Transition> = got
+        .iter()
+        .filter(|t| t.quest_id == "fixture-beira")
+        .collect();
+    assert_eq!(
+        started,
+        vec![&Transition {
+            character: CORISANDE.to_string(),
+            quest_id: "fixture-beira".to_string(),
+            from: Status::Available,
+            to: Status::InProgress,
+            step_from: None,
+            step_to: None,
+            live: true,
+        }]
+    );
+    // Applying the same lines again changes nothing.
+    assert_eq!(feed(&mut engine, &renly_done(), true), vec![]);
+
+    // A step that fires after the start becomes the current step.
+    feed(
+        &mut engine,
+        &[line(
+            "Beira of the Rotten Pack: Fixture line: the pack gathers.",
+        )],
+        true,
+    );
+    assert_eq!(
+        beira_state(&engine),
+        (Status::InProgress, Some("meet-beira".to_string()))
+    );
+
+    // Done and skipped still come first (rules 1 and 2).
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    assert_eq!(beira_state(&engine).0, Status::Skipped);
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Unskip)
+        .unwrap();
+    feed(&mut engine, &[beira_area(), line(COLD_REWARD)], true);
+    assert_eq!(beira_state(&engine).0, Status::Done);
+
+    // An event-based start (an NPC line) fires as evidence, and the same
+    // line in catch-up reports its transition as catch-up.
+    let npc_start = serde_json::json!([{ "kind": "npc", "speaker": "Una", "area": "G1_town" }]);
+    let mut engine = corisande_over(data_with_beira_start(npc_start));
+    feed(&mut engine, &[beira_area()], false);
+    let got = feed(
+        &mut engine,
+        &[
+            line(r#"Generating level 15 area "G1_town" with seed 1"#),
+            line("Una: Fixture line: an invented remark."),
+        ],
+        false,
+    );
+    assert_eq!(beira_state(&engine), (Status::InProgress, None));
+    assert!(
+        got.iter()
+            .any(|t| t.quest_id == "fixture-beira" && t.to == Status::InProgress && !t.live),
+        "{got:?}"
+    );
+}
+
+#[test]
+fn validator_checks_start_signals() {
+    let base: Value = serde_json::from_str(&data_text()).unwrap();
+    // Absent is empty; a valid list is read in order.
+    let d = QuestData::from_value(&base).unwrap();
+    assert!(d.quests.iter().all(|q| q.start.is_empty()));
+    let d = data_with_beira_start(riverbank_done_start());
+    assert_eq!(d.quests[1].start.len(), 1);
+
+    // Every check `unlock` gets, naming the quest and the field.
+    type Mutate = fn(&mut Value);
+    let cases: Vec<(&str, &str, Mutate)> = vec![
+        ("not a list", "start", |v| {
+            v["quests"][1]["start"] = "fixture-riverbank".into()
+        }),
+        ("unknown signal kind", "start[0].kind", |v| {
+            v["quests"][1]["start"] = serde_json::json!([{ "kind": "telepathy" }])
+        }),
+        ("unknown signal field", "start[0].colour", |v| {
+            v["quests"][1]["start"] =
+                serde_json::json!([{ "kind": "area", "code": "G1_2", "colour": "red" }])
+        }),
+        ("quest signal naming no quest", "start[0].id", |v| {
+            v["quests"][1]["start"] =
+                serde_json::json!([{ "kind": "quest", "id": "no-such-quest", "status": "done" }])
+        }),
+        ("quest signal status outside enum", "start[0].status", |v| {
+            v["quests"][1]["start"] = serde_json::json!([{ "kind": "quest", "id": "fixture-riverbank", "status": "begun" }])
+        }),
+        ("npc speaker not in npcs", "start[0].speaker", |v| {
+            v["quests"][1]["start"] = serde_json::json!([{ "kind": "npc", "speaker": "Nobody" }])
+        }),
+        ("system line not in system_lines", "start[0].line", |v| {
+            v["quests"][1]["start"] =
+                serde_json::json!([{ "kind": "system", "line": "Not an allowlisted line." }])
+        }),
+        ("area code not in areas", "start[1].area", |v| {
+            v["quests"][1]["start"] = serde_json::json!([
+                { "kind": "area", "code": "G1_2" },
+                { "kind": "npc", "speaker": "Una", "area": "G9_9" }
+            ])
+        }),
+    ];
+    for (what, field, mutate) in cases {
+        let mut v = base.clone();
+        mutate(&mut v);
+        let err = QuestData::from_value(&v).expect_err(what);
+        assert_eq!(err.quest.as_deref(), Some("fixture-beira"), "{what}: {err}");
+        assert_eq!(err.field, field, "{what}: {err}");
+    }
+}

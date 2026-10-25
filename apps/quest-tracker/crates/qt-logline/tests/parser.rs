@@ -5,7 +5,9 @@
 
 use std::path::PathBuf;
 
-use qt_logline::{parse_line, Allowlist, Event, EventKind, PartyChange, PointPool, Timestamp};
+use qt_logline::{
+    client_pid, parse_line, Allowlist, Event, EventKind, PartyChange, PointPool, Timestamp,
+};
 
 /// Reads a fixture the way the tailer hands lines over: bytes decoded as UTF-8
 /// lossily, split on `\n`. A checkout that converted the file to CRLF leaves
@@ -464,4 +466,63 @@ fn ignores_other_warn_lines() {
     ] {
         assert_eq!(parse_line(&line, &allow), None, "{line}");
     }
+}
+
+// -- the game's pid from a line header (Context "Live 2 fixes (owner scope)") -
+
+#[test]
+fn client_pid_from_header() {
+    let allow = allow();
+    // Every level's header gives its pid, whether or not the line is an event.
+    for (level, message) in [
+        ("INFO", r#"Generating level 2 area "G1_2" with seed 2"#),
+        ("DEBUG", "Something the fixture made up happened."),
+        (
+            "WARN",
+            "Character Odile_Marsh has unknown build of path: None",
+        ),
+        ("INFO", "#Bram_Holloway: a chat line"),
+    ] {
+        let l = format!("2026/03/14 12:00:02 9000400 abcdef02 [{level} Client 15660] {message}");
+        assert_eq!(client_pid(&l), Some(15660), "{l}");
+    }
+    // An empty message, no hex field, a trailing CR and a byte-order mark.
+    assert_eq!(
+        client_pid("2026/03/14 12:00:02 9000400 abcdef02 [INFO Client 2120]"),
+        Some(2120)
+    );
+    assert_eq!(
+        client_pid("2026/03/14 12:00:02 9000400 [INFO Client 2120] text"),
+        Some(2120)
+    );
+    assert_eq!(
+        client_pid("\u{feff}2026/03/14 12:00:02 9000400 abcdef02 [INFO Client 7] text\r\n"),
+        Some(7)
+    );
+
+    // Any other shape gives none.
+    for l in [
+        // A continuation line has no timestamp.
+        "[INFO Client 15660] continued text".to_string(),
+        "  at some frame of a multi-line warning".to_string(),
+        // The session marker has no header.
+        "2026/03/14 11:59:00 ***** LOG FILE OPENING *****".to_string(),
+        // Not a client header, or not a number.
+        "2026/03/14 12:00:02 9000400 abcdef02 [INFO Server 15660] text".to_string(),
+        "2026/03/14 12:00:02 9000400 abcdef02 [INFO Client abc] text".to_string(),
+        "2026/03/14 12:00:02 9000400 abcdef02 [INFO Client ] text".to_string(),
+        // A pid past u32.
+        "2026/03/14 12:00:02 9000400 abcdef02 [INFO Client 99999999999] text".to_string(),
+        // The header typed into chat, after a real line's timestamp only.
+        "2026/03/14 12:00:02 #Bram_Holloway: [INFO Client 15660]".to_string(),
+        String::new(),
+    ] {
+        assert_eq!(client_pid(&l), None, "{l:?}");
+    }
+
+    // It leaves the parser's output as it was.
+    let l = "2026/03/14 12:00:02 9000400 abcdef02 [INFO Client 15660] Renly: Fixture line.";
+    let with_pid = parse_line(l, &allow);
+    let other_pid = parse_line(&l.replace("15660", "2120"), &allow);
+    assert_eq!(with_pid, other_pid);
 }

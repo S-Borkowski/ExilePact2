@@ -8,7 +8,9 @@
 //! evidence, the character's level, the other quests' statuses and the
 //! user's overrides (Context "Quest state rules"), and every change of a
 //! status or current step is reported as a [`Transition`] carrying the
-//! line's catch-up/live flag.
+//! line's catch-up/live flag. A fired `start` signal counts under rule 4
+//! like a step: the quest is in progress with no step reached, so its first
+//! step is the current one (Context "Live 2 fixes (owner scope)").
 //!
 //! A level-1 entry to The Riverbank (`G1_1`) first opens a relog window and
 //! changes nothing else: no note, the pin and the active character kept, and
@@ -190,13 +192,14 @@ impl std::error::Error for EngineError {}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Role {
     Unlock,
+    Start,
     Step(usize),
     Done,
     Window,
 }
 
-/// A signal with its stable id (`unlock/0`, `step/<step id>/1`, `done/0`,
-/// `window_closes/0`), which is what evidence stores.
+/// A signal with its stable id (`unlock/0`, `start/0`, `step/<step id>/1`,
+/// `done/0`, `window_closes/0`), which is what evidence stores.
 #[derive(Debug, Clone)]
 struct Compiled {
     id: String,
@@ -371,6 +374,13 @@ impl Engine {
                     out.push(Compiled {
                         id: format!("unlock/{i}"),
                         role: Role::Unlock,
+                        signal: s.clone(),
+                    });
+                }
+                for (i, s) in q.start.iter().enumerate() {
+                    out.push(Compiled {
+                        id: format!("start/{i}"),
+                        role: Role::Start,
                         signal: s.clone(),
                     });
                 }
@@ -1469,6 +1479,8 @@ impl Engine {
             Status::Unknown
         } else if !ov.ticks.is_empty()
             || (0..q.steps.len()).any(|k| self.role_fired(ch, qi, Role::Step(k), memo, visiting))
+            // A fired `start` is in progress with no step reached.
+            || self.role_fired(ch, qi, Role::Start, memo, visiting)
         {
             Status::InProgress
         } else if q.unlock.is_empty() || self.role_fired(ch, qi, Role::Unlock, memo, visiting) {
