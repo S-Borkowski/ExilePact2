@@ -111,9 +111,21 @@ pub fn overlay_shown(mode: Mode, game: Option<u32>, foreground: Option<u32>, own
 }
 
 /// What the diagnostic log says when the overlay is hidden and shown again.
-/// No title or name of the window in front is ever written.
-pub const HIDDEN_LINE: &str = "visibility: hidden (another window is in front)";
+/// No title, name or pid of the window in front is ever written; the game
+/// pid it was compared with is in the last `game pid:` line before it.
+pub const HIDDEN_LINE: &str =
+    "visibility: hidden (the window in front is neither the overlay nor the game pid from the log)";
 pub const SHOWN_LINE: &str = "visibility: shown";
+
+/// The diagnostic line written each time the game pid the visibility rule
+/// compares with changes, and where it was read (`from`): a live line, a
+/// catch-up line, or the log before the tailer's start. A pid read only from
+/// catch-up or the seed may be a stale log's, which no running game has: the
+/// line lets a report tell that apart from another window really in front.
+/// The pid is the user's own game client's, never another program's.
+fn game_pid_line(pid: u32, from: &str) -> String {
+    format!("game pid: {pid} (from {from})")
+}
 
 /// What the `auto` scale reads from the window's monitor.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -281,7 +293,7 @@ struct State {
     log_clock: Option<LogClock>,
     /// The game client's pid, from the header of the newest line handled
     /// (live, catch-up, or read back before the tailer's start); `None`
-    /// until one is seen.
+    /// until one is seen. Each change is logged ([`game_pid_line`]).
     game_pid: Option<u32>,
     /// Whether the window is shown, as last applied (it is created shown).
     shown: bool,
@@ -897,6 +909,11 @@ impl App {
         let mut stale = 0usize;
         let mut transitions: Vec<Transition> = Vec::new();
         let mut caught_up = 0usize;
+        // The game pid before this batch, and where its newest change came
+        // from: logged once after the batch, so a long catch-up over many
+        // game sessions writes one line, not one per session.
+        let pid_before = st.game_pid;
+        let mut pid_from = "";
         for (tag, event) in events {
             if tag != generation {
                 stale += 1;
@@ -927,6 +944,13 @@ impl App {
                     // The game's pid: every line with a client header,
                     // whether or not it gives an event.
                     if let Some(pid) = client_pid(&line.text) {
+                        if st.game_pid != Some(pid) {
+                            pid_from = if live {
+                                "a live line's header"
+                            } else {
+                                "a catch-up line's header"
+                            };
+                        }
                         st.game_pid = Some(pid);
                     }
                     let window_was_open = st.engine.relog_window_open();
@@ -1003,6 +1027,10 @@ impl App {
         }
         if caught_up > 0 {
             self.diag(&diag::catch_up(&st.engine, caught_up));
+        }
+        match st.game_pid {
+            Some(pid) if st.game_pid != pid_before => self.diag(&game_pid_line(pid, pid_from)),
+            _ => {}
         }
         self.publish(&mut st, &transitions);
     }
@@ -1600,8 +1628,11 @@ impl App {
                 st.engine.seed_area(found.area.code());
                 self.diag(&diag::seeded_area(&found.area, start.offset));
                 // Before any line of this tailer, so a newer line still wins.
-                if found.pid.is_some() {
-                    st.game_pid = found.pid;
+                if let Some(pid) = found.pid {
+                    if st.game_pid != Some(pid) {
+                        self.diag(&game_pid_line(pid, "the log before the tailer's start"));
+                    }
+                    st.game_pid = Some(pid);
                 }
             }
             Err(e) => {
@@ -1936,6 +1967,80 @@ mod tests {
         assert!(overlay_shown(Mode::Play, Some(15660), None, own));
         // Edit mode: always.
         assert!(overlay_shown(Mode::Edit, Some(15660), Some(999), own));
+    }
+
+    #[test]
+    fn game_pid_change_is_logged_with_its_source() {
+        // The pid the visibility rule compares with is in the diagnostic
+        // log, with where it was read, so a report can tell a stale log's
+        // pid (catch-up only) from another window really in front.
+        let dir = tempfile::tempdir().expect("temp dir");
+        let store = dir.path().join("store");
+        let app = App::new(AppConfig {
+            options: Options::default(),
+            options_error: None,
+            store: Store::open(store.clone()).map_err(|e| e.to_string()),
+            data: None,
+            candidates: Vec::new(),
+            poll_interval: Duration::from_millis(20),
+            emitter: Box::new(NoEmitter),
+            window: Box::new(FakeWindow {
+                calls: Arc::new(Mutex::new(Vec::new())),
+                hotkey_fails: false,
+            }),
+            clock: Box::new(ZeroClock),
+        });
+        let fingerprint = qt_tailer::Fingerprint::of(b"fixture log");
+        let lines = |texts: &[&str], catch_up: bool| -> Vec<TailEvent> {
+            texts
+                .iter()
+                .map(|t| {
+                    TailEvent::Line(qt_tailer::Line {
+                        text: t.to_string(),
+                        end_offset: 1,
+                        catch_up,
+                        fingerprint,
+                    })
+                })
+                .collect()
+        };
+        let log = || std::fs::read_to_string(store.join("overlay.log")).unwrap_or_default();
+        let pid_lines = || -> Vec<String> {
+            log().lines().filter(|l| l.contains("game pid:")).map(str::to_string).collect()
+        };
+
+        // Negative control: a line with no client header tells no pid.
+        app.handle_tail_events(lines(&["2026/03/10 19:00:00 ***** LOG FILE OPENING *****"], true));
+        assert!(pid_lines().is_empty(), "{}", log());
+
+        // Two sessions caught up in one batch: one line, the newest pid.
+        app.handle_tail_events(lines(
+            &[
+                "2026/03/10 19:00:01 1 7e2c0010 [INFO Client 7120] Connecting to instance server",
+                "2026/03/10 20:00:01 2 7e2c0010 [INFO Client 15660] Connecting to instance server",
+            ],
+            true,
+        ));
+        assert_eq!(pid_lines().len(), 1, "{}", log());
+        assert!(pid_lines()[0].ends_with("game pid: 15660 (from a catch-up line's header)"));
+
+        // The same pid again, live: no new line.
+        app.handle_tail_events(lines(
+            &["2026/03/10 20:00:02 3 7e2c0010 [INFO Client 15660] Connecting to instance server"],
+            false,
+        ));
+        assert_eq!(pid_lines().len(), 1, "{}", log());
+
+        // A restart under another pid, live: logged, and it says so.
+        app.handle_tail_events(lines(
+            &["2026/03/10 21:00:01 4 7e2c0010 [INFO Client 2244] Connecting to instance server"],
+            false,
+        ));
+        let found = pid_lines();
+        assert_eq!(found.len(), 2, "{}", log());
+        assert!(found[1].ends_with("game pid: 2244 (from a live line's header)"), "{found:?}");
+        // The shell's visibility filters stay clean: no pid line reads as one.
+        assert!(found.iter().all(|l| !l.contains("visibility")), "{found:?}");
     }
 
     #[test]
