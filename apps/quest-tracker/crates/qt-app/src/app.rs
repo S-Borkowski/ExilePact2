@@ -71,7 +71,10 @@ pub enum Placement {
 /// What the shell does to its window and the desktop. Tauri implements it
 /// in `src-tauri`; tests use a fake that records the calls.
 pub trait Window: Send + Sync + 'static {
-    /// Play mode passes the mouse to the game; edit mode takes clicks.
+    /// `on` is play mode: the mouse passes to the game and the window never
+    /// takes focus from it. `off` is edit mode: the window takes clicks and
+    /// keyboard focus, so the Settings fields (log path, shortcut) can be
+    /// typed in; a window that cannot be activated never receives keys.
     fn set_click_through(&self, on: bool) -> Result<(), String>;
     /// The `scale` setting as a webview zoom factor (and window size).
     fn set_scale(&self, factor: f64) -> Result<(), String>;
@@ -112,6 +115,11 @@ pub fn scale_factor(scale: Scale) -> f64 {
         Scale::X2 => 2.0,
     }
 }
+
+/// The status line's remedy when the shortcut fails at launch: with no
+/// shortcut, play mode could not be left, so the overlay starts in edit mode.
+const LAUNCH_REMEDY: &str =
+    "the overlay stays in edit mode, where it takes clicks: set another shortcut in Settings";
 
 fn mode_str(mode: Mode) -> &'static str {
     match mode {
@@ -493,6 +501,23 @@ impl App {
             },
             mode_str(mode),
         ));
+        // The shortcut is registered before the mode is applied: it is the
+        // only way out of play mode, so without one the overlay starts in
+        // edit mode, where it takes clicks and Settings can be reached.
+        let mode = if self.register_hotkey(&hotkey, LAUNCH_REMEDY) || mode == Mode::Edit {
+            mode
+        } else {
+            let settings = self
+                .store
+                .as_ref()
+                .map(|s| s.dir().join("settings.json").display().to_string())
+                .unwrap_or_else(|| "settings.json".to_string());
+            self.diag(&format!(
+                "mode edit: no shortcut to leave play mode; set one in Settings or as \"hotkey\" in {settings}"
+            ));
+            self.lock().ui.mode = Mode::Edit;
+            Mode::Edit
+        };
         if let Err(e) = self.window.set_click_through(mode == Mode::Play) {
             self.window_error("click-through", &e);
         }
@@ -502,7 +527,6 @@ impl App {
         if let Err(e) = self.window.place(placement) {
             self.window_error("placement", &e);
         }
-        self.register_hotkey(&hotkey);
         self.start_tailer();
         self.spawn_worker();
         let mut st = self.lock();
@@ -931,7 +955,7 @@ impl App {
             }
         }
         if let Some(h) = after.hotkey {
-            self.register_hotkey(&h);
+            self.register_hotkey(&h, "change it in Settings");
         }
         if after.retail {
             self.start_tailer();
@@ -985,24 +1009,27 @@ impl App {
         );
     }
 
-    /// Registers the shortcut; a failure shows in the status line and the
-    /// diagnostic log until a later registration succeeds.
-    fn register_hotkey(&self, hotkey: &str) {
+    /// Registers the shortcut; a failure shows in the status line, ending
+    /// with `remedy`, and in the diagnostic log until a later registration
+    /// succeeds. True when it registered.
+    fn register_hotkey(&self, hotkey: &str, remedy: &str) -> bool {
         let result = self.window.register_hotkey(hotkey);
         let mut st = self.lock();
         match result {
             Ok(()) => {
                 self.diag(&format!("shortcut {hotkey} registered"));
                 st.set_status(Source::Hotkey, None);
+                true
             }
             Err(e) => {
                 self.diag(&format!("error: shortcut {hotkey} could not be registered: {e}"));
                 st.set_status(
                     Source::Hotkey,
                     Some(StatusLine::error(format!(
-                        "The shortcut {hotkey} could not be registered ({e}); change it in Settings."
+                        "The shortcut {hotkey} could not be registered ({e}); {remedy}."
                     ))),
                 );
+                false
             }
         }
     }
@@ -1231,3 +1258,99 @@ fn run_worker(app: Arc<App>, rx: Receiver<TailEvent>, stop: Arc<AtomicBool>) {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    //! The launch path of the shortcut, which `tests/shell.rs` drives only
+    //! through its status line: here, what the window is told.
+
+    use super::*;
+
+    struct NoEmitter;
+
+    impl Emitter for NoEmitter {
+        fn view(&self, _: &View) {}
+        fn toast(&self, _: &Toast) {}
+    }
+
+    struct FakeWindow {
+        calls: Arc<Mutex<Vec<String>>>,
+        hotkey_fails: bool,
+    }
+
+    impl Window for FakeWindow {
+        fn set_click_through(&self, on: bool) -> Result<(), String> {
+            self.calls.lock().unwrap().push(format!("click_through {on}"));
+            Ok(())
+        }
+        fn set_scale(&self, _: f64) -> Result<(), String> {
+            Ok(())
+        }
+        fn place(&self, _: Placement) -> Result<(), String> {
+            Ok(())
+        }
+        fn register_hotkey(&self, hotkey: &str) -> Result<(), String> {
+            self.calls.lock().unwrap().push(format!("hotkey {hotkey}"));
+            if self.hotkey_fails {
+                Err("HotKey already registered".to_string())
+            } else {
+                Ok(())
+            }
+        }
+        fn open_url(&self, _: &str) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    struct ZeroClock;
+
+    impl Clock for ZeroClock {
+        fn now_ms(&self) -> u64 {
+            0
+        }
+    }
+
+    /// Starts an app with no store and no log; returns its view after start
+    /// and the window calls in order.
+    fn launch(hotkey_fails: bool) -> (View, Vec<String>) {
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let app = App::new(AppConfig {
+            options: Options::default(),
+            options_error: None,
+            store: Err("no store in this test".to_string()),
+            data: None,
+            candidates: Vec::new(),
+            poll_interval: Duration::from_millis(20),
+            emitter: Box::new(NoEmitter),
+            window: Box::new(FakeWindow {
+                calls: Arc::clone(&calls),
+                hotkey_fails,
+            }),
+            clock: Box::new(ZeroClock),
+        });
+        app.start();
+        let view = app.get_view();
+        assert!(app.shutdown(Duration::from_secs(2)));
+        let calls = calls.lock().unwrap().clone();
+        (view, calls)
+    }
+
+    #[test]
+    fn launch_hotkey_failure_starts_in_edit_mode() {
+        // Negative control: a shortcut that registers leaves play mode,
+        // click-through on.
+        let (view, calls) = launch(false);
+        assert_eq!(view.mode, Mode::Play);
+        assert_eq!(calls, vec!["hotkey Ctrl+Alt+Q", "click_through true"]);
+
+        // No shortcut: play mode could never be left, so the window takes
+        // clicks from the start and the status line says why.
+        let (view, calls) = launch(true);
+        assert_eq!(view.mode, Mode::Edit);
+        assert_eq!(calls, vec!["hotkey Ctrl+Alt+Q", "click_through false"]);
+        let status = view.status.expect("a status line");
+        assert_eq!(status.kind, StatusKind::Error);
+        assert!(status.text.contains("Ctrl+Alt+Q"), "{}", status.text);
+        assert!(status.text.contains("stays in edit mode"), "{}", status.text);
+    }
+}
