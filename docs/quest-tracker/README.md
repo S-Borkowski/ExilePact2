@@ -30,9 +30,11 @@ What it is:
   lasting items, `no` for story-only or currency-only content) and the reason,
   its rewards, its current step, and a link to its poe2db page.
 - **Two modes.** *Play* is click-through: the mouse goes to the game and the
-  panel shows no controls. *Edit* takes clicks: tick steps, mark quests done
-  or skipped, switch or pin a character, open settings, drag the panel. The
-  global shortcut (default `Ctrl+Alt+Q`) switches between them.
+  panel shows no controls, and the window never takes focus from the game.
+  *Edit* takes clicks and keyboard focus (so the Settings fields can be
+  typed in): tick steps, mark quests done or skipped, switch or pin a
+  character, open settings, drag the panel. The global shortcut (default
+  `Ctrl+Alt+Q`) switches between them.
 - **Two views.** *Campaign* lists every act; *Next up* lists only what is
   available or in progress now.
 - **Toasts** when a quest becomes available, a step is done or a quest is
@@ -110,7 +112,11 @@ Settings (edit mode, the settings frame) and their defaults: opacity `0.9`
 applied as the webview zoom), show skipped quests (off), only worth-it quests
 (off), log path (unset: discovery), hotkey `Ctrl+Alt+Q` (the global-shortcut
 plugin's accelerator syntax). A hotkey that cannot be registered keeps the
-old one working and says so in the status line.
+old one working and says so in the status line. If the shortcut cannot be
+registered at launch, the overlay starts in edit mode instead of play
+mode, since without a shortcut play mode could not be left: the status line
+says so, and the diagnostic log names the `settings.json` whose `"hotkey"`
+you can change.
 
 Build it:
 
@@ -536,6 +542,10 @@ Revisit this feature when:
 - Motion is limited to the toast's entrance, countdown bars and control
   transitions, and stops under `prefers-reduced-motion`. A missing icon
   or token falls back to the plain UI's glyph or value.
+- Edit mode takes keyboard focus, so the Settings fields accept typing;
+  play mode still never takes focus from the game. A shortcut that cannot
+  be registered at launch leaves the overlay in edit mode, with the reason
+  in the status line, instead of stuck in click-through play mode.
 
 ### 0.1.0 (first version)
 
