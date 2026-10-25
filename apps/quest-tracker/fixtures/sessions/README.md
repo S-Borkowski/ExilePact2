@@ -16,6 +16,7 @@ no IP addresses.
 | `held.txt` | a session with no character (its events dropped and counted), then a session whose held events go to the first character identified, not to a party member |
 | `switch.txt` | a character switch inside one session, between two own characters |
 | `manual_window.txt` | a manual quest unlocked by level whose window closes on entering a later area |
+| `town_talk.txt` | the shape of the Live 1 session's start (2026-10-25), with an invented character: a level-1 entry to The Riverbank, The Bloated Miller, the level-up to 2, a visit to Clearfell Encampment in which the player talked to its NPCs and the log recorded no NPC line, then Clearfell. Unlike the others it is read against the shipped `data/quests.json`, by `town_talk_session_replay` in `crates/qt-engine/tests/shipped_data.rs`: what a town talk the log cannot show leaves the talk steps at, and which later area entry completes them (research note "Town dialogue") |
 | `frames/` | `story.txt`, the one session every view fixture under `fixtures/viewmodels/` is built from by `crates/qt-viewmodel/tests/viewmodel.rs`, so the frames tell one story; its `README.md` tells that story |
 
 `quests_min.json` beside this folder is the matching quest data: seven

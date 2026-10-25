@@ -292,6 +292,19 @@ All of this is measured on 2026-10-24 unless labelled otherwise.
   observed). In the whole log one character switch within a session was
   observed; the session marker therefore says nothing about which character
   plays.
+- **A new character's first area** (measured 2026-10-25, over the owner's
+  whole log, read-only). The log holds 12 entries to The Riverbank
+  (`G1_1`), and every one is generated at area level 1 (`Generating level
+  1 area "G1_1"`). Eight of them are followed, in the same session, by a
+  level-up to level 2 23 to 110 lines later, with no other level-up in
+  between; the name in that level-up never joined or left the area, and 7
+  of the 8 names later appear in a `has received` line. The other four
+  entries are followed by a session marker before any level-up. Between
+  the entry and the level-up nothing names the character: in the Live 1
+  session (11:12Z-11:19Z on 2026-10-25) the only lines there are NPC lines
+  (Wounded Man, Mortimer, The Bloated Miller), chat and client lines. An
+  existing character entering `G1_1` again was not observed, which is not
+  proof that it never happens.
 
 From those counts the tracker's rules are (a design choice built on the
 measurements, not a measurement): a name in a `has received` or `has lost`
@@ -304,6 +317,18 @@ session, and dropped and counted at session end if none does; a character the
 player pins gets every event; `has been slain` never changes the active
 character. Names seen only in join or leave lines are kept in memory for one
 session and never written anywhere.
+
+From the Riverbank counts (again a design choice resting on them, not a
+measurement): a level-1 `G1_1` entry starts a new, unnamed character for
+the session, and its events go to it instead of the hold, so Act 1 progress
+shows at once; it is never stored and never listed among the characters.
+The first level-up after it in the same session, from a name not excluded
+as a party member, names it: that name becomes own and active with no pick,
+takes the progress and is stored. A session marker before that ends the
+state, and its events are dropped and counted, as held events are. The
+entry releases a pin, and the named character is pinned in its place,
+because the pin a player sets on one character would otherwise hide every
+later new character.
 
 ## What poe2db step text matches
 

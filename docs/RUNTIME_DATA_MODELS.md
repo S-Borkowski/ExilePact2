@@ -51,6 +51,17 @@ Not observed in that log (measured 2026-10-24, a negative, not proof of
 absence): any line naming a quest, its start, a step or its completion; any
 line marking character select; the dialogue window's text.
 
+A new character's first area (measured 2026-10-25, the research note's
+"Character detection"): every one of the log's 12 entries to The Riverbank
+(`G1_1`) is generated at area level 1. Eight are followed in the same
+session by a level-up to level 2, 23 to 110 lines later and with no other
+level-up between, from a name never seen joining or leaving the area; the
+other four by a session marker first. No line between the entry and that
+level-up names the character, so a level-1 `G1_1` entry marks a new
+character whose name is learned only from its first level-up. An existing
+character entering `G1_1` again was not observed (not proof that it never
+happens).
+
 Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): a
 town NPC's logged lines are vendor and greeting lines, never a quest's talk,
 and a 3.5-minute visit to Clearfell Encampment in which the player talked to

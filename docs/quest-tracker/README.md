@@ -38,8 +38,11 @@ What it is:
   `Ctrl+Alt+Q`) switches between them.
 - **Two views.** *Next up* lists only what is available or in progress now,
   grouped by worth; *All* lists every act's quests under the act's header.
-- **Toasts** when a quest becomes available, a step is done or a quest is
-  done, while you play (never for lines read as catch-up).
+- **The row itself changes** when a quest becomes available, a step is done
+  or a quest is done, while you play: the completed step fades out and the
+  next one fades in, in that quest's row, and a screen reader hears one
+  sentence saying what changed. Lines read as catch-up change rows without
+  the transition.
 - **A replay CLI**, `quest-tracker-replay`, that runs the same engine over a
   saved log without the game.
 - **A developer-only Python tool**, `py -3 -m tools.quest_tracker.poe2db`,
@@ -97,7 +100,7 @@ usage: quest-tracker [--log PATH] [--data PATH] [--from-start]
 |---|---|
 | `--log PATH` | Follow this log. Ahead of the Settings log path and of discovery. Taken as given even if the file does not exist yet (the tracker waits for it). |
 | `--data PATH` | Use this quest data file instead of the `data/quests.json` built into the executable. A file that fails validation falls back to the built-in data with a status line saying why. |
-| `--from-start` | Read the whole existing log as catch-up, ignoring the saved position. Useful once after a fresh install with an existing log; catch-up lines never raise toasts. |
+| `--from-start` | Read the whole existing log as catch-up, ignoring the saved position. Useful once after a fresh install with an existing log; catch-up lines never play a row transition. |
 
 Each option also takes the `--name=value` form. An unknown argument is not
 fatal: the overlay starts without options and says so in its status line and
@@ -134,20 +137,52 @@ Auto chose from (`scale auto: monitor … px high at DPI scale … -> zoom …`
 at start, `scale auto: the window is now on a monitor … -> zoom …` after a
 move or a DPI change).
 
+**What the diagnostic log says.** `overlay.log`, in the store folder
+("Privacy"), records the tracker's decisions, never a line of the game's
+log. The lines to look for when a quest did not advance:
+
+- `area from log: <area code>`: the current area, read back from the log
+  before the position the tailer starts at ("How detection works"). When
+  it found none: `area from log: none (no area line in the <n> bytes before
+  offset <offset>)` or `area from log: none (a session marker follows the
+  last area line)`. When it did not look: `area from log: not read (the
+  tailer reads the log from offset 0)` or `area from log: not read (the log
+  does not exist yet)`. When the read failed: `error: area from log:
+  <error>; the area is unknown`.
+- `area unknown: refused <quest id>`: a signal of that quest, tied to an
+  area, arrived while the area was unknown and was not counted.
+- `catch-up: <n> lines read, character <name>, area <code|unknown>`: after
+  each batch of catch-up lines, the character and the area the catch-up
+  left the tracker in (the area may have changed without a live area
+  line); the character reads `a new character (The Riverbank)` while the
+  new character has no name yet.
+- `character: a new character (The Riverbank)` when a level-1 entry to The
+  Riverbank starts one, `character: pin on <name> released for the new
+  character` when that start released a pin, and `character: <from> ->
+  <to>` whenever the current character changes.
+- `row change <id> <kind> (<quest id>)` for each live change sent to a
+  row (`available`, `step_done` or `quest_done`).
+
 Build it:
 
 ```sh
 npm --prefix apps/quest-tracker ci            # only when apps/quest-tracker/node_modules is missing
-npm --prefix apps/quest-tracker run release   # tauri build --no-bundle
+npm --prefix apps/quest-tracker run release   # tauri build --no-bundle, then the replay CLI
 # -> apps/quest-tracker/target/release/quest-tracker.exe
+# -> apps/quest-tracker/target/release/quest-tracker-replay.exe
 ```
+
+`npm run release` builds both executables: `tauri build --no-bundle` for
+the overlay, then `cargo build --release -p qt-replay --locked` for the
+replay CLI.
 
 ### `quest-tracker-replay`
 
-The same engine over a saved log, without the game or a window. Build it
-with `cargo build --manifest-path apps/quest-tracker/Cargo.toml -p qt-replay
---locked --release` (it lands in `apps/quest-tracker/target/release/`), or
-run it in place:
+The same engine over a saved log, without the game or a window.
+`npm run release` builds it as
+`apps/quest-tracker/target/release/quest-tracker-replay.exe`; on its own,
+build it with `cargo build --manifest-path apps/quest-tracker/Cargo.toml -p
+qt-replay --locked --release`, or run it in place:
 
 ```sh
 cargo run --manifest-path apps/quest-tracker/Cargo.toml -p qt-replay --locked -q -- state path/to/Client.txt
@@ -160,7 +195,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | Command | Prints |
 |---|---|
 | `events` | One recognised event per line (never chat, unknown speakers or other players' names). |
-| `state` | The engine over the whole log, no store: per own character its class, level and quests by status per act. With `--json`, one object `{"characters": [{"name", "class", "level", "quests": {<id>: <status>}}]}`. |
+| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. With `--json`, one object `{"lines", "client_version", "held", "dropped", "refused", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}]}`. |
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
 
@@ -202,7 +237,7 @@ Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
 | `test` | `vitest run` over `src/*.test.ts` in jsdom. |
 | `tauri` | The Tauri CLI. |
 | `start` | `tauri dev`: the real overlay against the dev server, rebuilt on change. |
-| `release` | `tauri build --no-bundle`: `apps/quest-tracker/target/release/quest-tracker.exe`. |
+| `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/quest-tracker.exe` and `quest-tracker-replay.exe`. |
 
 **Browser preview.** Outside Tauri, `npm --prefix apps/quest-tracker run dev`
 serves the UI over one of the serialised views in `fixtures/viewmodels/`,
@@ -219,8 +254,14 @@ it open: every 250 ms it checks the file's size and a fingerprint of its
 first kilobyte, and only when something changed does it open the file
 read-only, read the new bytes and close it again. On start it resumes from
 the saved position when the same file is still there (catch-up), and
-otherwise starts at the end (live) unless `--from-start`. A truncated,
-rewritten or rotated file is read again from its start.
+otherwise starts at the end (live) unless `--from-start`. That start
+position is decided once, by the tailer, before it starts reading, so the
+area read below and the catch-up agree on where the log was entered. A
+truncated, rewritten or rotated file is read again from its start. When
+you change the log path in Settings, lines the old file's reader had
+already queued are dropped (`log: <n> events of a stopped log reader
+dropped` in the diagnostic log): they never reach the quests or the new
+file's saved position.
 
 **The current area on start.** A quest's reward or points signal counts
 only in the area the quest data names for it, and the area is otherwise
@@ -229,14 +270,20 @@ position other than its start (a resume, or a first start at the end), the
 tracker first reads back, read-only, at most 8 MiB of the log before that
 position for the last area line, and takes it as the current area unless a
 session marker follows it (the game restarted, so the area is unknown). The
-diagnostic log says what it found: `area from log: <area code>`, or `area
-from log: none (…)` with the reason. When no area line is within that
-window, or a marker follows it, the area stays unknown, and a quest whose
-signal is tied to an area waits for the next zone's area line: a signal
-refused before then because the area was unknown is not counted (tick the
-quest by hand if it was its `done`), and each is logged as `area unknown:
-refused <quest id>`. A signal refused because you are in a different, known area is the
-normal case and is not logged.
+diagnostic log says what it found (`area from log: …`, every form in the
+Command reference). When no area line is within that window, or a marker
+follows it, the area stays unknown until the next zone's area line.
+
+**Refused signals.** While the area is unknown, a signal tied to an area
+is refused: it is not counted, and you tick the quest by hand if it was
+its `done`. A refusal is logged as `area unknown: refused <quest id>` and
+counted in the status line ("<n> quest signals came before the area was
+known and were not counted") and in the replay CLI's summary
+(`refused`). Only a quest that could have changed is refused: one already
+done or skipped for the character the event goes to is not, and an event
+that goes to no character refuses nothing. A signal that does not count
+because you are in a different, known area is the normal case and is not
+logged.
 
 Each complete line is parsed into an event: an area being generated, an NPC
 line from an allowlisted speaker (quest givers and bosses), a system line, a
@@ -261,16 +308,52 @@ level-up of an unknown name makes it active but *unconfirmed* until a reward
 line or you confirm it in the character picker. Events before any active
 character are held for the first one that becomes active in that session,
 and dropped and counted in the status line if none does. A character you pin
-in the picker gets every event until you unpin it. Measurements and reasons:
+in the picker gets every event until you unpin it.
+
+**A new character from The Riverbank.** A new character's first area is
+The Riverbank (`G1_1`) at area level 1, so an entry to `G1_1` at level 1
+starts a *new character* for the session, with no pick: the session's
+events go to it at once, so Act 1 progress shows from the first step. Until
+something names it, the header shows "New character" at level 1; it is not
+written to the store and is not in the character picker. The first
+level-up after it in the same session, from a name not seen joining or
+leaving the area, names it: that name becomes your character, active, with
+the progress so far, and is stored. A session marker before any level-up
+ends the state, and its events are dropped and counted, as held events are.
+If a character was pinned, the entry releases the pin (the diagnostic log
+says so) and the named new character is pinned in its place; pinning a
+character yourself while the new one is still unnamed gives it the
+progress. Measurements and reasons:
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Character
 detection".
+
+**Talking to NPCs in town.** The log does not record a quest talk: the
+talk happens in a dialogue window, whose text is not written to
+`Client.txt`, and the voiced lines town NPCs do log are vendor and greeting
+lines. So a talk step cannot advance from the talk itself. Where the game
+can only produce the next recorded signal after the talk (for example
+entering Clearfell after talking to Renly in Clearfell Encampment), that
+signal completes the talk step too, and the quest's notes say `inferred`;
+a player who skips the talk is then shown done too early. Where nothing
+recorded follows the talk (the reward talks of Treacherous Ground and
+Finding the Forge, for instance), the step stays a manual tick. See
+[`quest-tracker-research.md`](quest-tracker-research.md) § "Town dialogue".
+
+**Using the item a boss dropped.** For Beira of the Rotten Pack, Blackjaw,
+the Remnant and Lythara, the Wayward Spear the reward line comes only after
+you use the item the boss dropped, which can be minutes after the kill.
+Their last step is "Use the item it dropped": after the boss's line the row
+shows the fight as reached and the use as the step to do, and the reward
+line finishes the quest. See
+[`quest-tracker-research.md`](quest-tracker-research.md) § "Rewards after a
+boss kill".
 
 **What needs a manual tick.** Each quest carries a `detection` value, and
 the row shows the manual-tick marker for the last two:
 
-- `auto` (30 quests in this version): its `done` signal was measured in a
+- `auto` (32 quests in this version): its `done` signal was measured in a
   real log; the tracker finishes it on its own.
-- `partial` (44): some unlock or step signal was measured, `done` was not;
+- `partial` (42): some unlock or step signal was measured, `done` was not;
   the tracker shows progress, and once the window closes without a `done`
   the quest goes to *unknown* until you tick it.
 - `manual` (13): nothing measured; tick it yourself in edit mode (open the
@@ -372,8 +455,8 @@ project):
 | `crates/qt-logline/` | Parser: one log line to one typed event. |
 | `crates/qt-tailer/` | Log follower thread (poll, fingerprint, never holds the file). |
 | `crates/qt-store/` | App-data folder, atomic JSON, quarantine, diagnostic log. |
-| `crates/qt-engine/` | Quest data contract and validator, the per-character state machine. |
-| `crates/qt-viewmodel/` | `View` and `Toast`: what the panel shows, built in Rust. |
+| `crates/qt-engine/` | Quest data contract and validator (`data`), the per-character state machine with character detection, the new character from The Riverbank and the refused-signal count (`engine`), and the area read back from the log before a tailer's start (`area`: `area_from_log`, `LogArea`, seeded with `Engine::seed_area`). |
+| `crates/qt-viewmodel/` | `View` and `RowChange`: what the panel shows and what changed in a row, built in Rust. |
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`). |
 | `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery. Tested with a fake window, emitter and clock. |
 | `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the command wrappers. |
@@ -403,7 +486,20 @@ state and never polls. Events, Rust to the `overlay` window:
 
 - `qt:view` with a `View` (frame, mode, view kind, status line, characters,
   acts, next-up rows, quest detail, settings).
-- `qt:toast` with a `Toast` (shown once, about 3 s, at most three stacked).
+- `qt:row-change` with a `RowChange`, one per **live** quest transition (a
+  quest becomes available, a step is reached, a quest is done; catch-up
+  sends none): `id` (increasing), `kind`
+  (`available`|`step_done`|`quest_done`), `quest_id`, `step_done` (the
+  title of the step just completed, or null), `step_next` (the title of the
+  step now current, or null) and `text` (one sentence for the screen
+  reader). There is no queue, cap or expiry. The row whose `id` is
+  `quest_id` plays it (`src/components/QuestRow.svelte`,
+  `src/rowchange.ts`): the completed step fades out over 150 ms, then the
+  step now current fades in from 0.2 opacity, rising 5 px, over 220 ms,
+  ease-out. A second change to the same row restarts the transition. A
+  row not on screen (its act collapsed, or filtered out) does not play it.
+  `src/App.svelte` announces every change's `text` in a polite live
+  region, shown row or not.
 
 Commands, UI to Rust: `get_view`, `set_mode`, `set_view_kind`,
 `set_collapsed`, `toggle_act`, `open_detail`, `open_frame`, `quest_action`
@@ -463,12 +559,14 @@ The UI's CSS comes in three layers, loaded by `src/main.ts` in this order:
   buttons, toggles, slider, dropdowns, keycaps, group labels and countdown
   bars. Each component keeps its own layout in its `<style>` block.
 
-Cut corners clip an element's own `box-shadow`, so the panel, the badge and
-the toast stack take their shadow from `filter: var(--drop-panel)` or
-`var(--drop-toast)` on a wrapper. `src/theme.ts` derives both from the
-harvested `shadow.panel` and `shadow.toast` at start-up
-(`applyDerivedTokens`). Motion (the toast's entrance, the countdown bars,
-control transitions) stops under `prefers-reduced-motion`.
+Cut corners clip an element's own `box-shadow`, so the panel and the badge
+take their shadow from `filter: var(--drop-panel)` on a wrapper.
+`src/theme.ts` derives it from the harvested `shadow.panel` at start-up
+(`applyDerivedTokens`). Motion (a row's transition, the countdown bar,
+control transitions) stops under `prefers-reduced-motion: reduce`
+(Windows' "Animation effects" off): a row's change is then instant, and
+still announced. The transition's design check is
+[`design/review-row-transition.md`](design/review-row-transition.md).
 `src/styled.test.ts` checks that every contract token and icon id is
 harvested, that every custom property the UI reads has a plain default and
 comes from the harvest (no token invented in code), and that fonts and
@@ -490,7 +588,25 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   events are held; if none does by the end of the session they are dropped
   and counted in the status line. Switching characters within a session is
   noticed only at the new character's first reward or level-up. Pin the
-  character in the picker when this matters.
+  character in the picker when this matters. A brand-new character is the
+  exception: its level-1 entry to The Riverbank starts it at once. That
+  rule rests on counts from one player's log, where no existing character
+  was seen entering The Riverbank (not observed, which is not proof that
+  it never happens). If one does, the panel shows "New character" until
+  that character's next level-up, which hands the progress back to it by
+  name (and takes over a pin the entry released); a session that ends
+  first drops those events, counted in the status line.
+- **The area after a start mid-zone.** The read-back for the current area
+  covers at most 8 MiB of the log before the start position. That is a
+  bound, not a guarantee: a zone's area line is normally well inside it,
+  but this was not measured. When the last area line is further back, or a
+  session marker follows it, the area stays unknown until the next zone,
+  and an area-tied step in the current zone needs a manual tick (the
+  diagnostic log names each refused quest).
+- **Town talk.** Talking to an NPC in a dialogue window leaves nothing in
+  the log. A talk step is completed by the next recorded signal only where
+  the game cannot produce that signal without the talk; otherwise it is a
+  manual tick ("How detection works").
 - **Patch changes.** The parser reads English templates and the quest data
   keys on area codes; a patch that changes either makes quests stop
   advancing rather than crash. The shipped data mixes poe2db's current
@@ -533,7 +649,7 @@ Revisit this feature when:
 - **poe2db changes its page structure**: `extract` fails loudly naming the
   slug; fix the extractor and its synthetic fixture under
   `tests/fixtures/quest_tracker/poe2db/`.
-- **A Rust type behind `View` or `Toast` changes**: regenerate the view
+- **A Rust type behind `View` or `RowChange` changes**: regenerate the view
   fixtures, update `src/ipc.ts`, and update the brief if a frame, icon or
   status changes.
 - **The brief's export contract changes** (icon ids, frame ids, token keys):
@@ -554,14 +670,20 @@ Revisit this feature when:
   window with play (click-through) and edit modes, toggled by
   `Ctrl+Alt+Q`; *Next up* and *All* views; quest detail with steps,
   rewards, worth reason and the poe2db link; character picker with confirm
-  and pin; settings for opacity, dock, scale, filters, log path and hotkey;
-  toasts for quests becoming available, steps and quests done.
+  and pin; settings for opacity, dock, scale, filters, log path and hotkey.
+- When a quest becomes available, a step is done or a quest is done while
+  you play, its own row changes in place: the completed step fades out,
+  then the next step fades in from low opacity with a small upward move
+  (about 150 ms and 220 ms). A second change restarts it; a row that is not
+  on screen does not animate. With reduced motion (Windows' animation
+  effects off) the change is instant. Every change is announced to a
+  screen reader in one sentence naming the quest and what changed.
 - Play mode never takes focus from the game; edit mode takes keyboard
   focus, so the Settings fields accept typing. A shortcut that cannot be
   registered at launch leaves the overlay in edit mode, with the reason in
   the status line, instead of stuck in click-through play mode.
 - The owner's design: Alegreya Sans bundled (no web font), 45° cut corners
-  on the panel, buttons, toasts and badge, soft shadows inside the
+  on the panel, buttons and badge, soft shadows inside the
   window's transparent margin, and the background-only opacity setting.
 - Play mode: the character, class and level, and the view, with no
   control. Edit mode: the accent border, a teal-tinted header with an EDIT
@@ -584,22 +706,36 @@ Revisit this feature when:
   rows with toggles, a slider and dropdowns. Empty states with a glyph,
   the fix in edit mode, and the hotkey on a keycap in play mode. The
   collapsed badge shows the worth-it count in gold, or a warning when the
-  log is in trouble. Toasts carry a coloured bar and icon per kind; the
-  Undo toast drains a 5 s bar.
+  log is in trouble.
 - Scale Auto sizes the panel by the monitor: 1x, 1.33x from 1440 px of
   height, 2x from 2160, after Windows' own DPI scale. It is worked out at
   start after the window is placed, when the setting changes, and when the
   window moves to another monitor or its DPI scale changes (Command
   reference).
-- Motion is limited to the toast's entrance, countdown bars and control
-  transitions, and stops under `prefers-reduced-motion`.
+- Motion is limited to a row's transition, the Reset countdown bar and
+  control transitions, and stops under reduced motion
+  (`prefers-reduced-motion: reduce`).
 - Progress per character from `Client.txt` alone, resumed across restarts
   from the saved log position, stored under `%LOCALAPPDATA%` (or
   `QUEST_TRACKER_DIR`); on start the current area is read back from the
   log before that position (How detection works).
+- A new character is picked up when it first enters The Riverbank, with no
+  pick: Act 1 progress shows at once under "New character", and its first
+  level-up names it and stores it. A pinned character's pin passes to the
+  new one.
+- Signals tied to an area that arrive while the area is unknown are
+  refused, logged per quest and counted in the status line; only quests
+  that could still change for that character count.
 - Quest data for 87 campaign quests, Acts 1 to 6, from poe2db.tw (fetched
   2026-10-25), with signals measured against a real log of client 4.5.3:
-  30 detected automatically, 44 partly, 13 by manual tick.
-- `quest-tracker-replay` (`events`, `state`, `import`, `scan`) and the
-  developer-only `py -3 -m tools.quest_tracker.poe2db` (`fetch`, `extract`,
-  `coverage`).
+  32 detected automatically, 42 partly, 13 by manual tick. Talk steps the
+  log cannot show are completed by the next signal the game can only
+  produce after them where the order is supported, and otherwise stay a
+  tick. Beira of the Rotten Pack, Blackjaw, the Remnant and Lythara, the
+  Wayward Spear end with a "Use the item it dropped" step, since their
+  reward comes when that item is used.
+- `quest-tracker-replay` (`events`, `state`, `import`, `scan`; the summary
+  counts held, dropped and refused events) and the developer-only `py -3 -m
+  tools.quest_tracker.poe2db` (`fetch`, `extract`, `coverage`).
+  `npm run release` builds both `quest-tracker.exe` and
+  `quest-tracker-replay.exe`.
