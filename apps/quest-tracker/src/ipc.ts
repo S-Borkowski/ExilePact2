@@ -110,6 +110,8 @@ export interface QuestRow {
   rewards: RewardView[];
   /** The step to do next, for an in-progress quest only. */
   current_step: string | null;
+  /** Done because of a later event the log recorded, not the quest's own signal, and not marked done by hand: the "probably done" mark. */
+  inferred: boolean;
 }
 
 export interface ActView {
@@ -128,6 +130,8 @@ export interface StepView {
   text: string;
   state: StepPhase;
   ticked: boolean;
+  /** Shown done though neither its own signal fired nor the player ticked it: the "probably done" mark. */
+  inferred: boolean;
 }
 
 export interface QuestDetail {
@@ -263,6 +267,7 @@ const questRow = record<QuestRow>({
   needs_tick: bool,
   rewards: list(reward),
   current_step: nullable(str),
+  inferred: bool,
 });
 const act = record<ActView>({
   act: uint,
@@ -273,7 +278,7 @@ const act = record<ActView>({
   has_available: bool,
   quests: list(questRow),
 });
-const step = record<StepView>({ id: str, title: str, text: str, state: oneOf(STEP_PHASES), ticked: bool });
+const step = record<StepView>({ id: str, title: str, text: str, state: oneOf(STEP_PHASES), ticked: bool, inferred: bool });
 const detail = record<QuestDetail>({
   row: questRow,
   giver: nullable(str),

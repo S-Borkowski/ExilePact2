@@ -43,6 +43,13 @@ export const STEP_LABEL: Record<StepPhase, string> = {
   done: 'Done',
 };
 
+/**
+ * The "probably done" mark's tooltip and accessible text, the same words: a
+ * quest or step the view shows done because of a later event the log
+ * recorded (`inferred`), not its own signal.
+ */
+export const INFERRED_LABEL = 'Probably done: inferred from a later step the log recorded.';
+
 export const STEP_ICON: Record<StepPhase, string> = {
   pending: 'status-available',
   current: 'status-in-progress',

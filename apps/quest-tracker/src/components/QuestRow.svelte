@@ -1,7 +1,8 @@
 <script lang="ts">
   // One quest row: status mark, name and the manual-tick marker, the short
   // reward labels, the worth marker, and the next step under an in-progress
-  // quest. In progress: the active band with a 3 px bar inside the left edge.
+  // quest. A quest done by inference (`inferred`) carries the "probably done"
+  // mark right after its status mark; it is not a control. In progress: the active band with a 3 px bar inside the left edge.
   // Finished (done, skipped, locked): a compact, muted row. In edit mode the
   // row opens the quest's detail, with an outline on hover.
   //
@@ -17,6 +18,7 @@
   import { rewardShortText, rewardText } from '../labels';
   import { ROW_STEP_IN_MS, ROW_STEP_OUT_MS, type RowPhase, getRowChanges, prefersReducedMotion } from '../rowchange';
   import Icon from './Icon.svelte';
+  import InferredMark from './InferredMark.svelte';
   import StatusMark from './StatusMark.svelte';
   import WorthMark from './WorthMark.svelte';
 
@@ -78,6 +80,7 @@
 {#snippet content()}
   <StatusMark status={row.status} />
   <span class="title" class:entering={phase === 'in' && !row.current_step}>
+    {#if row.inferred}<InferredMark />{/if}
     <span class="name">{row.name}</span>
     {#if row.needs_tick}
       <span class="manual" title="Needs a manual tick">
@@ -182,6 +185,11 @@
     line-height: var(--line-row);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* The "probably done" mark sits 4 px after the status mark: the column gap less the title's own gap. */
+  .title > :global(.inferred-mark) {
+    margin-left: calc(var(--space-unit) - var(--space-section-gap));
   }
 
   .manual {

@@ -50,5 +50,14 @@ describe('the TypeScript IPC types', () => {
     const noFlag = fixtureView('panel-campaign') as unknown as { character: Record<string, unknown> };
     delete noFlag.character.provisional;
     expect(viewProblems(noFlag)).toEqual(['view.character.provisional: missing']);
+
+    // The "probably done" flag is on every row and step, and the fixtures do use it.
+    const rows = [...story.acts.flatMap((a) => a.quests), ...story.next_up];
+    expect(rows.some((r) => r.inferred)).toBe(true);
+    expect(fixtureView('quest-detail').detail!.steps.some((s) => s.inferred)).toBe(true);
+    const noInferred = fixtureView('quest-detail') as unknown as { detail: { row: Record<string, unknown>; steps: Array<Record<string, unknown>> } };
+    delete noInferred.detail.row.inferred;
+    noInferred.detail.steps[0].inferred = 'yes';
+    expect(viewProblems(noInferred)).toEqual(['view.detail.row.inferred: missing', 'view.detail.steps[0].inferred: expected a boolean']);
   });
 });

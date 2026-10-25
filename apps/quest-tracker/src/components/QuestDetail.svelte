@@ -4,11 +4,15 @@
   // step's one toggle, the hand tick), every reward as a chip,
   // the poe2db source, and in edit mode the actions. Reset asks twice: the
   // first click turns it into "Confirm reset", filled, with a 3 s countdown.
+  // A quest or step done by inference (`inferred`) carries the "probably
+  // done" mark after its status or step mark; it adds no control, and the
+  // step's hand tick works as without it.
   import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
   import type { Detection, QuestAction, QuestDetail, StepPhase, StepView } from '../ipc';
   import { STEP_ICON, STEP_LABEL, WORTH_LABEL } from '../labels';
   import Icon from './Icon.svelte';
+  import InferredMark from './InferredMark.svelte';
   import StatusMark from './StatusMark.svelte';
   import WorthMark from './WorthMark.svelte';
 
@@ -76,6 +80,7 @@
 
     <div class="head">
       <StatusMark status={row.status} />
+      {#if row.inferred}<InferredMark />{/if}
       <h2 class="name">{row.name}</h2>
     </div>
     {#if facts}<p class="caption">{facts}</p>{/if}
@@ -111,6 +116,7 @@
         {:else}
           <span class="mark">{@render mark(phase, true)}</span>
         {/if}
+        {#if step.inferred}<InferredMark />{/if}
         <span class="step-body">
           <span class="step-title">{step.title}</span>
           {#if step.text}<span class="step-text">{step.text}</span>{/if}
@@ -310,6 +316,18 @@
     border-color: var(--color-edit-accent);
     color: var(--color-edit-accent);
     outline: none;
+  }
+
+  /* The "probably done" mark sits 4 px after the status or step mark (the
+     row's gap less 4). In a step it centres on the 14 px mark, whose top is
+     2 px down in both modes: 2 + (14 - 10) / 2. */
+  .head > :global(.inferred-mark),
+  .step > :global(.inferred-mark) {
+    margin-left: calc(var(--space-unit) - var(--space-section-gap));
+  }
+
+  .step > :global(.inferred-mark) {
+    margin-top: 4px;
   }
 
   .box {
