@@ -9,7 +9,7 @@
     "test": "vitest run --passWithNoTests",
     "tauri": "tauri",
     "start": "tauri dev",
-    "release": "tauri build --no-bundle"
+    "release": "tauri build --no-bundle && cargo build --release -p qt-replay --locked"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.3"
