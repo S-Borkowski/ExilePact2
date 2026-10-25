@@ -29,7 +29,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use qt_engine::{Engine, QuestAction, QuestData, Transition};
-use qt_logline::parse_line;
+use qt_logline::{parse_line, Timestamp};
 use qt_store::{Loaded, Store, StoreError};
 use qt_tailer::{Position, SystemClock as TailerClock, TailEvent};
 use qt_viewmodel::{
@@ -250,6 +250,28 @@ struct State {
     /// The monitor the applied `auto` zoom was worked out from (`None`
     /// when there was none), so a move re-applies only a zoom that differs.
     scale_monitor: Option<MonitorMetrics>,
+    /// The log time of the last line handled, the [`Clock`] reading when it
+    /// was, and whether it was live: what "now" in log time is worked out
+    /// from when the worker's tick closes a quiet relog window.
+    log_clock: Option<LogClock>,
+}
+
+/// The last handled line's place in log time (see `State::log_clock`).
+#[derive(Clone, Copy)]
+struct LogClock {
+    time: Timestamp,
+    at_ms: u64,
+    live: bool,
+}
+
+impl LogClock {
+    /// Log time `now_ms` on the shell's clock: the line's timestamp
+    /// advanced by the whole seconds elapsed since it was handled.
+    fn now(&self, now_ms: u64) -> Timestamp {
+        // A u64 of milliseconds over 1000 always fits in an i64.
+        let elapsed = (now_ms.saturating_sub(self.at_ms) / 1_000) as i64;
+        self.time.plus_seconds(elapsed)
+    }
 }
 
 impl State {
@@ -536,6 +558,7 @@ impl App {
             saved_new_char,
             last_view: None,
             scale_monitor: None,
+            log_clock: None,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
         state.dirty = !(had_settings && had_roster);
@@ -839,7 +862,19 @@ impl App {
                     if !live {
                         caught_up += 1;
                     }
-                    if let Some(ev) = parse_line(&line.text, st.engine.allowlist()) {
+                    let parsed = parse_line(&line.text, st.engine.allowlist());
+                    let time = parsed
+                        .as_ref()
+                        .map(|ev| ev.time)
+                        .or_else(|| line.text.get(..19).and_then(Timestamp::parse));
+                    if let Some(time) = time {
+                        st.log_clock = Some(LogClock {
+                            time,
+                            at_ms: self.clock.now_ms(),
+                            live,
+                        });
+                    }
+                    if let Some(ev) = parsed {
                         if live {
                             if let Some(m) = diag::event(&ev) {
                                 self.diag(&m);
@@ -903,9 +938,15 @@ impl App {
         if caught_up > 0 {
             self.diag(&diag::catch_up(&st.engine, caught_up));
         }
+        self.publish(&mut st, &transitions);
+    }
+
+    /// Emits a fresh view (when it differs from the last) and then one
+    /// `qt:row-change` per live transition that changed a row.
+    fn publish(&self, st: &mut State, transitions: &[Transition]) {
         let data = st.engine.data().clone();
-        let changes = st.row_changes.make(&data, &transitions);
-        let view = self.build(&st);
+        let changes = st.row_changes.make(&data, transitions);
+        let view = self.build(st);
         if st.last_view.as_ref() != Some(&view) {
             self.emitter.view(&view);
             st.last_view = Some(view);
@@ -916,9 +957,47 @@ impl App {
         }
     }
 
-    /// The worker's housekeeping between batches: a save when one is due.
+    /// The worker's housekeeping between batches: a quiet relog window
+    /// decided, then a save when one is due.
     pub fn tick(&self) {
+        self.close_quiet_relog_window();
         self.save_if_due(false);
+    }
+
+    /// Closes a relog window the log has gone quiet on: with no line since
+    /// a level-1 entry to The Riverbank, only the clock can tell that more
+    /// than 5 s of log time have passed. "Now" is the last handled line's
+    /// timestamp advanced by the time elapsed on the shell's [`Clock`] since
+    /// it was handled. The character lines are written from the notes the
+    /// engine posts when it closes (a new character started or resumed, a
+    /// pin released), never from the window being open.
+    fn close_quiet_relog_window(&self) {
+        let mut st = self.lock();
+        if !st.engine.relog_window_open() {
+            return;
+        }
+        let Some(clock) = st.log_clock else {
+            return;
+        };
+        let now = clock.now(self.clock.now_ms());
+        let before = st.engine.current().map(str::to_string);
+        let ts = st.engine.expire_relog_window(now);
+        if st.engine.relog_window_open() {
+            return;
+        }
+        self.log_character_notes(&mut st);
+        for quest_id in st.engine.take_refused() {
+            self.diag(&diag::refused(&quest_id));
+        }
+        let after = st.engine.current().map(str::to_string);
+        if clock.live && before != after {
+            self.diag(&diag::decision(&st.engine, before.as_deref(), after.as_deref()));
+        }
+        for t in &ts {
+            self.diag(&diag::transition(t));
+        }
+        st.dirty = true;
+        self.publish(&mut st, &ts);
     }
 
     // -- the commands --------------------------------------------------------
@@ -1578,8 +1657,9 @@ fn join_by(handle: JoinHandle<()>, deadline: Instant) -> bool {
 }
 
 /// The worker: drains the tailer's channel in batches into
-/// [`App::handle_tail_events`], and ticks between them. Ends within one
-/// [`WORKER_TICK`] of `stop` being set.
+/// [`App::handle_tail_events`], and ticks after each batch or each
+/// [`WORKER_TICK`] without one, so a quiet log's relog window still closes.
+/// Ends within one [`WORKER_TICK`] of `stop` being set.
 fn run_worker(app: Arc<App>, rx: Receiver<(u64, TailEvent)>, stop: Arc<AtomicBool>) {
     while !stop.load(Ordering::Acquire) {
         match rx.recv_timeout(WORKER_TICK) {

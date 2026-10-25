@@ -1190,21 +1190,25 @@ fn riverbank_new_character_is_logged() {
         ]
     };
 
-    // Read as catch-up, the start is logged too (launch 7), and the
-    // catch-up summary names the new character.
+    // Read as catch-up, the start is logged too (launch 7), once the relog
+    // window has closed (launch 8): the catch-up summary, written while it
+    // is open, names no character yet.
     let h = harness(Setup::default());
     h.app.handle_tail_events(events(&riverbank(), true));
     let diag = h.diag_text();
+    assert_eq!(diag.matches(NEW).count(), 0, "{diag}");
+    assert!(diag.contains("character none, area G1_1"), "{diag}");
+    quiet_for(&h, 6_000);
+    let diag = h.diag_text();
     assert_eq!(diag.matches(NEW).count(), 1, "{diag}");
-    assert!(
-        diag.contains("character a new character (The Riverbank), area G1_1"),
-        "{diag}"
-    );
+    assert!(h.app.get_view().character.expect("the new character").provisional);
 
-    // Live: the line is logged when the state starts, the view shows the
-    // provisional character, and the level-up names it.
+    // Live: the line is logged when the window closes on the worker's tick,
+    // the view shows the provisional character, and the level-up names it.
     let h = harness(Setup::default());
     h.app.handle_tail_events(events(&riverbank(), false));
+    assert_eq!(h.diag_text().matches(NEW).count(), 0, "{}", h.diag_text());
+    quiet_for(&h, 6_000);
     assert_eq!(h.diag_text().matches(NEW).count(), 1, "{}", h.diag_text());
     let c = h.views.last().character.expect("the new character");
     assert!(c.provisional && c.name.is_empty(), "{c:?}");
@@ -1218,9 +1222,11 @@ fn riverbank_new_character_is_logged() {
     assert_eq!((c.name.as_str(), c.provisional), (OWN, false));
 
     // A pinned character: the next Riverbank start releases the pin, and
-    // says so.
+    // says so, when its window closes.
     h.app.pin_character(Some(OWN)).unwrap();
     h.app.handle_tail_events(events(&riverbank(), false));
+    assert_eq!(h.diag_text().matches(NEW).count(), 1, "{}", h.diag_text());
+    quiet_for(&h, 6_000);
     let diag = h.diag_text();
     assert_eq!(diag.matches(NEW).count(), 2, "{diag}");
     assert!(
@@ -1239,7 +1245,15 @@ fn riverbank_new_character_is_logged() {
         ],
         false,
     ));
+    quiet_for(&h, 6_000);
     assert!(!h.diag_text().contains(NEW), "{}", h.diag_text());
+}
+
+/// The log stays quiet for `ms` on the shell's test clock, and then the
+/// worker's housekeeping tick runs.
+fn quiet_for(h: &Harness, ms: u64) {
+    h.clock.fetch_add(ms, Ordering::SeqCst);
+    h.app.tick();
 }
 
 // ---------------------------------------------------------------------------
@@ -1282,6 +1296,10 @@ fn provisional_character_survives_relaunch() {
     assert!(h.stored("new-character.json").is_none());
     h.app.start();
     h.wait_diag(&["catch-up:", "area G1_1"]);
+    // The log stays quiet past the relog window: the worker's tick starts
+    // the new character.
+    h.clock.fetch_add(6_000, Ordering::SeqCst);
+    h.wait_diag(&[NEW_LINE]);
     let before = h.app.get_view();
     let c = before.character.clone().expect("the new character");
     assert!(c.provisional && c.name.is_empty(), "{c:?}");
@@ -1359,8 +1377,11 @@ fn catch_up_logs_new_character_and_released_pin() {
     let base = h.diag_text().matches(NEW_LINE).count();
 
     // A later Riverbank start read as catch-up: the start and the pin it
-    // released are logged, as they are for live lines.
+    // released are logged, as they are for live lines, once the relog
+    // window closes on the worker's tick.
     h.app.handle_tail_events(events(&riverbank_at("10:00", 31), true));
+    assert_eq!(h.diag_text().matches(NEW_LINE).count(), base, "{}", h.diag_text());
+    quiet_for(&h, 6_000);
     let diag = h.diag_text();
     assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "{diag}");
     let released = format!("character: pin on {OWN} released for the new character");
@@ -1384,6 +1405,7 @@ fn catch_up_logs_new_character_and_released_pin() {
 
     // The same instance again, in catch-up: resumed, the pin released again.
     h.app.handle_tail_events(events(&riverbank_at("11:01", 31)[1..], true));
+    quiet_for(&h, 6_000);
     let diag = h.diag_text();
     assert_eq!(
         diag.matches("character: the new character resumed (The Riverbank)").count(),
@@ -1401,6 +1423,7 @@ fn catch_up_logs_new_character_and_released_pin() {
         &["2026/03/12 12:00:05 7005000 9a1c0004 [DEBUG Client 7120] Generating level 40 area \"G1_1\" with seed 33".to_string()],
         true,
     ));
+    quiet_for(&h, 6_000);
     assert!(!h.diag_text().contains("character:"), "{}", h.diag_text());
 }
 
@@ -1414,28 +1437,36 @@ fn riverbank_relog_is_logged() {
 
         // A relog inside The Riverbank: the entry, then the build line
         // naming the stored character 1 s later. The pin is kept.
+        let base = h.diag_text().matches(NEW_LINE).count();
         let mut lines = riverbank_at("10:00", 31);
         lines.push(build_line("10:00:06", OWN));
         h.app.handle_tail_events(events(&lines, catch_up));
+        // A quiet log after it decides nothing more.
+        quiet_for(&h, 6_000);
         let diag = h.diag_text();
         assert_eq!(diag.matches(&relogged).count(), 1, "catch-up {catch_up}:\n{diag}");
+        assert_eq!(diag.matches(NEW_LINE).count(), base, "catch-up {catch_up}:\n{diag}");
+        assert!(!diag.contains("released for the new character"), "{diag}");
         let c = h.app.get_view().character.expect("the kept character");
         assert_eq!(
             (c.name.as_str(), c.pinned, c.provisional),
             (OWN, true, false),
             "catch-up {catch_up}"
         );
-        assert!(h.app.get_view().character.is_some());
 
         // Negative control: a build line with a name not stored leaves the
-        // new character open and unnamed, logs no relog, and never writes
-        // the name.
+        // entry undecided, logs no relog, and never writes the name; the
+        // quiet log then starts the new character.
         let mut lines = riverbank_at("11:00", 32);
         lines.push(build_line("11:00:06", "Odile_Marsh"));
         h.app.handle_tail_events(events(&lines, catch_up));
         let diag = h.diag_text();
         assert_eq!(diag.matches(&relogged).count(), 1, "catch-up {catch_up}:\n{diag}");
         assert!(!diag.contains("Odile_Marsh"), "{diag}");
+        assert!(!h.app.get_view().character.unwrap().provisional);
+        quiet_for(&h, 6_000);
+        let diag = h.diag_text();
+        assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "catch-up {catch_up}:\n{diag}");
         assert!(h.app.get_view().character.unwrap().provisional);
 
         // A build line naming the stored character 10 s after the entry is
@@ -1445,6 +1476,139 @@ fn riverbank_relog_is_logged() {
         h.app.handle_tail_events(events(&lines, catch_up));
         assert_eq!(h.diag_text().matches(&relogged).count(), 1);
         assert!(h.app.get_view().character.unwrap().provisional);
+    }
+}
+
+/// Waits up to five seconds for the diagnostic log to hold `needle` exactly
+/// `n` times, and returns the log.
+fn wait_count(h: &Harness, needle: &str, n: usize) -> String {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let text = h.diag_text();
+        if text.matches(needle).count() == n {
+            return text;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "{needle:?} not {n} times within 5 s:\n{text}"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn relog_window_expires_on_worker_tick() {
+    let released = format!("character: pin on {OWN} released for the new character");
+    for catch_up in [false, true] {
+        let h = harness(Setup::default());
+        h.app.handle_tail_events(events(&own_character_lines(), true));
+        h.app.pin_character(Some(OWN)).unwrap();
+        let base = h.diag_text().matches(NEW_LINE).count();
+
+        // A level-1 entry to The Riverbank, and no further line.
+        h.app.handle_tail_events(events(&riverbank_at("10:00", 31), catch_up));
+
+        // Baseline: up to 5 s after the entry on the test clock (5.999 s,
+        // the log's one-second resolution), the tick decides nothing: no
+        // new-character line, the pin and the active character kept.
+        for ms in [0, 2_000, 3_999] {
+            quiet_for(&h, ms);
+            let diag = h.diag_text();
+            assert_eq!(diag.matches(NEW_LINE).count(), base, "catch-up {catch_up}:\n{diag}");
+            assert!(!diag.contains(&released), "catch-up {catch_up}:\n{diag}");
+            let c = h.app.get_view().character.expect("the kept character");
+            assert_eq!(
+                (c.name.as_str(), c.pinned, c.provisional),
+                (OWN, true, false),
+                "catch-up {catch_up}"
+            );
+        }
+
+        // Target: past 5 s the tick closes the window, and the new
+        // character starts, releasing the pin, with its lines written once.
+        quiet_for(&h, 1);
+        let diag = h.diag_text();
+        assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "catch-up {catch_up}:\n{diag}");
+        assert_eq!(diag.matches(&released).count(), 1, "catch-up {catch_up}:\n{diag}");
+        let v = h.views.last();
+        assert!(v.character.as_ref().is_some_and(|c| c.provisional), "{:?}", v.character);
+        assert!(v.characters.iter().all(|c| !c.pinned), "{:?}", v.characters);
+
+        // Later ticks write it no second time.
+        quiet_for(&h, 10_000);
+        quiet_for(&h, 10_000);
+        let diag = h.diag_text();
+        assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "catch-up {catch_up}:\n{diag}");
+        assert_eq!(diag.matches(&released).count(), 1, "catch-up {catch_up}:\n{diag}");
+    }
+
+    // Through the running worker: a log that goes quiet after a live
+    // Riverbank entry is decided by the worker's own tick once the test
+    // clock passes 5 s, not before.
+    let h = harness(log_setup(text(&own_character_lines()), true));
+    h.app.start();
+    h.wait_diag(&["catch-up:"]);
+    h.app.pin_character(Some(OWN)).unwrap();
+    let base = h.diag_text().matches(NEW_LINE).count();
+    append(&h.root.join("Client.txt"), &riverbank_at("10:00", 31));
+    h.wait_diag(&["area G1_1 (level 1)"]);
+    // Several worker ticks (every 250 ms) with the clock standing still.
+    std::thread::sleep(Duration::from_millis(600));
+    assert_eq!(h.diag_text().matches(NEW_LINE).count(), base, "{}", h.diag_text());
+    h.clock.fetch_add(6_000, Ordering::SeqCst);
+    wait_count(&h, NEW_LINE, base + 1);
+    std::thread::sleep(Duration::from_millis(600));
+    let diag = h.diag_text();
+    assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "{diag}");
+    assert_eq!(diag.matches(&released).count(), 1, "{diag}");
+    h.views.wait_for("the new character", |v| {
+        v.character.as_ref().is_some_and(|c| c.provisional)
+    });
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn riverbank_relog_writes_no_new_character_line() {
+    let relogged = format!("character: {OWN} relogged in The Riverbank, kept");
+    for catch_up in [false, true] {
+        let h = harness(Setup::default());
+        h.app.handle_tail_events(events(&own_character_lines(), true));
+        h.app.pin_character(Some(OWN)).unwrap();
+        let base = h.diag_text().matches(NEW_LINE).count();
+
+        // The entry, then within 5 s the build line naming the stored
+        // character, in separate batches with the worker ticking between.
+        let entry = riverbank_at("10:00", 31);
+        h.app.handle_tail_events(events(&entry, catch_up));
+        quiet_for(&h, 2_000);
+        h.app.handle_tail_events(events(&[build_line("10:00:07", OWN)], catch_up));
+        quiet_for(&h, 10_000);
+        quiet_for(&h, 10_000);
+
+        let diag = h.diag_text();
+        assert_eq!(diag.matches(&relogged).count(), 1, "catch-up {catch_up}:\n{diag}");
+        assert_eq!(diag.matches(NEW_LINE).count(), base, "catch-up {catch_up}:\n{diag}");
+        assert!(
+            !diag.contains(&format!("pin on {OWN} released for the new character")),
+            "catch-up {catch_up}:\n{diag}"
+        );
+        let v = h.app.get_view();
+        let c = v.character.expect("the kept character");
+        assert_eq!(
+            (c.name.as_str(), c.pinned, c.active, c.provisional),
+            (OWN, true, true, false),
+            "catch-up {catch_up}"
+        );
+        // No view in between showed a new character.
+        assert!(
+            h.views
+                .views
+                .lock()
+                .unwrap()
+                .iter()
+                .all(|v| v.character.as_ref().is_none_or(|c| !c.provisional)),
+            "catch-up {catch_up}"
+        );
     }
 }
 
