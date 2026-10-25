@@ -96,9 +96,11 @@ line under its name (owner, 2026-10-25).
 5. **Character picker** [`character-picker`]. The overlay tracks progress
    per character; a list of detected characters (name, class, level), the
    active one highlighted, and "new character".
-6. **Settings** [`settings`]. Opacity slider, click-through toggle, dock
-   side (left/right), scale (auto/1×/1.33×/2×), "show skipped quests", "only
-   worth-it quests", log file path with a status line.
+6. **Settings** [`settings`]. Background opacity slider (it fades the panel
+   background only; text and icons stay fully opaque; floor 30%),
+   click-through toggle, dock side (left/right), scale (auto/1×/1.33×/2×),
+   "show skipped quests", "only worth-it quests", a Hotkeys section, log file
+   path with a status line, and a link to the icon key (owner, 2026-10-25).
 7. **Edit mode vs. play mode** [`mode-play`, `mode-edit`]. The same panel in
    both. Play mode is click-through (mouse goes to the game) and shows no
    buttons; edit mode (hotkey) accepts clicks and shows the controls. The
@@ -109,8 +111,17 @@ line under its name (owner, 2026-10-25).
    detected yet [`empty-no-character`]; all quests in this act done
    [`empty-act-done`].
 9. **Toast** [`toast`]. A short notification when a quest becomes available
-   or a step completes (~3 s, stacks at most 3, top of the panel or near
-   it).
+   or a step completes (~3 s, stacks at most 3). Toasts stack below the
+   panel's bottom edge, never above it, so they don't cover the minimap and
+   never push the rows (owner, 2026-10-25). In edit mode, Mark done and Skip
+   show an Undo toast for 5 s.
+
+Also designed, beyond the frame ids above: an icon key (every status, worth
+and manual mark, opened from Settings or with F1), play-mode versions of the
+empty states ("Press F8 to …"), and a log-idle header ("No log update ·
+5 min", rows dimmed). Hotkeys, all rebindable in Settings and working in both
+modes: F8 edit mode, F7 collapse/expand, F6 switch view, F1 icon key; Esc
+closes detail, settings, the picker and the icon key (owner, 2026-10-25).
 
 ## Components (make each one a Figma component with variants)
 
@@ -120,14 +131,14 @@ line under its name (owner, 2026-10-25).
 | Act section header | expanded / collapsed; has-available / none | 320×28 | "Act 2", progress like `5/9`, chevron |
 | Quest row | status × worth-it (yes/no/optional) × detection (auto/manual; manual also covers partial) | 320×40 | Status mark, name, short reward text (e.g. "Spirit", "Passive · Cold res"; owner, 2026-10-25), worth-it marker; current step as a second line when in progress, always shown (row grows to ~56) |
 | Status mark | locked, available, in progress, done, skipped, unknown | 16×16 | Must differ in shape, not just colour |
-| Worth-it marker | worth it / optional / not worth it | 16×16 | E.g. star / half / dash |
-| Manual-tick marker | — | 12×12 | Shows the row needs a manual tick (detection partial or manual) |
+| Worth-it marker | worth it / optional / not worth it | 16×16 | Solid star / outline star / dash |
+| Manual-tick marker | — | 12×12 | Shows the row needs a manual tick (detection partial or manual); an eye with a slash after the quest name, explained in quest detail |
 | Reward chip | one per reward category | 20×20 icon, optional label | Icon+label in quest detail only; rows show reward text instead |
 | Step line | pending / current / done | 288×20 | Used in quest detail |
 | Button | primary / secondary / danger; default / hover / pressed / disabled; danger also confirm | h 28 | Mark done, Skip, Reset. Reset asks twice: the first click relabels it "Confirm reset" for 3 s |
 | Toggle, slider, dropdown | standard states | h 24 | Settings |
 | Collapsed badge | idle / has-new (count) | 48×48 | Count of available worth-it quests |
-| Toast | quest available / step done / quest done | 300×44 | Icon + one line |
+| Toast | quest available / step done / quest done / undo | 300×44 | Icon + one line; undo adds an "Undo" action |
 
 ## Icons (24×24 grid, SVG only, single colour unless noted)
 
@@ -145,7 +156,7 @@ it with CSS (`currentColor`), so no PNG scales are exported.
   item/currency, unlock, story-only.
 - Status: lock, available (open/exclamation), in progress, done (check),
   skipped (strike/arrow), unknown (question).
-- Worth-it: full, half, none.
+- Worth-it: solid star, outline star, plain dash.
 - UI: chevron, collapse/expand, settings gear, close, edit (pencil),
   click-through (cursor with slash), external link, character, refresh,
   manual tick.
@@ -154,7 +165,7 @@ The six reward icons added to the list above (all elemental resistances,
 attribute, charm, flask, defences, other permanent stat) were delivered on
 2026-10-25 with two extras (`ui/check.svg`, `ui/warning.svg`);
 [`icons/manifest.json`](icons/manifest.json) lists all 46 files, and the
-table in `icons/README.md` predates them. Which file serves which icon id is
+table in `icons/README.md` lists them. Which file serves which icon id is
 in [Export contract](#export-contract).
 
 ## Tokens to define as Figma variables
