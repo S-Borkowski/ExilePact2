@@ -286,7 +286,8 @@ fn named(kind: &EventKind) -> Option<&str> {
         | EventKind::Slain { name }
         | EventKind::Received { name, .. }
         | EventKind::Lost { name, .. }
-        | EventKind::Party { name, .. } => Some(name),
+        | EventKind::Party { name, .. }
+        | EventKind::CharacterNamed { name } => Some(name),
         _ => None,
     }
 }
@@ -380,7 +381,11 @@ fn state_json(engine: &Engine, replayed: &Replayed) -> Value {
         "lines": replayed.lines,
         "client_version": engine.client_version(),
         "held": engine.held_count(),
+        // Two kinds of dropped event, never summed: those that came before
+        // any character, and those of an unnamed new character that a
+        // level-1 entry to another instance of The Riverbank replaced.
         "dropped": engine.dropped_count(),
+        "dropped_new_character": engine.dropped_new_character_count(),
         "refused": engine.refused_count(),
         "characters": characters,
     })
@@ -403,11 +408,13 @@ fn print_state(
     }
     writeln!(
         out,
-        "{} lines, client {}, {} events held, {} dropped, {} refused",
+        "{} lines, client {}, {} events held, {} dropped before any character, \
+         {} dropped with a replaced new character, {} refused",
         replayed.lines,
         engine.client_version().unwrap_or("unknown"),
         engine.held_count(),
         engine.dropped_count(),
+        engine.dropped_new_character_count(),
         engine.refused_count()
     )?;
     let characters = report["characters"].as_array().cloned().unwrap_or_default();

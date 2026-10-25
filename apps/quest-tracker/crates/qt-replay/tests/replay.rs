@@ -240,7 +240,10 @@ fn summary_reports_refused() {
     let text = state("refused.txt", &refused, false);
     assert!(text.status.success());
     let text = stdout(&text);
-    let want = format!("{} dropped, 1 refused", report["dropped"]);
+    let want = format!(
+        "{} dropped before any character, {} dropped with a replaced new character, 1 refused",
+        report["dropped"], report["dropped_new_character"]
+    );
     assert!(text.contains(&want), "{text}");
 
     // Negative control: the same reward in its area is no refusal, and the
@@ -254,8 +257,160 @@ fn summary_reports_refused() {
         "{report}"
     );
     let text = stdout(&state("in-area.txt", &in_area, false));
-    let want = format!("{} dropped, 0 refused", report["dropped"]);
+    let want = format!(
+        "{} dropped before any character, {} dropped with a replaced new character, 0 refused",
+        report["dropped"], report["dropped_new_character"]
+    );
     assert!(text.contains(&want), "{text}");
+}
+
+/// The level-1 entry to The Riverbank that opens a new character.
+fn riverbank(seed: u64) -> String {
+    log_line(&format!(
+        r#"Generating level 1 area "G1_1" with seed {seed}"#
+    ))
+}
+
+#[test]
+fn summary_reports_dropped_new_character() {
+    const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
+    let clearfell = log_line(r#"Generating level 2 area "G1_2" with seed 7"#);
+    let store = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let data = quests_min();
+    let write = |name: &str, lines: &[&str]| {
+        let log = logs.path().join(name);
+        fs::write(&log, lines.join("\n") + "\n").unwrap();
+        log
+    };
+    let state = |log: &Path, as_json: bool| {
+        let mut args = vec![
+            OsStr::new("state"),
+            log.as_os_str(),
+            OsStr::new("--data"),
+            data.as_os_str(),
+        ];
+        if as_json {
+            args.push(OsStr::new("--json"));
+        }
+        run(store.path(), args)
+    };
+    // The engine itself over the same lines, as the replay feeds them.
+    let engine_over = |log: &Path| {
+        let mut engine = Engine::new(Arc::new(QuestData::load(&data).unwrap()));
+        for line in fs::read_to_string(log).unwrap().lines() {
+            engine.feed_line(line, false);
+        }
+        engine
+    };
+
+    // One event before any character, dropped at the next marker; then a
+    // new character in instance 11 that takes two events and is parked at
+    // a marker; then a level-1 entry to another instance (22), which
+    // replaces the parked record once the next area entry closes its relog
+    // window.
+    let (first, second) = (riverbank(11), riverbank(22));
+    let replaced = [
+        MARKER,
+        clearfell.as_str(),
+        MARKER,
+        first.as_str(),
+        clearfell.as_str(),
+        MARKER,
+        second.as_str(),
+        clearfell.as_str(),
+    ];
+    let log = write("replaced.txt", &replaced);
+    let engine = engine_over(&log);
+    assert_eq!(engine.dropped_count(), 1);
+    assert!(engine.dropped_new_character_count() > 0);
+    let report = ok_json(&state(&log, true));
+    assert_eq!(report["dropped"], json!(1), "{report}");
+    assert_eq!(
+        report["dropped_new_character"],
+        json!(engine.dropped_new_character_count()),
+        "{report}"
+    );
+    let text = state(&log, false);
+    assert!(text.status.success());
+    let text = stdout(&text);
+    let want = format!(
+        "1 dropped before any character, {} dropped with a replaced new character,",
+        engine.dropped_new_character_count()
+    );
+    assert!(text.contains(&want), "{text}");
+
+    // Negative control: the second entry is to the same instance, so it
+    // resumes the parked record and nothing of it is dropped; the event
+    // before any character still is, and is reported apart.
+    let resumed = [
+        MARKER,
+        clearfell.as_str(),
+        MARKER,
+        first.as_str(),
+        clearfell.as_str(),
+        MARKER,
+        first.as_str(),
+        clearfell.as_str(),
+    ];
+    let log = write("resumed.txt", &resumed);
+    assert_eq!(engine_over(&log).dropped_new_character_count(), 0);
+    let report = ok_json(&state(&log, true));
+    assert_eq!(report["dropped"], json!(1), "{report}");
+    assert_eq!(report["dropped_new_character"], json!(0), "{report}");
+    let text = stdout(&state(&log, false));
+    assert!(
+        text.contains("1 dropped before any character, 0 dropped with a replaced new character,"),
+        "{text}"
+    );
+}
+
+#[test]
+fn events_hide_character_line_of_unstored_name() {
+    const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
+    // An invented name the log never stores as a character.
+    const STRANGER: &str = "Thessaly_Rook";
+    let build_line = |name: &str| {
+        format!(
+            "2026/03/14 12:00:01 9000100 abcdef02 [WARN Client 5120] \
+             Character {name} has unknown build of path: None"
+        )
+    };
+    let lines = [
+        MARKER.to_string(),
+        log_line(r#"Generating level 2 area "G1_2" with seed 7"#),
+        log_line(&format!(": {CORISANDE} (Witch) is now level 2")),
+        build_line(CORISANDE),
+        build_line(STRANGER),
+    ];
+    let logs = tempfile::tempdir().unwrap();
+    let log = logs.path().join("named.txt");
+    fs::write(&log, lines.join("\n") + "\n").unwrap();
+    let store = tempfile::tempdir().unwrap();
+    let data = quests_min();
+    for json_flag in [false, true] {
+        let mut args = vec![
+            OsStr::new("events"),
+            log.as_os_str(),
+            OsStr::new("--data"),
+            data.as_os_str(),
+        ];
+        if json_flag {
+            args.push(OsStr::new("--json"));
+        }
+        let o = run(store.path(), args);
+        assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+        let out = stdout(&o);
+        assert!(!out.contains(STRANGER), "printed {STRANGER:?}:\n{out}");
+        // Positive control through the same output: the stored character's
+        // line is printed.
+        let want = if json_flag {
+            format!(r#""kind":"character_named","name":"{CORISANDE}""#)
+        } else {
+            format!(r#"character_named name="{CORISANDE}""#)
+        };
+        assert!(out.contains(&want), "missing {want:?}:\n{out}");
+    }
 }
 
 /// Every invented chat speaker, chat text and party member of the fixtures
