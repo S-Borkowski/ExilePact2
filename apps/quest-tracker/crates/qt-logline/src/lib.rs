@@ -72,6 +72,30 @@ impl Timestamp {
             && ts.second < 61;
         valid.then_some(ts)
     }
+
+    /// Seconds from `earlier` to this time, negative when `earlier` is
+    /// later. Both are the log's local wall-clock time, so a clock change
+    /// between them shows up in the result.
+    pub fn seconds_since(&self, earlier: &Timestamp) -> i64 {
+        self.seconds() - earlier.seconds()
+    }
+
+    /// Seconds since 1970-01-01 00:00:00 of the same wall clock.
+    fn seconds(&self) -> i64 {
+        // Days from the civil date (proleptic Gregorian), Howard Hinnant's
+        // algorithm.
+        let (m, d) = (i64::from(self.month), i64::from(self.day));
+        let y = i64::from(self.year) - i64::from(m <= 2);
+        let era = y.div_euclid(400);
+        let yoe = y - era * 400;
+        let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
+        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+        let days = era * 146_097 + doe - 719_468;
+        days * 86_400
+            + i64::from(self.hour) * 3_600
+            + i64::from(self.minute) * 60
+            + i64::from(self.second)
+    }
 }
 
 impl fmt::Display for Timestamp {
@@ -152,6 +176,11 @@ pub enum EventKind {
     Points { pool: PointPool, amount: u32 },
     /// `: <name> has joined the area.` / `has left the area.`
     Party { name: String, change: PartyChange },
+    /// `[WARN Client <pid>] Character <name> has unknown build of path: None`,
+    /// that exact shape only. The client wrote it within about 2 s of a
+    /// relog into The Riverbank, naming the character; it is not written for
+    /// every new character, so on its own it names nobody new.
+    CharacterNamed { name: String },
 }
 
 /// One recognised line: its timestamp and what it says.
@@ -225,6 +254,7 @@ struct Patterns {
     lost: Regex,
     points: Regex,
     party: Regex,
+    character_build: Regex,
     markup: Regex,
 }
 
@@ -246,6 +276,8 @@ fn patterns() -> &'static Patterns {
             lost: re(r"^: (\S+) has lost (.+)\.$"),
             points: re(r"^: You have received (\d+) (Weapon Set )?Passive Skill Points?\.$"),
             party: re(r"^: (\S+) has (joined|left) the area\.$"),
+            // Only on a `[WARN ...]` line.
+            character_build: re(r"^Character (\S+) has unknown build of path: None$"),
             // `[Group|Shown]` or `[Shown]`: keep what is shown.
             markup: re(r"\[(?:[^\]|]*\|)?([^\]|]*)\]"),
         }
@@ -276,6 +308,16 @@ pub fn parse_line(line: &str, allow: &Allowlist) -> Option<Event> {
     }
     let caps = patterns().header.captures(rest)?;
     let message = caps.get(2).map_or("", |m| m.as_str());
+    if &caps[1] == "WARN" {
+        if let Some(c) = patterns().character_build.captures(message) {
+            return Some(Event {
+                time,
+                kind: EventKind::CharacterNamed {
+                    name: c[1].to_string(),
+                },
+            });
+        }
+    }
     parse_message(message, allow).map(|kind| Event { time, kind })
 }
 
@@ -387,6 +429,27 @@ mod tests {
         assert!(Timestamp::parse("2026/13/07 09:05:01").is_none());
         assert!(Timestamp::parse("2026-03-07 09:05:01").is_none());
         assert!(Timestamp::parse("2026/03/07 9:05:01").is_none());
+    }
+
+    #[test]
+    fn seconds_between_timestamps() {
+        let t = |s: &str| Timestamp::parse(s).unwrap();
+        let entry = t("2026/03/14 12:00:00");
+        assert_eq!(t("2026/03/14 12:00:05").seconds_since(&entry), 5);
+        assert_eq!(entry.seconds_since(&t("2026/03/14 12:00:05")), -5);
+        // Across midnight, a month end and a leap day.
+        assert_eq!(
+            t("2026/04/01 00:00:02").seconds_since(&t("2026/03/31 23:59:58")),
+            4
+        );
+        assert_eq!(
+            t("2028/03/01 00:00:00").seconds_since(&t("2028/02/28 00:00:00")),
+            2 * 86_400
+        );
+        assert_eq!(
+            t("2027/01/01 00:00:00").seconds_since(&t("2026/12/31 23:59:59")),
+            1
+        );
     }
 
     #[test]

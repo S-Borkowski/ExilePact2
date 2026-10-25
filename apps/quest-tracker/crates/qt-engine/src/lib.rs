@@ -19,6 +19,6 @@ pub use data::{
     RewardCategory, Signal, Status, Step, Worth, SCHEMA,
 };
 pub use engine::{
-    CharacterInfo, CharacterState, Engine, EngineError, Overrides, Ownership, QuestAction,
-    QuestState, StepState, Transition,
+    CharacterInfo, CharacterNote, CharacterState, Engine, EngineError, Overrides, Ownership,
+    QuestAction, QuestState, StepState, Transition,
 };

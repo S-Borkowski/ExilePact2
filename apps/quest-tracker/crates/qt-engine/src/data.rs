@@ -321,6 +321,10 @@ pub struct Quest {
     pub fetched: String,
     #[serde(default)]
     pub notes: String,
+    /// The quest's `done` signals are a later event, not its own completion,
+    /// so a done status is an inference (absent in the file means false).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub done_inferred: bool,
 }
 
 /// The whole quest data file.
@@ -624,7 +628,7 @@ impl Checker<'_> {
                 "source_url",
                 "fetched",
             ],
-            &["notes"],
+            &["notes", "done_inferred"],
         )?;
         self.nonempty(&q["name"], "name")?;
         self.positive(&q["act"], "act")?;
@@ -691,6 +695,14 @@ impl Checker<'_> {
         self.date(&q["fetched"], "fetched")?;
         if let Some(n) = q.get("notes") {
             self.string(n, "notes")?;
+        }
+        if let Some(d) = q.get("done_inferred") {
+            if !d.is_boolean() {
+                return Err(self.err(
+                    "done_inferred",
+                    format!("must be true or false, found {}", kind_of(d)),
+                ));
+            }
         }
         Ok(())
     }

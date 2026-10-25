@@ -369,3 +369,99 @@ fn crlf_and_non_ascii() {
     // A multi-byte character where the timestamp should be is no line at all.
     assert_eq!(parse_line("2026/03/07 10:08:0\u{e9} x", &allow), None);
 }
+
+// -- the character build line (Context "Launch 7 fixes (owner scope)") -------
+
+/// A client line at one level, built in the test (the name is invented).
+fn client_line(level: &str, message: &str) -> String {
+    format!("2026/03/14 12:00:02 9000400 abcdef02 [{level} Client 2120] {message}")
+}
+
+#[test]
+fn parses_character_build_line() {
+    let allow = allow();
+    let got = parse_line(
+        &client_line(
+            "WARN",
+            "Character Odile_Marsh has unknown build of path: None",
+        ),
+        &allow,
+    );
+    assert_eq!(
+        got,
+        Some(Event {
+            time: ts("2026/03/14 12:00:02"),
+            kind: EventKind::CharacterNamed {
+                name: s("Odile_Marsh")
+            },
+        })
+    );
+    assert_eq!(
+        serde_json::to_value(got.unwrap()).unwrap(),
+        serde_json::json!({
+            "time": "2026/03/14 12:00:02",
+            "kind": "character_named",
+            "name": "Odile_Marsh"
+        })
+    );
+    // A trailing CR, as a CRLF checkout leaves it, is tolerated.
+    let crlf = client_line(
+        "WARN",
+        "Character Odile_Marsh has unknown build of path: None\r",
+    );
+    assert!(matches!(
+        parse_line(&crlf, &allow).map(|e| e.kind),
+        Some(EventKind::CharacterNamed { name }) if name == "Odile_Marsh"
+    ));
+}
+
+#[test]
+fn ignores_other_warn_lines() {
+    let allow = allow();
+    // Positive control beside the negatives: the exact shape parses.
+    let exact = client_line(
+        "WARN",
+        "Character Odile_Marsh has unknown build of path: None",
+    );
+    assert!(parse_line(&exact, &allow).is_some());
+    for line in [
+        // Another warning.
+        client_line("WARN", "Something the fixture made up went wrong: code 7"),
+        // The same words at another level.
+        client_line(
+            "INFO",
+            "Character Odile_Marsh has unknown build of path: None",
+        ),
+        client_line(
+            "DEBUG",
+            "Character Odile_Marsh has unknown build of path: None",
+        ),
+        // A build path that is not None, and text before or after the shape.
+        client_line(
+            "WARN",
+            "Character Odile_Marsh has unknown build of path: Mercenary",
+        ),
+        client_line(
+            "WARN",
+            "Character Odile_Marsh has unknown build of path: None.",
+        ),
+        client_line(
+            "WARN",
+            "Odile_Marsh: Character Odile_Marsh has unknown build of path: None",
+        ),
+        // A name with a space is not one character name.
+        client_line(
+            "WARN",
+            "Character Odile Marsh has unknown build of path: None",
+        ),
+        // Someone typing the text in chat.
+        client_line(
+            "INFO",
+            "#Bram_Holloway: Character Odile_Marsh has unknown build of path: None",
+        ),
+        // The warning's continuation line has no timestamp.
+        "Character Odile_Marsh has unknown build of path: None".to_string(),
+    ] {
+        assert_eq!(parse_line(&line, &allow), None, "{line}");
+    }
+}

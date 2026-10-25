@@ -13,20 +13,25 @@
 //! A level-1 entry to The Riverbank (`G1_1`) starts a new character with no
 //! name yet: the session's events go to it, so its Act 1 progress shows at
 //! once, and the first level-up of a name not seen joining or leaving names
-//! it (Context "Post-live fixes (owner scope)").
+//! it. A character build line naming a stored character within 5 s of that
+//! entry, before any other area entry, is a relog instead: the state closes
+//! as if it never opened. A session marker parks the new character, and a
+//! later level-1 entry to the same instance (seed) resumes it (Context
+//! "Launch 7 fixes (owner scope)").
 //!
 //! What persists ([`Engine::to_json`]) is the characters, the pin and the
-//! active name. Session memory (the names seen joining or leaving, the held
-//! events, the unnamed new character, the current area, the count of signals
-//! refused while the area was unknown) never does: other players' names are
-//! kept in memory for one session only.
+//! active name. The unnamed new character is a separate record
+//! ([`Engine::new_character_json`]), never among the characters. Session
+//! memory (the names seen joining or leaving, the held events, the current
+//! area, the count of signals refused while the area was unknown) is never
+//! persisted: other players' names are kept in memory for one session only.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use qt_logline::{parse_line, Allowlist, Event, EventKind};
+use qt_logline::{parse_line, Allowlist, Event, EventKind, Timestamp};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -138,7 +143,8 @@ pub struct Transition {
     pub step_from: Option<String>,
     pub step_to: Option<String>,
     /// The line was written after the tailer started (or the change is the
-    /// user's own action); only live transitions produce toasts.
+    /// user's own action); only live transitions make the panel animate a
+    /// row (`qt:row-change`), catch-up ones only change the view.
     pub live: bool,
 }
 
@@ -215,17 +221,89 @@ struct Pending {
 /// The area code whose level-1 entry starts a new character.
 const NEW_CHARACTER_AREA: &str = "G1_1";
 
+/// How long after the entry that opened the new character a character build
+/// line can still make it a relog. The measured lines came within 2 s.
+const RELOG_SECONDS: i64 = 5;
+
 /// The new character a level-1 entry to The Riverbank starts: its progress
-/// so far, kept in session memory until a level-up names it.
+/// so far, kept until a level-up names it. At most one exists; it is open
+/// (getting events) or parked (a session marker came first).
 #[derive(Debug, Clone)]
 struct NewCharacter {
     /// Its state, with an empty name and level 1.
     state: CharacterState,
-    /// Events given to it, dropped and counted if the session ends first.
+    /// Events given to it, counted as dropped if another instance replaces
+    /// it.
     events: u64,
     /// The pin its start released; the character it names is pinned in its
-    /// place.
+    /// place. Parking gives it back, so a parked record holds none.
     released_pin: Option<String>,
+    /// The seed of the `G1_1` instance that opened it.
+    seed: u64,
+    /// False once a session marker parked it.
+    open: bool,
+    /// While a character build line can still make the entry a relog:
+    /// session memory, never in the record.
+    window: Option<RelogWindow>,
+}
+
+/// What a relog needs to undo the entry that opened (or resumed) the new
+/// character: when that entry was, the parked record it replaced or resumed,
+/// and the events the state took since.
+#[derive(Debug, Clone)]
+struct RelogWindow {
+    since: Timestamp,
+    prior: Option<Box<NewCharacter>>,
+    taken: Vec<Held>,
+}
+
+/// The new character's record as [`Engine::new_character_json`] gives it
+/// out and [`Engine::load_new_character`] takes it back.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NewCharacterRecord {
+    schema: u64,
+    state: CharacterState,
+    events: u64,
+    released_pin: Option<String>,
+    seed: u64,
+    open: bool,
+}
+
+/// What happened to the new character from The Riverbank, for the shell's
+/// diagnostic log, taken with [`Engine::take_character_notes`]. Written for
+/// catch-up lines as well as live ones.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum CharacterNote {
+    /// A level-1 Riverbank entry started one, releasing `released_pin`.
+    Started { released_pin: Option<String> },
+    /// A level-1 entry to the parked record's instance (same seed) resumed
+    /// it, releasing `released_pin`.
+    Resumed { released_pin: Option<String> },
+    /// An entry to another instance replaced the parked record; its
+    /// `events` are counted as dropped new-character events.
+    Replaced { events: u64 },
+    /// A session marker parked the open record and gave back its pin.
+    Parked { restored_pin: Option<String> },
+    /// A character build line named the stored character `name`: a relog,
+    /// so the state closed as if it never opened and the pin was kept.
+    Relogged { name: String },
+    /// A level-up named it `name`.
+    Named { name: String },
+    /// The user pinned `name` while it was open, which took its progress.
+    Pinned { name: String },
+}
+
+/// How the open new character closes.
+#[derive(Debug, Clone, Copy)]
+enum Close<'a> {
+    /// A level-up named it, with this class and level.
+    LevelUp(&'a str, u32),
+    /// The user pinned a stored character.
+    Pin,
+    /// A character build line named a stored character within the window.
+    Relog,
 }
 
 /// Who an event or a change goes to: a stored character, or the unnamed new
@@ -260,8 +338,14 @@ pub struct Engine {
     area: Option<String>,
     held: Vec<Held>,
     pending: Option<Pending>,
+    /// The new character's record, open or parked; given out and taken back
+    /// apart from [`Engine::to_json`].
     new_char: Option<NewCharacter>,
+    /// Held events dropped at a session marker with no character.
     dropped: u64,
+    /// Events of a parked new character another instance replaced.
+    dropped_new: u64,
+    notes: Vec<CharacterNote>,
     client_version: Option<String>,
     /// Area-tied signals refused because the area was unknown: the running
     /// count, and the quest ids not yet taken by the shell.
@@ -329,6 +413,8 @@ impl Engine {
             pending: None,
             new_char: None,
             dropped: 0,
+            dropped_new: 0,
+            notes: Vec::new(),
             client_version: None,
             refused: 0,
             refused_quests: Vec::new(),
@@ -357,15 +443,21 @@ impl Engine {
     /// Applies one event. `live` is the tailer's flag (false for catch-up).
     pub fn apply(&mut self, ev: &Event, live: bool) -> Vec<Transition> {
         let mut out = Vec::new();
+        self.expire_relog_window(ev.time);
         match &ev.kind {
             EventKind::SessionStart => self.end_session(),
             EventKind::ClientVersion { tag } => self.client_version = Some(tag.clone()),
-            EventKind::AreaEntered { code, level, .. } => {
+            EventKind::AreaEntered { code, level, seed } => {
                 self.area = Some(code.clone());
+                // Any area entry ends the relog window of the one before.
+                self.end_relog_window();
                 if code == NEW_CHARACTER_AREA && *level == 1 {
-                    self.start_new_character(&mut out);
+                    self.enter_riverbank(*seed, ev.time, &mut out);
                 }
                 self.route(ev, live, &mut out);
+            }
+            EventKind::CharacterNamed { name } => {
+                self.character_named(name, ev.time, live, &mut out)
             }
             EventKind::AreaName { .. }
             | EventKind::NpcLine { .. }
@@ -386,13 +478,22 @@ impl Engine {
 
     /// Ends the current session (a `LOG FILE OPENING` line does this itself):
     /// events still held with no character to give them to are dropped and
-    /// counted, as are the events of a new character no level-up named, and
-    /// the session's memory is cleared.
+    /// counted, an open new character is parked and gives back the pin its
+    /// start released, and the session's memory is cleared.
     pub fn end_session(&mut self) {
         self.dropped += self.held.len() as u64;
         self.held.clear();
-        if let Some(nc) = self.new_char.take() {
-            self.dropped += nc.events;
+        self.end_relog_window();
+        if let Some(nc) = self.new_char.as_mut().filter(|nc| nc.open) {
+            nc.open = false;
+            let pin = nc
+                .released_pin
+                .take()
+                .filter(|p| self.chars.contains_key(p));
+            if pin.is_some() {
+                self.pinned = pin.clone();
+            }
+            self.notes.push(CharacterNote::Parked { restored_pin: pin });
         }
         self.pending = None;
         self.active = None;
@@ -424,7 +525,7 @@ impl Engine {
         };
         if let Some(name) = self.pinned.clone() {
             self.receive(Target::Named(&name), held, out);
-        } else if self.new_char.is_some() {
+        } else if self.new_open() {
             self.receive(Target::New, held, out);
         } else if let Some(name) = self.active.clone() {
             self.receive(Target::Named(&name), held, out);
@@ -450,10 +551,24 @@ impl Engine {
             Target::New => {
                 if let Some(nc) = self.new_char.as_mut() {
                     nc.events += 1;
+                    if let Some(w) = nc.window.as_mut() {
+                        w.taken.push(held.clone());
+                    }
                 }
             }
         }
         self.apply_to(target, &held, out);
+    }
+
+    /// Gives released held events to a named character, counting refusals
+    /// exactly as for an event routed to it.
+    fn release_to(&mut self, name: &str, released: &[Held], out: &mut Vec<Transition>) {
+        for h in released {
+            if h.area.is_none() {
+                self.count_refusals(&h.event.kind, Target::Named(name));
+            }
+            self.apply_to(Target::Named(name), h, out);
+        }
     }
 
     /// With the area unknown, counts every area-tied signal the event matches
@@ -529,11 +644,11 @@ impl Engine {
             }
             return;
         }
-        if self.new_char.is_some() {
+        if self.new_open() {
             // The new character from The Riverbank: the first level-up of a
             // name not seen joining or leaving this session names it.
             if !self.excluded.contains(name) {
-                self.close_new_character(name, Some((class, level)), live, out);
+                self.close_new_character(name, Close::LevelUp(class, level), live, out);
             }
             return;
         }
@@ -565,27 +680,63 @@ impl Engine {
                 released: released.clone(),
                 since: Vec::new(),
             });
-            for h in &released {
-                self.apply_to(Target::Named(name), h, out);
-            }
+            self.release_to(name, &released, out);
         }
     }
 
-    /// A level-1 entry to The Riverbank: a new character starts, with no
-    /// name. A pin is released (the named character takes it), the active
-    /// character stops being active, and events held so far in the session
-    /// go to the new character. An entry while one is open changes nothing.
-    fn start_new_character(&mut self, out: &mut Vec<Transition>) {
-        if self.new_char.is_some() {
-            return;
+    /// A level-1 entry to The Riverbank. With no record, a new character
+    /// starts, with no name. With a parked record, an entry to the same
+    /// instance (seed) resumes it, and one to another instance replaces it
+    /// (its events are counted as dropped once the relog window has passed).
+    /// Either way a pin is released (the named character takes it), the
+    /// active character stops being active, events held so far in the
+    /// session go to the new character, and the relog window opens. An entry
+    /// while one is open changes nothing.
+    fn enter_riverbank(&mut self, seed: u64, time: Timestamp, out: &mut Vec<Transition>) {
+        let released_pin = self.pinned.take();
+        let fresh = |prior: Option<Box<NewCharacter>>, released_pin: Option<String>| {
+            let mut state = CharacterState::new("", Ownership::Own);
+            state.level = 1;
+            NewCharacter {
+                state,
+                events: 0,
+                released_pin,
+                seed,
+                open: true,
+                window: Some(RelogWindow {
+                    since: time,
+                    prior,
+                    taken: Vec::new(),
+                }),
+            }
+        };
+        match self.new_char.take() {
+            Some(nc) if nc.open => {
+                self.pinned = released_pin;
+                self.new_char = Some(nc);
+                return;
+            }
+            Some(parked) if parked.seed == seed => {
+                let mut nc = parked.clone();
+                nc.open = true;
+                nc.released_pin = released_pin.clone();
+                nc.window = Some(RelogWindow {
+                    since: time,
+                    prior: Some(Box::new(parked)),
+                    taken: Vec::new(),
+                });
+                self.new_char = Some(nc);
+                self.notes.push(CharacterNote::Resumed { released_pin });
+            }
+            Some(parked) => {
+                self.new_char = Some(fresh(Some(Box::new(parked)), released_pin.clone()));
+                self.notes.push(CharacterNote::Started { released_pin });
+            }
+            None => {
+                self.new_char = Some(fresh(None, released_pin.clone()));
+                self.notes.push(CharacterNote::Started { released_pin });
+            }
         }
-        let mut state = CharacterState::new("", Ownership::Own);
-        state.level = 1;
-        self.new_char = Some(NewCharacter {
-            state,
-            events: 0,
-            released_pin: self.pinned.take(),
-        });
         self.active = None;
         self.pending = None;
         let released = std::mem::take(&mut self.held);
@@ -594,22 +745,107 @@ impl Engine {
         }
     }
 
-    /// Ends the new character's state by giving its progress to `name`: a
-    /// level-up naming it (`level` set, the name becomes own and active, and
-    /// pinned if the start released a pin), or the user pinning a character
-    /// while it is open. A name the engine did not know becomes the new
-    /// character, so only what changes from what it showed is a transition;
-    /// a known one gains its evidence, and the transitions are its own.
-    fn close_new_character(
+    /// Ends an expired relog window: a line more than [`RELOG_SECONDS`]
+    /// after the entry can no longer make it a relog.
+    fn expire_relog_window(&mut self, now: Timestamp) {
+        let expired = self
+            .new_char
+            .as_ref()
+            .and_then(|nc| nc.window.as_ref())
+            .is_some_and(|w| now.seconds_since(&w.since) > RELOG_SECONDS);
+        if expired {
+            self.end_relog_window();
+        }
+    }
+
+    /// Closes the relog window without a relog: the entry stands. A parked
+    /// record it replaced is gone, and its events are counted as dropped
+    /// new-character events.
+    fn end_relog_window(&mut self) {
+        let Some(nc) = self.new_char.as_mut() else {
+            return;
+        };
+        let (seed, window) = (nc.seed, nc.window.take());
+        if let Some(w) = window {
+            self.drop_replaced(seed, w.prior);
+        }
+    }
+
+    /// Counts the events of a record the instance `seed` replaced as dropped
+    /// (a resumed record's snapshot, same seed, is simply let go).
+    fn drop_replaced(&mut self, seed: u64, prior: Option<Box<NewCharacter>>) {
+        if let Some(prior) = prior.filter(|p| p.seed != seed) {
+            self.dropped_new += prior.events;
+            self.notes.push(CharacterNote::Replaced {
+                events: prior.events,
+            });
+        }
+    }
+
+    /// A character build line. Within [`RELOG_SECONDS`] of the entry that
+    /// opened (or resumed) the new character, before any other area entry,
+    /// naming a stored character, it is a relog. Any other one changes
+    /// nothing: an unknown name leaves the new character open and unnamed.
+    fn character_named(
         &mut self,
         name: &str,
-        level: Option<(&str, u32)>,
+        time: Timestamp,
         live: bool,
         out: &mut Vec<Transition>,
     ) {
-        let Some(nc) = self.new_char.take() else {
+        let in_window = self
+            .new_char
+            .as_ref()
+            .filter(|nc| nc.open)
+            .and_then(|nc| nc.window.as_ref())
+            .is_some_and(|w| (0..=RELOG_SECONDS).contains(&time.seconds_since(&w.since)));
+        if in_window && self.chars.contains_key(name) {
+            self.close_new_character(name, Close::Relog, live, out);
+        }
+    }
+
+    /// Ends the open new character's state, which clears its record.
+    ///
+    /// A level-up naming it, or the user pinning a character, gives its
+    /// progress to `name`: on a level-up the name becomes own and active, and
+    /// pinned if the start released a pin. A name the engine did not know
+    /// becomes the new character, so only what changes from what it showed
+    /// is a transition; a known one gains its evidence, and the transitions
+    /// are its own.
+    ///
+    /// A relog undoes the entry instead: the released pin comes back, `name`
+    /// becomes active, a parked record the entry replaced or resumed is back
+    /// as it was, and the events the state took go where routing sends them
+    /// now (the pin, else `name`).
+    fn close_new_character(
+        &mut self,
+        name: &str,
+        how: Close,
+        live: bool,
+        out: &mut Vec<Transition>,
+    ) {
+        let Some(mut nc) = self.new_char.take_if(|nc| nc.open) else {
             return;
         };
+        let window = nc.window.take();
+        if let Close::Relog = how {
+            let w = window.expect("a relog needs the window");
+            self.new_char = w.prior.map(|p| *p);
+            self.pinned = nc.released_pin.filter(|p| self.chars.contains_key(p));
+            self.active = Some(name.to_string());
+            self.pending = None;
+            self.notes.push(CharacterNote::Relogged {
+                name: name.to_string(),
+            });
+            let target = self.pinned.clone().unwrap_or_else(|| name.to_string());
+            for h in &w.taken {
+                self.apply_to(Target::Named(&target), h, out);
+            }
+            return;
+        }
+        if let Some(w) = window {
+            self.drop_replaced(nc.seed, w.prior);
+        }
         let before = match self.chars.get(name) {
             Some(ch) => self.compute(ch),
             None => self.compute(&nc.state),
@@ -630,7 +866,7 @@ impl Engine {
             }
         }
         let ch = self.chars.get_mut(name).expect("inserted");
-        if let Some((class, level)) = level {
+        if let Close::LevelUp(class, level) = how {
             ch.ownership = Ownership::Own;
             ch.class = class.to_string();
             ch.level = level;
@@ -639,6 +875,13 @@ impl Engine {
             if nc.released_pin.is_some() {
                 self.pinned = Some(name.to_string());
             }
+            self.notes.push(CharacterNote::Named {
+                name: name.to_string(),
+            });
+        } else {
+            self.notes.push(CharacterNote::Pinned {
+                name: name.to_string(),
+            });
         }
         let after = self.quest_states(name);
         push_transitions(name, &before, &after, live, out);
@@ -670,9 +913,7 @@ impl Engine {
         self.pending = None;
         self.active = Some(name.to_string());
         let released = std::mem::take(&mut self.held);
-        for h in &released {
-            self.apply_to(Target::Named(name), h, out);
-        }
+        self.release_to(name, &released, out);
     }
 
     /// Rule 1: a `has received` or `has lost` line names an own character.
@@ -681,7 +922,7 @@ impl Engine {
     /// pinned, or while a new character from The Riverbank waits for the
     /// level-up that names it, the event only goes where every event goes.
     fn received(&mut self, name: &str, ev: &Event, live: bool, out: &mut Vec<Transition>) {
-        if self.pinned.is_some() || self.new_char.is_some() {
+        if self.pinned.is_some() || self.new_open() {
             self.route(ev, live, out);
             return;
         }
@@ -742,10 +983,11 @@ impl Engine {
     // -- user actions -------------------------------------------------------
 
     /// Pins a known character (it gets every event until unpinned) or, with
-    /// `None`, unpins. Held events, and the progress of a new character from
-    /// The Riverbank not yet named, go to the newly pinned character.
-    /// Unpinning while a new character is open also cancels the pin its
-    /// start released, so the character it names is not pinned.
+    /// `None`, unpins. Held events, and the progress of an open new
+    /// character from The Riverbank not yet named, go to the newly pinned
+    /// character; a parked one stays parked. Unpinning while a new character
+    /// is open also cancels the pin its start released, so the character it
+    /// names is not pinned.
     pub fn pin(&mut self, name: Option<&str>) -> Result<Vec<Transition>, EngineError> {
         let mut out = Vec::new();
         match name {
@@ -759,13 +1001,11 @@ impl Engine {
                 if !self.chars.contains_key(n) {
                     return Err(EngineError(format!("no character named {n:?}")));
                 }
-                self.close_new_character(n, None, true, &mut out);
+                self.close_new_character(n, Close::Pin, true, &mut out);
                 self.pinned = Some(n.to_string());
                 self.pending = None;
                 let released = std::mem::take(&mut self.held);
-                for h in &released {
-                    self.apply_to(Target::Named(n), h, &mut out);
-                }
+                self.release_to(n, &released, &mut out);
             }
         }
         Ok(out)
@@ -885,9 +1125,23 @@ impl Engine {
         self.held.len()
     }
 
-    /// Events dropped because a session ended with no character (rule 5).
+    /// Events dropped because a session ended with no character (rule 5):
+    /// those that came before any character.
     pub fn dropped_count(&self) -> u64 {
         self.dropped
+    }
+
+    /// Events of an unnamed new character that a level-1 entry to another
+    /// instance of The Riverbank replaced, counted apart from
+    /// [`Engine::dropped_count`].
+    pub fn dropped_new_character_count(&self) -> u64 {
+        self.dropped_new
+    }
+
+    /// Takes what happened to the new character since the last call, oldest
+    /// first, for the shell to log each once.
+    pub fn take_character_notes(&mut self) -> Vec<CharacterNote> {
+        std::mem::take(&mut self.notes)
     }
 
     /// How many area-tied signals were refused because the area was unknown,
@@ -912,18 +1166,26 @@ impl Engine {
         self.client_version.as_deref()
     }
 
-    /// Whether a level-1 entry to The Riverbank started a new character this
-    /// session that no level-up has named yet. While it is open, events go
-    /// to it (unless the user pins a character), [`Engine::current`] is
-    /// `None`, and it is in neither [`Engine::characters`] nor
-    /// [`Engine::to_json`].
+    /// Whether a level-1 entry to The Riverbank started (or resumed) a new
+    /// character this session that no level-up has named yet. While it is
+    /// open, events go to it (unless the user pins a character),
+    /// [`Engine::current`] is `None`, and it is in neither
+    /// [`Engine::characters`] nor [`Engine::to_json`]. A parked one is not
+    /// open.
     pub fn new_character_open(&self) -> bool {
-        self.new_char.is_some()
+        self.new_open()
+    }
+
+    fn new_open(&self) -> bool {
+        self.new_char.as_ref().is_some_and(|nc| nc.open)
     }
 
     /// The unnamed new character's state (empty name, level 1), while open.
     pub fn new_character(&self) -> Option<&CharacterState> {
-        self.new_char.as_ref().map(|nc| &nc.state)
+        self.new_char
+            .as_ref()
+            .filter(|nc| nc.open)
+            .map(|nc| &nc.state)
     }
 
     /// Every quest's state for the unnamed new character, in data order,
@@ -937,6 +1199,7 @@ impl Engine {
     pub fn new_character_released_pin(&self) -> Option<&str> {
         self.new_char
             .as_ref()
+            .filter(|nc| nc.open)
             .and_then(|nc| nc.released_pin.as_deref())
     }
 
@@ -998,9 +1261,10 @@ impl Engine {
 
     // -- persistence --------------------------------------------------------
 
-    /// Everything that persists: `{schema, pinned, active, characters}`.
-    /// Session memory (party names, held events, the unnamed new character,
-    /// the area) is not in it.
+    /// The characters, the pin and the active name: `{schema, pinned, active,
+    /// characters}`. The unnamed new character is not in it (its record is
+    /// [`Engine::new_character_json`]), nor is session memory (party names,
+    /// held events, the area).
     pub fn to_json(&self) -> Value {
         json!({
             "schema": SCHEMA,
@@ -1034,6 +1298,60 @@ impl Engine {
         engine.pinned = pinned;
         engine.active = active;
         Ok(engine)
+    }
+
+    /// The unnamed new character's record, open or parked, for
+    /// `new-character.json`: `{schema, state, events, released_pin, seed,
+    /// open}`. `None` when there is none (a level-up, a relog or a pin closed
+    /// it, or none started), which is when the shell clears the file.
+    pub fn new_character_json(&self) -> Option<Value> {
+        self.new_char.as_ref().map(|nc| {
+            let record = NewCharacterRecord {
+                schema: SCHEMA,
+                state: nc.state.clone(),
+                events: nc.events,
+                released_pin: nc.released_pin.clone(),
+                seed: nc.seed,
+                open: nc.open,
+            };
+            serde_json::to_value(record).expect("plain data serialises")
+        })
+    }
+
+    /// Takes back [`Engine::new_character_json`]'s record, replacing any
+    /// record the engine holds; load the characters first. An open record
+    /// reopens: events go to it, nothing is active, and its released pin
+    /// (else the pin the engine has now) waits for the character a level-up
+    /// names. A released pin naming no stored character is dropped. A
+    /// parked record waits for a level-1 entry to its instance.
+    pub fn load_new_character(&mut self, value: &Value) -> Result<(), EngineError> {
+        let record: NewCharacterRecord = serde_json::from_value(value.clone())
+            .map_err(|e| EngineError(format!("new character record: {e}")))?;
+        if record.schema != SCHEMA {
+            return Err(EngineError(format!(
+                "new character record schema is not {SCHEMA}"
+            )));
+        }
+        let mut state = record.state;
+        state.name.clear();
+        let known = record.released_pin.filter(|p| self.chars.contains_key(p));
+        let released_pin = if record.open {
+            self.active = None;
+            self.pending = None;
+            let current = self.pinned.take();
+            known.or(current)
+        } else {
+            known
+        };
+        self.new_char = Some(NewCharacter {
+            state,
+            events: record.events,
+            released_pin,
+            seed: record.seed,
+            open: record.open,
+            window: None,
+        });
+        Ok(())
     }
 
     /// One character's state, for `characters/<safe name>.json`.
