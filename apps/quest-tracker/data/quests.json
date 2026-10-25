@@ -41,7 +41,8 @@
     "Zelina, Blood Priestess",
     "Zolin, Blood Priest",
     "Oswin, The Dread Warden",
-    "Lythara, The Wayward Spear"
+    "Lythara, The Wayward Spear",
+    "Una"
   ],
   "system_lines": [],
   "areas": {
@@ -281,7 +282,10 @@
           "id": "step-3",
           "title": "Ask Una for help",
           "text": "You have found the Tree of Souls. An ancient entity hangs upon it. Summon Una and ask her for advice.",
-          "signals": []
+          "signals": [
+            {"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"},
+            {"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "I'll wait here. The old magicks will protect me."}
+          ]
         },
         {
           "id": "step-4",
@@ -359,7 +363,7 @@
           "id": "step-23",
           "title": "Use the Rune Spikes",
           "text": "Stab each Rune Spike into the Ancient Runes on the Tree of Souls to ask it to release the Hooded One.",
-          "signals": []
+          "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "Good. Now the others!"}]
         },
         {
           "id": "step-27",
@@ -381,13 +385,14 @@
         }
       ],
       "unlock": [{"kind": "quest", "id": "reaching-clearfell", "status": "done"}, {"kind": "area", "code": "G1_4"}],
+      "start": [{"kind": "quest", "id": "reaching-clearfell", "status": "done"}],
       "done": [{"kind": "area", "code": "G1_7"}],
       "window_closes": [],
       "detection": "auto",
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Secrets_in_the_Dark",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Bringing the runes to Renly, taking the spikes and both talks with Una happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King.",
+      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Started (inferred) when Reaching Clearfell is done: Renly gives the quest in a talk the log does not record, and the Clearfell entry (G1_2) is the earliest evidence of it; in Live 2 the quest stayed available from Clearfell and showed in progress only from the Grelwood (measured 2026-10-25). Una's first line in the Grelwood (G1_4), \"What happened here...?\", and the one 2 to 5 s after it, \"I'll wait here. The old magicks will protect me.\", come at the tree, so they are \"Ask Una for help\" (measured 2026-10-25: 7 and 4 sessions of the owner's log, the second from December 2025 on and in Live 2). Her \"Good. Now the others!\" there came after the session's Red Vale visits in 6 sessions (measured); that it is \"Use the Rune Spikes\" is inferred from its place in the order. Bringing the runes to Renly, taking the spikes and the two talks with Una after the last spike happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King.",
       "done_inferred": true
     },
     {
@@ -411,7 +416,7 @@
           "id": "step-2",
           "title": "Find the Grim Tangle",
           "text": "Una has told you about the Count's Signet. She has instructed you to travel through the Grim Tangle in the Grelwood.",
-          "signals": [{"kind": "area", "code": "G1_4"}]
+          "signals": []
         },
         {
           "id": "step-3",
@@ -435,7 +440,7 @@
           "id": "step-6",
           "title": "Speak to Una about the roots",
           "text": "Speak to Una about the roots.",
-          "signals": []
+          "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_6", "line": "The old magicks still thrive! The way is open. Please, hurry."}]
         },
         {
           "id": "step-7",
@@ -472,7 +477,7 @@
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/The_Mysterious_Shade",
       "fetched": "2026-10-25",
-      "notes": "Bringing the ring to Una is not recorded in the log, and the Hunting Grounds do not imply it: one of the owner's 6 characters went there from the Cemetery without visiting Clearfell Encampment (measured 2026-10-25). Tick it."
+      "notes": "\"Find the Grim Tangle\" has no signal: the Grelwood entry (G1_4) it carried fires on the way to Secrets in the Dark, before this quest unlocks, and in Live 2 it showed the quest in progress that early (measured 2026-10-25). Una's line in the Grim Tangle (G1_6), \"The old magicks still thrive! The way is open. Please, hurry.\", came after her \"Good. Now the others!\" in the Grelwood in 6 sessions of the owner's log (measured 2026-10-25); that it is \"Speak to Una about the roots\" is inferred from the step text. Bringing the ring to Una is not recorded in the log, and the Hunting Grounds do not imply it: one of the owner's 6 characters went there from the Cemetery without visiting Clearfell Encampment (measured 2026-10-25). Tick it."
     },
     {
       "id": "finding-the-forge",

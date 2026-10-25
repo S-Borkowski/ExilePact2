@@ -25,13 +25,19 @@
 //! (`town_voice_lines_move_no_quest`), the replay that finishes Secrets in the
 //! Dark on the Cemetery entry (`secrets_in_the_dark_done_on_g1_7`), and the
 //! `done_inferred` flag against the notes (`done_inferred_matches_notes`).
+//!
+//! The last four pin what Live 2 found (2026-10-25): Secrets in the Dark
+//! starts when Reaching Clearfell is done, Una's Grelwood lines move it past
+//! the tree, the Grelwood entry no longer starts The Mysterious Shade before
+//! its unlock, and Una's Grim Tangle line moves the Shade past the roots.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use qt_engine::{
-    Detection, Engine, Evidence, Quest, QuestData, RewardCategory, Signal, Status, Worth,
+    Detection, Engine, Evidence, Quest, QuestData, QuestState, RewardCategory, Signal, Status,
+    Transition, Worth,
 };
 
 /// The campaign acts as poe2db numbers them (its Act 6 is the interludes).
@@ -313,10 +319,40 @@ fn every_quest_has_worth_and_detection() {
 /// The invented character of `fixtures/sessions/town_talk.txt`.
 const TOWN_TALK_CHARACTER: &str = "Maelis_Thornby";
 
-/// The town voices of Clearfell Encampment: what the log records of them is
-/// greetings and vendor lines, never a quest's talk (research note "Town
-/// dialogue"), so none of them is a speaker the data matches.
+/// The town voices of Clearfell Encampment: what the log records of them in
+/// the encampment is greetings and vendor lines, never a quest's talk
+/// (research note "Town dialogue"), so none of their town lines is a signal.
+/// Una alone is on the allowlist, for her lines in the Grelwood and the Grim
+/// Tangle (Live 2, 2026-10-25); each of her signals names its area and its
+/// exact line ([`TOWN_SPOKEN`]).
 const TOWN_VOICES: [&str; 4] = ["Una", "Finn", "Renly", "Mortimer"];
+
+/// The town voice the shipped allowlist reads, and the encampment's code.
+const TOWN_SPOKEN: &str = "Una";
+const TOWN_CODE: &str = "G1_town";
+
+/// Every `npc` signal of `speaker` in the data, wherever a quest holds it, as
+/// its area and exact line.
+fn npc_signals<'a>(data: &'a QuestData, speaker: &str) -> Vec<(Option<&'a str>, Option<&'a str>)> {
+    let mut out = Vec::new();
+    for q in &data.quests {
+        let all = q
+            .unlock
+            .iter()
+            .chain(&q.start)
+            .chain(&q.done)
+            .chain(&q.window_closes)
+            .chain(step_signals(q));
+        for s in all {
+            if let Signal::Npc { speaker: who, area, line } = s {
+                if who == speaker {
+                    out.push((area.as_deref(), line.as_deref()));
+                }
+            }
+        }
+    }
+    out
+}
 
 /// A session's lines, split the way the tailer hands them over.
 fn session(name: &str) -> Vec<String> {
@@ -392,11 +428,17 @@ fn town_talk_session_replay() {
 
     // Target: entering Clearfell completes Reaching Clearfell, whose talk
     // steps it implies (inferred), and moves the quests that follow it.
+    // Secrets in the Dark starts with it (its `start`, inferred: Renly gives
+    // it in the same unlogged talk), no step reached yet.
     for l in &lines[clearfell..] {
         engine.feed_line(l, false);
     }
     assert_eq!(status(&engine, "reaching-clearfell"), Status::Done);
-    assert_eq!(status(&engine, "secrets-in-the-dark"), Status::Available);
+    let secrets = engine
+        .quest_state(TOWN_TALK_CHARACTER, "secrets-in-the-dark")
+        .expect("state");
+    assert_eq!(secrets.status, Status::InProgress);
+    assert_eq!(secrets.current_step, None);
     let tg = engine
         .quest_state(TOWN_TALK_CHARACTER, "treacherous-ground")
         .expect("state");
@@ -420,10 +462,22 @@ fn town_talk_session_replay() {
 fn talk_steps_are_inferred_or_ticks() {
     let data = data();
     for voice in TOWN_VOICES {
-        assert!(
-            !data.npcs.iter().any(|n| n == voice),
-            "{voice}'s greetings are on the speaker allowlist"
-        );
+        let listed = data.npcs.iter().any(|n| n == voice);
+        if voice != TOWN_SPOKEN {
+            assert!(!listed, "{voice}'s greetings are on the speaker allowlist");
+            continue;
+        }
+        // Una is listed, and no signal of hers can match a line in town: each
+        // names an area outside the encampment and an exact line.
+        assert!(listed, "{voice} is not on the speaker allowlist");
+        let signals = npc_signals(&data, voice);
+        assert!(!signals.is_empty(), "{voice} is listed but no signal uses her");
+        for (area, line) in signals {
+            assert!(
+                area.is_some_and(|a| a != TOWN_CODE) && line.is_some(),
+                "{voice}'s signal {area:?} {line:?} does not name an area outside town and a line"
+            );
+        }
     }
     for q in data.quests.iter().filter(|q| q.act == 1) {
         let done_logged = any_measured(&data, &q.done);
@@ -572,8 +626,9 @@ const TOWN_VOICES_CHARACTER: &str = "Odile_Brackwater";
 const QUOTED_VOICES: [&str; 3] = ["Una", "Finn", "Renly"];
 
 /// A visit to Clearfell Encampment in which Renly, Finn and Una speak, in
-/// the shapes the owner's log recorded. The speakers are not on the shipped
-/// allowlist, so across those lines no quest moves.
+/// the shapes the owner's log recorded. Finn and Renly are not on the shipped
+/// allowlist, and Una's town lines match none of her signals, so across those
+/// lines no quest moves.
 #[test]
 fn town_voice_lines_move_no_quest() {
     let data = Arc::new(data());
@@ -601,15 +656,27 @@ fn town_voice_lines_move_no_quest() {
     }
     assert_eq!(heard.values().sum::<usize>(), 6, "{heard:?}");
 
-    // Negative control: the shipped allowlist reads none of them.
+    // Negative control: the shipped allowlist reads Finn's and Renly's lines
+    // as none. Una's town lines parse, since her Grelwood lines are signals
+    // (Live 2), and match no signal: every one of hers names another area
+    // and another exact line.
     let shipped = qt_logline::Allowlist::new(data.npcs.clone(), data.system_lines.clone());
+    let una = npc_signals(&data, TOWN_SPOKEN);
+    let mut una_lines = 0;
     for l in visit {
         let kind = qt_logline::parse_line(l, &shipped).map(|e| e.kind);
-        assert!(
-            !matches!(kind, Some(qt_logline::EventKind::NpcLine { .. })),
-            "the shipped allowlist reads {l:?} as {kind:?}"
-        );
+        let Some(qt_logline::EventKind::NpcLine { speaker, text }) = kind else {
+            continue;
+        };
+        assert_eq!(speaker, TOWN_SPOKEN, "the shipped allowlist reads {l:?}");
+        una_lines += 1;
+        for (area, line) in &una {
+            let here = area.is_none_or(|a| a == TOWN_CODE);
+            let same = line.is_none_or(|x| x == text);
+            assert!(!(here && same), "{l:?} matches {TOWN_SPOKEN}'s signal {area:?} {line:?}");
+        }
     }
+    assert_eq!(Some(&una_lines), heard.get(TOWN_SPOKEN), "{heard:?}");
 
     // Target: fed through the engine over the shipped data, the voices
     // change no quest state and give no transition.
@@ -722,6 +789,266 @@ fn secrets_in_the_dark_done_on_g1_7() {
     );
     // The data says the done is inferred, so the panel can say so.
     assert!(data.quest("secrets-in-the-dark").expect("quest").done_inferred);
+}
+
+/// Una's lines in the Grelwood and the Grim Tangle, as the owner's log
+/// recorded them (Live 2 and 6 earlier sessions, 2026-10-25).
+const UNA_ASKS: &str = "What happened here...?";
+const UNA_WAITS: &str = "I'll wait here. The old magicks will protect me.";
+const UNA_SPIKES: &str = "Good. Now the others!";
+const UNA_ROOTS: &str = "The old magicks still thrive! The way is open. Please, hurry.";
+
+/// The invented character of the Live 2 replays below.
+const GRELWOOD_CHARACTER: &str = "Brannoc_Weld";
+
+/// An Act 1 route built line by line in the shapes the log writes, fed
+/// through the engine over the shipped data.
+struct Replay {
+    engine: Engine,
+    clock: u32,
+    name: &'static str,
+}
+
+impl Replay {
+    /// The log opening, The Riverbank at level 1 and, 200 s later, the
+    /// level-up that names the character.
+    fn start(data: &Arc<QuestData>, name: &'static str) -> Replay {
+        let mut r = Replay { engine: Engine::new(Arc::clone(data)), clock: 0, name };
+        let open = format!("{} ***** LOG FILE OPENING *****", &stamp(0)[..19]);
+        r.engine.feed_line(&open, false);
+        r.enter("G1_1");
+        r.clock += 200;
+        let up = format!("{} [INFO Client 6200] : {name} (Ranger) is now level 2", stamp(r.clock));
+        r.engine.feed_line(&up, false);
+        assert_eq!(r.engine.active(), Some(name));
+        r
+    }
+
+    fn feed(&mut self, lines: &[String]) -> Vec<Transition> {
+        lines.iter().flat_map(|l| self.engine.feed_line(l, false)).collect()
+    }
+
+    /// Enters an Act 1 area, with the level, seed and scene name the
+    /// replays use for it.
+    fn enter(&mut self, code: &str) -> Vec<Transition> {
+        let (level, seed, name) = match code {
+            "G1_1" => (1, 1_414_213_562, "The Riverbank"),
+            "G1_town" => (15, 1, "Clearfell Encampment"),
+            "G1_2" => (2, 1_732_050_807, "Clearfell"),
+            "G1_4" => (4, 2_645_751_311, "The Grelwood"),
+            "G1_5" => (6, 3_162_277_660, "The Red Vale"),
+            "G1_6" => (7, 3_316_624_790, "The Grim Tangle"),
+            "G1_7" => (8, 3_605_551_275, "Cemetery of the Eternals"),
+            _ => panic!("no entry for {code}"),
+        };
+        let lines = entry_lines(&mut self.clock, code, level, seed, name);
+        self.feed(&lines)
+    }
+
+    /// An NPC line a few seconds after the last line.
+    fn say(&mut self, speaker: &str, line: &str) -> Vec<Transition> {
+        self.clock += 3;
+        let l = format!("{} [INFO Client 6200] {speaker}: {line}", stamp(self.clock));
+        self.feed(&[l])
+    }
+
+    fn state(&self, quest: &str) -> QuestState {
+        self.engine
+            .quest_state(self.name, quest)
+            .unwrap_or_else(|| panic!("no state for quest {quest}"))
+    }
+
+    /// Secrets in the Dark up to the Grim Tangle, in the order the owner's
+    /// log has it: the tree and Una, the Red Vale and the Rust King, the
+    /// encampment, the first Rune Spike, then the Grim Tangle.
+    fn to_the_grim_tangle(&mut self) {
+        for code in ["G1_town", "G1_2", "G1_town", "G1_4"] {
+            self.enter(code);
+        }
+        self.say(TOWN_SPOKEN, UNA_ASKS);
+        self.say(TOWN_SPOKEN, UNA_WAITS);
+        self.enter("G1_5");
+        self.say("The Rust King", "For the clan!");
+        self.enter("G1_town");
+        self.enter("G1_4");
+        self.say(TOWN_SPOKEN, UNA_SPIKES);
+        self.enter("G1_6");
+    }
+}
+
+/// The title of the step the row shows next: the one after the highest
+/// reached, or the first when none is.
+fn next_title<'a>(data: &'a QuestData, state: &QuestState) -> &'a str {
+    let q = data.quest(&state.quest_id).expect("quest");
+    let k = match &state.current_step {
+        None => 0,
+        Some(id) => q.steps.iter().position(|s| &s.id == id).expect("current step") + 1,
+    };
+    q.steps.get(k).map_or("", |s| s.title.as_str())
+}
+
+/// Live 2: Secrets in the Dark stayed `available` from Clearfell to the
+/// Grelwood, while Renly had given it in the encampment. Its `start` is
+/// Reaching Clearfell done (inferred: the talk is not logged, and the
+/// Clearfell entry is the earliest evidence).
+#[test]
+fn secrets_in_the_dark_in_progress_when_reaching_clearfell_done() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    r.enter("G1_town");
+
+    // Baseline: before Clearfell, Reaching Clearfell is in progress and
+    // Secrets in the Dark is locked.
+    assert_eq!(r.state("reaching-clearfell").status, Status::InProgress);
+    assert_eq!(r.state("secrets-in-the-dark").status, Status::Locked);
+
+    // Target: the Clearfell entry finishes Reaching Clearfell and starts
+    // Secrets in the Dark with no step reached, so the step to do is its
+    // first, in one transition.
+    let moved = r.enter("G1_2");
+    assert_eq!(r.state("reaching-clearfell").status, Status::Done);
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(s.current_step, None);
+    assert_eq!(next_title(&data, &s), "Travel to the Grelwood");
+    let started: Vec<&Transition> = moved
+        .iter()
+        .filter(|t| t.quest_id == "secrets-in-the-dark")
+        .collect();
+    assert_eq!(started.len(), 1, "{moved:?}");
+    assert_eq!(
+        (started[0].from, started[0].to, started[0].step_to.as_deref()),
+        (Status::Locked, Status::InProgress, None)
+    );
+
+    // The start is the data's, and its notes call it inferred.
+    let q = data.quest("secrets-in-the-dark").expect("quest");
+    assert!(
+        matches!(q.start.as_slice(), [Signal::Quest { id, status: Status::Done }] if id == "reaching-clearfell"),
+        "{:?}",
+        q.start
+    );
+    assert!(q.notes.contains("Started (inferred)"), "{:?}", q.notes);
+
+    // And the Grelwood entry still reaches the first step.
+    r.enter("G1_town");
+    r.enter("G1_4");
+    assert_eq!(r.state("secrets-in-the-dark").current_step.as_deref(), Some("step-1"));
+}
+
+/// Live 2: in the Grelwood the row stayed on "Search the Grelwood" after the
+/// tree and Una. Una's first Grelwood line (and the one after it) is "Ask
+/// Una for help"; her "Good. Now the others!" after the Red Vale is the
+/// first Rune Spike (inferred from its place in the order).
+#[test]
+fn una_at_the_tree_moves_secrets_to_find_the_red_vale() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    for code in ["G1_town", "G1_2", "G1_town", "G1_4"] {
+        r.enter(code);
+    }
+
+    // Baseline: the Grelwood entry alone leaves "Search the Grelwood" next.
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.current_step.as_deref(), Some("step-1"));
+    assert_eq!(next_title(&data, &s), "Search the Grelwood");
+
+    // Target: Una's first line there makes "Find the Red Vale" the next step.
+    let moved = r.say(TOWN_SPOKEN, UNA_ASKS);
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.current_step.as_deref(), Some("step-3"));
+    assert_eq!(next_title(&data, &s), "Find the Red Vale");
+    assert!(moved.iter().any(|t| t.quest_id == "secrets-in-the-dark"), "{moved:?}");
+
+    // Her line a few seconds later is the same step: nothing moves.
+    let moved = r.say(TOWN_SPOKEN, UNA_WAITS);
+    assert!(moved.is_empty(), "{moved:?}");
+
+    // The same line in the encampment is no signal: a second character
+    // that hears it there stays on the first step.
+    let mut town = Replay::start(&data, "Ilse_Garrow");
+    for code in ["G1_town", "G1_2", "G1_town", "G1_4", "G1_town"] {
+        town.enter(code);
+    }
+    assert!(town.say(TOWN_SPOKEN, UNA_ASKS).is_empty());
+    assert_eq!(town.state("secrets-in-the-dark").current_step.as_deref(), Some("step-1"));
+
+    // After the Red Vale and the Rust King, her line back at the tree is
+    // the first Rune Spike, and the last one is next.
+    r.enter("G1_5");
+    r.say("The Rust King", "For the clan!");
+    assert_eq!(r.state("secrets-in-the-dark").current_step.as_deref(), Some("step-19"));
+    r.enter("G1_town");
+    r.enter("G1_4");
+    r.say(TOWN_SPOKEN, UNA_SPIKES);
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.current_step.as_deref(), Some("step-23"));
+    assert_eq!(next_title(&data, &s), "Use the Last Rune Spike");
+    assert_eq!(s.status, Status::InProgress);
+}
+
+/// Live 2: The Mysterious Shade showed in progress from the Grelwood entry,
+/// before its unlock, because "Find the Grim Tangle" carried that entry.
+/// The Grelwood is on the way to the quest, not a step of it.
+#[test]
+fn mysterious_shade_stays_locked_through_the_grelwood() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    for code in ["G1_town", "G1_2", "G1_town", "G1_4"] {
+        r.enter(code);
+    }
+    r.say(TOWN_SPOKEN, UNA_ASKS);
+    r.enter("G1_5");
+    r.enter("G1_town");
+    r.enter("G1_4");
+
+    // Target: Secrets in the Dark is not done, and every Grelwood entry so
+    // far leaves the Shade locked.
+    assert_ne!(r.state("secrets-in-the-dark").status, Status::Done);
+    let shade = r.state("the-mysterious-shade");
+    assert_eq!(shade.status, Status::Locked);
+    assert_eq!(shade.current_step, None);
+
+    // Positive control: the Grim Tangle entry, its unlock and first step,
+    // does move it, so the replay can move this quest.
+    let moved = r.enter("G1_6");
+    let shade = r.state("the-mysterious-shade");
+    assert_eq!(shade.status, Status::InProgress);
+    assert_eq!(shade.current_step.as_deref(), Some("step-1"));
+    assert!(moved.iter().any(|t| t.quest_id == "the-mysterious-shade"), "{moved:?}");
+}
+
+/// Live 2 and 6 earlier sessions: Una's Grim Tangle line comes after the
+/// first Rune Spike and is "Speak to Una about the roots".
+#[test]
+fn una_clears_the_roots_moves_the_shade() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    r.to_the_grim_tangle();
+
+    // Baseline: the Grim Tangle entry is the roots blocking the way.
+    let shade = r.state("the-mysterious-shade");
+    assert_eq!(shade.current_step.as_deref(), Some("step-1"));
+
+    // Target: her line moves the Shade past "Speak to Una about the roots".
+    let moved = r.say(TOWN_SPOKEN, UNA_ROOTS);
+    let shade = r.state("the-mysterious-shade");
+    assert_eq!(shade.status, Status::InProgress);
+    assert_eq!(shade.current_step.as_deref(), Some("step-6"));
+    assert_eq!(next_title(&data, &shade), "Continue through the Grim Tangle");
+    assert!(moved.iter().any(|t| t.quest_id == "the-mysterious-shade"), "{moved:?}");
+
+    // The same line in the Grelwood is not that step.
+    let mut other = Replay::start(&data, "Ilse_Garrow");
+    other.to_the_grim_tangle();
+    other.enter("G1_4");
+    assert!(other.say(TOWN_SPOKEN, UNA_ROOTS).is_empty());
+    assert_eq!(other.state("the-mysterious-shade").current_step.as_deref(), Some("step-1"));
+
+    // The Cemetery still finishes Secrets in the Dark and reaches the grave.
+    r.enter("G1_7");
+    assert_eq!(r.state("secrets-in-the-dark").status, Status::Done);
+    assert_eq!(r.state("the-mysterious-shade").current_step.as_deref(), Some("step-8"));
 }
 
 /// The phrase a quest's notes open its inferred done with.
