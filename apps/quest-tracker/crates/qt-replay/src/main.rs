@@ -381,6 +381,7 @@ fn state_json(engine: &Engine, replayed: &Replayed) -> Value {
         "client_version": engine.client_version(),
         "held": engine.held_count(),
         "dropped": engine.dropped_count(),
+        "refused": engine.refused_count(),
         "characters": characters,
     })
 }
@@ -402,11 +403,12 @@ fn print_state(
     }
     writeln!(
         out,
-        "{} lines, client {}, {} events held, {} dropped",
+        "{} lines, client {}, {} events held, {} dropped, {} refused",
         replayed.lines,
         engine.client_version().unwrap_or("unknown"),
         engine.held_count(),
-        engine.dropped_count()
+        engine.dropped_count(),
+        engine.refused_count()
     )?;
     let characters = report["characters"].as_array().cloned().unwrap_or_default();
     if characters.is_empty() {

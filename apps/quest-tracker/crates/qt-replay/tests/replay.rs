@@ -197,6 +197,67 @@ fn state_on_fixture() {
     }
 }
 
+/// A client log line with the fixtures' prefix.
+fn log_line(message: &str) -> String {
+    format!("2026/03/14 12:00:00 9000000 abcdef01 [INFO Client 5120] {message}")
+}
+
+#[test]
+fn summary_reports_refused() {
+    const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
+    let area = log_line(r#"Generating level 2 area "G1_2" with seed 7"#);
+    let reward = log_line(&format!(
+        ": {CORISANDE} has received +10% to [Resistances|Cold Resistance]."
+    ));
+    let store = tempfile::tempdir().unwrap();
+    let logs = tempfile::tempdir().unwrap();
+    let data = quests_min();
+    let state = |name: &str, lines: &[&str], as_json: bool| {
+        let log = logs.path().join(name);
+        fs::write(&log, lines.join("\n") + "\n").unwrap();
+        let mut args = vec![
+            OsStr::new("state"),
+            log.as_os_str(),
+            OsStr::new("--data"),
+            data.as_os_str(),
+        ];
+        if as_json {
+            args.push(OsStr::new("--json"));
+        }
+        run(store.path(), args)
+    };
+
+    // The session marker follows the last area line: the area is unknown
+    // when fixture-beira's area-tied reward arrives, so it is refused.
+    let refused = [MARKER, area.as_str(), MARKER, reward.as_str()];
+    let report = ok_json(&state("refused.txt", &refused, true));
+    assert_eq!(report["refused"], json!(1), "{report}");
+    assert_ne!(
+        report["characters"][0]["quests"]["fixture-beira"],
+        json!("done"),
+        "{report}"
+    );
+    let text = state("refused.txt", &refused, false);
+    assert!(text.status.success());
+    let text = stdout(&text);
+    let want = format!("{} dropped, 1 refused", report["dropped"]);
+    assert!(text.contains(&want), "{text}");
+
+    // Negative control: the same reward in its area is no refusal, and the
+    // quest is done.
+    let in_area = [MARKER, area.as_str(), reward.as_str()];
+    let report = ok_json(&state("in-area.txt", &in_area, true));
+    assert_eq!(report["refused"], json!(0), "{report}");
+    assert_eq!(
+        report["characters"][0]["quests"]["fixture-beira"],
+        json!("done"),
+        "{report}"
+    );
+    let text = stdout(&state("in-area.txt", &in_area, false));
+    let want = format!("{} dropped, 0 refused", report["dropped"]);
+    assert!(text.contains(&want), "{text}");
+}
+
 /// Every invented chat speaker, chat text and party member of the fixtures
 /// the events below are read from.
 const NEVER_PRINTED: [&str; 20] = [
