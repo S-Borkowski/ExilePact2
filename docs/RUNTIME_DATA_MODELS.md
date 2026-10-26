@@ -59,21 +59,24 @@ line marking character select; the dialogue window's text.
 The Riverbank (`G1_1`) and new characters (measured 2026-10-25, the research
 note's "Character detection"): every one of the log's 12 entries to
 The Riverbank is generated at area level 1. Level 1 is that area's level,
-not a sign of a new character. Eight entries, one per character, are
-followed in the same session by that character's first level-up to level 2,
-23 to 110 lines later. The other four re-generate one instance (one seed) in
-four consecutive sessions, all for the same character and all before its
-first level-up, which followed its fifth entry to that instance (one of the
-eight): a relog inside The Riverbank generates `G1_1` again, so an existing
-character re-entering `G1_1` was observed, four times. In those four
-sessions a `[WARN] Character <name> has unknown build of path: None` line
-named the character within 2 s of the entry; in the eight others no line but
-the character's own chat named it before the level-up. That `[WARN]` line is
-**not a general new-character signal**: the log's 27 such lines all name
-that one character, it did not follow the character's fifth entry, and it
-never came for the 7 other new characters. Where it comes, it names who
-entered; its absence says nothing. A `G1_1` entry alone therefore
-does not tell a new character from a relog.
+not a sign of a new character. The 12 entries generate 8 instances, one per
+character. Seven are a single entry each. The eighth, on 2026-05-29, was
+entered five times in five consecutive sessions, all by the same character:
+its first entry is the new character, and entries 2 to 5 are four relogs at
+level 1. Eight entries (the seven, and that instance's fifth) are followed
+in the same session by the character's first level-up to level 2, 23 to 110
+lines later. A relog inside The Riverbank generates `G1_1` again, so an
+existing character re-entering `G1_1` was observed, four times. A
+`[WARN] Character <name> has unknown build of path: None` line named the
+character 1 to 2 s after that instance's entries 1 to 4: its first entry and
+3 of the 4 relogs, not the fifth entry. For the 7 other new characters no
+line but the character's own chat named it before the level-up. That
+`[WARN]` line is **neither a new-character nor a relog signal**: the log's
+27 such lines all name that one character, it did not follow the fourth
+relog, and it never came for the 7 other new characters (nor, below, for
+Live 3's two relogs). Where it comes, it names who entered; its absence says
+nothing. A `G1_1` entry alone therefore does not tell a new character from a
+relog.
 
 The Riverbank's seed on a relog (measured 2026-10-25, the same log up to
 the end of Live 3; the research note's
