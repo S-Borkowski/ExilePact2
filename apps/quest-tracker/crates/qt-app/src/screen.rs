@@ -22,7 +22,10 @@
 //!   formats OCR text, and an error names only the backend call.
 //! - **Diagnostic lines.** Each is `screen: ` and one of the shapes the
 //!   Context pins ("Privacy and diagnostic lines"); an error's detail goes on
-//!   its own `error: screen reader: ` line.
+//!   its own `error: screen reader: ` line. Beside the bar's counts, the
+//!   per-minute line is followed by one line per NPC whose dialogue window
+//!   and per boss whose voiced lines were read that minute, so a route that
+//!   ticked nothing says which of its parts never matched ([`RouteWatch`]).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{self, AssertUnwindSafe};
@@ -33,8 +36,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use qt_engine::{Engine, ScreenOutcome, ScreenWhat};
 use qt_screen::{
-    aspect_is_16_9, classify_bar, BackendError, BarClass, Demand, Hidden, Millis, Observation,
-    OcrReadiness, PixelRect, Region, RemarkDemand, ScreenBackend, ScreenEvent, Trackers, GONE_RUN,
+    aspect_is_16_9, classify_bar, fuzzy_score, is_banner, is_heading, remark_body, BackendError,
+    BarClass, Demand, Hidden, Millis, Observation, OcrReadiness, PixelRect, Region, RemarkDemand,
+    ScreenBackend, ScreenEvent, Trackers, BANNER_AREA, BANNER_TEXT, GONE_RUN, HEADING_WINDOW_MS,
+    MATCH_THRESHOLD,
 };
 use qt_viewmodel::StatusLine;
 
@@ -364,6 +369,150 @@ impl BarWatch {
     }
 }
 
+/// One NPC's dialogue window over a minute, for its `minute: dialogue
+/// window, ...` line. Each count is of visible reads; a hidden read is a
+/// frame of the per-minute line and nothing here.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct DialogueMinute {
+    /// Visible reads of the region.
+    reads: u64,
+    /// Reads with the NPC's heading ([`is_heading`]).
+    heading: u64,
+    /// Reads with the banner in its place ([`is_banner`]).
+    in_place: u64,
+    /// Reads with a line matching [`BANNER_TEXT`] outside [`BANNER_AREA`].
+    elsewhere: u64,
+    /// Reads with the banner in its place and no heading within
+    /// [`HEADING_WINDOW_MS`] before.
+    late: u64,
+}
+
+/// One boss's voiced lines over a minute, for its `minute: voiced lines,
+/// ...` line.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct RemarkMinute {
+    /// Visible reads of the region.
+    reads: u64,
+    /// Reads with a `<prefix>: <text>` line whose text matches one of the
+    /// boss's known remarks ([`remark_body`], [`fuzzy_score`]).
+    matched: u64,
+    /// The trackers' `kill_remark` events.
+    new: u64,
+}
+
+/// Beside the dialogue and remark trackers, the positive control on their
+/// routes: what each read of the dialogue window and the voiced lines held
+/// for each demanded NPC or boss, by the trackers' own public predicates, so
+/// a minute in which a route ticked nothing tells a heading that never
+/// matched from a banner read out of its place or too long after the
+/// heading, and a remark never read from one read but not new. Only counts
+/// and the last heading's time are kept, never text.
+#[derive(Clone, Debug, Default)]
+struct RouteWatch {
+    /// Per NPC, when its heading was last read, as its tracker keeps it.
+    last_heading: BTreeMap<String, Millis>,
+    /// This minute's counts, per NPC and per boss. They outlive the demand,
+    /// so the minute an NPC's banner ticked its step still has its line.
+    dialogues: BTreeMap<String, DialogueMinute>,
+    remarks: BTreeMap<String, RemarkMinute>,
+}
+
+impl RouteWatch {
+    /// Forget the headings of NPCs no longer demanded, as the trackers do.
+    fn follow(&mut self, npcs: &[String]) {
+        self.last_heading.retain(|npc, _| npcs.contains(npc));
+    }
+
+    /// Forget every heading, as fresh trackers do; the minute's counts stay.
+    fn reset(&mut self) {
+        self.last_heading.clear();
+    }
+
+    /// One read, after the trackers took it and reported `events`.
+    fn observe(&mut self, demand: &Demand, obs: &Observation, events: &[ScreenEvent]) {
+        let visible = obs.is_visible();
+        match obs.region {
+            Region::BossBar => {}
+            Region::DialogueWindow => {
+                let in_place = visible && obs.lines.iter().any(is_banner);
+                let elsewhere = visible
+                    && obs.lines.iter().any(|l| {
+                        !BANNER_AREA.contains(&l.bbox)
+                            && fuzzy_score(BANNER_TEXT, &l.text) >= MATCH_THRESHOLD
+                    });
+                for npc in &demand.dialogues {
+                    let m = self.dialogues.entry(npc.clone()).or_default();
+                    if !visible {
+                        continue;
+                    }
+                    m.reads += 1;
+                    if obs.lines.iter().any(|l| is_heading(npc, l)) {
+                        m.heading += 1;
+                        self.last_heading.insert(npc.clone(), obs.at);
+                    }
+                    if in_place {
+                        m.in_place += 1;
+                        let in_window = self
+                            .last_heading
+                            .get(npc)
+                            .is_some_and(|&h| h <= obs.at && obs.at - h <= HEADING_WINDOW_MS);
+                        if !in_window {
+                            m.late += 1;
+                        }
+                    }
+                    if elsewhere {
+                        m.elsewhere += 1;
+                    }
+                }
+            }
+            Region::VoicedLines => {
+                for want in demand.remarks.iter().filter(|r| !r.texts.is_empty()) {
+                    let m = self.remarks.entry(want.boss.clone()).or_default();
+                    if !visible {
+                        continue;
+                    }
+                    m.reads += 1;
+                    let said = obs
+                        .lines
+                        .iter()
+                        .filter_map(|l| remark_body(&l.text))
+                        .any(|body| {
+                            want.texts
+                                .iter()
+                                .any(|known| fuzzy_score(known, body) >= MATCH_THRESHOLD)
+                        });
+                    if said {
+                        m.matched += 1;
+                    }
+                }
+            }
+        }
+        for event in events {
+            if let ScreenEvent::KillRemark { boss, .. } = event {
+                self.remarks.entry(boss.clone()).or_default().new += 1;
+            }
+        }
+    }
+
+    /// The minute's lines, one per NPC or boss whose region was read (a
+    /// hidden read included, which reads `0 of 0`), and the counts reset.
+    fn take_lines(&mut self) -> Vec<String> {
+        let dialogues = std::mem::take(&mut self.dialogues).into_iter().map(|(npc, m)| {
+            format!(
+                "screen: minute: dialogue window, {npc}'s heading in {} of {} reads, {} banners in place, {} elsewhere, {} after the heading window",
+                m.heading, m.reads, m.in_place, m.elsewhere, m.late
+            )
+        });
+        let remarks = std::mem::take(&mut self.remarks).into_iter().map(|(boss, m)| {
+            format!(
+                "screen: minute: voiced lines, kill remark for {boss} in {} of {} reads, {} new",
+                m.matched, m.reads, m.new
+            )
+        });
+        dialogues.chain(remarks).collect()
+    }
+}
+
 struct Reader {
     app: Arc<App>,
     generation: u64,
@@ -371,6 +520,7 @@ struct Reader {
     snapshot: Arc<DemandSnapshot>,
     trackers: Trackers,
     bar_watch: BarWatch,
+    routes: RouteWatch,
     activity: Activity,
     /// The regions the overlay covered at the last check.
     covered: BTreeSet<Region>,
@@ -411,6 +561,7 @@ pub(crate) fn run_reader(
         snapshot: Arc::default(),
         trackers: Trackers::new(),
         bar_watch: BarWatch::default(),
+        routes: RouteWatch::default(),
         activity: Activity::Unknown,
         covered: BTreeSet::new(),
         aspect: None,
@@ -506,6 +657,7 @@ impl Reader {
         if !Arc::ptr_eq(&newest, &self.snapshot) {
             self.trackers.set_demand(&newest.demand);
             self.bar_watch.follow(&newest.demand.bars);
+            self.routes.follow(&newest.demand.dialogues);
             self.snapshot = newest;
         }
     }
@@ -530,6 +682,7 @@ impl Reader {
     fn reset_trackers(&mut self) {
         self.trackers = Trackers::for_demand(&self.snapshot.demand);
         self.bar_watch = BarWatch::default();
+        self.routes.reset();
         self.last_read.clear();
     }
 
@@ -572,6 +725,7 @@ impl Reader {
         let events = self.trackers.observe(&obs);
         self.bar_watch
             .observe(&self.snapshot.demand.bars, &obs, &events);
+        self.routes.observe(&self.snapshot.demand, &obs, &events);
         for event in events {
             let wall_ms = self.wall(match &event {
                 ScreenEvent::BarGone { last_present, .. } => *last_present,
@@ -763,13 +917,15 @@ impl Reader {
         }
     }
 
-    /// Writes the per-minute line when a minute has passed with any read.
+    /// Writes the per-minute line when a minute has passed with any read,
+    /// then the dialogue window's and the voiced lines' lines.
     fn minute_line(&mut self) {
         let now = self.app.clock_ms();
         if now.saturating_sub(self.minute_start) < MINUTE_MS {
             return;
         }
         let counts = self.trackers.take_counts();
+        let routes = self.routes.take_lines();
         let m = std::mem::take(&mut self.minute);
         self.minute_start = now;
         if m.frames == 0 {
@@ -784,6 +940,9 @@ impl Reader {
             m.ocr_failures,
             m.busy.as_millis()
         ));
+        for line in routes {
+            self.app.diag(&line);
+        }
     }
 
     /// The thread ends after an error: the cause, the refusal, the warning.
@@ -989,5 +1148,148 @@ mod tests {
         assert!(w.panel_hides());
         w.follow(&[]);
         assert!(!w.panel_hides());
+    }
+
+    const RENLY: &str = "Renly";
+    // Invented remark text and character name.
+    const REMARK: &str = "That one won't be grinding any more.";
+
+    fn dialogue_read(at: Millis, lines: Vec<qt_screen::Line>) -> Observation {
+        Observation::visible(Region::DialogueWindow, at, lines)
+    }
+    fn renly_heading() -> qt_screen::Line {
+        qt_screen::Line::new("RENLY", qt_screen::Rect::new(0.45, 0.20, 0.55, 0.23))
+    }
+    /// The banner, in its place or above it.
+    fn banner(in_place: bool) -> qt_screen::Line {
+        let a = qt_screen::BANNER_AREA;
+        let (top, bottom) = if in_place {
+            (a.top + 0.01, a.top + 0.03)
+        } else {
+            (a.top - 0.2, a.top - 0.18)
+        };
+        qt_screen::Line::new(
+            BANNER_TEXT,
+            qt_screen::Rect::new(a.left + 0.05, top, a.right - 0.05, bottom),
+        )
+    }
+    fn remark_line(text: &str) -> qt_screen::Line {
+        qt_screen::Line::new(
+            format!("Tavi: {text}"),
+            qt_screen::Rect::new(0.02, 0.70, 0.30, 0.72),
+        )
+    }
+    fn route_demand() -> Demand {
+        Demand {
+            dialogues: vec![RENLY.into()],
+            remarks: vec![RemarkDemand {
+                boss: BEIRA.into(),
+                texts: vec![REMARK.into()],
+            }],
+            ..Demand::default()
+        }
+    }
+
+    #[test]
+    fn the_dialogue_route_line_tells_each_way_a_banner_can_miss() {
+        let demand = route_demand();
+        let mut w = RouteWatch::default();
+        let late = qt_screen::HEADING_WINDOW_MS + 1_000;
+        let reads = [
+            // Renly's window, then its banner in place: the tracker fires.
+            dialogue_read(0, vec![renly_heading()]),
+            dialogue_read(1_000, vec![banner(true)]),
+            // The banner's text out of its place.
+            dialogue_read(2_000, vec![banner(false)]),
+            // A banner in place too long after the heading.
+            dialogue_read(1_000 + late, vec![banner(true)]),
+            // A hidden read is no read.
+            Observation::hidden(Region::DialogueWindow, 2_000 + late, Hidden::Overlay),
+        ];
+        let mut tracker = qt_screen::DialogueTracker::new(RENLY);
+        let mut fired = 0;
+        for obs in &reads {
+            let events: Vec<ScreenEvent> = tracker.observe(obs).into_iter().collect();
+            fired += events.len();
+            w.observe(&demand, obs, &events);
+        }
+        assert_eq!(fired, 1);
+        // Renly is no longer demanded once his step ticked: his line stays.
+        w.follow(&[]);
+        assert_eq!(
+            w.take_lines(),
+            vec![
+                "screen: minute: dialogue window, Renly's heading in 1 of 4 reads, 2 banners in place, 1 elsewhere, 1 after the heading window"
+                    .to_string()
+            ]
+        );
+        assert!(w.take_lines().is_empty(), "the counts reset");
+    }
+
+    #[test]
+    fn the_dialogue_route_forgets_a_heading_on_reset_but_keeps_the_minute() {
+        let demand = route_demand();
+        let mut w = RouteWatch::default();
+        w.observe(&demand, &dialogue_read(0, vec![renly_heading()]), &[]);
+        w.reset();
+        w.observe(&demand, &dialogue_read(1_000, vec![banner(true)]), &[]);
+        assert_eq!(
+            w.take_lines(),
+            vec![
+                "screen: minute: dialogue window, Renly's heading in 1 of 2 reads, 1 banners in place, 0 elsewhere, 1 after the heading window"
+                    .to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn the_voiced_lines_route_line_counts_reads_with_the_remark_and_new_ones() {
+        let demand = route_demand();
+        let mut w = RouteWatch::default();
+        let said = Observation::visible(Region::VoicedLines, 0, vec![remark_line(REMARK)]);
+        let event = ScreenEvent::KillRemark {
+            boss: BEIRA.into(),
+            at: 0,
+        };
+        w.observe(&demand, &said, std::slice::from_ref(&event));
+        let other = Observation::visible(Region::VoicedLines, 500, vec![remark_line("Onward.")]);
+        w.observe(&demand, &other, &[]);
+        // Text with no speaker prefix is not a remark.
+        let bare = Observation::visible(
+            Region::VoicedLines,
+            1_000,
+            vec![qt_screen::Line::new(REMARK, qt_screen::Rect::new(0.02, 0.70, 0.30, 0.72))],
+        );
+        w.observe(&demand, &bare, &[]);
+        // Reads of other regions leave it alone.
+        w.observe(&demand, &bar_read(1_500, vec![beira_name()]), &[]);
+        assert_eq!(
+            w.take_lines(),
+            vec![
+                "screen: minute: voiced lines, kill remark for Beira of the Rotten Pack in 1 of 3 reads, 1 new"
+                    .to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn a_route_read_only_while_hidden_reads_zero_of_zero() {
+        let demand = route_demand();
+        let mut w = RouteWatch::default();
+        w.observe(
+            &demand,
+            &Observation::hidden(Region::VoicedLines, 0, Hidden::NotForeground),
+            &[],
+        );
+        assert_eq!(
+            w.take_lines(),
+            vec![
+                "screen: minute: voiced lines, kill remark for Beira of the Rotten Pack in 0 of 0 reads, 0 new"
+                    .to_string()
+            ]
+        );
+        // Nothing demanded, nothing read: no line.
+        w.observe(&Demand::default(), &dialogue_read(0, vec![renly_heading()]), &[]);
+        assert!(w.take_lines().is_empty());
     }
 }
