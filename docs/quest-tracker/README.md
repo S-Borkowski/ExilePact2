@@ -253,6 +253,18 @@ log. The lines to look for when a quest did not advance:
   start, read back from the log before the start position with the
   current area). Until a line with that header has been read, the overlay
   stays shown.
+- `visibility: hidden (no character in an area yet this session)` when
+  play mode hides the overlay after a session marker (`LOG FILE OPENING`),
+  whatever window is in front, so it does not cover the login and
+  character-select screens. It is written once per hide; a launch that
+  writes the marker again only restarts the wait. The session's first area
+  line (`Generating level <n> area ...`) lifts it, with `visibility: shown`,
+  or the hidden line above when another program's window is in front. At
+  start, the marker and area lines read back from the log count the same
+  way, so a last session with an area line starts with the hide lifted.
+  The hide holds only while the game pid from the log is trusted: once
+  that pid is not used to hide the overlay (below), it shows as before.
+  Edit mode is always shown, so the hotkey still reaches the settings.
 - The game pid it compares with, each time it changes: `game pid: <pid>
   (from <source>)`, the source being `a live line's header`, `a catch-up
   line's header` or `the log before the tailer's start`. A pid from a live
@@ -940,6 +952,14 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   10 s, and it is then shown over every window, the game's or not, until
   the right log is set. If the window in front cannot be told, it is shown
   too.
+- **Shown again at character select.** In play mode the overlay stays
+  hidden from the game's start until a character is in an area, so it
+  does not cover the login and character-select screens. Going back to
+  character select later in the same session leaves it shown there: no
+  log line marks character select (not observed), so the tracker cannot
+  tell. The next launch of the game hides it again until a character is
+  in an area. With no running game writing the log (its pid no longer
+  trusted), the overlay shows, as when the game's process is unknown.
 - **The area after a start mid-zone.** The read-back for the current area
   covers at most 8 MiB of the log before the start position. That is a
   bound, not a guarantee: a zone's area line is normally well inside it,
@@ -1044,6 +1064,9 @@ Revisit this feature when:
   confirms it, so a wrong log (an old standalone `Client.txt`, or a wrong
   log path) leaves the overlay shown over every window instead of hidden
   over the game.
+- In play mode the overlay stays hidden from the game's start until a
+  character is in an area (the session's first area line), so it does not
+  cover the login and character-select screens; edit mode still shows it.
 - A tray icon (the app's icon, tooltip "Quest Tracker") with one entry,
   *Quit Quest Tracker*, which closes the overlay cleanly even while play
   mode has it hidden; closing the overlay's window quits the same way.
