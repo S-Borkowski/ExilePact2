@@ -345,6 +345,17 @@ both the cache and `--out` are refused inside a git checkout, because raw
 pages are never tracked. `--help` on the tool and on each command prints the
 same options.
 
+### `tools/quest_tracker/outside/` (developer-only)
+
+Research instruments that watch the game from outside its process, built
+for Live 6's question whether Beira's wordless death cry can be seen at
+all: a file-I/O trace of the game's reads of `Content.ggpk`, a
+process-loopback recording of the game's audio, and screen captures read by
+OCR afterwards, with the session analysis that checks them. The tracker
+does not use them. Every command and script, the live folder, the one step
+that needs an admin prompt and what never leaves the machine are in
+[`outside-instruments.md`](outside-instruments.md).
+
 ### npm scripts
 
 Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
@@ -588,9 +599,11 @@ for the pickup is inferred). See
 Rotten Pack's steps are "Reach Clearfell" (the `G1_2` entry), "Find Beira
 of the Rotten Pack" (any of her lines in Clearfell, the first of which
 comes when she is met), "Defeat Beira of the Rotten Pack" and "Use the item
-it dropped". No line marking her defeat is known (not observed, and not yet
-set against a known kill), so the defeat step has no signal: **tick it by
-hand** when she falls, and the row then shows "Use the item it dropped".
+it dropped". No line marking her defeat is known: Live 4 timed one kill
+and the log held nothing at it (one controlled kill, nothing in the log;
+[`quest-tracker-research.md`](quest-tracker-research.md) § "Rewards after
+a boss kill"), so the defeat step has no signal: **tick it by hand** when
+she falls, and the row then shows "Use the item it dropped".
 Until then her lines leave "Defeat Beira of the Rotten Pack" current,
 whatever area comes next. Her reward line comes only after you use the
 item she dropped, which can be minutes after the kill (seen once, in Live
@@ -975,8 +988,9 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
 - **A boss's defeat is ticked by hand.** No log line marking the defeat of
   Beira of the Rotten Pack is known: over 9 sessions with her lines,
   nothing but chat, window-focus and client lines came between her last
-  line and the next area or her reward. That negative is not yet set
-  against a known kill time, so it is "not observed", not "never logged".
+  line and the next area or her reward. Live 4 timed one kill and the log
+  held nothing at it: one controlled negative, so still "not observed",
+  not "never logged".
   Her "Defeat Beira of the Rotten Pack", and Blackjaw's and Lythara's
   "Defeat …" steps, have no signal: tick them when the boss falls, or let
   the reward line finish the quest. Without the tick the row keeps showing
