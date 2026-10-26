@@ -1,0 +1,29 @@
+2026/10/26 11:23:58 ***** LOG FILE OPENING *****
+2026/10/26 11:23:58 91438150 4f3e4ba1 [INFO Client 4242] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/10/26 11:24:02 91442420 4f3e4ba1 [INFO Client 4242] Connected to login.example.invalid in 15ms.
+2026/10/26 11:24:10 91450300 2caa229f [DEBUG Client 4242] Generating level 15 area "G1_town" with seed 1
+2026/10/26 11:24:10 91450900 7fbd1225 [INFO Client 4242] [SCENE] Set Source [Clearfell Encampment]
+2026/10/26 11:24:12 91452050 3ef23348 [INFO Client 4242] : You have joined global chat channel 1 English.
+2026/10/26 11:24:20 91460700 3ef23348 [INFO Client 4242] #Wanderer: anyone selling a bow
+2026/10/26 11:24:24 91464100 3ef23348 [INFO Client 4242] TestMule: hello there
+2026/10/26 11:24:35 91475400 3ef23348 [INFO Client 4242] Renly: Need something sharpened?
+2026/10/26 11:24:40 91480000 5b8c1d07 [INFO Client 4242] [WINDOW] Lost focus
+2026/10/26 11:24:42 91482000 5b8c1d07 [INFO Client 4242] [WINDOW] Gained focus
+2026/10/26 11:26:39 91599800 91c6cc1 [INFO Client 4242] Connecting to instance server at 192.0.2.1:21360 
+2026/10/26 11:26:40 91600100 2caa229f [DEBUG Client 4242] Generating level 2 area "G1_2" with seed 3114698574
+2026/10/26 11:26:40 91600500 7fbd1225 [INFO Client 4242] [SCENE] Set Source [Clearfell]
+2026/10/26 11:27:04 91624300 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Sleep in ice, wake in snow. Sleep my pretties as you grow...
+2026/10/26 11:27:27 91647100 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Be still!
+2026/10/26 11:27:27 91647900 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Invader!
+2026/10/26 11:27:37 91657200 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Feed!
+2026/10/26 11:27:41 91661500 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Be still!
+2026/10/26 11:27:45 91665300 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Rotten!
+2026/10/26 11:27:53 91673600 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Swell!
+2026/10/26 11:27:57 91677400 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Be still!
+2026/10/26 11:28:04 91684700 3ef23348 [INFO Client 4242] Beira of the Rotten Pack: Swell!
+2026/10/26 11:29:19 91759700 91c6cc1 [INFO Client 4242] Connecting to instance server at 192.0.2.1:21361 
+2026/10/26 11:29:20 91760000 2caa229f [DEBUG Client 4242] Generating level 4 area "G1_4" with seed 4230933344
+2026/10/26 11:29:20 91760400 7fbd1225 [INFO Client 4242] [SCENE] Set Source [The Grelwood]
+2026/10/26 11:29:35 91775600 3ef23348 [INFO Client 4242] : TestMule has received +10% to [Resistances|Cold Resistance].
+2026/10/26 11:29:50 91790250 3ef23348 [INFO Client 4242] Una: What happened here...?
+2026/10/26 11:30:00 91800100 3ef23348 [INFO Client 4242] Una: I'll wait here. The old magicks will protect me.
