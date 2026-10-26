@@ -170,6 +170,7 @@
           "id": "step-2",
           "title": "Slay the Bloated Miller",
           "text": "A logging encampment is under attack by a diseased monstrosity that was once human. Kill it.",
+          "tip": "Follow up river.",
           "signals": [{"kind": "npc", "speaker": "The Bloated Miller", "area": "G1_1"}]
         },
         {
@@ -225,6 +226,7 @@
           "id": "step-2",
           "title": "Find the Mud Burrow",
           "text": "The Devourer lives underground in a Mud Burrow. Find it.",
+          "tip": "Follow the burrow.",
           "signals": []
         },
         {
@@ -246,14 +248,14 @@
           "signals": []
         }
       ],
-      "unlock": [{"kind": "area", "code": "G1_2"}],
+      "unlock": [{"kind": "area", "code": "G1_2"}, {"kind": "area", "code": "G1_town"}],
       "done": [],
       "window_closes": [{"kind": "area", "code": "G2_town"}],
       "detection": "partial",
       "evidence": "static",
       "source_url": "https://poe2db.tw/us/Treacherous_Ground",
       "fetched": "2026-10-25",
-      "notes": "The reward talk with Renly is not recorded in the log, and nothing later implies it: tick it."
+      "notes": "Available (inferred) from the Clearfell Encampment entry (G1_town): Renly gives the quest there in a talk the log does not record (Live 3's town visit held no NPC line, measured 2026-10-25), so the town entry, the signal Finding the Forge unlocks on too, is the earliest evidence of it. The Clearfell entry (G1_2) still unlocks it and puts it in progress. The reward talk with Renly is not recorded in the log, and nothing later implies it: tick it."
     },
     {
       "id": "secrets-in-the-dark",
@@ -270,22 +272,21 @@
           "id": "step-1",
           "title": "Travel to the Grelwood",
           "text": "Travel through Clearfell to the Grelwood and search for any clues about the night the Count took his men out there.",
+          "tip": "Follow up river again.",
           "signals": [{"kind": "area", "code": "G1_4"}]
         },
         {
           "id": "step-2",
           "title": "Search the Grelwood",
           "text": "Search the Grelwood for any hint of what might have happened to the Count and his men that fateful night.",
-          "signals": []
+          "tip": "Should be close to entrance etc.",
+          "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"}]
         },
         {
           "id": "step-3",
           "title": "Ask Una for help",
           "text": "You have found the Tree of Souls. An ancient entity hangs upon it. Summon Una and ask her for advice.",
-          "signals": [
-            {"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"},
-            {"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "I'll wait here. The old magicks will protect me."}
-          ]
+          "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "I'll wait here. The old magicks will protect me."}]
         },
         {
           "id": "step-4",
@@ -392,7 +393,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Secrets_in_the_Dark",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Started (inferred) when Reaching Clearfell is done: Renly gives the quest in a talk the log does not record, and the Clearfell entry (G1_2) is the earliest evidence of it; in Live 2 the quest stayed available from Clearfell and showed in progress only from the Grelwood (measured 2026-10-25). Una's first line in the Grelwood (G1_4), \"What happened here...?\", and the one 2 to 5 s after it, \"I'll wait here. The old magicks will protect me.\", come at the tree, so they are \"Ask Una for help\" (measured 2026-10-25: 7 and 4 sessions of the owner's log, the second from December 2025 on and in Live 2). Her \"Good. Now the others!\" there came after the session's Red Vale visits in 6 sessions (measured); that it is \"Use the Rune Spikes\" is inferred from its place in the order. Bringing the runes to Renly, taking the spikes and the two talks with Una after the last spike happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King.",
+      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Started (inferred) when Reaching Clearfell is done: Renly gives the quest in a talk the log does not record, and the Clearfell entry (G1_2) is the earliest evidence of it; in Live 2 the quest stayed available from Clearfell and showed in progress only from the Grelwood (measured 2026-10-25). Una's first line in the Grelwood (G1_4), \"What happened here...?\", comes when she is summoned at the tree, so it ends \"Search the Grelwood\" and leaves \"Ask Una for help\" next (measured 2026-10-25: 7 sessions of the owner's log). \"I'll wait here. The old magicks will protect me.\" followed it 2 to 8 s later in 4 sessions, from December 2025 on, among them Live 2, where the person had talked to her; in Live 3 the person summoned her and the game closed 2.5 min later without it (measured 2026-10-25). That it follows the talk, and so is \"Ask Una for help\", is inferred (2026-10-25); where it never comes, the Red Vale entry reaches the steps before it. Her \"Good. Now the others!\" there came after the session's Red Vale visits in 6 sessions (measured); that it is \"Use the Rune Spikes\" is inferred from its place in the order. Bringing the runes to Renly, taking the spikes and the two talks with Una after the last spike happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King.",
       "done_inferred": true
     },
     {
@@ -1221,10 +1222,17 @@
           "signals": [{"kind": "area", "code": "G1_2"}]
         },
         {
-          "id": "fight",
-          "title": "Fight Beira of the Rotten Pack",
+          "id": "find",
+          "title": "Find Beira of the Rotten Pack",
           "text": "",
+          "tip": "More wolves means you are closer to Beira.",
           "signals": [{"kind": "npc", "speaker": "Beira of the Rotten Pack", "area": "G1_2"}]
+        },
+        {
+          "id": "fight",
+          "title": "Defeat Beira of the Rotten Pack",
+          "text": "",
+          "signals": []
         },
         {
           "id": "use",
@@ -1236,14 +1244,15 @@
       "unlock": [],
       "done": [
         {"kind": "reward", "text": "+10% to Cold Resistance", "area": "G1_2"},
-        {"kind": "reward", "text": "+10% to Cold Resistance", "area": "G1_3"}
+        {"kind": "reward", "text": "+10% to Cold Resistance", "area": "G1_3"},
+        {"kind": "reward", "text": "+10% to Cold Resistance"}
       ],
       "window_closes": [],
       "detection": "auto",
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line, counted in Clearfell five times and once in Mud Burrow. Listed in poe2db's community table of permanent rewards, not as a quest page. The last step exists because the reward line comes only once the item Beira dropped is used (the owner's observation at Live 1, about 8 minutes after the kill); the log records nothing of that use, so the step has no signal and the reward line finishes the quest. poe2db does not name the item."
+      "notes": "Done on the reward line in any area. It was counted in Clearfell five times and once in the Mud Burrow, and in 2 of 8 sessions it came only after the player left Clearfell, in the Mud Burrow 2 and 7 minutes later (measured 2026-10-25); the first two done signals record where it was counted, the third finishes the quest wherever the item is used. No other quest's reward is +10% to Cold Resistance. Listed in poe2db's community table of permanent rewards, not as a quest page. Her lines (the first of each fight, then her combat barks) are \"Find Beira of the Rotten Pack\". No line marks her defeat as far as measured (9 sessions with her lines, 2026-10-25; not yet set against a known kill time), so \"Defeat Beira of the Rotten Pack\" has no signal: tick it when she falls. The last step exists because the reward line comes only once the item Beira dropped is used (the owner's observation at Live 1, about 8 minutes after the kill); the log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step, with no tick needed. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored: such a character shows the step its other evidence reaches. poe2db does not name the item."
     },
     {
       "id": "the-crowbell",
@@ -2858,10 +2867,16 @@
           "signals": [{"kind": "area", "code": "G3_6_1"}]
         },
         {
-          "id": "fight",
-          "title": "Fight Blackjaw, the Remnant",
+          "id": "find",
+          "title": "Find Blackjaw, the Remnant",
           "text": "",
           "signals": [{"kind": "npc", "speaker": "BlackJaw", "area": "G3_6_1"}]
+        },
+        {
+          "id": "fight",
+          "title": "Defeat Blackjaw, the Remnant",
+          "text": "",
+          "signals": []
         },
         {
           "id": "use",
@@ -2877,7 +2892,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in Jiquani's Machinarium. Listed in poe2db's community table of permanent rewards, not as a quest page. The last step exists because the reward line follows BlackJaw's last line by 5 to 21 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest. poe2db does not name the item."
+      "notes": "Done on the reward line in Jiquani's Machinarium. Listed in poe2db's community table of permanent rewards, not as a quest page. BlackJaw's lines are \"Find Blackjaw, the Remnant\"; no line marking his defeat is known, so \"Defeat Blackjaw, the Remnant\" has no signal: tick it when he falls (the same split as Beira's, 2026-10-25). The last step exists because the reward line follows BlackJaw's last line by 5 to 21 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when his lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
     },
     {
       "id": "sacrificial-heart",
@@ -5940,10 +5955,16 @@
           "signals": [{"kind": "area", "code": "P3_2"}]
         },
         {
-          "id": "fight",
-          "title": "Fight Lythara, the Wayward Spear",
+          "id": "find",
+          "title": "Find Lythara, the Wayward Spear",
           "text": "",
           "signals": [{"kind": "npc", "speaker": "Lythara, The Wayward Spear", "area": "P3_2"}]
+        },
+        {
+          "id": "fight",
+          "title": "Defeat Lythara, the Wayward Spear",
+          "text": "",
+          "signals": []
         },
         {
           "id": "use",
@@ -5959,7 +5980,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page. The last step exists because the reward line follows Lythara's last line by 10 to 15 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest. poe2db does not name the item."
+      "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page. Lythara's lines are \"Find Lythara, the Wayward Spear\"; no line marking her defeat is known, so \"Defeat Lythara, the Wayward Spear\" has no signal: tick it when she falls (the same split as Beira's, 2026-10-25). The last step exists because the reward line follows Lythara's last line by 10 to 15 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
     }
   ]
 }

@@ -16,9 +16,10 @@
 //!
 //! `boss_reward_shows_use_step_after_fight` pins the boss quests whose reward
 //! line comes some seconds after the fight, not with it (research note
-//! "Rewards after a boss kill"): after the fight the row shows a "Use ..."
-//! step next, and the reward line still finishes the quest. Only Beira's
-//! step says the boss drops an item; for the others that is not established.
+//! "Rewards after a boss kill"): the boss's lines are a "Find ..." step, the
+//! "Defeat ..." step after it has no signal, a "Use ..." step follows, and
+//! the reward line still finishes the quest. Only Beira's step says the boss
+//! drops an item; for the others that is not established.
 //!
 //! The rest pin what launch 6 found the tests above could not catch: the
 //! town voices' own lines, which `town_talk.txt` never had
@@ -26,10 +27,18 @@
 //! Dark on the Cemetery entry (`secrets_in_the_dark_done_on_g1_7`), and the
 //! `done_inferred` flag against the notes (`done_inferred_matches_notes`).
 //!
-//! The last four pin what Live 2 found (2026-10-25): Secrets in the Dark
-//! starts when Reaching Clearfell is done, Una's Grelwood lines move it past
-//! the tree, the Grelwood entry no longer starts The Mysterious Shade before
-//! its unlock, and Una's Grim Tangle line moves the Shade past the roots.
+//! Four more pin what Live 2 found (2026-10-25): Secrets in the Dark starts
+//! when Reaching Clearfell is done, Una's Grelwood lines move it past the
+//! tree, the Grelwood entry no longer starts The Mysterious Shade before its
+//! unlock, and Una's Grim Tangle line moves the Shade past the roots.
+//!
+//! The last four pin what Live 3 and its owner found (2026-10-25): the
+//! owner's find-it tips sit on the steps they help with
+//! (`owner_tips_are_on_their_steps`), Treacherous Ground shows from the town
+//! where Renly gives it (`treacherous_ground_available_in_town`), Beira's
+//! defeat is the player's tick, not her first line
+//! (`beira_defeat_is_ticked_by_hand`), and summoning Una leaves "Ask Una for
+//! help" to do (`una_summon_alone_leaves_ask_una_for_help`).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
@@ -412,7 +421,10 @@ fn town_talk_session_replay() {
     assert_eq!(talk.title, "Talk to the Blacksmith");
     assert!(talk.signals.is_empty(), "the talk step has a signal: {:?}", talk.signals);
     assert_eq!(status(&engine, "secrets-in-the-dark"), Status::Locked);
-    assert_eq!(status(&engine, "treacherous-ground"), Status::Locked);
+    // Renly gives Treacherous Ground and Finding the Forge in the encampment,
+    // in talks the log does not record: the town entry makes both available
+    // (inferred, Live 3).
+    assert_eq!(status(&engine, "treacherous-ground"), Status::Available);
     assert_eq!(status(&engine, "finding-the-forge"), Status::Available);
 
     // The visit itself. The Live 1 visit logged no NPC line at all, only chat
@@ -536,19 +548,24 @@ const ACT1_CHARACTER: &str = "Corisande_Fell";
 #[test]
 fn boss_reward_shows_use_step_after_fight() {
     let data = Arc::new(data());
-    // The shape: a fight step the boss's line moves, then a "Use ..." step no
+    // The shape: a "Find ..." step the boss's line moves, a "Defeat ..."
+    // step no line marks (the player ticks it), then a "Use ..." step no
     // signal can show, and the reward line as `done`.
     for id in USE_ITEM_QUESTS {
         let q = data.quest(id).unwrap_or_else(|| panic!("no quest {id}"));
         let n = q.steps.len();
-        assert!(n >= 2, "quest {id}: {n} steps");
-        let (fight, last) = (&q.steps[n - 2], &q.steps[n - 1]);
+        assert!(n >= 3, "quest {id}: {n} steps");
+        let (find, fight, last) = (&q.steps[n - 3], &q.steps[n - 2], &q.steps[n - 1]);
+        assert_eq!((find.id.as_str(), fight.id.as_str(), last.id.as_str()), ("find", "fight", "use"), "quest {id}");
         assert!(
-            fight.signals.iter().any(|s| matches!(s, Signal::Npc { .. })),
+            find.signals.iter().any(|s| matches!(s, Signal::Npc { .. })),
             "quest {id}: step {} is not the boss's line: {:?}",
-            fight.id,
-            fight.signals
+            find.id,
+            find.signals
         );
+        assert!(find.title.starts_with("Find "), "quest {id}: {:?}", find.title);
+        assert!(fight.title.starts_with("Defeat "), "quest {id}: {:?}", fight.title);
+        assert!(fight.signals.is_empty(), "quest {id}: the defeat step has a signal: {:?}", fight.signals);
         assert!(last.title.starts_with("Use "), "quest {id}: last step {:?}", last.title);
         assert!(last.signals.is_empty(), "quest {id}: the use step has a signal: {:?}", last.signals);
         assert!(
@@ -594,27 +611,59 @@ fn boss_reward_shows_use_step_after_fight() {
     }
     assert_eq!(engine.active(), Some(ACT1_CHARACTER));
 
-    // Baseline: the boss's line puts the quest in progress at the fight, and
-    // the step the row shows next is the use of the dropped item.
-    let q = data.quest("beira-of-the-rotten-pack").expect("beira");
+    // Baseline: the boss's line puts the quest in progress at "Find ...", and
+    // the step the row shows next is her defeat, never the use of the item
+    // (Live 2 and Live 3 showed "Use ..." at her first line).
     let state = engine
         .quest_state(ACT1_CHARACTER, "beira-of-the-rotten-pack")
         .expect("state");
     assert_eq!(state.status, Status::InProgress);
-    assert_eq!(state.current_step.as_deref(), Some("fight"));
-    let at = q.steps.iter().position(|s| s.id == "fight").expect("fight");
-    let next = q.steps.get(at + 1).expect("a step after the fight");
-    assert!(next.title.starts_with("Use "), "the step after the fight is {:?}", next.title);
+    assert_eq!(state.current_step.as_deref(), Some("find"));
+    assert_eq!(next_title(&data, &state), "Defeat Beira of the Rotten Pack");
 
     // The lines between the fight and the reward leave it there.
     for l in &lines[beira + 1..reward] {
         engine.feed_line(l, false);
     }
-    assert_eq!(engine.status(ACT1_CHARACTER, "beira-of-the-rotten-pack"), Some(Status::InProgress));
+    let state = engine
+        .quest_state(ACT1_CHARACTER, "beira-of-the-rotten-pack")
+        .expect("state");
+    assert_eq!(state.status, Status::InProgress);
+    assert_eq!(next_title(&data, &state), "Defeat Beira of the Rotten Pack");
 
     // Target: the reward line, which comes once the item is used, finishes it.
     engine.feed_line(&lines[reward], false);
     assert_eq!(engine.status(ACT1_CHARACTER, "beira-of-the-rotten-pack"), Some(Status::Done));
+
+    // The other two, built line by line: the boss's first line shows
+    // "Defeat ..." next, not "Use ...", and the reward line finishes it.
+    for (id, code, name, speaker, reward) in [
+        (
+            "blackjaw-the-remnant",
+            "G3_6_1",
+            "Jiquani's Machinarium",
+            "BlackJaw",
+            "+10% to [Resistances|Fire Resistance]",
+        ),
+        (
+            "lythara-the-wayward-spear",
+            "P3_2",
+            "Kriar Village",
+            "Lythara, The Wayward Spear",
+            "+40 to [Spirit|Spirit]",
+        ),
+    ] {
+        let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+        let lines = entry_lines(&mut r.clock, code, 40, 2_449_489_742, name);
+        r.feed(&lines);
+        assert_eq!(r.state(id).current_step.as_deref(), Some("enter"), "quest {id}");
+        r.say(speaker, "Fixture line: the fight begins.");
+        let s = r.state(id);
+        assert_eq!(s.current_step.as_deref(), Some("find"), "quest {id}");
+        assert!(next_title(&data, &s).starts_with("Defeat "), "quest {id}: {:?}", next_title(&data, &s));
+        r.received(reward);
+        assert_eq!(r.state(id).status, Status::Done, "quest {id}");
+    }
 }
 
 /// The invented character of `fixtures/sessions/town_voices.txt`.
@@ -835,6 +884,7 @@ impl Replay {
             "G1_1" => (1, 1_414_213_562, "The Riverbank"),
             "G1_town" => (15, 1, "Clearfell Encampment"),
             "G1_2" => (2, 1_732_050_807, "Clearfell"),
+            "G1_3" => (3, 2_236_067_977, "Mud Burrow"),
             "G1_4" => (4, 2_645_751_311, "The Grelwood"),
             "G1_5" => (6, 3_162_277_660, "The Red Vale"),
             "G1_6" => (7, 3_316_624_790, "The Grim Tangle"),
@@ -849,6 +899,14 @@ impl Replay {
     fn say(&mut self, speaker: &str, line: &str) -> Vec<Transition> {
         self.clock += 3;
         let l = format!("{} [INFO Client 6200] {speaker}: {line}", stamp(self.clock));
+        self.feed(&[l])
+    }
+
+    /// A reward line for the character, its stat in the log's markup, a few
+    /// seconds after the last line.
+    fn received(&mut self, stat: &str) -> Vec<Transition> {
+        self.clock += 3;
+        let l = format!("{} [INFO Client 6200] : {} has received {stat}.", stamp(self.clock), self.name);
         self.feed(&[l])
     }
 
@@ -937,9 +995,12 @@ fn secrets_in_the_dark_in_progress_when_reaching_clearfell_done() {
 }
 
 /// Live 2: in the Grelwood the row stayed on "Search the Grelwood" after the
-/// tree and Una. Una's first Grelwood line (and the one after it) is "Ask
-/// Una for help"; her "Good. Now the others!" after the Red Vale is the
-/// first Rune Spike (inferred from its place in the order).
+/// tree and Una. Live 3: summoning her moved it to "Find the Red Vale",
+/// before the talk. Her first Grelwood line, on the summon, ends the search,
+/// so "Ask Una for help" is next; her wait line after it follows the talk
+/// (inferred), so "Find the Red Vale" is next; her "Good. Now the others!"
+/// after the Red Vale is the first Rune Spike (inferred from its place in
+/// the order).
 #[test]
 fn una_at_the_tree_moves_secrets_to_find_the_red_vale() {
     let data = Arc::new(data());
@@ -953,16 +1014,19 @@ fn una_at_the_tree_moves_secrets_to_find_the_red_vale() {
     assert_eq!(s.current_step.as_deref(), Some("step-1"));
     assert_eq!(next_title(&data, &s), "Search the Grelwood");
 
-    // Target: Una's first line there makes "Find the Red Vale" the next step.
+    // Una's first line there, on the summon, makes "Ask Una for help" next.
     let moved = r.say(TOWN_SPOKEN, UNA_ASKS);
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.current_step.as_deref(), Some("step-2"));
+    assert_eq!(next_title(&data, &s), "Ask Una for help");
+    assert!(moved.iter().any(|t| t.quest_id == "secrets-in-the-dark"), "{moved:?}");
+
+    // Target: her wait line, after the talk, makes "Find the Red Vale" next.
+    let moved = r.say(TOWN_SPOKEN, UNA_WAITS);
     let s = r.state("secrets-in-the-dark");
     assert_eq!(s.current_step.as_deref(), Some("step-3"));
     assert_eq!(next_title(&data, &s), "Find the Red Vale");
     assert!(moved.iter().any(|t| t.quest_id == "secrets-in-the-dark"), "{moved:?}");
-
-    // Her line a few seconds later is the same step: nothing moves.
-    let moved = r.say(TOWN_SPOKEN, UNA_WAITS);
-    assert!(moved.is_empty(), "{moved:?}");
 
     // The same line in the encampment is no signal: a second character
     // that hears it there stays on the first step.
@@ -1093,4 +1157,218 @@ fn done_inferred_matches_notes() {
     let blackjaw = data.quest("blackjaw-the-remnant").expect("blackjaw");
     assert!(blackjaw.notes.contains("inferred"), "{:?}", blackjaw.notes);
     assert!(!blackjaw.done_inferred);
+}
+
+/// The owner's find-it tips (after Live 3, 2026-10-25, with the two tidied
+/// texts the owner chose), as quest, step, the step's title and the tip. The
+/// titles are poe2db's except Beira's "Find ...", which is ours; pinning them
+/// keeps a tip from drifting onto another step unnoticed.
+const OWNER_TIPS: [(&str, &str, &str, &str); 5] = [
+    ("reaching-clearfell", "step-2", "Slay the Bloated Miller", "Follow up river."),
+    ("treacherous-ground", "step-2", "Find the Mud Burrow", "Follow the burrow."),
+    (
+        "beira-of-the-rotten-pack",
+        "find",
+        "Find Beira of the Rotten Pack",
+        "More wolves means you are closer to Beira.",
+    ),
+    ("secrets-in-the-dark", "step-1", "Travel to the Grelwood", "Follow up river again."),
+    ("secrets-in-the-dark", "step-2", "Search the Grelwood", "Should be close to entrance etc."),
+];
+
+/// The tip of the step the row shows next, as [`next_title`] finds it.
+fn next_tip<'a>(data: &'a QuestData, state: &QuestState) -> Option<&'a str> {
+    let q = data.quest(&state.quest_id).expect("quest");
+    let title = next_title(data, state);
+    q.steps.iter().find(|s| s.title == title).and_then(|s| s.tip.as_deref())
+}
+
+/// Each of the owner's tips is on its step, and that step is the one the row
+/// shows next while the player is doing what the tip helps with.
+#[test]
+fn owner_tips_are_on_their_steps() {
+    let data = Arc::new(data());
+    for (quest, step, title, tip) in OWNER_TIPS {
+        let q = data.quest(quest).unwrap_or_else(|| panic!("no quest {quest}"));
+        let s = q
+            .steps
+            .iter()
+            .find(|s| s.id == step)
+            .unwrap_or_else(|| panic!("quest {quest}: no step {step}"));
+        assert_eq!(s.title, title, "quest {quest}: step {step}");
+        assert_eq!(s.tip.as_deref(), Some(tip), "quest {quest}: step {step}");
+    }
+    // Negative control: the step after each tipped one carries none of them.
+    let ask = data.quest("secrets-in-the-dark").and_then(|q| q.steps.iter().find(|s| s.id == "step-3"));
+    assert_eq!(ask.expect("step-3").tip, None);
+    let defeat = data.quest("beira-of-the-rotten-pack").and_then(|q| q.steps.iter().find(|s| s.id == "fight"));
+    assert_eq!(defeat.expect("fight").tip, None);
+
+    // In play: The Riverbank shows the Miller's tip, Clearfell the burrow's,
+    // Beira's and the way to the Grelwood, and the Grelwood the tree's.
+    let tip = |quest: &str, step: &str| {
+        OWNER_TIPS
+            .iter()
+            .find(|t| t.0 == quest && t.1 == step)
+            .map(|t| t.3)
+            .expect("an owner tip")
+    };
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    let s = r.state("reaching-clearfell");
+    assert_eq!(next_tip(&data, &s), Some(tip("reaching-clearfell", "step-2")));
+    r.enter("G1_town");
+    r.enter("G1_2");
+    let s = r.state("treacherous-ground");
+    assert_eq!(next_tip(&data, &s), Some(tip("treacherous-ground", "step-2")));
+    let s = r.state("beira-of-the-rotten-pack");
+    assert_eq!(next_tip(&data, &s), Some(tip("beira-of-the-rotten-pack", "find")));
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(next_tip(&data, &s), Some(tip("secrets-in-the-dark", "step-1")));
+    r.enter("G1_town");
+    r.enter("G1_4");
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(next_tip(&data, &s), Some(tip("secrets-in-the-dark", "step-2")));
+}
+
+/// Live 3: the owner took Treacherous Ground from Renly in Clearfell
+/// Encampment, and it showed only from the Clearfell entry. The talk is not
+/// in the log (Live 3's town visit held no NPC line), so the town entry, the
+/// signal Finding the Forge unlocks on too, makes it available (inferred).
+#[test]
+fn treacherous_ground_available_in_town() {
+    let data = Arc::new(data());
+    let q = data.quest("treacherous-ground").expect("quest");
+    for code in [TOWN_CODE, "G1_2"] {
+        assert!(
+            q.unlock.iter().any(|s| area_codes(s).contains(&code)),
+            "its unlock lacks {code}: {:?}",
+            q.unlock
+        );
+    }
+    assert!(q.notes.contains("Available (inferred)"), "{:?}", q.notes);
+
+    // Baseline: The Riverbank alone leaves it locked.
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    assert_eq!(r.state("treacherous-ground").status, Status::Locked);
+
+    // Target: the encampment entry makes it available, no step reached, in
+    // one transition.
+    let moved = r.enter(TOWN_CODE);
+    let s = r.state("treacherous-ground");
+    assert_eq!((s.status, s.current_step.as_deref()), (Status::Available, None));
+    let mine: Vec<&Transition> = moved.iter().filter(|t| t.quest_id == "treacherous-ground").collect();
+    assert_eq!(mine.len(), 1, "{moved:?}");
+    assert_eq!((mine[0].from, mine[0].to), (Status::Locked, Status::Available));
+
+    // Clearfell puts it in progress, as before: the Mud Burrow is next.
+    r.enter("G1_2");
+    let s = r.state("treacherous-ground");
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(s.current_step.as_deref(), Some("step-1"));
+    assert_eq!(next_title(&data, &s), "Find the Mud Burrow");
+}
+
+const BEIRA: &str = "beira-of-the-rotten-pack";
+const BEIRA_SPEAKER: &str = "Beira of the Rotten Pack";
+
+/// Her first line each fight, then one of her combat barks, as the owner's
+/// log recorded them (9 sessions, 2026-10-25).
+const BEIRA_FIRST: &str = "Sleep in ice, wake in snow. Sleep my pretties as you grow...";
+const BEIRA_BARK: &str = "Be still!";
+
+/// Her reward line's stat, in the log's markup.
+const BEIRA_COLD: &str = "+10% to [Resistances|Cold Resistance]";
+
+/// Live 2 and Live 3 showed "Use the item it dropped" at Beira's first line.
+/// No line marks her defeat as far as measured, so the owner ticks it
+/// (2026-10-25): her lines are "Find ...", "Defeat ..." waits for the tick
+/// whatever area comes next, and her reward line finishes the quest in any
+/// area, from either step.
+#[test]
+fn beira_defeat_is_ticked_by_hand() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    r.enter(TOWN_CODE);
+    r.enter("G1_2");
+
+    // Baseline: Clearfell reached, Beira not met.
+    let s = r.state(BEIRA);
+    assert_eq!(s.current_step.as_deref(), Some("enter"));
+    assert_eq!(next_title(&data, &s), "Find Beira of the Rotten Pack");
+
+    // Her lines find her: "Defeat ..." is next, not "Use ...".
+    r.say(BEIRA_SPEAKER, BEIRA_FIRST);
+    r.say(BEIRA_SPEAKER, BEIRA_BARK);
+    let s = r.state(BEIRA);
+    assert_eq!(s.current_step.as_deref(), Some("find"));
+    assert_eq!(next_title(&data, &s), "Defeat Beira of the Rotten Pack");
+
+    // Nothing the log records afterwards marks her defeat: the Mud Burrow,
+    // Clearfell again and the Grelwood leave "Defeat ..." next.
+    for code in ["G1_3", "G1_2", "G1_4"] {
+        r.enter(code);
+        let s = r.state(BEIRA);
+        assert_eq!(s.status, Status::InProgress, "after {code}");
+        assert_eq!(next_title(&data, &s), "Defeat Beira of the Rotten Pack", "after {code}");
+    }
+
+    // Target: the player's tick on "Defeat ..." makes the item's use next.
+    r.engine
+        .tick_step(GRELWOOD_CHARACTER, BEIRA, "fight", true)
+        .expect("tick the defeat");
+    let s = r.state(BEIRA);
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(s.current_step.as_deref(), Some("fight"));
+    assert_eq!(next_title(&data, &s), "Use the item it dropped");
+
+    // The reward line, read in the Grelwood, finishes it.
+    let moved = r.received(BEIRA_COLD);
+    assert_eq!(r.state(BEIRA).status, Status::Done);
+    assert!(moved.iter().any(|t| t.quest_id == BEIRA && t.to == Status::Done), "{moved:?}");
+
+    // A character that uses the item at once goes from "Defeat ..." to done
+    // with no tick.
+    let mut quick = Replay::start(&data, "Ilse_Garrow");
+    quick.enter(TOWN_CODE);
+    quick.enter("G1_2");
+    quick.say(BEIRA_SPEAKER, BEIRA_FIRST);
+    let s = quick.state(BEIRA);
+    assert_eq!(next_title(&data, &s), "Defeat Beira of the Rotten Pack");
+    quick.received(BEIRA_COLD);
+    let s = quick.state(BEIRA);
+    assert_eq!(s.status, Status::Done);
+    assert!(!s.steps.iter().any(|st| st.ticked), "{:?}", s.steps);
+}
+
+/// Live 3: the person summoned Una at the tree and the game closed 2.5 min
+/// later without her wait line. Her first line alone ends the search and
+/// leaves the talk to do; the Red Vale entry, where the wait line never came,
+/// reaches the steps before it.
+#[test]
+fn una_summon_alone_leaves_ask_una_for_help() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    for code in [TOWN_CODE, "G1_2", TOWN_CODE, "G1_4"] {
+        r.enter(code);
+    }
+
+    // Target: the summon leaves "Ask Una for help" next.
+    r.say(TOWN_SPOKEN, UNA_ASKS);
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.current_step.as_deref(), Some("step-2"));
+    assert_eq!(next_title(&data, &s), "Ask Una for help");
+
+    // A later visit to the encampment and back leaves it there.
+    r.enter(TOWN_CODE);
+    r.enter("G1_4");
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.current_step.as_deref(), Some("step-2"));
+    assert_eq!(next_title(&data, &s), "Ask Una for help");
+
+    // The Red Vale entry reaches "Find the Red Vale" without the wait line.
+    r.enter("G1_5");
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(s.current_step.as_deref(), Some("step-4"));
+    assert_eq!(next_title(&data, &s), "Search for Runes of Power");
 }
