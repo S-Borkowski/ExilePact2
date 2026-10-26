@@ -48,6 +48,12 @@
 //!   writes the `quit:` line; the first request wins) and then exit the app.
 //!   The close itself is held back, so the window stays until the exit;
 //!   `RunEvent::Exit` then runs `shutdown` as before.
+//! - **Screen reading**: on Windows the shell gets `qt-capture`'s backend,
+//!   built with the overlay's window handle (read where the no-activate
+//!   style reads it), so the reader thread checks the overlay's rect and
+//!   visibility with Win32 calls and never calls into Tauri. Elsewhere it
+//!   gets none, and the "Read the screen" setting starts nothing. No
+//!   capability is involved.
 //! - **Main-thread callbacks** (the shortcut, window moves, a DPI scale
 //!   change, a second launch, the tray menu, a close request)
 //!   hand their work to a blocking task, so the main thread never waits for
@@ -57,7 +63,8 @@ use std::sync::{Arc, Mutex};
 
 use qt_app::{
     App, AppConfig, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, QuitFrom,
-    RowChange, Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
+    RowChange, ScreenBackend, Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL,
+    SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
 use tauri::menu::{Menu, MenuItem};
@@ -335,6 +342,24 @@ fn no_activate(_window: &WebviewWindow, shell: &App) {
     shell.diag("window: no-activate style is Windows-only");
 }
 
+/// The screen reader's backend: `qt-capture`'s, given the overlay's window
+/// handle, read here as `no_activate` reads it, so the reader can check the
+/// overlay's own rect and visibility with Win32 calls instead of waiting on
+/// this main thread. A handle that cannot be read is passed as none
+/// (`no_activate` logs why); the backend then sees no overlay.
+#[cfg(windows)]
+fn screen_backend(window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
+    let overlay = window.hwnd().ok().map(|handle| handle.0 as isize);
+    Some(qt_capture::backend(overlay))
+}
+
+/// Elsewhere there is no backend, and the `screen_reading` setting starts
+/// nothing.
+#[cfg(not(windows))]
+fn screen_backend(_window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
+    None
+}
+
 /// Runs `f` on a blocking task with the shell, if it is up yet.
 fn later(app: &AppHandle, f: impl FnOnce(&App) + Send + 'static) {
     if let Some(shell) = app.try_state::<Arc<App>>() {
@@ -509,6 +534,7 @@ pub fn run() {
                     hotkey: Mutex::new(None),
                 }),
                 clock: Box::new(SystemClock::default()),
+                screen: screen_backend(&window),
             });
             app.manage(Arc::clone(&shell));
             shell.start();
