@@ -3,6 +3,7 @@
 Developer-only. Usage:
 
     py -3 -m tools.quest_tracker.outside.run start [--live L] --pid P [--timeout S] [--max-minutes M]
+                                                   [--top x0,y0,x1,y1|off] [--bottom x0,y0,x1,y1|off]
     py -3 -m tools.quest_tracker.outside.run stop [--live L] [--timeout S]
 
 `start` launches the three unelevated instruments against the game's pid, each
@@ -13,7 +14,10 @@ that started them:
   `i2\\game.wav`, stop file `stop-i2`, log `i2\\recorder.log`, ready line
   `ready <utc>`);
 - the capture, `capture.ps1` (2 Hz frames of the game's window into `i3\\`,
-  stop file `stop-i3`, log `i3\\capture.log`, ready line `capture: ready ...`);
+  stop file `stop-i3`, log `i3\\capture.log`, ready line `capture: ready ...`;
+  `--top` and `--bottom` pass its `-Top` and `-Bottom` bands, as fractions of
+  the client rect or `off`, checked as the capture checks them before anything
+  is spawned; without them it keeps its own bands and its command is unchanged);
 - the marker, `marker.ps1` (Ctrl+Alt+M presses into `markers.txt`, stop file
   `stop-marker`, log `marker.log`, ready line `# registered ...`).
 
@@ -74,8 +78,42 @@ class Instrument(NamedTuple):
     stop: str           # its stop-file instrument name
 
 
-def instruments(live: Path, pid: int, max_minutes: float = MAX_MINUTES) -> list[Instrument]:
+def band_arg(option: str, text: str) -> str:
+    """`text` checked as `capture.ps1` checks a band (`x0,y0,x1,y1` fractions of
+    the client rect, each in 0..1, with x1 > x0 and y1 > y0, or `off`), so a
+    malformed band is refused here, naming `option`, rather than by a capture
+    already spawned. Returns the value to pass on."""
+    if text.strip().lower() == "off":
+        return "off"
+    parts = text.split(",")
+    if len(parts) != 4:
+        raise ToolError("%s needs x0,y0,x1,y1 or off, got '%s'" % (option, text))
+    values = []
+    for part in parts:
+        try:
+            value = float(part.strip())
+        except ValueError:
+            raise ToolError("%s has a value that is not a number: '%s'" % (option, part)) from None
+        if not 0.0 <= value <= 1.0:     # also refuses nan
+            raise ToolError("%s fractions lie in 0..1, got '%s'" % (option, part))
+        values.append(value)
+    if values[2] <= values[0] or values[3] <= values[1]:
+        raise ToolError("%s needs x1 > x0 and y1 > y0, got '%s'" % (option, text))
+    return text
+
+
+def instruments(live: Path, pid: int, max_minutes: float = MAX_MINUTES,
+                top: str | None = None, bottom: str | None = None) -> list[Instrument]:
+    """The three instruments' commands. `top` and `bottom`, when given, override
+    the capture's bands (`-Top`, `-Bottom`); without them the capture keeps its
+    own defaults and its command is unchanged."""
     live = Path(live)
+    bands = []
+    for option, flag, text in (("--top", "-Top", top), ("--bottom", "-Bottom", bottom)):
+        if text is not None:
+            bands += [flag, band_arg(option, text)]
+    if bands.count("off") == 2:
+        raise ToolError("--top and --bottom are both off: the capture would have nothing to capture")
     return [
         Instrument("recorder",
                    audio.recorder_command(pid, live / "i2" / "game.wav", common.stop_file(live, "i2"),
@@ -84,7 +122,7 @@ def instruments(live: Path, pid: int, max_minutes: float = MAX_MINUTES) -> list[
         Instrument("capture",
                    screen.powershell(screen.CAPTURE_PS1, "-TargetPid", str(pid), "-OutDir", str(live / "i3"),
                                      "-StopFile", str(common.stop_file(live, "i3")), "-Hz", str(screen.HZ),
-                                     "-MaxMinutes", str(max_minutes)),
+                                     "-MaxMinutes", str(max_minutes), *bands),
                    live / "i3" / "capture.log", "capture: ready", "i3"),
         Instrument("marker",
                    screen.powershell(screen.MARKER_PS1, "-Out", str(live / common.MARKERS_TXT),
@@ -192,7 +230,8 @@ def last_line(path: Path) -> str:
 
 def start(live: Path, pid: int, timeout: float = READY_TIMEOUT_S, max_minutes: float = MAX_MINUTES,
           spawn: Callable = spawn_detached, created: Callable = process_created,
-          tools: list[Instrument] | None = None, out=None) -> int:
+          tools: list[Instrument] | None = None, out=None,
+          top: str | None = None, bottom: str | None = None) -> int:
     out = out or sys.stdout
     live = Path(live)
     common.refuse_inside_git(live, "instrument logs")
@@ -201,7 +240,7 @@ def start(live: Path, pid: int, timeout: float = READY_TIMEOUT_S, max_minutes: f
     if (live / RUN_JSON).exists():
         raise ToolError("%s already exists: the instruments were started once. Run `run stop`, "
                         "and use a fresh live folder for a new session" % (live / RUN_JSON))
-    tools = tools if tools is not None else instruments(live, pid, max_minutes)
+    tools = tools if tools is not None else instruments(live, pid, max_minutes, top=top, bottom=bottom)
     for t in tools:
         stop = common.stop_file(live, t.stop)
         if stop.exists():
@@ -317,6 +356,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--pid", type=int, required=True, help="the game's pid, from the lease")
     s.add_argument("--timeout", type=float, default=READY_TIMEOUT_S, help="seconds to wait for the ready lines")
     s.add_argument("--max-minutes", type=float, default=MAX_MINUTES)
+    s.add_argument("--top", default=None, metavar="x0,y0,x1,y1|off",
+                   help="the capture's top band, fractions of the client rect (default: the capture's own)")
+    s.add_argument("--bottom", default=None, metavar="x0,y0,x1,y1|off",
+                   help="the capture's bottom band, fractions of the client rect (default: the capture's own)")
     t = sub.add_parser("stop", help="create the stop files and wait for every instrument to end")
     t.add_argument("--live", type=Path, default=None)
     t.add_argument("--timeout", type=float, default=STOP_TIMEOUT_S)
@@ -328,7 +371,8 @@ def main(argv: list[str] | None = None) -> int:
     live = args.live if args.live is not None else common.default_live_dir()
     try:
         if args.command == "start":
-            return start(live, args.pid, timeout=args.timeout, max_minutes=args.max_minutes)
+            return start(live, args.pid, timeout=args.timeout, max_minutes=args.max_minutes,
+                         top=args.top, bottom=args.bottom)
         return stop(live, timeout=args.timeout)
     except ToolError as err:
         print("run: error: %s" % err, file=sys.stderr)
