@@ -85,8 +85,9 @@ nothing here touches it. All times are UTC, ISO 8601 with milliseconds and
 | `tools\<name>\` | the person | each owner-approved download, each in its own new folder |
 | `analysis.json` | `analyse` | per check: name, expected, observed, verdict, details |
 
-`session prep` refuses an `L` that is not empty, so each session gets a
-fresh folder.
+`session prep` refuses an `L` that holds anything but a `tools` folder,
+so each session gets a fresh folder; a `tools` folder alone is kept, since
+it holds the owner-approved downloads fetched before the session.
 
 ## The clock
 
@@ -378,7 +379,7 @@ digits and spaces, with runs of spaces collapsed. The score is the best
 
 | Command | Options | What it does |
 |---|---|---|
-| `prep` | `--live L`, `--client-txt P`, `--ggpk G` (defaults: the install's `logs\Client.txt` and `Content.ggpk`) | Creates `L` and its subfolders, refusing an `L` that is not empty. Writes `session.json` and the first clock anchor. It looks only at the two files' sizes and times, and reads neither. |
+| `prep` | `--live L`, `--client-txt P`, `--ggpk G` (defaults: the install's `logs\Client.txt` and `Content.ggpk`) | Creates `L` and its subfolders, refusing an `L` that holds anything but a `tools` folder (the approved downloads, which it keeps). Writes `session.json` and the first clock anchor. It looks only at the two files' sizes and times, and reads neither. |
 | `clock` | `--live L` | Appends one anchor to `clock.jsonl`. |
 | `stop` | `--live L`, `--only i1,i2,i3,marker` | Creates the stop files (all four by default). |
 
@@ -456,6 +457,60 @@ again:
 `P` is the game's pid in that session, from the `[INFO Client <pid>]`
 lines and `run.json`. OCR results are cached in `ocr.jsonl`, so a re-run
 reads only new frames. `--only` re-runs one check without the rest.
+
+## What Live 6 showed
+
+Live 6 ran these instruments during one Beira kill on 2026-10-26. Its
+first attempt was blind at `run start` (the spawned instruments did not
+run their command) and spent no kill; it was run again as session 7, after
+a Restart, into a new live folder. Every instrument's rehearsal and
+controls passed there. The verdicts and what they mean for the quest
+tracker are in [`quest-tracker-research.md`](quest-tracker-research.md)
+§ "Live 6: three instruments, one kill" and § "Product route"; this
+section is about the tools.
+
+- **The file-read trace.** The elevated controller has to be started by
+  the person: the operator's own tool layer refused the `RunAs` launch
+  before any UAC prompt, and the person ran the same command from their
+  PowerShell and accepted the prompt. The rehearsal saw both the cached
+  read call and the mapped page's paging read, so the trace is not blind to
+  either. The session's trace of about 10 minutes of play was a 2.6 GB ETL
+  that exported to a 24 GB XML in 314 s; `fileio reads` took 905 s over its
+  13 million events and found 62,562 reads of `Content.ggpk` by the game,
+  every one a paging read, and `fileio map` placed every one in the GGPK
+  tree. Without a decoded index, R holds only the dialogue bundles read at
+  her lines, so a bundle first read at the kill (`monsters.F4` in this
+  session) falls outside R; and `i1-target`'s window [M − 3, M + 2] missed
+  the reads at her death because the press came about 4 s after it. The
+  `not-observed` wording names the cache, but this session's reason was the
+  base rate: the bank was read as often during the fight as at the kill.
+  A run with a decoded index (the Oodle decoder in `L\tools\` before
+  `prep`) would name the bundle that holds her cry.
+- **The loopback recorder.** The selftest, the isolation check (the
+  marker's beep 8.3 dB above its neighbours, below the 15 dB that would
+  show other processes' audio) and every control passed, with 110 burst
+  onsets over the session. The kill check's one onset came about 5 s after
+  her death, so the burst rule did not show that it finds a cry inside a
+  fight's sound; the person's listening did. Its base rates came from only
+  two line-free windows, since the fight from her first line to the press
+  lasted 27 s. The template checks need reference audio in `ref\`, which
+  needs the decoders, and did not run.
+- **Screen capture and OCR.** 2,110 frames at 2 Hz, none skipped and none
+  black, so a GDI capture of the borderless window works on this client at
+  2560×1440 and DPI scale 1. The chat band read every logged line it was
+  checked against at a score of 0.8 or more (1.00 where the score was
+  printed). The boss bar's name read in about half the
+  frames while the bar was up and in none after the kill. The text check
+  around the kill counts any new text, so it passed on dropped items' labels,
+  the skill bar's key hints and the character's own remark, none of them
+  hers.
+- **The marker.** Two presses, the test press in town and the kill press,
+  both stamped; the person's press came about 4 s after her death, which is
+  why the windows above that end at M + 2 s were late for the file reads.
+- **`analyse`.** It needs `--confirmed` for `marker` and `--listened` for
+  `i2-listened`; until both are given those checks fail or stay `not-run`.
+  `reward-split` failed (the reward came 40.1 s after the press), which is a
+  finding about the game, not about the tools.
 
 ## Tests
 

@@ -180,10 +180,11 @@ with a person listening; not proof that they are never logged).
 ## Game files (Content.ggpk)
 
 Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
-§ "Where the client keeps its audio (static reading)". Each bullet is a
-static reading of 2026-10-26: a read-only walk of the GGPK's directory
-records, headers only, with the game closed. None of it was measured
-against the running game.
+§ "Where the client keeps its audio (static reading)" and § "Live 6: three
+instruments, one kill". The static readings are of 2026-10-26: a read-only
+walk of the GGPK's directory records, headers only, with the game closed.
+The last bullet was measured against the running game, from outside it,
+in Live 6.
 
 - **Where it is** (static reading, 2026-10-26). For the standalone client,
   `Content.ggpk` sits in the install folder beside `PathOfExile.exe` and
@@ -210,13 +211,25 @@ against the running game.
 - **How the client reads it** (static reading of the exe, not of the GGPK,
   2026-10-26): on the paths followed, through a memory mapping; see
   § "Audio (FMOD)" below.
+- **Read timing** (measured 2026-10-26, Live 6, a Windows file-I/O trace
+  of one session from a cold boot, about 10 minutes in town, Clearfell and
+  the Grelwood). All 62,562 reads of `Content.ggpk` by the game's process
+  were paging reads, with no read call among them, so the game reaches
+  the file through its memory map and a page shows in a trace only when it
+  comes from disk. Most reads are of 64 KiB (52,196), and they
+  map to bundle data (59,951), plain GGPK files such as the FMOD banks
+  (3,236) and record headers. Audio is read when it plays, not at an
+  area's load: see § "Audio (FMOD)". The GGPK's directory did not change
+  over the session.
 
 ## Audio (FMOD)
 
 Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
 § "How the client loads its audio (static reading)", which names the build
-read and how the call sites were found. Each bullet below is a static
-reading of the client's executable (2026-10-26), not a measurement.
+read and how the call sites were found, and § "Live 6: three instruments,
+one kill". Each bullet below is labelled: the static readings are of the
+client's executable (2026-10-26); the Live 6 bullet was measured from
+outside the game.
 
 - **Banks reach FMOD through the client's callbacks** (static reading,
   2026-10-26). The client loads banks with
@@ -265,6 +278,24 @@ reading of the client's executable (2026-10-26), not a measurement.
   its audio path ends in
   `monsters/part1/act1/carrioncrone/carrioncronedeath.ogg`. A line with no
   text was not observed in `Client.txt` (§ "Client log (Client.txt)").
+- **When the audio is read** (measured 2026-10-26, Live 6, one Beira kill
+  after a cold boot, a file-I/O trace of the game's paging reads of
+  `Content.ggpk`). `CarrionCrone.bank` was read during play, not at the
+  area's load or at her first line: 136 paging reads from her second line
+  until about 1 s after her death, in bursts every 1 to 4 s, and none
+  after. Her `monsters.D1` dialogue bundle was read at her first three
+  lines, an `npc.12` dialogue bundle 0.02 s after Una's line, and a read
+  followed both of a town NPC's lines. At her death, and at no other time in
+  the session, the client read `BossKill.bank` and the dialogue bundle
+  `monsters.F4`, then a `characters.*` bundle 0.1 s before the player
+  character's spoken remark showed as a subtitle. Which bundle holds
+  `carrioncronedeath.ogg` is not established (no decoded index), and
+  whether a second kill in the same boot reads anything from disk is not
+  measured: a page still in memory leaves no read. The game's own audio,
+  recorded alone by process loopback, held a burst at 3 of her 4 lines
+  and at Una's line, and the person heard a cry at her death; whether the
+  burst rule found the cry itself is not established (the one onset it
+  found was about 5 s after her death).
 
 ## Client configuration file
 
@@ -289,3 +320,28 @@ not measured, unless a bullet says otherwise.
   `borderless_windowed_fullscreen` and `fullscreen` (`true` and `false`,
   at 2560×1440 on the machine read); `chat_box_width`, `chat_box_height`
   (1040 and 640) and `show_chat_timestamps` (`true`).
+
+## On-screen text (boss bar and subtitles)
+
+Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+§ "Live 6: three instruments, one kill". Screen captures at 2 Hz of the
+borderless window (2560×1440, English client), OCR'd offline with
+Windows' own OCR; the game's process was not touched.
+
+- **The boss bar names the boss, and the name goes at the kill**
+  (measured 2026-10-26, Live 6, one Beira kill). In the top-centre band,
+  "Beira of the Rotten Pack" OCR'd in 12 of 23 frames during her fight
+  and in 12 of the 20 frames in the 10 s before the kill marker, and in
+  none of the 18 frames from 1 s to 10 s after it. The last frame with it
+  was within about 0.5 s of her death as the level-up line and the file
+  reads place it. Only about half the frames read the name while the bar
+  is up.
+- **Subtitles OCR** (measured 2026-10-26, Live 6). Her four lines, two
+  town NPC lines and Una's line read at a score of at least 0.8 in the
+  chat band within 4 s of their log lines. None of 2,110 GDI captures of
+  the borderless DX12 window was black.
+- **The character's own remark at a boss kill is shown but not logged**
+  (measured 2026-10-26, one kill). About 1.5 s after Beira's death the
+  player character's spoken remark appeared as a subtitle, prefixed with
+  the character's name, and `Client.txt` has no line for it. Whether it
+  follows every boss kill is not established.

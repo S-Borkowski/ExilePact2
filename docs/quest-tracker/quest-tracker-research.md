@@ -340,6 +340,19 @@ last line in the area to the `has received` line:
   build or setting ever logs it. Her death cry has no text (poe2db's
   `CarrionCroneDeath`, § "Seeing a voiced line from outside the game"),
   which fits a log that carries a voiced line through its words.
+- **Live 6, a second controlled kill** (measured 2026-10-26, run as session
+  7, § "Live 6: three instruments, one kill"). Her four lines were logged;
+  her death, about 15:10:01.5Z by the boss bar and the instruments, was
+  again not: the log's only lines between her last line and the reward
+  were a level-up of the player's character at her death and a
+  shader-compiler line. The `+10% to Cold Resistance` reward came about
+  44 s after her death and before the `G1_4` area lines, although the
+  person reported waiting 60 s before using the item, so whether this
+  reward waits on the use, as Live 1 and Live 4 suggest, is no longer
+  settled. From outside the game her death was seen: her name left the
+  boss bar at the kill, the person heard a cry in the game-only recording,
+  and two audio records were read from disk then and at no other time in
+  the session. The tracker still has the player tick the defeat step.
 - **Blackjaw and Lythara** (inference). That their reward also follows the
   use of an item the boss dropped is read from the above, not observed in
   play: Blackjaw's gaps are timed from a bark and cannot separate the two
@@ -1019,6 +1032,163 @@ reading predicts, and would not show that nothing played. Reading
 access and shares read only, so Windows lets another process open the file
 only for reading and only with a share mode that allows writing; that was
 not tried.
+
+### Live 6: three instruments, one kill
+
+Measured 2026-10-26 with Live procedure 6 and one Beira kill, by a level-2
+Druid in Clearfell (`G1_2`), the three instruments of
+[`outside-instruments.md`](outside-instruments.md) running outside the game
+and nothing installed into it. The first attempt was blind at its start
+(the instruments' spawn did not run their command) and spent no kill; the
+procedure was run again as session 7, after a Restart, and every verdict
+below is that session's (capture
+`.claude/workorders/quest-tracker-beira-defeat-live-7.md`, its analysis
+kept outside the repository). Times are UTC; the log's local time was
+UTC+1. Her lines were four: her opening line at 15:09:38.8, "Invader!",
+"Be still!" and "Feed!" by 15:09:50. The kill marker M, the person's press,
+was at 15:10:05.535, "less than 5 seconds" after her death by their
+account, which they confirmed. The boss bar's last frame with her name was
+4.0 s before M, and the log's level-up line (16:10:01 local) came at about
+the same moment, so her death was close to 15:10:01.5, about 4 s before M.
+The reward line came at 15:10:45.655 and Una's "What happened here...?" at
+15:11:25.749 in `G1_4`.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `control` | pass | one `LOG FILE OPENING` (15:01:40), 672 lines from the lease's pid, `G1_town` at 15:02:03.6 |
+| `marker` | pass | 2 presses, the test press at 15:04:05.3, M at 15:10:05.535, 26.69 s after her first line and 40.1 s before the reward line; the person confirmed it was at her death |
+| `ggpk-stable` | pass | the GGPK tree identical before and after the session |
+| `i1-rehearsal` | pass | both probe reads seen with the probe's pid, the cached one included |
+| `i1-rehearsal-mapped` | pass | the probe's touch of a mapped page seen as a paging read 0.001 s later |
+| `i2-rehearsal` | pass | the selftest tone 95.9 dB above the silent one, onset +105 ms |
+| `i3-rehearsal` | pass | 5 frames, none black; both probe lines OCR'd at 1.00 |
+| `i2-town` | pass | 2 of Renly's lines, burst onsets +0.20 s and +0.12 s |
+| `i2-isolation` | pass | the test press's beep 8.3 dB above its neighbours in the game-only recording (below the 15 dB that would mean other processes leaked in) |
+| `i3-town` | pass | both of Renly's lines OCR'd at 1.00 in 8 frames each; no black frames |
+| `i1-control` | pass | a read of R at 4 of her 4 lines; R was `CarrionCrone.bank` and one dialogue bundle, `monsters.D1` (no decoded index) |
+| `i1-control-una` | pass | Una's line: a read of `/Bundles2/Streaming/Folders/audio/dialogue/4.0/npc.12.bundle.bin` 0.02 s after it |
+| `i1-read-timing` | pass | bank: playback; dialogue: playback; town lines read: 2 of 2 |
+| `i1-target` | not-observed | 3 reads of R within [M − 3, M + 2] with none of her lines near, but a base rate of 0.50 over the fight's 2 line-free windows, which is not below 0.5; cache cold (boot after the last game start) |
+| `i2-control` | pass | a burst onset at 3 of her 4 lines (0.75), base rate 0.00 over 2 windows |
+| `i2-control-una` | pass | Una's line: onset +0.15 s |
+| `i2-target` | pass | one onset at M + 1.31 s, base rate 0.00 over 2 windows |
+| `i2-listened` | pass | the person heard her voice in the bark clip and a cry in the kill clip |
+| `i2-template-control` | not-run | no reference audio in `ref\` (no decoder in the session's folder) |
+| `i2-template` | not-run | no reference audio in `ref\` |
+| `i3-control` | pass | 4 of her 4 lines OCR'd in the chat band; no black frames |
+| `i3-control-una` | pass | Una's line at 1.00 in 8 frames |
+| `i3-bar-control` | pass | her name in the boss bar in 12 of 23 top-band frames between her first and last lines (0.52) |
+| `i3-text-target` | pass | 5 bottom-band lines new within [M − 3, M + 4], at −2.51, −2.01, −0.50 and twice +3.50 s |
+| `i3-bar-target` | pass | her name in 12 of 20 top-band frames in the 10 s before M and in none of 18 frames from M + 1 s to M + 10 s, none black; the last frame with it 4.02 s before M |
+| `reward-split` | fail | the reward line 40.1 s after M, not the 55 s the procedure's 60 s wait before using the item would give |
+
+**The file-read trace (I1).** Its controls passed: the rehearsal saw a
+cached read call and a paging read of a mapped page, the cache was cold
+(the boot came after the last game start), and each of her lines and Una's
+line had a read of the matching audio within 0.5 s before to 1.5 s after
+it (Una's 0.02 s after).
+Every one of the game's 62,562 reads of `Content.ggpk` in the session was a
+paging read, with no read call among them, which is what the static
+reading above predicts for a memory-mapped file. Read timing is
+`playback` for both parts of R: `CarrionCrone.bank` was not read at the
+area's load or at her first line but from her second line on, 136 paging
+reads in bursts every 1 to 4 s through the fight, the last
+at 15:10:02.87, about 1.3 s after her death, and none after it. The
+`monsters.D1` dialogue bundle was read at her first three lines. The
+target is `not-observed`, but not for the reason its fixed wording gives:
+reads of R were seen inside the kill window (three of the bank, at
+15:10:02.87), and the check refused them because the bank is read as often
+during the fight as at the kill, so they mark the fight going on rather
+than its end. Outside the check, two records were read at her death and at
+no other time in the whole session: the dialogue bundle
+`/Bundles2/Streaming/Folders/audio/dialogue/4.0/monsters.F4.bundle.bin`
+(its blocks 0 and 1, at 15:10:01.95) and `/FMOD/Desktop/BossKill.bank`
+(15:10:02.00), both about 0.5 s after the bar's last frame and about 3.5 s
+before M, so outside the check's [M − 3, M + 2]. A characters dialogue
+bundle (`characters.7E`) was read at 15:10:02.93, 0.1 s before the
+subtitle of the player character's own remark appeared. Whether
+`monsters.F4` holds `carrioncronedeath.ogg` is not established: no decoded
+index was made, since the session's folder held no decoder. That
+`BossKill.bank` serves every boss kill is read from its name only. Both
+were first reads after a cold boot; a second kill in the same boot may find
+the pages in the cache and leave no read (the static reading above), which
+this one kill does not test. So the negative does not show that the file
+route cannot see her death, and the extra reads do not show that it can
+see it on a warm cache.
+
+**The loopback recorder (I2).** Its controls passed: the selftest tone,
+the isolation check on the test press, both of Renly's town lines, 3 of
+her 4 lines with a base rate of 0.00, and Una's line. The target passed by
+its rule, with one burst onset at M + 1.31 s, and the person heard a cry in
+the kill clip, lasting by their account to about 2 s before the press and
+followed by the level-up sound and the character's remark. The onset the
+rule found is about 5 s after the bar's last frame and after the cry the
+person describes, so it is more likely a later sound (the dropped items or
+the remark) than the cry's start; that the burst rule picks the cry out of
+the fight's sound is not established. Both base rates come from only two
+line-free windows. The template checks did not run, for want of reference
+audio. So the audio route's evidence is the person's ear and a burst near,
+not at, the death.
+
+**Screen capture and OCR (I3).** Its controls passed: the rehearsal, the
+town lines, all four of her lines and Una's line read from the chat band,
+and her name in the boss bar in 12 of 23 frames during the fight, just
+above the 50% the control asks for. No frame of 2,110 was black, so a GDI
+capture of the borderless window works on this client. Her name read in
+12 of the 20 frames in the 10 s before M and in none of the 18 after
+M + 1 s; the last frame with it was 4.02 s before M, within about 0.5 s of
+her death as the level-up line and the two reads above place it. The text
+target passed, but none of its 5 new lines is hers (her cry has no text):
+they are the player character's own remark as a subtitle, prefixed with the
+character's name, the name of an item she dropped, the skill bar's key
+hints and two labels of dropped items. The remark is not in `Client.txt`
+(the log holds only the level-up line and a shader-compiler line between her
+"Feed!" and the reward line); whether the character makes it at every boss
+kill is not established.
+
+**The reward.** It came 40.1 s after M, about 44 s after her death. The
+person reported following the steps (pick up, wait 60 s, use), so the
+reward came before the end of the wait, unlike Live 4's, which followed
+the use. Whether it was granted at the pickup or the wait was shorter is not
+established from this session.
+
+### Product route
+
+Recommended route: boss bar
+
+Taken from the decision table of this workorder: the boss bar is viable
+(`i3-bar-control` and `i3-bar-target` passed) and comes first. The audio
+template is viable by the same table too (`i2-control`, `i2-target` and
+`i2-listened` passed), with the caveat above that its onset came after the
+cry. File reads are not viable on this evidence (`i1-target` was
+`not-observed`), which does not show that they cannot be.
+
+- **The boss bar** needs no admin and no game asset, and it covers every
+  boss with a bar. A bar also goes away when the player leaves its range
+  or dies, so a detector has to pair the bar's going with her lines before
+  it and with no `has been slain` line. Her name read in only about half
+  the frames during the fight, so the detector needs a run of frames, not
+  one. One kill, one character, English client, borderless windowed at
+  2560×1440.
+- **The audio template** needs no admin, but a template is an extracted
+  asset that cannot ship, so the product would have to rebuild it, boss by
+  boss, from the player's own install.
+- **File reads** need an admin trace for the overlay's whole lifetime and a
+  map rebuilt each patch. The game reads `Content.ggpk` through a memory
+  map (all 62,562 of its reads were paging reads), so the trace sees a read
+  only when a page comes from disk. A read at a cold-cache kill, like the
+  `BossKill.bank` and `monsters.F4` reads above, does not show that a
+  shipped detector would see a second kill, or a kill whose pages are still
+  cached.
+
+The value is small: the reward line already finishes the quest from
+either step, usually within a minute (Live 4: tick at 10:30:13Z, done at
+10:30:53Z; this session: about 44 s after her death). The gain is one tick
+for each of three bosses (Beira, Blackjaw, Lythara), measured on one kill,
+and building it is the owner's call. A fourth route the owner asked about,
+reading the game's window through Windows' screen reader (Narrator or UI
+Automation), was not one of the three planned instruments and was not
+explored; whether the client exposes any text that way is not measured.
 
 ## Negative results
 
