@@ -16,7 +16,7 @@ pub mod engine;
 pub use area::{area_from_log, LogArea};
 pub use data::{
     classify_stat, Area, DataError, Detection, Element, Evidence, Quest, QuestData, Reward,
-    RewardCategory, Signal, Status, Step, Worth, SCHEMA,
+    RewardCategory, Signal, Status, Step, Worth, SCHEMA, TIP_MAX_CHARS,
 };
 pub use engine::{
     CharacterInfo, CharacterNote, CharacterState, Engine, EngineError, Overrides, Ownership,

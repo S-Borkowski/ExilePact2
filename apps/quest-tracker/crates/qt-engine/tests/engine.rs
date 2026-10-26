@@ -2854,6 +2854,61 @@ fn validator_checks_start_signals() {
     }
 }
 
+// -- a step's tip (Context "Data contract: step tips") ------------------------
+
+#[test]
+fn validator_checks_step_tips() {
+    let base: Value = serde_json::from_str(&data_text()).unwrap();
+    // Baseline: a file without tips parses as before, every step without one.
+    let d = QuestData::from_value(&base).unwrap();
+    assert!(d
+        .quests
+        .iter()
+        .all(|q| q.steps.iter().all(|s| s.tip.is_none())));
+
+    // Target: a valid tip is kept on its step, and only there.
+    let mut v = base.clone();
+    v["quests"][1]["steps"][0]["tip"] = "More wolves means you are closer to Beira.".into();
+    let d = QuestData::from_value(&v).expect("a valid tip is accepted");
+    assert_eq!(
+        d.quests[1].steps[0].tip.as_deref(),
+        Some("More wolves means you are closer to Beira.")
+    );
+    let others = d
+        .quests
+        .iter()
+        .flat_map(|q| q.steps.iter())
+        .filter(|s| s.tip.is_some())
+        .count();
+    assert_eq!(others, 1);
+
+    // The length limit counts characters, not bytes: 120 is the most allowed.
+    for tip in ["x".repeat(120), "é".repeat(120)] {
+        let mut v = base.clone();
+        v["quests"][1]["steps"][0]["tip"] = tip.clone().into();
+        let d = QuestData::from_value(&v).expect("a 120-character tip is accepted");
+        assert_eq!(d.quests[1].steps[0].tip.as_deref(), Some(tip.as_str()));
+    }
+
+    // Each refusal names the quest, the step and the field.
+    let cases: Vec<(&str, Value)> = vec![
+        ("empty", "".into()),
+        ("only whitespace", "   ".into()),
+        ("two lines", "Follow the river.\nThen the burrow.".into()),
+        ("a carriage return", "Follow the river.\rThen the burrow.".into()),
+        ("over-long", "x".repeat(121).into()),
+        ("not a string", Value::from(7)),
+        ("null", Value::Null),
+    ];
+    for (what, tip) in cases {
+        let mut v = base.clone();
+        v["quests"][1]["steps"][0]["tip"] = tip;
+        let err = QuestData::from_value(&v).expect_err(what);
+        assert_eq!(err.quest.as_deref(), Some("fixture-beira"), "{what}: {err}");
+        assert_eq!(err.field, "steps[0].tip", "{what}: {err}");
+    }
+}
+
 // -- skipped quests stay tracked, and quest actions on the new character
 // (Context "Skipped quests stay tracked", "Quest actions on the new
 // character") ----------------------------------------------------------------

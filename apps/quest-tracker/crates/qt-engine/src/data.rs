@@ -297,7 +297,15 @@ pub struct Step {
     pub title: String,
     pub text: String,
     pub signals: Vec<Signal>,
+    /// The owner's short "how to find it" text, shown under the step: one
+    /// line of at most [`TIP_MAX_CHARS`] characters, curated by hand (the
+    /// poe2db extract never writes it). Absent in the file means none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tip: Option<String>,
 }
+
+/// The longest a step's `tip` may be, in characters.
+pub const TIP_MAX_CHARS: usize = 120;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -452,6 +460,23 @@ impl Checker<'_> {
             return Err(self.err(field, "must not be empty"));
         }
         Ok(s)
+    }
+
+    /// A step's `tip`: non-empty after trimming, one line, at most
+    /// [`TIP_MAX_CHARS`] characters.
+    fn tip(&self, v: &Value, field: &str) -> Result<(), DataError> {
+        let s = self.nonempty(v, field)?;
+        if s.contains(['\n', '\r']) {
+            return Err(self.err(field, "must be one line"));
+        }
+        let n = s.chars().count();
+        if n > TIP_MAX_CHARS {
+            return Err(self.err(
+                field,
+                format!("is {n} characters long, at most {TIP_MAX_CHARS} allowed"),
+            ));
+        }
+        Ok(())
     }
 
     fn positive(&self, v: &Value, field: &str) -> Result<u64, DataError> {
@@ -676,7 +701,7 @@ impl Checker<'_> {
         for (i, s) in self.array(&q["steps"], "steps")?.iter().enumerate() {
             let p = format!("steps[{i}]");
             let m = self.object(s, &p)?;
-            self.keys(m, &p, &["id", "title", "text", "signals"], &[])?;
+            self.keys(m, &p, &["id", "title", "text", "signals"], &["tip"])?;
             let id = self.nonempty(&m["id"], &join(&p, "id"))?;
             if !step_ids.insert(id) {
                 return Err(self.err(&join(&p, "id"), format!("duplicate step id {id:?}")));
@@ -684,6 +709,9 @@ impl Checker<'_> {
             self.nonempty(&m["title"], &join(&p, "title"))?;
             self.string(&m["text"], &join(&p, "text"))?;
             self.signals(&m["signals"], &join(&p, "signals"))?;
+            if let Some(t) = m.get("tip") {
+                self.tip(t, &join(&p, "tip"))?;
+            }
         }
         self.signals(&q["unlock"], "unlock")?;
         if let Some(st) = q.get("start") {
