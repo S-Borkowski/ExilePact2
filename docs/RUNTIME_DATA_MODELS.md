@@ -177,6 +177,21 @@ speaker in that session was an NPC or a boss. The own character's remarks
 were therefore not observed in the log (the whole log and two sessions
 with a person listening; not proof that they are never logged).
 
+NPC lines and the dialogue option (measured 2026-10-26, Live 8, the
+research note's
+[§ "Live 8: on-screen text on a fresh character"](quest-tracker/quest-tracker-research.md#live-8-on-screen-text-on-a-fresh-character)):
+NPC lines do not depend on `output_all_dialogue_to_chat`, as far as
+measured. Renly's vendor greetings in Clearfell Encampment were logged as
+`Renly: <text>` with the option on (3 of 3), turned off in the running
+game (3 of 3), on again (2 of 2), and in a client started with the file
+reading `false` (2 of 2), each 1 to 2.3 s before the person's press. Only
+vendor greetings were measured. In the same session, with the option on,
+Renly's quest talk in a dialogue window after The Bloated Miller left no
+line in the log (the third visit to show it, after Lives 1 and 3), the
+Miller's combat lines were logged with his name as speaker, and the
+character's own shouts and two kill remarks were not logged, while the
+level-up line at the kill was.
+
 ## Game files (Content.ggpk)
 
 Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
@@ -310,8 +325,8 @@ not measured, unless a bullet says otherwise.
   machine read), the file follows it. Plain `key=value` lines.
 - **Dialogue and subtitles** (static reading, 2026-10-26).
   `enable_subtitles` and `output_all_dialogue_to_chat` (both `true` on the
-  machine read). Whether `output_all_dialogue_to_chat` is what puts NPC
-  lines into `Client.txt` is not established.
+  machine read). `output_all_dialogue_to_chat` is not what puts NPC
+  lines into `Client.txt`, as far as Live 8 measured it (below).
 - **Sound** (static reading, 2026-10-26). `mute_in_background` (`true` on
   the machine read; going by the name, the game is silent while it is not
   focused, not measured), `dialogue_sound_volume2` (100) beside the
@@ -334,13 +349,31 @@ not measured, unless a bullet says otherwise.
   With the option off, at least two places that would hand a voiced line
   to the chat skip it; whether the part that writes `Client.txt` is
   downstream of them is not established.
+- **What the dialogue option changes** (measured 2026-10-26, Live 8).
+  In Options it is labelled "Output Dialogue To Chat", in the UI tab. It
+  did not change whether Renly's vendor greetings reach `Client.txt`, nor
+  whether they show on screen: with it off they were logged and shown as
+  with it on, both after the in-game toggle and in a client started with
+  the file reading `false`. So whether the toggle applies from the next
+  line on is not shown by greetings. Which lines the option does change is
+  not established (only greetings were measured).
+- **When the client writes the file** (measured 2026-10-26, Lives 7 and
+  8). In Live 8 the running client wrote the file within the stage of each
+  change in Options, at once and without an exit (the toggle off, read
+  back as `false`; the toggle on, 3.3 s before the next greeting), and
+  wrote it again at the exit, with the same contents as after the toggle
+  off; no edit by hand was needed. In Live 7 the file read `mute_in_background=false` and a
+  different `league_selected` after the game's exit, against the backup
+  taken before the session.
 
 ## On-screen text (boss bar and subtitles)
 
 Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
-§ "Live 6: three instruments, one kill". Screen captures at 2 Hz of the
-borderless window (2560×1440, English client), OCR'd offline with
-Windows' own OCR; the game's process was not touched.
+§ "Live 6: three instruments, one kill" and § "Live 8: on-screen text on a
+fresh character". Screen captures at 2 Hz of the borderless window
+(2560×1440, English client), OCR'd offline with Windows' own OCR; the
+game's process was not touched. Positions are fractions of the client
+rect.
 
 - **The boss bar names the boss, and the name goes at the kill**
   (measured 2026-10-26, Live 6, one Beira kill). In the top-centre band,
@@ -361,3 +394,35 @@ Windows' own OCR; the game's process was not touched.
   player character's spoken remark appeared as a subtitle, prefixed with
   the character's name, and `Client.txt` has no line for it. Whether it
   follows every boss kill is not established.
+- **The boss bar under each panel** (measured 2026-10-26, Live 8, The
+  Bloated Miller alive, the player keeping its distance). The name sits
+  at x 0.456 to 0.544, y 0.047 to 0.060, and read in 29 of 29 frames with
+  no panel open. It still read with the inventory, the character panel,
+  the Escape menu (the screen darkened) or the map overlay open. It did
+  not with the passive tree open (a full-screen panel whose title takes
+  the band, 0 of 7 frames) or the world map (its heading drawn over the
+  band, 1 of 11). In that session the band with the bar up had a median
+  luma of about 17 mean and 22 standard deviation, the band with the bar
+  gone about 15 and 8 with no text, and the band under those two panels
+  26 to 29 and 35 to 39 with the panel's text. After the player walked
+  away, the boss alive, the name was in no frame from 1 s to 6 s after
+  the press that marked it, so the bar's going is not a kill by itself.
+- **Voiced lines show in one list at the lower left** (measured
+  2026-10-26, Live 8). The boss's combat lines, an NPC's vendor
+  greetings, the character's shouts and kill remarks and the level-up
+  message each showed as one line, `<speaker>: <text>` for the voiced
+  ones, from x 0.03, the newest at about y 0.72, older lines moving up
+  about 0.02 per line. Greetings showed there the same with
+  `output_all_dialogue_to_chat` off. Whether the list is the chat's
+  recent-message display or the subtitle display is not established. The
+  character's combat shouts carry the same name prefix as its kill
+  remarks, so only the text tells a kill remark; at the Miller's kill the
+  two remarks the person heard came 0.4 s and 3.0 s after their press.
+- **A quest dialogue window** (measured 2026-10-26, Live 8, Renly's talk
+  after The Bloated Miller). Drawn in the centre: the NPC's name as a
+  heading, the text at x 0.42 to 0.66, y 0.51 to 0.61 (moved left while
+  the inventory is open, to take a reward), a reward choice above it, a
+  "QUEST COMPLETE" banner and then the next quest's banner at y 0.78, and
+  the topic list at the end. OCR read the name at 1.00 and 16 lines of 3 or
+  more words. Its lines carry no speaker prefix, are not repeated in the
+  lower-left list as the NPC's lines, and are not in `Client.txt`.

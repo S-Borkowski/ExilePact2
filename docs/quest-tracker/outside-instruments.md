@@ -608,6 +608,53 @@ section is about the tools.
   `reward-split` failed (the reward came 40.1 s after the press), which is a
   finding about the game, not about the tools.
 
+## What Live 8 showed
+
+Live 8 ran `screentext` beside the screen capture and the marker on
+2026-10-26, on a fresh character and The Bloated Miller, with `run start
+--bottom 0,0,1,1`. Every control passed. The verdicts and what they mean
+for the quest tracker are in
+[`quest-tracker-research.md`](quest-tracker-research.md) § "Live 8:
+on-screen text on a fresh character", § "Dialogue setting route" and
+§ "What the screen shows of each source"; this section is about the tools.
+
+- **Capture.** 6,680 frames over about 28 minutes, the top band and the
+  whole window, none skipped and none black in any check's window. The
+  capture stopped when the game's window went at the first exit, so the
+  relaunch stage (`relaunch-off`) is read from the log and the presses
+  alone, as planned. The recorder ran because `run start` starts it and
+  nothing read it; the file-read trace's controller was not started.
+- **Stages and pairing.** The first `boss` run had 9 presses (the person
+  pressed M, which opens the in-game shop, took the panels in another
+  order and opened the world map after the walk away), so every `bar-*`
+  check was `not-run (instrument: presses do not pair: 9)`; `boss` was
+  stamped again, and the analysis read only the second run and printed
+  `stage runs ignored: 1 (boss 1)`. A procedure should give the panel keys
+  in the order to press them, and say that M is not a panel.
+- **The remark checks pass on any line with the character's prefix.** At
+  the Miller's kill the lines they credited were a combat shout from
+  before the kill and a read of the name and colon alone, which OCR had
+  split from its text; the two kill remarks the person heard came later
+  and were not what the checks found. A remark check that is to prove a
+  kill remark needs the remark's text, or at least some text after the
+  prefix, and a window that starts at the kill.
+- **The dialogue press came late.** The window's first page was already on
+  screen 5 s before the open press, so `dlg-window` counted it as old and
+  passed on the later pages alone. Its union box takes in every new line
+  in the whole window, the lower-left line list and the skill bar's key
+  hints included, so it is not the window's own box; the per-line boxes
+  in `i3\ocr.jsonl` give that. `dlg-option` did not run, because the
+  person reported the reward and the quest they accepted but not the
+  topic's text.
+- **The config.** The in-game toggle wrote the file at once, so
+  `after-toggle-off` read `false` and the procedure's edit by hand with
+  the game closed was not needed (`after-exit-off` read `false` too).
+  `cfg-off-relaunch-log`'s controls, the relaunched pid's own `LOG FILE
+  OPENING` and area entry and the `after-exit-off` record, all held.
+- **OCR.** Only the frames in the asked checks' windows were read, 443
+  of them, cached in `i3\ocr.jsonl`, so the frames around the kill in the
+  top band were not read; the whole-window band covers that moment.
+
 ## Tests
 
 From the repository's root:

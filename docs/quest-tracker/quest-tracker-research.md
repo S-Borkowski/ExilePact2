@@ -1169,19 +1169,21 @@ cry. File reads are not viable on this evidence (`i1-target` was
   the frames during the fight, so the detector needs a run of frames, not
   one. One kill, one character, English client, borderless windowed at
   2560×1440.
-  - **A covered bar** (not measured). The session had no panel open
-    during the fight, so what the bar's area shows while the inventory,
-    character panel, passive tree, world map, Escape menu or the map
-    overlay is open is not established. A covered bar that hides the kill
+  - **A covered bar** (measured in Live 8, on The Bloated Miller alive;
+    § "What the screen shows of each source"). This session had no panel
+    open during the fight. In Live 8 the bar's name still read with the
+    inventory, character panel, Escape menu or map overlay open, and did
+    not with the passive tree or the world map open, whose own text takes
+    the bar's band. A covered bar that hides the kill
     only costs a tick the reward line gives anyway; a panel that hides
     the bar would read as her death. So the detector should class each
     frame as bar present, bar absent, or bar not visible, and tick only on
     present followed by a run of visible-and-absent frames with no
     not-visible gap between them. The owner's direction (2026-10-26) is to
-    use the bar for bosses whose death leaves no log line. The build
-    workorder's first step measures each of those panels during a fight
-    (no kill needed), and the tracker overlay must stay off the bar's
-    band.
+    use the bar for bosses whose death leaves no log line. Live 8 took
+    over the panel measurement the build was to start with, on one boss
+    with the player keeping its distance, and the tracker overlay must
+    stay off the bar's band.
 - **The audio template** needs no admin, but a template is an extracted
   asset that cannot ship, so the product would have to rebuild it, boss by
   boss, from the player's own install.
@@ -1256,6 +1258,189 @@ Hand").
   RIP-relative address loads of the key and direct relative calls to the
   accessor and setter, with each caller's bounds taken from the unwind
   table (`.pdata`).
+
+### Live 8: on-screen text on a fresh character
+
+Measured 2026-10-26 with the workorder's Live procedure 1 (capture
+`.claude/workorders/quest-tracker-screen-text-live-1.md`; the live folder,
+its frames and `analysis.json` kept outside the repository), on a fresh
+Warrior made for the session, English client, borderless windowed at
+2560×1440. Nothing was installed into the game: the screen capture (2 Hz,
+the top-centre band and the whole window as the bottom band, `run start
+--bottom 0,0,1,1`), the marker and the log reader ran outside it. Times
+are UTC; the log's local time was UTC+1. The character entered The
+Riverbank (`G1_1`) at 20:06:37.7.
+
+- **The bar runs** were on The Bloated Miller, alive. The first `boss` run
+  (from 20:08:15) is ignored by the analysis: its 9 presses do not pair,
+  because M opened the in-game shop, the panels came in another order and
+  the world map was opened after the walk away. The second run (20:14:24
+  to the walk-away press at 20:17:54.2) took the panels in the asked
+  order, inventory, character panel, passive tree, world map, Escape menu
+  and map overlay, each open for 4.7 to 7.1 s. The character did not die
+  and the Miller lived.
+- **The remark run** was the Miller's kill: the kill press at
+  20:19:45.913, and one press after each of the two remarks the person
+  heard (by their account a generic one after a strong foe, then one
+  about the Miller). The character went from level 1 to 2 at the kill. No
+  Beira repeat was needed.
+- **The dialogue run** was Renly's talk in Clearfell Encampment
+  (`G1_town`, entered at 20:23:01.9), from the open press at 20:23:26.327
+  to the close press at 20:23:59.655. The person chose a reward and
+  accepted the next quest, and did not report a topic's text, so
+  `dlg-option` did not run.
+- **The setting runs** were 3 of Renly's vendor greetings with the option
+  on (20:27), the option turned off in Options, where it is labelled
+  "Output Dialogue To Chat" in the UI tab (20:28:50 to 20:31), 3 greetings
+  with it off (20:31 to 20:32), 2 with it on again (20:34), then an exit,
+  the game started again with the file reading `false`, and 2 greetings in
+  the relaunched client (20:36). The capture stopped at the first exit (the
+  window was gone), so the relaunch has log lines and presses but no
+  frames.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `control` | pass | two `LOG FILE OPENING`s, the second the relaunch; 1,148 lines from the first client's pid; area entries `G1_1` at 20:06:37.7 and `G1_town` at 20:23:01.9 |
+| `marker` | pass | 39 presses, the test press at 20:08:03.4; the person confirmed the game did nothing on it |
+| `i3-rehearsal` | pass | 5 frames, none black; both probe lines read at 1.00 |
+| `i3-town` | pass | each of Renly's 3 `town-on` greetings read at 1.00 in 8 frames; no black frame |
+| `cfg-on-log` | pass | 3 of 3 presses with a Renly line logged 1.2 to 2.3 s before the press |
+| `cfg-setting-found` | pass | found, labelled "Output Dialogue To Chat", in the UI tab |
+| `cfg-file-written` | pass | the `after-toggle-off` record reads `false`; the client wrote the file at 20:30:55.3, while it ran |
+| `cfg-off-shown` | pass | 3 of 3 `town-off` presses with a new Renly-prefixed line on screen, first frames 0.7 to 3.2 s before the press |
+| `cfg-off-log` | pass | 3 of 3 shown greetings logged with Renly as speaker, 1.0 to 1.4 s before the press |
+| `cfg-on-again-log` | pass | 2 of 2 presses with a Renly line logged about 1 s before the press |
+| `cfg-off-relaunch-log` | pass | the relaunched client (its own `LOG FILE OPENING`, 611 lines, `G1_town` at 20:36:11.4) started with the file reading `false` (`after-exit-off`); 2 of 2 presses with a Renly line from it about 1 s before the press |
+| `dlg-window` | pass | 16 new lines of 3 or more words in the 33.3 s, none of them speaker-prefixed, and Renly's name at 1.00; union box 0.030,0.311 to 0.975,0.995 of the client rect, which also takes in the lower-left line list and the skill bar's key hints |
+| `dlg-option` | not-run (instrument: no `--dialogue-option`) | the topic's text was not reported |
+| `dlg-subtitle` | fail | no new Renly-prefixed line in 71 frames from the open to 2 s after the close |
+| `dlg-log` | not-observed | no Renly line logged from the open to 2 s after the close, greeting or not, and none of the 16 window lines repeated by a logged line |
+| `bar-control` | pass | the Miller's name in 29 of 29 top-band frames before the first panel; the band's median luma 17.1 mean, 21.6 standard deviation |
+| `bar-inventory` | pass | 12 of 12 frames; luma 27.3 and 27.4; 15 other lines in the band |
+| `bar-character` | pass | 10 of 10 frames; luma 15.6 and 22.5; 7 other lines |
+| `bar-passive-tree` | fail | 0 of 7 frames; luma 26.3 and 39.2; 7 other lines, the panel's title |
+| `bar-world-map` | fail | 1 of 11 frames; luma 28.5 and 34.6; 12 other lines, the map's heading |
+| `bar-escape-menu` | pass | 8 of 8 frames; luma 9.6 and 14.7, the screen darkened; no other line |
+| `bar-map-overlay` | pass | 9 of 9 frames; luma 16.9 and 21.1; no other line |
+| `bar-away` | pass | the name in none of 10 top-band frames from 1 s to 6 s after the walk-away press |
+| `remark-shown` | pass | both presses after the kill had a new line prefixed with the character's name, first frames 5.4 s and 4.8 s before them (see below for which lines) |
+| `remark-kill` | pass | a new prefixed line from 0.55 s before the kill press, in 34 frames (see below) |
+| `remark-log` | not-observed | neither of the 2 lines the remark checks found was logged |
+
+**Which lines the remark checks found.** The two checks passed by their
+rule, but not on the kill remarks. Reading the session's OCR cache after
+the analysis, for times and positions only, the lines they credited were
+one of the character's combat shouts, on screen from 20:19:40.4 (5.5 s
+before the kill press), and a read of the character's name and colon
+alone, the rest of its line split off by OCR. The two remarks the person
+heard showed in the same place, each prefixed with the character's name:
+the generic one from 20:19:46.35 (0.44 s after the kill press) and the
+one about the Miller from 20:19:48.86 (2.95 s after it). So the remark is shown at a
+kill, and the checks' pass does not show it; the character's combat shouts
+carry the same prefix. The Miller's own two combat lines showed in the same
+list with his name as prefix, and both are in `Client.txt`. The
+character's lines are not: `Client.txt` from 21:19:35 to 21:19:59 local
+holds one of the Miller's lines, the level-up line and chat, and nothing
+else.
+
+**The bar at the kill.** The Miller's name was last read in the
+whole-window band at 20:19:44.85, 1.06 s before the kill press, and the
+level-up message was on screen from 20:19:45.36. The top band's frames
+around the kill were not read, since no check needs them.
+
+**The dialogue window** (positions read from the OCR cache, as fractions
+of the client rect). Its first page was already on screen in the earliest
+frame read, 5 s before the open press, so the press came after the window
+opened and that page counts as old to `dlg-window`; the later pages
+supplied its 16 new lines. The window is drawn in the centre: Renly's name
+as a heading at about y 0.27 and again at y 0.46, the text in a block at
+x 0.42 to 0.66, y 0.51 to 0.61, about 0.02 of the height per line, and a
+"Continue" button below it at y 0.62. The reward choice ("Select One
+Reward", at y 0.40) sat above the text; while the inventory was open to
+take the reward the text block moved left, to x 0.25 to 0.49. A "QUEST
+COMPLETE" banner showed at y 0.78, then the next quest's banner in the same
+place, and at the end the topic list ("The Miller", "The Devourer", "Buy or
+Sell items", "Goodbye") in two columns at x 0.40 to 0.69, y 0.52 to 0.62.
+No line of the window carries a speaker prefix, and the character's own
+remark after the talk, which the person also heard,
+came as a prefixed line in the lower-left list at 20:23:56.9, as the window
+closed.
+
+**The dialogue setting.** Renly's greetings were logged in every state:
+with the option on (3 of 3), turned off in the running game (3 of 3), on
+again (2 of 2), and in a client started with the file reading `false` (2
+of 2), each 1 to 2.3 s before its press. With the option off they also
+showed on screen as before, in the same place (the lower-left list, at x
+0.03, y 0.72). The client wrote the config file while it ran, at 20:30:55.3
+after the toggle off and at 20:34:12.5 after the toggle on (3.3 s before
+the next greeting's press), and again at the exit, at 20:35:14.9, with the
+same contents as after the toggle off. Whether the toggle applies from the
+next line on cannot be told from greetings that are logged in every state.
+Which lines the option does change is not established: only vendor
+greetings were measured, and the static reading above finds voiced lines
+the option keeps from the chat, not which lines they are.
+
+### Dialogue setting route
+
+Dialogue setting: no-effect
+
+Taken from the workorder's route table: `cfg-off-log` and
+`cfg-off-relaunch-log` both passed. Renly's vendor greetings reached
+`Client.txt` with `output_all_dialogue_to_chat` off, both after the in-game
+toggle and in a client started with the file reading `false`, so the
+quest tracker does not need the option, and the README names no
+prerequisite for it. This covers vendor greetings, the only kind of NPC
+line measured. A quest NPC's talk in a dialogue window was not logged with
+the option on either (`dlg-log`, as in Lives 1 and 3), so it tells nothing
+about the option.
+
+### What the screen shows of each source
+
+- **The boss bar** (Live 8 on the Miller alive, Live 6 on Beira's fight).
+  The name sits in the top-centre band, at x 0.456 to 0.544, y 0.047 to
+  0.060 of the client rect at 2560×1440. With no panel open it read in 29
+  of 29 frames on the Miller, while the player kept their distance, and in
+  about half the frames during Beira's fight. Under each panel:
+  - *present* (the name still reads): the inventory, the character panel,
+    the Escape menu (the whole screen darkened, the band's luma mean 9.6)
+    and the map overlay;
+  - *not visible*: the passive tree, a full-screen panel whose title takes
+    the band (0 of 7), and the world map, whose own heading is drawn over
+    the band (1 of 11).
+
+  Present, absent and not visible differ in the band itself, in this one
+  session: with the bar up its median luma was 17.1 mean and 21.6
+  standard deviation; with the bar gone after the walk away about 14.6 and
+  7.5 per frame (read from `frames.jsonl` after the analysis), with no
+  text; under the two covering panels 26 to 29 and 35 to 39, with the
+  panel's own text in the band. The bar went when the player walked away
+  while the Miller lived (`bar-away`), so its going is not a kill by
+  itself. At the Miller's kill the name's last frame was 1.06 s before the
+  kill press; at Beira's it was 4.0 s before a press made about 4 s after
+  her death (Live 6).
+- **Voiced lines and the remark** (Lives 6 and 8). Every voiced line read
+  on screen in Live 8, the Miller's combat lines, Renly's greetings with
+  the option on and off, and the character's shouts and remarks, showed as
+  one line `<speaker>: <text>` in a list at the lower left: from x 0.03,
+  the newest line at about y 0.72, older lines moving up about 0.02 per
+  line. The level-up message showed in the same list. Whether the list is
+  the chat's recent-message display or the subtitle display is not
+  established. The character's lines carry the character's name as their
+  prefix and are not in `Client.txt`; the NPCs' and the boss's lines are.
+  The kill remarks came 0.4 s and 3.0 s after the kill press (Live 8) and
+  about 1.5 s after Beira's death (Live 6). A kill remark is told from a
+  combat shout by its text, such as the class's `MillerKillComment` in
+  poe2db's table (§ "Character remarks"), not by its prefix or its time.
+- **The dialogue window** (Live 8, Renly). It draws in the centre of the
+  screen, its text block at x 0.42 to 0.66, y 0.51 to 0.61, shifted left
+  while the inventory is open, with Renly's name as a heading above it.
+  OCR reads it cleanly: Renly's name at 1.00 and 16 lines of 3 or more
+  words, each in 2 or more frames. None of its lines carries a speaker
+  prefix, none is repeated in the lower-left list as Renly's line
+  (`dlg-subtitle`), and none reaches `Client.txt` (`dlg-log`). A detector
+  has to read the window itself; the "QUEST COMPLETE" banner and the next
+  quest's banner below it, at y 0.78, are shorter targets in the same
+  frames.
 
 ## Negative results
 
