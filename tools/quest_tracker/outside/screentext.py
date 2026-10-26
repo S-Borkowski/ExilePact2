@@ -43,7 +43,11 @@ each `--npc` and `--boss`. A screen line is *speaker-prefixed by NAME* when
 its text before the first colon, normalised as `screen.normalize` does,
 equals NAME normalised, or, for a NAME of 6 or more letters, scores at least
 0.8 against it. A greeting's window is [press - 6 s, press + 1 s] for log
-lines and [press - 6 s, press + 2 s] for frames. A log check is
+lines and [press - 6 s, press + 2 s] for frames. A shown-line hit
+(`cfg-off-shown`, `dlg-subtitle`, `remark-shown`, `remark-kill`) must be a
+new occurrence: its frame shows the text more times than the lines still on
+screen from [start - 5 s, start - 1 s] of its window, so a stale chat row is
+dropped while a repeated greeting or bark still counts. A log check is
 `not-observed` only when its controls passed, and `not-run` otherwise. A
 missing input makes the checks that need it `not-run (instrument: <why>)`;
 an internal error in one check names it, and the analysis exits 1 after
@@ -97,8 +101,10 @@ TOWN_LINE_S = 4.0                        # i3-town: a logged line is looked for 
 SHOWN_MIN = 2                            # cfg-off-shown: at least 2 presses shown
 DLG_EDGE_S = 0.5                         # dlg-window: frames in [open + 0.5, close - 0.5] ...
 DLG_BEFORE_FROM_S = 5.0                  # ... and absent in [open - 5, open - 1]
-DLG_BEFORE_TO_S = 1.0                    # the same rule makes a hit new in every shown-line check:
-                                         # absent from [start - 5, start - 1] of its window
+DLG_BEFORE_TO_S = 1.0                    # every shown-line check counts a hit new only past the
+                                         # occurrences still on screen from [start - 5, start - 1]
+GONE_FRAMES = 2                          # ... and one of those has left after this many frames in a row
+                                         # without it (one missed OCR read is not leaving)
 DLG_MIN_LINES = 3
 DLG_MIN_WORDS = 3
 DLG_MIN_FRAMES = 2
@@ -211,10 +217,9 @@ def same_line(a: str, b: str) -> bool:
     return difflib.SequenceMatcher(None, a, b, autojunk=False).ratio() >= SAME_LINE_RATIO
 
 
-def already_shown(text: str, earlier) -> bool:
-    """Whether the screen line `text` was read before its window (`earlier`: normalised lines)."""
-    n = screen.normalize(text)
-    return any(same_line(n, e) or screen.fuzzy_score(text, e) >= OCR_SCORE for e in earlier)
+def reads_as(text: str, other: str) -> bool:
+    """Whether the screen line `other` shows the text `text` (a read of the same line, or contains it)."""
+    return same_line(screen.normalize(text), screen.normalize(other)) or screen.fuzzy_score(text, other) >= OCR_SCORE
 
 
 def box_fraction(frame: screen.Frame, box) -> tuple | None:
@@ -555,25 +560,55 @@ class Session:
             raise missing("no --character")
         return self.character
 
-    def before(self, start) -> tuple[list, list[str]]:
-        """The bottom-band frames in [start - 5, start - 1] and their distinct lines, normalised.
+    def newness(self, start, end) -> tuple:
+        """(the bottom-band frames of [start, end], a test `is_new(frame, text)`, the count of
+        frames in [start - 5, start - 1]).
 
-        A line read there was on screen before the window opened (the chat
-        panel keeps it), so it cannot be the event the window looks for.
+        A line read in [start - 5, start - 1] was on screen before the window
+        opened (the chat panel keeps it), so it is not the event the window
+        looks for. Its text alone cannot tell it from a new line with the same
+        words, which vendors' greetings and characters' barks are by design,
+        so occurrences are counted instead. The stale count is the most lines
+        reading as `text` in one frame before the window. It falls when that
+        many have not been on screen for GONE_FRAMES frames in a row, from the
+        last frame before onwards. A read is new when its frame holds more
+        lines reading as it than the stale count: a second chat row with the
+        same greeting, a subtitle beside the stale row, or a line back after
+        the old one left the screen.
         """
-        frames = self.window("bottom", start - _td(DLG_BEFORE_FROM_S), start - _td(DLG_BEFORE_TO_S))
-        return frames, sorted({n for n in (screen.normalize(t) for t in self.texts(frames)) if n})
+        before = self.window("bottom", start - _td(DLG_BEFORE_FROM_S), start - _td(DLG_BEFORE_TO_S))
+        walk = [f for f in self.window("bottom", start - _td(DLG_BEFORE_TO_S), end)
+                if f.utc > start - _td(DLG_BEFORE_TO_S)]
+        fresh = {}
 
-    def first_remark(self, frames, earlier) -> tuple:
+        def is_new(frame, text) -> bool:
+            key = screen.normalize(text)
+            if key not in fresh:
+                def count(f):
+                    return sum(1 for l in self.lines(f) if reads_as(text, l.text))
+                stale = max((count(f) for f in before), default=0)
+                recent = [count(before[-1])] if before else []
+                fresh[key] = set()
+                for f in walk:
+                    c = count(f)
+                    if c > stale:
+                        fresh[key].add(screen.path_key(f.path))
+                    recent = (recent + [c])[-GONE_FRAMES:]
+                    if len(recent) == GONE_FRAMES:
+                        stale = min(stale, max(recent))
+            return screen.path_key(frame.path) in fresh[key]
+        return [f for f in walk if f.utc >= start], is_new, len(before)
+
+    def first_remark(self, frames, is_new) -> tuple:
         """((frame, line) of the first new line speaker-prefixed by the character, or None,
-        the count of such line reads dropped as already on screen in `earlier`)."""
+        the count of such line reads that were a line still on screen from before the window)."""
         name = self.need_character()
         hit, dropped = None, 0
         for f in frames:
             for l in self.lines(f):
                 if not prefixed_by(l.text, name):
                     continue
-                if already_shown(l.text, earlier):
+                if not is_new(f, l.text):
                     dropped += 1
                 elif hit is None:
                     hit = (f, l)
@@ -588,10 +623,10 @@ def _greeting_frames(s: Session, presses) -> list:
 
 
 def _with_before(windows) -> list:
-    """Each window, and the [start - 5, start - 1] its hits must be absent from."""
+    """Each window, and the [start - 5, start] `Session.newness` reads for it."""
     out = []
     for band, a, b in windows:
-        out += [(band, a, b), (band, a - _td(DLG_BEFORE_FROM_S), a - _td(DLG_BEFORE_TO_S))]
+        out += [(band, a, b), (band, a - _td(DLG_BEFORE_FROM_S), a)]
     return out
 
 
@@ -642,6 +677,15 @@ def prefetch(s: Session, names) -> None:
 # --------------------------------------------------------------------------
 # The checks
 
+# A shown-line check's observed: the reads `Session.newness` dropped as the same occurrence.
+DROPPED = "dropped as a line still on screen from the %d frame(s) before, not a new one"
+
+
+def _new_rule(before: str) -> str:
+    return ("its frame shows the text more times than the lines still on screen from [%s], "
+            "one having left after %d frames in a row without it" % (before, GONE_FRAMES))
+
+
 EXPECTED = {
     "control": "after the session offset, a LOG FILE OPENING, lines from [INFO Client <pid>] with the lease's "
                "pid, and an area entry line from it",
@@ -654,7 +698,7 @@ EXPECTED = {
     "cfg-file-written": "the after-toggle-off config record reads output_all_dialogue_to_chat=false",
     "cfg-off-shown": "at least %d town-off presses each have a bottom-band line in [press - 6 s, press + 2 s] "
                      "speaker-prefixed by a speaker, or scoring >= %.1f against a line logged in town-on, "
-                     "and new (not in [press - 11 s, press - 7 s])" % (SHOWN_MIN, OCR_SCORE),
+                     "and new (%s)" % (SHOWN_MIN, OCR_SCORE, _new_rule("press - 11 s, press - 7 s")),
     "cfg-off-log": "a speaker line logged, or a logged line repeating the shown text, in [press - 6 s, "
                    "press + 1 s] of a shown town-off greeting (controls: cfg-on-log, cfg-off-shown)",
     "cfg-on-again-log": "a speaker line logged in [press - 6 s, press + 1 s] of at least one town-on-again press",
@@ -664,8 +708,8 @@ EXPECTED = {
                   "more frames of [open + 0.5, close - 0.5] and in none of [open - 5, open - 1], plus the "
                   "NPC's name" % (DLG_MIN_LINES, DLG_MIN_WORDS, DLG_MIN_FRAMES),
     "dlg-option": "the chosen topic scores >= %.1f in a frame between open and close" % OCR_SCORE,
-    "dlg-subtitle": "a line speaker-prefixed by the NPC within [open, close + 2 s], and new (not in "
-                    "[open - 5 s, open - 1 s])",
+    "dlg-subtitle": "a line speaker-prefixed by the NPC within [open, close + 2 s], and new (%s)"
+                    % _new_rule("open - 5 s, open - 1 s"),
     "dlg-log": "an NPC line logged in [open, close + 2 s], or a logged line repeating a dlg-window line "
                "(controls: cfg-on-log, dlg-window)",
     "bar-control": "the boss's name scores >= %.1f in at least half (and at least %d) of the top-band frames "
@@ -674,9 +718,10 @@ EXPECTED = {
                  "of the %s panel (fail: covered or unreadable)",
     "bar-away": "the boss's name in no top-band frame within [away + 1, away + 6]",
     "remark-shown": "a line speaker-prefixed by the character in [press - 6 s, press + 2 s] of a remark press "
-                    "after the first, and new (not in [press - 11 s, press - 7 s])",
+                    "after the first, and new (%s)" % _new_rule("press - 11 s, press - 7 s"),
     "remark-kill": "a line speaker-prefixed by the character in a bottom-band frame within [kill - 2 s, "
-                   "kill + 15 s], and new (not in [kill - 7 s, kill - 3 s]) (fail: no remark shown at the kill)",
+                   "kill + 15 s], and new (%s) (fail: no remark shown at the kill)"
+                   % _new_rule("kill - 7 s, kill - 3 s"),
     "remark-log": "for each remark found, a logged line repeating its text after the prefix, or a line with "
                   "the character as speaker, within [t - 8 s, t + 2 s] of its first frame (controls: "
                   "cfg-on-log, a remark found)",
@@ -824,7 +869,8 @@ def check_cfg_file_written(s: Session) -> dict:
 def off_shown(s: Session) -> list:
     """For each town-off press: (press, frame, line, how, dropped, before) of its first new shown
     greeting, frame, line and how None when there is none. `dropped` counts the candidate line reads
-    already on screen in the press's before window, `before` that window's frame count."""
+    that were a line still on screen from the press's before window (`Session.newness`), `before`
+    that window's frame count."""
     def make():
         presses = s.need_presses("town-off")
         s.frames()
@@ -835,10 +881,9 @@ def off_shown(s: Session) -> list:
                                                         s.pid)]
         out = []
         for p in presses:
-            start = p - _td(GREET_LOG_BEFORE_S)
-            before, earlier = s.before(start)
+            frames, is_new, before = s.newness(p - _td(GREET_LOG_BEFORE_S), p + _td(GREET_FRAME_AFTER_S))
             hit, dropped = None, 0
-            for f in s.window("bottom", start, p + _td(GREET_FRAME_AFTER_S)):
+            for f in frames:
                 for l in s.lines(f):
                     who = next((n for n in s.speakers if prefixed_by(l.text, n)), None)
                     if who is not None:
@@ -847,11 +892,11 @@ def off_shown(s: Session) -> list:
                         how = "repeats a town-on line"
                     else:
                         continue
-                    if already_shown(l.text, earlier):
+                    if not is_new(f, l.text):
                         dropped += 1
                     elif hit is None:
                         hit = (f, l, how)
-            out.append((p,) + (hit or (None, None, None)) + (dropped, len(before)))
+            out.append((p,) + (hit or (None, None, None)) + (dropped, before))
         return out
     return s._once("off-shown", make)
 
@@ -859,8 +904,8 @@ def off_shown(s: Session) -> list:
 def check_cfg_off_shown(s: Session) -> dict:
     shown = off_shown(s)
     hits = [x for x in shown if x[1] is not None]
-    parts = ["press %s: %s; %d candidate read(s) dropped as already on screen in %d frame(s) before" % (
-             _hms(p), ("%s, first frame %s" % (how, _rel(f.utc, p))) if f else "none shown", dropped, nb)
+    parts = ["press %s: %s; %d candidate read(s) %s" % (
+             _hms(p), ("%s, first frame %s" % (how, _rel(f.utc, p))) if f else "none shown", dropped, DROPPED % nb)
              for p, f, _, how, dropped, nb in shown]
     observed = "%d of %d presses shown; %s" % (len(hits), len(shown), "; ".join(parts))
     return result("cfg-off-shown", EXPECTED["cfg-off-shown"], observed,
@@ -941,24 +986,22 @@ def check_dlg_option(s: Session) -> dict:
 
 def check_dlg_subtitle(s: Session) -> dict:
     o, c = s.dialogue()
-    frames = s.window("bottom", o, c + _td(DLG_AFTER_S))
-    before, earlier = s.before(o)
+    frames, is_new, before = s.newness(o, c + _td(DLG_AFTER_S))
     with_line, dropped = [], 0
     for f in frames:
         new = False
         for l in s.lines(f):
             if not prefixed_by(l.text, s.npc):
                 continue
-            if already_shown(l.text, earlier):
-                dropped += 1
-            else:
+            if is_new(f, l.text):
                 new = True
+            else:
+                dropped += 1
         if new:
             with_line.append(f)
-    observed = "%d of %d frames hold a new %s-prefixed line%s; %d candidate read(s) dropped as already on " \
-               "screen in %d frame(s) before" % (
-                   len(with_line), len(frames), s.npc,
-                   (", first %s after open" % _rel(with_line[0].utc, o)) if with_line else "", dropped, len(before))
+    observed = "%d of %d frames hold a new %s-prefixed line%s; %d candidate read(s) %s" % (
+        len(with_line), len(frames), s.npc, (", first %s after open" % _rel(with_line[0].utc, o)) if with_line else "",
+        dropped, DROPPED % before)
     return result("dlg-subtitle", EXPECTED["dlg-subtitle"], observed, "pass" if with_line else "fail")
 
 
@@ -1054,10 +1097,9 @@ def remarks(s: Session) -> dict:
         s.need_character()
         s.frames()
         def find(a, b):
-            before, earlier = s.before(a)
-            frames = s.window("bottom", a, b)
-            hit, dropped = s.first_remark(frames, earlier)
-            return hit, len(frames), dropped, len(before)
+            frames, is_new, before = s.newness(a, b)
+            hit, dropped = s.first_remark(frames, is_new)
+            return hit, len(frames), dropped, before
         shown = [(p,) + find(p - _td(GREET_LOG_BEFORE_S), p + _td(GREET_FRAME_AFTER_S)) for p in presses[1:]]
         kill = None
         if presses:
@@ -1070,8 +1112,9 @@ def check_remark_shown(s: Session) -> dict:
     r = remarks(s)
     if not r["shown"]:
         raise missing("no remark press after the first")
-    parts = ["press %s: %s; %d candidate read(s) dropped as already on screen in %d frame(s) before" % (
-             _hms(p), ("first frame %s" % _rel(hit[0].utc, p)) if hit else "none in %d frames" % n, dropped, nb)
+    parts = ["press %s: %s; %d candidate read(s) %s" % (
+             _hms(p), ("first frame %s" % _rel(hit[0].utc, p)) if hit else "none in %d frames" % n, dropped,
+             DROPPED % nb)
              for p, hit, n, dropped, nb in r["shown"]]
     found = sum(1 for _, hit, *_ in r["shown"] if hit)
     observed = "%d of %d presses with a line prefixed by %s; %s" % (found, len(r["shown"]), CHARACTER_MASK,
@@ -1089,7 +1132,7 @@ def check_remark_kill(s: Session) -> dict:
             _hms(p), CHARACTER_MASK, _rel(hit[0].utc, p), n)
     else:
         observed = "kill press %s: no new line prefixed by %s in %d frames" % (_hms(p), CHARACTER_MASK, n)
-    observed += "; %d candidate read(s) dropped as already on screen in %d frame(s) before" % (dropped, nb)
+    observed += "; %d candidate read(s) %s" % (dropped, DROPPED % nb)
     return result("remark-kill", EXPECTED["remark-kill"], observed, "pass" if hit else "fail",
                   delay_s=(hit[0].utc - p).total_seconds() if hit else None)
 
