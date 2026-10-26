@@ -53,7 +53,11 @@ STOP_TIMEOUT_S = 300.0
 POLL_S = 0.1
 MAX_MINUTES = 90.0
 
-DETACHED_PROCESS = 0x00000008
+# Not DETACHED_PROCESS: a child started with it has no console at all, Windows
+# ignores CREATE_NO_WINDOW beside it, and the instruments' powershell.exe ran
+# nothing that way (Live 6, blind at G2). CREATE_NO_WINDOW gives the child a
+# console of its own that is never shown.
+CREATE_NO_WINDOW = 0x08000000
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 
@@ -93,15 +97,16 @@ def instruments(live: Path, pid: int, max_minutes: float = MAX_MINUTES) -> list[
 # Processes
 
 def spawn_detached(command: list[str], log: Path, cwd: Path = ROOT) -> int:
-    """Start `command` with no console and its own process group, its output
-    appended to `log`, outside the caller's job when Windows allows it, so it
-    keeps running after the caller's shell ends. Returns its pid."""
+    """Start `command` with a hidden console of its own and its own process
+    group, its output appended to `log`, outside the caller's job when Windows
+    allows it, so it keeps running after the caller's shell ends. Returns its
+    pid."""
     with open(log, "ab") as out:
         kw = dict(stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT, cwd=str(cwd),
                   close_fds=True)
         if sys.platform != "win32":
             return subprocess.Popen(command, start_new_session=True, **kw).pid
-        flags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        flags = CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP
         try:
             return subprocess.Popen(command, creationflags=flags | CREATE_BREAKAWAY_FROM_JOB, **kw).pid
         except OSError:
