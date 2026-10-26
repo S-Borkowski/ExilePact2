@@ -279,7 +279,7 @@
           "id": "step-2",
           "title": "Search the Grelwood",
           "text": "Search the Grelwood for any hint of what might have happened to the Count and his men that fateful night.",
-          "tip": "Should be close to entrance etc.",
+          "tip": "Should be close to entrance.",
           "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"}]
         },
         {

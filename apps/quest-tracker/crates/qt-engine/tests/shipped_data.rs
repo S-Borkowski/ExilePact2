@@ -1173,7 +1173,7 @@ const OWNER_TIPS: [(&str, &str, &str, &str); 5] = [
         "More wolves means you are closer to Beira.",
     ),
     ("secrets-in-the-dark", "step-1", "Travel to the Grelwood", "Follow up river again."),
-    ("secrets-in-the-dark", "step-2", "Search the Grelwood", "Should be close to entrance etc."),
+    ("secrets-in-the-dark", "step-2", "Search the Grelwood", "Should be close to entrance."),
 ];
 
 /// The tip of the step the row shows next, as [`next_title`] finds it.
