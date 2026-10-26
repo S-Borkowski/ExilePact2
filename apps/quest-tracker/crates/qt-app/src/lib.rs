@@ -34,9 +34,9 @@ use std::sync::Arc;
 use qt_engine::QuestData;
 
 pub use app::{
-    auto_rescale, overlay_shown, scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement,
-    QuitFrom, SystemClock, Window, HIDDEN_LINE, SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT,
-    WORKER_TICK,
+    auto_rescale, overlay_shown, scale_factor, waiting_for_area, App, AppConfig, Clock, Emitter,
+    MonitorMetrics, Placement, QuitFrom, SystemClock, Window, HIDDEN_LINE, NO_AREA_LINE,
+    SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT, WORKER_TICK,
 };
 pub use cli::Options;
 // What the glue names without depending on the library crates itself.

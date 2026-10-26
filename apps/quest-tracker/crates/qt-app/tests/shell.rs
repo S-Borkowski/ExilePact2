@@ -22,7 +22,7 @@ use qt_app::cli::{self, Options};
 use qt_app::discover::{self, LogSource};
 use qt_app::{
     App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, QuitFrom, Window, HIDDEN_LINE,
-    SHOWN_LINE, SHUTDOWN_TIMEOUT,
+    NO_AREA_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
 };
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
@@ -2078,6 +2078,8 @@ fn game_pid_comes_from_the_newest_log_line() {
         &[
             "2026/03/10 20:00:00 ***** LOG FILE OPENING *****".to_string(),
             "2026/03/10 20:00:01 5000000 7e2c0010 [INFO Client 15660] Connecting to instance server".to_string(),
+            // A character in an area, so the session's wait for one is over.
+            "2026/03/10 20:00:02 5001000 7e2c0011 [DEBUG Client 15660] Generating level 2 area \"G1_2\" with seed 7".to_string(),
         ],
         true,
     ));
@@ -2138,6 +2140,187 @@ fn visibility_change_is_logged_once() {
         assert!(l.ends_with(HIDDEN_LINE) || l.ends_with(SHOWN_LINE), "{l}");
         assert!(!l.contains(&OTHER.to_string()), "{l}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Hidden until a character is in an area (owner, after Live 4): in play mode,
+// from a session marker until that session's first area line, the overlay is
+// hidden whatever is in front, so it does not cover the login and
+// character-select screens. The lines are built here; the real log is never
+// read.
+
+/// A launch up to character select: the session marker and a line with the
+/// game's client header (`pid`), but no area line.
+fn character_select_lines(at: &str, pid: u32) -> Vec<String> {
+    vec![
+        format!("2026/03/11 {at}:00 ***** LOG FILE OPENING *****"),
+        format!("2026/03/11 {at}:13 6013000 7e2c0020 [INFO Client {pid}] Connecting to instance server"),
+    ]
+}
+
+/// The session's first area line: a character is in an area.
+fn first_area_line(at: &str, pid: u32) -> String {
+    format!(
+        "2026/03/11 {at}:05 6065000 7e2c0021 [DEBUG Client {pid}] Generating level 15 area \"G1_town\" with seed 4242"
+    )
+}
+
+/// The visibility lines of the diagnostic log, oldest first.
+fn visibility_lines(h: &Harness) -> Vec<String> {
+    h.diag_text()
+        .lines()
+        .filter(|l| l.contains("visibility:"))
+        .map(str::to_string)
+        .collect()
+}
+
+#[test]
+fn edit_mode_shows_before_a_character_is_in_an_area() {
+    // Baseline: edit mode is shown whatever is in front, so Ctrl+Alt+Q
+    // still reaches the settings before a character loads.
+    let h = harness(Setup::default());
+    h.app.toggle_mode().unwrap();
+    assert_eq!(h.app.get_view().mode, Mode::Edit);
+    h.app.handle_tail_events(events(&character_select_lines("10:00", GAME), false));
+    for front in [Some(GAME), Some(OTHER), None, Some(std::process::id())] {
+        in_front(&h, front);
+    }
+    assert!(visibility(&h).is_empty(), "{:?}", visibility(&h));
+    assert!(visibility_lines(&h).is_empty(), "{}", h.diag_text());
+
+    // A character in an area, then play mode with the game in front: shown,
+    // as before; another program in front hides it with the existing line.
+    h.app.handle_tail_events(events(&[first_area_line("10:01", GAME)], false));
+    h.app.set_mode(Mode::Play).unwrap();
+    in_front(&h, Some(GAME));
+    assert!(visibility(&h).is_empty(), "{:?}", visibility(&h));
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    assert!(visibility_lines(&h)[0].ends_with(HIDDEN_LINE), "{:?}", visibility_lines(&h));
+}
+
+#[test]
+fn stale_pid_without_an_area_keeps_the_fail_open_rule() {
+    // Baseline: started on a log whose last session has a marker and no
+    // area line (a game closed at character select, or a log the running
+    // game does not write to). Its pid is caught up only; once it goes stale
+    // (no live line, no window of it in front within the grace), the
+    // overlay shows whatever is in front, as it does today.
+    const LOG_PID: u32 = 15_660;
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&character_select_lines("10:00", LOG_PID), true));
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    h.clock.fetch_add(10_000, Ordering::SeqCst);
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+    for front in [Some(GAME), Some(OTHER), None, Some(LOG_PID), Some(OTHER)] {
+        h.clock.fetch_add(60_000, Ordering::SeqCst);
+        in_front(&h, front);
+    }
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+    let text = h.diag_text();
+    assert_eq!(
+        text.matches(&format!("game pid: {LOG_PID} not used to hide the overlay")).count(),
+        1,
+        "{text}"
+    );
+    assert!(visibility_lines(&h).last().unwrap().ends_with(SHOWN_LINE), "{text}");
+}
+
+#[test]
+fn overlay_hidden_until_a_character_is_in_an_area() {
+    let h = harness(Setup::default());
+    // Target: a live session marker, the game in front: hidden whatever is
+    // in front, with the new line, once.
+    h.app.handle_tail_events(events(&character_select_lines("10:00", GAME), false));
+    for front in [Some(GAME), Some(GAME), Some(std::process::id()), None, Some(OTHER)] {
+        in_front(&h, front);
+    }
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    assert_eq!(visibility_lines(&h).len(), 1, "{}", h.diag_text());
+    assert!(visibility_lines(&h)[0].ends_with(NO_AREA_LINE), "{}", h.diag_text());
+    // A launch that writes the marker again only restarts the wait.
+    h.app.handle_tail_events(events(&character_select_lines("10:00", GAME), false));
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    assert_eq!(visibility_lines(&h).len(), 1, "{}", h.diag_text());
+
+    // The first area line lifts it: the game in front shows it, without
+    // activating the window (the fake records only `visible true`).
+    h.app.handle_tail_events(events(&[first_area_line("10:01", GAME)], false));
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+    assert!(visibility_lines(&h)[1].ends_with(SHOWN_LINE), "{:?}", visibility_lines(&h));
+    // Negative control: from then on the existing rule decides, as before.
+    in_front(&h, Some(OTHER));
+    in_front(&h, Some(GAME));
+    assert_eq!(
+        visibility(&h),
+        vec!["visible false", "visible true", "visible false", "visible true"]
+    );
+    assert!(visibility_lines(&h)[2].ends_with(HIDDEN_LINE), "{:?}", visibility_lines(&h));
+
+    // The next session's marker hides it again, the game in front.
+    h.app.handle_tail_events(events(&character_select_lines("11:00", GAME), false));
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h).len(), 5, "{:?}", visibility(&h));
+    assert_eq!(h.diag_text().matches(NO_AREA_LINE).count(), 2, "{}", h.diag_text());
+    // Lifted while another program is in front: still hidden, now by the
+    // existing rule, which its own line says; no window call.
+    in_front(&h, Some(OTHER));
+    h.app.handle_tail_events(events(&[first_area_line("11:01", GAME)], false));
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h).len(), 5, "{:?}", visibility(&h));
+    assert!(visibility_lines(&h).last().unwrap().ends_with(HIDDEN_LINE), "{}", h.diag_text());
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h).last().map(String::as_str), Some("visible true"));
+    // No line names the program in front.
+    for l in visibility_lines(&h) {
+        assert!(!l.contains(&OTHER.to_string()), "{l}");
+    }
+}
+
+#[test]
+fn overlay_hidden_at_character_select_after_a_catch_up_session_marker() {
+    // The log's last session reached character select: a marker, a header
+    // with the game's pid, and no area line.
+    let mut lines = own_character_lines();
+    lines.extend(character_select_lines("20:00", GAME));
+
+    // Target: started at the end of that log, the marker is read back
+    // before the tailer's start, and with the pid not stale the overlay is
+    // hidden with the new line; a live area line shows it.
+    let h = harness(log_setup(text(&lines), false));
+    *h.window.foreground.lock().unwrap() = Some(GAME);
+    h.app.start();
+    h.wait_diag(&[NO_AREA_LINE]);
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    append(&h.root.join("Client.txt"), &[first_area_line("20:01", GAME)]);
+    h.wait_diag(&[SHOWN_LINE]);
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // The same lines read as catch-up (a start at offset 0): the same.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&lines, true));
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    assert!(visibility_lines(&h)[0].ends_with(NO_AREA_LINE), "{}", h.diag_text());
+    h.app.handle_tail_events(events(&[first_area_line("20:01", GAME)], false));
+    in_front(&h, Some(GAME));
+    assert_eq!(visibility(&h), vec!["visible false", "visible true"]);
+
+    // Negative control: a last session with an area line starts with the
+    // hide lifted, and the existing rule decides.
+    let h = harness(log_setup(text(&own_character_lines()), false));
+    *h.window.foreground.lock().unwrap() = Some(OTHER);
+    h.app.start();
+    h.wait_diag(&[HIDDEN_LINE]);
+    *h.window.foreground.lock().unwrap() = Some(GAME);
+    h.wait_diag(&[SHOWN_LINE]);
+    assert!(!h.diag_text().contains(NO_AREA_LINE), "{}", h.diag_text());
+    assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 
 // ---------------------------------------------------------------------------

@@ -7,14 +7,16 @@
 //! position, at most [`MAX_SEED_BYTES`], read-only, and seeds the engine's
 //! area with what [`qt_engine::area_from_log`] makes of it. The same read
 //! gives the game's pid, from the newest line with a client header, so the
-//! overlay can tell the game's window before the first new line. A start at
-//! 0 needs no seed: the tailer reads the area lines itself.
+//! overlay can tell the game's window before the first new line, and whether
+//! the last session has a character in an area yet, so the overlay stays
+//! hidden over character select. A start at 0 needs no seed: the tailer
+//! reads the area lines itself.
 
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use qt_engine::{area_from_log, LogArea};
-use qt_logline::client_pid;
+use qt_logline::{client_pid, parse_line, Allowlist, EventKind};
 
 /// The most bytes read back before a start position: a zone's area line is
 /// normally far inside it, and a start never reads the whole log.
@@ -27,6 +29,10 @@ pub struct Before {
     pub area: LogArea,
     /// The pid in the newest client header, if any line has one.
     pub pid: Option<u32>,
+    /// The newest session marker has no area line after it: the last
+    /// session read back has no character in an area yet (character
+    /// select, or a game closed there).
+    pub awaiting_area: bool,
 }
 
 /// What the log before `offset` says about the current area and the game's
@@ -64,5 +70,26 @@ pub fn area_before(path: &Path, offset: u64) -> io::Result<Before> {
         .rev()
         .find_map(|raw| client_pid(&line(raw)));
     let area = area_from_log(window.split(|&b| b == b'\n').map(line));
-    Ok(Before { area, pid })
+    let awaiting_area = awaiting_area(window.split(|&b| b == b'\n').map(line));
+    Ok(Before { area, pid, awaiting_area })
+}
+
+/// Whether the newest of the session markers and area lines in `lines`
+/// (oldest first) is a marker. Neither, as in a log with no session, is
+/// `false`. Both need no allowlist.
+pub fn awaiting_area<I>(lines: I) -> bool
+where
+    I: IntoIterator,
+    I::Item: AsRef<str>,
+{
+    let allow = Allowlist::default();
+    let mut awaiting = false;
+    for l in lines {
+        match parse_line(l.as_ref(), &allow).map(|ev| ev.kind) {
+            Some(EventKind::SessionStart) => awaiting = true,
+            Some(EventKind::AreaEntered { .. }) => awaiting = false,
+            _ => {}
+        }
+    }
+    awaiting
 }

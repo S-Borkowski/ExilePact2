@@ -32,7 +32,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use qt_engine::{Engine, QuestAction, QuestData, Transition};
-use qt_logline::{client_pid, parse_line, Timestamp};
+use qt_logline::{client_pid, parse_line, EventKind, Timestamp};
 use qt_store::{Loaded, Store, StoreError};
 use qt_tailer::{Position, SystemClock as TailerClock, TailEvent};
 use qt_viewmodel::{
@@ -150,6 +150,33 @@ enum PidTrust {
 pub const HIDDEN_LINE: &str =
     "visibility: hidden (the window in front is neither the overlay nor the game pid from the log)";
 pub const SHOWN_LINE: &str = "visibility: shown";
+/// What the diagnostic log says when play mode hides the overlay because
+/// the session has no area line yet ([`waiting_for_area`]).
+pub const NO_AREA_LINE: &str = "visibility: hidden (no character in an area yet this session)";
+
+/// Whether play mode hides the overlay because no character is in an area
+/// yet (owner, after Live 4: not over the login and character-select
+/// screens). `awaiting_area` is set by a session marker (`LOG FILE OPENING`)
+/// and cleared by the session's first area line, live, caught up or read
+/// back before the tailer's start. It hides, whatever window is in front,
+/// only while a game pid is `trusted` (confirmed, or unconfirmed within
+/// [`UNCONFIRMED_PID_GRACE_MS`]): with no game pid, or one gone stale, no
+/// running game is known to write this log, so the fail-open rule of
+/// [`overlay_shown`] applies. Edit mode never waits.
+pub fn waiting_for_area(mode: Mode, awaiting_area: bool, trusted: bool) -> bool {
+    mode == Mode::Play && awaiting_area && trusted
+}
+
+/// The overlay's visibility as last applied, with why it is hidden, so each
+/// change of reason is logged once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Visibility {
+    Shown,
+    /// Another window is in front ([`overlay_shown`]; [`HIDDEN_LINE`]).
+    Hidden,
+    /// No character in an area yet ([`waiting_for_area`]; [`NO_AREA_LINE`]).
+    NoArea,
+}
 
 /// The diagnostic line written each time the game pid the visibility rule
 /// compares with changes, and where it was read (`from`): a live line, a
@@ -333,8 +360,11 @@ struct State {
     game_pid: Option<u32>,
     /// Whether [`State::game_pid`] may hide the overlay ([`PidTrust`]).
     pid_trust: PidTrust,
-    /// Whether the window is shown, as last applied (it is created shown).
-    shown: bool,
+    /// The window's visibility, as last applied (it is created shown).
+    visibility: Visibility,
+    /// A session marker was read and no area line after it yet: no
+    /// character is in an area this session ([`waiting_for_area`]).
+    awaiting_area: bool,
     /// While a relog window is open, the position at the start of the line
     /// that opened it: what is saved instead of [`State::position`], so a
     /// relaunch reads the entry again and decides it. `None` when that start
@@ -681,7 +711,8 @@ impl App {
             log_clock: None,
             game_pid: None,
             pid_trust: PidTrust::Stale,
-            shown: true,
+            visibility: Visibility::Shown,
+            awaiting_area: false,
             relog_entry: None,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
@@ -1041,6 +1072,13 @@ impl App {
                     }
                     let window_was_open = st.engine.relog_window_open();
                     if let Some(ev) = parsed {
+                        // Live or caught up alike: a marker starts the wait
+                        // for a character in an area, an area line ends it.
+                        match ev.kind {
+                            EventKind::SessionStart => st.awaiting_area = true,
+                            EventKind::AreaEntered { .. } => st.awaiting_area = false,
+                            _ => {}
+                        }
                         if live {
                             if let Some(m) = diag::event(&ev) {
                                 self.diag(&m);
@@ -1154,8 +1192,10 @@ impl App {
 
     /// Shows or hides the window by [`overlay_shown`]: in play mode it reads
     /// the pid of the window in front, and hides the overlay unless that is
-    /// the game or the overlay itself. Each change is applied and logged
-    /// once ([`HIDDEN_LINE`], [`SHOWN_LINE`]); showing never activates the
+    /// the game or the overlay itself, and before that it hides the overlay
+    /// while the session has no character in an area ([`waiting_for_area`]).
+    /// Each change is applied and logged once ([`HIDDEN_LINE`],
+    /// [`NO_AREA_LINE`], [`SHOWN_LINE`]); showing never activates the
     /// window, so the game keeps focus. A game pid read only from catch-up
     /// or the seed is confirmed when its window is in front within
     /// [`UNCONFIRMED_PID_GRACE_MS`], and stops hiding the overlay when it is
@@ -1215,11 +1255,29 @@ impl App {
             }
         }
         let used = if st.pid_trust == PidTrust::Stale { None } else { game };
-        let shown = overlay_shown(mode, used, front, std::process::id());
-        if st.shown == shown {
+        let visibility = if waiting_for_area(mode, st.awaiting_area, used.is_some()) {
+            Visibility::NoArea
+        } else if overlay_shown(mode, used, front, std::process::id()) {
+            Visibility::Shown
+        } else {
+            Visibility::Hidden
+        };
+        if st.visibility == visibility {
             return;
         }
-        st.shown = shown;
+        let was_shown = st.visibility == Visibility::Shown;
+        st.visibility = visibility;
+        let shown = visibility == Visibility::Shown;
+        let line = match visibility {
+            Visibility::Shown => SHOWN_LINE,
+            Visibility::Hidden => HIDDEN_LINE,
+            Visibility::NoArea => NO_AREA_LINE,
+        };
+        if was_shown == shown {
+            // Hidden either way, for another reason: only the line changes.
+            self.diag(line);
+            return;
+        }
         // Tauri only posts this to its event loop, so it runs under the lock,
         // in order with any other change. Through the worker's window thread
         // a stop still beats it, and the lock is released.
@@ -1233,7 +1291,7 @@ impl App {
         if let Err(e) = applied {
             self.diag(&format!("error: window visibility: {e}"));
         }
-        self.diag(if shown { SHOWN_LINE } else { HIDDEN_LINE });
+        self.diag(line);
     }
 
     /// Closes a relog window the log has gone quiet on: with no line since
@@ -1717,7 +1775,11 @@ impl App {
                 // The tailer decides on its first poll and reports the
                 // failure itself, as it does for any later read.
                 self.diag(&format!("error: area from log: {e}; the area is unknown"));
-                self.lock().engine.seed_area(None);
+                {
+                    let mut st = self.lock();
+                    st.engine.seed_area(None);
+                    st.awaiting_area = false;
+                }
                 qt_tailer::Follower::new(config)
             }
         };
@@ -1752,6 +1814,9 @@ impl App {
     /// seeds nothing: the tailer reads the area lines itself. A read that
     /// fails leaves the area unknown.
     fn seed_area(&self, path: &std::path::Path, start: Option<qt_tailer::StartAt>) {
+        // A new tailer: whether a session waits for an area is what this
+        // log says, never what an earlier one did.
+        self.lock().awaiting_area = false;
         let start = match start {
             Some(start) if start.offset > 0 => start,
             Some(_) => {
@@ -1768,6 +1833,9 @@ impl App {
         match found {
             Ok(found) => {
                 st.engine.seed_area(found.area.code());
+                // The last session read back has no area line yet: hidden
+                // while its pid is trusted, as if the marker were read now.
+                st.awaiting_area = found.awaiting_area;
                 self.diag(&diag::seeded_area(&found.area, start.offset));
                 // Before any line of this tailer, so a newer line still wins.
                 if let Some(pid) = found.pid {
@@ -2189,6 +2257,27 @@ mod tests {
         assert!(overlay_shown(Mode::Play, Some(15660), None, own));
         // Edit mode: always.
         assert!(overlay_shown(Mode::Edit, Some(15660), Some(999), own));
+    }
+
+    #[test]
+    fn waiting_for_area_rule() {
+        // Play mode, a session with no area line, a trusted pid: hidden.
+        assert!(waiting_for_area(Mode::Play, true, true));
+        // Negative controls: an area line read, no trusted pid (fail open),
+        // or edit mode.
+        assert!(!waiting_for_area(Mode::Play, false, true));
+        assert!(!waiting_for_area(Mode::Play, true, false));
+        assert!(!waiting_for_area(Mode::Edit, true, true));
+
+        // What the log before a start says: the newest marker or area line.
+        let marker = "2026/03/11 10:00:00 ***** LOG FILE OPENING *****";
+        let area = "2026/03/11 10:00:05 1 7e2c0001 [DEBUG Client 7120] Generating level 1 area \"G1_1\" with seed 9";
+        let header = "2026/03/11 10:00:13 2 7e2c0002 [INFO Client 7120] Connecting to instance server";
+        assert!(seed::awaiting_area([marker, header]));
+        assert!(seed::awaiting_area([marker, area, marker, marker]));
+        assert!(!seed::awaiting_area([marker, header, area, header]));
+        assert!(!seed::awaiting_area([header]));
+        assert!(!seed::awaiting_area(Vec::<&str>::new()));
     }
 
     #[test]
