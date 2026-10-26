@@ -183,7 +183,9 @@ has one, on a line under the step.
    "only worth-it quests", a Hotkeys section, log file path with a status
    line, and a link to the icon key (owner, 2026-10-25). There is no
    dock-side setting: the panel is dragged in edit mode (owner, 2026-10-25,
-   after Live 2).
+   after Live 2). A "Read the screen" toggle, off by default, follows "only
+   worth-it quests", with a helper line saying it reads the game's window
+   for boss bars and quest dialogue and saves nothing (owner, 2026-10-26).
 7. **Edit mode vs. play mode** [`mode-play`, `mode-edit`]. The same panel in
    both. Play mode is click-through (mouse goes to the game) and shows no
    buttons; edit mode (hotkey) accepts clicks and shows the controls. The

@@ -180,6 +180,9 @@ Slider for a fixed factor from 0.75× to 2× in 0.05 steps, its value shown
 as `1.25×`, and moving the slider turns Auto off; "Show skipped quests" is a
 Toggle whose helper says a skipped quest shows even with "Only worth-it" on.
 There is no dock-side row: the panel is dragged by its header in edit mode.
+"Read the screen" (owner, 2026-10-26) is a Toggle, off by default, right
+after "Only worth-it quests", whose helper says it reads the game's window
+for boss bars and quest dialogue and saves nothing.
 
 ### Hotkeys block (Settings)
 Heading "Hotkeys · click a key to rebind" (Label); rows label (Label,

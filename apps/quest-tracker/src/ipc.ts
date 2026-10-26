@@ -160,6 +160,8 @@ export interface Settings {
   only_worth_it: boolean;
   log_path: string | null;
   hotkey: string;
+  /** "Read the screen": the opt-in screen reader, off by default; it stores nothing it reads. */
+  screen_reading: boolean;
 }
 
 export interface View {
@@ -314,6 +316,7 @@ const settings = record<Settings>({
   only_worth_it: bool,
   log_path: nullable(str),
   hotkey: str,
+  screen_reading: bool,
 });
 const view = record<View>({
   schema: uint,

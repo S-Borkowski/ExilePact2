@@ -1,6 +1,7 @@
 <script lang="ts">
   // The settings frame: one 40-high row per setting, label left and control
-  // right, helper text under the opacity and click-through rows. Each control
+  // right, helper text under the opacity, click-through and "Read the screen"
+  // rows. Each control
   // sends `update_settings` with the one field it changes and shows what the
   // next `qt:view` says; the UI keeps no copy of its own. Play mode lists the
   // values with no control.
@@ -222,6 +223,17 @@
         onchange={() => send('update_settings', { patch: { only_worth_it: !s.only_worth_it } })}
       />
     </label>
+    <label class="row">
+      <span class="label">Read the screen</span>
+      <input
+        type="checkbox"
+        class="toggle"
+        role="switch"
+        checked={s.screen_reading}
+        onchange={() => send('update_settings', { patch: { screen_reading: !s.screen_reading } })}
+      />
+    </label>
+    <p class="help">Reads the game's window for boss bars and quest dialogue. Saves nothing it reads.</p>
 
     <div class="divider"></div>
     <label class="row">
@@ -255,6 +267,7 @@
       <div class="row"><dt>Scale</dt><dd>{scaleText(s.scale)}</dd></div>
       <div class="row"><dt>Show skipped quests</dt><dd>{s.show_skipped ? 'On' : 'Off'}</dd></div>
       <div class="row"><dt>Only worth-it quests</dt><dd>{s.only_worth_it ? 'On' : 'Off'}</dd></div>
+      <div class="row"><dt>Read the screen</dt><dd>{s.screen_reading ? 'On' : 'Off'}</dd></div>
       <div class="row"><dt>Edit-mode hotkey</dt><dd><span class="keycap">{s.hotkey}</span></dd></div>
       <div class="field"><dt>Log file</dt><dd class="path" title={s.log_path ?? undefined}>{s.log_path ?? 'found automatically'}</dd></div>
     </dl>

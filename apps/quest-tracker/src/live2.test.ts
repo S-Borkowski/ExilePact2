@@ -371,6 +371,7 @@ describe('the settings frame after Live 2', () => {
           'Scale',
           'Show skipped quests',
           'Only worth-it quests',
+          'Read the screen',
           'Edit-mode hotkey',
           'Log file',
         ]);
