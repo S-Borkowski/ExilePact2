@@ -208,6 +208,18 @@ own NPCs; chat, client lines and other players are left out.
   happened in dialogue windows, whose text was not observed in the log (see
   "What poe2db step text matches"). This is one visit: "not observed", not
   "never logged".
+- **Live 3** (measured 2026-10-25, `Client.txt` from 21:04:27 to 21:07:20
+  local time, read-only). The player was in Clearfell Encampment for one
+  visit of about 3 min, and picked up Treacherous Ground from Renly there
+  (the owner's report). The visit holds no NPC line: only chat, client and
+  scene lines (the area entry, its name, the loading screen) and two
+  window-focus lines, up to the entry to Clearfell. This is the second
+  measured town visit with talks, after Live 1's, and again the talk was
+  not observed in the log. Consequence for the data: Treacherous Ground's
+  unlock gets the Clearfell Encampment entry (`G1_town`) beside the
+  Clearfell entry, the earliest evidence of the pickup and the signal
+  Finding the Forge, also Renly's, already unlocks on; that the town entry
+  stands for the talk is inferred, not measured.
 - **Consequence for the data.** A talk step cannot have a signal of its own.
   A town NPC's greeting is not evidence of a quest talk, so none is a step
   signal. A talk step is completed by the next signal the log records that
@@ -246,7 +258,7 @@ last line in the area to the `has received` line:
 
 | Quest | Gaps (measured) |
 |---|---|
-| Beira of the Rotten Pack | 7, 8, 9, 19 and 36 s in Clearfell (`G1_2`); 134 and 465 s in Mud Burrow (`G1_3`) |
+| Beira of the Rotten Pack | 7, 8, 9, 19, 36 and 44 s in Clearfell (`G1_2`); 134 and 465 s in Mud Burrow (`G1_3`); none in Live 3 |
 | Blackjaw, the Remnant | 5 to 21 s |
 | Lythara, the Wayward Spear | 10 to 15 s |
 | The King in the Mists | 7 to 37 s |
@@ -274,6 +286,33 @@ last line in the area to the `has received` line:
   lines). The owner saw the reward come
   when the item Beira dropped was used, not at the kill. The log records
   nothing of picking the item up or using it.
+- **Beira's lines and her defeat** (measured 2026-10-25, the whole log up
+  to the end of Live 3, read-only, by a script kept outside the
+  repository). 9 sessions hold her lines (73 in all). Her first line in
+  each is "Sleep in ice, wake in snow. Sleep my pretties as you grow...";
+  the rest are combat barks: "Be still!", "Invader!", "Feed!", "Swell!",
+  "Rotten!", "My pets hunger!". No line marks her defeat (not observed):
+  between her last line and the next area entry or the reward line the
+  log holds only chat, window-focus and client lines, and once a level-up
+  and a passive allocation. The positive control in the same reading is
+  her own lines and the reward line, which it finds. The `+10% to
+  [Resistances|Cold Resistance]` reward came 7 to 44 s after her last
+  line in 6 sessions, in Clearfell, and after the player had left
+  Clearfell in 2, in the Mud Burrow, about 2 and 8 minutes later. In
+  Live 3 her only line was the first, at 21:12:51 local time; the player
+  entered the Grelwood at 21:14:13, and no reward line came before the
+  game closed.
+- **That negative is not controlled.** No reading was set against a known
+  kill time, and the owner says Beira was not defeated in the live
+  sessions (2026-10-25), so the 9 sessions may not hold a defeat that
+  could have been logged. Live procedure 4 measures her zone from the
+  entry through the first encounter and the kill to leaving, against the
+  person's clock times. Until then the tracker reads no defeat: by the
+  owner's decision of 2026-10-25 her lines mark the find step, "Defeat
+  Beira of the Rotten Pack" has no signal and the player ticks it, "Use
+  the item it dropped" has none either, and the reward line finishes the
+  quest in any area (Blackjaw and Lythara get the same split). No other
+  campaign quest's reward in the quest data is `+10% to Cold Resistance`.
 - **Blackjaw and Lythara** (inference). That their reward also follows the
   use of an item the boss dropped is read from the above, not observed in
   play: Blackjaw's gaps are timed from a bark and cannot separate the two
@@ -285,9 +324,11 @@ last line in the area to the `has received` line:
   does not name the item): Beira's is "Use the item it dropped"; Blackjaw's
   and Lythara's is "Use any item left after the fight", whose text gives
   their measured gaps and says that an item is not established for them.
-  After the boss's line the
-  row shows the fight as the step reached and the use as the step to do; the
-  reward line still finishes the quest. The King in the Mists (Ominous
+  Up to the Live 3 build the boss's line was the fight's signal, so the row
+  showed the use as the step to do as soon as the boss spoke (Live 2 and
+  Live 3); since the owner's decision above, the boss's line reaches the
+  find step and the defeat is ticked. The reward line still finishes the
+  quest. The King in the Mists (Ominous
   Altars) and Ignagduk (Tribal Vengeance) already have steps after the fight
   that lead to the reward, and Abandoned Prison's reward comes from the
   Goddess of Justice in the prison, not from an item the Prisoner drops
@@ -350,13 +391,28 @@ repository, and against poe2db.
   at 17:42:57, the level-up to 2 one second later), the moment poe2db's
   `MillerKillComment` names; the 60 s after it hold one window-focus line
   and nothing else. Whether the person heard the remark was not asked.
+- **Live 3** (measured 2026-10-25, Live procedure 3 step 16, read-only by a
+  script kept outside the repository). The person named four remarks of
+  their character by the minute they heard them: near the Wounded Man, at a
+  skill gem, on seeing The Bloated Miller and after killing him. The window
+  read was `Client.txt` from 20:48:00 to 20:53:39 local time, which covers
+  all four minutes and ends with the game closing. Besides chat it held 26
+  lines: 13 window-focus lines, 6 of The Bloated Miller, 3 of the Wounded
+  Man, 1 of Mortimer, the level-up to 2 (four seconds after the Miller's
+  last line) and 2 client lines. None of them is a remark. The Wounded Man's
+  three lines, which the person heard there, are the positive control: the
+  log carried the NPC lines spoken in the same minutes. Over the whole Live 3
+  session (20:40 to 21:18 local) every voiced speaker was an NPC or a boss
+  (The Bloated Miller, the Wounded Man, Mortimer, Beira of the Rotten Pack,
+  Una).
 - **Not observed** (a negative, not proof of absence): a line carrying the
-  own character's remark, under any speaker or none, anywhere in the log.
+  own character's remark, under any speaker or none, anywhere in the log,
+  including two sessions with a person listening for them (Live 2's Miller
+  kill, Live 3's four remarks). That the client never logs them is not
+  established.
 - **Consequence for the data.** None: this is research only and the tracker
-  is unchanged. A remark cannot be a step signal while it is not observed in
-  the log. Live procedure 3 step 16 measures it live: for each remark the
-  person hears, `Client.txt` is read from 10 s before to 10 s after, with an
-  NPC line heard nearby (Wounded Man, Una) as the positive control.
+  is unchanged (the owner, 2026-10-25: "if not we can skip it"). A remark
+  cannot be a step signal while it is not observed in the log.
 
 ## Character detection
 
@@ -399,8 +455,41 @@ All of this is measured on 2026-10-24 unless labelled otherwise.
   the whole log holds 27 of them, all for this one character, in five
   sessions; none followed that character's fifth entry (the one before its
   level-up), and none came for any of the 7 other new characters. A `G1_1`
-  entry alone therefore does not tell a new character from a relog. A character past level 1 entering `G1_1` was not observed,
-  which is not proof that it never happens.
+  entry alone therefore does not tell a new character from a relog. A
+  character past level 1 entering `G1_1` was not observed up to Live 2;
+  Live 3 observed it (below).
+- **The Riverbank's seed** (measured 2026-10-25, one player's whole log up
+  to the end of Live 3, read-only, by a script kept outside the repository).
+  The log holds 16 entries to `G1_1`, from 2025-08-29 to 2026-10-25, and
+  they generate 10 distinct seeds, that is 10 instances. Each instance's
+  first entry is followed by its character's first level-up (for the
+  instance relogged four times, after its fifth entry; for Live 3's, after
+  its second). The other 6 entries re-enter an earlier entry's instance,
+  with the **same seed**, and each is the same character as that instance's
+  earlier entries: four in consecutive sessions on 2026-05-29 (the relogs
+  above, still at level 1) and two in Live 3, one at level 1 and one after
+  the character's level-up to 2, which is the past-level-1 relog not
+  observed before. The 10 first level-ups name 10 different characters, so
+  no new instance was a stored character coming back (re-entries with a new
+  seed: 0 observed). Each re-entry came right after a session marker; 2 of the 10 new instances followed another area in the same
+  session (after `G2_town` on 2025-08-30, after `G1_town` on 2025-12-12).
+- **The name line on a relog** (measured, same reading). The `[WARN]
+  Character <name> has unknown build of path: None` line came within 2 s
+  of 4 entries, all to the 2026-05-29 instance: its first entry and the
+  next three. So it came after 3 of the 6 re-entries (the fourth relog on
+  2026-05-29 had none) and after neither of Live 3's two. This corrects an
+  earlier count of "four relogs with the line", which took that instance's
+  first entry for a relog.
+- **`Requesting to complete all tutorials due to the client setting`**
+  (measured, same reading). It followed 8 of the 10 new instances, every
+  one since 2025-09-06: in 7 of them 0 to 2 s after the entry, in the
+  2025-09-06 one 57 s after. It followed none of the 6 re-entries, and once
+  it came 1 s after a hideout entry instead. It is a client-setting line
+  that names no character, and the tracker does not read it.
+- **The entry line names no character** (measured). All 16 entries are
+  `Generating level 1 area "G1_1"`: the number is the area's level, not the
+  character's, and the entry line names no character. Live 3's relog after
+  the level-up to 2 was generated at level 1 as well.
 
 From those counts the tracker's rules are (a design choice built on the
 measurements, not a measurement): a name in a `has received` or `has lost`
@@ -453,8 +542,8 @@ moment. The 5 s bound is the measured 1 to 2 s with room to spare; a
 character only, its absence proves nothing: a relog without it still
 starts the new character once the window closes.
 
-The measured relogs were of a character with no level-up yet, so no name
-was stored for the rule to match. For that case the unnamed new character
+The relogs measured before Live 3 were of a character with no level-up
+yet, so no name was stored for the rule to match. For that case the unnamed new character
 is kept as one provisional record (its progress, its event count, the pin
 it released, the seed of its `G1_1` instance, and whether it is open),
 saved apart from the characters. A session marker parks it instead of
@@ -463,10 +552,26 @@ dropping its events, and gives the pin back; a later level-1 entry to the
 and one to another instance replaces it, counting the replaced record's
 events as dropped apart from those that came before any character. A
 level-up naming it, a relog by the rule above or the player's pin closes
-the record. A known character past level 1 re-entering `G1_1` (not
-observed) with no build line would show as "New character" until its
-next level-up, which names it, gives it the progress and takes over a pin
-the entry released.
+the record. Up to the Live 3 build, a known character past level 1
+re-entering `G1_1` with no build line showed as "New character" until its
+next level-up; Live 3 observed exactly that relog, with no name line.
+
+The seed rule (a design choice of 2026-10-25, resting on the seed
+measurements above: every one of the 6 re-entries had its instance's seed,
+and none of the 10 new instances was a stored character's return): each
+stored character keeps the seed of the Riverbank instance it was last
+decided to be in, given to it when a decision puts it there (the new
+character's seed passes to the name its level-up gives it, or to the
+character a pin hands its progress to, and a relog decided by seed or by
+the name line records that entry's seed; a routed event never records
+one). A level-1 `G1_1` entry whose seed is that of exactly one stored
+character, and of no parked new-character record, is that character's
+relog, decided at the entry with no wait. Any other entry opens the relog
+window above, and the name line keeps working inside it; two characters
+with one seed fall back to the window. A stored character returning to
+The Riverbank in a fresh instance (its old one closed) still starts a "New
+character" that its next level-up hands back; that case was not observed
+in the log.
 
 ## What poe2db step text matches
 
@@ -545,12 +650,14 @@ measured signal (see "What poe2db step text matches").
 **Secrets in the Dark and The Mysterious Shade** (measured 2026-10-25,
 read-only over the owner's `Client.txt`, unless labelled otherwise). Una's
 voiced lines in the Grelwood (`G1_4`) and the Grim Tangle (`G1_6`), in the
-order they came; 7 sessions of the log hold her Grelwood lines:
+order they came; 7 sessions of the log up to Live 2 hold her Grelwood
+lines, and they came in the same order in each of them. Live 3 is an
+eighth, with her first line only:
 
 | Area | Una's line | Sessions | Where it falls |
 |---|---|---|---|
-| `G1_4` | "What happened here...?" | 7 | her first Grelwood line each time |
-| `G1_4` | "I'll wait here. The old magicks will protect me." | 4 | 2 to 5 s after it (from December 2025 on, and in Live 2) |
+| `G1_4` | "What happened here...?" | 8 | her first Grelwood line each time, when she is summoned at the Tree of Souls |
+| `G1_4` | "I'll wait here. The old magicks will protect me." | 4 | 2 to 8 s after it (from December 2025 on; 8 s in Live 2) |
 | `G1_4` | "Good. Now the others!" | 6 | after that session's Red Vale (`G1_5`) visits |
 | `G1_6` | "The old magicks still thrive! The way is open. Please, hurry." | 6 | after "Good. Now the others!" each time |
 
@@ -561,8 +668,20 @@ order they came; 7 sessions of the log hold her Grelwood lines:
   (which fires on the Clearfell entry), makes it in progress from there.
   That start is **inferred**, not measured: the Clearfell entry is the
   earliest evidence of the talk, not the talk.
-- The first two Grelwood lines come at the Tree of Souls, so they are the
-  signals of "Ask Una for help" (measured: where they fall). That "Good.
+- The wait line follows the talk, not the summon (measured 2026-10-25). In
+  Live 2 the person had talked to Una ("even after talking to una", Live 2
+  capture), and the wait line came 8 s after "What happened here...?". In
+  Live 3 the person summoned her without the talk: "What happened
+  here...?" came at 21:16:26 local time and the game closed about 2.5 min
+  later with no wait line. Sessions before December 2025 never have it.
+  So "What happened here...?" is the signal of "Search the Grelwood"
+  (summoning her ends the search), and the wait line alone is the signal
+  of "Ask Una for help" (**inferred**: it follows the talk, two sessions
+  read against what the person did). Where the wait line never comes, the
+  Red Vale entry completes the steps before it, as the engine takes the
+  highest step reached. Up to the Live 3 build both first lines were the
+  signals of "Ask Una for help", so a summon alone showed "Find the Red
+  Vale" (Live 3). That "Good.
   Now the others!" is "Use the Rune Spikes" is **inferred** from its place
   after the Red Vale; that the Grim Tangle line is The Mysterious Shade's
   "Speak to Una about the roots" is **inferred** from the step text.
