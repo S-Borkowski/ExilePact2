@@ -47,7 +47,13 @@ lines and [press - 6 s, press + 2 s] for frames. A shown-line hit
 (`cfg-off-shown`, `dlg-subtitle`, `remark-shown`, `remark-kill`) must be a
 new occurrence: its frame shows the text more times than the lines still on
 screen from [start - 5 s, start - 1 s] of its window, so a stale chat row is
-dropped while a repeated greeting or bark still counts. A log check is
+dropped while a repeated greeting or bark still counts. A window with no
+frame in [start - 5 s, start - 1 s] is not judged: none of its reads is a
+hit, and its check is `not-run (instrument: no frame before ...)` unless the
+judged windows decide it. `dlg-log` counts only quest dialogue: an NPC line
+logged in (open + 1 s, close + 2 s] that is not a greeting, i.e. that scores
+under 0.8 either way against every line the NPC logged in [open - 6 s,
+open + 1 s] or in a town stage (`TOWN_STAGES`). A log check is
 `not-observed` only when its controls passed, and `not-run` otherwise. A
 missing input makes the checks that need it `not-run (instrument: <why>)`;
 an internal error in one check names it, and the analysis exits 1 after
@@ -109,6 +115,7 @@ DLG_MIN_LINES = 3
 DLG_MIN_WORDS = 3
 DLG_MIN_FRAMES = 2
 DLG_AFTER_S = 2.0                        # dlg-subtitle and dlg-log: [open, close + 2]
+TOWN_STAGES = ("town-on", "town-off", "town-on-again", "relaunch-off")   # dlg-log's vendor-greeting pool
 SAME_LINE_RATIO = 0.8                    # two OCR reads of one line
 BAR_EDGE_S = 0.5                         # bar windows: [a + 0.5, b - 0.5]
 BAR_SHARE = 0.5
@@ -679,11 +686,20 @@ def prefetch(s: Session, names) -> None:
 
 # A shown-line check's observed: the reads `Session.newness` dropped as the same occurrence.
 DROPPED = "dropped as a line still on screen from the %d frame(s) before, not a new one"
+# ... and a window `Session.newness` found no frame before: none of its reads is a hit.
+NOT_JUDGED = "not judged: no frame in [start - 5 s, start - 1 s]"
 
 
 def _new_rule(before: str) -> str:
     return ("its frame shows the text more times than the lines still on screen from [%s], "
             "one having left after %d frames in a row without it" % (before, GONE_FRAMES))
+
+
+def _unjudged_presses(n: int) -> str:
+    return "not-run (instrument: no frame before %d press(es))" % n
+
+
+UNJUDGED_WINDOW = "not-run (instrument: no frame before the window)"
 
 
 EXPECTED = {
@@ -698,7 +714,9 @@ EXPECTED = {
     "cfg-file-written": "the after-toggle-off config record reads output_all_dialogue_to_chat=false",
     "cfg-off-shown": "at least %d town-off presses each have a bottom-band line in [press - 6 s, press + 2 s] "
                      "speaker-prefixed by a speaker, or scoring >= %.1f against a line logged in town-on, "
-                     "and new (%s)" % (SHOWN_MIN, OCR_SCORE, _new_rule("press - 11 s, press - 7 s")),
+                     "and new (%s); a press with no frame in [press - 11 s, press - 7 s] before its window is "
+                     "not judged, not-run when the judged presses fall short of %d only by it"
+                     % (SHOWN_MIN, OCR_SCORE, _new_rule("press - 11 s, press - 7 s"), SHOWN_MIN),
     "cfg-off-log": "a speaker line logged, or a logged line repeating the shown text, in [press - 6 s, "
                    "press + 1 s] of a shown town-off greeting (controls: cfg-on-log, cfg-off-shown)",
     "cfg-on-again-log": "a speaker line logged in [press - 6 s, press + 1 s] of at least one town-on-again press",
@@ -708,20 +726,23 @@ EXPECTED = {
                   "more frames of [open + 0.5, close - 0.5] and in none of [open - 5, open - 1], plus the "
                   "NPC's name" % (DLG_MIN_LINES, DLG_MIN_WORDS, DLG_MIN_FRAMES),
     "dlg-option": "the chosen topic scores >= %.1f in a frame between open and close" % OCR_SCORE,
-    "dlg-subtitle": "a line speaker-prefixed by the NPC within [open, close + 2 s], and new (%s)"
-                    % _new_rule("open - 5 s, open - 1 s"),
-    "dlg-log": "an NPC line logged in [open, close + 2 s], or a logged line repeating a dlg-window line "
-               "(controls: cfg-on-log, dlg-window)",
+    "dlg-subtitle": "a line speaker-prefixed by the NPC within [open, close + 2 s], and new (%s); not-run "
+                    "when no frame is in [open - 5 s, open - 1 s]" % _new_rule("open - 5 s, open - 1 s"),
+    "dlg-log": "an NPC line logged in (open + 1 s, close + 2 s] that is not a greeting (>= %.1f either way "
+               "against a line the NPC logged in [open - 6 s, open + 1 s] or in a town stage), or a dlg-window "
+               "line repeated by such a logged line, any speaker (controls: cfg-on-log, dlg-window)" % OCR_SCORE,
     "bar-control": "the boss's name scores >= %.1f in at least half (and at least %d) of the top-band frames "
                    "in [bar-up + 0.5, first panel open - 0.5]" % (OCR_SCORE, BAR_MIN_FRAMES),
     "bar-panel": "the boss's name reads in at least half of the top-band frames in [open + 0.5, close - 0.5] "
                  "of the %s panel (fail: covered or unreadable)",
     "bar-away": "the boss's name in no top-band frame within [away + 1, away + 6]",
     "remark-shown": "a line speaker-prefixed by the character in [press - 6 s, press + 2 s] of a remark press "
-                    "after the first, and new (%s)" % _new_rule("press - 11 s, press - 7 s"),
+                    "after the first, and new (%s); a press with no frame in [press - 11 s, press - 7 s] is "
+                    "not judged, not-run when no judged press shows one and a press is not judged"
+                    % _new_rule("press - 11 s, press - 7 s"),
     "remark-kill": "a line speaker-prefixed by the character in a bottom-band frame within [kill - 2 s, "
-                   "kill + 15 s], and new (%s) (fail: no remark shown at the kill)"
-                   % _new_rule("kill - 7 s, kill - 3 s"),
+                   "kill + 15 s], and new (%s) (fail: no remark shown at the kill); not-run when no frame "
+                   "is in [kill - 7 s, kill - 3 s]" % _new_rule("kill - 7 s, kill - 3 s"),
     "remark-log": "for each remark found, a logged line repeating its text after the prefix, or a line with "
                   "the character as speaker, within [t - 8 s, t + 2 s] of its first frame (controls: "
                   "cfg-on-log, a remark found)",
@@ -870,7 +891,8 @@ def off_shown(s: Session) -> list:
     """For each town-off press: (press, frame, line, how, dropped, before) of its first new shown
     greeting, frame, line and how None when there is none. `dropped` counts the candidate line reads
     that were a line still on screen from the press's before window (`Session.newness`), `before`
-    that window's frame count."""
+    that window's frame count; a press whose before window holds no frame is not judged (`before`
+    0, no hit)."""
     def make():
         presses = s.need_presses("town-off")
         s.frames()
@@ -883,6 +905,8 @@ def off_shown(s: Session) -> list:
         for p in presses:
             frames, is_new, before = s.newness(p - _td(GREET_LOG_BEFORE_S), p + _td(GREET_FRAME_AFTER_S))
             hit, dropped = None, 0
+            if not before:
+                frames = []
             for f in frames:
                 for l in s.lines(f):
                     who = next((n for n in s.speakers if prefixed_by(l.text, n)), None)
@@ -904,12 +928,18 @@ def off_shown(s: Session) -> list:
 def check_cfg_off_shown(s: Session) -> dict:
     shown = off_shown(s)
     hits = [x for x in shown if x[1] is not None]
-    parts = ["press %s: %s; %d candidate read(s) %s" % (
+    unjudged = sum(1 for x in shown if not x[5])
+    parts = [("press %s: %s" % (_hms(p), NOT_JUDGED)) if not nb else "press %s: %s; %d candidate read(s) %s" % (
              _hms(p), ("%s, first frame %s" % (how, _rel(f.utc, p))) if f else "none shown", dropped, DROPPED % nb)
              for p, f, _, how, dropped, nb in shown]
-    observed = "%d of %d presses shown; %s" % (len(hits), len(shown), "; ".join(parts))
-    return result("cfg-off-shown", EXPECTED["cfg-off-shown"], observed,
-                  "pass" if len(hits) >= SHOWN_MIN else "fail")
+    observed = "%d of %d presses shown, %d not judged; %s" % (len(hits), len(shown), unjudged, "; ".join(parts))
+    if len(hits) >= SHOWN_MIN:
+        verdict = "pass"
+    elif len(hits) + unjudged < SHOWN_MIN:
+        verdict = "fail"
+    else:
+        verdict = _unjudged_presses(unjudged)
+    return result("cfg-off-shown", EXPECTED["cfg-off-shown"], observed, verdict)
 
 
 def check_cfg_off_log(s: Session, done: dict) -> dict:
@@ -987,6 +1017,9 @@ def check_dlg_option(s: Session) -> dict:
 def check_dlg_subtitle(s: Session) -> dict:
     o, c = s.dialogue()
     frames, is_new, before = s.newness(o, c + _td(DLG_AFTER_S))
+    if not before:
+        observed = "open %s: %s; %d frames in the window" % (_hms(o), NOT_JUDGED, len(frames))
+        return result("dlg-subtitle", EXPECTED["dlg-subtitle"], observed, UNJUDGED_WINDOW)
     with_line, dropped = [], 0
     for f in frames:
         new = False
@@ -1011,12 +1044,49 @@ def check_dlg_log(s: Session, done: dict) -> dict:
     if why:
         return result("dlg-log", expected, "not computed: " + why, "not-run (%s)" % why)
     d = dialogue_lines(s)
-    a, b = d["open"], d["close"] + _td(DLG_AFTER_S)
-    npc = [l for l in s.log().npc(s.npc) if a <= l.utc <= b]
-    repeats = sum(1 for c_ in d["new"] if s.log().repeats_logged(c_["text"], a, b, screen.fuzzy_score, OCR_SCORE))
-    observed = "%d %s line(s) logged in [open, close + 2 s]; %d of %d window lines repeated in the log" % (
-        len(npc), s.npc, repeats, len(d["new"]))
-    return result("dlg-log", expected, observed, "pass" if npc or repeats else "not-observed")
+    log = s.log()
+    o = d["open"]
+    # Quest dialogue is logged after the open press's greeting window, (open + 1, close + 2].
+    a, b = o + _td(GREET_LOG_AFTER_S), d["close"] + _td(DLG_AFTER_S)
+    at_open, pool = dialogue_greetings(s, o)
+    greetings = [l.text for l in at_open] + pool
+
+    def is_greeting(text: str) -> bool:
+        return any(screen.fuzzy_score(g, text) >= OCR_SCORE or screen.fuzzy_score(text, g) >= OCR_SCORE
+                   for g in greetings)
+
+    later = [l for l in log.npc(s.npc) if a < l.utc <= b]
+    quest = [l for l in later if not is_greeting(l.text)]
+    unmatched = sum(1 for l in at_open if not any(screen.fuzzy_score(t, l.text) >= OCR_SCORE
+                                                  or screen.fuzzy_score(l.text, t) >= OCR_SCORE for t in pool))
+
+    def repeated(text: str) -> bool:
+        """A logged line in (a, b] that repeats `text` and is not a greeting."""
+        def score(x, y):
+            said = x if y == text else y   # repeats_logged scores the logged line both ways round
+            return 0.0 if is_greeting(said) else screen.fuzzy_score(x, y)
+        return log.repeats_logged(text, a + _dt.timedelta(microseconds=1), b, score, OCR_SCORE)
+
+    repeats = sum(1 for c_ in d["new"] if repeated(c_["text"]))
+    observed = ("%d %s line(s) logged in (open + 1 s, close + 2 s] that are not a greeting, %d set aside as "
+                "greetings; %d %s line(s) at the open press [open - 6 s, open + 1 s], never counted, %d matching "
+                "nothing in the town pool (%d line(s)); %d of %d window lines repeated by a logged line that is "
+                "not a greeting") % (len(quest), s.npc, len(later) - len(quest), len(at_open), s.npc, unmatched,
+                                     len(pool), repeats, len(d["new"]))
+    return result("dlg-log", expected, observed, "pass" if quest or repeats else "not-observed")
+
+
+def dialogue_greetings(s: Session, o) -> tuple[list, list[str]]:
+    """(the dialogue NPC's lines logged in the open press's greeting window [o - 6, o + 1], the texts
+    it logged in the town stages' runs): what dlg-log sets aside as greetings."""
+    lines = s.log().npc(s.npc)
+    at_open = [l for l in lines if o - _td(GREET_LOG_BEFORE_S) <= l.utc <= o + _td(GREET_LOG_AFTER_S)]
+    pool = []
+    for name in TOWN_STAGES:
+        r = s.run(name)
+        if r is not None:
+            pool += [l.text for l in lines if r.start <= l.utc and (r.end is None or l.utc < r.end)]
+    return at_open, pool
 
 
 def _bar_stats(s: Session, frames) -> tuple[int, int, float, float | None, float | None]:
@@ -1098,6 +1168,8 @@ def remarks(s: Session) -> dict:
         s.frames()
         def find(a, b):
             frames, is_new, before = s.newness(a, b)
+            if not before:
+                return None, len(frames), 0, 0   # not judged: no hit
             hit, dropped = s.first_remark(frames, is_new)
             return hit, len(frames), dropped, before
         shown = [(p,) + find(p - _td(GREET_LOG_BEFORE_S), p + _td(GREET_FRAME_AFTER_S)) for p in presses[1:]]
@@ -1112,14 +1184,16 @@ def check_remark_shown(s: Session) -> dict:
     r = remarks(s)
     if not r["shown"]:
         raise missing("no remark press after the first")
-    parts = ["press %s: %s; %d candidate read(s) %s" % (
+    parts = [("press %s: %s" % (_hms(p), NOT_JUDGED)) if not nb else "press %s: %s; %d candidate read(s) %s" % (
              _hms(p), ("first frame %s" % _rel(hit[0].utc, p)) if hit else "none in %d frames" % n, dropped,
              DROPPED % nb)
              for p, hit, n, dropped, nb in r["shown"]]
     found = sum(1 for _, hit, *_ in r["shown"] if hit)
-    observed = "%d of %d presses with a line prefixed by %s; %s" % (found, len(r["shown"]), CHARACTER_MASK,
-                                                                  "; ".join(parts))
-    return result("remark-shown", EXPECTED["remark-shown"], observed, "pass" if found else "fail")
+    unjudged = sum(1 for *_, nb in r["shown"] if not nb)
+    observed = "%d of %d presses with a line prefixed by %s, %d not judged; %s" % (
+        found, len(r["shown"]), CHARACTER_MASK, unjudged, "; ".join(parts))
+    verdict = "pass" if found else "fail" if not unjudged else _unjudged_presses(unjudged)
+    return result("remark-shown", EXPECTED["remark-shown"], observed, verdict)
 
 
 def check_remark_kill(s: Session) -> dict:
@@ -1127,6 +1201,9 @@ def check_remark_kill(s: Session) -> dict:
     if r["kill"] is None:
         raise missing("no press in stage remark")
     p, hit, n, dropped, nb = r["kill"]
+    if not nb:
+        observed = "kill press %s: %s; %d frames in the window" % (_hms(p), NOT_JUDGED, n)
+        return result("remark-kill", EXPECTED["remark-kill"], observed, UNJUDGED_WINDOW, delay_s=None)
     if hit:
         observed = "kill press %s: first frame with a new line prefixed by %s %s after it (%d frames)" % (
             _hms(p), CHARACTER_MASK, _rel(hit[0].utc, p), n)

@@ -31,13 +31,16 @@ while the option is off and keeps the subtitles, so `cfg-off-log` is
 context's list: no `town-off` presses, a panel that hides the name, a remark
 shown and not logged (and one logged), unpaired boss presses, `boss` stamped
 twice, a `remark` run with the kill press alone, a `control` on `G1_1` alone,
-and privacy.
+and privacy. `Newness` pins the shown-line checks' newness rule and the
+unjudged window (no frame before it), and `DialogueLog` pins how `dlg-log`
+tells quest dialogue from the greeting that opening the talk fires.
 """
 import contextlib
 import datetime
 import hashlib
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -130,15 +133,25 @@ CHAT_FROM = z("12:04:50")
 
 
 def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, town_off_presses=3,
-          covered=None, boss_presses=None, boss_twice=False, remark_presses_after=1, remark_logged=False,
-          dlg_logged=False, toggled_in_file=True, frames=True, stages=True) -> Path:
+          town_off_at=None, off_shown="prefixed", covered=None, boss_presses=None, boss_twice=False,
+          remark_presses_after=1, remark_logged=False, dlg_logged=False, dlg_subtitle=True, extra_shown=(),
+          drop_bottom=(), toggled_in_file=True, frames=True, stages=True) -> Path:
     """A synthetic live folder in `root`; returns it.
 
     `covered` names a panel that hides the boss's name while it is open;
     `boss_presses` cuts the last boss run's presses to that many;
-    `boss_twice` stamps an unpaired `boss` run before the real one."""
+    `boss_twice` stamps an unpaired `boss` run before the real one.
+    `town_off_at` replaces the town-off presses; `off_shown` is how their
+    greetings show: `prefixed` (`Renly: <g>`), `subtitle` (`<g>`) or None.
+    `dlg_logged` is True (a dialogue line logged 2 s after open) or a list of
+    (seconds after open, text) Renly logs; `dlg_subtitle` False drops Renly's
+    prefixed subtitle from the dialogue window. `extra_shown` adds (text,
+    from, to) rows to the bottom band, and `drop_bottom` leaves out the
+    bottom-band frames of each (from, to)."""
     if relaunch_logged is None:
         relaunch_logged = off_logged
+    if dlg_logged is True:
+        dlg_logged = [(2.0, DLG_LINES[0])]
     live = root / "live"
     for sub in common.SUBFOLDERS:
         (live / sub).mkdir(parents=True, exist_ok=True)
@@ -163,7 +176,7 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
     presses += TOWN_ON[1]
     stamps.append((TOGGLE_OFF, "toggle-off"))
     stamps.append((TOWN_OFF[0], "town-off"))
-    off_presses = TOWN_OFF[1][:town_off_presses]
+    off_presses = list(town_off_at) if town_off_at is not None else TOWN_OFF[1][:town_off_presses]
     presses += off_presses
     stamps.append((TOWN_ON_AGAIN[0], "town-on-again"))
     presses += TOWN_ON_AGAIN[1]
@@ -203,8 +216,8 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
     if remark_logged:
         for text, start, _ in (KILL_REMARK, LATER_REMARK):
             gen.append((start + td(0.5), log_line(start + td(0.5), "%s: %s" % (CHARACTER, text))))
-    if dlg_logged:
-        gen.append((DLG_OPEN + td(2), log_line(DLG_OPEN + td(2), "Renly: " + DLG_LINES[0])))
+    for after, text in dlg_logged or ():
+        gen.append((DLG_OPEN + td(after), log_line(DLG_OPEN + td(after), "Renly: " + text)))
     gen.sort(key=lambda p: p[0])
     client = root / "Client.txt"
     client.write_bytes(head + "".join(l + "\r\n" for l in lines + [g for _, g in gen]).encode("utf-8"))
@@ -224,12 +237,14 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
     screentext.config(live, "restored", ini, now=lambda: z("12:14:00"))
 
     # I3: the rehearsal's frames and the session's.
-    def frames_into(folder, bands, start, end, texts, luma=lambda band, t: (60.0, 30.0)):
+    def frames_into(folder, bands, start, end, texts, luma=lambda band, t: (60.0, 30.0), keep=lambda band, t: True):
         idx, ocr = [], []
         t = start
         while t <= end:
             stamp = t.strftime("%Y%m%dT%H%M%S.") + "%03dZ" % (t.microsecond // 1000)
             for band in bands:
+                if not keep(band, t):
+                    continue
                 rel = "frames/%s/%s.jpg" % (band, stamp)
                 mean, std = luma(band, t)
                 idx.append({"utc": common.format_utc(t), "band": band, "path": rel,
@@ -252,14 +267,18 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
         return live
 
     shown = []   # (text, from, to) in the bottom band
-    for group in (TOWN_ON[1], off_presses, TOWN_ON_AGAIN[1]):
+    for group, form in ((TOWN_ON[1], "prefixed"), (off_presses, off_shown), (TOWN_ON_AGAIN[1], "prefixed")):
         # The subtitle stays whether or not the line was logged.
+        if form is None:
+            continue
         for i, p in enumerate(group):
-            shown.append(("Renly: " + GREETINGS[i % 3], p - td(0.7), p + td(3.5)))
+            shown.append((("Renly: " if form == "prefixed" else "") + GREETINGS[i % 3], p - td(0.7), p + td(3.5)))
     for text, a, b in (KILL_REMARK, LATER_REMARK):
         shown.append(("%s: %s" % (CHARACTER, text), a, b))
-    shown.append(("Renly: " + DLG_LINES[0], DLG_OPEN + td(1), DLG_OPEN + td(6)))
+    if dlg_subtitle:
+        shown.append(("Renly: " + DLG_LINES[0], DLG_OPEN + td(1), DLG_OPEN + td(6)))
     shown.append((CHAT, CHAT_FROM, FRAMES_TO))
+    shown += list(extra_shown)
     covered_at = None
     if covered is not None:
         k = PANELS.index(covered)
@@ -283,7 +302,10 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
             return 20.0, 8.0
         return 60.0, 30.0
 
-    frames_into(live / "i3", ("top", "bottom"), FRAMES_FROM, FRAMES_TO, texts, luma)
+    def keep(band, t):
+        return band != "bottom" or not any(a <= t <= b for a, b in drop_bottom)
+
+    frames_into(live / "i3", ("top", "bottom"), FRAMES_FROM, FRAMES_TO, texts, luma, keep)
     return live
 
 
@@ -340,6 +362,10 @@ class Constants(unittest.TestCase):
         self.assertEqual((screentext.REMARK_LOG_BEFORE_S, screentext.REMARK_LOG_AFTER_S), (8.0, 2.0))
         self.assertEqual((screentext.AWAY_FROM_S, screentext.AWAY_TO_S), (1.0, 6.0))
         self.assertEqual(screentext.OCR_SCORE, 0.8)
+        self.assertEqual((screentext.DLG_BEFORE_FROM_S, screentext.DLG_BEFORE_TO_S), (5.0, 1.0))
+        self.assertEqual(screentext.GONE_FRAMES, 2)
+        self.assertEqual(screentext.SHOWN_MIN, 2)
+        self.assertEqual(screentext.TOWN_STAGES, ("town-on", "town-off", "town-on-again", "relaunch-off"))
 
     def test_speaker_prefix_matching(self):
         self.assertTrue(screentext.prefixed_by("Renly: Need something mended?", "Renly"))
@@ -588,6 +614,138 @@ class Variants(Case):
         self.assertEqual(results["control"]["verdict"], "not-run (analysis error)")
         self.assertEqual(results["marker"]["verdict"], "pass")
         self.assertIn("check control failed", self.err)
+
+
+STALE = "Renly: The mill wheel turns again"
+SPACED_OFF = [z("12:08:10"), z("12:08:30"), z("12:08:50")]   # town-off presses whose windows do not overlap
+
+
+def before_of(start) -> tuple:
+    """The before window `Session.newness` reads for a window opening at `start`."""
+    return start - td(5), start - td(1)
+
+
+def dropped(r) -> int:
+    """The candidate reads a shown-line check's observed counts as dropped."""
+    return sum(int(n) for n in re.findall(r"(\d+) candidate read\(s\) dropped", r["observed"]))
+
+
+class Newness(Case):
+    """A shown-line hit must be a new occurrence against [start - 5 s, start - 1 s]."""
+
+    def test_newness_a_stale_row_alone_is_dropped(self):
+        live = build(self.tmp, dlg_subtitle=False, extra_shown=[(STALE, DLG_OPEN - td(8), DLG_CLOSE + td(3))])
+        _, results = self.analyse(live, only=["dlg-subtitle"])
+        r = results["dlg-subtitle"]
+        self.assertEqual(r["verdict"], "fail", r["observed"])
+        self.assertGreaterEqual(dropped(r), 1, r["observed"])
+
+    def test_newness_a_second_identical_row_beside_the_stale_row_counts(self):
+        live = build(self.tmp, dlg_subtitle=False, extra_shown=[
+            (STALE, DLG_OPEN - td(8), DLG_CLOSE + td(3)), (STALE, DLG_OPEN + td(2), DLG_OPEN + td(6))])
+        _, results = self.analyse(live, only=["dlg-subtitle"])
+        r = results["dlg-subtitle"]
+        self.assertEqual(r["verdict"], "pass", r["observed"])
+        self.assertIn("first +2.00 s after open", r["observed"])
+
+    def test_newness_a_subtitle_beside_a_stale_prefixed_row_counts(self):
+        # Spaced presses, so one press's stale row never appears inside an earlier press's window.
+        stale = [("Renly: " + GREETINGS[i % 3], p - td(12), p + td(4)) for i, p in enumerate(SPACED_OFF)]
+        # The stale prefixed rows alone (the negative control), then with the bare subtitle beside each.
+        for form, verdict in ((None, "fail"), ("subtitle", "pass")):
+            with self.subTest(off_shown=form):
+                root = self.tmp / str(form)
+                root.mkdir()
+                live = build(root, town_off_at=SPACED_OFF, off_shown=form, extra_shown=stale)
+                _, results = self.analyse(live, only=["cfg-off-shown"])
+                r = results["cfg-off-shown"]
+                self.assertEqual(r["verdict"], verdict, r["observed"])
+                self.assertGreaterEqual(dropped(r), 1, r["observed"])
+                if form:
+                    self.assertIn("3 of 3 presses shown", r["observed"])
+
+    def test_newness_a_line_back_after_gone_frames_counts(self):
+        # Frames are 0.5 s apart: gone at open + 0.5 and + 1.0 is GONE_FRAMES (2) frames in a row.
+        for until, back, verdict in ((0.2, 2.0, "pass"), (0.7, 1.5, "fail")):
+            with self.subTest(gone_frames=round((back - until) / 0.5) - 1):
+                root = self.tmp / str(until)
+                root.mkdir()
+                live = build(root, dlg_subtitle=False, extra_shown=[
+                    (STALE, DLG_OPEN - td(8), DLG_OPEN + td(until)), (STALE, DLG_OPEN + td(back), DLG_OPEN + td(6))])
+                _, results = self.analyse(live, only=["dlg-subtitle"])
+                r = results["dlg-subtitle"]
+                self.assertEqual(r["verdict"], verdict, r["observed"])
+
+    def test_an_empty_before_window_is_not_judged(self):
+        cases = {
+            "cfg-off-shown": dict(town_off_at=SPACED_OFF,
+                                  drop_bottom=[before_of(p - td(6)) for p in SPACED_OFF]),
+            "remark-shown": dict(drop_bottom=[before_of(REMARK_PRESS - td(6))]),
+            "remark-kill": dict(drop_bottom=[before_of(KILL - td(2))]),
+            "dlg-subtitle": dict(drop_bottom=[before_of(DLG_OPEN)]),
+        }
+        for name, kw in cases.items():
+            with self.subTest(check=name):
+                # The same window with its before window kept passes (the positive control).
+                for dropping, root in ((False, self.tmp / (name + "-kept")), (True, self.tmp / name)):
+                    root.mkdir()
+                    args = dict(kw) if dropping else {k: v for k, v in kw.items() if k != "drop_bottom"}
+                    live = build(root, **args)
+                    _, results = self.analyse(live, only=[name])
+                    r = results[name]
+                    if not dropping:
+                        self.assertEqual(r["verdict"], "pass", r["observed"])
+                        continue
+                    self.assertTrue(r["verdict"].startswith("not-run (instrument: no frame before"),
+                                    "%s: %s" % (r["verdict"], r["observed"]))
+                    self.assertIn("no frame in [start - 5 s, start - 1 s]", r["observed"])
+
+    def test_cfg_off_shown_passes_on_two_judged_presses_beside_an_unjudged_one(self):
+        live = build(self.tmp, town_off_at=SPACED_OFF, drop_bottom=[before_of(SPACED_OFF[2] - td(6))])
+        _, results = self.analyse(live, only=["cfg-off-shown"])
+        r = results["cfg-off-shown"]
+        self.assertEqual(r["verdict"], "pass", r["observed"])
+        self.assertIn("2 of 3 presses shown, 1 not judged", r["observed"])
+        self.assertIn("press 12:08:50.000Z: not judged: no frame in [start - 5 s, start - 1 s]", r["observed"])
+
+    def test_cfg_off_shown_fails_when_the_unjudged_presses_could_not_reach_two(self):
+        # Nothing is shown, and one unjudged press beside two judged ones could not make 2.
+        live = build(self.tmp, town_off_at=SPACED_OFF, off_shown=None,
+                     drop_bottom=[before_of(SPACED_OFF[2] - td(6))])
+        _, results = self.analyse(live, only=["cfg-off-shown"])
+        self.assertEqual(results["cfg-off-shown"]["verdict"], "fail", results["cfg-off-shown"]["observed"])
+
+
+class DialogueLog(Case):
+    """dlg-log tells Renly's quest dialogue from the greeting that opening the talk fires."""
+
+    def dlg_log(self, live):
+        _, results = self.analyse(live, only=["cfg-on-log", "dlg-window", "dlg-log"])
+        self.assertEqual(results["cfg-on-log"]["verdict"], "pass")
+        self.assertEqual(results["dlg-window"]["verdict"], "pass", results["dlg-window"]["observed"])
+        return results["dlg-log"]
+
+    def test_dlg_log_a_greeting_at_the_open_press_alone_is_not_observed(self):
+        r = self.dlg_log(build(self.tmp, dlg_logged=[(0.0, GREETINGS[0])]))
+        self.assertEqual(r["verdict"], "not-observed", r["observed"])
+        self.assertIn("1 Renly line(s) at the open press", r["observed"])
+        self.assertIn("0 matching nothing in the town pool", r["observed"])
+
+    def test_dlg_log_a_quest_line_after_the_greeting_passes(self):
+        r = self.dlg_log(build(self.tmp, dlg_logged=[(0.0, GREETINGS[0]), (4.0, DLG_LINES[0])]))
+        self.assertEqual(r["verdict"], "pass", r["observed"])
+        self.assertIn("1 Renly line(s) logged in (open + 1 s, close + 2 s] that are not a greeting", r["observed"])
+
+    def test_dlg_log_a_town_greeting_inside_the_window_is_set_aside(self):
+        r = self.dlg_log(build(self.tmp, dlg_logged=[(4.0, GREETINGS[1])]))
+        self.assertEqual(r["verdict"], "not-observed", r["observed"])
+        self.assertIn("1 set aside as greetings", r["observed"])
+
+    def test_dlg_log_a_line_at_the_open_press_never_counts(self):
+        # A line logged at the open press may be quest dialogue, but the rule never counts it.
+        r = self.dlg_log(build(self.tmp, dlg_logged=[(0.5, DLG_LINES[0])]))
+        self.assertEqual(r["verdict"], "not-observed", r["observed"])
+        self.assertIn("1 matching nothing in the town pool", r["observed"])
 
 
 class Privacy(Case):
