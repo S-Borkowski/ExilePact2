@@ -180,9 +180,10 @@ with a person listening; not proof that they are never logged).
 NPC lines and the dialogue option (measured 2026-10-26, Live 8, the
 research note's
 [§ "Live 8: on-screen text on a fresh character"](quest-tracker/quest-tracker-research.md#live-8-on-screen-text-on-a-fresh-character)):
-NPC lines do not depend on `output_all_dialogue_to_chat`, as far as
-measured. Renly's vendor greetings in Clearfell Encampment were logged as
-`Renly: <text>` with the option on (3 of 3), turned off in the running
+Renly's vendor greetings do not depend on `output_all_dialogue_to_chat`,
+as far as measured; boss combat lines and quest NPCs' lines (the quest
+tracker's `npc` signals) were not measured with the option off. The
+greetings, in Clearfell Encampment, were logged as `Renly: <text>` with the option on (3 of 3), turned off in the running
 game (3 of 3), on again (2 of 2), and in a client started with the file
 reading `false` (2 of 2), each 1 to 2.3 s before the person's press. Only
 vendor greetings were measured. In the same session, with the option on,
@@ -325,8 +326,9 @@ not measured, unless a bullet says otherwise.
   machine read), the file follows it. Plain `key=value` lines.
 - **Dialogue and subtitles** (static reading, 2026-10-26).
   `enable_subtitles` and `output_all_dialogue_to_chat` (both `true` on the
-  machine read). `output_all_dialogue_to_chat` is not what puts NPC
-  lines into `Client.txt`, as far as Live 8 measured it (below).
+  machine read). `output_all_dialogue_to_chat` did not change whether
+  Renly's vendor greetings reach `Client.txt` (Live 8, below); whether it
+  gates boss or quest NPC lines is not established.
 - **Sound** (static reading, 2026-10-26). `mute_in_background` (`true` on
   the machine read; going by the name, the game is silent while it is not
   focused, not measured), `dialogue_sound_volume2` (100) beside the
