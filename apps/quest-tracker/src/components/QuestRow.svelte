@@ -1,7 +1,9 @@
 <script lang="ts">
   // One quest row: status mark, name and the manual-tick marker, the short
   // reward labels, the worth marker, and the next step under an in-progress
-  // quest. A quest done by inference (`inferred`) carries the "probably done"
+  // quest, with that step's find-it tip on its own line under it (secondary
+  // text, at most two lines). A skipped row shows the step its tracked
+  // progress reached the same way, muted like the rest of the row. A quest done by inference (`inferred`) carries the "probably done"
   // mark right after its status mark; it is not a control. In progress: the active band with a 3 px bar inside the left edge.
   // Finished (done, skipped, locked): a compact, muted row. In edit mode the
   // row opens the quest's detail, with an outline on hover.
@@ -9,7 +11,8 @@
   // A live change of this quest (`qt:row-change`, `../rowchange.ts`) plays
   // here: the completed step fades out, then the step now current (or, with
   // none, the row's title in its new status) fades in from 0.2 opacity,
-  // rising 5 px. A second change restarts it from the start; under reduced
+  // rising 5 px; the tip goes out and comes in with its step. A second
+  // change restarts it from the start; under reduced
   // motion the change is instant. Changes from before the row was on screen
   // (its act folded, or filtered out) are not played: App announced them.
   //
@@ -111,6 +114,7 @@
     <span class="step leaving" aria-hidden="true">{leaving}</span>
   {:else if row.current_step}
     <span class="step" class:entering={phase === 'in'}>{row.current_step}</span>
+    {#if row.current_tip}<span class="tip" class:entering={phase === 'in'}>{row.current_tip}</span>{/if}
   {/if}
 {/snippet}
 
@@ -241,6 +245,21 @@
     white-space: nowrap;
   }
 
+  /* The step's find-it tip: secondary text on its own line, wrapping to two lines at most. */
+  .tip {
+    display: -webkit-box;
+    grid-column: 2 / 4;
+    overflow: hidden;
+    color: var(--color-text-secondary);
+    font-size: var(--size-caption);
+    font-weight: 400;
+    line-height: var(--line-caption);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+
   /* In progress: the active band, the bar 3 px inside the left edge (so it shows inside the edit border)
      and 4 px in from the top and bottom, so two in-progress rows in a row show two bars, not one. */
   .row[data-status='in_progress'] {
@@ -276,7 +295,10 @@
     font-size: var(--size-step);
   }
 
+  /* A skipped row's step and tip (its tracked progress) stay readable, muted with the row. */
   .row.finished .rewards,
+  .row.finished .step,
+  .row.finished .tip,
   .row.finished > :global(.worth-mark) {
     color: var(--color-text-muted);
   }

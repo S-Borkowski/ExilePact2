@@ -45,6 +45,7 @@ function row(id: string, status: QuestStatus, rewards: RewardView[] = []): Quest
     needs_tick: false,
     rewards,
     current_step: status === 'in_progress' ? 'Find the way on' : null,
+    current_tip: null,
     inferred: false,
   };
 }

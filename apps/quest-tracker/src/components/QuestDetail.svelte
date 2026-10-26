@@ -1,7 +1,8 @@
 <script lang="ts">
   // A quest's detail: back to the act, the title, giver and zones, the manual
   // note, the worth reason, every step with its leading mark (in edit mode the
-  // step's one toggle, the hand tick), every reward as a chip,
+  // step's one toggle, the hand tick) and its find-it tip under its text,
+  // every reward as a chip,
   // the poe2db source, and in edit mode the actions. Reset asks twice: the
   // first click turns it into "Confirm reset", filled, with a 3 s countdown.
   // A quest or step done by inference (`inferred`) carries the "probably
@@ -123,6 +124,7 @@
         <span class="step-body">
           <span class="step-title">{step.title}</span>
           {#if step.text}<span class="step-text">{step.text}</span>{/if}
+          {#if step.tip}<span class="step-tip">{step.tip}</span>{/if}
         </span>
         {#if step.ticked}<span class="ticked">ticked</span>{/if}
       </li>
@@ -373,6 +375,13 @@
   .step-text,
   .ticked {
     color: var(--color-text-muted);
+    font-size: var(--size-caption);
+    line-height: var(--line-caption);
+  }
+
+  /* The find-it tip: secondary text, a step above the muted step text. */
+  .step-tip {
+    color: var(--color-text-secondary);
     font-size: var(--size-caption);
     line-height: var(--line-caption);
   }

@@ -62,6 +62,8 @@ describe('the row transition', () => {
     expect(row.dataset.change).toBe('out');
     expect(steps(row).map((s) => s.textContent)).toEqual(['Cross the bridge']);
     expect(steps(row)[0].classList.contains('leaving')).toBe(true);
+    // The new step's find-it tip waits for its step.
+    expect(row.querySelector('.tip')).toBeNull();
     // Only this row plays.
     expect(root.querySelectorAll('[data-change]')).toHaveLength(1);
 
@@ -72,12 +74,16 @@ describe('the row transition', () => {
     expect(row.dataset.change).toBe('in');
     expect(steps(row).map((s) => s.textContent)).toEqual(['Face the king']);
     expect(steps(row)[0].classList.contains('entering')).toBe(true);
+    // ... and comes in with it, the same way.
+    expect(row.querySelector('.tip')?.textContent).toBe(king.current_tip);
+    expect(row.querySelector('.tip')!.classList.contains('entering')).toBe(true);
 
     advance(ROW_STEP_IN_MS);
     row = rowOf(root, king.id);
     expect(row.dataset.change).toBeUndefined();
     expect(steps(row)[0].classList.contains('entering')).toBe(false);
     expect(steps(row)[0].textContent).toBe('Face the king');
+    expect(row.querySelector('.tip')!.classList.contains('entering')).toBe(false);
 
     // A quest that became available has no step: its title comes in.
     const lute = view.next_up.find((r) => r.id === 'fixture-lute')!;

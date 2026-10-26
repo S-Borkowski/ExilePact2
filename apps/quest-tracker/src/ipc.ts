@@ -112,8 +112,10 @@ export interface QuestRow {
   /** The manual-tick marker: detection `partial` or `manual`. */
   needs_tick: boolean;
   rewards: RewardView[];
-  /** The step to do next, for an in-progress quest only. */
+  /** The step to do next, for an in-progress quest only (a skipped one counts by its tracked progress). */
   current_step: string | null;
+  /** The find-it tip of the step `current_step` names, if it has one. */
+  current_tip: string | null;
   /** Done because of a later event the log recorded, not the quest's own signal, and not marked done by hand: the "probably done" mark. */
   inferred: boolean;
 }
@@ -136,6 +138,8 @@ export interface StepView {
   ticked: boolean;
   /** Shown done though neither its own signal fired nor the player ticked it: the "probably done" mark. */
   inferred: boolean;
+  /** The owner's short "how to find it" text for this step, shown under its text; null when the data has none. */
+  tip: string | null;
 }
 
 export interface QuestDetail {
@@ -273,6 +277,7 @@ const questRow = record<QuestRow>({
   needs_tick: bool,
   rewards: list(reward),
   current_step: nullable(str),
+  current_tip: nullable(str),
   inferred: bool,
 });
 const act = record<ActView>({
@@ -284,7 +289,15 @@ const act = record<ActView>({
   has_available: bool,
   quests: list(questRow),
 });
-const step = record<StepView>({ id: str, title: str, text: str, state: oneOf(STEP_PHASES), ticked: bool, inferred: bool });
+const step = record<StepView>({
+  id: str,
+  title: str,
+  text: str,
+  state: oneOf(STEP_PHASES),
+  ticked: bool,
+  inferred: bool,
+  tip: nullable(str),
+});
 const detail = record<QuestDetail>({
   row: questRow,
   giver: nullable(str),

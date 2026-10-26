@@ -49,9 +49,9 @@ function detailView(mode: Mode, rowInferred = false): View {
   detail.row.status = rowInferred ? 'done' : 'in_progress';
   detail.row.inferred = rowInferred;
   detail.steps = [
-    { id: 'step-inferred', title: 'Inferred step', text: 'Implied by a later step.', state: 'done', ticked: false, inferred: true },
-    { id: 'step-own', title: 'Own step', text: 'The log saw it.', state: 'done', ticked: false, inferred: false },
-    { id: 'step-current', title: 'Current step', text: '', state: 'current', ticked: false, inferred: false },
+    { id: 'step-inferred', title: 'Inferred step', text: 'Implied by a later step.', state: 'done', ticked: false, inferred: true, tip: null },
+    { id: 'step-own', title: 'Own step', text: 'The log saw it.', state: 'done', ticked: false, inferred: false, tip: null },
+    { id: 'step-current', title: 'Current step', text: '', state: 'current', ticked: false, inferred: false, tip: null },
   ];
   return view;
 }
@@ -106,7 +106,7 @@ describe('the "probably done" mark', () => {
     // ring sends nothing. A step the log saw, and one ticked by hand, keep
     // their one toggle, the leading mark.
     const view = detailView('edit');
-    view.detail!.steps.push({ id: 'step-ticked', title: 'Ticked step', text: '', state: 'pending', ticked: true, inferred: false });
+    view.detail!.steps.push({ id: 'step-ticked', title: 'Ticked step', text: '', state: 'pending', ticked: true, inferred: false, tip: null });
     const edit = await render(view);
     const inferred = el(edit.root, '.step[data-step="step-inferred"]');
     expect(inferred.querySelectorAll('button'), 'no button in the inferred step').toHaveLength(0);

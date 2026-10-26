@@ -15,10 +15,10 @@ afterEach(() => {
 });
 
 const STEPS: StepView[] = [
-  { id: 'step-pending', title: 'Pending step', text: 'Not started.', state: 'pending', ticked: false, inferred: false },
-  { id: 'step-current', title: 'Current step', text: '', state: 'current', ticked: false, inferred: false },
-  { id: 'step-log-done', title: 'Log done step', text: 'The log saw it.', state: 'done', ticked: false, inferred: false },
-  { id: 'step-hand-ticked', title: 'Hand ticked step', text: '', state: 'pending', ticked: true, inferred: false },
+  { id: 'step-pending', title: 'Pending step', text: 'Not started.', state: 'pending', ticked: false, inferred: false, tip: null },
+  { id: 'step-current', title: 'Current step', text: '', state: 'current', ticked: false, inferred: false, tip: null },
+  { id: 'step-log-done', title: 'Log done step', text: 'The log saw it.', state: 'done', ticked: false, inferred: false, tip: null },
+  { id: 'step-hand-ticked', title: 'Hand ticked step', text: '', state: 'pending', ticked: true, inferred: false, tip: null },
 ];
 
 function detailView(mode: Mode): View {

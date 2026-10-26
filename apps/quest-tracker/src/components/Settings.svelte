@@ -9,8 +9,20 @@
   // the border and the edit accent stay opaque), scale is an Auto switch plus
   // a slider for a fixed factor (moving it turns Auto off), and the dock side
   // is gone (the window is dragged by its header in edit mode).
+  //
+  // After Live 3 (owner): both sliders apply while dragged (`../slider.ts`).
+  // Each sends at most one `update_settings` per animation frame, the newest
+  // value, and the release sends the final one. While a value is on its way
+  // the slider shows the value the pointer set (`held`), not the older one
+  // the next `qt:view` may still carry, so the thumb never steps back under
+  // the pointer; the view's value takes over once it catches up. The scale
+  // slider tracks the pointer itself: its value follows the pointer's travel
+  // since the press in screen pixels, because each update re-zooms the page
+  // under the pointer. The keyboard still steps it as a range.
+  import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
   import { type Scale, type View, SCALE_MAX, SCALE_MIN, SCALE_STEP } from '../ipc';
+  import { THUMB_PX, frameSender, pressValue, screenScale, travelValue } from '../slider';
   import Icon from './Icon.svelte';
 
   let { view, send }: { view: View; send: Send } = $props();
@@ -19,14 +31,99 @@
   const edit = $derived(view.mode === 'edit');
   /** The factor the slider rests on while Auto is on, and where turning Auto off starts. */
   const AUTO_REST = 1;
+  /** How long a released value is held when no view confirms it. */
+  const HOLD_MS = 1000;
+  const SCALE_RANGE = { min: SCALE_MIN, max: SCALE_MAX, step: SCALE_STEP };
 
   const percent = (v: number) => `${Math.round(v * 100)}%`;
   const factorText = (f: number) => `${Number(f.toFixed(2))}×`;
   const scaleText = (sc: Scale) => (sc === 'auto' ? 'Auto' : factorText(sc));
+
+  // The value each slider shows: the pointer's while it is ahead of the view.
+  let heldOpacity = $state<number | null>(null);
+  let heldScale = $state<number | null>(null);
+  const opacity = $derived(heldOpacity ?? s.opacity);
   const auto = $derived(s.scale === 'auto');
-  const factor = $derived(s.scale === 'auto' ? AUTO_REST : s.scale);
-  const opacityFill = $derived(percent(s.opacity));
+  const factor = $derived(heldScale ?? (s.scale === 'auto' ? AUTO_REST : s.scale));
+  const opacityFill = $derived(percent(opacity));
   const scaleFill = $derived(percent((factor - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)));
+
+  const opacitySender = frameSender<number>((value) => send('update_settings', { patch: { opacity: value } }));
+  const scaleSender = frameSender<number>((value) => send('update_settings', { patch: { scale: value } }));
+
+  // A held value lets go when the view shows it, or `HOLD_MS` after the release.
+  let opacityRelease: ReturnType<typeof setTimeout> | undefined;
+  let scaleRelease: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    if (heldOpacity !== null && Math.abs(s.opacity - heldOpacity) < 1e-9) heldOpacity = null;
+  });
+  $effect(() => {
+    if (heldScale !== null && s.scale !== 'auto' && Math.abs(s.scale - heldScale) < 1e-9) heldScale = null;
+  });
+
+  function moveOpacity(value: number): void {
+    clearTimeout(opacityRelease);
+    heldOpacity = value;
+    opacitySender.push(value);
+  }
+
+  function releaseOpacity(value: number): void {
+    heldOpacity = value;
+    opacitySender.flush(value);
+    clearTimeout(opacityRelease);
+    opacityRelease = setTimeout(() => (heldOpacity = null), HOLD_MS);
+  }
+
+  function moveScale(value: number): void {
+    clearTimeout(scaleRelease);
+    heldScale = value;
+    scaleSender.push(value);
+  }
+
+  function releaseScale(value?: number): void {
+    if (value !== undefined) heldScale = value;
+    scaleSender.flush(value);
+    clearTimeout(scaleRelease);
+    scaleRelease = setTimeout(() => (heldScale = null), HOLD_MS);
+  }
+
+  /** The scale drag in progress: where it started, in screen pixels, and the track's width then. */
+  let drag: { pointer: number | undefined; startX: number; start: number; width: number } | null = null;
+
+  function pressScale(e: PointerEvent & { currentTarget: HTMLInputElement }): void {
+    if (e.button !== 0) return;
+    // The range's own drag would map the pointer in CSS pixels, which the
+    // zoom rescales: the slider tracks the pointer itself.
+    e.preventDefault();
+    const input = e.currentTarget;
+    input.focus();
+    const rect = input.getBoundingClientRect();
+    const ratio = screenScale();
+    const start = pressValue(factor, e.clientX, rect, SCALE_RANGE);
+    drag = { pointer: e.pointerId, startX: e.clientX * ratio, start, width: (rect.width - THUMB_PX) * ratio };
+    if (e.pointerId !== undefined) input.setPointerCapture?.(e.pointerId);
+    // A press on the thumb sends nothing until it moves; one on the track jumps there.
+    if (start !== factor) moveScale(start);
+  }
+
+  function dragScale(e: PointerEvent): void {
+    if (!drag || e.pointerId !== drag.pointer) return;
+    moveScale(travelValue(drag.start, e.clientX * screenScale() - drag.startX, drag.width, SCALE_RANGE));
+  }
+
+  function endScale(e: PointerEvent): void {
+    if (!drag || e.pointerId !== drag.pointer) return;
+    drag = null;
+    releaseScale();
+  }
+
+  // Closing the frame mid-drag still delivers the last value moved to.
+  onDestroy(() => {
+    opacitySender.flush();
+    scaleSender.flush();
+    clearTimeout(opacityRelease);
+    clearTimeout(scaleRelease);
+  });
 </script>
 
 <div class="settings">
@@ -48,12 +145,13 @@
         min="0"
         max="1"
         step="0.05"
-        value={s.opacity}
-        aria-valuetext={percent(s.opacity)}
+        value={opacity}
+        aria-valuetext={percent(opacity)}
         style:--fill={opacityFill}
-        onchange={(e) => send('update_settings', { patch: { opacity: Number(e.currentTarget.value) } })}
+        oninput={(e) => moveOpacity(Number(e.currentTarget.value))}
+        onchange={(e) => releaseOpacity(Number(e.currentTarget.value))}
       />
-      <span class="value">{percent(s.opacity)}</span>
+      <span class="value">{percent(opacity)}</span>
     </label>
     <p class="help">Text, icons and the panel's border always stay fully opaque.</p>
 
@@ -70,24 +168,38 @@
         class="toggle"
         role="switch"
         checked={auto}
-        onchange={() => send('update_settings', { patch: { scale: auto ? AUTO_REST : 'auto' } })}
+        onchange={() => {
+          heldScale = null;
+          send('update_settings', { patch: { scale: auto ? AUTO_REST : 'auto' } });
+        }}
       />
     </label>
     <label class="row">
       <span class="label">Scale</span>
       <input
         type="range"
-        class="slider"
+        class="slider tracked"
         class:resting={auto}
         min={SCALE_MIN}
         max={SCALE_MAX}
         step={SCALE_STEP}
         value={factor}
-        aria-valuetext={scaleText(s.scale)}
+        aria-valuetext={scaleText(heldScale ?? s.scale)}
         style:--fill={scaleFill}
-        onchange={(e) => send('update_settings', { patch: { scale: Number(e.currentTarget.value) } })}
+        onpointerdown={pressScale}
+        onpointermove={dragScale}
+        onpointerup={endScale}
+        onpointercancel={endScale}
+        onlostpointercapture={endScale}
+        onmousedown={(e) => e.preventDefault()}
+        oninput={(e) => {
+          if (!drag) moveScale(Number(e.currentTarget.value));
+        }}
+        onchange={(e) => {
+          if (!drag) releaseScale(Number(e.currentTarget.value));
+        }}
       />
-      <span class="value">{scaleText(s.scale)}</span>
+      <span class="value">{scaleText(heldScale ?? s.scale)}</span>
     </label>
     <p class="help">Moving the slider sets a fixed scale and turns Auto off.</p>
     <label class="row">
@@ -229,6 +341,11 @@
     height: var(--border-width);
     margin: var(--space-unit) 0;
     background: var(--color-panel-divider);
+  }
+
+  /* The scale slider tracks its own pointer: a touch drag must not turn into a pan. */
+  .slider.tracked {
+    touch-action: none;
   }
 
   /* Auto on: the slider rests at 1× and its thumb steps back, until moved. */
