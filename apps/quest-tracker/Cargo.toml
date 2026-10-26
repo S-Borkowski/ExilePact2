@@ -12,6 +12,7 @@ members = [
     "crates/qt-store",
     "crates/qt-engine",
     "crates/qt-viewmodel",
+    "crates/qt-screen",
     "crates/qt-replay",
     "crates/qt-app",
     "src-tauri",

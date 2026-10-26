@@ -16,6 +16,7 @@ qt-logline = { path = "../qt-logline" }
 qt-tailer = { path = "../qt-tailer" }
 qt-store = { path = "../qt-store" }
 qt-engine = { path = "../qt-engine" }
+qt-screen = { path = "../qt-screen" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

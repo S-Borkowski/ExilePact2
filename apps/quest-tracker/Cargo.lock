@@ -2731,6 +2731,7 @@ version = "0.1.0"
 dependencies = [
  "qt-engine",
  "qt-logline",
+ "qt-screen",
  "qt-store",
  "qt-tailer",
  "qt-viewmodel",
@@ -2766,11 +2767,19 @@ version = "0.1.0"
 dependencies = [
  "qt-engine",
  "qt-logline",
+ "qt-screen",
  "qt-store",
  "qt-tailer",
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "qt-screen"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
 ]
 
 [[package]]

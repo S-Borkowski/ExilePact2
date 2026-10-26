@@ -11,6 +11,7 @@ qt-tailer = { path = "../qt-tailer" }
 qt-store = { path = "../qt-store" }
 qt-engine = { path = "../qt-engine" }
 qt-viewmodel = { path = "../qt-viewmodel" }
+qt-screen = { path = "../qt-screen" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
