@@ -3,7 +3,9 @@
 A small always-on-top overlay for Path of Exile 2 that lists the campaign
 quests, says which ones are worth doing and why, and keeps each character's
 progress. It learns that progress from the game's `Client.txt` log and from
-nothing else.
+nothing else, unless you turn on the opt-in *Read the screen* setting, which
+also lets it read three regions of the game's window with Windows' own OCR
+("How detection works" › "Reading the screen").
 
 - Design brief (what the overlay shows, frames, icons, tokens, the export
   contract): [`ui-design-brief.md`](ui-design-brief.md)
@@ -63,8 +65,18 @@ What it is:
   next one fades in, and a screen reader hears one sentence saying what
   changed. The highlight shows with Windows' animation effects off too;
   only the fades stop. Lines read as catch-up change rows without either.
+- **Read the screen, off by default.** With this setting on, the overlay
+  also reads the game's window: while the game is in front and a quest
+  step the screen can finish is open in the current area, it copies up to
+  three regions of the window (the boss bar's band, the lower-left list of
+  voiced lines and the dialogue window) and reads them with Windows' own
+  OCR, in memory. A boss's bar going ticks the defeat step of Beira of the
+  Rotten Pack, Blackjaw and Lythara, and the QUEST COMPLETE banner in
+  Renly's window ticks "Take Renly's reward". Nothing read is stored,
+  logged or shown ("How detection works", "Privacy").
 - **A replay CLI**, `quest-tracker-replay`, that runs the same engine over a
-  saved log without the game.
+  saved log without the game, and the screen reader's trackers over a kept
+  research capture (`screen`).
 - **A developer-only Python tool**, `py -3 -m tools.quest_tracker.poe2db`,
   that fetches poe2db.tw's quest pages to rebuild the quest data after a
   patch.
@@ -72,7 +84,10 @@ What it is:
 What it is not:
 
 - It does not read game memory, hook, inject, send input to the game or talk
-  to Grinding Gear Games. It reads one log file and draws its own window.
+  to Grinding Gear Games. It reads one log file and draws its own window;
+  only with *Read the screen* on does it also copy regions of the game's
+  window from the screen, as a screenshot would, and read them with
+  Windows' OCR.
 - It does not track party members, endgame or Atlas quests, or a client in a
   language other than English.
 - It is not an installer: there is no setup, auto-update, code signing or
@@ -94,6 +109,15 @@ What it is not:
   the display output and the desktop compositor does not draw other windows
   over it, so an always-on-top window is hidden behind it or makes the game
   drop out of fullscreen. No setting of the overlay changes that.
+- **For *Read the screen* only: Windows' English OCR and a 16:9 window.**
+  The setting reads with Windows' own OCR (`Windows.Media.Ocr`) in en-US.
+  On a Windows that has no en-US OCR it refuses, with the status line
+  "Screen reading is off: Windows has no English OCR.", and the rest of
+  the overlay runs as before. The regions it reads are fractions of the
+  game's client area, measured on one setup: a 2560×1440 borderless
+  window, English client, at the in-game UI scale used then. A window that
+  is not 16:9 is refused while it lasts; other 16:9 sizes and other UI
+  scales are untested (Known limitations).
 - **A `Client.txt` the game is writing.** The standalone client's is
   `C:\Program Files (x86)\Grinding Gear Games\Path of Exile 2\logs\Client.txt`
   (measured). The Steam client's is assumed to be
@@ -164,6 +188,15 @@ Settings (edit mode, the settings frame) and their defaults:
   skipped. Neither changes an act's counts.
 - **Log path** (unset: discovery) and **hotkey** `Ctrl+Alt+Q` (the
   global-shortcut plugin's accelerator syntax).
+- **Read the screen** (off), the toggle under *Only worth-it quests*, with
+  the helper text "Reads the game's window for boss bars and quest
+  dialogue. Saves nothing it reads." With it on, the overlay reads parts
+  of the game's window for the quest steps the screen can finish ("How
+  detection works" › "Reading the screen"). `settings.json` stores it as
+  `"screen_reading"`. Turning it on starts the screen reader at once, and
+  turning it off stops it (`screen: off` in the diagnostic log); an
+  overlay started with it on starts the reader too. On a Windows without
+  English OCR it refuses (Platforms and prerequisites).
 
 There is no dock side. A window with no saved position goes to the right
 side of its monitor, below the game's minimap; in edit mode you drag it by the panel's header
@@ -283,7 +316,11 @@ log. The lines to look for when a quest did not advance:
   closing its window).
 - `quit: from the tray` or `quit: the window was closed`: the first quit
   request (a second writes nothing), followed by the `stop: ...` line of
-  the shutdown.
+  the shutdown. With the screen reader running, that line names it too
+  (`stop: tailer, worker and screen reader ended, progress saved`).
+- `screen: ...` lines, with *Read the screen* on: when the reader starts,
+  idles, reads, is refused or covered, sees a bar go or a banner, and once
+  a minute. Every form is in "How detection works" › "Reading the screen".
 
 Build it:
 
@@ -320,6 +357,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped before any character, <x> dropped with a replaced new character, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `dropped_new_character` counts, apart from it, the events of an unnamed new character that a level-1 entry to another instance of The Riverbank replaced; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. A level-1 entry to The Riverbank whose relog window is still open at the end of the log is decided as the overlay would decide it on a quiet log, 6 s after the last line, and the summary then adds `a relog window was still open: closed at the end of the log, as the overlay would 6 s after the last line`. With `--json`, one object `{"lines", "client_version", "held", "dropped", "dropped_new_character", "refused", "relog_window_closed_at_end", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}], "new_character"}` (`new_character`: the unnamed new character's class, level, event count, quests and acts, or `null`). |
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
+| `screen` | The screen reader's trackers over a kept research capture instead of a log (below). |
 
 | Option | What it does |
 |---|---|
@@ -330,6 +368,38 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 
 The log is opened read-only. Exit codes: `0` done, `1` error, `2` no such log
 file, `64` usage error.
+
+**`quest-tracker-replay screen`** runs the same trackers the overlay's
+screen reader uses over a research session's kept capture, without the
+game or a screen:
+
+```text
+Usage: quest-tracker-replay screen --live FOLDER [--bar NAME]... [--dialogue NPC]...
+                                   [--class CLASS [--data PATH]]
+```
+
+| Option | What it does |
+|---|---|
+| `--live FOLDER` | The kept live folder (required). It reads `FOLDER\i3\frames.jsonl`, the capture's index, and `FOLDER\i3\ocr.jsonl`, its OCR cache ([`outside-instruments.md`](outside-instruments.md) § "Instrument 3: screen capture, OCR and the marker"). |
+| `--bar NAME` | A boss whose bar going is `bar_gone`; may be repeated. |
+| `--dialogue NPC` | An NPC whose QUEST COMPLETE banner is `quest_complete`; may be repeated. |
+| `--class CLASS` | Read `kill_remark` for every boss the quest data has a kill-remark text of that class for (the `remarks` table, "Quest data"). |
+| `--data PATH` | The quest data file for `--class` (default: the one built in). |
+| `-h`, `--help` | The usage text. |
+
+Each region is observed from the frames of the smallest captured band that
+contains it, and each frame becomes one read as the reader would make it:
+a frame the capture skipped, one taken with the game not in front, and a
+black copy are hidden reads; any other frame with cached OCR is a visible
+read of the lines whose box centre lies in the region; a frame with no
+cached OCR is skipped, never counted absent. It prints one JSON object per
+event, `{"event", "target", "at"}` (its kind, the boss or NPC, and when, in
+UTC; a `bar_gone` adds `"last_present"`), then a summary line
+`{"summary": {"frames", "ocr_cached", "regions", "bar": {"present",
+"absent", "covered"}, "events"}}`. It prints no OCR text and writes
+nothing. Exit codes: `0` done, `1` a missing or unreadable index, `64`
+usage error. The kept captures of Lives 6 and 8 are what the trackers'
+numbers were settled against; they stay outside the repository.
 
 ### `py -3 -m tools.quest_tracker.poe2db` (developer-only)
 
@@ -598,7 +668,10 @@ given in town is shown from the town entry where the giver stands:
 Treacherous Ground, which Renly gives in Clearfell Encampment, is
 available from the `G1_town` entry, as Finding the Forge is, and in
 progress from the Clearfell entry as before (that the town entry stands
-for the pickup is inferred). See
+for the pickup is inferred). With *Read the screen* on, one reward talk
+is seen on the screen instead: the QUEST COMPLETE banner in Renly's
+dialogue window ticks Reaching Clearfell's "Take Renly's reward" ("Reading
+the screen" below). See
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Town dialogue".
 
 **A boss: find it, defeat it, use the item it dropped.** Beira of the
@@ -608,15 +681,18 @@ comes when she is met), "Defeat Beira of the Rotten Pack" and "Use the item
 it dropped". No line marking her defeat is known: Live 4 timed one kill
 and the log held nothing at it (one controlled kill, nothing in the log;
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Rewards after
-a boss kill"), so the defeat step has no signal: **tick it by hand** when
-she falls, and the row then shows "Use the item it dropped".
+a boss kill"), so the defeat step has no log signal: **tick it by hand**
+when she falls, and the row then shows "Use the item it dropped". With
+*Read the screen* on, her boss bar going in Clearfell ticks it instead
+("Reading the screen" below).
 Until then her lines leave "Defeat Beira of the Rotten Pack" current,
 whatever area comes next. Her reward line comes only after you use the
 item she dropped, which can be minutes after the kill (seen once, in Live
 1), and finishes the quest in any area, from either step: using the item
 at once needs no tick. Blackjaw, the Remnant and Lythara, the Wayward
 Spear have the same split: their lines reach "Find …", "Defeat …" is
-ticked by hand, and their last step is "Use any item left after the
+ticked by hand (or by their bar going, with *Read the screen* on), and
+their last step is "Use any item left after the
 fight", worded as a hint, since whether they drop an item to use is not
 established. A character saved by an older build, when a boss's lines were
 its fight step, shows the step its other evidence reaches: that stored
@@ -656,12 +732,160 @@ Which signals were measured, and which are static readings of poe2db, is
 argued per quest in [`quest-tracker-research.md`](quest-tracker-research.md)
 § "Per-quest detection".
 
+### Reading the screen
+
+*Read the screen* (off by default, Command reference) adds one source
+beside the log: a reader thread that copies parts of the game's window and
+reads them with Windows' own OCR (`Windows.Media.Ocr`, en-US). It ticks a
+step only through a `screen` signal in the quest data ("Quest data"), and
+a log line never fires one. The measurements behind every number below
+are in [`quest-tracker-research.md`](quest-tracker-research.md) § "What
+the screen shows of each source".
+
+**The demand.** After every batch that changed the tracker's state, the
+worker publishes what the screen could finish now: the `screen` signals of
+the character a screen event would go to, in the current area, on an open
+step of an available or in-progress quest, and the game's process id once
+a live line or its window in front has confirmed it. The demand is empty
+while the area is unknown, while a Riverbank relog window is open, or with
+no character. The reader takes the newest demand at each tick without
+waiting for it, and copies nothing while the demand is empty, the game's
+pid is unconfirmed, or the game's window is missing, minimized or not in
+front (`screen: idle`); it then looks again at most every 100 ms. The
+game's window is the largest visible top-level window of that pid, and
+its client area is read in physical pixels.
+
+**The three regions,** as fractions of the game's client area (left to
+right, top to bottom), each read only while a demanded signal needs it:
+
+| Region | Where | Read | For |
+|---|---|---|---|
+| boss bar | x 0.25 to 0.75, y 0 to 0.14 | twice a second | `bar_gone` |
+| voiced lines | x 0 to 0.45, y 0.35 to 0.80 | twice a second | `kill_remark` |
+| dialogue window | x 0.22 to 0.70, y 0.20 to 0.85 | once a second | `quest_complete` |
+
+A read is a GDI copy of the region, upscaled 2 times (less when that would
+pass the OCR engine's largest image) and read by the OCR, its lines' boxes
+mapped back to fractions of the client area. A name matches a line by the
+research instruments' fuzzy match, ported with the same scores: a score of
+at least 0.8 for the name against any stretch of the line of about the
+name's length. So a short name, such as "Blackjaw", matches a longer bar
+title that contains it. Before each read the reader checks the window's
+shape (16:9 within 1%) and whether the overlay's own window lies over a
+region; a region the overlay covers is not read, and counts as a covered
+read. A missed read is skipped, never caught up.
+
+**The bar rule (`bar_gone`).** Each read of the band is, for the boss:
+
+- *present*: the boss's name matches a line anywhere in the band. Its place
+  is not checked, since the inventory moves the name left;
+- *covered*: the band could not be seen (the overlay over it, the game not
+  in front or minimized, a failed or black copy, a failed OCR), or a line
+  that is not the name lies over the name's column (x 0.40 to 0.60, its top
+  at most y 0.08). The passive tree's title, the world map's headings and an
+  ordinary monster's name sit there, and the bar under them cannot be
+  seen;
+- *absent*: neither. Other text in the band, such as a CHECKPOINT label,
+  does not cover.
+
+After at least 2 present reads, 6 absent reads in a row (3 s) with no
+covered read since the last present one mean the bar went: one `bar_gone`
+event, carrying the time of the last present read, and the tracker then
+waits for the bar to show again. Brightness is never used: it does not
+tell a band with the bar from one without. The worker then drops a
+`bar_gone` whose last present read came before an area entry, or before a
+`has been slain` line of the character, that it had received
+(`not counted (after an area change)`, `not counted (after a death)`), so
+leaving the area or dying does not tick the fight. Walking away from a
+living boss is not caught (Known limitations).
+
+**The QUEST COMPLETE rule (`quest_complete`).** The NPC's window is open
+while a read of the dialogue window shows the NPC's name as a heading: a
+line matching the name and no more than a fifth longer than it, so an
+`<NPC>: ...` line is not taken for it. A line matching "QUEST COMPLETE"
+whose box lies in x 0.35 to 0.65, y 0.72 to 0.84, within 10 s after a read
+with the heading, is one `quest_complete` event. Reads of the banner less
+than 5 s apart are the same banner and fire once. The next quest's
+banner, its objective in capitals in the same place, does not match.
+
+**The remark rule (`kill_remark`).** A line of the voiced-lines list of
+the form `<speaker>: <text>` whose text matches a known kill-remark text
+for the boss (the quest data's `remarks` table, every class's texts) is
+one `kill_remark` event. The speaker, the character's own name, is not
+checked: only the text tells a kill remark from the character's other
+shouts. A line counts only when it is new: the read shows more lines
+reading as the remark than any read 1 s to 5 s before it did, and a read
+with no read in that span is not judged, so a remark already on screen
+when reading starts never counts. A boss with no text demands nothing.
+
+**What a screen event ticks.** It goes to the character an NPC line would
+go to and is live, so its row changes as for a log line. It fires a
+`screen` signal when the current area is known and is the signal's, the
+signal sits on an open step (any step after the furthest one reached),
+and the quest's tracked status is available or in progress; at most one
+quest fires, the first in data order. With the area unknown it is refused
+and counted with the log's refusals (`area unknown: refused <quest id>`).
+It never reads or moves the log's time.
+
+**Status lines.** The screen has one status line of its own, shown after
+every other source's; each change of what it says has its diagnostic line
+(below), and nothing behind it retries in a loop:
+
+- "Screen reading is off: Windows has no English OCR." The reader ends.
+- "Screen reading is paused while the game's window is not 16:9
+  (<w>x<h>)." While it lasts.
+- "The overlay covers the boss bar; move it to let screen reading see it."
+  (or the regions it covers, named together). Nothing moves the overlay
+  for you. The overlap is checked every tick the reader is on, demand or
+  not.
+- "Screen reading cannot copy the game's window (the capture failed 10
+  times in a row)." Failed or black copies before that count as covered
+  reads only.
+- "Screen reading stopped after an error; turn it off and on to retry."
+  The cause goes on an `error: screen reader: ` line.
+
+**Diagnostic lines.** Every reader line is `screen: ` and one of:
+
+- `on (OCR en-US)`, `off`, `idle`;
+- `refused: <reason>`: `no English OCR`, `the game window is not 16:9
+  (<w>x<h>)`, `the capture failed <n> times in a row` or `stopped after an
+  error`;
+- `reading <regions> for <quest>/<step>[, <quest>/<step>]...`;
+- `covered: <region> by the overlay` and `uncovered: <region>`;
+- `bar of <boss> gone (last seen <hh:mm:ss.mmm>Z): <outcome>`,
+  `quest complete in <npc>'s window (<hh:mm:ss.mmm>Z): <outcome>` and
+  `kill remark for <boss> (<hh:mm:ss.mmm>Z): <outcome>`, where the outcome
+  is `ticked <quest>/<step>` or `not counted (<why>)`, `<why>` being
+  `after a death`, `after an area change`, `area unknown` or `no open
+  step`;
+- `minute: <n> frames, <n> present, <n> absent, <n> covered, <n> OCR
+  failures, busy <n> ms`, once a minute.
+
+A region is `boss bar`, `voiced lines` or `dialogue window`; boss and NPC
+names come from the quest data, never from what was read.
+
+**Shutdown.** The reader stops with the tailer and the worker, by the same
+deadline; an OCR call in flight is not interrupted, and a reader past the
+deadline is logged as not ended, like the others.
+
 ## Privacy
 
 What is read:
 
 - `Client.txt`, read-only, in short opens with full sharing, never held,
   locked, moved or truncated. Nothing else of the game's is opened.
+- With *Read the screen* on, and only then: up to three regions of the
+  game's window, copied from the screen as a screenshot would copy them
+  (the boss bar's band, the lower-left list of voiced lines and the
+  dialogue window, "How detection works" › "Reading the screen"). They are
+  copied only while the game's window is in front and a quest step the
+  screen can finish is open in the current area, and read by Windows' own
+  OCR on this machine. The copies and the text read from them stay in the
+  reader's memory for at most a few seconds. Nothing read is written to a
+  file or the diagnostic log, shown in the UI, or put in an error: what
+  leaves the reader is the kind of event, a boss or NPC name from the quest
+  data, times, counts and region names. With the setting off, nothing is
+  copied.
 
 What is stored, and where:
 
@@ -689,6 +913,9 @@ What is stored, and where:
 - Chat is ignored: chat lines are dropped by the parser, and no chat text,
   other player's name or account name reaches the store, the diagnostic log,
   the replay CLI's output or the UI.
+- A step the screen ticked is stored as any fired signal is, by its signal
+  id (`step/<step id>/<i>`) in the character's evidence; no frame and no
+  OCR text is ever stored.
 
 Network:
 
@@ -697,7 +924,8 @@ Network:
   script, style, font, image or connection source), its capabilities grant
   only core event and window permissions, and its Rust sources use no HTTP
   or socket code. Fonts and icons are bundled. The poe2db link opens in your
-  default browser, through the opener plugin, from Rust.
+  default browser, through the opener plugin, from Rust. The screen
+  reader's OCR is Windows' own, run on this machine.
 - The global shortcut is a system hotkey registration: no keyboard hook, and
   nothing is sent to the game.
 - The only network code in this feature is the developer-only poe2db tool,
@@ -740,6 +968,45 @@ a patch:
    (`cargo test --manifest-path apps/quest-tracker/Cargo.toml -p qt-engine
    --locked`, which validates the shipped file), and `quest-tracker-replay
    state` over the log to see that quests still advance.
+
+**Screen signals.** A signal of kind `screen` is what *Read the screen*
+can tick ("How detection works" › "Reading the screen"). It sits on a step
+only (anywhere else fails validation), needs `what` and `area`, and names
+a `boss` or an `npc` by its `what`:
+
+- `bar_gone`, with a `boss`: the boss's name left the boss bar's band;
+- `quest_complete`, with an `npc`: the QUEST COMPLETE banner showed in the
+  NPC's dialogue window;
+- `kill_remark`, with a `boss`: a new line in the list of voiced lines
+  carried one of the boss's kill-remark texts from `remarks` (below); a
+  `kill_remark` whose boss has no text there fails validation.
+
+```json
+{"kind": "screen", "what": "bar_gone", "boss": "Beira of the Rotten Pack", "area": "G1_2"}
+```
+
+The fire rule: a screen event fires a screen signal when the current area
+is known and equals the signal's `area`, the signal sits on an open step
+(any step after the furthest one reached), and the quest's tracked status
+is available or in progress; at most one quest fires per event, the first
+in data order. An unknown area refuses the event and counts it. A log line
+never fires a screen signal, and a screen event fires nothing else. This
+version ships four: `bar_gone` on the "Defeat …" step of Beira of the
+Rotten Pack (`G1_2`, the bar text measured in Live 6), Blackjaw (`G3_6_1`)
+and Lythara (`P3_2`), whose bar text is not measured and whose short name
+matches the full title by containment; and `quest_complete` for Renly in
+`G1_town` on Reaching Clearfell's "Take Renly's reward" (the banner seen in
+Live 8). No `kill_remark` signal ships.
+
+**The `remarks` table.** An optional top-level array of a class's
+kill-remark texts, each `{"class", "boss", "key", "text", "source_url",
+"fetched"}`: `key` is the poe2db class page's name for the moment that
+plays the remark, `text` the short spoken line, stored verbatim, and
+`source_url` and `fetched` are validated as a quest's are (a
+`https://poe2db.tw/us/<page>` URL and a date). An entry's `boss` must be
+the boss of a shipped `bar_gone` signal or a name in `npcs`. In this
+version the table is empty (absent from the file), so no step ticks on a
+remark.
 
 **Find-it tips.** A step may carry a `"tip"`: a short "how to find it"
 hint, shown on its own line under the step in the row (when it is the step
@@ -950,9 +1217,10 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   of one player's log, with a speaker or without, while the same search
   found Una's lines; no speaker is named after a class; and the minute
   after a Mercenary killed The Bloated Miller held no remark. So no quest
-  moves on a remark. That is "not observed", not "never logged"
-  ([`quest-tracker-research.md`](quest-tracker-research.md) § "Character
-  remarks").
+  moves on a remark from the log. That is "not observed", not "never
+  logged" ([`quest-tracker-research.md`](quest-tracker-research.md) §
+  "Character remarks"). The remarks do show on screen, which *Read the
+  screen*'s remark rule reads (its limit is below).
 - **Shown until the game's process is known.** Play mode hides the
   overlay when another program's window is in front, telling the game's
   window by the process id in the log lines' `Client <pid>` header. Until
@@ -998,9 +1266,38 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   held nothing at it: one controlled negative, so still "not observed",
   not "never logged".
   Her "Defeat Beira of the Rotten Pack", and Blackjaw's and Lythara's
-  "Defeat …" steps, have no signal: tick them when the boss falls, or let
-  the reward line finish the quest. Without the tick the row keeps showing
-  the defeat step after the boss's lines.
+  "Defeat …" steps, have no log signal: tick them when the boss falls, let
+  the reward line finish the quest, or turn on *Read the screen*, whose
+  bar rule ticks them (with the limits below). Without either the row
+  keeps showing the defeat step after the boss's lines.
+- **Read the screen: walking away ticks early.** The boss bar also goes
+  when you walk out of a living boss's range. The reader cannot tell that
+  from a kill, so staying out of range for 3 s ticks the defeat step and
+  the row shows the next step early; only an area entry or your death
+  before the bar went cancels it (the owner's choice, 2026-10-26).
+- **Read the screen: panels that hide the bar.** The passive tree and the
+  world map draw their own titles over the bar's name; the bar then counts
+  as not visible, and a kill while one of them is open is not seen
+  (tick it by hand, or let the reward line finish the quest). The
+  inventory, the character panel, the Escape menu and the map overlay
+  leave the name readable.
+- **Read the screen: Blackjaw's and Lythara's bars are not measured.** Only
+  Beira's bar text was read in a session. Blackjaw's and Lythara's
+  signals use their short names, matched by containment against the full
+  bar title, by analogy with hers.
+- **Read the screen: kill remarks.** The remark rule ticks a step only for
+  a boss and class the quest data's `remarks` table has a text for, and
+  this version's table is empty, so no step ticks on a remark yet.
+- **Read the screen: one measured setup.** The regions were measured on a
+  2560×1440 borderless window, English client, at one in-game UI scale.
+  A window that is not 16:9 is refused; other 16:9 resolutions, other UI
+  scales and other client languages are untested.
+- **Read the screen: keep the overlay off the regions.** A region the
+  overlay's window lies over is not read, and its status line says so;
+  nothing moves the overlay for you. Keep it at the right of the screen,
+  where its default place is, clear of the regions: the bar's band spans
+  x 0.25 to 0.75 of the game's window at the top, the dialogue window
+  x 0.22 to 0.70, the voiced lines x 0 to 0.45 at the lower left.
 - **Una's wait line.** "Ask Una for help" moves on Una's "I'll wait here.
   The old magicks will protect me.", which the log recorded only from
   December 2025 on (older clients' sessions never have it) and only, as far
@@ -1051,6 +1348,13 @@ Revisit this feature when:
 - **A game patch lands**: run `quest-tracker-replay scan` and `state` over a
   fresh log; update the parser fixtures if a log template changed, and the
   quest data if quests, rewards or area codes moved ("Quest data" above).
+- **A patch moves the game's UI** (the boss bar, the list of voiced lines,
+  the dialogue window or its QUEST COMPLETE banner) or changes their text:
+  capture a fresh session with the research instruments
+  ([`outside-instruments.md`](outside-instruments.md)), run
+  `quest-tracker-replay screen` over it, and retune the regions and the
+  trackers' constants in `qt-screen` until it gives one event per kill or
+  banner again and none under the covering panels.
 - **poe2db changes its page structure**: `extract` fails loudly naming the
   slug; fix the extractor and its synthetic fixture under
   `tests/fixtures/quest_tracker/poe2db/`.
@@ -1117,6 +1421,19 @@ Revisit this feature when:
   character it becomes. A skipped quest stays tracked: the log keeps moving
   it, its row shows the step it has reached, and Unskip shows it where its
   progress is.
+- *Read the screen*, a setting off by default: with it on, the overlay
+  copies up to three regions of the game's window (the boss bar's band,
+  the lower-left list of voiced lines and the dialogue window), only while
+  the game is in front and a step the screen can finish is open in the
+  current area, and reads them with Windows' own OCR, in memory. Beira of
+  the Rotten Pack's, Blackjaw's and Lythara's defeat steps tick when their
+  bar goes, and "Take Renly's reward" when the QUEST COMPLETE banner shows
+  in his window. The passive tree or world map over the bar ticks
+  nothing; neither does the overlay over a region, a missing English OCR
+  or a window that is not 16:9, and the status line says which. Nothing
+  read is stored, logged or shown.
+  `quest-tracker-replay screen` runs the same trackers over a kept
+  capture.
 - A find-it tip under a step: the owner's short "how to find it" hints,
   from a `tip` field in the quest data, shown under the step they help
   with in the row and the quest detail; five in this version, more added
@@ -1159,7 +1476,8 @@ Revisit this feature when:
   control transitions, and stops under reduced motion
   (`prefers-reduced-motion: reduce`); a row's highlight is colour only and
   stays.
-- Progress per character from `Client.txt` alone, resumed across restarts
+- Progress per character from `Client.txt` alone (plus the screen, with
+  *Read the screen* on), resumed across restarts
   from the saved log position, stored under `%LOCALAPPDATA%` (or
   `QUEST_TRACKER_DIR`); on start the current area is read back from the
   log before that position (How detection works).
@@ -1201,13 +1519,14 @@ Revisit this feature when:
   log cannot show are completed by the next signal the game can only
   produce after them where the order is supported, and otherwise stay a
   tick. Beira of the Rotten Pack's steps are find her (her lines), defeat
-  her (ticked by hand: no log line marks the defeat as far as measured)
+  her (ticked by hand, or by her bar going with *Read the screen* on: no
+  log line marks the defeat as far as measured)
   and "Use the item it dropped", since her reward came when that item was
   used; the reward finishes the quest in any area. Blackjaw, the Remnant
   and Lythara, the Wayward Spear get the same find and defeat steps and end
   with "Use any item left after the fight", a hint, since that they work
   the same way is inferred, not observed.
-- `quest-tracker-replay` (`events`, `state`, `import`, `scan`; the summary
+- `quest-tracker-replay` (`events`, `state`, `import`, `scan`, `screen`; the summary
   counts held events, the two kinds of dropped event and refused signals,
   and decides a relog window still open at the end of the log as the
   overlay would) and the developer-only `py -3 -m

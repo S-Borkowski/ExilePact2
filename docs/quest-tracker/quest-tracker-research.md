@@ -1183,7 +1183,10 @@ cry. File reads are not viable on this evidence (`i1-target` was
     use the bar for bosses whose death leaves no log line. Live 8 took
     over the panel measurement the build was to start with, on one boss
     with the player keeping its distance, and the tracker overlay must
-    stay off the bar's band.
+    stay off the bar's band. Workorder `quest-tracker-screen-text-build`
+    built this three-class rule into the overlay's opt-in *Read the
+    screen* setting, where a covered read breaks the absent run
+    ([`README.md`](README.md) § "How detection works").
 - **The audio template** needs no admin, but a template is an extracted
   asset that cannot ship, so the product would have to rebuild it, boss by
   boss, from the player's own install.
@@ -1446,6 +1449,11 @@ option off.
   has to read the window itself; the "QUEST COMPLETE" banner and the next
   quest's banner below it, at y 0.78, are shorter targets in the same
   frames.
+
+Workorder `quest-tracker-screen-text-build` built a reader of these three
+sources into the overlay, settled against the kept captures of Lives 6
+and 8 by `quest-tracker-replay screen` ([`README.md`](README.md) § "How
+detection works").
 
 ## Negative results
 

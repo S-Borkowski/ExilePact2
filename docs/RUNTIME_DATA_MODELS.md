@@ -428,3 +428,26 @@ rect.
   the topic list at the end. OCR read the name at 1.00 and 16 lines of 3 or
   more words. Its lines carry no speaker prefix, are not repeated in the
   lower-left list as the NPC's lines, and are not in `Client.txt`.
+- **The client's own quest panel** (read 2026-10-26 from Live 8's OCR
+  cache after the session, not a check). The panel the `quest_tracking`
+  option in `[UI]` shows sits at the right, at x 0.82 to 0.98, y 0.28 to
+  0.35. It names the tracked quest ("Reaching Clearfell", later
+  "Treacherous Ground") and its current objectives ("Kill the Bloated
+  Miller and end his rage"; then "Search Clearfell for the entrance to the
+  Mud Burrow" and "Slay the Devourer in its lair"). No tool reads it.
+- **What else the bar's band shows** (read 2026-10-26 from Live 8's and
+  Live 6's OCR cache and frame index after the sessions, not a check).
+  With the inventory open, the boss's name read at x 0.28 instead of
+  0.456, so it moves with that panel. The passive tree's title ("PASSIVE
+  SKILLS", x 0.46 to 0.54, y 0.02 to 0.04) and the world map's headings
+  ("WORLD" at y 0.02 to 0.04, "ACT 1" at x 0.49 to 0.51, y 0.06 to 0.07)
+  sit over the name's column. The scene draws text in the band too: after
+  Beira's death a "CHECKPOINT" label read at x 0.30 to 0.35, its height
+  moving with the camera, so other text in the band does not by itself
+  mean a panel; after the walk away from the Miller the band held no OCR
+  line. The band's luma does not separate the bar from its absence: its
+  spread was 11 to 16 after Beira's death, and 10 to 11 after the Miller's
+  kill, rising to 26 within 10 s with no bar, so the spread of about 8
+  recorded above for the bar gone was one spot. The overlay's reader classes the band by OCR text and
+  position, never luma ([`quest-tracker/README.md`](quest-tracker/README.md)
+  § "How detection works").
