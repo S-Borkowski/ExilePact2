@@ -39,6 +39,13 @@
 //! level-1 entry to the same instance (seed) resumes it (Context "Launch 7
 //! fixes (owner scope)", "Launch 8: wait, then decide").
 //!
+//! A screen event ([`Engine::apply_screen`]) is routed as an NPC line is
+//! and fires only `screen` signals, which no log line fires: in the current
+//! area, on an open step, of one quest, the first in data order. It never
+//! reads or moves the log's time. [`Engine::screen_demand`] lists the
+//! screen signals that would fire now, for the reader to look for (Context
+//! "Design: quest data and the engine").
+//!
 //! What persists ([`Engine::to_json`]) is the characters, the pin and the
 //! active name. The unnamed new character is a separate record
 //! ([`Engine::new_character_json`]), never among the characters; the user's
@@ -58,7 +65,7 @@ use qt_logline::{parse_line, Allowlist, Event, EventKind, Timestamp};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::data::{classify_stat, Detection, QuestData, Signal, Status, SCHEMA};
+use crate::data::{classify_stat, Detection, QuestData, ScreenWhat, Signal, Status, SCHEMA};
 
 /// Whether a character is known to be the player's own (rule 1, or the
 /// user's confirmation) or only taken to be by a level-up (rule 4).
@@ -240,9 +247,96 @@ struct Compiled {
 /// An event waiting for a character, with the area it happened in.
 #[derive(Debug, Clone)]
 struct Held {
-    event: Event,
+    event: Happening,
     area: Option<String>,
     live: bool,
+}
+
+/// What a routed event is: a log line's, or the screen reader's.
+#[derive(Debug, Clone)]
+enum Happening {
+    Log(Event),
+    Screen(ScreenEvent),
+}
+
+impl Held {
+    fn is_screen(&self) -> bool {
+        matches!(self.event, Happening::Screen(_))
+    }
+}
+
+/// What the screen reader saw, as the engine takes it
+/// ([`Engine::apply_screen`]): a `screen` signal's kind and the name it
+/// reads, the boss for `bar_gone` and `kill_remark`, the NPC for
+/// `quest_complete`. Names come from the shipped screen signals
+/// ([`Engine::screen_demand`]), never from what was read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScreenEvent {
+    pub what: ScreenWhat,
+    pub name: String,
+}
+
+impl ScreenEvent {
+    pub fn bar_gone(boss: &str) -> ScreenEvent {
+        ScreenEvent {
+            what: ScreenWhat::BarGone,
+            name: boss.to_string(),
+        }
+    }
+
+    pub fn kill_remark(boss: &str) -> ScreenEvent {
+        ScreenEvent {
+            what: ScreenWhat::KillRemark,
+            name: boss.to_string(),
+        }
+    }
+
+    pub fn quest_complete(npc: &str) -> ScreenEvent {
+        ScreenEvent {
+            what: ScreenWhat::QuestComplete,
+            name: npc.to_string(),
+        }
+    }
+}
+
+/// What one screen event did, for the reader's diagnostic line.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ScreenOutcome {
+    /// It fired the screen signal on this step of this quest.
+    Ticked { quest_id: String, step_id: String },
+    /// The current area was unknown: refused, and counted with the log's
+    /// own refusals ([`Engine::refused_count`]).
+    AreaUnknown,
+    /// No screen signal on an open step of an available or in-progress quest
+    /// matched it in the current area.
+    NoOpenStep,
+    /// No character takes events now (a Riverbank entry's relog window is
+    /// open, or no character is known yet), so it waits with the log's
+    /// events and is applied, live, to the character they go to.
+    Waiting,
+}
+
+/// [`Engine::apply_screen`]'s result.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScreenResult {
+    pub outcome: ScreenOutcome,
+    pub transitions: Vec<Transition>,
+}
+
+/// A screen signal that would fire now ([`Engine::screen_demand`]): what
+/// the reader should look for, and where it would go.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScreenDemand {
+    pub quest_id: String,
+    pub step_id: String,
+    /// The signal's id, `step/<step id>/<i>`, as evidence stores it.
+    pub signal_id: String,
+    pub what: ScreenWhat,
+    /// The boss or NPC the signal names.
+    pub name: String,
+    /// The area code it is tied to (the current area).
+    pub area: String,
 }
 
 /// An unconfirmed character made active by a level-up (rule 4): what it was
@@ -584,35 +678,176 @@ impl Engine {
         self.area.as_deref()
     }
 
+    // -- the screen reader ---------------------------------------------------
+
+    /// Applies one screen event (Context "Design: quest data and the
+    /// engine"). It is routed as an NPC line is (the pin, the open new
+    /// character, the active character, else it waits) and is live. It
+    /// fires a `screen` signal when the current area is known and is the
+    /// signal's, the signal sits on an open step (after the furthest step
+    /// fired or ticked) and the quest's tracked status is available or in
+    /// progress; at most one quest fires, the first in data order. With the
+    /// area unknown it is refused and counted. It fires no other kind of
+    /// signal, and it neither reads nor moves the log's time: an undecided
+    /// Riverbank entry stays undecided, and the event waits in its window.
+    pub fn apply_screen(&mut self, ev: &ScreenEvent) -> ScreenResult {
+        let mut out = Vec::new();
+        let held = Held {
+            event: Happening::Screen(ev.clone()),
+            area: self.area.clone(),
+            live: true,
+        };
+        let outcome = self
+            .route_held(held, &mut out)
+            .expect("a routed screen event has an outcome");
+        ScreenResult {
+            outcome,
+            transitions: out,
+        }
+    }
+
+    /// The screen signals a screen event would fire now, for the reader to
+    /// look for: those of the character a screen event goes to, in the
+    /// current area, on an open step of an available or in-progress quest,
+    /// in data order. Empty while the area is unknown, while a Riverbank
+    /// entry is undecided, or with no character to go to.
+    pub fn screen_demand(&self) -> Vec<ScreenDemand> {
+        let (Some(area), Some(target)) = (self.area.as_deref(), self.screen_target()) else {
+            return Vec::new();
+        };
+        let states = self.states_of(target);
+        self.open_screen_signals(&states)
+            .into_iter()
+            .filter_map(|(qi, k, c)| {
+                let Signal::Screen { area: want, .. } = &c.signal else {
+                    return None;
+                };
+                let (what, name) = c.signal.screen()?;
+                (want == area).then(|| ScreenDemand {
+                    quest_id: self.data.quests[qi].id.clone(),
+                    step_id: self.data.quests[qi].steps[k].id.clone(),
+                    signal_id: c.id.clone(),
+                    what,
+                    name: name.to_string(),
+                    area: want.clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// Who an event routed now would go to; `None` when it would wait.
+    fn screen_target(&self) -> Option<Target<'_>> {
+        if self.relog.is_some() {
+            None
+        } else if let Some(name) = self.pinned.as_deref() {
+            Some(Target::Named(name))
+        } else if self.new_open() {
+            Some(Target::New)
+        } else {
+            self.active.as_deref().map(Target::Named)
+        }
+    }
+
+    /// Every `screen` signal on an open step of a quest whose tracked
+    /// status is available or in progress, in data order, as (quest index,
+    /// step index, signal), whatever its area.
+    fn open_screen_signals(&self, states: &[QuestState]) -> Vec<(usize, usize, &Compiled)> {
+        let mut found = Vec::new();
+        for (qi, signals) in self.compiled.iter().enumerate() {
+            let st = &states[qi];
+            if !matches!(st.tracked_status, Status::Available | Status::InProgress) {
+                continue;
+            }
+            let reached = st.steps.iter().rposition(|s| s.fired || s.ticked);
+            for c in signals {
+                if let (Role::Step(k), Signal::Screen { .. }) = (c.role, &c.signal) {
+                    if reached.is_none_or(|r| k > r) {
+                        found.push((qi, k, c));
+                    }
+                }
+            }
+        }
+        found
+    }
+
+    /// Fires the first open screen signal a screen event matches for the
+    /// target, in `area`; with the area unknown, refuses and counts it.
+    fn apply_screen_to(
+        &mut self,
+        target: Target,
+        ev: &ScreenEvent,
+        area: Option<&str>,
+        live: bool,
+        out: &mut Vec<Transition>,
+    ) -> ScreenOutcome {
+        let states = self.states_of(target);
+        let open = self.open_screen_signals(&states);
+        let reads = |c: &Compiled| c.signal.screen() == Some((ev.what, ev.name.as_str()));
+        let Some(area) = area else {
+            // Refused: counted once, for the quest it would have fired.
+            if let Some(&(qi, _, _)) = open.iter().find(|(_, _, c)| reads(c)) {
+                let qid = self.data.quests[qi].id.clone();
+                self.refused += 1;
+                self.refused_quests.push(qid);
+            }
+            return ScreenOutcome::AreaUnknown;
+        };
+        let hit = open.iter().find(|(_, _, c)| {
+            reads(c) && matches!(&c.signal, Signal::Screen { area: want, .. } if want == area)
+        });
+        let Some(&(qi, k, c)) = hit else {
+            return ScreenOutcome::NoOpenStep;
+        };
+        let (qid, sid) = (self.data.quests[qi].id.clone(), c.id.clone());
+        let step_id = self.data.quests[qi].steps[k].id.clone();
+        let quest_id = qid.clone();
+        self.change_to(target, live, out, |e| {
+            e.state_mut(target)
+                .is_some_and(|ch| ch.evidence.entry(qid).or_default().insert(sid))
+        });
+        ScreenOutcome::Ticked { quest_id, step_id }
+    }
+
     /// Gives an event to the pinned character, the new character from The
     /// Riverbank or the active character, or holds it. While a Riverbank
     /// entry is undecided, the event waits for the character it decides on.
     fn route(&mut self, ev: &Event, live: bool, out: &mut Vec<Transition>) {
         let held = Held {
-            event: ev.clone(),
+            event: Happening::Log(ev.clone()),
             area: self.area.clone(),
             live,
         };
+        self.route_held(held, out);
+    }
+
+    /// [`Engine::route`] for an event of either source; a screen event's
+    /// outcome comes back (`Waiting` while it waits).
+    fn route_held(&mut self, held: Held, out: &mut Vec<Transition>) -> Option<ScreenOutcome> {
+        let waiting = held.is_screen().then_some(ScreenOutcome::Waiting);
         if let Some(w) = self.relog.as_mut() {
             // Not given to anyone yet, so nothing is refused for anyone yet.
             w.taken.push(held);
+            waiting
         } else if let Some(name) = self.pinned.clone() {
-            self.receive(Target::Named(&name), held, out);
+            self.receive(Target::Named(&name), held, out)
         } else if self.new_open() {
-            self.receive(Target::New, held, out);
+            self.receive(Target::New, held, out)
         } else if let Some(name) = self.active.clone() {
-            self.receive(Target::Named(&name), held, out);
+            self.receive(Target::Named(&name), held, out)
         } else {
             // Held: no character gets it now, so nothing is refused for one.
             self.held.push(held);
+            waiting
         }
     }
 
     /// Gives a routed event to the character it goes to.
-    fn receive(&mut self, target: Target, held: Held, out: &mut Vec<Transition>) {
-        if held.area.is_none() {
-            self.count_refusals(&held.event.kind, target);
-        }
+    fn receive(
+        &mut self,
+        target: Target,
+        held: Held,
+        out: &mut Vec<Transition>,
+    ) -> Option<ScreenOutcome> {
         match target {
             Target::Named(name) => {
                 if let Some(p) = self.pending.as_mut() {
@@ -627,17 +862,32 @@ impl Engine {
                 }
             }
         }
-        self.apply_to(target, &held, out);
+        self.give(target, &held, out)
     }
 
     /// Gives released held events to a named character, counting refusals
     /// exactly as for an event routed to it.
     fn release_to(&mut self, name: &str, released: &[Held], out: &mut Vec<Transition>) {
         for h in released {
-            if h.area.is_none() {
-                self.count_refusals(&h.event.kind, Target::Named(name));
+            self.give(Target::Named(name), h, out);
+        }
+    }
+
+    /// Applies an event to the character it was given to: a log event's
+    /// signals, counting its refusals while the area is unknown, or a screen
+    /// event by the screen fire rule, whose outcome comes back.
+    fn give(&mut self, target: Target, held: &Held, out: &mut Vec<Transition>) -> Option<ScreenOutcome> {
+        match &held.event {
+            Happening::Log(ev) => {
+                if held.area.is_none() {
+                    self.count_refusals(&ev.kind, target);
+                }
+                self.apply_to(target, &ev.kind, held.area.as_deref(), held.live, out);
+                None
             }
-            self.apply_to(Target::Named(name), h, out);
+            Happening::Screen(ev) => {
+                Some(self.apply_screen_to(target, ev, held.area.as_deref(), held.live, out))
+            }
         }
     }
 
@@ -673,13 +923,20 @@ impl Engine {
         }
     }
 
-    /// Records the event-based signals an event fires as the target's
+    /// Records the event-based signals a log event fires as the target's
     /// evidence.
-    fn apply_to(&mut self, target: Target, held: &Held, out: &mut Vec<Transition>) {
+    fn apply_to(
+        &mut self,
+        target: Target,
+        ev: &EventKind,
+        area: Option<&str>,
+        live: bool,
+        out: &mut Vec<Transition>,
+    ) {
         let mut hits: Vec<(String, String)> = Vec::new();
         for (qi, signals) in self.compiled.iter().enumerate() {
             for c in signals {
-                if fires_on(&c.signal, &held.event.kind, held.area.as_deref()) {
+                if fires_on(&c.signal, ev, area) {
                     hits.push((self.data.quests[qi].id.clone(), c.id.clone()));
                 }
             }
@@ -687,7 +944,7 @@ impl Engine {
         if hits.is_empty() {
             return;
         }
-        self.change_to(target, held.live, out, |e| {
+        self.change_to(target, live, out, |e| {
             let Some(ch) = e.state_mut(target) else {
                 return false;
             };
@@ -1684,11 +1941,14 @@ fn signal_area(signal: &Signal) -> Option<&str> {
         | Signal::System { area, .. }
         | Signal::Reward { area, .. }
         | Signal::Points { area, .. } => area.as_deref(),
+        Signal::Screen { area, .. } => Some(area),
         Signal::Area { .. } | Signal::Level { .. } | Signal::Quest { .. } => None,
     }
 }
 
-/// Whether an event-based signal fires on an event that happened in `area`.
+/// Whether an event-based signal fires on a log event that happened in
+/// `area`. A `screen` signal never does: only a screen event fires it
+/// ([`Engine::apply_screen`]).
 fn fires_on(signal: &Signal, ev: &EventKind, area: Option<&str>) -> bool {
     let in_area = |want: &Option<String>| want.as_deref().is_none_or(|w| Some(w) == area);
     match (signal, ev) {

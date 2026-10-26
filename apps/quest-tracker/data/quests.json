@@ -189,7 +189,7 @@
           "id": "step-6",
           "title": "Take Renly's reward",
           "text": "Renly has offered you a reward for slaying the Bloated Miller. Take it.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "quest_complete", "npc": "Renly", "area": "G1_town"}]
         }
       ],
       "unlock": [{"kind": "area", "code": "G1_1"}],
@@ -199,7 +199,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Reaching_Clearfell",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early.",
+      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early. With the opt-in screen reading on, the QUEST COMPLETE banner in Renly's dialogue window ticks \"Take Renly's reward\" (the banner seen in Live 8).",
       "done_inferred": true
     },
     {
@@ -1232,7 +1232,7 @@
           "id": "fight",
           "title": "Defeat Beira of the Rotten Pack",
           "text": "",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "bar_gone", "boss": "Beira of the Rotten Pack", "area": "G1_2"}]
         },
         {
           "id": "use",
@@ -1252,7 +1252,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in any area. It was counted in Clearfell five times and once in the Mud Burrow, and in 2 of 8 sessions it came only after the player left Clearfell, in the Mud Burrow 2 and 7 minutes later (measured 2026-10-25); the first two done signals record where it was counted, the third finishes the quest wherever the item is used. No other quest's reward is +10% to Cold Resistance. Listed in poe2db's community table of permanent rewards, not as a quest page. Her lines (the first of each fight, then her combat barks) are \"Find Beira of the Rotten Pack\". No line marks her defeat as far as measured (9 sessions with her lines, 2026-10-25; not yet set against a known kill time), so \"Defeat Beira of the Rotten Pack\" has no signal: tick it when she falls. The last step exists because the reward line comes only once the item Beira dropped is used (the owner's observation at Live 1, about 8 minutes after the kill); the log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step, with no tick needed. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored: such a character shows the step its other evidence reaches. poe2db does not name the item."
+      "notes": "Done on the reward line in any area. It was counted in Clearfell five times and once in the Mud Burrow, and in 2 of 8 sessions it came only after the player left Clearfell, in the Mud Burrow 2 and 7 minutes later (measured 2026-10-25); the first two done signals record where it was counted, the third finishes the quest wherever the item is used. No other quest's reward is +10% to Cold Resistance. Listed in poe2db's community table of permanent rewards, not as a quest page. Her lines (the first of each fight, then her combat barks) are \"Find Beira of the Rotten Pack\". No line marks her defeat as far as measured (9 sessions with her lines, 2026-10-25; not yet set against a known kill time), so \"Defeat Beira of the Rotten Pack\" has no log signal: with the opt-in screen reading on, her boss bar going in Clearfell ticks it (the bar text measured in Live 6); otherwise tick it when she falls. The last step exists because the reward line comes only once the item Beira dropped is used (the owner's observation at Live 1, about 8 minutes after the kill); the log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step, with no tick needed. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored: such a character shows the step its other evidence reaches. poe2db does not name the item."
     },
     {
       "id": "the-crowbell",
@@ -2876,7 +2876,7 @@
           "id": "fight",
           "title": "Defeat Blackjaw, the Remnant",
           "text": "",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "bar_gone", "boss": "Blackjaw", "area": "G3_6_1"}]
         },
         {
           "id": "use",
@@ -2892,7 +2892,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in Jiquani's Machinarium. Listed in poe2db's community table of permanent rewards, not as a quest page. BlackJaw's lines are \"Find Blackjaw, the Remnant\"; no line marking his defeat is known, so \"Defeat Blackjaw, the Remnant\" has no signal: tick it when he falls (the same split as Beira's, 2026-10-25). The last step exists because the reward line follows BlackJaw's last line by 5 to 21 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when his lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
+      "notes": "Done on the reward line in Jiquani's Machinarium. Listed in poe2db's community table of permanent rewards, not as a quest page. BlackJaw's lines are \"Find Blackjaw, the Remnant\"; no line marking his defeat is known, so \"Defeat Blackjaw, the Remnant\" has no log signal: tick it when he falls (the same split as Beira's, 2026-10-25), or, with the opt-in screen reading on, his boss bar going ticks it (by analogy with Beira's; his bar text is not measured, and the short name matches the full title by containment). The last step exists because the reward line follows BlackJaw's last line by 5 to 21 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when his lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
     },
     {
       "id": "sacrificial-heart",
@@ -5964,7 +5964,7 @@
           "id": "fight",
           "title": "Defeat Lythara, the Wayward Spear",
           "text": "",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "bar_gone", "boss": "Lythara", "area": "P3_2"}]
         },
         {
           "id": "use",
@@ -5980,7 +5980,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page. Lythara's lines are \"Find Lythara, the Wayward Spear\"; no line marking her defeat is known, so \"Defeat Lythara, the Wayward Spear\" has no signal: tick it when she falls (the same split as Beira's, 2026-10-25). The last step exists because the reward line follows Lythara's last line by 10 to 15 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
+      "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page. Lythara's lines are \"Find Lythara, the Wayward Spear\"; no line marking her defeat is known, so \"Defeat Lythara, the Wayward Spear\" has no log signal: tick it when she falls (the same split as Beira's, 2026-10-25), or, with the opt-in screen reading on, her boss bar going ticks it (by analogy with Beira's; her bar text is not measured, and the short name matches the full title by containment). The last step exists because the reward line follows Lythara's last line by 10 to 15 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
     }
   ]
 }

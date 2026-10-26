@@ -17,9 +17,15 @@
 //! `boss_reward_shows_use_step_after_fight` pins the boss quests whose reward
 //! line comes some seconds after the fight, not with it (research note
 //! "Rewards after a boss kill"): the boss's lines are a "Find ..." step, the
-//! "Defeat ..." step after it has no signal, a "Use ..." step follows, and
-//! the reward line still finishes the quest. Only Beira's step says the boss
-//! drops an item; for the others that is not established.
+//! "Defeat ..." step after it has no log signal (only the screen reader's
+//! `bar_gone` of the boss), a "Use ..." step follows, and the reward line
+//! still finishes the quest. Only Beira's step says the boss drops an item;
+//! for the others that is not established.
+//!
+//! `shipped_screen_signals_are_the_four_named` pins the screen signals the
+//! data ships (Context "Design: quest data and the engine"), and
+//! `beira_bar_gone_ticks_the_defeat_over_the_shipped_data` feeds one through
+//! the engine.
 //!
 //! The rest pin what launch 6 found the tests above could not catch: the
 //! town voices' own lines, which `town_talk.txt` never had
@@ -45,8 +51,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use qt_engine::{
-    Detection, Engine, Evidence, Quest, QuestData, QuestState, RewardCategory, Signal, Status,
-    Transition, Worth,
+    Detection, Engine, Evidence, Quest, QuestData, QuestState, RewardCategory, ScreenEvent,
+    ScreenOutcome, ScreenWhat, Signal, Status, Transition, Worth,
 };
 
 /// The campaign acts as poe2db numbers them (its Act 6 is the interludes).
@@ -84,6 +90,7 @@ fn area_codes(signal: &Signal) -> Vec<&str> {
         | Signal::System { area, .. }
         | Signal::Reward { area, .. }
         | Signal::Points { area, .. } => area.iter().map(String::as_str).collect(),
+        Signal::Screen { area, .. } => vec![area.as_str()],
         Signal::Level { .. } | Signal::Quest { .. } => Vec::new(),
     }
 }
@@ -549,8 +556,9 @@ const ACT1_CHARACTER: &str = "Corisande_Fell";
 fn boss_reward_shows_use_step_after_fight() {
     let data = Arc::new(data());
     // The shape: a "Find ..." step the boss's line moves, a "Defeat ..."
-    // step no line marks (the player ticks it), then a "Use ..." step no
-    // signal can show, and the reward line as `done`.
+    // step no line marks (the player ticks it, or the screen reader sees the
+    // boss's bar go), then a "Use ..." step no signal can show, and the
+    // reward line as `done`.
     for id in USE_ITEM_QUESTS {
         let q = data.quest(id).unwrap_or_else(|| panic!("no quest {id}"));
         let n = q.steps.len();
@@ -565,7 +573,15 @@ fn boss_reward_shows_use_step_after_fight() {
         );
         assert!(find.title.starts_with("Find "), "quest {id}: {:?}", find.title);
         assert!(fight.title.starts_with("Defeat "), "quest {id}: {:?}", fight.title);
-        assert!(fight.signals.is_empty(), "quest {id}: the defeat step has a signal: {:?}", fight.signals);
+        assert!(
+            fight.signals.iter().all(|s| matches!(
+                s,
+                Signal::Screen { what: ScreenWhat::BarGone | ScreenWhat::KillRemark, area, .. }
+                    if q.zones.contains(area)
+            )),
+            "quest {id}: the defeat step has a log signal: {:?}",
+            fight.signals
+        );
         assert!(last.title.starts_with("Use "), "quest {id}: last step {:?}", last.title);
         assert!(last.signals.is_empty(), "quest {id}: the use step has a signal: {:?}", last.signals);
         assert!(
@@ -1371,4 +1387,104 @@ fn una_summon_alone_leaves_ask_una_for_help() {
     assert_eq!(s.status, Status::InProgress);
     assert_eq!(s.current_step.as_deref(), Some("step-4"));
     assert_eq!(next_title(&data, &s), "Search for Runes of Power");
+}
+
+// -- the screen reader's signals (Context "Design: quest data and the engine")
+
+/// The `bar_gone` and `quest_complete` signals the data ships, as (quest,
+/// step, kind, name, area), in data order: Renly's QUEST COMPLETE banner
+/// (Live 8), Beira's bar (its text measured in Live 6), and Blackjaw's and
+/// Lythara's by analogy, their bar text not measured.
+const SHIPPED_SCREEN: [(&str, &str, ScreenWhat, &str, &str); 4] = [
+    ("reaching-clearfell", "step-6", ScreenWhat::QuestComplete, "Renly", "G1_town"),
+    ("beira-of-the-rotten-pack", "fight", ScreenWhat::BarGone, "Beira of the Rotten Pack", "G1_2"),
+    ("blackjaw-the-remnant", "fight", ScreenWhat::BarGone, "Blackjaw", "G3_6_1"),
+    ("lythara-the-wayward-spear", "fight", ScreenWhat::BarGone, "Lythara", "P3_2"),
+];
+
+#[test]
+fn shipped_screen_signals_are_the_four_named() {
+    let data = data();
+    let mut found = Vec::new();
+    for q in &data.quests {
+        for step in &q.steps {
+            let bar_gone = step.signals.iter().any(|s| matches!(s.screen(), Some((ScreenWhat::BarGone, _))));
+            for s in &step.signals {
+                let (Some((what, name)), Signal::Screen { area, .. }) = (s.screen(), s) else {
+                    continue;
+                };
+                if what == ScreenWhat::KillRemark {
+                    // The `remarks` item adds these beside a bar's going only.
+                    assert!(bar_gone, "quest {}: step {} has a kill remark and no bar", q.id, step.id);
+                    continue;
+                }
+                found.push((q.id.as_str(), step.id.as_str(), what, name, area.as_str()));
+            }
+        }
+    }
+    assert_eq!(found, SHIPPED_SCREEN.to_vec());
+    for (id, step, what, name, area) in SHIPPED_SCREEN {
+        let q = data.quest(id).expect("quest");
+        let title = &q.steps.iter().find(|s| s.id == step).expect("step").title;
+        match what {
+            // The short name is in the full bar title, and the quest's own.
+            ScreenWhat::BarGone => {
+                assert!(q.name.to_lowercase().contains(&name.to_lowercase()), "quest {id}: {name:?}");
+                assert!(title.starts_with("Defeat "), "quest {id}: {title:?}");
+                assert!(q.zones.iter().any(|z| z == area), "quest {id}: {area} is not its zone");
+            }
+            _ => assert!(title.contains(name), "quest {id}: {title:?}"),
+        }
+    }
+    // Every kill remark text is for a boss the data knows (the validator
+    // checks this; pinned here for the shipped file).
+    for r in &data.remarks {
+        assert!(
+            SHIPPED_SCREEN.iter().any(|s| s.3 == r.boss) || data.npcs.contains(&r.boss),
+            "remark for {:?}",
+            r.boss
+        );
+    }
+}
+
+/// Beira's bar going, in Clearfell with her line heard, ticks "Defeat ..."
+/// over the shipped data, and Renly's banner is what the encampment asks
+/// the reader for before that.
+#[test]
+fn beira_bar_gone_ticks_the_defeat_over_the_shipped_data() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    r.enter(TOWN_CODE);
+    let demand: Vec<(String, String)> =
+        r.engine.screen_demand().into_iter().map(|d| (d.quest_id, d.name)).collect();
+    assert_eq!(demand, [("reaching-clearfell".to_string(), "Renly".to_string())]);
+
+    r.enter("G1_2");
+    r.say(BEIRA_SPEAKER, BEIRA_FIRST);
+    let s = r.state(BEIRA);
+    assert_eq!(s.current_step.as_deref(), Some("find"));
+    let demand = r.engine.screen_demand();
+    assert_eq!(demand.len(), 1, "{demand:?}");
+    assert_eq!(
+        (demand[0].quest_id.as_str(), demand[0].step_id.as_str(), demand[0].signal_id.as_str()),
+        (BEIRA, "fight", "step/fight/0")
+    );
+
+    let got = r.engine.apply_screen(&ScreenEvent::bar_gone(BEIRA_SPEAKER));
+    assert_eq!(
+        got.outcome,
+        ScreenOutcome::Ticked { quest_id: BEIRA.to_string(), step_id: "fight".to_string() }
+    );
+    assert!(
+        got.transitions.iter().any(|t| t.quest_id == BEIRA
+            && t.step_to.as_deref() == Some("fight")
+            && t.live),
+        "{:?}",
+        got.transitions
+    );
+    let s = r.state(BEIRA);
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(next_title(&data, &s), "Use the item it dropped");
+    assert!(!s.steps.iter().any(|st| st.ticked), "fired, not ticked: {:?}", s.steps);
+    assert!(r.engine.screen_demand().is_empty());
 }

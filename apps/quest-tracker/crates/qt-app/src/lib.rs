@@ -86,5 +86,6 @@ fn empty_data() -> QuestData {
         system_lines: Vec::new(),
         areas: BTreeMap::new(),
         quests: Vec::new(),
+        remarks: Vec::new(),
     }
 }

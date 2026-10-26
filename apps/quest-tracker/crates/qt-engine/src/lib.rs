@@ -15,12 +15,13 @@ pub mod engine;
 
 pub use area::{area_from_log, LogArea};
 pub use data::{
-    classify_stat, Area, DataError, Detection, Element, Evidence, Quest, QuestData, Reward,
-    RewardCategory, Signal, Status, Step, Worth, SCHEMA, TIP_MAX_CHARS,
+    classify_stat, Area, DataError, Detection, Element, Evidence, Quest, QuestData, Remark,
+    Reward, RewardCategory, ScreenWhat, Signal, Status, Step, Worth, SCHEMA, TIP_MAX_CHARS,
 };
 pub use engine::{
     CharacterInfo, CharacterNote, CharacterState, Engine, EngineError, Overrides, Ownership,
-    QuestAction, QuestState, StepState, Transition,
+    QuestAction, QuestState, ScreenDemand, ScreenEvent, ScreenOutcome, ScreenResult, StepState,
+    Transition,
 };
 /// The log time [`Engine::expire_relog_window`] takes.
 pub use qt_logline::Timestamp;
