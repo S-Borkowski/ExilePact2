@@ -1,0 +1,222 @@
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>2</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>0</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:00.000000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="3000" ThreadID="3001" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="BufferSize">    8192</Data>
+		<Data Name="PointerSize">       8</Data>
+		<Data Name="StartTime">134374824000000000</Data>
+		<Data Name="PerfFreq">10000000</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>Header</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">EventTrace</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{68fdd900-4a3e-11d1-84f4-0000f80464e3}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>3</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>3</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:00.001000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="3131" ThreadID="3132" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="ProcessId">0xC3B</Data>
+		<Data Name="TThreadId">0xC3C</Data>
+		<Data Name="StackBase">0xFFFF800000000000</Data>
+		<Data Name="UserStackBase">0x0</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>DCStart</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">Thread</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{3d6fa8d1-fe05-11d0-9dda-00c04fd7ba7c}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>3</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>64</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:01.900000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="3131" ThreadID="3132" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="IrpPtr">0xFFFF900000001000</Data>
+		<Data Name="FileObject">0x11</Data>
+		<Data Name="TTID">    3132</Data>
+		<Data Name="CreateOptions">0x1000060</Data>
+		<Data Name="FileAttributes">0x0</Data>
+		<Data Name="ShareAccess">0x1</Data>
+		<Data Name="OpenPath">\Device\HarddiskVolume9\Users\example\live\i1\rehearsal\probe.bin</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>Create</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">FileIo</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{90cbdc39-4a3e-11d1-84f4-0000f80464e3}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>3</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>67</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:02.001000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="3131" ThreadID="3132" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="Offset">0x400000</Data>
+		<Data Name="IrpPtr">0xFFFF900000002000</Data>
+		<Data Name="FileObject">0x11</Data>
+		<Data Name="FileKey">0x21</Data>
+		<Data Name="TTID">    3132</Data>
+		<Data Name="IoSize">   65536</Data>
+		<Data Name="IoFlags">0x60900</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>Read</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">FileIo</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{90cbdc39-4a3e-11d1-84f4-0000f80464e3}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>3</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>67</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:02.002000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="3131" ThreadID="3132" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="Offset">0x400000</Data>
+		<Data Name="IrpPtr">0xFFFF900000002000</Data>
+		<Data Name="FileObject">0x11</Data>
+		<Data Name="FileKey">0x21</Data>
+		<Data Name="TTID">    3132</Data>
+		<Data Name="IoSize">  262144</Data>
+		<Data Name="IoFlags">0x43</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>Read</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">FileIo</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{90cbdc39-4a3e-11d1-84f4-0000f80464e3}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>3</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>67</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:04.002000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="4294967295" ThreadID="3132" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="Offset">0x2000000</Data>
+		<Data Name="IrpPtr">0xFFFF900000002000</Data>
+		<Data Name="FileObject">0x11</Data>
+		<Data Name="FileKey">0x21</Data>
+		<Data Name="TTID">    3132</Data>
+		<Data Name="IoSize">   32768</Data>
+		<Data Name="IoFlags">0x43</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>Read</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">FileIo</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{90cbdc39-4a3e-11d1-84f4-0000f80464e3}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+	<System>
+		<Provider Guid="{9e814aad-3204-11d2-9a82-006008a86939}" />
+		<EventID>0</EventID>
+		<Version>3</Version>
+		<Level>0</Level>
+		<Task>0</Task>
+		<Opcode>36</Opcode>
+		<Keywords>0x0</Keywords>
+		<TimeCreated SystemTime="2026-10-26T11:00:05.000000000+00:59" />
+		<Correlation ActivityID="{00000000-0000-0000-0000-000000000000}" />
+		<Execution ProcessID="4294967295" ThreadID="4294967295" ProcessorID="1" KernelTime="0" UserTime="0" />
+		<Channel />
+		<Computer />
+	</System>
+	<EventData>
+		<Data Name="FileObject">0x21</Data>
+		<Data Name="FileName">\Device\HarddiskVolume9\Users\example\live\i1\rehearsal\probe.bin</Data>
+	</EventData>
+	<RenderingInfo Culture="en-US">
+		<Opcode>FileRundown</Opcode>
+		<Provider>MSNT_SystemTrace</Provider>
+		<EventName xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">FileIo</EventName>
+	</RenderingInfo>
+	<ExtendedTracingInfo xmlns="http://schemas.microsoft.com/win/2004/08/events/trace">
+		<EventGuid>{90cbdc39-4a3e-11d1-84f4-0000f80464e3}</EventGuid>
+	</ExtendedTracingInfo>
+</Event>
+</Events>
