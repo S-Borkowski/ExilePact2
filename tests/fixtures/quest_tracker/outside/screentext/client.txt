@@ -1,0 +1,8 @@
+2026/10/26 13:00:00 ***** LOG FILE OPENING *****
+2026/10/26 13:00:01 50001000 4f3e4ba1 [INFO Client 5151] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/10/26 13:00:03 50003000 4f3e4ba1 [INFO Client 5151] Connected to login.example.invalid in 12ms.
+2026/10/26 13:00:05 50005000 2caa229f [DEBUG Client 5151] Generating level 1 area "G1_1" with seed 2718
+2026/10/26 13:00:06 50006000 7fbd1225 [INFO Client 5151] [SCENE] Set Source [The Riverbank]
+2026/10/26 13:00:20 50020000 3ef23348 [INFO Client 5151] : Ostrevane (Mercenary) is now level 2
+2026/10/26 13:00:30 50030000 3ef23348 [INFO Client 5151] Zorblax: trading seven glowing turnips
+2026/10/26 13:00:40 50040000 3ef23348 [INFO Client 5151] #Quillfeather: anyone up for the mill run
