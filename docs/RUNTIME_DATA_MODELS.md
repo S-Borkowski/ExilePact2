@@ -226,16 +226,22 @@ reading of the client's executable (2026-10-26), not a measurement.
   2026-10-26). The one `System::createStream` call site is the client's
   handler for FMOD's programmer-sound callback: it looks the event's name
   up in the audio table, opens it as a stream with the client's file
-  callbacks and no open-from-memory flag, so FMOD pulls the line's bytes as
-  it plays. A line inside a bundle is served by decompressing the 256 KiB
+  callbacks and adds no open-from-memory flag itself (whether the mode the
+  audio table returns carries one is not established; a flag in the
+  event's user data skips the callbacks and leaves the file to FMOD's own
+  file system), so on the path read FMOD pulls the line's bytes as it
+  plays. A line inside a bundle is served by decompressing the 256 KiB
   blocks each read covers.
-- **`Content.ggpk` is memory-mapped** (static reading, 2026-10-26). The
-  client opens the GGPK once, asking for read and write access and sharing
-  read only, creates one file mapping over the whole file and maps views of
-  it; a file's bytes, a bank's or a bundle's, are read through a pointer to
-  its `FILE` record in that mapping. So a file trace is expected (not
-  established) to see the game's audio reads only as paging reads of pages
-  not already in memory.
+- **`Content.ggpk` is memory-mapped** (static reading, 2026-10-26). On the
+  one construction followed, the client opens the GGPK (identified from
+  context, not from the path argument), asking for read and write access
+  and sharing read only, creates one file mapping over the whole file and
+  maps views of it; on the paths followed, a file's bytes, a bank's or a
+  bundle's, are read through a pointer to its `FILE` record in that
+  mapping. So a file trace is expected (not established) to see the game's
+  audio reads only as paging reads of pages not already in memory. The
+  exe's nine `ReadFile` call sites were not traced, so a `ReadFile` route
+  to the GGPK is not ruled out.
 - **Decompressed bundle blocks are not kept** on the read path (static
   reading, 2026-10-26): each read decompresses into a temporary buffer and
   frees it. Whether the decompressor caches blocks itself is not
