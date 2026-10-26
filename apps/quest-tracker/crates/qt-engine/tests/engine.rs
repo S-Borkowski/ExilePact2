@@ -2853,3 +2853,334 @@ fn validator_checks_start_signals() {
         assert_eq!(err.field, field, "{what}: {err}");
     }
 }
+
+// -- skipped quests stay tracked, and quest actions on the new character
+// (Context "Skipped quests stay tracked", "Quest actions on the new
+// character") ----------------------------------------------------------------
+
+const BEIRA_LINE: &str = "Beira of the Rotten Pack: Fixture line: the pack gathers.";
+
+/// Opens the new character from The Riverbank, after the walk to the
+/// encampment, beside `engine`'s stored characters.
+fn open_new_character(engine: &mut Engine) {
+    let mut lines = vec![MARKER.to_string(), riverbank_entry()];
+    lines.extend(to_the_encampment());
+    feed(engine, &lines, true);
+    assert!(engine.new_character_open());
+    assert_eq!(engine.current(), None);
+    engine.take_character_notes();
+}
+
+#[test]
+fn skipped_quest_keeps_recording_evidence() {
+    // Baseline: Beira, skipped while still locked (not picked up yet), goes
+    // on recording what the log says about her; the status stays skipped.
+    let mut engine = with_corisande(false);
+    assert_eq!(status(&engine, CORISANDE, "fixture-beira"), Status::Locked);
+    let t = engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    assert_eq!(t.len(), 1, "{t:?}");
+    assert_eq!((t[0].from, t[0].to), (Status::Locked, Status::Skipped));
+
+    let t = feed(&mut engine, &[area_line("G1_2"), line(BEIRA_LINE)], true);
+    // Its progress is only a step change of a skipped quest.
+    let beira: Vec<_> = t.iter().filter(|t| t.quest_id == "fixture-beira").collect();
+    assert_eq!(beira.len(), 1, "{t:?}");
+    assert_eq!(
+        (beira[0].from, beira[0].to, beira[0].step_to.as_deref()),
+        (Status::Skipped, Status::Skipped, Some("meet-beira"))
+    );
+    assert_eq!(status(&engine, CORISANDE, "fixture-beira"), Status::Skipped);
+    let state = engine.quest_state(CORISANDE, "fixture-beira").unwrap();
+    assert!(state.skipped);
+    assert!(state.steps[0].fired);
+    assert_eq!(state.current_step.as_deref(), Some("meet-beira"));
+    let evidence = &engine.character(CORISANDE).unwrap().evidence["fixture-beira"];
+    assert!(
+        evidence.contains("unlock/0") && evidence.contains("step/meet-beira/0"),
+        "{evidence:?}"
+    );
+
+    // Unskip shows exactly what that evidence gives: the step in progress.
+    let t = engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Unskip)
+        .unwrap();
+    assert_eq!(t.len(), 1, "{t:?}");
+    assert_eq!(
+        (
+            t[0].from,
+            t[0].to,
+            t[0].step_from.as_deref(),
+            t[0].step_to.as_deref(),
+            t[0].live
+        ),
+        (
+            Status::Skipped,
+            Status::InProgress,
+            Some("meet-beira"),
+            Some("meet-beira"),
+            true
+        )
+    );
+}
+
+#[test]
+fn skipped_quest_reports_its_tracked_status() {
+    // Not skipped: the tracked status is the status, for every quest, and a
+    // character the engine does not know has both locked.
+    let engine = replay("act1.txt");
+    let states = engine.quest_states(CORISANDE);
+    for q in &states {
+        assert!(!q.skipped, "{}", q.quest_id);
+        assert_eq!(q.tracked_status, q.status, "{}", q.quest_id);
+    }
+    for q in engine.quest_states("Nobody_Known") {
+        assert_eq!(
+            (q.status, q.tracked_status),
+            (Status::Locked, Status::Locked)
+        );
+    }
+
+    // Skipped: the status says skipped and the tracked status is what it
+    // was, whichever quest it is (Unskip gives that back).
+    for before in &states {
+        let mut e = engine.clone();
+        e.quest_action(CORISANDE, &before.quest_id, QuestAction::Skip)
+            .unwrap();
+        let after = e.quest_state(CORISANDE, &before.quest_id).unwrap();
+        assert_eq!(after.status, Status::Skipped, "{}", before.quest_id);
+        assert_eq!(after.tracked_status, before.status, "{}", before.quest_id);
+        assert_eq!(
+            after.current_step, before.current_step,
+            "{}",
+            before.quest_id
+        );
+    }
+
+    // It follows the evidence while skipped: locked, available once
+    // unlocked, in progress at a step, done when marked done.
+    let mut engine = with_corisande(false);
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    let tracked = |e: &Engine| {
+        let q = e.quest_state(CORISANDE, "fixture-beira").unwrap();
+        assert_eq!(q.status, Status::Skipped);
+        q.tracked_status
+    };
+    assert_eq!(tracked(&engine), Status::Locked);
+    feed(&mut engine, &[area_line("G1_2")], true);
+    assert_eq!(tracked(&engine), Status::Available);
+    feed(&mut engine, &[line(BEIRA_LINE)], true);
+    assert_eq!(tracked(&engine), Status::InProgress);
+    engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::MarkDone)
+        .unwrap();
+    assert_eq!(tracked(&engine), Status::Done);
+
+    // Nothing else in the rules changes: skipping the quest another one is
+    // unlocked by leaves that one as it was.
+    let mut engine = replay("act1.txt");
+    assert_eq!(
+        status(&engine, CORISANDE, "fixture-riverbank"),
+        Status::Done
+    );
+    let king_before = status(&engine, CORISANDE, "fixture-king");
+    engine
+        .quest_action(CORISANDE, "fixture-riverbank", QuestAction::Skip)
+        .unwrap();
+    let riverbank = engine.quest_state(CORISANDE, "fixture-riverbank").unwrap();
+    assert_eq!(riverbank.tracked_status, Status::Done);
+    let king = engine.quest_state(CORISANDE, "fixture-king").unwrap();
+    assert_eq!(
+        (king.status, king.tracked_status),
+        (king_before, king_before)
+    );
+}
+
+#[test]
+fn new_character_takes_quest_actions() {
+    // With no character at all, the refusal stays.
+    let mut engine = Engine::new(data());
+    assert_eq!(engine.quest_target(), None);
+    assert!(engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .is_err());
+    assert!(engine
+        .tick_step("", "fixture-lute", "return-the-lute", true)
+        .is_err());
+    assert!(engine
+        .quest_action(CORISANDE, "fixture-beira", QuestAction::Skip)
+        .is_err());
+
+    // Target: with the new character open and no named one current, the
+    // empty name acts on it. Beira is not picked up yet and can be skipped.
+    open_new_character(&mut engine);
+    assert_eq!(engine.quest_target(), Some(""));
+    let t = engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    assert_eq!(
+        t,
+        vec![Transition {
+            character: String::new(),
+            quest_id: "fixture-beira".into(),
+            from: Status::Locked,
+            to: Status::Skipped,
+            step_from: None,
+            step_to: None,
+            live: true,
+        }]
+    );
+    let t = engine
+        .tick_step("", "fixture-lute", "return-the-lute", true)
+        .unwrap();
+    assert_eq!(t.len(), 1, "{t:?}");
+    assert_eq!(
+        (
+            t[0].character.as_str(),
+            t[0].from,
+            t[0].to,
+            t[0].step_to.as_deref()
+        ),
+        (
+            "",
+            Status::Locked,
+            Status::InProgress,
+            Some("return-the-lute")
+        )
+    );
+    // An action that changes nothing reports nothing; unknown quests and
+    // steps are still refused.
+    assert!(engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .unwrap()
+        .is_empty());
+    assert!(engine
+        .quest_action("", "no-such-quest", QuestAction::Skip)
+        .is_err());
+    assert!(engine
+        .tick_step("", "fixture-lute", "no-such-step", true)
+        .is_err());
+
+    let states = engine.new_character_states().unwrap();
+    let get = |id: &str| states.iter().find(|q| q.quest_id == id).unwrap().clone();
+    assert_eq!(
+        (
+            get("fixture-beira").status,
+            get("fixture-beira").tracked_status
+        ),
+        (Status::Skipped, Status::Locked)
+    );
+    assert_eq!(get("fixture-lute").status, Status::InProgress);
+    assert!(engine.characters().is_empty());
+    assert!(engine.new_character().unwrap().overrides["fixture-beira"].skipped);
+
+    // Its skipped quest goes on being tracked.
+    feed(&mut engine, &[area_line("G1_2"), line(BEIRA_LINE)], true);
+    let beira = engine
+        .new_character_states()
+        .unwrap()
+        .into_iter()
+        .find(|q| q.quest_id == "fixture-beira")
+        .unwrap();
+    assert_eq!(
+        (
+            beira.status,
+            beira.tracked_status,
+            beira.current_step.as_deref()
+        ),
+        (Status::Skipped, Status::InProgress, Some("meet-beira"))
+    );
+
+    // Negative controls: with a named character current, the empty name is
+    // refused; a parked new character takes no action either.
+    let mut engine = with_corisande(false);
+    assert_eq!(engine.quest_target(), Some(CORISANDE));
+    assert!(engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .is_err());
+    let mut engine = Engine::new(data());
+    open_new_character(&mut engine);
+    feed(&mut engine, &[MARKER.to_string()], true);
+    assert!(!engine.new_character_open());
+    assert!(engine.new_character_json().is_some(), "parked");
+    assert_eq!(engine.quest_target(), None);
+    assert!(engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .is_err());
+    assert!(engine
+        .tick_step("", "fixture-lute", "return-the-lute", true)
+        .is_err());
+}
+
+#[test]
+fn new_character_overrides_survive_naming_and_the_record() {
+    let mut engine = Engine::new(data());
+    open_new_character(&mut engine);
+    engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    engine
+        .tick_step("", "fixture-lute", "return-the-lute", true)
+        .unwrap();
+    let shown = engine.new_character_states().unwrap();
+
+    // Its record holds the overrides, and a relaunch shows the same rows.
+    let record = engine.new_character_json().unwrap();
+    assert_eq!(
+        record["state"]["overrides"]["fixture-beira"]["skipped"],
+        Value::Bool(true)
+    );
+    assert_eq!(
+        record["state"]["overrides"]["fixture-lute"]["ticks"],
+        serde_json::json!(["return-the-lute"])
+    );
+    let mut back = Engine::from_json(data(), &engine.to_json()).unwrap();
+    back.load_new_character(&record).unwrap();
+    assert_eq!(back.new_character_states().unwrap(), shown);
+    // It still takes actions after the relaunch.
+    back.quest_action("", "fixture-candles", QuestAction::MarkDone)
+        .unwrap();
+    let shown = back.new_character_states().unwrap();
+
+    // The level-up that names it takes its overrides with its progress, and
+    // no transition re-reports them.
+    let t = feed(&mut back, &[level_up(ODILE, "Mercenary", 2)], true);
+    assert!(t.is_empty(), "{t:?}");
+    assert!(back.new_character_json().is_none());
+    assert_eq!(back.quest_states(ODILE), shown);
+    let overrides = &back.character(ODILE).unwrap().overrides;
+    assert!(overrides["fixture-beira"].skipped);
+    assert_eq!(overrides["fixture-candles"].done, Some(true));
+    // ...and they are saved with it.
+    let restored = Engine::from_json(data(), &back.to_json()).unwrap();
+    assert_eq!(status(&restored, ODILE, "fixture-beira"), Status::Skipped);
+    assert_eq!(status(&restored, ODILE, "fixture-candles"), Status::Done);
+    let lute = restored.quest_state(ODILE, "fixture-lute").unwrap();
+    assert_eq!(lute.current_step.as_deref(), Some("return-the-lute"));
+
+    // A pin hands them to a stored character; on a quest it has overrides
+    // of its own, its own stay.
+    let mut engine = with_corisande(false);
+    engine
+        .quest_action(CORISANDE, "fixture-candles", QuestAction::MarkDone)
+        .unwrap();
+    open_new_character(&mut engine);
+    assert_eq!(names(&engine), [CORISANDE]);
+    engine
+        .quest_action("", "fixture-beira", QuestAction::Skip)
+        .unwrap();
+    engine
+        .quest_action("", "fixture-candles", QuestAction::Skip)
+        .unwrap();
+    assert_eq!(status(&engine, CORISANDE, "fixture-beira"), Status::Locked);
+    engine.pin(Some(CORISANDE)).unwrap();
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.quest_target(), Some(CORISANDE));
+    assert_eq!(status(&engine, CORISANDE, "fixture-beira"), Status::Skipped);
+    assert_eq!(status(&engine, CORISANDE, "fixture-candles"), Status::Done);
+    let overrides = &engine.character(CORISANDE).unwrap().overrides;
+    assert!(!overrides["fixture-candles"].skipped);
+}

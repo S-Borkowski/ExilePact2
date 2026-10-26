@@ -10,7 +10,10 @@
 //! status or current step is reported as a [`Transition`] carrying the
 //! line's catch-up/live flag. A fired `start` signal counts under rule 4
 //! like a step: the quest is in progress with no step reached, so its first
-//! step is the current one (Context "Live 2 fixes (owner scope)").
+//! step is the current one (Context "Live 2 fixes (owner scope)"). A
+//! skipped quest goes on recording evidence: its status stays skipped, and
+//! [`QuestState::tracked_status`] and its current step say what that evidence
+//! gives, which is what Unskip shows (Context "Skipped quests stay tracked").
 //!
 //! Each stored character keeps the seed of the Riverbank (`G1_1`) instance
 //! it was last decided to be in. A level-1 entry whose seed is that of
@@ -38,7 +41,10 @@
 //!
 //! What persists ([`Engine::to_json`]) is the characters, the pin and the
 //! active name. The unnamed new character is a separate record
-//! ([`Engine::new_character_json`]), never among the characters. Session
+//! ([`Engine::new_character_json`]), never among the characters; the user's
+//! quest actions on it while it is open and no named character is current
+//! ([`Engine::quest_target`]) are its overrides, kept in that record and
+//! passed with its progress to the character it closes into. Session
 //! memory (the names seen joining or leaving, the held events, the current
 //! area, the count of signals refused while the area was unknown) is never
 //! persisted: other players' names are kept in memory for one session only.
@@ -150,7 +156,12 @@ pub struct StepState {
 pub struct QuestState {
     pub quest_id: String,
     pub status: Status,
-    /// The highest step that fired or was ticked.
+    /// The status the state rules give with this quest's skip left out:
+    /// what Unskip would show. Equal to `status` for a quest not skipped. A
+    /// skipped quest keeps recording its evidence, so this keeps moving
+    /// while `status` stays skipped (Context "Skipped quests stay tracked").
+    pub tracked_status: Status,
+    /// The highest step that fired or was ticked, skipped or not.
     pub current_step: Option<String>,
     pub steps: Vec<StepState>,
     pub done_override: Option<bool>,
@@ -1094,17 +1105,28 @@ impl Engine {
         Ok(out)
     }
 
-    /// Applies a user action to one quest of one character.
+    /// The name the user's quest actions take for the character the panel
+    /// shows: the current character, else the empty name of the open new
+    /// character from The Riverbank; `None` with neither.
+    pub fn quest_target(&self) -> Option<&str> {
+        self.current().or_else(|| self.new_open().then_some(""))
+    }
+
+    /// Applies a user action to one quest of one character: a stored one by
+    /// its name, or, with the empty name ([`Engine::quest_target`]), the open
+    /// new character while no named character is current. The new
+    /// character's overrides are kept in its record and pass to the
+    /// character its level-up names or a pin hands its progress to.
     pub fn quest_action(
         &mut self,
         name: &str,
         quest_id: &str,
         action: QuestAction,
     ) -> Result<Vec<Transition>, EngineError> {
-        self.check_target(name, quest_id)?;
+        let (target, _) = self.check_target(name, quest_id)?;
         let mut out = Vec::new();
-        self.change(name, true, &mut out, |e| {
-            let ch = e.chars.get_mut(name).expect("checked");
+        self.change_to(target, true, &mut out, |e| {
+            let ch = e.state_mut(target).expect("checked");
             let old = ch.overrides.get(quest_id).cloned().unwrap_or_default();
             let mut new = old.clone();
             match action {
@@ -1120,7 +1142,8 @@ impl Engine {
         Ok(out)
     }
 
-    /// Ticks or unticks one step of one quest of one character.
+    /// Ticks or unticks one step of one quest of one character, named as for
+    /// [`Engine::quest_action`].
     pub fn tick_step(
         &mut self,
         name: &str,
@@ -1128,15 +1151,15 @@ impl Engine {
         step_id: &str,
         ticked: bool,
     ) -> Result<Vec<Transition>, EngineError> {
-        let qi = self.check_target(name, quest_id)?;
+        let (target, qi) = self.check_target(name, quest_id)?;
         if !self.data.quests[qi].steps.iter().any(|s| s.id == step_id) {
             return Err(EngineError(format!(
                 "quest {quest_id:?} has no step {step_id:?}"
             )));
         }
         let mut out = Vec::new();
-        self.change(name, true, &mut out, |e| {
-            let ch = e.chars.get_mut(name).expect("checked");
+        self.change_to(target, true, &mut out, |e| {
+            let ch = e.state_mut(target).expect("checked");
             let mut ov = ch.overrides.get(quest_id).cloned().unwrap_or_default();
             let changed = if ticked {
                 ov.ticks.insert(step_id.to_string())
@@ -1149,14 +1172,31 @@ impl Engine {
         Ok(out)
     }
 
-    fn check_target(&self, name: &str, quest_id: &str) -> Result<usize, EngineError> {
-        if !self.chars.contains_key(name) {
+    /// Who a user action on `name` goes to, and the quest's index.
+    fn check_target<'n>(
+        &self,
+        name: &'n str,
+        quest_id: &str,
+    ) -> Result<(Target<'n>, usize), EngineError> {
+        let target = if name.is_empty() {
+            if self.current().is_some() || !self.new_open() {
+                return Err(EngineError(
+                    "no character to act on: none is current and no new character is open"
+                        .to_string(),
+                ));
+            }
+            Target::New
+        } else if self.chars.contains_key(name) {
+            Target::Named(name)
+        } else {
             return Err(EngineError(format!("no character named {name:?}")));
-        }
-        self.index
+        };
+        let qi = self
+            .index
             .get(quest_id)
             .copied()
-            .ok_or_else(|| EngineError(format!("no quest {quest_id:?}")))
+            .ok_or_else(|| EngineError(format!("no quest {quest_id:?}")))?;
+        Ok((target, qi))
     }
 
     // -- queries ------------------------------------------------------------
@@ -1308,6 +1348,7 @@ impl Engine {
                 .map(|q| QuestState {
                     quest_id: q.id.clone(),
                     status: Status::Locked,
+                    tracked_status: Status::Locked,
                     current_step: None,
                     steps: q
                         .steps
@@ -1483,6 +1524,12 @@ impl Engine {
                 let status = self.status_of(ch, qi, &mut memo, &mut visiting);
                 let q = &self.data.quests[qi];
                 let ov = ch.overrides.get(&q.id);
+                let tracked_status = match ov {
+                    Some(o) if o.skipped => {
+                        self.unskipped_status(ch, qi, o, &mut memo, &mut visiting)
+                    }
+                    _ => status,
+                };
                 let steps: Vec<StepState> = q
                     .steps
                     .iter()
@@ -1501,6 +1548,7 @@ impl Engine {
                 QuestState {
                     quest_id: q.id.clone(),
                     status,
+                    tracked_status,
                     current_step,
                     steps,
                     done_override: ov.and_then(|o| o.done),
@@ -1531,7 +1579,28 @@ impl Engine {
         let ov = ch.overrides.get(&q.id).cloned().unwrap_or_default();
         let status = if ov.skipped {
             Status::Skipped
-        } else if ov.done == Some(true)
+        } else {
+            self.unskipped_status(ch, qi, &ov, memo, visiting)
+        };
+        visiting[qi] = false;
+        memo[qi] = Some(status);
+        status
+    }
+
+    /// The status rules after the skip: what a quest's evidence, level,
+    /// other quests and its other overrides give. For a skipped quest this is
+    /// its tracked status; the other quests' statuses it reads are their own
+    /// (a skipped one counts as skipped there, as always).
+    fn unskipped_status(
+        &self,
+        ch: &CharacterState,
+        qi: usize,
+        ov: &Overrides,
+        memo: &mut Vec<Option<Status>>,
+        visiting: &mut Vec<bool>,
+    ) -> Status {
+        let q = &self.data.quests[qi];
+        if ov.done == Some(true)
             || (ov.done != Some(false) && self.role_fired(ch, qi, Role::Done, memo, visiting))
         {
             Status::Done
@@ -1549,10 +1618,7 @@ impl Engine {
             Status::Available
         } else {
             Status::Locked
-        };
-        visiting[qi] = false;
-        memo[qi] = Some(status);
-        status
+        }
     }
 
     fn role_fired(
