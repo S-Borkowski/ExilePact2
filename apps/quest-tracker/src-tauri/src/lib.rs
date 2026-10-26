@@ -35,18 +35,30 @@
 //! - **Auto scale**: every window move and every DPI scale change of the
 //!   window has `qt-app` re-read the monitor, which re-applies the zoom only
 //!   when it differs from the one applied.
+//! - **Tray**: Tauri's own tray icon (feature `tray-icon`), with the app's
+//!   default window icon, the tooltip `Quest Tracker` and one menu entry,
+//!   `Quit Quest Tracker`. Built in Rust at setup; no capability, CSP or
+//!   JavaScript is involved. It logs `tray: icon shown`, or `error: tray
+//!   icon: <reason>` and the overlay runs on without it.
+//! - **Quit**: the tray's Quit and a close request to the overlay's window
+//!   (`WM_CLOSE`), shown or hidden, both make `qt-app`'s quit request (which
+//!   writes the `quit:` line; the first request wins) and then exit the app.
+//!   The close itself is held back, so the window stays until the exit;
+//!   `RunEvent::Exit` then runs `shutdown` as before.
 //! - **Main-thread callbacks** (the shortcut, window moves, a DPI scale
-//!   change, a second launch)
+//!   change, a second launch, the tray menu, a close request)
 //!   hand their work to a blocking task, so the main thread never waits for
 //!   the app's lock while a command holding it waits for the main thread.
 
 use std::sync::{Arc, Mutex};
 
 use qt_app::{
-    App, AppConfig, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, RowChange, Store,
-    SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
+    App, AppConfig, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, QuitFrom,
+    RowChange, Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL, SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::TrayIconBuilder;
 use tauri::{
     AppHandle, Emitter as _, LogicalSize, Manager, PhysicalPosition, RunEvent, WebviewWindow,
     WindowEvent,
@@ -56,6 +68,12 @@ use tauri_plugin_opener::OpenerExt;
 
 /// The one window's label.
 const OVERLAY: &str = "overlay";
+
+/// The tray icon's id, its tooltip, and its one menu entry's id and text.
+const TRAY: &str = "quest-tracker";
+const TRAY_TOOLTIP: &str = "Quest Tracker";
+const QUIT_ID: &str = "quit";
+const QUIT_TEXT: &str = "Quit Quest Tracker";
 
 /// The window's size at scale 1, as `tauri.conf.json` sets it.
 const WIDTH: f64 = 360.0;
@@ -297,6 +315,50 @@ fn later(app: &AppHandle, f: impl FnOnce(&App) + Send + 'static) {
     }
 }
 
+/// Makes the quit request on a blocking task, then exits the app, whose
+/// `RunEvent::Exit` runs the shutdown. A second request writes nothing and
+/// exits the same way. Before the shell is up there is nothing to log, so
+/// the app exits at once.
+fn quit(app: &AppHandle, from: QuitFrom) {
+    match app.try_state::<Arc<App>>() {
+        Some(shell) => {
+            let shell = Arc::clone(&shell);
+            let app = app.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                shell.request_quit(from);
+                app.exit(0);
+            });
+        }
+        None => app.exit(0),
+    }
+}
+
+/// The tray icon: the app's default window icon, the tooltip and one menu
+/// entry, "Quit Quest Tracker", which quits. A failure is the caller's to
+/// log; the overlay runs on without the icon.
+fn tray_icon(app: &AppHandle) -> Result<(), String> {
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .ok_or_else(|| "the app has no default window icon".to_string())?;
+    let quit_item = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)
+        .map_err(|e| e.to_string())?;
+    let menu = Menu::with_items(app, &[&quit_item]).map_err(|e| e.to_string())?;
+    TrayIconBuilder::with_id(TRAY)
+        .icon(icon)
+        .tooltip(TRAY_TOOLTIP)
+        .menu(&menu)
+        .show_menu_on_left_click(true)
+        .on_menu_event(|app, event| {
+            if event.id() == QUIT_ID {
+                quit(app, QuitFrom::Tray);
+            }
+        })
+        .build(app)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 // ---------------------------------------------------------------------------
 // The commands (Context "IPC contract").
 
@@ -423,6 +485,10 @@ pub fn run() {
             app.manage(Arc::clone(&shell));
             shell.start();
             no_activate(&window, &shell);
+            match tray_icon(app.handle()) {
+                Ok(()) => shell.diag("tray: icon shown"),
+                Err(e) => shell.diag(&format!("error: tray icon: {e}")),
+            }
             Ok(())
         })
         .on_window_event(|window, event| match event {
@@ -435,6 +501,12 @@ pub fn run() {
             }
             WindowEvent::ScaleFactorChanged { .. } => {
                 later(window.app_handle(), |shell| shell.follow_monitor());
+            }
+            // `WM_CLOSE` to the overlay, shown or hidden: hold the close and
+            // quit the whole app, so the shutdown runs and the process ends.
+            WindowEvent::CloseRequested { api, .. } if window.label() == OVERLAY => {
+                api.prevent_close();
+                quit(window.app_handle(), QuitFrom::WindowClosed);
             }
             _ => {}
         })

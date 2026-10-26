@@ -23,7 +23,9 @@ edition = "2021"
 publish = false
 
 [workspace.dependencies]
-tauri = { version = "=2.12.3", features = [] }
+# `tray-icon`: the tray icon with "Quit Quest Tracker" (Tauri's own tray, no
+# extra crate; the lock already carries it).
+tauri = { version = "=2.12.3", features = ["tray-icon"] }
 tauri-build = { version = "=2.7.2", features = [] }
 tauri-plugin-global-shortcut = "=2.4.1"
 tauri-plugin-single-instance = "=2.5.3"
