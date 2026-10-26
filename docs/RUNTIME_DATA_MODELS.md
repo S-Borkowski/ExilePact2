@@ -161,3 +161,36 @@ are the positive control), a level-up and client lines, and every voiced
 speaker in that session was an NPC or a boss. The own character's remarks
 were therefore not observed in the log (the whole log and two sessions
 with a person listening; not proof that they are never logged).
+
+## Audio (FMOD)
+
+Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+§ "How the client loads its audio (static reading)", which names the build
+read and how the call sites were found. Each bullet below is a static
+reading of the client's executable (2026-10-26), not a measurement.
+
+- **Banks reach FMOD through the client's callbacks** (static reading,
+  2026-10-26). The client loads banks with
+  `Studio::System::loadBankCustom`, the only bank loader it links, from
+  one call site, passing the bank's
+  path `FMOD/Desktop/<name>` as the bank's user data and its own open,
+  close, read and seek callbacks. The read callback copies the bytes out of
+  the client's memory map of `Content.ggpk`; it does not end in `ReadFile`.
+- **Voiced lines are streamed through the same callbacks** (static reading,
+  2026-10-26). The one `System::createStream` call site is the client's
+  handler for FMOD's programmer-sound callback: it looks the event's name
+  up in the audio table, opens it as a stream with the client's file
+  callbacks and no open-from-memory flag, so FMOD pulls the line's bytes as
+  it plays. A line inside a bundle is served by decompressing the 256 KiB
+  blocks each read covers.
+- **`Content.ggpk` is memory-mapped** (static reading, 2026-10-26). The
+  client opens the GGPK once, asking for read and write access and sharing
+  read only, creates one file mapping over the whole file and maps views of
+  it; a file's bytes, a bank's or a bundle's, are read through a pointer to
+  its `FILE` record in that mapping. So a file trace is expected (not
+  established) to see the game's audio reads only as paging reads of pages
+  not already in memory.
+- **Decompressed bundle blocks are not kept** on the read path (static
+  reading, 2026-10-26): each read decompresses into a temporary buffer and
+  frees it. Whether the decompressor caches blocks itself is not
+  established.

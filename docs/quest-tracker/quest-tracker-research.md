@@ -817,6 +817,93 @@ from the log or from poe2db, and change no signal.
 | 6 | Qimah Boons (community table) | yes | auto | measured |
 | 6 | Lythara, the Wayward Spear (community table) | yes | auto | measured |
 
+## Seeing a voiced line from outside the game
+
+### How the client loads its audio (static reading)
+
+Read on 2026-10-26 in the Ghidra project of a copy of the client
+(`PathOfExile.exe`, 78,335,832 bytes, file date 2026-10-19), through the
+ghidra MCP's read tools; nothing here was measured. The project is an
+import without full analysis, so its cross references were empty for every
+import below. The call sites were found instead by a stdlib byte scan of the
+exe for indirect calls through each import's slot, kept outside the
+repository, and each site's function was taken from the exe's unwind table
+(`.pdata`) and decompiled through the MCP. The RVAs below belong to that
+build and only help to find the code again; they are a research finding,
+never an interface (AGENTS.md § "Never Call an Address You Resolved by
+Hand").
+
+- **Q1, banks (`Studio::System::loadBankCustom`).** The exe calls it from
+  one place (the function at RVA `0x11CC3C0`). That function builds the
+  bank's path as a UTF-16 string, `FMOD/Desktop/` followed by the bank's
+  name, and gives it to FMOD as the bank info's user data, with its length
+  in bytes. It sets the open, close, read and seek callbacks and no
+  asynchronous read callback. The open callback asks the client's own file
+  layer for the file's size by that path and hands FMOD a handle that is
+  only an entry in a table of the client's (the file, its size and a
+  position); it opens no Windows file. The read callback asks the same
+  file layer for a byte range at the handle's position. That layer looks
+  the path up in the bundle index first; a bank is stored as a plain GGPK
+  file under `/FMOD/Desktop/`, not in a bundle (the GGPK walk of
+  2026-10-26), so it takes the plain-file route, where the bytes are copied
+  out of the file's data inside the client's memory map of `Content.ggpk`
+  (Q3). The read callback therefore ends in a memory copy from a mapped
+  view, not in `ReadFile`, synchronous or overlapped.
+- **Q2, dialogue (`System::createStream`).** The exe calls it from one
+  place (the function at RVA `0x11CC100`), an event callback that handles
+  the two programmer-sound callback types, create and destroy, going by
+  FMOD's documented type values. The event instance's user data carries a
+  name. The callback looks that name up in the audio table (`getSoundInfo`),
+  takes the sound's mode from the answer, adds the create-stream flag, and
+  creates the stream from the name with extended info in which only the
+  four file callbacks are set, plus the initial seek position in
+  milliseconds when the user data holds a positive start time. The open,
+  close and seek callbacks are the bank's own; the read callback is a
+  second one that reports end of file on a short read. The length stays
+  zero and the client adds neither the open-from-memory nor the
+  memory-point flag. A flag in the user data makes it pass no extended
+  info at all, which leaves the file to FMOD's own file system. So a
+  voiced line is pulled as it plays, through the client's callbacks; it is
+  not handed to FMOD whole, in memory. Each of those reads goes through the
+  same file layer as a bank's. A file inside a bundle is served by taking
+  the 256 KiB block or blocks its range covers from the bundle's bytes in
+  the `Content.ggpk` map, decompressing them into a temporary buffer and
+  copying the range out. Whether the mode the audio table returns carries
+  a memory flag of its own is not established: it is a value the game
+  holds at run time.
+- **Q3, `CreateFileMappingW` on `Content.ggpk`.** Yes. The object the file
+  layer asks for GGPK records opens its file with `CreateFileW` and, when
+  the file is not empty, creates one mapping over the whole of it and maps
+  views in windows aligned to the system's allocation granularity. The one
+  construction followed asks for read and write access, shares read only
+  and opens the file if it exists or creates it if not. That this file is
+  `Content.ggpk` comes from its context, not from tracing the path
+  argument: the global the file layer reads is set by that construction,
+  and the client's code that reports and truncates `Content.ggpk` by name
+  tears down an object of the same kind first. Every file, a bank or a
+  bundle, is then reached through a pointer to its `FILE` record's data in
+  that mapping. Without a GGPK object (loose files) each file is mapped
+  too: opened read-only with a sequential-scan hint, then mapped whole.
+  No `ReadFile` call was on the paths followed here; the exe's nine
+  `ReadFile` call sites were not traced.
+- **Q4, decompressed bundle blocks.** Not kept on this path: each read
+  decompresses the blocks it needs into a temporary buffer and frees it
+  after the copy, so a stream's next read of the same block decompresses
+  it again. Whether the decompressor keeps a cache of its own was not read
+  (not established).
+
+What this predicts for Live 6's file trace (a prediction, not established
+until measured): a bank load or a voiced line's playback does not issue a
+read call on `Content.ggpk`. It touches pages of the mapping, and a page
+reaches the disk only when it is not already in memory, as a paging read
+after a hard fault; a page still in the system's cache is a soft fault and
+leaves no file I/O. A file trace that sees nothing at the kill is what this
+reading predicts, and would not show that nothing played. Reading
+`Content.ggpk` while the client runs: the client's handle asks for write
+access and shares read only, so Windows lets another process open the file
+only for reading and only with a share mode that allows writing; that was
+not tried.
+
 ## Negative results
 
 Each of these is "not observed" in the log measured on 2026-10-24, not "does
