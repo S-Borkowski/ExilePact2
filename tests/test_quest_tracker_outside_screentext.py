@@ -31,7 +31,10 @@ while the option is off and keeps the subtitles, so `cfg-off-log` is
 context's list: no `town-off` presses, a panel that hides the name, a remark
 shown and not logged (and one logged), unpaired boss presses, `boss` stamped
 twice, a `remark` run with the kill press alone, a `control` on `G1_1` alone,
-and privacy. `Newness` pins the shown-line checks' newness rule and the
+and privacy, plus each route by which `cfg-off-relaunch-log`'s controls make
+it not-run (the first pid given as the relaunch pid, no LOG FILE OPENING or
+area entry from the relaunched client, no after-exit-off config read, or one
+that reads the option on). `Newness` pins the shown-line checks' newness rule and the
 unjudged window (no frame before it), and `DialogueLog` pins how `dlg-log`
 tells quest dialogue from the greeting that opening the talk fires.
 """
@@ -135,8 +138,14 @@ CHAT_FROM = z("12:04:50")
 def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, town_off_presses=3,
           town_off_at=None, off_shown="prefixed", covered=None, boss_presses=None, boss_twice=False,
           remark_presses_after=1, remark_logged=False, dlg_logged=False, dlg_subtitle=True, extra_shown=(),
-          drop_bottom=(), toggled_in_file=True, frames=True, stages=True) -> Path:
+          drop_bottom=(), toggled_in_file=True, frames=True, stages=True, relaunch_opening=True,
+          relaunch_area=True, relaunch_config="false") -> Path:
     """A synthetic live folder in `root`; returns it.
+
+    `relaunch_opening` and `relaunch_area` False leave the relaunched game's
+    LOG FILE OPENING or its area entry out of the log; `relaunch_config` is
+    what the after-exit-off read with the game closed finds the option set
+    to, or None for no such read.
 
     `covered` names a panel that hides the boss's name while it is open;
     `boss_presses` cuts the last boss run's presses to that many;
@@ -208,10 +217,12 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
     greet(TOWN_ON_AGAIN[1], True)
     if relaunch:
         local = RELAUNCH_OPENING.astimezone(TZ).strftime("%Y/%m/%d %H:%M:%S")
-        gen.append((RELAUNCH_OPENING, "%s ***** LOG FILE OPENING *****" % local))
-        gen.append((RELAUNCH_OPENING + td(8), log_line(RELAUNCH_OPENING + td(8),
-                                                         'Generating level 15 area "G1_town" with seed 1',
-                                                         "DEBUG", pid=PID2)))
+        if relaunch_opening:
+            gen.append((RELAUNCH_OPENING, "%s ***** LOG FILE OPENING *****" % local))
+        if relaunch_area:
+            gen.append((RELAUNCH_OPENING + td(8), log_line(RELAUNCH_OPENING + td(8),
+                                                             'Generating level 15 area "G1_town" with seed 1',
+                                                             "DEBUG", pid=PID2)))
         greet(RELAUNCH[1], relaunch_logged, pid=PID2)
     if remark_logged:
         for text, start, _ in (KILL_REMARK, LATER_REMARK):
@@ -227,12 +238,16 @@ def build(root: Path, *, off_logged=True, relaunch=True, relaunch_logged=None, t
         tick = TICK_AT_ORIGIN + round((when - ORIGIN).total_seconds() * 1000)
         common.append_jsonl(live / common.CLOCK_JSONL, {"utc": common.format_utc(when), "tick_ms": tick})
 
-    # The config, read at P3, after the toggle and at the restore.
+    # The config, read at P3, after the toggle, with the game closed before the
+    # relaunch (step F's after-exit-off) and at the restore.
     ini = root / "poe2_production_Config.ini"
     write_ini(ini)
     screentext.config(live, "before", ini, now=lambda: z("11:59:30"))
     write_ini(ini, dialogue="false" if toggled_in_file else "true")
     screentext.config(live, "after-toggle-off", ini, now=lambda: z("12:07:30"))
+    if relaunch and relaunch_config is not None:
+        write_ini(ini, dialogue=relaunch_config)
+        screentext.config(live, "after-exit-off", ini, now=lambda: z("12:10:30"))
     write_ini(ini)
     screentext.config(live, "restored", ini, now=lambda: z("12:14:00"))
 
@@ -574,6 +589,38 @@ class Variants(Case):
         live = build(self.tmp, relaunch=False)
         _, results = self.analyse(live, only=["cfg-off-relaunch-log"])
         self.assertTrue(results["cfg-off-relaunch-log"]["verdict"].startswith("not-run (not needed:"))
+
+    def relaunch_verdict(self, live, **kw):
+        _, results = self.analyse(live, only=["cfg-off-relaunch-log"], **kw)
+        return results["cfg-off-relaunch-log"]
+
+    def test_relaunch_pid_equal_to_the_first_pid_is_not_run(self):
+        # The target: without the control, the first client's greetings would
+        # read as a relaunched client that logs nothing.
+        r = self.relaunch_verdict(build(self.tmp, off_logged=False), relaunch_pid=PID)
+        self.assertTrue(r["verdict"].startswith("not-run (control:"), r["verdict"])
+        self.assertIn("first client's pid %d" % PID, r["verdict"])
+
+    def test_no_log_file_opening_after_the_stamp_is_not_run(self):
+        r = self.relaunch_verdict(build(self.tmp, off_logged=False, relaunch_opening=False))
+        self.assertTrue(r["verdict"].startswith("not-run (control:"), r["verdict"])
+        self.assertIn("no LOG FILE OPENING from Client %d" % PID2, r["verdict"])
+
+    def test_no_area_entry_from_the_relaunch_pid_is_not_run(self):
+        r = self.relaunch_verdict(build(self.tmp, off_logged=False, relaunch_area=False))
+        self.assertTrue(r["verdict"].startswith("not-run (control:"), r["verdict"])
+        self.assertIn("no area entry from Client %d" % PID2, r["verdict"])
+
+    def test_no_after_exit_off_record_is_not_run(self):
+        r = self.relaunch_verdict(build(self.tmp, off_logged=False, relaunch_config=None))
+        self.assertTrue(r["verdict"].startswith("not-run (control:"), r["verdict"])
+        self.assertIn("no after-exit-off or after-edit-off config record", r["verdict"])
+
+    def test_the_option_read_true_before_the_relaunch_is_not_run(self):
+        r = self.relaunch_verdict(build(self.tmp, off_logged=False, relaunch_config="true"))
+        self.assertTrue(r["verdict"].startswith("not-run (control:"), r["verdict"])
+        self.assertIn("option read true before the relaunch", r["verdict"])
+        self.assertIn("after-exit-off", r["observed"])
 
     def test_a_marker_without_the_persons_answer_fails(self):
         live = build(self.tmp)
