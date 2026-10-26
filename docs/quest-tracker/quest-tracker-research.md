@@ -1202,6 +1202,61 @@ reading the game's window through Windows' screen reader (Narrator or UI
 Automation), was not one of the three planned instruments and was not
 explored; whether the client exposes any text that way is not measured.
 
+## On-screen text and the dialogue setting
+
+The `quest-tracker-screen-text` workorder asks what the screen shows of
+three sources an on-screen detector could read: a boss's bar (under each
+game panel, and after the player walks away), the character's remark at a
+kill, and an NPC's quest dialogue window (Renly's talk after The Bloated
+Miller). It also asks whether the client option
+`output_all_dialogue_to_chat` decides whether NPC lines reach
+`Client.txt`. Live 8, one session on a fresh character, measures both.
+This section starts with what was read before that session.
+
+### The dialogue setting (static reading)
+
+Read on 2026-10-26 while planning the workorder, from the same copy of the
+client as § "How the client loads its audio (static reading)", through the
+ghidra MCP's read tools and a stdlib byte scan of the exe kept outside the
+repository; the game was not running and nothing here was measured. The
+build's addresses are left out on purpose: they only help to find the code
+again in that one build (AGENTS.md § "Never Call an Address You Resolved by
+Hand").
+
+- **The config file** (static reading of the owner's
+  `poe2_production_Config.ini`, read-only). It is UTF-8 with a byte-order
+  mark and LF line endings. `output_all_dialogue_to_chat=true` sits in the
+  `[UI]` section and `enable_subtitles=true` in `[GENERAL]`. The panel key
+  bindings in `[ACTION_KEYS]` are stored as Windows virtual-key codes; on
+  that file they are I for the inventory, C for the character panel, P for
+  the passive tree, U for the world map and Tab for the map overlay, and
+  Options is on O.
+- **The option is looked up each time it is used.** The client carries
+  both keys as UTF-16 strings. One small accessor asks the client's
+  in-memory options for section `UI`, key `output_all_dialogue_to_chat`,
+  every time it is called, and nothing keeps a copy taken at start-up. A
+  matching setter has a single caller. The prediction that follows, not
+  measured, is that changing the option in the Options panel applies from
+  the next line on, with no restart.
+- **What it gates.** Four functions call the accessor directly. In two of
+  them the client is about to pass a voiced line, a speaker and its text,
+  on to the chat, and with the option off it returns without passing it.
+  One of those two posts the line as a chat message on a fixed channel,
+  and adding a chat message notifies whatever listens to the chat.
+- **Not established.** Which part of the client writes NPC lines into
+  `Client.txt`, and so whether the log is one of the chat's listeners and
+  loses those lines when the option is off, is not established by this
+  reading. Live 8 measures it, with the option on, off and on again, on
+  Renly's vendor greetings in Clearfell Encampment.
+- **The instrument.** The MCP's string search and its reference table came
+  back empty for the option's key, but they were just as empty for
+  `LOG FILE OPENING`, a string the client certainly prints, so this import's
+  tables are blind here and their silence says nothing either way. The
+  callers were found instead by scanning the code section for
+  RIP-relative address loads of the key and direct relative calls to the
+  accessor and setter, with each caller's bounds taken from the unwind
+  table (`.pdata`).
+
 ## Negative results
 
 Each of these is "not observed" in the log measured on 2026-10-24, not "does

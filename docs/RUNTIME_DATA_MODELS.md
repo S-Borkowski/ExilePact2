@@ -320,7 +320,20 @@ not measured, unless a bullet says otherwise.
   `borderless_windowed_fullscreen` and `fullscreen` (`true` and `false`,
   at 2560×1440 on the machine read); `renderer_type` (`Vulkan` on the
   machine read); `chat_box_width`, `chat_box_height` (1040 and 640) and
-  `show_chat_timestamps` (`true`).
+  `show_chat_timestamps` (`true`). The panel key bindings sit in
+  `[ACTION_KEYS]` as Windows virtual-key codes; on the file read they are
+  I (inventory), C (character panel), P (passive tree), U (world map) and
+  Tab (map overlay), with Options on O.
+- **How the client reads the dialogue option** (static reading,
+  2026-10-26; [§ "The dialogue setting (static reading)"](quest-tracker/quest-tracker-research.md#the-dialogue-setting-static-reading)).
+  The file is UTF-8 with a byte-order mark and LF line endings;
+  `output_all_dialogue_to_chat` is in `[UI]` and `enable_subtitles` in
+  `[GENERAL]`. The client looks the option up in its in-memory options
+  every time it is used rather than keeping a start-up copy, so a change
+  in Options should apply from the next line (a prediction, not measured).
+  With the option off, at least two places that would hand a voiced line
+  to the chat skip it; whether the part that writes `Client.txt` is
+  downstream of them is not established.
 
 ## On-screen text (boss bar and subtitles)
 
