@@ -28,9 +28,11 @@ below was measured on 2026-10-24 from one player's log of 818,412 lines
   are continuations of multi-line warnings and carry nothing to read.
 - **The `<ms counter>`** (measured once, 2026-10-26, the research note's
   "Client.txt line format"). It counts the milliseconds
-  since the system started: one line's value matched the time since the
-  machine's boot, and a `GetTickCount64` reading the same day agreed,
-  within the line's one-second resolution (one comparison).
+  since the system started: one line's value was 1.3 to 2.3 s below the
+  time since the machine's boot computed for that line's second (one
+  comparison), far from any since-client-start value; a tool converting it
+  to UTC should pair a `GetTickCount64` reading with the UTC clock in the
+  same session rather than rely on a boot time.
 - **The `<pid>` in the header** (measured 2026-10-25, in Live 2). It is
   the process id of the running game client: the session's `[INFO Client
   <pid>]` lines carried the same number that Windows' task list gave the
@@ -205,8 +207,9 @@ against the running game.
 - **Nothing loose** (static reading, 2026-10-26). The install folder holds
   no loose `Bundles2` folder and no Oodle DLL; `fmod.dll` and
   `fmodstudio.dll` sit beside the exe.
-- **How the client reads it** (static reading, 2026-10-26): through one
-  memory mapping of the whole file, see § "Audio (FMOD)" below.
+- **How the client reads it** (static reading of the exe, not of the GGPK,
+  2026-10-26): on the paths followed, through a memory mapping; see
+  § "Audio (FMOD)" below.
 
 ## Audio (FMOD)
 
@@ -226,22 +229,24 @@ reading of the client's executable (2026-10-26), not a measurement.
   2026-10-26). The one `System::createStream` call site is the client's
   handler for FMOD's programmer-sound callback: it looks the event's name
   up in the audio table, opens it as a stream with the client's file
-  callbacks and adds no open-from-memory flag itself (whether the mode the
-  audio table returns carries one is not established; a flag in the
-  event's user data skips the callbacks and leaves the file to FMOD's own
-  file system), so on the path read FMOD pulls the line's bytes as it
-  plays. A line inside a bundle is served by decompressing the 256 KiB
+  callbacks; the call site sets no open-from-memory flag itself, but the
+  mode comes from the audio table's answer (`getSoundInfo`), and whether
+  that carries a memory flag is not established, and a flag in the event's
+  user data makes the client pass no file callbacks at all, leaving the
+  file to FMOD. Where neither applies, FMOD is expected (not established)
+  to pull the line's bytes as it plays. A line inside a bundle is served
+  by decompressing the 256 KiB
   blocks each read covers.
-- **`Content.ggpk` is memory-mapped** (static reading, 2026-10-26). On the
-  one construction followed, the client opens the GGPK (identified from
-  context, not from the path argument), asking for read and write access
-  and sharing read only, creates one file mapping over the whole file and
-  maps views of it; on the paths followed, a file's bytes, a bank's or a
-  bundle's, are read through a pointer to its `FILE` record in that
-  mapping. So a file trace is expected (not established) to see the game's
-  audio reads only as paging reads of pages not already in memory. The
-  exe's nine `ReadFile` call sites were not traced, so a `ReadFile` route
-  to the GGPK is not ruled out.
+- **`Content.ggpk` is memory-mapped on the path followed** (static
+  reading, 2026-10-26). On the one construction followed, the client opens
+  a file (`Content.ggpk` going by its context, the path argument not
+  traced), asking for read and write access and sharing read only, creates
+  one file mapping over the whole file and maps views of it; on the bank
+  and stream paths followed, a file's bytes are read through a pointer to
+  its `FILE` record in that mapping. So a file trace is expected (not
+  established) to see the game's audio reads only as paging reads of pages
+  not already in memory. The exe's `ReadFile` call sites were not traced,
+  so a `ReadFile` route to the GGPK is not excluded.
 - **Decompressed bundle blocks are not kept** on the read path (static
   reading, 2026-10-26): each read decompresses into a temporary buffer and
   frees it. Whether the decompressor caches blocks itself is not
