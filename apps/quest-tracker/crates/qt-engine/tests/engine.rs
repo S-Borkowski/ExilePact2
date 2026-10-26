@@ -2201,6 +2201,425 @@ fn held_event_released_to_named_character_counts_refusal() {
     assert_eq!(engine.refused_count(), 0);
 }
 
+// -- a named character's relog in The Riverbank, decided by the instance
+// seed (Context "Riverbank relog by the instance seed") ----------------------
+
+/// The seed of Live 3's Riverbank instance (a measured value; the names
+/// around it are invented).
+const LIVE3_SEED: u64 = 1267581190;
+
+/// A new character opens at `seed` (12:00:00), walks The Riverbank, and its
+/// first level-up names it Odile at 12:05:00; then the session ends.
+fn odile_named_at(seed: u64) -> Vec<String> {
+    vec![
+        MARKER.to_string(),
+        riverbank_entry_at("12:00:00", seed),
+        line_at("12:00:01", "INFO", "[SCENE] Set Source [The Riverbank]"),
+        line_at(
+            "12:05:00",
+            "INFO",
+            &format!(": {ODILE} (Warrior) is now level 2"),
+        ),
+        MARKER.to_string(),
+    ]
+}
+
+/// The relog: a level-1 entry to `seed` at 12:10:00, then the walk to the
+/// encampment and Renly's welcome, which finishes fixture-riverbank.
+fn relog_into(seed: u64) -> Vec<String> {
+    vec![
+        riverbank_entry_at("12:10:00", seed),
+        line_at("12:10:01", "INFO", "[SCENE] Set Source [The Riverbank]"),
+        line_at(
+            "12:11:00",
+            "INFO",
+            r#"Generating level 15 area "G1_town" with seed 1"#,
+        ),
+        line_at(
+            "12:11:01",
+            "INFO",
+            "[SCENE] Set Source [Clearfell Encampment]",
+        ),
+        line_at(
+            "12:11:30",
+            "INFO",
+            "Renly: Fixture line: welcome to the encampment.",
+        ),
+    ]
+}
+
+fn seed_of(engine: &Engine, name: &str) -> Option<u64> {
+    engine.character(name).unwrap().riverbank_seed
+}
+
+/// A stored character's record, with or without a Riverbank seed.
+fn record(name: &str, seed: Option<u64>) -> Value {
+    let mut v = serde_json::json!({
+        "name": name,
+        "class": "Witch",
+        "level": 30,
+        "ownership": "own",
+    });
+    if let Some(s) = seed {
+        v["riverbank_seed"] = Value::from(s);
+    }
+    v
+}
+
+#[test]
+fn named_relog_same_seed_keeps_character() {
+    // Target, Live 3's shape: the level-up names the new character and it
+    // takes its instance's seed; after a session marker, a level-1 entry to
+    // that instance is Odile's relog, and the town's evidence is hers.
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &odile_named_at(LIVE3_SEED), true);
+    assert_eq!(names(&engine), [ODILE]);
+    assert_eq!(seed_of(&engine, ODILE), Some(LIVE3_SEED));
+    assert_eq!(
+        engine.take_character_notes(),
+        [
+            CharacterNote::Started { released_pin: None },
+            CharacterNote::Named {
+                name: ODILE.to_string()
+            },
+        ]
+    );
+    assert_eq!(engine.current(), None, "the marker ended the session");
+
+    let transitions = feed(&mut engine, &relog_into(LIVE3_SEED), true);
+    assert!(!engine.new_character_open());
+    assert!(engine.new_character_json().is_none(), "no new character");
+    assert_eq!(engine.current(), Some(ODILE));
+    assert_eq!(names(&engine), [ODILE]);
+    assert_eq!(status(&engine, ODILE, "fixture-riverbank"), Status::Done);
+    assert!(
+        transitions.iter().all(|t| t.character == ODILE && t.live),
+        "{transitions:?}"
+    );
+    assert!(
+        transitions
+            .iter()
+            .any(|t| t.quest_id == "fixture-riverbank" && t.to == Status::Done),
+        "{transitions:?}"
+    );
+    // No Started or Resumed: the only note is the relog.
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: ODILE.to_string()
+        }]
+    );
+    assert_eq!(seed_of(&engine, ODILE), Some(LIVE3_SEED));
+    assert_eq!(engine.dropped_new_character_count(), 0);
+}
+
+#[test]
+fn named_relog_is_decided_at_the_entry() {
+    // Odile's stored record, with her instance's seed and no progress yet.
+    let mut engine = Engine::new(data());
+    engine
+        .load_character(&record(ODILE, Some(LIVE3_SEED)))
+        .unwrap();
+    // A line held before the entry: no character in this session yet.
+    feed(
+        &mut engine,
+        &[MARKER.to_string(), line_at("12:09:59", "INFO", POINTS)],
+        true,
+    );
+    assert_eq!(engine.held_count(), 1);
+    assert_eq!(engine.refused_count(), 0);
+
+    // The entry line alone decides it: no window to wait on, Odile active,
+    // the held line (refused for her with the area unknown) and the entry
+    // hers.
+    let transitions = feed(
+        &mut engine,
+        &[riverbank_entry_at("12:10:00", LIVE3_SEED)],
+        true,
+    );
+    assert!(!engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.active(), Some(ODILE));
+    assert_eq!(engine.held_count(), 0);
+    assert_eq!(engine.take_refused(), ["fixture-crowbell".to_string()]);
+    assert!(riverbank_fired(&engine, ODILE));
+    assert!(
+        transitions
+            .iter()
+            .any(|t| t.character == ODILE && t.quest_id == "fixture-riverbank"),
+        "{transitions:?}"
+    );
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: ODILE.to_string()
+        }]
+    );
+
+    // Nothing is left to decide: the expiry, a name line and a level-up
+    // change nothing more and post nothing.
+    assert!(engine.expire_relog_window(at("12:10:30")).is_empty());
+    feed(
+        &mut engine,
+        &[
+            character_line("12:10:02", ODILE),
+            line_at(
+                "12:10:40",
+                "INFO",
+                &format!(": {ODILE} (Warrior) is now level 3"),
+            ),
+        ],
+        true,
+    );
+    assert!(!engine.new_character_open());
+    assert!(engine.take_character_notes().is_empty());
+    assert_eq!(engine.active(), Some(ODILE));
+    assert_eq!(engine.character(ODILE).unwrap().level, 3);
+}
+
+#[test]
+fn new_seed_still_starts_a_new_character() {
+    // Baseline: a named character active, an entry to a fresh instance opens
+    // the relog window, and with no name line a new character starts.
+    let mut engine = Engine::new(data());
+    let mut lines = odile_named_at(LIVE3_SEED);
+    lines.pop(); // no marker: Odile stays active
+    feed(&mut engine, &lines, true);
+    engine.take_character_notes();
+    assert_eq!(engine.active(), Some(ODILE));
+
+    feed(&mut engine, &[riverbank_entry_at("12:10:00", 77)], true);
+    assert!(engine.relog_window_open());
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.active(), Some(ODILE), "kept while undecided");
+    assert!(engine.take_character_notes().is_empty());
+    engine.expire_relog_window(at("12:10:06"));
+    assert!(engine.new_character_open());
+    assert_eq!(engine.current(), None);
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Started { released_pin: None }]
+    );
+    assert_eq!(engine.new_character_json().unwrap()["seed"], 77);
+
+    // Its level-up names it with the fresh seed; Odile keeps hers.
+    feed(
+        &mut engine,
+        &[line_at(
+            "12:15:00",
+            "INFO",
+            ": Ysolde_Crane (Ranger) is now level 2",
+        )],
+        true,
+    );
+    assert_eq!(engine.current(), Some("Ysolde_Crane"));
+    assert_eq!(seed_of(&engine, "Ysolde_Crane"), Some(77));
+    assert_eq!(seed_of(&engine, ODILE), Some(LIVE3_SEED));
+}
+
+#[test]
+fn pinned_relog_same_seed_keeps_the_pin() {
+    // The level-up takes the pin the new character's start released, and
+    // the seed with it; the relog to that instance keeps the pin.
+    let mut engine = with_corisande(true);
+    feed(&mut engine, &odile_named_at(LIVE3_SEED), true);
+    assert_eq!(engine.pinned(), Some(ODILE));
+    assert_eq!(seed_of(&engine, ODILE), Some(LIVE3_SEED));
+    assert_eq!(seed_of(&engine, CORISANDE), None);
+    engine.take_character_notes();
+
+    feed(&mut engine, &relog_into(LIVE3_SEED), true);
+    assert_eq!(
+        (engine.pinned(), engine.active()),
+        (Some(ODILE), Some(ODILE))
+    );
+    assert!(!engine.new_character_open());
+    assert_eq!(engine.new_character_released_pin(), None);
+    assert_eq!(status(&engine, ODILE, "fixture-riverbank"), Status::Done);
+    assert!(!riverbank_fired(&engine, CORISANDE));
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: ODILE.to_string()
+        }]
+    );
+
+    // A pin hands the new character's progress, and its seed, to the pinned
+    // character; its relog then never releases the pin.
+    let mut engine = with_corisande(true);
+    feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            riverbank_entry_at("12:00:00", LIVE3_SEED),
+            line_at("12:00:06", "INFO", "[SCENE] Set Source [The Riverbank]"),
+        ],
+        true,
+    );
+    assert!(engine.new_character_open());
+    engine.pin(Some(CORISANDE)).unwrap();
+    assert_eq!(seed_of(&engine, CORISANDE), Some(LIVE3_SEED));
+    feed(&mut engine, &[MARKER.to_string()], true);
+    engine.take_character_notes();
+    feed(&mut engine, &relog_into(LIVE3_SEED), true);
+    assert_eq!(
+        (engine.pinned(), engine.active()),
+        (Some(CORISANDE), Some(CORISANDE))
+    );
+    assert!(!engine.new_character_open());
+    assert_eq!(
+        status(&engine, CORISANDE, "fixture-riverbank"),
+        Status::Done
+    );
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: CORISANDE.to_string()
+        }]
+    );
+}
+
+#[test]
+fn riverbank_seed_survives_the_record() {
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &odile_named_at(LIVE3_SEED), true);
+    let saved = engine.character_json(ODILE).unwrap();
+    assert_eq!(saved["riverbank_seed"], LIVE3_SEED);
+
+    // Saved and loaded back, the seed still decides the relog.
+    let mut back = Engine::from_json(data(), &engine.to_json()).unwrap();
+    assert_eq!(seed_of(&back, ODILE), Some(LIVE3_SEED));
+    let mut fresh = Engine::new(data());
+    fresh.load_character(&saved).unwrap();
+    for e in [&mut back, &mut fresh] {
+        feed(e, &[riverbank_entry_at("12:10:00", LIVE3_SEED)], true);
+        assert!(!e.relog_window_open());
+        assert_eq!(e.active(), Some(ODILE));
+    }
+
+    // A record from before the seed loads, with none, and saves none.
+    let mut engine = Engine::new(data());
+    engine.load_character(&record(CORISANDE, None)).unwrap();
+    assert_eq!(seed_of(&engine, CORISANDE), None);
+    let out = engine.character_json(CORISANDE).unwrap();
+    assert!(out.get("riverbank_seed").is_none(), "{out}");
+
+    // A relog by the name line records its entry's seed.
+    feed(
+        &mut engine,
+        &[
+            riverbank_entry_at("12:00:00", 4242),
+            character_line("12:00:02", CORISANDE),
+        ],
+        true,
+    );
+    assert_eq!(engine.active(), Some(CORISANDE));
+    assert_eq!(
+        engine.character_json(CORISANDE).unwrap()["riverbank_seed"],
+        4242
+    );
+
+    // A routed event never records it: the entry to Odile's instance goes to
+    // the pinned Corisande, whose seed stays as it was.
+    let mut engine = Engine::new(data());
+    engine.load_character(&record(CORISANDE, None)).unwrap();
+    engine
+        .load_character(&record(ODILE, Some(LIVE3_SEED)))
+        .unwrap();
+    engine.pin(Some(CORISANDE)).unwrap();
+    feed(
+        &mut engine,
+        &[riverbank_entry_at("12:10:00", LIVE3_SEED)],
+        true,
+    );
+    assert_eq!(
+        (engine.pinned(), engine.active()),
+        (Some(CORISANDE), Some(ODILE))
+    );
+    assert!(riverbank_fired(&engine, CORISANDE));
+    assert!(!riverbank_fired(&engine, ODILE));
+    assert_eq!(seed_of(&engine, CORISANDE), None);
+    assert_eq!(seed_of(&engine, ODILE), Some(LIVE3_SEED));
+}
+
+#[test]
+fn two_characters_one_seed_fall_back_to_the_window() {
+    let two = || {
+        let mut engine = Engine::new(data());
+        engine
+            .load_character(&record(CORISANDE, Some(LIVE3_SEED)))
+            .unwrap();
+        engine
+            .load_character(&record(ODILE, Some(LIVE3_SEED)))
+            .unwrap();
+        engine
+    };
+
+    // Two characters with the entry's seed: the window opens as before...
+    let mut engine = two();
+    feed(
+        &mut engine,
+        &[riverbank_entry_at("12:10:00", LIVE3_SEED)],
+        true,
+    );
+    assert!(engine.relog_window_open());
+    assert_eq!(engine.active(), None);
+    assert!(engine.take_character_notes().is_empty());
+    // ...and the name line still decides it inside.
+    feed(&mut engine, &[character_line("12:10:02", CORISANDE)], true);
+    assert!(!engine.relog_window_open());
+    assert_eq!(engine.active(), Some(CORISANDE));
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Relogged {
+            name: CORISANDE.to_string()
+        }]
+    );
+
+    // With no name line, it starts a new character.
+    let mut engine = two();
+    feed(
+        &mut engine,
+        &[riverbank_entry_at("12:10:00", LIVE3_SEED)],
+        true,
+    );
+    engine.expire_relog_window(at("12:10:06"));
+    assert!(engine.new_character_open());
+
+    // A parked new character of that instance keeps its own rule: the
+    // window opens even though one stored character has the seed, and with
+    // no name line the record resumes.
+    let mut parked = Engine::new(data());
+    feed(
+        &mut parked,
+        &[
+            MARKER.to_string(),
+            riverbank_entry_at("12:00:00", LIVE3_SEED),
+            MARKER.to_string(),
+        ],
+        true,
+    );
+    let record_json = parked.new_character_json().expect("parked");
+    let mut engine = Engine::new(data());
+    engine
+        .load_character(&record(ODILE, Some(LIVE3_SEED)))
+        .unwrap();
+    engine.load_new_character(&record_json).unwrap();
+    feed(
+        &mut engine,
+        &[riverbank_entry_at("12:10:00", LIVE3_SEED)],
+        true,
+    );
+    assert!(engine.relog_window_open());
+    assert_eq!(engine.active(), None);
+    engine.expire_relog_window(at("12:10:06"));
+    assert!(engine.new_character_open());
+    assert_eq!(
+        engine.take_character_notes(),
+        [CharacterNote::Resumed { released_pin: None }]
+    );
+}
+
 #[test]
 fn validator_reads_done_inferred() {
     let mut v: Value = serde_json::from_str(&data_text()).unwrap();

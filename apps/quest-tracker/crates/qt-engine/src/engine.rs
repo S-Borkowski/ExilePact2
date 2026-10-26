@@ -12,7 +12,17 @@
 //! like a step: the quest is in progress with no step reached, so its first
 //! step is the current one (Context "Live 2 fixes (owner scope)").
 //!
-//! A level-1 entry to The Riverbank (`G1_1`) first opens a relog window and
+//! Each stored character keeps the seed of the Riverbank (`G1_1`) instance
+//! it was last decided to be in. A level-1 entry whose seed is that of
+//! exactly one stored character, and of no parked new character, is that
+//! character's relog, decided at the entry: it becomes active, the pin
+//! stays, only [`CharacterNote::Relogged`] is posted, and the entry and what
+//! follows are routed as usual (Context "Riverbank relog by the instance
+//! seed"). The seed passes from the new character to the name a level-up
+//! gives it or to the character a pin hands its progress to, and a relog
+//! records its entry's seed; a routed event never does.
+//!
+//! Any other level-1 entry to The Riverbank first opens a relog window and
 //! changes nothing else: no note, the pin and the active character kept, and
 //! the window's events wait. A character build line naming a stored
 //! character within 5 s of the entry, before any other area entry, makes it
@@ -90,6 +100,14 @@ pub struct CharacterState {
     /// Quest id -> the user's overrides.
     #[serde(default)]
     pub overrides: BTreeMap<String, Overrides>,
+    /// The seed of the Riverbank (`G1_1`) instance this character was last
+    /// decided to be in: a level-1 entry with this seed, of no other stored
+    /// character and no parked new character, is its relog. Set by decisions
+    /// only (the new character's seed passing to the name a level-up gives
+    /// it or to the character a pin hands its progress to, and a relog),
+    /// never by a routed event. Absent in older records, which load.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub riverbank_seed: Option<u64>,
 }
 
 impl CharacterState {
@@ -101,6 +119,7 @@ impl CharacterState {
             ownership,
             evidence: BTreeMap::new(),
             overrides: BTreeMap::new(),
+            riverbank_seed: None,
         }
     }
 }
@@ -295,9 +314,10 @@ pub enum CharacterNote {
     Replaced { events: u64 },
     /// A session marker parked the open record and gave back its pin.
     Parked { restored_pin: Option<String> },
-    /// A character build line named the stored character `name` within the
-    /// relog window: a relog, so the entry started nothing, the pin was never
-    /// released and `name` is active. The only note of that entry.
+    /// A level-1 Riverbank entry was `name`'s relog: its seed was that of
+    /// the stored character `name` alone, or a character build line named
+    /// it within the relog window. The entry started nothing, the pin was
+    /// never released and `name` is active. The only note of that entry.
     Relogged { name: String },
     /// A level-up named it `name`.
     Named { name: String },
@@ -472,11 +492,19 @@ impl Engine {
                 self.close_relog_window(&mut out);
                 self.area = Some(code.clone());
                 if code == NEW_CHARACTER_AREA && *level == 1 && !self.new_open() {
-                    self.relog = Some(RelogWindow {
-                        since: ev.time,
-                        seed: *seed,
-                        taken: Vec::new(),
-                    });
+                    match self.seed_owner(*seed) {
+                        // The instance of exactly one stored character: its
+                        // relog, decided at once with no window; the entry
+                        // is then routed as usual.
+                        Some(name) => self.relogged(&name, *seed, Vec::new(), &mut out),
+                        None => {
+                            self.relog = Some(RelogWindow {
+                                since: ev.time,
+                                seed: *seed,
+                                taken: Vec::new(),
+                            })
+                        }
+                    }
                 }
                 self.route(ev, live, &mut out);
             }
@@ -806,8 +834,9 @@ impl Engine {
     /// A character build line. Within [`RELOG_SECONDS`] of an undecided
     /// level-1 Riverbank entry, before any other area entry, naming a stored
     /// character, it is a relog: the entry closes having changed nothing,
-    /// the only note is [`CharacterNote::Relogged`], `name` becomes active,
-    /// the pin stays, and the events held before the entry and those of the
+    /// the only note is [`CharacterNote::Relogged`], `name` becomes active
+    /// and records the entry's seed, the pin stays, and the events held
+    /// before the entry and those of the
     /// window go where routing sends them now (the pin, else `name`),
     /// counted for refusals as routed events are. Any other one changes
     /// nothing: an unknown name leaves the window open.
@@ -820,6 +849,36 @@ impl Engine {
             return;
         }
         let w = self.relog.take().expect("checked");
+        self.relogged(name, w.seed, w.taken, out);
+    }
+
+    /// The one stored character whose Riverbank seed is `seed`, when the
+    /// entry is not to a parked new character's instance (that record keeps
+    /// its own resume rule, through the window) and no other stored
+    /// character has the seed (two fall back to the window).
+    fn seed_owner(&self, seed: u64) -> Option<String> {
+        if self.new_char.as_ref().is_some_and(|nc| nc.seed == seed) {
+            return None;
+        }
+        let mut owners = self
+            .chars
+            .values()
+            .filter(|c| c.riverbank_seed == Some(seed));
+        match (owners.next(), owners.next()) {
+            (Some(c), None) => Some(c.name.clone()),
+            _ => None,
+        }
+    }
+
+    /// Decides a level-1 Riverbank entry as `name`'s relog: `name` becomes
+    /// active and records the entry's seed, the pin stays, the only note is
+    /// [`CharacterNote::Relogged`], and the events held before the entry and
+    /// `taken` since it go where routing sends them now (the pin, else
+    /// `name`), counted for refusals as routed events are.
+    fn relogged(&mut self, name: &str, seed: u64, taken: Vec<Held>, out: &mut Vec<Transition>) {
+        if let Some(ch) = self.chars.get_mut(name) {
+            ch.riverbank_seed = Some(seed);
+        }
         self.active = Some(name.to_string());
         self.pending = None;
         self.notes.push(CharacterNote::Relogged {
@@ -827,19 +886,20 @@ impl Engine {
         });
         let target = self.pinned.clone().unwrap_or_else(|| name.to_string());
         let mut released = std::mem::take(&mut self.held);
-        released.extend(w.taken);
+        released.extend(taken);
         self.release_to(&target, &released, out);
     }
 
     /// Ends the open new character's state, which clears its record.
     ///
     /// A level-up naming it, or the user pinning a character, gives its
-    /// progress to `name`: on a level-up the name becomes own and active, and
-    /// pinned if the start released a pin. A name the engine did not know
-    /// becomes the new character, so only what changes from what it showed
-    /// is a transition; a known one gains its evidence, and the transitions
-    /// are its own. (A relog never opens it: [`Engine::character_named`]
-    /// decides the entry before it does.)
+    /// progress and its Riverbank seed to `name`: on a level-up the name
+    /// becomes own and active, and pinned if the start released a pin. A
+    /// name the engine did not know becomes the new character, so only what
+    /// changes from what it showed is a transition; a known one gains its
+    /// evidence, and the transitions are its own. (A relog never opens it:
+    /// the entry's seed or [`Engine::character_named`] decides the entry
+    /// before it does.)
     fn close_new_character(
         &mut self,
         name: &str,
@@ -870,6 +930,8 @@ impl Engine {
             }
         }
         let ch = self.chars.get_mut(name).expect("inserted");
+        // The character it closes into is in its instance now.
+        ch.riverbank_seed = Some(nc.seed);
         if let Close::LevelUp(class, level) = how {
             ch.ownership = Ownership::Own;
             ch.class = class.to_string();
