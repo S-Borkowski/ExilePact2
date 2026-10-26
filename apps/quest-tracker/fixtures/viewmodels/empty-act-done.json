@@ -9,6 +9,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-riverbank",
           "inferred": true,
@@ -27,6 +28,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-crowbell",
           "inferred": false,
@@ -45,6 +47,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-king",
           "inferred": false,
@@ -63,6 +66,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "partial",
           "id": "fixture-lute",
           "inferred": false,
@@ -81,6 +85,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "manual",
           "id": "fixture-candles",
           "inferred": false,

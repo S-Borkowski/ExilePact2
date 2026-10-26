@@ -227,8 +227,12 @@ fn skipped_hidden_unless_setting() {
         .find(|r| r.id == "fixture-crowbell")
         .expect("a skipped quest shows with the setting on");
     assert_eq!(row.status, Status::Skipped);
-    // Next up never lists a skipped quest, whatever the setting.
-    assert!(!next_ids(&view).contains(&"fixture-crowbell".to_string()));
+    // With the setting on, next up lists it too: its tracked status is
+    // available, and it comes after the unskipped rows of its worth group.
+    assert_eq!(
+        next_ids(&view),
+        ids(&["fixture-king", "fixture-lute", "fixture-crowbell"])
+    );
     // Unskipping brings it back without the setting.
     engine
         .quest_action(CORISANDE, "fixture-crowbell", QuestAction::Unskip)
@@ -336,9 +340,15 @@ fn show_skipped_shows_skipped_quest_under_only_worth_it() {
         .find(|r| r.id == "fixture-crowbell")
         .unwrap();
     assert_eq!(crowbell.status, Status::Skipped);
-    // Next up never lists a skipped quest.
+    // Next up lists the skipped quest too (its tracked status is available),
+    // whatever "only worth-it" says, after the worth-it lute; the unskipped
+    // optional king stays hidden.
     let next = build_view(&engine, &both, &reading(ViewKind::NextUp));
-    assert!(!next_ids(&next).contains(&"fixture-crowbell".to_string()), "{next:#?}");
+    assert_eq!(
+        next_ids(&next),
+        ids(&["fixture-lute", "fixture-crowbell"]),
+        "{next:#?}"
+    );
 
     // "Show skipped" off: hidden again. The act's counts are the same either
     // way (a skipped quest leaves the total).
@@ -353,6 +363,297 @@ fn show_skipped_shows_skipped_quest_under_only_worth_it() {
         (view.acts[0].done, view.acts[0].total)
     );
     assert_eq!((view.acts[0].done, view.acts[0].total), (2, 5));
+}
+
+// ---------------------------------------------------------------------------
+// Skipped quests stay tracked (Context "Skipped quests stay tracked"): a
+// skipped row keeps its status and shows the step its tracked progress
+// reaches; "show skipped" lists it in next up too; its progress is quiet.
+
+/// The King in the Mists' line in Freythorn, where `act1.txt` ends: it
+/// reaches the king's last step, "Face the king".
+fn king_line() -> String {
+    client_line("The King in the Mists: Fixture line: the mists part.")
+}
+
+#[test]
+fn skipped_row_shows_its_tracked_step() {
+    let mut engine = replay("act1.txt");
+    let row_before = campaign_row(&engine, "fixture-king");
+    let detail_before = detail_of(&engine, "fixture-king");
+    assert_eq!(row_before.current_step.as_deref(), Some("Face the king"));
+    assert!(
+        detail_before.steps.iter().any(|s| s.state == StepPhase::Current),
+        "{detail_before:#?}"
+    );
+
+    engine
+        .quest_action(CORISANDE, "fixture-king", QuestAction::Skip)
+        .unwrap();
+    let show = Settings {
+        show_skipped: true,
+        ..Settings::default()
+    };
+    let view = build_view(&engine, &show, &reading(ViewKind::Campaign));
+    let row = view.acts[0]
+        .quests
+        .iter()
+        .find(|r| r.id == "fixture-king")
+        .expect("the skipped king shows with the setting on");
+    assert_eq!(row.status, Status::Skipped, "the status stays skipped");
+    assert_eq!(row.current_step, row_before.current_step);
+    let detail = detail_of(&engine, "fixture-king");
+    assert_eq!(detail.row.status, Status::Skipped);
+    assert_eq!(detail.row.current_step, row_before.current_step);
+    assert_eq!(step_marks(&detail), step_marks(&detail_before));
+
+    // Evidence keeps arriving while skipped: the king's last step is reached,
+    // and the skipped detail shows it done.
+    feed(&mut engine, &[king_line()], true);
+    let detail = detail_of(&engine, "fixture-king");
+    assert_eq!(detail.row.status, Status::Skipped);
+    assert!(
+        detail.steps.iter().all(|s| s.state == StepPhase::Done),
+        "{detail:#?}"
+    );
+    let skipped_marks = step_marks(&detail);
+    let skipped_step = detail.row.current_step.clone();
+    assert_eq!(skipped_step.as_deref(), Some("Face the king"));
+
+    // Unskip shows exactly the status and step that evidence gives.
+    engine
+        .quest_action(CORISANDE, "fixture-king", QuestAction::Unskip)
+        .unwrap();
+    let back = detail_of(&engine, "fixture-king");
+    assert_eq!(back.row.status, Status::InProgress);
+    assert_eq!(back.row.current_step, skipped_step);
+    assert_eq!(step_marks(&back), skipped_marks);
+
+    // A skipped quest not picked up yet (its tracked status available)
+    // carries no step, like an available row.
+    engine
+        .quest_action(CORISANDE, "fixture-crowbell", QuestAction::Skip)
+        .unwrap();
+    let view = build_view(&engine, &show, &reading(ViewKind::Campaign));
+    let crowbell = view.acts[0]
+        .quests
+        .iter()
+        .find(|r| r.id == "fixture-crowbell")
+        .unwrap();
+    assert_eq!((crowbell.status, crowbell.current_step.as_deref()), (Status::Skipped, None));
+}
+
+#[test]
+fn next_up_hides_skipped_without_show_skipped() {
+    // Baseline: with "show skipped" off, a skipped quest is in neither list,
+    // in progress (the lute) or available (crowbell), whatever "only
+    // worth-it" says.
+    let mut engine = replay("act1.txt");
+    for id in ["fixture-lute", "fixture-crowbell"] {
+        engine.quest_action(CORISANDE, id, QuestAction::Skip).unwrap();
+    }
+    for only_worth_it in [false, true] {
+        let settings = Settings {
+            only_worth_it,
+            ..Settings::default()
+        };
+        let next = build_view(&engine, &settings, &reading(ViewKind::NextUp));
+        assert_eq!(next_ids(&next), ids(&["fixture-king"]), "only_worth_it={only_worth_it}");
+        let campaign = build_view(&engine, &settings, &reading(ViewKind::Campaign));
+        let rows = row_ids(&campaign);
+        assert!(
+            !rows.iter().any(|id| id == "fixture-lute" || id == "fixture-crowbell"),
+            "only_worth_it={only_worth_it}: {rows:?}"
+        );
+    }
+}
+
+#[test]
+fn next_up_lists_skipped_quest_when_show_skipped() {
+    // The king made optional: the worth groups are the lute and crowbell
+    // (worth it), then the king.
+    let mut engine = replay_with(data_with_worth(&[("fixture-king", "optional")]), "act1.txt");
+    let show = Settings {
+        show_skipped: true,
+        ..Settings::default()
+    };
+    let hide = Settings::default();
+    let before = build_view(&engine, &show, &reading(ViewKind::NextUp));
+    assert_eq!(
+        next_ids(&before),
+        ids(&["fixture-lute", "fixture-crowbell", "fixture-king"])
+    );
+
+    // The lute (in progress) skipped, and two quests whose tracked status is
+    // neither available nor in progress: beira (done) and the candles
+    // (unknown).
+    for id in ["fixture-lute", "fixture-beira", "fixture-candles"] {
+        engine.quest_action(CORISANDE, id, QuestAction::Skip).unwrap();
+    }
+    let view = build_view(&engine, &show, &reading(ViewKind::NextUp));
+    assert_eq!(
+        next_ids(&view),
+        ids(&["fixture-crowbell", "fixture-lute", "fixture-king"]),
+        "the skipped lute after the unskipped rows of its worth group: {view:#?}"
+    );
+    let lute = &view.next_up[1];
+    assert_eq!(lute.status, Status::Skipped);
+    assert_eq!(lute.current_step.as_deref(), Some("Return the lute"));
+
+    // Off: nothing changes from before.
+    let off = build_view(&engine, &hide, &reading(ViewKind::NextUp));
+    assert_eq!(next_ids(&off), ids(&["fixture-crowbell", "fixture-king"]));
+
+    // The counts and the badge are the same either way.
+    let counts = |v: &View| (v.acts[0].done, v.acts[0].total, v.available_worth_count);
+    assert_eq!(counts(&view), counts(&off));
+
+    // Under "only worth-it": a skipped quest shows whatever its worth; the
+    // unskipped optional king does not.
+    engine
+        .quest_action(CORISANDE, "fixture-king", QuestAction::Skip)
+        .unwrap();
+    let both = Settings {
+        only_worth_it: true,
+        show_skipped: true,
+        ..Settings::default()
+    };
+    let view = build_view(&engine, &both, &reading(ViewKind::NextUp));
+    assert_eq!(
+        next_ids(&view),
+        ids(&["fixture-crowbell", "fixture-lute", "fixture-king"])
+    );
+
+    // `act_done` follows the statuses alone: with every quest of the act
+    // done or skipped, next up is still the act-done frame, setting or not.
+    engine
+        .quest_action(CORISANDE, "fixture-crowbell", QuestAction::MarkDone)
+        .unwrap();
+    for settings in [&show, &hide] {
+        let view = build_view(&engine, settings, &reading(ViewKind::NextUp));
+        assert_eq!(view.frame, Frame::EmptyActDone, "show_skipped={}", settings.show_skipped);
+    }
+}
+
+#[test]
+fn skipped_quest_progress_makes_no_row_change() {
+    let data = data();
+    // Control: the king not skipped, the line read live reaches its last step
+    // and makes one row change.
+    let mut control = Engine::new(data.clone());
+    feed(&mut control, &session("act1.txt"), false);
+    let live = feed(&mut control, &[king_line()], true);
+    assert_eq!(
+        change_kinds(&RowChanges::new().make(&data, &live)),
+        vec![(RowChangeKind::StepDone, "fixture-king")]
+    );
+
+    // Skipped: the same line moves the tracked step (a skipped -> skipped
+    // transition), and the row does not change.
+    let mut engine = Engine::new(data.clone());
+    feed(&mut engine, &session("act1.txt"), false);
+    engine
+        .quest_action(CORISANDE, "fixture-king", QuestAction::Skip)
+        .unwrap();
+    let live = feed(&mut engine, &[king_line()], true);
+    assert!(
+        live.iter().any(|t| t.quest_id == "fixture-king"
+            && (t.from, t.to) == (Status::Skipped, Status::Skipped)
+            && t.step_to.as_deref() == Some("face-the-king")),
+        "{live:#?}"
+    );
+    assert!(RowChanges::new().make(&data, &live).is_empty(), "{live:#?}");
+}
+
+// ---------------------------------------------------------------------------
+// Find-it tips (Context "Find-it tips").
+
+/// The fixture data with a `tip` on each (quest id, step id) given.
+fn data_with_tips(tips: &[(&str, &str, &str)]) -> Arc<QuestData> {
+    let mut v = data_value();
+    add_tips(&mut v, tips);
+    Arc::new(QuestData::from_value(&v).expect("the data with tips validates"))
+}
+
+fn add_tips(v: &mut Value, tips: &[(&str, &str, &str)]) {
+    for q in v["quests"].as_array_mut().unwrap() {
+        for (quest, step, tip) in tips {
+            if q["id"] != *quest {
+                continue;
+            }
+            for s in q["steps"].as_array_mut().unwrap() {
+                if s["id"] == *step {
+                    s["tip"] = Value::String(tip.to_string());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn step_tip_reaches_row_and_detail() {
+    // Baseline: the fixture data has no tip; no row or step carries one.
+    let plain = replay("act1.txt");
+    let view = build_view(&plain, &Settings::default(), &reading(ViewKind::NextUp));
+    assert!(view.next_up.iter().all(|r| r.current_tip.is_none()), "{view:#?}");
+    assert!(detail_of(&plain, "fixture-king").steps.iter().all(|s| s.tip.is_none()));
+
+    // Target: the king's row shows "Face the king" next, so that step's tip
+    // is the row's; the tip of a step already done is not.
+    const FACE: &str = "Fixture tip: the throne is past the second bridge.";
+    const HEAR: &str = "Fixture tip: ask in the encampment.";
+    let mut engine = replay_with(
+        data_with_tips(&[
+            ("fixture-king", "face-the-king", FACE),
+            ("fixture-king", "hear-of-the-king", HEAR),
+        ]),
+        "act1.txt",
+    );
+    let view = build_view(&engine, &Settings::default(), &reading(ViewKind::NextUp));
+    let king = view.next_up.iter().find(|r| r.id == "fixture-king").unwrap();
+    assert_eq!(king.current_step.as_deref(), Some("Face the king"));
+    assert_eq!(king.current_tip.as_deref(), Some(FACE));
+    // A row with no tip on its step carries none.
+    let lute = view.next_up.iter().find(|r| r.id == "fixture-lute").unwrap();
+    assert_eq!(lute.current_tip, None);
+
+    // The detail shows each step's own tip, under its text.
+    let detail = detail_of(&engine, "fixture-king");
+    let tips: Vec<(&str, Option<&str>)> = detail
+        .steps
+        .iter()
+        .map(|s| (s.id.as_str(), s.tip.as_deref()))
+        .collect();
+    assert_eq!(
+        tips,
+        vec![
+            ("hear-of-the-king", Some(HEAR)),
+            ("enter-freythorn", None),
+            ("face-the-king", Some(FACE)),
+        ]
+    );
+    assert_eq!(detail.row.current_tip.as_deref(), Some(FACE));
+
+    // Both are contract fields: present on every row and step, null when
+    // there is none.
+    let row = serde_json::to_value(king).unwrap();
+    assert_eq!(row["current_tip"], Value::String(FACE.into()));
+    assert!(serde_json::to_value(lute).unwrap()["current_tip"].is_null());
+    let step = serde_json::to_value(&detail.steps[1]).unwrap();
+    assert!(step.as_object().unwrap().contains_key("tip") && step["tip"].is_null());
+
+    // A skipped row carries its step's tip too.
+    engine
+        .quest_action(CORISANDE, "fixture-king", QuestAction::Skip)
+        .unwrap();
+    let show = Settings {
+        show_skipped: true,
+        ..Settings::default()
+    };
+    let view = build_view(&engine, &show, &reading(ViewKind::Campaign));
+    let king = view.acts[0].quests.iter().find(|r| r.id == "fixture-king").unwrap();
+    assert_eq!(king.status, Status::Skipped);
+    assert_eq!(king.current_tip.as_deref(), Some(FACE));
 }
 
 // ---------------------------------------------------------------------------
@@ -1216,11 +1517,16 @@ fn empty_and_error_states() {
 // The fixtures the UI tests read.
 
 /// The data the frames are built on: the fixture data with two quests' worth
-/// (and its reason) changed on this copy, so the rows carry every worth.
-/// `fixtures/quests_min.json` itself stays as the engine and replay tests
-/// read it.
+/// (and its reason) changed on this copy, so the rows carry every worth, and
+/// a find-it tip on the step the king's row shows next, so the preview
+/// carries one. `fixtures/quests_min.json` itself stays as the engine and
+/// replay tests read it (the engine's tip test holds it free of tips).
 fn frames_data() -> Arc<QuestData> {
     let mut v = data_value();
+    add_tips(
+        &mut v,
+        &[("fixture-king", "face-the-king", "Fixture tip: the throne is past the second bridge.")],
+    );
     for q in v["quests"].as_array_mut().unwrap() {
         let (worth, reason) = match q["id"].as_str() {
             Some("fixture-king") => ("optional", "Spirit, but a long fight for it this early."),
@@ -1615,13 +1921,24 @@ fn fixtures_match_serialised_views() {
     for (name, view) in &values {
         for row in rows_of(view) {
             assert!(row["inferred"].is_boolean(), "{name}: {row}");
+            assert!(row.as_object().unwrap().contains_key("current_tip"), "{name}: {row}");
         }
         if !view["detail"].is_null() {
             for s in view["detail"]["steps"].as_array().unwrap() {
                 assert!(s["inferred"].is_boolean(), "{name}: {s}");
+                assert!(s.as_object().unwrap().contains_key("tip"), "{name}: {s}");
             }
         }
     }
+
+    // A find-it tip is in the preview: under a row's next step in the default
+    // frame, and under its step in the detail.
+    let next = &values.iter().find(|(n, _)| n == "panel-next-up").unwrap().1;
+    assert!(
+        rows_of(next).iter().any(|r| r["current_tip"].is_string()),
+        "panel-next-up has no row with a tip"
+    );
+    assert!(steps.iter().any(|s| s["tip"].is_string()), "quest-detail has no step with a tip");
 }
 
 #[test]

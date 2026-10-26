@@ -53,8 +53,9 @@ manual-tick row), the candles unknown (manual). The riverbank is done by
 inference (its data carries `done_inferred`), so its row carries the
 "probably done" mark (`inferred: true`), and the king's first step, which
 leaves no trace in the log, shows done by inference once Freythorn was
-entered. The two worth values are
-changed on the test's own copy of the data; `../quests_min.json` and the
+entered. The king's current step, "Face the king", carries a find-it tip
+(`current_tip` on its rows, `tip` on its step in the detail). The two worth
+values and the tip are changed on the test's own copy of the data; `../quests_min.json` and the
 sessions beside `frames/` stay as the engine, replay and shell tests read
 them.
 
@@ -69,10 +70,10 @@ counts still cover the whole act, so they can exceed the rows shown.
 
 | File | Built from the story, then |
 |---|---|
-| `panel-campaign.json` | campaign view, "show skipped" on: one act-1 row in each status, `1/5`; the done row inferred |
-| `panel-next-up.json` | next up: the lute (worth `yes`, available) before the king (`optional`, in progress, its next step); the preview's default frame |
+| `panel-campaign.json` | campaign view, "show skipped" on: one act-1 row in each status, `1/5`; the done row inferred; next up also lists the skipped pack leader (available by its tracked progress) after the unskipped rows |
+| `panel-next-up.json` | next up: the lute (worth `yes`, available) before the king (`optional`, in progress, its next step and that step's tip); the preview's default frame |
 | `collapsed.json` | the panel folded: the badge counts the one worth-it quest available |
-| `quest-detail.json` | edit mode, the king's detail: its first step done by inference, the second done, the third current |
+| `quest-detail.json` | edit mode, the king's detail: its first step done by inference, the second done, the third current, with its tip |
 | `character-picker.json` | edit mode, the picker: Corisande active, Odile the second own character |
 | `settings.json` | edit mode, a log path set |
 | `empty-no-log.json` | nothing read, no log found: an error status |

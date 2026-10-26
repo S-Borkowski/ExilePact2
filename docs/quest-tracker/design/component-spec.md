@@ -1,7 +1,8 @@
 # Quest tracker component spec
 
 Harvested from the Figma comps on 2026-10-25. Sizes are px at 1× (1920×1080);
-the app scales them by 1.33× and 2×. Token names are the keys of
+the app scales them by Auto (from the monitor) or a fixed factor from 0.75×
+to 2× the player sets. Token names are the keys of
 `apps/quest-tracker/theme/theme.json` (CSS custom properties in `tokens.css`
 use the same name with the dot as a dash: `color.panel-bg` →
 `--color-panel-bg`). Every variant has a reference image under
@@ -89,6 +90,15 @@ Status mark 16 · body (fills): name (Row) + manual marker 12 after the name
   change; click opens quest detail.
 Variants: status (6) × worth (3) × detection (auto/manual). Manual covers
 "partial".
+- Tip line (after Live 3, not in the Figma comps): when the step the row
+  shows has a find-it tip (`current_tip`), it sits on its own line under
+  the step line, in play and edit mode: Step style, `color.text-secondary`,
+  wrapping to at most two lines (ellipsis after), gap 2 above. The row
+  grows by the tip's lines. No tip, no line.
+- Skipped with progress (after Live 3): a skipped row whose tracked
+  progress reaches a step shows that step line and its tip line, in
+  `color.text-muted` like the rest of a finished row; it keeps the skipped
+  mark and the struck-through name.
 
 ### Row transition (QuestRow, in place of the toasts)
 Not a component of its own: a live change of a quest's row (`qt:row-change`:
@@ -121,6 +131,9 @@ Used in quest detail only. Resistances use their `color.res-*`.
 ### StepLine — 288×20
 Pending: empty box 14, `color.text-secondary`. Current: in-progress glyph,
 text `color.text-primary`. Done: check-in-box, `color.text-muted`.
+A step with a find-it tip (`tip`, after Live 3) shows it under the step's
+text, aligned with it: Step style, `color.text-secondary`, wrapping; the
+line grows to fit.
 
 ### "Probably done" mark (QuestRow, StepLine), added after launch 6
 Not in the Figma comps (owner, 2026-10-25, after launch 6): the view marks a

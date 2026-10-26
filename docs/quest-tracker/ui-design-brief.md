@@ -30,6 +30,15 @@ web's means; the names in [Export contract](#export-contract) are final.
 - **Scales.** Design at 1920×1080 (1×). It will be scaled to 1440p (1.33×)
   and 4K (2×) by the webview's zoom, or to any factor from 0.75× to 2× the
   player sets, so keep icons as vectors and sizes on a 4 px grid.
+- **Sliders apply while dragged.** The opacity and scale sliders change the
+  panel as the thumb moves, not only when it is let go (owner, 2026-10-25,
+  after Live 3), so the panel's own look is the slider's preview.
+- **A tray icon.** While the overlay runs it has an icon in the Windows
+  notification area: the app's own icon (no icon drawn for it), tooltip
+  "Quest Tracker", and a menu with one entry, "Quit Quest Tracker", which
+  closes the overlay even while it is hidden (owner, 2026-10-25, after
+  Live 3). Nothing else is in the menu, and nothing in the panel changes
+  for it.
 - **What the web UI can do over the game.** The window is transparent per
   pixel, so these all work and may be designed for: rounded corners, soft
   shadows (drawn by CSS inside a transparent margin around the panel; the
@@ -82,6 +91,26 @@ action, and the manual-tick marker does not change. No new icon id or frame
 id; a token for it, if the design needs one, goes under `Optional token
 keys`.
 
+A find-it tip (owner, 2026-10-25, after Live 3): a step may carry the
+owner's short "how to find it" text, one line in the quest data (for
+example "Follow up river."). The row shows the tip of the step it shows
+next on its own line under that step, in play and edit mode, in the
+secondary text style, wrapping to at most two lines; the detail shows each
+step's tip under its text. Most steps have none, and then nothing shows.
+No new icon id, frame id or token key.
+
+Skipped quests stay tracked (owner, 2026-10-25, after Live 3): the log
+keeps moving a skipped quest on. Its row keeps the skipped status mark and
+muted style, and, when "show skipped quests" lists it, shows the step its
+progress has reached (and that step's tip) as an in-progress row would;
+its detail shows the steps done and current by that progress. Unskipping
+shows exactly that progress. A skipped quest's progress plays no row
+transition and announces nothing. With "show skipped quests" on, the
+"next up" view also lists a skipped quest that is available or in progress
+by its progress, whatever "only worth-it" says, after the rows not skipped
+of the same worth; with it off, "next up" lists no skipped quest. Neither
+changes an act's counts.
+
 Detection values, per quest: **auto** (the log records the quest's
 completion), **partial** (the log records some of its unlocks or steps but
 not the completion), **manual** (the log records nothing usable). The quest
@@ -128,11 +157,13 @@ frame exactly that.
    other acts are not listed (owner, 2026-10-25). Show at least one row in
    each status.
 2. **Expanded panel — "next up" view** [`panel-next-up`]. Only the current
-   act's quests that are available or in progress, worth-it ones first.
-   This is the default view while playing.
+   act's quests that are available or in progress, worth-it ones first,
+   and with "show skipped quests" on the skipped ones that are too (Data
+   the UI shows). This is the default view while playing.
 
 In every view, an in-progress quest always shows its next step as a second
-line under its name (owner, 2026-10-25).
+line under its name (owner, 2026-10-25), and that step's find-it tip, if it
+has one, on a line under the step.
 3. **Collapsed state** [`collapsed`]. The small button/badge, with a
    count of worth-it quests currently available. A live change of a row
    shows the same highlight on the badge (frame 9).

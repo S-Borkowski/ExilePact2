@@ -9,6 +9,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-riverbank",
           "inferred": true,
@@ -27,6 +28,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-beira",
           "inferred": false,
@@ -45,6 +47,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-crowbell",
           "inferred": false,
@@ -63,6 +66,7 @@
         {
           "act": 1,
           "current_step": "Face the king",
+          "current_tip": "Fixture tip: the throne is past the second bridge.",
           "detection": "auto",
           "id": "fixture-king",
           "inferred": false,
@@ -81,6 +85,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "partial",
           "id": "fixture-lute",
           "inferred": false,
@@ -99,6 +104,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "manual",
           "id": "fixture-candles",
           "inferred": false,
@@ -156,6 +162,7 @@
     {
       "act": 1,
       "current_step": null,
+      "current_tip": null,
       "detection": "partial",
       "id": "fixture-lute",
       "inferred": false,
@@ -174,6 +181,7 @@
     {
       "act": 1,
       "current_step": "Face the king",
+      "current_tip": "Fixture tip: the throne is past the second bridge.",
       "detection": "auto",
       "id": "fixture-king",
       "inferred": false,
@@ -188,6 +196,25 @@
       ],
       "status": "in_progress",
       "worth": "optional"
+    },
+    {
+      "act": 1,
+      "current_step": null,
+      "current_tip": null,
+      "detection": "auto",
+      "id": "fixture-beira",
+      "inferred": false,
+      "name": "Fixture: The Rotten Pack",
+      "needs_tick": false,
+      "rewards": [
+        {
+          "category": "resistance",
+          "icon": "reward-res-cold",
+          "text": "+10% to Cold Resistance"
+        }
+      ],
+      "status": "skipped",
+      "worth": "no"
     }
   ],
   "schema": 1,

@@ -31,7 +31,14 @@
 //! before it; the step after the furthest one reached is `current`, the
 //! one to do next. That is the step an in-progress row shows as its second
 //! line (the brief: "its next step"); a quest whose every step is reached
-//! but which is not done shows its last step.
+//! but which is not done shows its last step. A step's find-it `tip` goes
+//! with it: on its `StepView`, and as the row's `current_tip` when it is the
+//! step the row shows (Context "Find-it tips").
+//!
+//! Skipped quests stay tracked (Context "Skipped quests stay tracked"): a
+//! skipped row keeps `status: skipped`, but its step, its tip and its
+//! detail's step phases follow the engine's `tracked_status` and evidence,
+//! exactly as the row would show them unskipped.
 //!
 //! Inferred: a done row whose quest data says its done is a later event
 //! (`done_inferred`), and a done step whose own signal never fired and that
@@ -40,8 +47,11 @@
 //! marked the quest done, and the mark changes nothing the user can do.
 //!
 //! Filters: "only worth-it" hides quests that are not worth it; "show
-//! skipped" shows a skipped quest whatever "only worth-it" says. Neither
-//! changes an act's counts, and next up never lists a skipped quest.
+//! skipped" shows a skipped quest whatever "only worth-it" says, in the
+//! campaign view and, when its tracked status is available or in progress,
+//! in next up, after the unskipped rows of its worth group. Neither changes
+//! an act's counts, the badge or whether the act is done; with "show
+//! skipped" off, next up lists no skipped quest.
 //!
 //! Live changes: a quest becoming available, a step reached, a quest started
 //! by its `start` signal with no step reached, or a quest done, read from a
@@ -227,8 +237,11 @@ pub struct QuestRow {
     /// `needs_tick` nor what the user can do with the row.
     pub inferred: bool,
     pub rewards: Vec<RewardView>,
-    /// The title of the step to do next, for an in-progress quest only.
+    /// The title of the step to do next, for an in-progress quest only (a
+    /// skipped one counts by its tracked status).
     pub current_step: Option<String>,
+    /// The find-it tip of the step `current_step` names, if it has one.
+    pub current_tip: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -252,6 +265,9 @@ pub struct StepView {
     /// (that is the user's word, not an inference). A mark only: the step
     /// ticks exactly as it would without it.
     pub inferred: bool,
+    /// The owner's short "how to find it" text for this step, shown under
+    /// its text; `None` when the data has none.
+    pub tip: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -434,7 +450,8 @@ pub struct View {
     pub characters: Vec<CharacterView>,
     /// The current act only; empty with no character.
     pub acts: Vec<ActView>,
-    /// The current act's available and in-progress quests, worth-it first.
+    /// The current act's available and in-progress quests, worth-it first;
+    /// with "show skipped", the skipped ones tracked as either too.
     pub next_up: Vec<QuestRow>,
     pub detail: Option<QuestDetail>,
     pub settings: Settings,
@@ -586,10 +603,21 @@ pub fn current_act(data: &QuestData, states: &[QuestState]) -> Option<u32> {
     located.or_else(|| data.quests.iter().map(|q| q.act).min())
 }
 
+/// The status a quest's progress shows by: its own, or for a skipped quest
+/// the one its tracked evidence gives (what Unskip would show).
+fn progress_status(state: &QuestState) -> Status {
+    if state.status == Status::Skipped {
+        state.tracked_status
+    } else {
+        state.status
+    }
+}
+
 /// Each step's phase, and the index of the step to do next.
 fn step_phases(quest: &Quest, state: &QuestState) -> (Vec<StepPhase>, Option<usize>) {
     let n = quest.steps.len();
-    if state.status == Status::Done {
+    let status = progress_status(state);
+    if status == Status::Done {
         return (vec![StepPhase::Done; n], None);
     }
     let reached = state
@@ -599,7 +627,7 @@ fn step_phases(quest: &Quest, state: &QuestState) -> (Vec<StepPhase>, Option<usi
     let next = reached.map_or(0, |r| r + 1);
     let next = (next < n).then_some(next);
     let open = matches!(
-        state.status,
+        status,
         Status::Available | Status::InProgress | Status::Unknown
     );
     let phases = (0..n)
@@ -617,13 +645,15 @@ fn step_phases(quest: &Quest, state: &QuestState) -> (Vec<StepPhase>, Option<usi
 }
 
 fn row(quest: &Quest, state: &QuestState) -> QuestRow {
-    let current_step = if state.status == Status::InProgress {
+    // The step the row shows: an in-progress quest's next one (a skipped
+    // quest's by its tracked progress), else none.
+    let shown = if progress_status(state) == Status::InProgress {
         let (_, next) = step_phases(quest, state);
         let reached = state
             .current_step
             .as_deref()
             .and_then(|id| quest.steps.iter().position(|s| s.id == id));
-        next.or(reached).map(|i| quest.steps[i].title.clone())
+        next.or(reached).map(|i| &quest.steps[i])
     } else {
         None
     };
@@ -647,7 +677,8 @@ fn row(quest: &Quest, state: &QuestState) -> QuestRow {
                 text: r.text.clone(),
             })
             .collect(),
-        current_step,
+        current_step: shown.map(|s| s.title.clone()),
+        current_tip: shown.and_then(|s| s.tip.clone()),
     }
 }
 
@@ -678,6 +709,7 @@ fn detail(data: &QuestData, quest: &Quest, state: &QuestState) -> QuestDetail {
                     state: phase,
                     ticked,
                     inferred: phase == StepPhase::Done && !fired && !ticked && !user_done,
+                    tip: s.tip.clone(),
                 }
             })
             .collect(),
@@ -739,15 +771,24 @@ fn panel(data: &QuestData, states: &[QuestState], settings: &Settings, ui: &UiSt
         has_available: rows.iter().any(|r| r.status == Status::Available),
         quests: if expanded { rows } else { Vec::new() },
     };
+    // A skipped quest is listed by its tracked status, and only while "show
+    // skipped" shows it (Context "Skipped quests stay tracked").
     let mut next: Vec<(&Quest, &QuestState)> = in_act
         .iter()
         .copied()
         .filter(|(q, s)| {
-            matches!(s.status, Status::Available | Status::InProgress) && shown(q, s)
+            matches!(progress_status(s), Status::Available | Status::InProgress) && shown(q, s)
         })
         .collect();
-    // Stable: data order within the same worth and status.
-    next.sort_by_key(|(q, s)| (worth_rank(q.worth), s.status != Status::InProgress));
+    // Stable: data order within the same worth and status; a skipped quest
+    // after the unskipped rows of its worth group.
+    next.sort_by_key(|(q, s)| {
+        (
+            worth_rank(q.worth),
+            s.status == Status::Skipped,
+            progress_status(s) != Status::InProgress,
+        )
+    });
     Some(Panel {
         act,
         acts: vec![header],

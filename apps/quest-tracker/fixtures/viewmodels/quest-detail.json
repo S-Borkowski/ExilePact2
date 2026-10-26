@@ -9,6 +9,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-riverbank",
           "inferred": true,
@@ -27,6 +28,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "auto",
           "id": "fixture-crowbell",
           "inferred": false,
@@ -45,6 +47,7 @@
         {
           "act": 1,
           "current_step": "Face the king",
+          "current_tip": "Fixture tip: the throne is past the second bridge.",
           "detection": "auto",
           "id": "fixture-king",
           "inferred": false,
@@ -63,6 +66,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "partial",
           "id": "fixture-lute",
           "inferred": false,
@@ -81,6 +85,7 @@
         {
           "act": 1,
           "current_step": null,
+          "current_tip": null,
           "detection": "manual",
           "id": "fixture-candles",
           "inferred": false,
@@ -137,6 +142,7 @@
     "row": {
       "act": 1,
       "current_step": "Face the king",
+      "current_tip": "Fixture tip: the throne is past the second bridge.",
       "detection": "auto",
       "id": "fixture-king",
       "inferred": false,
@@ -160,6 +166,7 @@
         "state": "done",
         "text": "Fixture step text; the log does not show it, so a later step implies it.",
         "ticked": false,
+        "tip": null,
         "title": "Hear of the king"
       },
       {
@@ -168,6 +175,7 @@
         "state": "done",
         "text": "Fixture step text.",
         "ticked": false,
+        "tip": null,
         "title": "Enter Freythorn"
       },
       {
@@ -176,6 +184,7 @@
         "state": "current",
         "text": "Fixture step text.",
         "ticked": false,
+        "tip": "Fixture tip: the throne is past the second bridge.",
         "title": "Face the king"
       }
     ],
@@ -190,6 +199,7 @@
     {
       "act": 1,
       "current_step": null,
+      "current_tip": null,
       "detection": "partial",
       "id": "fixture-lute",
       "inferred": false,
@@ -208,6 +218,7 @@
     {
       "act": 1,
       "current_step": "Face the king",
+      "current_tip": "Fixture tip: the throne is past the second bridge.",
       "detection": "auto",
       "id": "fixture-king",
       "inferred": false,
