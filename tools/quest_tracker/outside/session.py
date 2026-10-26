@@ -7,7 +7,9 @@ Developer-only. Usage:
     py -3 -m tools.quest_tracker.outside.session stop [--live L] [--only i1,i2,i3,marker]
 
 `prep` creates `L` and its subfolders, refusing an `L` that already holds
-anything, and writes `session.json`: when it was made, the `Client.txt` path
+anything but a `tools` folder. That folder holds the owner-approved downloads
+(`L\\tools\\<name>\\`, fetched before the session), so `prep` keeps it and
+its contents as they are. It then writes `session.json`: when it was made, the `Client.txt` path
 and its size now (the offset the analysis reads from), and the `Content.ggpk`
 path, size and modification time. It only looks at the two files' sizes and
 times; it reads neither. It also records the first clock anchor.
@@ -32,6 +34,9 @@ from pathlib import Path
 from tools.quest_tracker.outside import common
 from tools.quest_tracker.outside.common import ToolError
 
+# The one entry `prep` accepts in an existing `L`: the approved downloads.
+TOOLS_FOLDER = "tools"
+
 
 def prep(live: Path, client_txt: Path, ggpk: Path, sampler=common.sample_anchor,
          now=common.now_utc) -> dict:
@@ -40,9 +45,14 @@ def prep(live: Path, client_txt: Path, ggpk: Path, sampler=common.sample_anchor,
     if live.exists():
         if not live.is_dir():
             raise ToolError("the live folder %s exists and is not a folder" % live)
-        if any(live.iterdir()):
-            raise ToolError("refusing to prepare %s: it is not empty. Each session gets a "
-                            "fresh folder; move the old one away first." % live)
+        # A `tools` folder alone is the approved downloads (`tools\<name>\`),
+        # which may be fetched before the session; it is kept as it is.
+        others = [p.name for p in live.iterdir()
+                  if not (p.name.lower() == TOOLS_FOLDER and p.is_dir())]
+        if others:
+            raise ToolError("refusing to prepare %s: it is not empty (it holds %s). Each session "
+                            "gets a fresh folder, with at most a `tools` folder of downloads in it; "
+                            "move the old one away first." % (live, ", ".join(sorted(others))))
     client_txt, ggpk = Path(client_txt), Path(ggpk)
     if not client_txt.is_file():
         raise ToolError("no Client.txt at %s" % client_txt)

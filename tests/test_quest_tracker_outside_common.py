@@ -286,6 +286,29 @@ class Session(TempDir):
             self.prep()
         self.assertEqual([p.name for p in self.live.iterdir()], ["store"])
 
+    def test_prep_keeps_a_folder_holding_only_tools(self):
+        download = self.live / "tools" / "x" / "y"
+        download.parent.mkdir(parents=True)
+        download.write_bytes(b"approved download")
+        self.prep()
+        self.assertTrue((self.live / "session.json").is_file())
+        self.assertTrue((self.live / "i1" / "rehearsal").is_dir())
+        self.assertEqual(download.read_bytes(), b"approved download")
+
+    def test_prep_refuses_tools_beside_anything_else(self):
+        (self.live / "tools" / "x").mkdir(parents=True)
+        (self.live / "notes.txt").write_text("left over", encoding="utf-8")
+        with self.assertRaises(common.ToolError):
+            self.prep()
+        self.assertEqual(sorted(p.name for p in self.live.iterdir()), ["notes.txt", "tools"])
+        self.assertFalse((self.live / "session.json").exists())
+
+    def test_prep_refuses_a_tools_file_that_is_not_a_folder(self):
+        self.live.mkdir(parents=True)
+        (self.live / "tools").write_text("not a folder", encoding="utf-8")
+        with self.assertRaises(common.ToolError):
+            self.prep()
+
     def test_prep_refuses_a_missing_log(self):
         self.client_txt.unlink()
         with self.assertRaises(common.ToolError):

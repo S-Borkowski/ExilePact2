@@ -6,15 +6,32 @@ Developer-only. Usage:
     py -3 -m tools.quest_tracker.outside.bundle_index annotate [--live L] [--index F] [--paths P] [--out O]
     py -3 -m tools.quest_tracker.outside.bundle_index files [--live L] [--index F] [--paths P] --bundle NAME [--block k ...]
     py -3 -m tools.quest_tracker.outside.bundle_index extract-plan [--live L] [--index F] [--paths P] --prefix PATH
+    py -3 -m tools.quest_tracker.outside.bundle_index decode [--live L] [--raw F] [--out F] [--oodle DLL]
+    py -3 -m tools.quest_tracker.outside.bundle_index extract [--live L] [--index F] [--tree F] [--ggpk G]
+                                                              (--path P ... | --prefix PATH) [--out-dir D] [--oodle DLL]
 
 The game keeps most of its files inside bundles under `/Bundles2`, and
 `/Bundles2/_.index.bin` says which bundle holds which file. Both are stored
-compressed, block by block (`ggpk.py` describes a bundle's header). This
-module never decompresses anything: it reads an index someone already
-decoded, and it calls no code of the game. Decoding needs an Oodle decoder,
-which is an owner-approved download (the workorder's "Oodle decoder
-download"); until one is approved there is no real decoded index, and the
-synthetic fixture is all this reader has seen.
+compressed, block by block (`ggpk.py` describes a bundle's header). Every
+command but `decode` and `extract` reads an index already decoded and
+decompresses nothing. Those two decompress blocks through an Oodle decoder
+the owner approved as a download (the workorder's "Oodle decoder download",
+approved 2026-10-26): the `oo2core.dll` that LibGGPK3's `win-x64.zip` ships,
+unpacked into its own folder under `L\\tools\\`, called through `ctypes`
+(`OodleLZ_Decompress`, one block at a time). Nothing here calls any code of
+the game, its own Oodle included. Without a decoder under `L\\tools\\` (or
+`--oodle`), `decode` and `extract` exit 2 with `no decoder`.
+
+`decode` turns the raw `_.index.bin` copy (`L\\ggpk\\index.raw`, from `ggpk
+copy`) into the decoded index: it decompresses the index bundle, then the
+path section bundle nested at its end, keeps both decoded binaries beside the
+output (`index.dec.bin`, `index-paths.dec.bin`, so `read` can run again on
+them if the layout below turns out wrong), and writes `read`'s JSON
+(`L\\ggpk\\index.json`). `extract` copies one indexed path's bytes (or every
+path under a prefix) to `L\\ref\\`, under its file name: it finds the
+path's bundle in a GGPK tree (`tree-after.json`, else `tree-before.json`),
+checks that the tree still matches `Content.ggpk`, and decompresses only the
+blocks the file spans. Read the GGPK only while the game is closed.
 
 The decoded index, in the public layout community bundle readers document
 (the field order is UNVERIFIED until a real decode checks it; the tests pin
@@ -62,7 +79,7 @@ lists a streaming bundle with its `Streaming/` folder is not established, so
 a name not found with it is tried without it.
 
 Every command that writes refuses a path inside a git checkout: a decoded
-index is the game's data and stays in the live folder.
+index and an extracted file are the game's data and stay in the live folder.
 """
 from __future__ import annotations
 
@@ -74,7 +91,7 @@ import struct
 import sys
 from pathlib import Path
 
-from tools.quest_tracker.outside import common
+from tools.quest_tracker.outside import common, ggpk
 from tools.quest_tracker.outside.common import ToolError
 
 INDEX_FORMAT = "quest-tracker-bundle-index/1"
@@ -465,6 +482,249 @@ def annotate(live: Path, index_path: Path | None = None, paths: Path | None = No
 
 
 # --------------------------------------------------------------------------
+# Decoding, through the approved Oodle decoder
+
+OODLE_DLL = "oo2core.dll"
+# OodleLZ_Decompress's trailing arguments: fuzz-safe on, no CRC check, no
+# logging, and a single-threaded decode of the whole block.
+_FUZZ_SAFE_YES, _CHECK_CRC_NO, _VERBOSITY_NONE, _DECODE_UNTHREADED = 1, 0, 0, 3
+# Spare bytes past a block's raw length, as a margin for the decoder's writes.
+_DECODE_SLACK = 64
+
+
+class NoDecoder(ToolError):
+    """No approved Oodle decoder is present: `decode` and `extract` exit 2."""
+
+
+def find_oodle(live: Path, explicit: Path | None = None) -> Path:
+    """The decoder DLL: `explicit`, or the one `oo2core.dll` under `L\\tools\\`."""
+    if explicit is not None:
+        explicit = Path(explicit)
+        if not explicit.is_file():
+            raise NoDecoder("no Oodle decoder at %s" % explicit)
+        return explicit
+    tools = Path(live) / "tools"
+    found = sorted(tools.rglob(OODLE_DLL)) if tools.is_dir() else []
+    if not found:
+        raise NoDecoder("no %s under %s: unpack the approved LibGGPK3 win-x64.zip into its own "
+                        "folder there, or pass --oodle" % (OODLE_DLL, tools))
+    if len(found) > 1:
+        raise ToolError("%d copies of %s under %s (%s): pass --oodle to pick one"
+                        % (len(found), OODLE_DLL, tools, ", ".join(str(p) for p in found)))
+    return found[0]
+
+
+class OodleDecoder:
+    """`decompress(comp, raw_len)` through a downloaded `oo2core.dll` (never the game's)."""
+
+    def __init__(self, dll: Path, loader=None):
+        import ctypes
+        self._ctypes = ctypes
+        self.path = Path(dll).resolve()
+        if loader is None:
+            if sys.platform != "win32":
+                raise NoDecoder("%s needs Windows" % OODLE_DLL)
+            loader = ctypes.WinDLL
+        try:
+            lib = loader(str(self.path))
+            fn = lib.OodleLZ_Decompress
+        except (OSError, AttributeError) as err:
+            raise NoDecoder("could not load OodleLZ_Decompress from %s: %s" % (self.path, err))
+        c = ctypes
+        fn.restype = c.c_ssize_t
+        fn.argtypes = [c.c_void_p, c.c_ssize_t, c.c_void_p, c.c_ssize_t, c.c_int, c.c_int, c.c_int,
+                       c.c_void_p, c.c_ssize_t, c.c_void_p, c.c_void_p, c.c_void_p, c.c_ssize_t, c.c_int]
+        self._fn = fn
+
+    def __call__(self, comp: bytes, raw_len: int) -> bytes:
+        c = self._ctypes
+        src = c.create_string_buffer(bytes(comp), len(comp))
+        dst = c.create_string_buffer(raw_len + _DECODE_SLACK)
+        got = self._fn(src, len(comp), dst, raw_len, _FUZZ_SAFE_YES, _CHECK_CRC_NO, _VERBOSITY_NONE,
+                       None, 0, None, None, None, 0, _DECODE_UNTHREADED)
+        if got != raw_len:
+            raise ToolError("the Oodle decoder returned %d bytes for a block of %d (%d compressed)"
+                            % (got, raw_len, len(comp)))
+        return dst.raw[:raw_len]
+
+
+def parse_bundle_head(buf: bytes, what: str) -> dict:
+    """A bundle's header from its first bytes: the head size, sizes and per-block compressed sizes."""
+    fixed = ggpk.BUNDLE_HEAD_FIXED
+    if len(buf) < 12 + fixed:
+        raise ToolError("the %s is %d bytes, too short for a bundle header" % (what, len(buf)))
+    _size, payload, head = struct.unpack_from("<III", buf, 0)
+    _encode, _unk, uncompressed, _payload2, count, granularity = struct.unpack_from("<IIQQII", buf, 12)
+    if head != fixed + 4 * count or 12 + head > len(buf):
+        raise ToolError("the %s's head (%d bytes, %d blocks) does not fit its %d bytes"
+                        % (what, head, count, len(buf)))
+    if granularity <= 0 or count != -(-uncompressed // granularity):
+        raise ToolError("the %s holds %d blocks of %d bytes for %d uncompressed bytes"
+                        % (what, count, granularity, uncompressed))
+    blocks = list(struct.unpack_from("<%dI" % count, buf, 12 + fixed))
+    cum = [0]
+    for b in blocks:
+        cum.append(cum[-1] + b)
+    return {"head": head, "payload": payload, "uncompressed": uncompressed, "granularity": granularity,
+            "blocks": blocks, "cum": cum, "data_start": 12 + head}
+
+
+def _raw_len(head: dict, block: int) -> int:
+    return min(head["granularity"], head["uncompressed"] - block * head["granularity"])
+
+
+def decode_bundle(data: bytes, decompress, what: str = "bundle") -> bytes:
+    """A whole bundle's uncompressed bytes."""
+    head = parse_bundle_head(data, what)
+    if head["data_start"] + head["cum"][-1] > len(data):
+        raise ToolError("the %s's blocks run to byte %d, past its %d bytes"
+                        % (what, head["data_start"] + head["cum"][-1], len(data)))
+    parts = []
+    for k, size in enumerate(head["blocks"]):
+        start = head["data_start"] + head["cum"][k]
+        parts.append(decompress(data[start:start + size], _raw_len(head, k)))
+    out = b"".join(parts)
+    if len(out) != head["uncompressed"]:
+        raise ToolError("the %s decoded to %d bytes, its header says %d" % (what, len(out), head["uncompressed"]))
+    return out
+
+
+def decode(live: Path, raw: Path | None = None, out: Path | None = None, decompress=None,
+           oodle: Path | None = None) -> dict:
+    """The raw `_.index.bin` copy to `read`'s JSON, keeping the two decoded binaries beside it."""
+    live = Path(live)
+    raw = Path(raw) if raw else live / "ggpk" / "index.raw"
+    out = Path(out) if out else live / "ggpk" / "index.json"
+    dec_bin, dec_paths = out.with_name("index.dec.bin"), out.with_name("index-paths.dec.bin")
+    for path, what in ((out, "decoded index"), (dec_bin, "decoded index"), (dec_paths, "decoded path section")):
+        common.refuse_inside_git(path, what)
+    if not raw.is_file():
+        raise ToolError("no raw index at %s: run `ggpk copy --name /Bundles2/_.index.bin` first" % raw)
+    if decompress is None:
+        decompress = OodleDecoder(find_oodle(live, oodle))
+    index_bin = decode_bundle(raw.read_bytes(), decompress, "index bundle")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    dec_bin.write_bytes(index_bin)
+    tail = parse_index_bin(index_bin)["path_bundle"]
+    section = decode_bundle(index_bin[tail["offset"]:], decompress, "path section bundle")
+    dec_paths.write_bytes(section)
+    idx = parse_index_bin(index_bin, section)
+    common.write_json(out, index_to_json(idx))
+    return {"index": idx, "out": out, "index_bin": dec_bin, "paths_bin": dec_paths}
+
+
+def _default_tree(live: Path) -> Path:
+    after = live / "ggpk" / "tree-after.json"
+    return after if after.is_file() else live / "ggpk" / "tree-before.json"
+
+
+def _select(index: BundleIndex, paths, prefix) -> list[dict]:
+    if not any(f["path"] is not None for f in index.files):
+        raise ToolError("this index has no paths: decode it with its path section first")
+    by_path = {}
+    for f in index.files:
+        if f["path"] is not None:
+            by_path.setdefault(path_key(f["path"]), f)
+    chosen: list[dict] = []
+    for p in paths or []:
+        f = by_path.get(path_key(p))
+        if f is None:
+            raise ToolError("the index lists no file %s" % p)
+        if f not in chosen:
+            chosen.append(f)
+    if prefix:
+        want = path_key(prefix)
+        under = [f for k, f in sorted(by_path.items()) if k.startswith(want)]
+        if not under:
+            raise ToolError("the index lists no file under %s" % prefix)
+        chosen.extend(f for f in under if f not in chosen)
+    if not chosen:
+        raise ToolError("name a --path or a --prefix to extract")
+    return chosen
+
+
+def _check_tree_record(f, rec: dict, ggpk_size: int) -> dict:
+    """The bundle's header as read now, after checking the tree still describes this record."""
+    if rec["offset"] + rec["length"] > ggpk_size:
+        raise ToolError("the tree is stale: %s runs past the GGPK's end; walk the GGPK again" % rec["name"])
+    f.seek(rec["offset"])
+    length, tag = struct.unpack("<I4s", f.read(8))
+    if tag != b"FILE" or length != rec["length"]:
+        raise ToolError("the tree is stale: offset %d holds a %r record of %d bytes, not %s; walk the "
+                        "GGPK again" % (rec["offset"], tag, length, rec["name"]))
+    known = rec.get("bundle") or {}
+    f.seek(rec["data"])
+    first = f.read(min(rec["size"], 12 + int(known.get("head") or ggpk.BUNDLE_HEAD_FIXED)))
+    head = parse_bundle_head(first, rec["name"])
+    if head["blocks"] != known.get("blocks") or head["uncompressed"] != known.get("uncompressed"):
+        raise ToolError("the tree is stale: %s's bundle header changed; walk the GGPK again" % rec["name"])
+    return head
+
+
+def extract(live: Path, paths=None, prefix: str | None = None, index_path: Path | None = None,
+            tree_path: Path | None = None, ggpk_path: Path | None = None, out_dir: Path | None = None,
+            decompress=None, oodle: Path | None = None) -> list[dict]:
+    """Copy each chosen path's bytes out of its bundle in the GGPK, into `out_dir` (default `L\\ref\\`)."""
+    live = Path(live)
+    out_dir = Path(out_dir) if out_dir else live / "ref"
+    common.refuse_inside_git(out_dir, "extracted file")
+    index = load_index(Path(index_path) if index_path else live / "ggpk" / "index.json")
+    chosen = _select(index, paths, prefix)
+    names: dict[str, str] = {}
+    for f in chosen:
+        name = f["path"].replace("\\", "/").rsplit("/", 1)[-1]
+        if name.lower() in names:
+            raise ToolError("%s and %s share the file name %s; extract them one at a time with --out-dir"
+                            % (names[name.lower()], f["path"], name))
+        names[name.lower()] = f["path"]
+    tree = ggpk.load_tree(Path(tree_path) if tree_path else _default_tree(live))
+    by_key = {}
+    for rec in tree["records"]:
+        if rec["kind"] == "file" and rec.get("bundle"):
+            by_key.setdefault(bundle_key(rec["name"]), rec)
+    ggpk_path = Path(ggpk_path or tree.get("ggpk") or common.DEFAULT_GGPK)
+    if not ggpk_path.is_file():
+        raise ToolError("no GGPK at %s" % ggpk_path)
+    if decompress is None:
+        decompress = OodleDecoder(find_oodle(live, oodle))
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    done: list[dict] = []
+    cache: dict[tuple[str, int], bytes] = {}
+    with open(ggpk_path, "rb") as g:
+        size = ggpk_path.stat().st_size
+        heads: dict[str, dict] = {}
+        for f in chosen:
+            bname = index.bundles[f["bundle"]]["name"]
+            key = bundle_key(bname)
+            rec = by_key.get(key) or by_key.get("streaming/" + key)
+            if rec is None:
+                raise ToolError("the GGPK tree has no bundle %s (for %s)" % (bname, f["path"]))
+            if rec["name"] not in heads:
+                heads[rec["name"]] = _check_tree_record(g, rec, size)
+            head = heads[rec["name"]]
+            lo, hi = f["offset"], f["offset"] + f["size"]
+            if hi > head["uncompressed"]:
+                raise ToolError("%s runs to byte %d of %s, which holds %d" % (f["path"], hi, bname,
+                                                                              head["uncompressed"]))
+            gran = head["granularity"]
+            first, last = lo // gran, max(lo, hi - 1) // gran
+            parts = []
+            for k in range(first, last + 1):
+                if (rec["name"], k) not in cache:
+                    g.seek(rec["data"] + head["data_start"] + head["cum"][k])
+                    cache[(rec["name"], k)] = decompress(g.read(head["blocks"][k]), _raw_len(head, k))
+                parts.append(cache[(rec["name"], k)])
+            data = b"".join(parts)[lo - first * gran:hi - first * gran]
+            target = out_dir / f["path"].replace("\\", "/").rsplit("/", 1)[-1]
+            common.refuse_inside_git(target, "extracted file")
+            target.write_bytes(data)
+            done.append({"path": f["path"], "bundle": bname, "ggpk_name": rec["name"], "offset": f["offset"],
+                         "size": f["size"], "blocks": list(range(first, last + 1)), "out": target})
+    return done
+
+
+# --------------------------------------------------------------------------
 # Command line
 
 def _index_args(p: argparse.ArgumentParser) -> None:
@@ -493,6 +753,20 @@ def build_parser() -> argparse.ArgumentParser:
     e = sub.add_parser("extract-plan", help="list the bundle ranges and blocks holding a path prefix")
     _index_args(e)
     e.add_argument("--prefix", required=True)
+    d = sub.add_parser("decode", help="decode the raw _.index.bin copy into the decoded index (needs a decoder)")
+    d.add_argument("--live", type=Path, default=None)
+    d.add_argument("--raw", type=Path, default=None, help="default L\\ggpk\\index.raw")
+    d.add_argument("--out", type=Path, default=None, help="default L\\ggpk\\index.json")
+    d.add_argument("--oodle", type=Path, default=None, help="default: the one %s under L\\tools\\" % OODLE_DLL)
+    x = sub.add_parser("extract", help="copy indexed paths' bytes out of their bundles (needs a decoder)")
+    x.add_argument("--live", type=Path, default=None)
+    x.add_argument("--index", type=Path, default=None, help="default L\\ggpk\\index.json")
+    x.add_argument("--tree", type=Path, default=None, help="default L\\ggpk\\tree-after.json, else tree-before.json")
+    x.add_argument("--ggpk", type=Path, default=None, help="default: the tree's own GGPK path")
+    x.add_argument("--path", action="append", default=None, help="an indexed path (repeatable)")
+    x.add_argument("--prefix", default=None, help="every indexed path under this prefix")
+    x.add_argument("--out-dir", type=Path, default=None, help="default L\\ref\\")
+    x.add_argument("--oodle", type=Path, default=None, help="default: the one %s under L\\tools\\" % OODLE_DLL)
     return parser
 
 
@@ -511,6 +785,21 @@ def main(argv: list[str] | None = None) -> int:
                      idx["hash"], idx["path_bundle"]["size"], idx["path_bundle"]["offset"], args.out))
             return 0
         live = args.live if args.live is not None else common.default_live_dir()
+        if args.command == "decode":
+            res = decode(live, args.raw, args.out, oodle=args.oodle)
+            c = res["index"]["counts"]
+            print("bundle_index decode: %d bundles, %d files, %d directories; %d of %d paths resolved (%s) "
+                  "-> %s (decoded binaries %s, %s)"
+                  % (c["bundles"], c["files"], c["directories"], c["paths_resolved"], c["files"],
+                     res["index"]["hash"], res["out"], res["index_bin"].name, res["paths_bin"].name))
+            return 0
+        if args.command == "extract":
+            for item in extract(live, args.path, args.prefix, args.index, args.tree, args.ggpk, args.out_dir,
+                                oodle=args.oodle):
+                print("bundle_index extract: %s (%d bytes, %s blocks %s) -> %s"
+                      % (item["path"], item["size"], item["bundle"],
+                         ",".join(str(b) for b in item["blocks"]), item["out"]))
+            return 0
         index_path = args.index if args.index is not None else live / "ggpk" / "index.json"
         if args.command == "annotate":
             res = annotate(live, index_path, args.paths, args.src, args.out)
@@ -535,10 +824,13 @@ def main(argv: list[str] | None = None) -> int:
         else:
             plan = index.extract_plan(args.prefix)
             print(json.dumps({"prefix": path_key(args.prefix), "bundles": plan}, indent=2))
+    except NoDecoder as err:
+        print("bundle_index: no decoder: %s" % err, file=sys.stderr)
+        return 2
     except ToolError as err:
         print("bundle_index: error: %s" % err, file=sys.stderr)
         return 1
-    except (OSError, ValueError, KeyError, json.JSONDecodeError) as err:
+    except (OSError, ValueError, KeyError, struct.error, json.JSONDecodeError) as err:
         print("bundle_index: error: %s" % err, file=sys.stderr)
         return 1
     return 0

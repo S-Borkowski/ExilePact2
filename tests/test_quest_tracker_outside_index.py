@@ -16,8 +16,17 @@ each block is annotated with exactly the files that block holds, a read of a
 bundle header, a bank file or the index bundle itself gets none, `files`
 lists one block's files, and `extract-plan` lists the bundle ranges that hold
 a path prefix.
+
+`decode` and `extract` run through a stand-in decoder (zlib per block) and a
+made-up GGPK holding the layout's bundles: the index bundle and its nested
+path bundle decode to the bytes they were packed from, a file is cut out of
+exactly the blocks it spans, a stale tree is refused, and with no decoder
+under `L\\tools\\` both exit 2. The `ctypes` call into the approved
+`oo2core.dll` is checked against a fake export of the same shape; no test
+loads the real DLL.
 """
 import contextlib
+import ctypes
 import io
 import json
 import shutil
@@ -25,12 +34,13 @@ import struct
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools.quest_tracker.outside import bundle_index, common  # noqa: E402
+from tools.quest_tracker.outside import bundle_index, common, ggpk  # noqa: E402
 from tools.quest_tracker.outside.common import ToolError  # noqa: E402
 
 FIXTURES = ROOT / "tests" / "fixtures" / "quest_tracker" / "outside" / "index"
@@ -386,6 +396,241 @@ class ExtractPlan(TempDir):
         plan = json.loads(stdout)
         self.assertEqual(plan["prefix"], "metadata/monsters/carrioncrone/")
         self.assertEqual(plan["bundles"][0]["ranges"], [[0, 3000], [270000, 290000]])
+
+
+# --------------------------------------------------------------------------
+# Decoding: `decode` and `extract`, through a stand-in for the Oodle decoder
+#
+# The stand-in compresses each block with zlib, so a wrong block, a wrong
+# block length or a wrong slice fails here; the real decoder is the approved
+# `oo2core.dll`, which no unit test loads.
+
+def pack_bundle(data: bytes, granularity: int = bundle_index.GRANULARITY) -> bytes:
+    """`data` as a bundle file: the three sizes, the head, then each block zlib-compressed."""
+    blocks = [zlib.compress(data[i:i + granularity]) for i in range(0, len(data), granularity)]
+    payload = sum(len(b) for b in blocks)
+    head = struct.pack("<IIQQII", 13, 1, len(data), payload, len(blocks), granularity) + b"\0" * 16
+    head += struct.pack("<%dI" % len(blocks), *(len(b) for b in blocks))
+    return struct.pack("<III", len(data), payload, len(head)) + head + b"".join(blocks)
+
+
+class Unzip:
+    """The decoder stand-in: `(comp, raw_len) -> raw`, recording each raw length asked for."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, comp: bytes, raw_len: int) -> bytes:
+        self.calls.append(raw_len)
+        out = zlib.decompress(comp)
+        if len(out) != raw_len:
+            raise ToolError("block decoded to %d bytes, %d asked" % (len(out), raw_len))
+        return out
+
+
+def content(n: int, seed: int) -> bytes:
+    """Distinct bytes per position, so a slice off by any amount differs."""
+    return bytes(((i * 31) ^ (i >> 8) ^ seed) & 0xFF for i in range(n))
+
+
+class Decode(TempDir):
+    def setUp(self):
+        super().setUp()
+        self.live = self.tmp / "live"
+        (self.live / "ggpk").mkdir(parents=True)
+        decoded, paths = pack_index()
+        self.decoded = decoded[:-len(NESTED)] + pack_bundle(paths, 64)
+        self.section = paths
+        self.raw = self.live / "ggpk" / "index.raw"
+        self.raw.write_bytes(pack_bundle(self.decoded, 128))
+
+    def test_decode_writes_the_index_and_keeps_both_binaries(self):
+        unzip = Unzip()
+        res = bundle_index.decode(self.live, decompress=unzip)
+        self.assertEqual(res["out"], self.live / "ggpk" / "index.json")
+        self.assertEqual((self.live / "ggpk" / "index.dec.bin").read_bytes(), self.decoded)
+        self.assertEqual((self.live / "ggpk" / "index-paths.dec.bin").read_bytes(), self.section)
+        index = bundle_index.load_index(res["out"])
+        self.assertEqual(index.index["hash"], "murmur64a")
+        self.assertEqual([f["path"] for f in index.files], [f["path"] for f in LAYOUT["files"]])
+        # Every block but each bundle's last is a whole granule; the last is the rest.
+        n, s = len(self.decoded), len(self.section)
+        expected = [128] * (n // 128) + ([n % 128] if n % 128 else [])
+        expected += [64] * (s // 64) + ([s % 64] if s % 64 else [])
+        self.assertEqual(unzip.calls, expected)
+
+    def test_a_bundle_whose_block_count_does_not_fit_its_size_is_refused(self):
+        bad = bytearray(pack_bundle(self.decoded, 128))
+        struct.pack_into("<Q", bad, 12 + 8, len(self.decoded) + 1000)   # uncompressed size
+        with self.assertRaises(ToolError):
+            bundle_index.decode_bundle(bytes(bad), Unzip())
+
+    def test_decode_without_a_decoder_exits_2_and_writes_nothing(self):
+        code, _, err = self.run_main(["decode", "--live", str(self.live)])
+        self.assertEqual(code, 2)
+        self.assertIn("no decoder", err)
+        self.assertFalse((self.live / "ggpk" / "index.json").exists())
+        self.assertFalse((self.live / "ggpk" / "index.dec.bin").exists())
+
+    def test_decode_refuses_an_output_inside_a_git_checkout(self):
+        target = self.checkout() / "index.json"
+        with self.assertRaises(ToolError):
+            bundle_index.decode(self.live, out=target, decompress=Unzip())
+        self.assertFalse(target.parent.joinpath("index.dec.bin").exists())
+
+
+class FindOodle(TempDir):
+    def test_the_one_dll_under_tools_is_found(self):
+        dll = self.tmp / "tools" / "libggpk3" / "win-x64" / "oo2core.dll"
+        dll.parent.mkdir(parents=True)
+        dll.write_bytes(b"MZ")
+        self.assertEqual(bundle_index.find_oodle(self.tmp), dll)
+
+    def test_no_tools_folder_is_no_decoder(self):
+        with self.assertRaises(bundle_index.NoDecoder):
+            bundle_index.find_oodle(self.tmp)
+
+    def test_two_copies_are_refused_rather_than_picked(self):
+        for name in ("a", "b"):
+            dll = self.tmp / "tools" / name / "oo2core.dll"
+            dll.parent.mkdir(parents=True)
+            dll.write_bytes(b"MZ")
+        with self.assertRaises(ToolError) as ctx:
+            bundle_index.find_oodle(self.tmp)
+        self.assertNotIsInstance(ctx.exception, bundle_index.NoDecoder)
+
+    def test_an_explicit_path_that_is_missing_is_no_decoder(self):
+        with self.assertRaises(bundle_index.NoDecoder):
+            bundle_index.find_oodle(self.tmp, self.tmp / "nowhere" / "oo2core.dll")
+
+
+class _FakeDecompress:
+    """OodleLZ_Decompress's shape: fills `dst` and returns the bytes written (0 on failure)."""
+
+    def __init__(self, fail=False):
+        self.fail, self.calls = fail, []
+
+    def __call__(self, src, n, dst, raw_len, fuzz, crc, verbosity, base, base_size, cb, user, mem, mem_size,
+                 phase):
+        self.calls.append((n, raw_len, fuzz, crc, verbosity, phase))
+        if self.fail:
+            return 0
+        out = zlib.decompress(src.raw[:n])
+        ctypes.memmove(dst, out, len(out))
+        return len(out)
+
+
+class _FakeLib:
+    def __init__(self, fn):
+        self.OodleLZ_Decompress = fn
+
+
+class OodleCall(unittest.TestCase):
+    def test_a_block_comes_back_through_the_dll_call(self):
+        fn = _FakeDecompress()
+        decoder = bundle_index.OodleDecoder(Path("oo2core.dll"), loader=lambda path: _FakeLib(fn))
+        raw = content(5000, 7)
+        self.assertEqual(decoder(zlib.compress(raw), len(raw)), raw)
+        comp_len = len(zlib.compress(raw))
+        # Fuzz-safe on, no CRC check, no logging, single-threaded.
+        self.assertEqual(fn.calls, [(comp_len, 5000, 1, 0, 0, 3)])
+        self.assertEqual(len(fn.argtypes), 14)
+
+    def test_a_short_decode_is_an_error_not_a_short_block(self):
+        decoder = bundle_index.OodleDecoder(Path("oo2core.dll"), loader=lambda path: _FakeLib(_FakeDecompress(True)))
+        with self.assertRaises(ToolError):
+            decoder(zlib.compress(b"abc"), 3)
+
+    def test_a_dll_without_the_export_is_no_decoder(self):
+        with self.assertRaises(bundle_index.NoDecoder):
+            bundle_index.OodleDecoder(Path("oo2core.dll"), loader=lambda path: object())
+
+
+class Extract(TempDir):
+    """A made-up GGPK holding the layout's two bundles as FILE records, and its tree."""
+
+    def setUp(self):
+        super().setUp()
+        self.live = self.tmp / "live"
+        (self.live / "ggpk").mkdir(parents=True)
+        idx = bundle_index.parse_index_bin(self.bin.read_bytes(), self.paths.read_bytes())
+        common.write_json(self.live / "ggpk" / "index.json", bundle_index.index_to_json(idx))
+        self.contents = [content(b["uncompressed"], 11 * i + 3) for i, b in enumerate(LAYOUT["bundles"])]
+        buf = bytearray(b"\0" * 64)
+        records = []
+        for b, data in zip(LAYOUT["bundles"], self.contents):
+            packed = pack_bundle(data)
+            head = bundle_index.parse_bundle_head(packed, "test bundle")
+            offset, header = len(buf), 48
+            buf += struct.pack("<I4s", header + len(packed), b"FILE") + b"\0" * (header - 8) + packed
+            records.append({"kind": "file", "name": "/Bundles2/%s.bundle.bin" % b["name"], "offset": offset,
+                            "length": header + len(packed), "data": offset + header, "size": len(packed),
+                            "bundle": {"head": head["head"], "uncompressed": head["uncompressed"],
+                                       "payload": head["payload"], "granularity": head["granularity"],
+                                       "blocks": head["blocks"]}})
+        self.ggpk = self.tmp / "Content.ggpk"
+        self.ggpk.write_bytes(bytes(buf))
+        self.tree = {"format": ggpk.TREE_FORMAT, "ggpk": str(self.ggpk), "ggpk_size": len(buf), "version": 3,
+                     "records": records}
+        ggpk.write_tree(self.live / "ggpk" / "tree-after.json", self.tree)
+
+    def file(self, path):
+        return next(f for f in LAYOUT["files"] if f["path"] == path)
+
+    def expect(self, path) -> bytes:
+        f = self.file(path)
+        return self.contents[f["bundle"]][f["offset"]:f["offset"] + f["size"]]
+
+    def test_a_file_inside_one_block_decodes_only_that_block(self):
+        unzip = Unzip()
+        path = "Metadata/Monsters/CarrionCrone/death.ogg"
+        done = bundle_index.extract(self.live, [path], decompress=unzip)
+        self.assertEqual([d["blocks"] for d in done], [[1]])
+        self.assertEqual((self.live / "ref" / "death.ogg").read_bytes(), self.expect(path))
+        self.assertEqual(unzip.calls, [300000 - 262144])
+
+    def test_a_file_across_a_block_boundary_joins_both_blocks(self):
+        path = "Audio/Dialogue/4.0/Monsters/b.ogg"
+        done = bundle_index.extract(self.live, [path.lower()], decompress=Unzip())
+        self.assertEqual(done[0]["blocks"], [0, 1])
+        self.assertEqual(done[0]["ggpk_name"], DIALOGUE)
+        self.assertEqual((self.live / "ref" / "b.ogg").read_bytes(), self.expect(path))
+
+    def test_a_prefix_extracts_each_file_and_decodes_each_block_once(self):
+        unzip = Unzip()
+        done = bundle_index.extract(self.live, prefix="metadata\\monsters\\carrioncrone\\", decompress=unzip)
+        self.assertEqual(sorted(p.name for p in (self.live / "ref").iterdir()),
+                         ["CarrionCrone.ao", "CarrionCrone.otc", "death.ogg"])
+        for d in done:
+            self.assertEqual(d["out"].read_bytes(), self.expect(d["path"]))
+        self.assertEqual(sorted(unzip.calls), [300000 - 262144, 262144])
+
+    def test_a_stale_tree_is_refused(self):
+        moved = json.loads(json.dumps(self.tree))
+        moved["records"][1]["offset"] += 8
+        moved["records"][1]["data"] += 8
+        ggpk.write_tree(self.live / "ggpk" / "tree-after.json", moved)
+        with self.assertRaises(ToolError) as ctx:
+            bundle_index.extract(self.live, ["Metadata/Monsters/CarrionCrone/death.ogg"], decompress=Unzip())
+        self.assertIn("stale", str(ctx.exception))
+        self.assertFalse((self.live / "ref" / "death.ogg").exists())
+
+    def test_a_path_the_index_lacks_is_refused(self):
+        with self.assertRaises(ToolError):
+            bundle_index.extract(self.live, ["Metadata/Monsters/Nobody/x.ao"], decompress=Unzip())
+
+    def test_extract_without_a_decoder_exits_2(self):
+        code, _, err = self.run_main(["extract", "--live", str(self.live), "--prefix", "metadata/monsters/"])
+        self.assertEqual(code, 2)
+        self.assertIn("no decoder", err)
+        self.assertFalse((self.live / "ref").exists())
+
+    def test_extract_refuses_an_output_inside_a_git_checkout(self):
+        target = self.checkout() / "ref"
+        with self.assertRaises(ToolError):
+            bundle_index.extract(self.live, ["Metadata/Monsters/CarrionCrone/death.ogg"], out_dir=target,
+                                 decompress=Unzip())
+        self.assertFalse(target.exists())
 
 
 if __name__ == "__main__":
