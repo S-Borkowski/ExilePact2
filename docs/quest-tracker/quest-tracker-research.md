@@ -1313,7 +1313,7 @@ Riverbank (`G1_1`) at 20:06:37.7.
 | `cfg-off-relaunch-log` | pass | the relaunched client (its own `LOG FILE OPENING`, 611 lines, `G1_town` at 20:36:11.4) started with the file reading `false` (`after-exit-off`); 2 of 2 presses with a Renly line from it about 1 s before the press |
 | `dlg-window` | pass | 16 new lines of 3 or more words in the 33.3 s, none of them speaker-prefixed, and Renly's name at 1.00; union box 0.030,0.311 to 0.975,0.995 of the client rect, which also takes in the lower-left line list and the skill bar's key hints |
 | `dlg-option` | not-run (instrument: no `--dialogue-option`) | the topic's text was not reported |
-| `dlg-subtitle` | fail | no new Renly-prefixed line in 71 frames from the open to 2 s after the close |
+| `dlg-subtitle` | fail | no new Renly-prefixed line in 71 frames from the open to 2 s after the close; 0 candidate reads dropped as still on screen from the 8 frames before the open |
 | `dlg-log` | not-observed | no Renly line logged from the open to 2 s after the close, greeting or not, and none of the 16 window lines repeated by a logged line |
 | `bar-control` | pass | the Miller's name in 29 of 29 top-band frames before the first panel; the band's median luma 17.1 mean, 21.6 standard deviation |
 | `bar-inventory` | pass | 12 of 12 frames; luma 27.3 and 27.4; 15 other lines in the band |
@@ -1323,8 +1323,8 @@ Riverbank (`G1_1`) at 20:06:37.7.
 | `bar-escape-menu` | pass | 8 of 8 frames; luma 9.6 and 14.7, the screen darkened; no other line |
 | `bar-map-overlay` | pass | 9 of 9 frames; luma 16.9 and 21.1; no other line |
 | `bar-away` | pass | the name in none of 10 top-band frames from 1 s to 6 s after the walk-away press |
-| `remark-shown` | pass | both presses after the kill had a new line prefixed with the character's name, first frames 5.4 s and 4.8 s before them (see below for which lines) |
-| `remark-kill` | pass | a new prefixed line from 0.55 s before the kill press, in 34 frames (see below) |
+| `remark-shown` | pass (on a shout and a bare prefix, not the remark; see below) | both presses after the kill had a new line prefixed with the character's name, first frames 5.4 s and 4.8 s before them (see below for which lines) |
+| `remark-kill` | pass (on a shout and a bare prefix, not the remark; see below) | a new prefixed line from 0.55 s before the kill press, in 34 frames (see below) |
 | `remark-log` | not-observed | neither of the 2 lines the remark checks found was logged |
 
 **Which lines the remark checks found.** The two checks passed by their
@@ -1387,12 +1387,17 @@ Dialogue setting: no-effect
 Taken from the workorder's route table: `cfg-off-log` and
 `cfg-off-relaunch-log` both passed. Renly's vendor greetings reached
 `Client.txt` with `output_all_dialogue_to_chat` off, both after the in-game
-toggle and in a client started with the file reading `false`, so the
-quest tracker does not need the option, and the README names no
-prerequisite for it. This covers vendor greetings, the only kind of NPC
-line measured. A quest NPC's talk in a dialogue window was not logged with
-the option on either (`dlg-log`, as in Lives 1 and 3), so it tells nothing
-about the option.
+toggle and in a client started with the file reading `false`. Renly's
+greetings are unaffected; the tracker's own signals (boss combat lines,
+Una's lines) were not measured with the option off; so whether the
+tracker needs the option is not established, and the README names no
+prerequisite only because none was shown. This covers vendor greetings,
+the only kind of NPC line measured. A quest NPC's talk in a dialogue
+window was not logged with the option on either (`dlg-log`, as in Lives 1
+and 3), so it tells nothing about the option.
+
+Follow-up: log a boss combat line (the Miller's or Beira's) with the
+option off.
 
 ### What the screen shows of each source
 
