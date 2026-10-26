@@ -346,10 +346,10 @@ last line in the area to the `has received` line:
   again not: the log's only lines between her last line and the reward
   were a level-up of the player's character at her death and a
   shader-compiler line. The `+10% to Cold Resistance` reward came about
-  44 s after her death and before the `G1_4` area lines, although the
-  person reported waiting 60 s before using the item, so whether this
-  reward waits on the use, as Live 1 and Live 4 suggest, is no longer
-  settled. From outside the game her death was seen: her name left the
+  44 s after her death and before the `G1_4` area lines. The person used
+  the item before the procedure's 60 s were up, since they had no timer
+  (the owner, 2026-10-26), so the reward again came at the use, as in
+  Live 1 and Live 4. From outside the game her death was seen: her name left the
   boss bar at the kill, the person heard a cry in the game-only recording,
   and two audio records were read from disk then and at no other time in
   the session. The tracker still has the player tick the defeat step.
@@ -1080,7 +1080,7 @@ The reward line came at 15:10:45.655 and Una's "What happened here...?" at
 | `i3-bar-control` | pass | her name in the boss bar in 12 of 23 top-band frames between her first and last lines (0.52) |
 | `i3-text-target` | pass | 5 bottom-band lines new within [M − 3, M + 4], at −2.51, −2.01, −0.50 and twice +3.50 s |
 | `i3-bar-target` | pass | her name in 12 of 20 top-band frames in the 10 s before M and in none of 18 frames from M + 1 s to M + 10 s, none black; the last frame with it 4.02 s before M |
-| `reward-split` | fail | the reward line 40.1 s after M, not the 55 s the procedure's 60 s wait before using the item would give |
+| `reward-split` | fail | the reward line 40.1 s after M, not the 55 s the procedure's 60 s wait would give; the person used the item early (no timer), so the fail records a short wait, not a reward granted at the kill |
 
 **The file-read trace (I1).** Its controls passed: the rehearsal saw a
 cached read call and a paging read of a mapped page, the cache was cold
@@ -1147,10 +1147,9 @@ hints and two labels of dropped items. The remark is not in `Client.txt`
 kill is not established.
 
 **The reward.** It came 40.1 s after M, about 44 s after her death. The
-person reported following the steps (pick up, wait 60 s, use), so the
-reward came before the end of the wait, unlike Live 4's, which followed
-the use. Whether it was granted at the pickup or the wait was shorter is not
-established from this session.
+person used the item before the 60 s wait was over, having no timer (the
+owner, 2026-10-26), so the wait was shorter than the procedure asked and
+the reward followed the use, as Live 4's did.
 
 ### Product route
 
