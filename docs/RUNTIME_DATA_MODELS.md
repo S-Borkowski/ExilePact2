@@ -318,8 +318,9 @@ not measured, unless a bullet says otherwise.
   master volume (48) and the music and effects volumes (41 each).
 - **Window and chat** (static reading, 2026-10-26).
   `borderless_windowed_fullscreen` and `fullscreen` (`true` and `false`,
-  at 2560×1440 on the machine read); `chat_box_width`, `chat_box_height`
-  (1040 and 640) and `show_chat_timestamps` (`true`).
+  at 2560×1440 on the machine read); `renderer_type` (`Vulkan` on the
+  machine read); `chat_box_width`, `chat_box_height` (1040 and 640) and
+  `show_chat_timestamps` (`true`).
 
 ## On-screen text (boss bar and subtitles)
 
@@ -339,7 +340,9 @@ Windows' own OCR; the game's process was not touched.
 - **Subtitles OCR** (measured 2026-10-26, Live 6). Her four lines, two
   town NPC lines and Una's line read at a score of at least 0.8 in the
   chat band within 4 s of their log lines. None of 2,110 GDI captures of
-  the borderless DX12 window was black.
+  the borderless window was black (the config file named
+  `renderer_type=Vulkan`, last written before the session; other
+  renderers not tested).
 - **The character's own remark at a boss kill is shown but not logged**
   (measured 2026-10-26, one kill). About 1.5 s after Beira's death the
   player character's spoken remark appeared as a subtitle, prefixed with
