@@ -70,6 +70,12 @@ pub const STOPPED_STATUS: &str =
 /// its going would have counted by now, and cannot until the bar shows again.
 pub const PANEL_STATUS: &str = "A panel or a name over the boss bar hides it; screen reading counts the bar going only once it shows again.";
 
+/// The status line when a boss bar that was up has been out of sight (the
+/// game not in front or minimized, the overlay over it, a failed copy or OCR)
+/// for [`GONE_RUN`] reads with no sight of it since: as with a panel, its
+/// going cannot count until the bar shows again.
+pub const OUT_OF_SIGHT_STATUS: &str = "The boss bar was out of sight after it showed; screen reading counts the bar going only once it shows again.";
+
 /// The backend, shared by every reader the app starts (one at a time).
 pub(crate) type SharedBackend = Arc<Mutex<Box<dyn ScreenBackend>>>;
 
@@ -308,17 +314,31 @@ struct Minute {
 struct BarSight {
     /// The bar read present since the tracker last (re)armed.
     seen: bool,
-    /// A visible read covered the bar after it was seen (a panel's title or
-    /// a name over its column), with no present read since.
+    /// A covered read came after the bar was seen, with no present read
+    /// since: the tracker is spoiled.
+    hidden: bool,
+    /// One of those covered reads was visible: a panel's title or a name
+    /// over the bar's column, rather than the band out of sight.
     panel: bool,
-    /// Reads since then, none of them present.
+    /// Reads since the first of them, none of them present.
     reads_since: u32,
 }
 
+/// Why a bar that was up cannot count its going, as the status line says.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum BarHidden {
+    /// A panel or a name over the bar's column ([`PANEL_STATUS`]).
+    Panel,
+    /// The band out of sight ([`OUT_OF_SIGHT_STATUS`]).
+    OutOfSight,
+}
+
 /// Beside the bar trackers, what tells the person why a bar's going cannot
-/// count: a covered read after the bar was up spoils it until the bar shows
-/// again (`qt-screen`'s `BarTracker`), and a panel, unlike the overlay or a
-/// failed copy, has no line of its own. Each read is classed with the
+/// count: any covered read after the bar was up spoils it until the bar shows
+/// again (`qt-screen`'s `BarTracker`), whatever covered it. The overlay and a
+/// run of failed copies have lines of their own while they last; a panel, a
+/// name, the game out of view or a single failed read have none, and the
+/// spoiled tracker outlives all of them. Each read is classed with the
 /// trackers' own [`classify_bar`]; only the classes are kept, never text.
 #[derive(Clone, Debug, Default)]
 struct BarWatch {
@@ -346,10 +366,13 @@ impl BarWatch {
                     };
                     continue;
                 }
-                BarClass::Covered if sight.seen && obs.is_visible() => sight.panel = true,
+                BarClass::Covered if sight.seen => {
+                    sight.hidden = true;
+                    sight.panel |= obs.is_visible();
+                }
                 BarClass::Covered | BarClass::Absent => {}
             }
-            if sight.panel {
+            if sight.hidden {
                 sight.reads_since += 1;
             }
         }
@@ -361,11 +384,22 @@ impl BarWatch {
         }
     }
 
-    /// Whether a panel has hidden a seen bar for [`GONE_RUN`] reads or more.
-    fn panel_hides(&self) -> bool {
-        self.bars
+    /// Whether a seen bar has been hidden for [`GONE_RUN`] reads or more, so
+    /// its going would have counted by now: by a panel if any such bar was,
+    /// else out of sight.
+    fn hides(&self) -> Option<BarHidden> {
+        let long: Vec<&BarSight> = self
+            .bars
             .values()
-            .any(|s| s.panel && s.reads_since >= GONE_RUN)
+            .filter(|s| s.hidden && s.reads_since >= GONE_RUN)
+            .collect();
+        if long.iter().any(|s| s.panel) {
+            Some(BarHidden::Panel)
+        } else if long.is_empty() {
+            None
+        } else {
+            Some(BarHidden::OutOfSight)
+        }
     }
 }
 
@@ -759,7 +793,8 @@ impl Reader {
     }
 
     /// The status line for what holds now: a refused shape, failing copies,
-    /// the overlay over a region, or a panel over a bar that was up.
+    /// the overlay over a region, or a bar that was up hidden since, by a
+    /// panel or out of sight.
     fn current_status(&self) -> Option<StatusLine> {
         Self::status_for(
             self.aspect,
@@ -785,10 +820,11 @@ impl Reader {
             )))
         } else if !covered.is_empty() {
             Some(covered_status(covered))
-        } else if bar_watch.panel_hides() {
-            Some(StatusLine::warn(PANEL_STATUS))
         } else {
-            None
+            match bar_watch.hides()? {
+                BarHidden::Panel => Some(StatusLine::warn(PANEL_STATUS)),
+                BarHidden::OutOfSight => Some(StatusLine::warn(OUT_OF_SIGHT_STATUS)),
+            }
         }
     }
 
@@ -1069,16 +1105,36 @@ mod tests {
     }
 
     /// Feeds `reads` to a watch over Beira's bar and to her tracker, as the
-    /// reader does, and returns the watch.
-    fn watch(reads: &[Observation]) -> BarWatch {
+    /// reader does, and returns the watch and how many `bar_gone` it fired.
+    fn watch(reads: &[Observation]) -> (BarWatch, usize) {
         let bosses = vec![BEIRA.to_string()];
         let mut tracker = qt_screen::BarTracker::new(BEIRA);
         let mut w = BarWatch::default();
+        let mut fired = 0;
         for obs in reads {
             let events: Vec<ScreenEvent> = tracker.observe(obs).1.into_iter().collect();
+            fired += events.len();
             w.observe(&bosses, obs, &events);
         }
-        w
+        (w, fired)
+    }
+
+    fn status_of(w: &BarWatch) -> Option<String> {
+        Reader::status_for(None, 0, &BTreeSet::new(), w).map(|s| s.text)
+    }
+
+    /// Beira's bar up for two reads, then `cover`, then absent reads until
+    /// her going would have counted had nothing covered it.
+    fn covered_then_absent(cover: Observation) -> Vec<Observation> {
+        let mut reads = vec![
+            bar_read(0, vec![beira_name()]),
+            bar_read(500, vec![beira_name()]),
+        ];
+        reads.push(cover);
+        for n in 0..qt_screen::GONE_RUN as i64 {
+            reads.push(bar_read(1_500 + 500 * n, Vec::new()));
+        }
+        reads
     }
 
     #[test]
@@ -1091,15 +1147,13 @@ mod tests {
             at += 500;
             reads.push(bar_read(at, Vec::new()));
         }
-        assert!(!watch(&reads).panel_hides(), "not before GONE_RUN reads");
+        assert_eq!(watch(&reads).0.hides(), None, "not before GONE_RUN reads");
         at += 500;
         reads.push(bar_read(at, Vec::new()));
-        let w = watch(&reads);
-        assert!(w.panel_hides());
-        assert_eq!(
-            Reader::status_for(None, 0, &BTreeSet::new(), &w).map(|s| s.text),
-            Some(PANEL_STATUS.to_string())
-        );
+        let (w, fired) = watch(&reads);
+        assert_eq!(fired, 0, "the covered read spoiled the tracker");
+        assert_eq!(w.hides(), Some(BarHidden::Panel));
+        assert_eq!(status_of(&w), Some(PANEL_STATUS.to_string()));
         // The overlay's own line comes first.
         let over: BTreeSet<Region> = [Region::BossBar].into();
         assert_eq!(
@@ -1109,34 +1163,68 @@ mod tests {
         // Her bar back clears it.
         at += 500;
         reads.push(bar_read(at, vec![beira_name()]));
-        assert!(!watch(&reads).panel_hides());
+        assert_eq!(status_of(&watch(&reads).0), None);
     }
 
     #[test]
-    fn a_bar_never_seen_or_hidden_out_of_view_sets_no_panel_status() {
-        // A panel before the bar ever showed spoils nothing.
-        let mut reads: Vec<Observation> = (0..2 * qt_screen::GONE_RUN as i64)
-            .map(|n| bar_read(500 * n, vec![panel_title()]))
-            .collect();
-        assert!(!watch(&reads).panel_hides());
-        // The game out of view after the bar showed is not a panel.
-        let start = 500 * reads.len() as i64;
-        reads.push(bar_read(start, vec![beira_name()]));
-        reads.push(bar_read(start + 500, vec![beira_name()]));
-        for n in 0..2 * qt_screen::GONE_RUN as i64 {
-            reads.push(Observation::hidden(
-                Region::BossBar,
-                start + 1_000 + 500 * n,
-                Hidden::NotForeground,
-            ));
+    fn a_seen_bar_out_of_sight_then_absent_sets_the_out_of_sight_status() {
+        // Each way the band can be out of sight for one read spoils the
+        // tracker as a panel does, and the line says so, not nothing.
+        for why in [
+            Hidden::NotForeground,
+            Hidden::Minimized,
+            Hidden::Overlay,
+            Hidden::CaptureFailed,
+            Hidden::Black,
+            Hidden::OcrFailed,
+        ] {
+            let mut reads = covered_then_absent(Observation::hidden(Region::BossBar, 1_000, why));
+            let (w, fired) = watch(&reads);
+            assert_eq!(fired, 0, "{why:?}: the tracker is spoiled");
+            assert_eq!(w.hides(), Some(BarHidden::OutOfSight), "{why:?}");
+            assert_eq!(
+                status_of(&w),
+                Some(OUT_OF_SIGHT_STATUS.to_string()),
+                "{why:?}"
+            );
+            // The next present read clears it.
+            reads.push(bar_read(10_000, vec![beira_name()]));
+            assert_eq!(status_of(&watch(&reads).0), None, "{why:?}");
         }
-        assert!(!watch(&reads).panel_hides());
+        // The negative control: the same reads with an absent one in the
+        // cover's place fire `bar_gone` and leave no line.
+        let (w, fired) = watch(&covered_then_absent(bar_read(1_000, Vec::new())));
+        assert_eq!(fired, 1);
+        assert_eq!(status_of(&w), None);
+        // A panel among the covers names the panel.
+        let mut both = covered_then_absent(bar_read(1_000, vec![panel_title()]));
+        both.insert(
+            3,
+            Observation::hidden(Region::BossBar, 1_200, Hidden::NotForeground),
+        );
+        assert_eq!(watch(&both).0.hides(), Some(BarHidden::Panel));
+    }
+
+    #[test]
+    fn a_bar_never_seen_or_gone_in_plain_sight_sets_no_status() {
+        // A panel, or the band out of sight, before the bar ever showed
+        // spoils nothing.
+        let early: Vec<Observation> = (0..2 * qt_screen::GONE_RUN as i64)
+            .map(|n| {
+                if n % 2 == 0 {
+                    bar_read(500 * n, vec![panel_title()])
+                } else {
+                    Observation::hidden(Region::BossBar, 500 * n, Hidden::NotForeground)
+                }
+            })
+            .collect();
+        assert_eq!(status_of(&watch(&early).0), None);
         // A bar that went in plain sight leaves nothing behind.
         let mut gone = vec![bar_read(0, vec![beira_name()]), bar_read(500, vec![beira_name()])];
         for n in 0..2 * qt_screen::GONE_RUN as i64 {
             gone.push(bar_read(1_000 + 500 * n, Vec::new()));
         }
-        assert!(!watch(&gone).panel_hides());
+        assert_eq!(status_of(&watch(&gone).0), None);
         // A boss no longer demanded is forgotten.
         let mut w = watch(&{
             let mut r = vec![bar_read(0, vec![beira_name()]), bar_read(500, vec![beira_name()])];
@@ -1144,10 +1232,11 @@ mod tests {
                 r.push(bar_read(1_000 + 500 * n, vec![panel_title()]));
             }
             r
-        });
-        assert!(w.panel_hides());
+        })
+        .0;
+        assert_eq!(w.hides(), Some(BarHidden::Panel));
         w.follow(&[]);
-        assert!(!w.panel_hides());
+        assert_eq!(w.hides(), None);
     }
 
     const RENLY: &str = "Renly";
