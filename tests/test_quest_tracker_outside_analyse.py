@@ -161,14 +161,23 @@ def bark(buf: list[float], start: datetime.datetime, origin: datetime.datetime, 
 
 def build(root: Path, *, controls=True, burst_at_kill=False, read_at_kill=False, bar_vanishes=False,
           text_at_kill=False, busy=False, focus_gap=False, warm=False, marker_tone=False,
-          town_tone=True, refs=False) -> Path:
-    """A synthetic live folder in `root`; returns it."""
+          town_tone=True, refs=False, opening="parsed") -> Path:
+    """A synthetic live folder in `root`; returns it. `opening` is what the
+    older session's `LOG FILE OPENING` is: `parsed`, `missing` or
+    `unparsed` (the marker is there but its time does not read)."""
     live = root / "live"
     for sub in common.SUBFOLDERS:
         (live / sub).mkdir(parents=True, exist_ok=True)
 
     # Client.txt: the older session, then this one.
     before = (FIXTURES / "before.txt").read_text(encoding="utf-8").splitlines()
+    if opening == "missing":
+        before = [l for l in before if "LOG FILE OPENING" not in l]
+    elif opening == "unparsed":
+        before = [l.replace("2026/10/24 23:10:00", "2026-10-24T23:10") if "LOG FILE OPENING" in l else l
+                  for l in before]
+    else:
+        assert opening == "parsed", opening
     lines = (FIXTURES / "client.txt").read_text(encoding="utf-8").splitlines()
     if focus_gap:
         lines += [log_line(z("10:27:44.000"), "[WINDOW] Lost focus"),
@@ -613,6 +622,30 @@ class NegativeControls(Case):
         self.assertEqual(self.verdict(r, "i1-target"), "not-run (instrument: warm cache)")
         self.assertIn("uptime at prep 191380000 ms", r["i1-target"]["observed"])
         self.assertEqual(self.verdict(r, "control"), "pass")
+
+    def _assert_cache_unknown(self, r):
+        for name in ("i1-control", "i1-rehearsal", "i1-rehearsal-mapped", "control"):
+            self.assertEqual(self.verdict(r, name), "pass", "%s: %s" % (name, r[name]["observed"]))
+        self.assertEqual(self.verdict(r, "i1-target"), "not-run (instrument: cache state unknown)")
+        self.assertIn("uptime at prep 91380000 ms", r["i1-target"]["observed"])
+        self.assertIn(": cache state unknown", r["i1-target"]["observed"])
+        self.assertNotIn(": cold", r["i1-target"]["observed"])
+
+    def test_no_log_file_opening_before_the_session_is_cache_state_unknown(self):
+        live = build(self.tmp, opening="missing")
+        self.assertIsNone(clientlog.last_opening_before(
+            self.tmp / "Client.txt", common.read_json(live / common.SESSION_JSON)["client_txt_offset"], TZ))
+        r = self.analyse(live)
+        self._assert_cache_unknown(r)
+        self.assertIn("none in the log", r["i1-target"]["observed"])
+
+    def test_a_log_file_opening_that_does_not_parse_is_cache_state_unknown(self):
+        live = build(self.tmp, opening="unparsed")
+        self.assertIn(b"LOG FILE OPENING", (self.tmp / "Client.txt").read_bytes()[
+            :common.read_json(live / common.SESSION_JSON)["client_txt_offset"]])
+        r = self.analyse(live)
+        self._assert_cache_unknown(r)
+        self.assertIn("none parsed", r["i1-target"]["observed"])
 
     def test_the_marker_tone_in_the_recording_fails_isolation(self):
         r = self.analyse(build(self.tmp, marker_tone=True), only=["i2-isolation"])

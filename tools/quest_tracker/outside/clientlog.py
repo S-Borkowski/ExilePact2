@@ -227,10 +227,20 @@ def last_opening_before(path: Path, offset: int, tz: _dt.tzinfo | None = None,
                         chunk: int = 1 << 20) -> _dt.datetime | None:
     """The UTC of the last `LOG FILE OPENING` that starts before byte `offset`,
     read backwards from it, or None when there is none."""
+    return scan_openings_before(path, offset, tz, chunk)[0]
+
+
+def scan_openings_before(path: Path, offset: int, tz: _dt.tzinfo | None = None,
+                         chunk: int = 1 << 20) -> tuple[_dt.datetime | None, int]:
+    """(`last_opening_before`'s answer, the number of `LOG FILE OPENING` marks
+    passed over because their time did not parse). With no answer, a count of
+    0 means no mark at all before `offset`; more means marks none of which
+    parsed."""
     path = Path(path)
     if not path.is_file():
         raise common.ToolError("no Client.txt at %s" % path)
     margin = 64
+    unparsed = 0
     with open(path, "rb") as f:
         end = min(int(offset), path.stat().st_size)
         while end > 0:
@@ -247,7 +257,8 @@ def last_opening_before(path: Path, offset: int, tz: _dt.tzinfo | None = None,
                     line = data[ls:].split(b"\n", 1)[0].decode("utf-8", errors="replace").rstrip("\r")
                     when = opening_utc(line, tz)
                     if when is not None:
-                        return when
+                        return when, unparsed
+                    unparsed += 1
                 i = data.rfind(_OPENING_MARK, 0, i)
             end = start
-    return None
+    return None, unparsed

@@ -959,12 +959,19 @@ def _cache_state(s: Session) -> tuple[bool | None, str]:
     boot = first.utc - _dt.timedelta(milliseconds=first.tick_ms)
     sess = s.session_json()
     try:
-        last = clientlog.last_opening_before(Path(sess["client_txt"]), int(sess["client_txt_offset"]), s.tz)
-    except ToolError:
-        last = None
+        last, unparsed = clientlog.scan_openings_before(
+            Path(sess["client_txt"]), int(sess["client_txt_offset"]), s.tz)
+        found = (common.format_utc(last) if last else
+                 "none parsed (%d LOG FILE OPENING mark(s))" % unparsed if unparsed else "none in the log")
+    except ToolError as err:
+        last, found = None, "unknown (%s)" % err
     text = "uptime at prep %d ms (boot %s); last game start before the session %s" % (
-        first.tick_ms, common.format_utc(boot), common.format_utc(last) if last else "none in the log")
-    cold = last is None or boot > last
+        first.tick_ms, common.format_utc(boot), found)
+    # Without a game start to compare the boot with, nothing says the cache
+    # is cold: an absent or unreadable marker is not "no game since the boot".
+    if last is None:
+        return None, text + ": cache state unknown"
+    cold = boot > last
     return cold, text + (": cold" if cold else ": warm")
 
 
