@@ -510,6 +510,84 @@ fn replay_decides_an_open_relog_window_at_end() {
     assert_eq!(report["characters"][0]["active"], json!(true), "{report}");
 }
 
+/// The relog of `riverbank_relog.txt`: a character named by its level-up
+/// in a Riverbank instance, then a new session whose level-1 entry has that
+/// instance's seed and no build line naming anyone, then Clearfell.
+#[test]
+fn replay_keeps_a_named_character_on_a_riverbank_relog() {
+    const NAME: &str = "Tamsin_Vodrey";
+    const SEED: &str = "with seed 3141592653";
+    let store = tempfile::tempdir().unwrap();
+    let data = quests_min();
+    let state = |log: &Path, as_json: bool| {
+        let mut args = vec![
+            OsStr::new("state"),
+            log.as_os_str(),
+            OsStr::new("--data"),
+            data.as_os_str(),
+        ];
+        if as_json {
+            args.push(OsStr::new("--json"));
+        }
+        run(store.path(), args)
+    };
+    let fixture = session("riverbank_relog.txt");
+    let text = fs::read_to_string(&fixture).unwrap();
+    assert_eq!(text.matches(SEED).count(), 2, "two entries, one seed");
+    assert!(!text.contains("has unknown build of path"), "no name line");
+
+    // The second entry has the seed the level-up gave the character, so it
+    // is that character's relog: Clearfell after it unlocks fixture-beira
+    // for the named character, and no new character is open.
+    let report = ok_json(&state(&fixture, true));
+    let chars = report["characters"].as_array().unwrap();
+    assert_eq!(chars.len(), 1, "{report}");
+    let c = &chars[0];
+    assert_eq!(
+        (&c["name"], &c["class"], &c["level"], &c["active"]),
+        (&json!(NAME), &json!("Warrior"), &json!(2), &json!(true)),
+        "{report}"
+    );
+    assert_eq!(c["quests"]["fixture-beira"], json!("available"), "{report}");
+    assert_eq!(
+        c["quests"]["fixture-riverbank"],
+        json!("in_progress"),
+        "{report}"
+    );
+    assert_eq!(report["new_character"], Value::Null, "{report}");
+    assert_eq!(report["dropped_new_character"], json!(0), "{report}");
+    let summary = state(&fixture, false);
+    assert!(summary.status.success());
+    let summary = stdout(&summary);
+    assert!(
+        summary.contains(&format!("{NAME} (Warrior, level 2, own)")),
+        "{summary}"
+    );
+    assert!(!summary.contains("new character (unnamed"), "{summary}");
+
+    // Negative control: the same session with another seed on the second
+    // entry is a fresh instance, so the window opens, no line names
+    // anyone, and Clearfell's evidence goes to a new character instead.
+    let logs = tempfile::tempdir().unwrap();
+    let at = text.rfind(SEED).unwrap();
+    let other = format!(
+        "{}{}",
+        &text[..at],
+        text[at..].replacen(SEED, "with seed 2718281828", 1)
+    );
+    let log = logs.path().join("fresh_instance.txt");
+    fs::write(&log, other).unwrap();
+    let report = ok_json(&state(&log, true));
+    let c = &report["characters"][0];
+    assert_eq!(c["name"], json!(NAME), "{report}");
+    assert_eq!(c["quests"]["fixture-beira"], json!("locked"), "{report}");
+    let new = &report["new_character"];
+    assert!(new.is_object(), "{report}");
+    assert_eq!(new["quests"]["fixture-beira"], json!("available"), "{report}");
+    let summary = stdout(&state(&log, false));
+    assert!(summary.contains("new character (unnamed"), "{summary}");
+}
+
 #[test]
 fn events_hide_character_line_of_unstored_name() {
     const MARKER: &str = "2026/03/14 11:59:00 ***** LOG FILE OPENING *****";
