@@ -7,8 +7,10 @@
 //! `qt:view` and `qt:row-change` events) and [`Window`] (click-through, zoom,
 //! placement, the global shortcut, opening a link, the monitor's metrics
 //! for the `auto` scale, the pid of the window in front and showing or
-//! hiding the overlay for it) and forwards each IPC
-//! command to the [`App`] method of the same name. Keeping the logic here
+//! hiding the overlay for it), forwards each IPC
+//! command to the [`App`] method of the same name, and makes a quit request
+//! ([`App::request_quit`]) from the tray's Quit or a close of the overlay's
+//! window before it exits. Keeping the logic here
 //! means it tests with a fake emitter, clock and window, without a WebView
 //! or a built UI.
 //!
@@ -33,7 +35,8 @@ use qt_engine::QuestData;
 
 pub use app::{
     auto_rescale, overlay_shown, scale_factor, App, AppConfig, Clock, Emitter, MonitorMetrics, Placement,
-    SystemClock, Window, HIDDEN_LINE, SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT, WORKER_TICK,
+    QuitFrom, SystemClock, Window, HIDDEN_LINE, SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT,
+    WORKER_TICK,
 };
 pub use cli::Options;
 // What the glue names without depending on the library crates itself.

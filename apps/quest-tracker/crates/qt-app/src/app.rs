@@ -113,11 +113,13 @@ pub fn overlay_shown(mode: Mode, game: Option<u32>, foreground: Option<u32>, own
 
 /// How long a game pid read only from catch-up or the seed may hide the
 /// overlay before it is confirmed. A live line with that header, or that
-/// pid's window in front, confirms it. A log the running game does not write
-/// to (an old install's `Client.txt`, a wrong `log_path`) gives a pid no
-/// running game has, and no live line ever replaces it: without this bound
-/// play mode would hide the overlay over the real game for the whole session.
-/// After it, that pid is not used to hide (fail open) until it is confirmed.
+/// pid's window in front within this time, confirms it. A log the running
+/// game does not write to (an old install's `Client.txt`, a wrong
+/// `log_path`) gives a pid no running game has, and no live line ever
+/// replaces it: without this bound play mode would hide the overlay over the
+/// real game for the whole session. After it, that pid is not used to hide
+/// (fail open) until a live line confirms it: Windows reuses pids, so a
+/// window of that pid in front no longer does.
 pub const UNCONFIRMED_PID_GRACE_MS: u64 = 10_000;
 
 /// How far the game pid in [`State::game_pid`] is trusted by the visibility
@@ -131,7 +133,7 @@ enum PidTrust {
     /// for [`UNCONFIRMED_PID_GRACE_MS`].
     Unconfirmed { since_ms: u64 },
     /// Not confirmed within the grace: not used to hide the overlay, until a
-    /// live line or its window in front confirms it.
+    /// live line confirms it (its window in front no longer does).
     Stale,
 }
 
@@ -446,7 +448,29 @@ pub struct App {
     worker: Mutex<Option<JoinHandle<()>>>,
     worker_stop: Arc<AtomicBool>,
     stopped: AtomicBool,
+    /// A quit was requested ([`App::request_quit`]).
+    quitting: AtomicBool,
     saves: AtomicU64,
+}
+
+/// Where a request to quit the overlay came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuitFrom {
+    /// The tray icon's "Quit Quest Tracker".
+    Tray,
+    /// A close request to the overlay's own window (`WM_CLOSE`), shown or
+    /// hidden.
+    WindowClosed,
+}
+
+impl QuitFrom {
+    /// The diagnostic line a first request writes.
+    fn line(self) -> &'static str {
+        match self {
+            QuitFrom::Tray => "quit: from the tray",
+            QuitFrom::WindowClosed => "quit: the window was closed",
+        }
+    }
 }
 
 impl App {
@@ -692,6 +716,7 @@ impl App {
             worker: Mutex::new(None),
             worker_stop: Arc::new(AtomicBool::new(false)),
             stopped: AtomicBool::new(false),
+            quitting: AtomicBool::new(false),
             saves: AtomicU64::new(0),
         });
         if let Some(e) = &options_error {
@@ -819,6 +844,19 @@ impl App {
             });
         }
         tailer_ok && worker_ok
+    }
+
+    /// A request to quit, from the tray or a close of the overlay's window
+    /// (Context "Tray icon and a clean exit while hidden"). The first request
+    /// writes one line saying where it came from and returns true; any later
+    /// one writes nothing and returns false. It stops nothing itself: the
+    /// caller exits the app, whose exit runs [`App::shutdown`] as before.
+    pub fn request_quit(&self, from: QuitFrom) -> bool {
+        if self.quitting.swap(true, Ordering::AcqRel) {
+            return false;
+        }
+        self.diag(from.line());
+        true
     }
 
     /// True while the worker thread runs.
@@ -1105,9 +1143,10 @@ impl App {
     /// the game or the overlay itself. Each change is applied and logged
     /// once ([`HIDDEN_LINE`], [`SHOWN_LINE`]); showing never activates the
     /// window, so the game keeps focus. A game pid read only from catch-up
-    /// or the seed is confirmed when its window is in front, and stops
-    /// hiding the overlay when it is not confirmed within
-    /// [`UNCONFIRMED_PID_GRACE_MS`]; both are logged once.
+    /// or the seed is confirmed when its window is in front within
+    /// [`UNCONFIRMED_PID_GRACE_MS`], and stops hiding the overlay when it is
+    /// not; both are logged once. A pid gone stale is confirmed only by a
+    /// live line, never by a window in front (Windows reuses pids).
     pub fn follow_foreground(&self) {
         let (mode, game) = {
             let st = self.lock();
@@ -1126,12 +1165,11 @@ impl App {
             return;
         }
         if let Some(pid) = game {
+            // Only a pid within its grace is confirmed by its window: Windows
+            // reuses pids, so once stale only a live line confirms it again
+            // (the game writes one with its pid whenever it gains focus).
             match st.pid_trust {
-                PidTrust::Confirmed => {}
-                _ if front == Some(pid) => {
-                    st.pid_trust = PidTrust::Confirmed;
-                    self.diag(&format!("game pid: {pid} confirmed (its window is in front)"));
-                }
+                PidTrust::Confirmed | PidTrust::Stale => {}
                 PidTrust::Unconfirmed { since_ms }
                     if now.saturating_sub(since_ms) >= UNCONFIRMED_PID_GRACE_MS =>
                 {
@@ -1143,7 +1181,11 @@ impl App {
                         UNCONFIRMED_PID_GRACE_MS / 1000
                     ));
                 }
-                _ => {}
+                PidTrust::Unconfirmed { .. } if front == Some(pid) => {
+                    st.pid_trust = PidTrust::Confirmed;
+                    self.diag(&format!("game pid: {pid} confirmed (its window is in front)"));
+                }
+                PidTrust::Unconfirmed { .. } => {}
             }
         }
         let used = if st.pid_trust == PidTrust::Stale { None } else { game };
@@ -1268,7 +1310,7 @@ impl App {
 
     pub fn quest_action(&self, quest_id: &str, action: QuestAction) -> Result<View, String> {
         self.command("quest_action", |app, st| {
-            let name = current(st)?;
+            let name = quest_target(st)?;
             let ts = st
                 .engine
                 .quest_action(&name, quest_id, action)
@@ -1280,7 +1322,7 @@ impl App {
 
     pub fn tick_step(&self, quest_id: &str, step_id: &str, ticked: bool) -> Result<View, String> {
         self.command("tick_step", |app, st| {
-            let name = current(st)?;
+            let name = quest_target(st)?;
             let ts = st
                 .engine
                 .tick_step(&name, quest_id, step_id, ticked)
@@ -1837,11 +1879,14 @@ enum Write {
     ClearNewCharacter,
 }
 
-/// The character a quest command applies to: the pinned one, else the
-/// active one.
-fn current(st: &State) -> Result<String, String> {
+/// The character a quest command applies to: the one the panel shows. That
+/// is the pinned one, else the active one, else the open new character from
+/// The Riverbank, which the engine names with the empty name; its overrides
+/// are kept in its record and pass to the character it becomes (Context
+/// "Quest actions on the new character"). Refused only with neither.
+fn quest_target(st: &State) -> Result<String, String> {
     st.engine
-        .current()
+        .quest_target()
         .map(str::to_string)
         .ok_or_else(|| "no character yet: play until one is detected, or pick one".to_string())
 }
@@ -2199,10 +2244,15 @@ mod tests {
         );
         assert!(!text.contains(&REAL_GAME.to_string()), "{text}");
 
-        // Its window in front confirms a stale pid again: from then on the
-        // rule hides as before, whatever the clock says.
+        // A window of the stale pid in front no longer confirms it (Windows
+        // reuses pids): the overlay stays shown over another program.
         in_front(STALE);
-        assert!(log().contains(&format!("game pid: {STALE} confirmed (its window is in front)")));
+        assert!(!log().contains(&format!("game pid: {STALE} confirmed")), "{}", log());
+        in_front(OTHER);
+        assert_eq!(visible(), vec!["visible false", "visible true"]);
+        // A live line with it does: from then on the rule hides as before,
+        // whatever the clock says.
+        app.handle_tail_events(line(STALE, false));
         clock.fetch_add(60_000, Ordering::SeqCst);
         in_front(OTHER);
         assert_eq!(visible(), vec!["visible false", "visible true", "visible false"]);
@@ -2227,6 +2277,129 @@ mod tests {
         in_front(OTHER);
         assert_eq!(visible().len(), 7, "{:?}", visible());
         assert_eq!(visible().last().map(String::as_str), Some("visible false"));
+    }
+
+    /// An app with a store, a fake window whose window in front is set by
+    /// the test, and a clock the test moves; no tailer and no worker.
+    struct PidRig {
+        _dir: tempfile::TempDir,
+        store: PathBuf,
+        app: Arc<App>,
+        calls: Arc<Mutex<Vec<String>>>,
+        front: Arc<Mutex<Option<u32>>>,
+        clock: Arc<AtomicU64>,
+    }
+
+    impl PidRig {
+        fn new() -> PidRig {
+            let dir = tempfile::tempdir().expect("temp dir");
+            let store = dir.path().join("store");
+            let calls = Arc::new(Mutex::new(Vec::new()));
+            let front = Arc::new(Mutex::new(None));
+            let clock = Arc::new(AtomicU64::new(100_000));
+            let app = App::new(AppConfig {
+                options: Options::default(),
+                options_error: None,
+                store: Store::open(store.clone()).map_err(|e| e.to_string()),
+                data: None,
+                candidates: Vec::new(),
+                poll_interval: Duration::from_millis(20),
+                emitter: Box::new(NoEmitter),
+                window: Box::new(FakeWindow {
+                    calls: Arc::clone(&calls),
+                    hotkey_fails: false,
+                    front: Arc::clone(&front),
+                }),
+                clock: Box::new(ManualClock(Arc::clone(&clock))),
+            });
+            PidRig { _dir: dir, store, app, calls, front, clock }
+        }
+
+        /// One line with `pid` in its header, read live or as catch-up.
+        fn line(&self, pid: u32, catch_up: bool) {
+            self.app.handle_tail_events(vec![TailEvent::Line(qt_tailer::Line {
+                text: format!(
+                    "2026/03/10 19:00:01 1 7e2c0010 [INFO Client {pid}] Connecting to instance server"
+                ),
+                end_offset: 1,
+                catch_up,
+                fingerprint: qt_tailer::Fingerprint::of(b"fixture log"),
+            })]);
+        }
+
+        fn in_front(&self, pid: u32) {
+            *self.front.lock().unwrap() = Some(pid);
+            self.app.follow_foreground();
+        }
+
+        fn wait(&self, ms: u64) {
+            self.clock.fetch_add(ms, Ordering::SeqCst);
+        }
+
+        fn visible(&self) -> Vec<String> {
+            self.calls.lock().unwrap().iter().filter(|c| c.starts_with("visible")).cloned().collect()
+        }
+
+        fn log(&self) -> String {
+            std::fs::read_to_string(self.store.join("overlay.log")).unwrap_or_default()
+        }
+    }
+
+    #[test]
+    fn unconfirmed_pid_is_confirmed_by_its_window_in_front() {
+        // Baseline: a pid read only from catch-up whose window comes to the
+        // front within the grace is the running game's, confirmed once, and
+        // hides the overlay over another program long after the grace.
+        const GAME: u32 = 15_660;
+        const OTHER: u32 = 9_999;
+        let rig = PidRig::new();
+        rig.line(GAME, true);
+        rig.wait(UNCONFIRMED_PID_GRACE_MS - 1);
+        rig.in_front(GAME);
+        rig.in_front(GAME);
+        let text = rig.log();
+        assert_eq!(
+            text.matches(&format!("game pid: {GAME} confirmed (its window is in front)")).count(),
+            1,
+            "{text}"
+        );
+        rig.wait(60_000);
+        rig.in_front(OTHER);
+        assert_eq!(rig.visible(), vec!["visible false"]);
+        assert!(!rig.log().contains("not used to hide the overlay"), "{}", rig.log());
+    }
+
+    #[test]
+    fn stale_pid_is_not_confirmed_by_a_window_in_front() {
+        // Target: once the grace has passed unconfirmed, a window of that
+        // pid in front (Windows reuses pids) confirms nothing, even on the
+        // tick the grace ends; the pid stays unused, so the overlay stays
+        // shown over another program.
+        const STALE: u32 = 15_660;
+        const OTHER: u32 = 9_999;
+        let rig = PidRig::new();
+        rig.line(STALE, true);
+        rig.wait(UNCONFIRMED_PID_GRACE_MS);
+        rig.in_front(STALE);
+        for _ in 0..3 {
+            rig.wait(60_000);
+            rig.in_front(STALE);
+            rig.in_front(OTHER);
+        }
+        let text = rig.log();
+        assert!(!text.contains("confirmed"), "{text}");
+        assert_eq!(
+            text.matches(&format!("game pid: {STALE} not used to hide the overlay")).count(),
+            1,
+            "{text}"
+        );
+        assert!(rig.visible().is_empty(), "{:?}", rig.visible());
+
+        // Positive control: a live line with that pid confirms it, and the
+        // same program in front then hides the overlay.
+        rig.line(STALE, false);
+        rig.in_front(OTHER);
+        assert_eq!(rig.visible(), vec!["visible false"]);
     }
 
     #[test]

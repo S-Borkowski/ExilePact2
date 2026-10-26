@@ -21,7 +21,8 @@ use std::time::{Duration, Instant};
 use qt_app::cli::{self, Options};
 use qt_app::discover::{self, LogSource};
 use qt_app::{
-    App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, Window, HIDDEN_LINE, SHOWN_LINE,
+    App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, QuitFrom, Window, HIDDEN_LINE,
+    SHOWN_LINE, SHUTDOWN_TIMEOUT,
 };
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
@@ -1362,10 +1363,11 @@ fn riverbank_new_character_is_logged() {
     let c = h.views.last().character.expect("the named character");
     assert_eq!((c.name.as_str(), c.provisional), (OWN, false));
 
-    // A pinned character: the next Riverbank start releases the pin, and
+    // A pinned character: the next Riverbank start, in another instance
+    // (the same seed is the named character's relog), releases the pin, and
     // says so, when its window closes.
     h.app.pin_character(Some(OWN)).unwrap();
-    h.app.handle_tail_events(events(&riverbank(), false));
+    h.app.handle_tail_events(events(&riverbank_at("10:02", 32), false));
     assert_eq!(h.diag_text().matches(NEW).count(), 1, "{}", h.diag_text());
     quiet_for(&h, 6_000);
     let diag = h.diag_text();
@@ -1689,6 +1691,11 @@ fn relog_window_expires_on_worker_tick() {
     let h = harness(log_setup(text(&own_character_lines()), true));
     h.app.start();
     h.wait_diag(&["catch-up:"]);
+    // The catch-up may reach the worker in more than one batch, each with
+    // its own summary line: wait for the level-up that names the character.
+    h.views.wait_for("the named character", |v| {
+        v.characters.iter().any(|c| c.name == OWN)
+    });
     h.app.pin_character(Some(OWN)).unwrap();
     let base = h.diag_text().matches(NEW_LINE).count();
     append(&h.root.join("Client.txt"), &riverbank_at("10:00", 31));
@@ -1806,6 +1813,85 @@ fn ticks_skips_and_settings_survive_relaunch() {
     assert!(h.window.calls().contains(&at), "{:?}", h.window.calls());
     assert!(h.window.calls().contains(&"scale 2".to_string()), "{:?}", h.window.calls());
     assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn quest_action_reaches_the_new_character() {
+    // Live 3: the panel showed the unnamed new character, and every Skip was
+    // refused with "no character yet".
+    const CANDLES: &str = "fixture-candles";
+    const CARAVAN: &str = "fixture-caravan";
+    let detail = |h: &Harness, id: &str| {
+        h.app.open_detail(Some(id.to_string())).unwrap().detail.unwrap()
+    };
+
+    // Negative control: with no character at all, and no new one, the
+    // commands are refused as before and the refusal is logged.
+    let h = harness(Setup::default());
+    let err = h.app.quest_action(CARAVAN, QuestAction::Skip).expect_err("no character");
+    assert!(err.contains("no character yet"), "{err}");
+    let err = h.app.tick_step(CANDLES, "light-candles", true).expect_err("no character");
+    assert!(err.contains("no character yet"), "{err}");
+    assert!(h.diag_text().contains("command quest_action refused: no character yet"));
+    assert!(h.diag_text().contains("command tick_step refused: no character yet"));
+
+    // A level-1 entry to The Riverbank, the log quiet past the relog
+    // window: the panel shows the new character.
+    h.app.handle_tail_events(events(&riverbank_at("10:00", 31), false));
+    quiet_for(&h, 6_000);
+    let c = h.app.get_view().character.expect("the new character");
+    assert!(c.provisional && c.name.is_empty(), "{c:?}");
+    // Baseline: nothing skipped or ticked.
+    assert_ne!(detail(&h, CARAVAN).row.status, Status::Skipped);
+    assert!(!detail(&h, CANDLES).steps[0].ticked);
+
+    // Target: Skip, on a quest not picked up yet, and a tick reach it.
+    h.app.quest_action(CARAVAN, QuestAction::Skip).unwrap();
+    h.app.tick_step(CANDLES, "light-candles", true).unwrap();
+    assert_eq!(detail(&h, CARAVAN).row.status, Status::Skipped);
+    assert!(detail(&h, CANDLES).steps[0].ticked);
+    // No refusal beyond the negative control's two.
+    assert_eq!(h.diag_text().matches(" refused: ").count(), 2, "{}", h.diag_text());
+
+    // The save writes them into its record, and a relaunch keeps them.
+    let h = h.rerun(Setup::default());
+    let record = h.stored("new-character.json").expect("new-character.json");
+    assert_eq!(record["open"], json!(true));
+    assert_eq!(record["state"]["overrides"][CARAVAN]["skipped"], json!(true));
+    assert_eq!(record["state"]["overrides"][CANDLES]["ticks"], json!(["light-candles"]));
+    assert_eq!(h.stored("characters.json"), Some(json!({})));
+    let c = h.app.get_view().character.expect("the new character after relaunch");
+    assert!(c.provisional, "{c:?}");
+    assert_eq!(detail(&h, CARAVAN).row.status, Status::Skipped);
+    // Unskip works on it too.
+    h.app.quest_action(CARAVAN, QuestAction::Unskip).unwrap();
+    assert_ne!(detail(&h, CARAVAN).row.status, Status::Skipped);
+    h.app.quest_action(CARAVAN, QuestAction::Skip).unwrap();
+
+    // A level-up names it: the overrides pass to the named character, whose
+    // file holds them, and the record is cleared.
+    h.app.handle_tail_events(events(
+        &[format!(
+            "2026/03/12 10:01:00 6060000 9a1c0003 [INFO Client 7120] : {OWN} (Witch) is now level 2"
+        )],
+        false,
+    ));
+    let c = h.app.get_view().character.expect("the named character");
+    assert_eq!((c.name.as_str(), c.provisional), (OWN, false));
+    assert_eq!(detail(&h, CARAVAN).row.status, Status::Skipped);
+    assert!(detail(&h, CANDLES).steps[0].ticked);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    assert!(h.stored("new-character.json").is_none());
+    let state = h
+        .app
+        .store()
+        .unwrap()
+        .load_character(OWN)
+        .unwrap()
+        .value
+        .expect("the character's file");
+    assert_eq!(state["overrides"][CARAVAN]["skipped"], json!(true));
+    assert_eq!(state["overrides"][CANDLES]["ticks"], json!(["light-candles"]));
 }
 
 // ---------------------------------------------------------------------------
@@ -1991,6 +2077,61 @@ fn visibility_change_is_logged_once() {
         assert!(l.ends_with(HIDDEN_LINE) || l.ends_with(SHOWN_LINE), "{l}");
         assert!(!l.contains(&OTHER.to_string()), "{l}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// A quit request, from the tray or a close of the overlay's window, while the
+// overlay is hidden (Live 3's teardown: the process stayed, and nothing was
+// logged after `visibility: hidden`).
+
+#[test]
+fn quit_is_logged_once_then_stops() {
+    const CARAVAN: &str = "fixture-caravan";
+    let h = game_running();
+    // Hidden in play mode: another program is in front.
+    in_front(&h, Some(OTHER));
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    assert_eq!(h.app.get_view().mode, Mode::Play);
+    // A change inside the save interval: not on disk until the exit.
+    h.app.quest_action(CARAVAN, QuestAction::Skip).unwrap();
+    let skipped = |h: &Harness| {
+        h.app
+            .store()
+            .unwrap()
+            .load_character(OWN)
+            .unwrap()
+            .value
+            .is_some_and(|s| s["overrides"][CARAVAN]["skipped"] == json!(true))
+    };
+    assert!(!skipped(&h));
+    // Baseline: no quit line before a request.
+    assert!(!h.diag_text().contains("quit:"), "{}", h.diag_text());
+
+    // Two tray requests and a window-closed one: only the first is the
+    // caller's to act on, and only it is logged.
+    assert!(h.app.request_quit(QuitFrom::Tray));
+    assert!(!h.app.request_quit(QuitFrom::Tray));
+    assert!(!h.app.request_quit(QuitFrom::WindowClosed));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+
+    let text = h.diag_text();
+    assert_eq!(text.matches("quit: from the tray").count(), 1, "{text}");
+    assert!(!text.contains("quit: the window was closed"), "{text}");
+    let hidden = text.find(HIDDEN_LINE).expect("the hidden line");
+    let quit = text.find("quit: from the tray").unwrap();
+    let stop = text.find("stop: tailer and worker ended, progress saved").expect("the stop line");
+    assert!(hidden < quit && quit < stop, "{text}");
+    // Still hidden: the quit changed nothing on the window.
+    assert_eq!(visibility(&h), vec!["visible false"]);
+    assert!(skipped(&h), "the store was saved on exit");
+
+    // The window-closed line, for a first request that is a close.
+    let h = game_running();
+    assert!(h.app.request_quit(QuitFrom::WindowClosed));
+    assert!(!h.app.request_quit(QuitFrom::Tray));
+    let text = h.diag_text();
+    assert_eq!(text.matches("quit: the window was closed").count(), 1, "{text}");
+    assert!(!text.contains("quit: from the tray"), "{text}");
 }
 
 // ---------------------------------------------------------------------------
