@@ -15,7 +15,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use qt_app::cli::{self, Options};
@@ -83,9 +83,68 @@ struct WindowLog {
     monitor: Mutex<Option<MonitorMetrics>>,
     /// The pid of the window in front; `None` is none known.
     foreground: Mutex<Option<u32>>,
+    /// The window calls that block while the gate is closed for them.
+    gate: Mutex<Gate>,
+    gate_moved: Condvar,
 }
 
+/// Which window calls block, and which callers are blocked now. A closed
+/// call waits the way Tauri's window getters do on a thread other than the
+/// main one: until the main thread answers, which it cannot while it is
+/// inside `App::shutdown`. It gives up after [`GATE_LIMIT`], so a test that
+/// fails cannot hang the suite.
+#[derive(Default)]
+struct Gate {
+    closed_for: Vec<&'static str>,
+    waiting: Vec<&'static str>,
+}
+
+/// The longest a closed window call blocks.
+const GATE_LIMIT: Duration = Duration::from_secs(5);
+
 impl WindowLog {
+    /// Blocks `call` while the gate is closed for it, up to [`GATE_LIMIT`].
+    fn pass_gate(&self, call: &'static str) {
+        let deadline = Instant::now() + GATE_LIMIT;
+        let mut gate = self.gate.lock().unwrap();
+        if !gate.closed_for.contains(&call) {
+            return;
+        }
+        gate.waiting.push(call);
+        self.gate_moved.notify_all();
+        while gate.closed_for.contains(&call) {
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() {
+                break;
+            }
+            gate = self.gate_moved.wait_timeout(gate, left).unwrap().0;
+        }
+        if let Some(i) = gate.waiting.iter().position(|c| *c == call) {
+            gate.waiting.remove(i);
+        }
+    }
+
+    fn close_gate(&self, calls: &[&'static str]) {
+        self.gate.lock().unwrap().closed_for = calls.to_vec();
+    }
+
+    /// Opens the gate and releases every blocked call.
+    fn open_gate(&self) {
+        self.gate.lock().unwrap().closed_for.clear();
+        self.gate_moved.notify_all();
+    }
+
+    /// Waits up to five seconds for a caller blocked in `call`.
+    fn wait_blocked_in(&self, call: &'static str) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut gate = self.gate.lock().unwrap();
+        while !gate.waiting.contains(&call) {
+            let left = deadline.saturating_duration_since(Instant::now());
+            assert!(!left.is_zero(), "no caller blocked in {call} within 5 s");
+            gate = self.gate_moved.wait_timeout(gate, left).unwrap().0;
+        }
+    }
+
     fn calls(&self) -> Vec<String> {
         self.calls.lock().unwrap().clone()
     }
@@ -138,10 +197,12 @@ impl Window for FakeWindow {
 
     // Not recorded: the worker reads it on every tick.
     fn foreground_pid(&self) -> Option<u32> {
+        self.0.pass_gate("foreground_pid");
         *self.0.foreground.lock().unwrap()
     }
 
     fn set_visible(&self, shown: bool) -> Result<(), String> {
+        self.0.pass_gate("set_visible");
         self.0.calls.lock().unwrap().push(format!("visible {shown}"));
         Ok(())
     }
@@ -2132,6 +2193,68 @@ fn quit_is_logged_once_then_stops() {
     let text = h.diag_text();
     assert_eq!(text.matches("quit: the window was closed").count(), 1, "{text}");
     assert!(!text.contains("quit: from the tray"), "{text}");
+}
+
+// Live 4's exits: `stop: tailer ended, worker did not end within 2000 ms`.
+// The shell calls `shutdown` on Tauri's main thread, and a window call from
+// the worker that waits for the main thread could not end before it.
+
+/// A running app in play mode whose game pid (from the log) is confirmed by
+/// the game's window in front, so the worker's ticks reach the window.
+fn game_confirmed_by_worker() -> Harness {
+    let h = harness(log_setup(text(&own_character_lines()), false));
+    h.app.start();
+    h.wait_diag(&["area from log:"]);
+    *h.window.foreground.lock().unwrap() = Some(GAME);
+    h.wait_diag(&[&format!("game pid: {GAME} confirmed")]);
+    assert_eq!(h.app.get_view().mode, Mode::Play);
+    h
+}
+
+/// Shuts `h` down while the worker is blocked in `call`, then releases the
+/// fake's waiters: whether `shutdown` reported both threads ended, and how
+/// long it took.
+fn shutdown_while_blocked_in(h: &Harness, call: &'static str) -> (bool, Duration) {
+    h.window.wait_blocked_in(call);
+    let started = Instant::now();
+    let ended = h.app.shutdown(SHUTDOWN_TIMEOUT);
+    let took = started.elapsed();
+    h.window.open_gate();
+    (ended, took)
+}
+
+#[test]
+fn shutdown_ends_worker_while_window_calls_wait_for_the_main_thread() {
+    // Baseline: with nothing blocked, the worker ticks and the window
+    // follows what is in front.
+    let h = game_confirmed_by_worker();
+    *h.window.foreground.lock().unwrap() = Some(OTHER);
+    h.wait_diag(&[HIDDEN_LINE]);
+    *h.window.foreground.lock().unwrap() = Some(GAME);
+    h.wait_diag(&[SHOWN_LINE]);
+
+    // Target: the worker is inside the read of the window in front, which
+    // waits for the main thread, when the main thread enters `shutdown`.
+    h.window.close_gate(&["foreground_pid", "set_visible"]);
+    let (ended, took) = shutdown_while_blocked_in(&h, "foreground_pid");
+    assert!(ended, "shutdown waited {} ms:\n{}", took.as_millis(), h.diag_text());
+    assert!(took < SHUTDOWN_TIMEOUT, "{} ms", took.as_millis());
+    assert!(!h.app.worker_running());
+    let text = h.diag_text();
+    assert!(text.contains("stop: tailer and worker ended, progress saved"), "{text}");
+    assert!(!text.contains("did not end"), "{text}");
+
+    // The same with the worker inside showing or hiding the window, which it
+    // does holding the app's lock that `shutdown`'s save needs too.
+    let h = game_confirmed_by_worker();
+    h.window.close_gate(&["set_visible"]);
+    *h.window.foreground.lock().unwrap() = Some(OTHER);
+    let (ended, took) = shutdown_while_blocked_in(&h, "set_visible");
+    assert!(ended, "shutdown waited {} ms:\n{}", took.as_millis(), h.diag_text());
+    assert!(took < SHUTDOWN_TIMEOUT, "{} ms", took.as_millis());
+    let text = h.diag_text();
+    assert!(text.contains("stop: tailer and worker ended, progress saved"), "{text}");
+    assert!(!text.contains("did not end"), "{text}");
 }
 
 // ---------------------------------------------------------------------------

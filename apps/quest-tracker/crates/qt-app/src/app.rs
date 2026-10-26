@@ -11,7 +11,10 @@
 //! that wait for the main thread (placing the window, which reads the
 //! monitor; registering the shortcut; opening a link) run after the lock is
 //! released, so a main-thread callback waiting for the lock can never hold
-//! one of them up. Disk work (saves) runs outside the lock too, under its
+//! one of them up. The worker makes its window calls on a thread of its own
+//! and stops waiting for one when it is told to stop, because the shell's
+//! shutdown runs on the main thread such a call may be waiting for
+//! (`WorkerWindow`). Disk work (saves) runs outside the lock too, under its
 //! own `save_lock`, which keeps the snapshots in order.
 //!
 //! Saves are debounced: a change marks the state dirty, and a save runs
@@ -54,6 +57,10 @@ pub const BATCH_EVENTS: usize = 2_000;
 
 /// How long [`App::shutdown`] waits for the threads by default.
 pub const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// How often the worker, waiting for one of its window calls, looks at its
+/// stop flag ([`WorkerWindow`]).
+const STOP_POLL: Duration = Duration::from_millis(5);
 
 /// Sends `qt:view` and `qt:row-change` to the `overlay` window.
 pub trait Emitter: Send + Sync + 'static {
@@ -430,7 +437,8 @@ pub struct App {
     options: Options,
     store: Option<Store>,
     emitter: Box<dyn Emitter>,
-    window: Box<dyn Window>,
+    /// Shared with the worker's window thread ([`WorkerWindow`]).
+    window: Arc<dyn Window>,
     clock: Box<dyn Clock>,
     candidates: Vec<PathBuf>,
     poll_interval: Duration,
@@ -703,7 +711,7 @@ impl App {
             options,
             store,
             emitter,
-            window,
+            window: Arc::from(window),
             clock,
             candidates,
             poll_interval,
@@ -1133,8 +1141,14 @@ impl App {
     /// decided, the window shown or hidden for what is in front, then a save
     /// when one is due.
     pub fn tick(&self) {
+        self.tick_via(None);
+    }
+
+    /// [`App::tick`], with the window reached through `worker` when the
+    /// worker runs it, so a requested stop never waits for a window call.
+    fn tick_via(&self, worker: Option<&WorkerWindow>) {
         self.close_quiet_relog_window();
-        self.follow_foreground();
+        self.follow_foreground_via(worker);
         self.save_if_due(false);
     }
 
@@ -1148,13 +1162,25 @@ impl App {
     /// not; both are logged once. A pid gone stale is confirmed only by a
     /// live line, never by a window in front (Windows reuses pids).
     pub fn follow_foreground(&self) {
+        self.follow_foreground_via(None);
+    }
+
+    /// [`App::follow_foreground`]; through `worker`, a window call the stop
+    /// beats ends it without a decision.
+    fn follow_foreground_via(&self, worker: Option<&WorkerWindow>) {
         let (mode, game) = {
             let st = self.lock();
             (st.ui.mode, st.game_pid)
         };
         // Only read when it can decide anything.
         let front = if mode == Mode::Play && game.is_some() {
-            self.window.foreground_pid()
+            match worker {
+                None => self.window.foreground_pid(),
+                Some(w) => match w.call(|win| win.foreground_pid()) {
+                    Some(front) => front,
+                    None => return,
+                },
+            }
         } else {
             None
         };
@@ -1195,8 +1221,16 @@ impl App {
         }
         st.shown = shown;
         // Tauri only posts this to its event loop, so it runs under the lock,
-        // in order with any other change.
-        if let Err(e) = self.window.set_visible(shown) {
+        // in order with any other change. Through the worker's window thread
+        // a stop still beats it, and the lock is released.
+        let applied = match worker {
+            None => Some(self.window.set_visible(shown)),
+            Some(w) => w.call(move |win| win.set_visible(shown)),
+        };
+        let Some(applied) = applied else {
+            return;
+        };
+        if let Err(e) = applied {
             self.diag(&format!("error: window visibility: {e}"));
         }
         self.diag(if shown { SHOWN_LINE } else { HIDDEN_LINE });
@@ -1905,8 +1939,18 @@ fn join_by(handle: JoinHandle<()>, deadline: Instant) -> bool {
 /// The worker: drains the tailer's channel in batches into
 /// [`App::handle_tail_events`], and ticks after each batch or each
 /// [`WORKER_TICK`] without one, so a quiet log's relog window still closes.
-/// Ends within one [`WORKER_TICK`] of `stop` being set.
+/// Ends within one [`WORKER_TICK`] of `stop` being set, even while one of its
+/// window calls waits for the main thread ([`WorkerWindow`]).
 fn run_worker(app: Arc<App>, rx: Receiver<(u64, TailEvent)>, stop: Arc<AtomicBool>) {
+    let window = match WorkerWindow::start(Arc::clone(&app.window), Arc::clone(&stop)) {
+        Ok(w) => Some(w),
+        Err(e) => {
+            app.diag(&format!(
+                "error: the window thread did not start: {e}; the worker calls the window itself"
+            ));
+            None
+        }
+    };
     while !stop.load(Ordering::Acquire) {
         match rx.recv_timeout(WORKER_TICK) {
             Ok(first) => {
@@ -1922,7 +1966,60 @@ fn run_worker(app: Arc<App>, rx: Receiver<(u64, TailEvent)>, stop: Arc<AtomicBoo
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
         }
-        app.tick();
+        app.tick_via(window.as_ref());
+    }
+}
+
+type WindowJob = Box<dyn FnOnce(&dyn Window) + Send>;
+
+/// The worker's way to the window (Context "Worker shutdown waits on the
+/// main thread"). The shell calls [`App::shutdown`] on Tauri's main thread,
+/// and a Tauri window getter called from any other thread (the overlay's
+/// handle, read for the window in front) waits for the main thread to answer
+/// it. So the worker hands each window call to a thread of its own and waits
+/// for the answer only until `stop` is set: a stop then ends the worker
+/// within [`STOP_POLL`], whatever the call is waiting for. A call left behind
+/// ends with the main thread's answer or the process; the window thread ends
+/// after it, once the worker has dropped its sender.
+struct WorkerWindow {
+    jobs: Sender<WindowJob>,
+    stop: Arc<AtomicBool>,
+}
+
+impl WorkerWindow {
+    fn start(window: Arc<dyn Window>, stop: Arc<AtomicBool>) -> std::io::Result<WorkerWindow> {
+        let (jobs, rx) = mpsc::channel::<WindowJob>();
+        thread::Builder::new()
+            .name("qt-window".to_string())
+            .spawn(move || {
+                for job in rx {
+                    job(&*window);
+                }
+            })?;
+        Ok(WorkerWindow { jobs, stop })
+    }
+
+    /// `f` on the window, on the window thread; `None` when the stop was
+    /// set before it returned.
+    fn call<T: Send + 'static>(
+        &self,
+        f: impl FnOnce(&dyn Window) -> T + Send + 'static,
+    ) -> Option<T> {
+        if self.stop.load(Ordering::Acquire) {
+            return None;
+        }
+        let (tx, rx) = mpsc::channel();
+        let job: WindowJob = Box::new(move |w| {
+            let _ = tx.send(f(w));
+        });
+        self.jobs.send(job).ok()?;
+        loop {
+            match rx.recv_timeout(STOP_POLL) {
+                Ok(value) => return Some(value),
+                Err(RecvTimeoutError::Timeout) if !self.stop.load(Ordering::Acquire) => {}
+                Err(_) => return None,
+            }
+        }
     }
 }
 
