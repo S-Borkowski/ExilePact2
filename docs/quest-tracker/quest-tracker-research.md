@@ -57,6 +57,14 @@ a situation this player never reached would be missing from it too.
   Client <pid>] <message>`. The levels seen are `INFO`, `DEBUG`, `WARN` and
   `CRIT`. The millisecond counter and the hex field carry nothing the tracker
   needs.
+- **The millisecond counter** (measured once, 2026-10-26). It counts the
+  milliseconds since the system started, not since the client or the log
+  did. The line at 11:43:29 local time carried 90,865,203; counted from
+  the machine's boot time, 2026-10-25T09:29:02.5Z, that second is
+  90,866,500 ms, and a `GetTickCount64` reading taken at 11:28:54Z agreed
+  within the line's one-second resolution. One comparison, so the reading
+  rests on a single line; it gives an outside tool a clock it can set
+  against the log without parsing the local time.
 - **Continuation lines** (measured). 2,282 lines carry no timestamp; they are
   the continuations of multi-line warnings. The parser ignores them.
 - **Session marker** (measured). `YYYY/MM/DD HH:MM:SS ***** LOG FILE OPENING
@@ -313,6 +321,25 @@ last line in the area to the `has received` line:
   the item it dropped" has none either, and the reward line finishes the
   quest in any area (Blackjaw and Lythara get the same split). No other
   campaign quest's reward in the quest data is `+10% to Cold Resistance`.
+  (The paragraph above is kept as it was written on 2026-10-25; Live 4,
+  below, now controls that negative with one kill.)
+- **Live 4, the first controlled reading** (measured 2026-10-26, one kill,
+  `G1_2`, the log read read-only against the person's clock times). The
+  person put the kill at 11:28:17 local time (10:28:17Z). Her last line
+  was "Swell!" at 11:28:04, a combat bark like the ones before it. In the
+  30 s after the kill the log held one line, a window focus loss at
+  11:28:18, a kind already seen twice during her fight; nothing of a kind
+  or text not seen earlier in the fight came before the Grelwood's area
+  lines at 11:29:19. The controls in the same reading were present: the
+  `G1_2` entry at 11:21:02 (person's time 11:21:03), her first line at
+  11:27:04 (person's 11:27:07) and the `G1_4` entry at 11:29:20 (person's
+  11:29:20). The `+10% to Cold Resistance` reward came at 11:30:53, after
+  the item was used, 169 s after her last line, and Una's "What happened
+  here...?" at 11:33:19. So her defeat is not observed in the log, with a
+  control, from one kill: one controlled negative, not proof that no
+  build or setting ever logs it. Her death cry has no text (poe2db's
+  `CarrionCroneDeath`, § "Seeing a voiced line from outside the game"),
+  which fits a log that carries a voiced line through its words.
 - **Blackjaw and Lythara** (inference). That their reward also follows the
   use of an item the boss dropped is read from the above, not observed in
   play: Blackjaw's gaps are timed from a bark and cannot separate the two
@@ -818,6 +845,95 @@ from the log or from poe2db, and change no signal.
 | 6 | Lythara, the Wayward Spear (community table) | yes | auto | measured |
 
 ## Seeing a voiced line from outside the game
+
+Beira of the Rotten Pack's defeat is a voiced death cry with no words, and
+`Client.txt` does not carry it (Live 4, § "Rewards after a boss kill"). This
+section records what was read about seeing such a line from outside the
+game, without touching the game's process: where the client keeps its
+audio, how it loads it, and what Live 6's three outside instruments showed.
+
+### The line the log does not carry
+
+- **Her death cry has no text** (static reading of poe2db, fetched
+  2026-10-26 by a side session,
+  https://poe2db.tw/us/Beira_of_the_Rotten_Pack). Her NPC Text Audio table
+  has 22 entries whose keys start with `CarrionCrone`. One of them,
+  `CarrionCroneDeath`, has only its own key in the text field, and its
+  audio path ends in
+  `monsters/part1/act1/carrioncrone/carrioncronedeath.ogg`.
+- **Death cries with words are logged** (measured 2026-10-26, the owner's
+  `Client.txt`). Lythara's "Argh! You defy the very Spirit itself!",
+  "Argh... was I...?" and "Argh.. forgive me.." are in the log as NPC
+  lines like any other. `CarrionCrone` appears in the log only in the
+  patcher's lines (`Queue file to download:
+  FMOD/Desktop/CarrionCrone.bank`). The reading is that the log carries a
+  voiced line through its text, so a line with no text leaves nothing to
+  carry; that this is the mechanism is not established.
+- **The client's settings that touch dialogue** (static reading of the
+  owner's `poe2_production_Config.ini`, 2026-10-26).
+  `enable_subtitles=true` and `output_all_dialogue_to_chat=true`;
+  `mute_in_background=true`; `dialogue_sound_volume2=100`, with the master
+  volume at 48 and music and effects at 41 each;
+  `borderless_windowed_fullscreen=true` and `fullscreen=false`, at
+  2560×1440; `chat_box_width=1040`, `chat_box_height=640` and
+  `show_chat_timestamps=true`. Whether `output_all_dialogue_to_chat` is
+  what puts NPC lines into the log is not established, and so is whether
+  `mute_in_background` silences the game while it is not focused, which
+  its name suggests (not measured).
+
+### Where the client keeps its audio (static reading)
+
+- **The GGPK's layout** (static reading, 2026-10-26). A side session's
+  script walked the directory records of `Content.ggpk` read-only, with
+  the game closed, reading record headers only; the planning run re-read
+  its output, which stays outside the repository.
+  - `Content.ggpk` is 154,759,947,271 bytes, GGPK version 3, whose names
+    are UTF-16.
+  - `/Bundles2` holds 67,533 files (131.2 GB), among them `_.index.bin`
+    (115,154,591 bytes) and `_.index.low.bin` and `_.index.high.bin`
+    (74 bytes each).
+  - `/FMOD/Desktop/` holds 2,937 FMOD banks (15.5 GB), stored as plain
+    GGPK files, not inside bundles: `CarrionCrone.bank` is 15,376,384
+    bytes and `Una.bank` 680,896 bytes, beside `Master Bank.bank` and
+    `Master Bank.strings.bank`.
+  - Dialogue audio is in bundles under
+    `/Bundles2/Streaming/Folders/audio/dialogue/`. Its `4.0/` folder
+    holds 965 bundles named only by category (`npc.*`, `characters.*`,
+    `monsters.*`, `mtx.*`); its `npc/` folder holds 88 bundles named by
+    speaker, none of them for Una. There is also
+    `/Bundles2/Folders/audio/dialogue/4.0/npc.bundle.bin`.
+  - No bundle's name names the monster: which bundle holds
+    `carrioncrone/*.ogg` is written only in the index.
+  - A bundle is split into 256 KiB blocks, with a table of the blocks'
+    sizes in its header. Offsets move with each patch.
+  - The install folder has no `Bundles2` folder of loose files and no
+    Oodle DLL; `fmod.dll` and `fmodstudio.dll` sit beside the exe.
+- **What the client imports for audio** (static reading of
+  `PathOfExile.exe` on disk, 2026-10-26: its import tables and a search of
+  its strings, names only).
+  - `fmod.dll` and `fmodstudio.dll` are delay-loaded.
+  - For banks it links `Studio::System::loadBankCustom` and no other
+    loader. `loadBankMemory` and `loadBankFile` are not in the exe as
+    ASCII strings at all, so neither is looked up by a stored name; a name
+    built at run time would not show in this search.
+  - For core sounds it links `System::createStream`. `createSound`,
+    `setFileSystem` and `loadSampleData` are neither imported nor in its
+    strings, with the same caveat.
+  - It also links `EventDescription::isStream` and `getSoundInfo`.
+  - From kernel32 it imports `ReadFile`, `GetOverlappedResult(Ex)`,
+    `CreateFileMappingW` and `MapViewOfFile(Ex)`, so the imports alone do
+    not say whether `Content.ggpk` is read or mapped (the next subsection
+    reads that it is mapped).
+  - The exe holds the string `Content.ggpk` 4 times in ASCII and 14 times
+    in UTF-16, and holds `NPCTextAudio`.
+
+  The reading drawn from the imports, not established: every byte of a
+  bank reaches FMOD through the client's own read callback, so a bank's
+  reads are the game process's reads of `Content.ggpk`, and dialogue
+  reaches FMOD through `createStream`. FMOD's documented behaviour,
+  recalled and not fetched in that run, is that a bank's metadata loads
+  when the bank loads, its sample data on first use unless loaded
+  explicitly, and a streamed sound pulls its data as it plays.
 
 ### How the client loads its audio (static reading)
 

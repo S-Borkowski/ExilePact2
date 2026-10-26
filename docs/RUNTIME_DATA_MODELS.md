@@ -26,6 +26,11 @@ below was measured on 2026-10-24 from one player's log of 818,412 lines
   `YYYY/MM/DD HH:MM:SS <ms counter> <hex> [<LEVEL> Client <pid>] <message>`,
   with levels `INFO`, `DEBUG`, `WARN` and `CRIT`. Lines without a timestamp
   are continuations of multi-line warnings and carry nothing to read.
+- **The `<ms counter>`** (measured once, 2026-10-26, the research note's
+  "Client.txt line format"). It counts the milliseconds since the system
+  started: one line's value matched the time since the machine's boot, and
+  a `GetTickCount64` reading the same day agreed, within the line's
+  one-second resolution (one comparison).
 - **The `<pid>` in the header** (measured 2026-10-25, in Live 2). It is
   the process id of the running game client: the session's `[INFO Client
   <pid>]` lines carried the same number that Windows' task list gave the
@@ -113,7 +118,15 @@ chat, window-focus and client lines), but that negative is not
 controlled: no reading was timed against a known kill, and the owner
 reports she was not defeated in the live sessions. Her reward came 7 to
 44 s after her last line in 6 sessions and in the Mud Burrow in 2; in
-Live 3 none came.
+Live 3 none came. Live 4 (measured 2026-10-26, one kill) controls that
+negative: against the person's kill time, 11:28:17 local, her last line
+was the bark "Swell!" at 11:28:04, and the 30 s after the kill held only a
+window focus loss, a kind seen earlier in her fight, while the controls in
+the same reading (the area entry, her first line, the next area's entry)
+were all present. The reward came at 11:30:53, after the item was used.
+Her defeat is therefore not observed in the log, with a control, from one
+kill; her death cry has no text (poe2db's `CarrionCroneDeath`, the
+research note's "Seeing a voiced line from outside the game").
 
 Town dialogue (measured 2026-10-25, the research note's "Town dialogue"): in
 Clearfell Encampment (`G1_town`), all 44 distinct lines logged from Una,
@@ -162,6 +175,39 @@ speaker in that session was an NPC or a boss. The own character's remarks
 were therefore not observed in the log (the whole log and two sessions
 with a person listening; not proof that they are never logged).
 
+## Game files (Content.ggpk)
+
+Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+§ "Where the client keeps its audio (static reading)". Each bullet is a
+static reading of 2026-10-26: a read-only walk of the GGPK's directory
+records, headers only, with the game closed. None of it was measured
+against the running game.
+
+- **Where it is** (static reading, 2026-10-26). For the standalone client,
+  `Content.ggpk` sits in the install folder beside `PathOfExile.exe` and
+  `logs\`. On the machine read it was 154,759,947,271 bytes, GGPK version
+  3, whose names are UTF-16.
+- **Bundles** (static reading, 2026-10-26). `/Bundles2` holds 67,533 files
+  (131.2 GB), with the bundle index in `_.index.bin` (115,154,591 bytes)
+  and two 74-byte files, `_.index.low.bin` and `_.index.high.bin`. A
+  bundle is split into 256 KiB blocks, compressed, with a table of the
+  blocks' sizes in its header. Which bundle holds a given game file is
+  written only in the index; bundle names do not say. Offsets move with
+  each patch.
+- **Audio** (static reading, 2026-10-26). The FMOD banks are plain GGPK
+  files under `/FMOD/Desktop/`, not in bundles: 2,937 of them (15.5 GB),
+  among them `CarrionCrone.bank` (15,376,384 bytes, Beira of the Rotten
+  Pack's), `Una.bank`, `Master Bank.bank` and `Master Bank.strings.bank`.
+  Voiced dialogue is in bundles under
+  `/Bundles2/Streaming/Folders/audio/dialogue/`: `4.0/` holds 965 bundles
+  named only by category (`npc.*`, `characters.*`, `monsters.*`,
+  `mtx.*`), and `npc/` 88 bundles named by speaker.
+- **Nothing loose** (static reading, 2026-10-26). The install folder holds
+  no loose `Bundles2` folder and no Oodle DLL; `fmod.dll` and
+  `fmodstudio.dll` sit beside the exe.
+- **How the client reads it** (static reading, 2026-10-26): through one
+  memory mapping of the whole file, see § "Audio (FMOD)" below.
+
 ## Audio (FMOD)
 
 Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
@@ -194,3 +240,41 @@ reading of the client's executable (2026-10-26), not a measurement.
   reading, 2026-10-26): each read decompresses into a temporary buffer and
   frees it. Whether the decompressor caches blocks itself is not
   established.
+- **What the exe imports for audio** (static reading, 2026-10-26, the
+  import tables and a string search of `PathOfExile.exe` on disk, names
+  only). `fmod.dll` and `fmodstudio.dll` are delay-loaded. Besides
+  `loadBankCustom` and `createStream` it links
+  `EventDescription::isStream` and `getSoundInfo`; `loadBankMemory`,
+  `loadBankFile`, `createSound`, `setFileSystem` and `loadSampleData` are
+  neither imported nor present as strings (a name built at run time would
+  not show). From kernel32 it imports both `ReadFile` and
+  `CreateFileMappingW`/`MapViewOfFile(Ex)`.
+- **Beira's death cry** (static reading of poe2db, fetched 2026-10-26).
+  Its key is `CarrionCroneDeath`, its text field holds only that key, and
+  its audio path ends in
+  `monsters/part1/act1/carrioncrone/carrioncronedeath.ogg`. A line with no
+  text was not observed in `Client.txt` (§ "Client log (Client.txt)").
+
+## Client configuration file
+
+Source: [`docs/quest-tracker/quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+§ "The line the log does not carry". A static reading of one player's file
+on 2026-10-26; what each option does in the game is read from its name,
+not measured, unless a bullet says otherwise.
+
+- **Location** (static reading, 2026-10-26).
+  `Documents\My Games\Path of Exile 2\poe2_production_Config.ini` under the
+  user's profile; where Windows redirects `Documents` (to OneDrive, on the
+  machine read), the file follows it. Plain `key=value` lines.
+- **Dialogue and subtitles** (static reading, 2026-10-26).
+  `enable_subtitles` and `output_all_dialogue_to_chat` (both `true` on the
+  machine read). Whether `output_all_dialogue_to_chat` is what puts NPC
+  lines into `Client.txt` is not established.
+- **Sound** (static reading, 2026-10-26). `mute_in_background` (`true` on
+  the machine read; going by the name, the game is silent while it is not
+  focused, not measured), `dialogue_sound_volume2` (100) beside the
+  master volume (48) and the music and effects volumes (41 each).
+- **Window and chat** (static reading, 2026-10-26).
+  `borderless_windowed_fullscreen` and `fullscreen` (`true` and `false`,
+  at 2560×1440 on the machine read); `chat_box_width`, `chat_box_height`
+  (1040 and 640) and `show_chat_timestamps` (`true`).
