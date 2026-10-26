@@ -19,8 +19,11 @@
 //! - **Visibility**: on every worker tick `qt-app` asks for the pid of the
 //!   foreground window (`GetForegroundWindow`, `GetWindowThreadProcessId`;
 //!   only the id is read) and, in play mode, hides the overlay unless that
-//!   is the game's or its own. Showing uses `SW_SHOWNOACTIVATE`, so the game
-//!   keeps focus; hiding `SW_HIDE`.
+//!   is the game's or its own. Its own pid is reported only for the overlay
+//!   window (or a window it owns); the tray's window, in front while the
+//!   tray menu is open, counts as another program's, so the menu never shows
+//!   a hidden overlay. Showing uses `SW_SHOWNOACTIVATE`, so the game keeps
+//!   focus; hiding `SW_HIDE`.
 //! - **Shortcut**: one system hotkey through `tauri-plugin-global-shortcut`
 //!   (default Ctrl+Alt+Q), which toggles play and edit mode. No keyboard
 //!   hook; nothing is sent to the game.
@@ -211,7 +214,10 @@ impl qt_app::Window for TauriWindow {
     }
 
     fn foreground_pid(&self) -> Option<u32> {
-        foreground_pid()
+        // The overlay's handle, when it can be read; without it every window
+        // of this process counts as the overlay, as before the tray.
+        let overlay = self.window().ok().and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize);
+        foreground_pid(overlay)
     }
 
     fn set_visible(&self, shown: bool) -> Result<(), String> {
@@ -220,27 +226,49 @@ impl qt_app::Window for TauriWindow {
     }
 }
 
+/// What [`foreground_pid`] reports for a window of this process that is not
+/// the overlay: pid 0, the System Idle Process, which owns no window and so
+/// is neither the game's pid nor this process's, and the overlay is hidden.
+const NOT_THE_OVERLAY: u32 = 0;
+
 /// The process id of the foreground window: only the id, never its title,
 /// class or process name. `None` when there is no foreground window (focus
 /// is moving) or its process cannot be read.
+///
+/// This process's own pid stands for the overlay, so it is reported only
+/// when the window in front is the overlay (`overlay`, its handle) or a
+/// window it owns. Another window of this process — the tray's hidden
+/// window, which Tauri's tray brings to the front while its menu is open —
+/// is reported as [`NOT_THE_OVERLAY`]: otherwise opening the tray menu would
+/// show the hidden overlay again, and its Quit would never run while it is
+/// hidden. Only window handles are compared.
 #[cfg(windows)]
-fn foreground_pid() -> Option<u32> {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
-    // SAFETY: both calls take no pointer but the out-parameter, a live local.
-    let pid = unsafe {
+fn foreground_pid(overlay: Option<isize>) -> Option<u32> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetAncestor, GetForegroundWindow, GetWindowThreadProcessId, GA_ROOTOWNER,
+    };
+    // SAFETY: the calls take no pointer but the out-parameter, a live local;
+    // `GetAncestor` on a window gone since returns null, compared only.
+    let (pid, root) = unsafe {
         let hwnd = GetForegroundWindow();
         if hwnd.is_null() {
             return None;
         }
         let mut pid = 0u32;
         GetWindowThreadProcessId(hwnd, &mut pid);
-        pid
+        (pid, GetAncestor(hwnd, GA_ROOTOWNER) as isize)
     };
-    (pid != 0).then_some(pid)
+    if pid == 0 {
+        return None;
+    }
+    match overlay {
+        Some(overlay) if pid == std::process::id() && root != overlay => Some(NOT_THE_OVERLAY),
+        _ => Some(pid),
+    }
 }
 
 #[cfg(not(windows))]
-fn foreground_pid() -> Option<u32> {
+fn foreground_pid(_overlay: Option<isize>) -> Option<u32> {
     None
 }
 
