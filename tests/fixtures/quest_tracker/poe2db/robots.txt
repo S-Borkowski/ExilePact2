@@ -1,6 +1,8 @@
 # Synthetic robots.txt for tests/test_quest_tracker_poe2db.py: the site's
-# shape (a wildcard rule) plus one invented quest page the tests expect skipped.
+# shape (a wildcard rule) plus one invented quest page and one invented class
+# page the tests expect skipped.
 User-agent: *
 Disallow: /*/marked
 Disallow: /*/markdown_history
 Disallow: /us/The_Sealed_Vault
+Disallow: /us/Sealed_Class

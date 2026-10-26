@@ -5,7 +5,9 @@ network, and it only ever asks poe2db.tw:
 
     py -3 -m tools.quest_tracker.poe2db fetch [--cache DIR] [--delay S] [--only SLUG ...]
                                              [--max-age DAYS] [--include-endgame]
+    py -3 -m tools.quest_tracker.poe2db fetch-classes CLASS ... [--cache DIR] [--delay S] [--max-age DAYS]
     py -3 -m tools.quest_tracker.poe2db extract [--cache DIR] [--out FILE] [--with-dialogue]
+    py -3 -m tools.quest_tracker.poe2db remarks [--cache DIR] [--data FILE] [--class CLASS ...]
     py -3 -m tools.quest_tracker.poe2db coverage --log PATH [--cache DIR]
 
 `fetch` reads robots.txt first and skips whatever it disallows (through
@@ -27,6 +29,14 @@ steps table: a changed site fails loudly rather than drafting nothing. A
 single page without a steps table (some real campaign pages have none) is
 drafted with zero steps and its slug named on stderr; `coverage` counts it
 the same way.
+
+`fetch-classes` fetches class pages (e.g. `Warrior`, `Mercenary`) by the same
+rules, recording them under the cache index's `classes` so they are never
+read as quests. `remarks` prints a draft of the kill rows of their "Text
+Audio" tables whose boss the quest data names (`bar_gone` bosses and `npcs`):
+class, boss, key, text, the page's URL and fetch date, never a whole table,
+for a person to curate into the data's `remarks` table. A class page with no
+such table stops it with a non-zero exit naming the class.
 
 `coverage` measures how far a page's dialogue matches the lines a saved
 `Client.txt` logged for the same NPC, and prints counts only, never text.
@@ -60,6 +70,7 @@ DEFAULT_DELAY = 3.0
 DEFAULT_MAX_AGE = 7
 CACHE_INDEX = "index.json"
 DRAFT_NAME = "quests-draft.json"
+DEFAULT_DATA = Path(__file__).resolve().parents[2] / "apps" / "quest-tracker" / "data" / "quests.json"
 QUEST_TYPES = ("Normal", "Optional", "Important", "MasterMission")
 ENDGAME_ACTS = frozenset({10})
 # A quest slug is one path segment as the index links it, e.g. `Reaching_Clearfell`.
@@ -368,6 +379,65 @@ def fetch(cache: Path, delay: float = DEFAULT_DELAY, only: list[str] | None = No
     for slug in slugs:
         get_page(slug)
     print("pages: %d fetched, %d cached, %d disallowed by robots.txt, %d failed; cache %s"
+          % (counts["fetched"], counts["cached"], counts["robots"], counts["failed"], cache), file=out)
+    return counts
+
+
+def fetch_classes(cache: Path, classes: list[str], delay: float = DEFAULT_DELAY,
+                  max_age: int = DEFAULT_MAX_AGE, fetcher=None, clock=None, out=None) -> dict:
+    """Fetch class pages (e.g. `Warrior`) into `cache`, by the same rules as `fetch`.
+
+    They are recorded under the index's `classes`, never its `pages`, so
+    `extract` and `coverage` never read a class page as a quest. No quest
+    index is fetched. Returns the run's counts.
+    """
+    out = out or sys.stdout
+    if not delay >= MIN_DELAY:
+        raise ToolError("refusing --delay %s: the minimum is %s seconds between requests" % (delay, MIN_DELAY))
+    if max_age < 0:
+        raise ToolError("--max-age cannot be negative")
+    if not classes:
+        raise ToolError("name at least one class page, e.g. Warrior")
+    for name in classes:
+        if not SLUG_RE.match(name):
+            raise ToolError("not a class page name: %r (use the last part of the page URL)" % name)
+    cache = Path(cache)
+    refuse_inside_git(cache, "poe2db cache")
+    clock = clock or SystemClock()
+    session = Session(fetcher or urllib_fetcher, clock, float(delay))
+    cache.mkdir(parents=True, exist_ok=True)
+    index = load_cache_index(cache)
+    index.setdefault("classes", {})
+    today = clock.today()
+    counts = {"fetched": 0, "cached": 0, "robots": 0, "failed": 0}
+
+    names = list(dict.fromkeys(classes))
+    stale = [n for n in names if not _is_fresh(index["classes"].get(n), cache, today, max_age)]
+    counts["cached"] = len(names) - len(stale)
+    if stale:
+        robots = load_robots(session)
+        crawl_delay = robots.crawl_delay()
+        if crawl_delay is not None and crawl_delay > session.delay:
+            session.delay = crawl_delay
+    for name in stale:
+        url = page_url(name)
+        if not robots.allows(url):
+            counts["robots"] += 1
+            print("skip  %s: disallowed by robots.txt" % name, file=out)
+            continue
+        status, body = session.get(url)
+        if status != 200:
+            counts["failed"] += 1
+            print("fail  %s: HTTP %s" % (name, status), file=out)
+            continue
+        file_name = "class-" + cache_file_name(name)
+        (cache / file_name).write_bytes(body)
+        index["classes"][name] = {"slug": name, "url": url, "fetched": today.isoformat(),
+                                  "status": status, "file": file_name}
+        save_cache_index(cache, index)
+        counts["fetched"] += 1
+        print("fetch %s" % name, file=out)
+    print("class pages: %d fetched, %d cached, %d disallowed by robots.txt, %d failed; cache %s"
           % (counts["fetched"], counts["cached"], counts["robots"], counts["failed"], cache), file=out)
     return counts
 
@@ -761,6 +831,127 @@ def extract(cache: Path, out: Path | None = None, with_dialogue: bool = False,
 
 
 # --------------------------------------------------------------------------
+# Remarks: a class's kill lines for the bosses the quest data names
+
+# A key that ends on a kill: `MillerKillComment`, `BlackjawKilled`,
+# `RavineBlackjawBossDefeated`, `RedValeBossSlainComment`. Not a sighting, and
+# not `IncursionDefeatBlackjawUnique`, a league mechanic's line.
+KILL_KEY_RE = re.compile(r"(?:Kill|Killed|Defeat|Defeated|Slain)(?:Comment)?$")
+
+
+def _key_words(key: str) -> list[str]:
+    """`RavineBlackjawBossDefeated` -> ['ravine', 'blackjaw', 'boss', 'defeated']."""
+    return [w.lower() for w in re.findall(r"[A-Z][a-z]+|[A-Z]+(?![a-z])|[a-z]+|\d+", key)]
+
+
+def _boss_word(name: str) -> str:
+    """The word of a boss's name a page key carries: the last word of the name
+    before its epithet. `The Bloated Miller` -> miller, `Ignagduk, the Bog
+    Witch` -> ignagduk, `Beira of the Rotten Pack` -> beira, `BlackJaw` -> blackjaw."""
+    head = re.split(r",| of ", name, maxsplit=1)[0]
+    words = re.findall(r"[A-Za-z']+", head)
+    return words[-1].lower() if words else ""
+
+
+def data_bosses(data: dict) -> list[str]:
+    """The bosses a remark may be for, as the app's validator allows them: each
+    `bar_gone` signal's boss, then `npcs`, in file order, each once."""
+    names = [s["boss"] for q in data.get("quests", []) for step in q.get("steps", [])
+             for s in step.get("signals", [])
+             if s.get("kind") == "screen" and s.get("what") == "bar_gone" and s.get("boss")]
+    return list(dict.fromkeys(names + list(data.get("npcs", []))))
+
+
+def _text_before_break(cell: Node) -> str:
+    """A cell's text up to its first `<br>` (or the key's `<strong>`), in document
+    order: an element left open across the break (an `<i>` the site never
+    closes) must not carry the key into the text."""
+    pieces: list[str] = []
+
+    def walk(node: Node) -> bool:
+        for child in node.children:
+            if isinstance(child, str):
+                pieces.append(child)
+            elif child.tag in ("br", "strong"):
+                return True
+            elif child.tag not in SKIP_TEXT_TAGS and walk(child):
+                return True
+        return False
+
+    walk(cell)
+    return " ".join("".join(pieces).split())
+
+
+def parse_text_audio(name: str, text: str) -> list[dict]:
+    """The rows of a class page's "Text Audio" table: {key, text, audio}.
+
+    A row is `<td>text<br/> marker <strong>Key</strong> <a href=...ogg></a></td>`;
+    `text` is what comes before the first `<br>`, and `audio` the file name the
+    link ends in (its name says the act, e.g. `_a1_`, `_i3_`).
+    """
+    root = parse_html(text)
+    pane = root.find(id=name + "TextAudio")
+    if pane is None:
+        pane = next((n for n in root.find_all("div") if n.attrs.get("id", "").endswith("TextAudio")), None)
+    table = pane.find("table") if pane is not None else None
+    body = table.find("tbody") if table is not None else None
+    if body is None:
+        raise ExtractError("%s: no Text Audio table (no `#%sTextAudio` tab with a table body)" % (name, name))
+    rows = []
+    for tr in body.find_all("tr"):
+        td, key = tr.find("td"), tr.find("strong")
+        if td is None or key is None:
+            raise ExtractError("%s: a Text Audio row without a cell or a key" % name)
+        link = tr.find("a")
+        rows.append({"key": key.text(), "text": _text_before_break(td),
+                     "audio": link.attrs.get("href", "").rsplit("/", 1)[-1] if link is not None else ""})
+    if not rows:
+        raise ExtractError("%s: the Text Audio table has no rows" % name)
+    return rows
+
+
+def remarks(cache: Path, data_path: Path, classes: list[str] | None = None,
+            clock=None, stdout=None) -> dict:
+    """Print a draft of the cached class pages' kill rows for bosses `data_path` names.
+
+    One row per line whose key ends on a kill and carries a boss's name word
+    (`_boss_word`), never the whole table. The draft is for a person to curate
+    into the quest data's `remarks` table; `audio` helps tell which act's
+    fight a line belongs to and is not a field of that table.
+    """
+    stdout = stdout or sys.stdout
+    cache = Path(cache)
+    index = _require_cache_index(cache)
+    cached = {n: r for n, r in index.get("classes", {}).items() if r.get("status") == 200 and r.get("file")}
+    if not cached:
+        raise ToolError("no class page in the cache at %s; run `fetch-classes` first" % cache)
+    names = list(dict.fromkeys(classes)) if classes else list(cached)
+    for name in names:
+        if name not in cached:
+            raise ToolError("%s: not in the cache; run `fetch-classes %s` first" % (name, name))
+    with open(data_path, encoding="utf-8") as fh:
+        bosses = [(b, _boss_word(b)) for b in data_bosses(json.load(fh))]
+    rows = []
+    for name in names:
+        record = cached[name]
+        for row in parse_text_audio(name, _read_cached(cache, record)):
+            if not row["text"] or not KILL_KEY_RE.search(row["key"]):
+                continue
+            words = _key_words(row["key"])
+            boss = next((b for b, w in bosses if w and w in words), None)
+            if boss is None:
+                continue
+            entry = {"class": name, "boss": boss, "key": row["key"], "text": row["text"],
+                     "source_url": record["url"], "fetched": record["fetched"], "audio": row["audio"]}
+            if entry not in rows:
+                rows.append(entry)
+    draft = {"schema": 1, "extracted": (clock or SystemClock()).today().isoformat(), "remarks": rows}
+    json.dump(draft, stdout, indent=2, ensure_ascii=False)
+    stdout.write("\n")
+    return draft
+
+
+# --------------------------------------------------------------------------
 # Coverage: does a page's dialogue reach the log?
 
 def _norm(text: str) -> str:
@@ -845,8 +1036,8 @@ def coverage(cache: Path, log: Path, stdout=None, stderr=None) -> dict:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="py -3 -m tools.quest_tracker.poe2db",
-        description="Developer-only poe2db.tw quest tooling: fetch, extract, coverage.")
-    sub = parser.add_subparsers(dest="command", required=True, metavar="{fetch,extract,coverage}")
+        description="Developer-only poe2db.tw quest tooling: fetch, fetch-classes, extract, remarks, coverage.")
+    sub = parser.add_subparsers(dest="command", required=True, metavar="{fetch,fetch-classes,extract,remarks,coverage}")
 
     f = sub.add_parser("fetch", help="fetch the quest index and campaign quest pages into the cache, politely")
     f.add_argument("--cache", type=Path, default=None,
@@ -860,11 +1051,26 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--include-endgame", action="store_true",
                    help="also fetch Act 10 and act-less MasterMission quests")
 
+    fc = sub.add_parser("fetch-classes", help="fetch class pages (for their kill remarks) into the cache, politely")
+    fc.add_argument("classes", nargs="+", metavar="CLASS", help="class page names, e.g. Warrior Mercenary")
+    fc.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
+    fc.add_argument("--delay", type=float, default=DEFAULT_DELAY,
+                    help="seconds between requests (default %s, minimum %s)" % (DEFAULT_DELAY, MIN_DELAY))
+    fc.add_argument("--max-age", type=int, default=DEFAULT_MAX_AGE, metavar="DAYS",
+                    help="leave pages fetched within this many days alone (default %d)" % DEFAULT_MAX_AGE)
+
     e = sub.add_parser("extract", help="draft one JSON entry per cached quest page")
     e.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
     e.add_argument("--out", type=Path, default=None,
                    help="draft file, outside any git checkout (default <cache>\\%s)" % DRAFT_NAME)
     e.add_argument("--with-dialogue", action="store_true", help="include each step's NPC dialogue")
+
+    r = sub.add_parser("remarks", help="print a draft of the cached class pages' kill remarks for the data's bosses")
+    r.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
+    r.add_argument("--data", type=Path, default=DEFAULT_DATA,
+                   help="the quest data whose bosses to keep (default apps/quest-tracker/data/quests.json)")
+    r.add_argument("--class", dest="classes", nargs="+", metavar="CLASS", default=None,
+                   help="only these cached class pages (default every one)")
 
     c = sub.add_parser("coverage", help="count how far cached dialogue matches a Client.txt (counts only)")
     c.add_argument("--log", type=Path, required=True, help="a Client.txt, read-only")
@@ -884,8 +1090,17 @@ def main(argv: list[str] | None = None, fetcher=None, clock=None) -> int:
                 return 2
             fetch(cache, delay=args.delay, only=args.only, max_age=args.max_age,
                   include_endgame=args.include_endgame, fetcher=fetcher, clock=clock)
+        elif args.command == "fetch-classes":
+            if not args.delay >= MIN_DELAY:
+                print("poe2db: error: refusing --delay %s: the minimum is %s seconds between requests"
+                      % (args.delay, MIN_DELAY), file=sys.stderr)
+                return 2
+            fetch_classes(cache, args.classes, delay=args.delay, max_age=args.max_age,
+                          fetcher=fetcher, clock=clock)
         elif args.command == "extract":
             extract(cache, out=args.out, with_dialogue=args.with_dialogue, clock=clock)
+        elif args.command == "remarks":
+            remarks(cache, args.data, classes=args.classes, clock=clock)
         else:
             coverage(cache, args.log)
     except ToolError as err:

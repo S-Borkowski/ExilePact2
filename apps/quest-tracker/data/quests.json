@@ -2876,7 +2876,10 @@
           "id": "fight",
           "title": "Defeat Blackjaw, the Remnant",
           "text": "",
-          "signals": [{"kind": "screen", "what": "bar_gone", "boss": "Blackjaw", "area": "G3_6_1"}]
+          "signals": [
+            {"kind": "screen", "what": "bar_gone", "boss": "Blackjaw", "area": "G3_6_1"},
+            {"kind": "screen", "what": "kill_remark", "boss": "Blackjaw", "area": "G3_6_1"}
+          ]
         },
         {
           "id": "use",
@@ -5982,5 +5985,10 @@
       "fetched": "2026-10-25",
       "notes": "Done on the reward line in Kriar Village. Listed in poe2db's community table of permanent rewards, not as a quest page. Lythara's lines are \"Find Lythara, the Wayward Spear\"; no line marking her defeat is known, so \"Defeat Lythara, the Wayward Spear\" has no log signal: tick it when she falls (the same split as Beira's, 2026-10-25), or, with the opt-in screen reading on, her boss bar going ticks it (by analogy with Beira's; her bar text is not measured, and the short name matches the full title by containment). The last step exists because the reward line follows Lythara's last line by 10 to 15 s, which fits a player action after the kill; like Beira's, inferred to be the use of an item the boss dropped. The log records nothing of that use, so the step has no signal and the reward line finishes the quest from either step. Progress an older build stored, when her lines were the fight step, matches no signal now and is ignored. poe2db does not name the item."
     }
+  ],
+  "remarks": [
+    {"class": "Warrior", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "I'm sorry Branoc... It was me or you...", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "I've fought some big buggers before, but... blimey.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Your job's long over, me ol' mate. Take a rest.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"}
   ]
 }

@@ -996,7 +996,8 @@ Rotten Pack (`G1_2`, the bar text measured in Live 6), Blackjaw (`G3_6_1`)
 and Lythara (`P3_2`), whose bar text is not measured and whose short name
 matches the full title by containment; and `quest_complete` for Renly in
 `G1_town` on Reaching Clearfell's "Take Renly's reward" (the banner seen in
-Live 8). No `kill_remark` signal ships.
+Live 8). One `kill_remark` signal ships, beside Blackjaw's `bar_gone` on
+the same step, for the Mercenary's remark after killing him (below).
 
 **The `remarks` table.** An optional top-level array of a class's
 kill-remark texts, each `{"class", "boss", "key", "text", "source_url",
@@ -1004,9 +1005,25 @@ kill-remark texts, each `{"class", "boss", "key", "text", "source_url",
 plays the remark, `text` the short spoken line, stored verbatim, and
 `source_url` and `fetched` are validated as a quest's are (a
 `https://poe2db.tw/us/<page>` URL and a date). An entry's `boss` must be
-the boss of a shipped `bar_gone` signal or a name in `npcs`. In this
-version the table is empty (absent from the file), so no step ticks on a
-remark.
+the boss of a shipped `bar_gone` signal or a name in `npcs`. This
+version's table holds three texts, read from poe2db's Warrior and
+Mercenary class pages on 2026-10-27 with `poe2db fetch-classes Warrior
+Mercenary` and then `poe2db remarks`, which prints a draft of the class
+pages' kill rows whose boss the data names, never a whole table:
+
+- each class's remark after The Bloated Miller (`MillerKillComment`), kept
+  as the replay's control (`quest-tracker-replay screen --class Warrior`
+  over Live 8's captures) and used by no step, since the Miller's step has
+  no bar;
+- the Mercenary's remark after Blackjaw (`BlackjawKilled`, Act 3).
+
+Left out of the draft by hand: both pages' lines after a Blackjaw in a
+ravine (`RavineBlackjawBossDefeated`), which are Interlude 3 lines, another
+fight than the data's Act 3 one; and the draft's rows for bosses that are
+only `npcs` names, which no step reads. The Warrior's page has no line for
+the Act 3 Blackjaw, and neither page names Beira or Lythara in a kill key
+(an Interlude 3 line after a "Kriar viper", in Lythara's village, does not
+name her and is not used), so their steps have no remark.
 
 **Find-it tips.** A step may carry a `"tip"`: a short "how to find it"
 hint, shown on its own line under the step in the row (when it is the step
@@ -1286,8 +1303,12 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   signals use their short names, matched by containment against the full
   bar title, by analogy with hers.
 - **Read the screen: kill remarks.** The remark rule ticks a step only for
-  a boss and class the quest data's `remarks` table has a text for, and
-  this version's table is empty, so no step ticks on a remark yet.
+  a boss and class the quest data's `remarks` table has a text for. This
+  version's table has the Warrior's and the Mercenary's texts only: both
+  for The Bloated Miller, which no step uses, and the Mercenary's for
+  Blackjaw. So a remark ticks only a Mercenary's "Defeat Blackjaw, the
+  Remnant"; Beira, Lythara and every other class rely on the bar. The
+  Mercenary's Blackjaw remark has not been seen on screen.
 - **Read the screen: one measured setup.** The regions were measured on a
   2560×1440 borderless window, English client, at one in-game UI scale.
   A window that is not 16:9 is refused; other 16:9 resolutions, other UI

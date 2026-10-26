@@ -448,13 +448,168 @@ class CoverageTests(Poe2dbTestCase):
         self.assertIn("TOTAL\tpages=2\tsnippets=4\tequal_or_contain=0\tshared_4word_run=0", out)
 
 
+CLASS_PAGES = {"Warrior": "Warrior.html", "Broken_Class": "Broken_Class.html"}
+
+# The quest data the remark draft reads: bosses come from `bar_gone` signals
+# and `npcs`. Viper Napuatzi and the Bog Witch are there so a key that shares
+# only a later word of their names (`VillageViperDefeated`, `WitchBossKilled`)
+# is shown not to match.
+REMARK_DATA = {
+    "npcs": ["The Bloated Miller", "BlackJaw", "Viper Napuatzi", "Ignagduk, the Bog Witch"],
+    "quests": [
+        {"id": "a", "steps": [{"id": "fight", "signals": [
+            {"kind": "screen", "what": "bar_gone", "boss": "Blackjaw", "area": "G3_6_1"}]}]},
+        {"id": "b", "steps": [{"id": "fight", "signals": [
+            {"kind": "screen", "what": "bar_gone", "boss": "Beira of the Rotten Pack", "area": "G1_2"}]}]},
+    ],
+}
+
+
+def make_class_cache(folder, pages, fetched="2026-10-20"):
+    """A cache as fetch-classes leaves it: `pages` maps a class to its fixture."""
+    folder.mkdir(parents=True, exist_ok=True)
+    index = {"schema": 1, "source": poe2db.page_url("Quest"), "pages": {}, "classes": {}}
+    for name, fixture in pages.items():
+        file_name = "class-" + poe2db.cache_file_name(name)
+        (folder / file_name).write_bytes((FIXTURES / fixture).read_bytes())
+        index["classes"][name] = {"slug": name, "url": poe2db.page_url(name), "fetched": fetched,
+                                  "status": 200, "file": file_name}
+    poe2db.save_cache_index(folder, index)
+    return folder
+
+
+class ClassFetchTests(Poe2dbTestCase):
+    def site(self, clock):
+        return FakeSite(clock, pages=CLASS_PAGES)
+
+    def test_fetch_classes_reads_robots_first_and_keeps_classes_apart(self):
+        clock = FakeClock()
+        site = self.site(clock)
+        cache = self.tmp / "cache"
+        code, out, err = run(["fetch-classes", "Warrior", "Broken_Class", "--cache", str(cache)],
+                             fetcher=site, clock=clock)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(site.urls(), [poe2db.ROBOTS_URL, poe2db.page_url("Warrior"),
+                                       poe2db.page_url("Broken_Class")],
+                         "robots.txt first, then the class pages; no quest index")
+        times = [t for t, _, _ in site.calls]
+        self.assertGreaterEqual(min(b - a for a, b in zip(times, times[1:])), poe2db.DEFAULT_DELAY - 1e-9)
+        for _, _, user_agent in site.calls:
+            self.assertEqual(user_agent, poe2db.USER_AGENT)
+        index = json.loads((cache / "index.json").read_text("utf-8"))
+        self.assertEqual(index["classes"]["Warrior"],
+                         {"slug": "Warrior", "url": poe2db.page_url("Warrior"), "fetched": "2026-10-20",
+                          "status": 200, "file": "class-Warrior.html"})
+        self.assertTrue((cache / "class-Warrior.html").is_file())
+        # A class page is never a quest page: extract and coverage read `pages` only.
+        self.assertEqual(index["pages"], {})
+
+    def test_fetch_classes_honours_robots_cache_and_git(self):
+        clock = FakeClock()
+        site = self.site(clock)
+        cache = self.tmp / "cache"
+        code, out, err = run(["fetch-classes", "Sealed_Class", "Warrior", "--cache", str(cache)],
+                             fetcher=site, clock=clock)
+        self.assertEqual(code, 0, err)
+        self.assertNotIn(poe2db.page_url("Sealed_Class"), site.urls())
+        self.assertIn("skip  Sealed_Class: disallowed by robots.txt", out)
+        self.assertIn(poe2db.page_url("Warrior"), site.urls(), "negative control: an allowed page is fetched")
+
+        # Within --max-age nothing is asked, not even robots.txt.
+        clock = FakeClock(today=TODAY + datetime.timedelta(days=6))
+        site = self.site(clock)
+        code, out, err = run(["fetch-classes", "Warrior", "--cache", str(cache)], fetcher=site, clock=clock)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(site.calls, [])
+        clock = FakeClock(today=TODAY + datetime.timedelta(days=7))
+        site = self.site(clock)
+        code, out, err = run(["fetch-classes", "Warrior", "--cache", str(cache)], fetcher=site, clock=clock)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(site.urls(), [poe2db.ROBOTS_URL, poe2db.page_url("Warrior")])
+
+        repo = self.tmp / "repo"
+        (repo / ".git").mkdir(parents=True)
+        clock = FakeClock()
+        site = self.site(clock)
+        code, out, err = run(["fetch-classes", "Warrior", "--cache", str(repo / "cache")], fetcher=site, clock=clock)
+        self.assertEqual(code, 1)
+        self.assertIn("git checkout", err)
+        self.assertEqual(site.calls, [])
+        for argv in (["fetch-classes", "Warrior", "--delay", "1.5"], ["fetch-classes", "../Warrior"]):
+            clock = FakeClock()
+            site = self.site(clock)
+            code, out, err = run(argv + ["--cache", str(self.tmp / "other")], fetcher=site, clock=clock)
+            self.assertNotEqual(code, 0, argv)
+            self.assertEqual(site.calls, [], argv)
+
+
+class RemarkTests(Poe2dbTestCase):
+    def data_file(self):
+        path = self.tmp / "quests.json"
+        path.write_text(json.dumps(REMARK_DATA), encoding="utf-8")
+        return path
+
+    def test_remarks_drafts_the_kill_rows_of_bosses_the_data_names(self):
+        cache = make_class_cache(self.tmp / "cache", {"Warrior": "Warrior.html"})
+        code, out, err = run(["remarks", "--cache", str(cache), "--data", str(self.data_file())])
+        self.assertEqual(code, 0, err)
+        draft = json.loads(out)
+        url = poe2db.page_url("Warrior")
+        self.assertEqual(draft["remarks"], [
+            {"class": "Warrior", "boss": "The Bloated Miller", "key": "MillerKillComment",
+             "text": "Pebbles and porridge, the mill is quiet now.", "source_url": url,
+             "fetched": "2026-10-20", "audio": "warrior_gameplay_a1_06.ogg"},
+            {"class": "Warrior", "boss": "Blackjaw", "key": "BlackjawKilled",
+             "text": "The gears stop turning at last.", "source_url": url,
+             "fetched": "2026-10-20", "audio": "warrior_gameplay_a3_11.ogg"},
+            {"class": "Warrior", "boss": "Blackjaw", "key": "RavineBlackjawBossDefeated",
+             "text": "Down in the gully, down you stay.", "source_url": url,
+             "fetched": "2026-10-20", "audio": "warrior_gameplay_i3_19.ogg"},
+        ])
+        # Never the whole table: a sighting, a rare kill, a league line, and the
+        # keys that share only a later word of a boss's name stay out.
+        for text in ("A very large fellow", "Crumbled like stale bread", "Not the general",
+                     "serpent of the village", "marsh witch", "Teeth and more teeth",
+                     "invented flavour line", "Skill gems"):
+            self.assertNotIn(text, out)
+
+        # Baseline: data that names none of those bosses drafts no row.
+        empty = self.tmp / "none.json"
+        empty.write_text(json.dumps({"npcs": ["Una"], "quests": []}), encoding="utf-8")
+        code, out, err = run(["remarks", "--cache", str(cache), "--data", str(empty)])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)["remarks"], [])
+
+    def test_remarks_fails_loudly_on_unknown_structure(self):
+        cache = make_class_cache(self.tmp / "cache", CLASS_PAGES)
+        code, out, err = run(["remarks", "--cache", str(cache), "--data", str(self.data_file())])
+        self.assertEqual(code, 1)
+        self.assertIn("Broken_Class: no Text Audio table", err)
+        self.assertEqual(out, "")
+        # Negative control: the same cache, asked only for the well-formed page.
+        code, out, err = run(["remarks", "--cache", str(cache), "--data", str(self.data_file()),
+                              "--class", "Warrior"])
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(json.loads(out)["remarks"]), 3)
+
+        # A class that is not cached, or no class page at all, says so.
+        code, out, err = run(["remarks", "--cache", str(cache), "--data", str(self.data_file()),
+                              "--class", "Druid"])
+        self.assertEqual(code, 1)
+        self.assertIn("Druid", err)
+        bare = make_cache(self.tmp / "bare", GOOD_CACHE)
+        code, out, err = run(["remarks", "--cache", str(bare), "--data", str(self.data_file())])
+        self.assertEqual(code, 1)
+        self.assertIn("fetch-classes", err)
+
+
 class HelpTests(unittest.TestCase):
-    def test_help_names_the_three_commands(self):
+    def test_help_names_the_commands(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as raised:
             poe2db.main(["--help"])
         self.assertEqual(raised.exception.code, 0)
-        for command in ("fetch", "extract", "coverage"):
+        for command in ("fetch", "fetch-classes", "extract", "remarks", "coverage"):
             self.assertIn(command, out.getvalue())
 
 
