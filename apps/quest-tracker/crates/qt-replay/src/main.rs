@@ -15,6 +15,10 @@
 //! engine stored (own or unconfirmed) after the whole log, never a join or
 //! leave line; `scan` prints counts per area and no character name at all.
 //!
+//! `screen` is the odd one out: it runs the screen reader's trackers over a
+//! kept research capture instead of a log (module [`screen`]), and prints
+//! events and counts, never OCR text.
+//!
 //! Exit codes: 0 done, 1 an error (unreadable data, a store refusal, a read
 //! failure), 2 the log file does not exist, 64 a usage error.
 
@@ -31,6 +35,8 @@ use qt_logline::{parse_line, Allowlist, Event, EventKind, PointPool, Timestamp};
 use qt_store::{Loaded, Store};
 use qt_tailer::{read_whole_file, Position};
 use serde_json::{json, Map, Value};
+
+mod screen;
 
 /// The shipped quest data, compiled in so the CLI runs the app's data.
 const EMBEDDED_DATA: &str = include_str!("../../../data/quests.json");
@@ -57,6 +63,8 @@ Commands:
   scan     per area code: display name, entries, reward lines, points lines,
            allowlisted speakers and system lines, as counts (no chat, no
            character names)
+  screen   the screen reader's trackers over a kept capture instead of a log
+           (`quest-tracker-replay screen --help`)
 
 Options:
   --data PATH        quest data file (default: the data/quests.json built in)
@@ -107,6 +115,9 @@ impl From<io::Error> for Failure {
 
 fn main() -> ExitCode {
     let argv: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if argv.first().is_some_and(|a| a == "screen") {
+        return screen_main(argv.into_iter().skip(1));
+    }
     let args = match parse_args(argv) {
         Ok(Some(args)) => args,
         Ok(None) => {
@@ -119,6 +130,27 @@ fn main() -> ExitCode {
     let mut out = BufWriter::new(stdout.lock());
     let result = run(&args, &mut out).and_then(|()| out.flush().map_err(Failure::from));
     match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(failure) => fail(failure),
+    }
+}
+
+/// `screen`, which reads a kept capture rather than a log.
+fn screen_main(argv: impl Iterator<Item = OsString>) -> ExitCode {
+    let args = match screen::parse_args(argv) {
+        Ok(Some(args)) => args,
+        Ok(None) => {
+            print!("{}", screen::USAGE);
+            return ExitCode::SUCCESS;
+        }
+        Err(message) => {
+            eprintln!("quest-tracker-replay: {message}\n\n{}", screen::USAGE);
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
+    let stdout = io::stdout();
+    let mut out = BufWriter::new(stdout.lock());
+    match screen::run(&args, &mut out).and_then(|()| out.flush().map_err(Failure::from)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(failure) => fail(failure),
     }

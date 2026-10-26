@@ -9,7 +9,8 @@
 //!   that is not the name lies over the name's column ([`NAME_COLUMN_LEFT`]
 //!   to [`NAME_COLUMN_RIGHT`]) with its top at most [`NAME_COLUMN_MAX_TOP`].
 //!   The passive tree's title and the world map's headings sit there and
-//!   hide the bar.
+//!   hide the bar. So does an ordinary monster's name, which Live 8 read in
+//!   the same column after the person walked away from the Miller.
 //! - *Absent*: neither. Scene text elsewhere in the band (a "CHECKPOINT"
 //!   label, whose height moves with the camera) does not cover.
 //!
@@ -24,7 +25,10 @@ use crate::fuzzy::{fuzzy_score, MATCH_THRESHOLD};
 use crate::observation::Observation;
 use crate::Millis;
 
-/// Absent reads in a row that mean the bar went (3 s at 2 Hz).
+/// Absent reads in a row that mean the bar went (3 s at 2 Hz). Settled by
+/// `quest-tracker-replay screen` over the kept captures of Lives 6 and 8:
+/// at 6, with the name column below, each kill gives one `bar_gone` within
+/// a read of the bar's last showing, and Live 8's covering panels give none.
 pub const GONE_RUN: u32 = 6;
 
 /// Present reads the bar needs before its going counts.
