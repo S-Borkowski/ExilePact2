@@ -375,6 +375,11 @@ pub struct Settings {
     pub log_path: Option<String>,
     /// The global shortcut that toggles play and edit mode.
     pub hotkey: String,
+    /// "Read the screen": the opt-in screen reader, which copies the game's
+    /// window for the boss bar, the voiced lines and the dialogue window
+    /// while a step it can finish is open, and stores nothing it reads.
+    /// Off by default; a file written before it existed loads it off.
+    pub screen_reading: bool,
 }
 
 impl Default for Settings {
@@ -386,6 +391,7 @@ impl Default for Settings {
             only_worth_it: false,
             log_path: None,
             hotkey: Settings::DEFAULT_HOTKEY.to_string(),
+            screen_reading: false,
         }
     }
 }

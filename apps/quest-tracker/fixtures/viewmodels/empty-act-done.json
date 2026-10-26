@@ -147,6 +147,7 @@
     "only_worth_it": false,
     "opacity": 0.9,
     "scale": "auto",
+    "screen_reading": false,
     "show_skipped": false
   },
   "status": null,

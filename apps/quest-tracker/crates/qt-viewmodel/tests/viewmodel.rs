@@ -723,6 +723,27 @@ fn old_settings_with_dock_and_scale_strings_load() {
 }
 
 #[test]
+fn screen_reading_is_off_by_default_and_patched_as_a_bool() {
+    // Baseline: off by default, and a file written before the setting
+    // existed loads with it off.
+    assert!(!Settings::default().screen_reading);
+    let old = serde_json::json!({ "opacity": 0.5, "hotkey": "F8" });
+    let s: Settings = serde_json::from_value(old).expect("an old file loads");
+    assert!(!s.screen_reading);
+    // Target: a patch turns it on, and it is written back by its name.
+    let on = Settings::default()
+        .patched(&serde_json::json!({ "screen_reading": true }))
+        .expect("a bool patch");
+    assert!(on.screen_reading);
+    assert_eq!(serde_json::to_value(&on).unwrap()["screen_reading"], true);
+    // Negative control: a value that is not a bool is refused.
+    let err = Settings::default()
+        .patched(&serde_json::json!({ "screen_reading": "yes" }))
+        .unwrap_err();
+    assert!(err.contains("bad settings patch"), "{err}");
+}
+
+#[test]
 fn scale_fixed_factor_roundtrips_and_clamps() {
     // Serialised form: the string "auto", or the factor as a JSON number.
     assert_eq!(serde_json::to_value(Scale::Auto).unwrap(), Value::String("auto".into()));

@@ -22,16 +22,24 @@
 //! that made the change or from the worker's next tick, and once more on
 //! [`App::shutdown`]. Each file is written only when its content differs
 //! from what was last written.
+//!
+//! The screen reader (`crate::screen`), with the `screen_reading` setting
+//! on, is one more thread. It takes no state lock: the worker publishes
+//! what it should look for after every batch, and it sends what it saw on
+//! the worker's channel, beside the tailer's lines, each tagged with its
+//! producer's generation so a stopped reader's events are dropped like a
+//! stopped tailer's.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use qt_engine::{Engine, QuestAction, QuestData, Transition};
+use qt_screen::ScreenBackend;
 use qt_logline::{client_pid, parse_line, EventKind, Timestamp};
 use qt_store::{Loaded, Store, StoreError};
 use qt_tailer::{Position, SystemClock as TailerClock, TailEvent};
@@ -44,6 +52,7 @@ use serde_json::{json, Map, Value};
 use crate::cli::Options;
 use crate::diag;
 use crate::discover;
+use crate::screen::{self, DemandSnapshot, NotCounted, ReaderHandle, ScreenMsg, SharedBackend};
 use crate::seed;
 
 /// The shortest time between two saves.
@@ -298,6 +307,10 @@ pub struct AppConfig {
     pub emitter: Box<dyn Emitter>,
     pub window: Box<dyn Window>,
     pub clock: Box<dyn Clock>,
+    /// The screen reader's backend (`qt-capture` on Windows, built with the
+    /// overlay's window handle); `None` where there is none, and then the
+    /// `screen_reading` setting starts nothing.
+    pub screen: Option<Box<dyn ScreenBackend>>,
 }
 
 /// Who set a status line. The most severe one shows; between equals, the
@@ -311,6 +324,18 @@ enum Source {
     Options,
     Window,
     Log,
+    /// The screen reader: a refusal, the overlay over a region, failing
+    /// copies, or the reader stopped after an error.
+    Screen,
+}
+
+/// What reaches the worker on its one channel: a tailer's event or the
+/// screen reader's, each tagged with its producer's generation
+/// (`State::tail_gen`, `State::screen_gen`).
+#[derive(Debug)]
+pub(crate) enum Inbound {
+    Tail(u64, TailEvent),
+    Screen(u64, ScreenMsg),
 }
 
 fn severity(kind: StatusKind) -> u8 {
@@ -372,6 +397,16 @@ struct State {
     /// log, or of another file): nothing newer than the position on disk is
     /// saved then.
     relog_entry: Option<Position>,
+    /// Which screen reader's events count: raised each time one is started
+    /// or stopped, so what a stopped one queued is dropped.
+    screen_gen: u64,
+    /// The [`Clock`] reading when the worker received the last live area
+    /// entry, and the last live `has been slain` line of the current
+    /// character: a bar last seen before either went for that reason, not
+    /// for the boss's death (Context "Design: the reader thread" › "Cancel
+    /// at the worker").
+    screen_area_ms: Option<u64>,
+    screen_death_ms: Option<u64>,
 }
 
 /// The last handled line's place in log time (see `State::log_clock`).
@@ -455,6 +490,8 @@ impl State {
 struct After {
     hotkey: Option<String>,
     retail: bool,
+    /// The screen reader is to start (`true`) or stop (`false`).
+    screen: Option<bool>,
 }
 
 struct Tailer {
@@ -464,6 +501,8 @@ struct Tailer {
 
 /// The shell: state, threads and commands. Shared as `Arc<App>`.
 pub struct App {
+    /// The app itself, for the threads a command starts.
+    me: Weak<App>,
     options: Options,
     store: Option<Store>,
     emitter: Box<dyn Emitter>,
@@ -478,11 +517,17 @@ pub struct App {
     /// events cannot apply their reads out of order. Taken before the state
     /// lock, never while holding it.
     scale_lock: Mutex<()>,
-    /// Every tailer's events, tagged with the generation it was started
-    /// under (`State::tail_gen`).
-    tx: Sender<(u64, TailEvent)>,
-    rx: Mutex<Option<Receiver<(u64, TailEvent)>>>,
+    /// Every tailer's and screen reader's events, tagged with the generation
+    /// it was started under ([`Inbound`]).
+    tx: Sender<Inbound>,
+    rx: Mutex<Option<Receiver<Inbound>>>,
     tailer: Mutex<Option<Tailer>>,
+    /// The screen reader's backend, shared by each reader started.
+    screen_backend: Option<SharedBackend>,
+    /// The newest demand the worker published; the reader takes it with
+    /// `try_lock` and never waits.
+    screen_demand: Mutex<Arc<DemandSnapshot>>,
+    reader: Mutex<Option<ReaderHandle>>,
     worker: Mutex<Option<JoinHandle<()>>>,
     worker_stop: Arc<AtomicBool>,
     stopped: AtomicBool,
@@ -525,6 +570,7 @@ impl App {
             emitter,
             window,
             clock,
+            screen,
         } = config;
         let mut statuses: Vec<(Source, StatusLine)> = Vec::new();
         if let Some(e) = &options_error {
@@ -714,6 +760,9 @@ impl App {
             visibility: Visibility::Shown,
             awaiting_area: false,
             relog_entry: None,
+            screen_gen: 0,
+            screen_area_ms: None,
+            screen_death_ms: None,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
         state.dirty = !(had_settings && had_roster);
@@ -738,7 +787,8 @@ impl App {
             state.set_status(source, Some(line));
         }
 
-        let app = Arc::new(App {
+        let app = Arc::new_cyclic(|me| App {
+            me: me.clone(),
             options,
             store,
             emitter,
@@ -752,6 +802,9 @@ impl App {
             tx,
             rx: Mutex::new(Some(rx)),
             tailer: Mutex::new(None),
+            screen_backend: screen.map(|b| Arc::new(Mutex::new(b))),
+            screen_demand: Mutex::new(Arc::default()),
+            reader: Mutex::new(None),
             worker: Mutex::new(None),
             worker_stop: Arc::new(AtomicBool::new(false)),
             stopped: AtomicBool::new(false),
@@ -849,18 +902,27 @@ impl App {
         }
         self.start_tailer();
         self.spawn_worker();
+        if self.lock().settings.screen_reading {
+            self.start_reader();
+        }
         let mut st = self.lock();
         self.announce(&mut st);
     }
 
-    /// Stops the tailer and the worker, waits for both up to `timeout`, and
-    /// saves whatever is unsaved. True when both threads ended in time.
+    /// Stops the tailer, the worker and the screen reader, waits for them up
+    /// to `timeout`, and saves whatever is unsaved. True when every thread
+    /// ended in time. An OCR call in flight is not interrupted: a reader
+    /// inside one past the deadline is logged as not ended, like the others.
     pub fn shutdown(&self, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
         self.worker_stop.store(true, Ordering::Release);
         let tailer = self.lock_tailer().take();
         if let Some(t) = &tailer {
             t.stop.store(true, Ordering::Release);
+        }
+        let reader = self.lock_reader().take();
+        if let Some(r) = &reader {
+            r.stop.store(true, Ordering::Release);
         }
         let worker = self
             .worker
@@ -869,20 +931,40 @@ impl App {
             .take();
         let tailer_ok = tailer.map_or(true, |t| join_by(t.handle, deadline));
         let worker_ok = worker.map_or(true, |w| join_by(w, deadline));
+        let reader_ok = reader.map(|r| join_by(r.handle, deadline));
         self.save_if_due(true);
+        let ended = |ok: bool| if ok { "ended" } else { "did not end" };
         if !self.stopped.swap(true, Ordering::AcqRel) {
-            self.diag(&if tailer_ok && worker_ok {
-                "stop: tailer and worker ended, progress saved".to_string()
-            } else {
-                format!(
+            self.diag(&match reader_ok {
+                None if tailer_ok && worker_ok => {
+                    "stop: tailer and worker ended, progress saved".to_string()
+                }
+                None => format!(
                     "stop: tailer {}, worker {} within {} ms; progress saved",
-                    if tailer_ok { "ended" } else { "did not end" },
-                    if worker_ok { "ended" } else { "did not end" },
+                    ended(tailer_ok),
+                    ended(worker_ok),
                     timeout.as_millis()
-                )
+                ),
+                Some(true) if tailer_ok && worker_ok => {
+                    "stop: tailer, worker and screen reader ended, progress saved".to_string()
+                }
+                Some(reader_ok) => format!(
+                    "stop: tailer {}, worker {}, screen reader {} within {} ms; progress saved",
+                    ended(tailer_ok),
+                    ended(worker_ok),
+                    ended(reader_ok),
+                    timeout.as_millis()
+                ),
             });
         }
-        tailer_ok && worker_ok
+        tailer_ok && worker_ok && reader_ok.unwrap_or(true)
+    }
+
+    /// True while a screen reader thread runs.
+    pub fn screen_reader_running(&self) -> bool {
+        self.lock_reader()
+            .as_ref()
+            .is_some_and(|r| !r.handle.is_finished())
     }
 
     /// A request to quit, from the tray or a close of the overlay's window
@@ -986,7 +1068,11 @@ impl App {
     pub fn handle_tail_events(&self, events: Vec<TailEvent>) {
         let st = self.lock();
         let generation = st.tail_gen;
-        self.apply_tail_events(st, generation, events.into_iter().map(|e| (generation, e)));
+        self.apply_tail_events(
+            st,
+            generation,
+            events.into_iter().map(|e| Inbound::Tail(generation, e)),
+        );
     }
 
     /// The generation of the tailer running now. Events tagged with an
@@ -1003,14 +1089,26 @@ impl App {
     pub fn handle_tail_events_of(&self, events: Vec<(u64, TailEvent)>) {
         let st = self.lock();
         let generation = st.tail_gen;
-        self.apply_tail_events(st, generation, events.into_iter());
+        self.apply_tail_events(
+            st,
+            generation,
+            events.into_iter().map(|(tag, e)| Inbound::Tail(tag, e)),
+        );
+    }
+
+    /// A batch as the worker drains it: tailer and screen events in the
+    /// order they arrived, those of a stopped producer dropped.
+    fn handle_inbound(&self, items: Vec<Inbound>) {
+        let st = self.lock();
+        let generation = st.tail_gen;
+        self.apply_tail_events(st, generation, items.into_iter());
     }
 
     fn apply_tail_events(
         &self,
         mut st: MutexGuard<'_, State>,
         generation: u64,
-        events: impl Iterator<Item = (u64, TailEvent)>,
+        events: impl Iterator<Item = Inbound>,
     ) {
         let path = st.log_path.clone().unwrap_or_default();
         let mut stale = 0usize;
@@ -1021,7 +1119,18 @@ impl App {
         // game sessions writes one line, not one per session.
         let pid_before = st.game_pid;
         let mut pid_from = "";
-        for (tag, event) in events {
+        for item in events {
+            let (tag, event) = match item {
+                Inbound::Tail(tag, event) => (tag, event),
+                Inbound::Screen(tag, msg) => {
+                    // A stopped reader's are dropped without a line: every
+                    // `screen:` line has one of the shapes Live 9 checks.
+                    if tag == st.screen_gen {
+                        self.apply_screen_msg(&mut st, msg, &mut transitions);
+                    }
+                    continue;
+                }
+            };
             if tag != generation {
                 stale += 1;
                 continue;
@@ -1082,6 +1191,20 @@ impl App {
                         if live {
                             if let Some(m) = diag::event(&ev) {
                                 self.diag(&m);
+                            }
+                            // When the worker received an area entry or the
+                            // current character's death, for the screen
+                            // reader's cancel.
+                            match &ev.kind {
+                                EventKind::AreaEntered { .. } => {
+                                    st.screen_area_ms = Some(self.clock.now_ms())
+                                }
+                                EventKind::Slain { name }
+                                    if st.engine.current() == Some(name.as_str()) =>
+                                {
+                                    st.screen_death_ms = Some(self.clock.now_ms())
+                                }
+                                _ => {}
                             }
                         }
                         let before = st.engine.current().map(str::to_string);
@@ -1173,6 +1296,156 @@ impl App {
             self.emitter.row_change(c);
             self.diag(&diag::row_change(c));
         }
+        self.publish_demand(st);
+    }
+
+    // -- the screen reader ---------------------------------------------------
+
+    /// Publishes what the screen reader should look for now: nothing while
+    /// the setting is off, else the engine's screen demand and the game pid
+    /// once confirmed. Replaced only when it changed, so the reader keeps
+    /// its trackers' state across batches.
+    fn publish_demand(&self, st: &State) {
+        let snapshot = if st.settings.screen_reading {
+            let pid = st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed);
+            DemandSnapshot::of(&st.engine, pid)
+        } else {
+            DemandSnapshot::default()
+        };
+        let mut slot = self.demand_slot().lock().unwrap_or_else(|p| p.into_inner());
+        if **slot != snapshot {
+            *slot = Arc::new(snapshot);
+        }
+    }
+
+    /// One message of the running screen reader: its status line, or a
+    /// tracker's event checked, handed to the engine and logged with its
+    /// outcome. A bar last seen before the worker received an area entry or
+    /// the character's death went for that reason and is not counted; an
+    /// event no character would take now (a relog window open, or no
+    /// character yet) is not counted either.
+    fn apply_screen_msg(&self, st: &mut State, msg: ScreenMsg, out: &mut Vec<Transition>) {
+        let (event, wall_ms) = match msg {
+            ScreenMsg::Status(line) => {
+                st.set_status(Source::Screen, line);
+                return;
+            }
+            ScreenMsg::Seen { event, wall_ms } => (event, wall_ms),
+        };
+        let cancelled = match &event {
+            qt_screen::ScreenEvent::BarGone { last_present, .. } => {
+                let before = |t: Option<u64>| t.is_some_and(|t| *last_present < t as i64);
+                if before(st.screen_area_ms) {
+                    Some(NotCounted::AfterAreaChange)
+                } else if before(st.screen_death_ms) {
+                    Some(NotCounted::AfterDeath)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        };
+        let (outcome, transitions) = match cancelled {
+            Some(why) => (Err(why), Vec::new()),
+            None if st.engine.relog_window_open() || st.engine.quest_target().is_none() => {
+                (Err(NotCounted::NoOpenStep), Vec::new())
+            }
+            None => {
+                let result = st.engine.apply_screen(&screen::engine_event(&event));
+                (screen::engine_outcome(&result.outcome), result.transitions)
+            }
+        };
+        // A tick is evidence to save, whether or not a row changed.
+        if outcome.is_ok() {
+            st.dirty = true;
+        }
+        self.diag(&format!(
+            "{}: {}",
+            screen::seen_head(&event, wall_ms),
+            screen::outcome_text(outcome)
+        ));
+        for quest_id in st.engine.take_refused() {
+            self.diag(&diag::refused(&quest_id));
+        }
+        for t in &transitions {
+            self.diag(&diag::transition(t));
+        }
+        out.extend(transitions);
+    }
+
+    /// Starts the screen reader, unless one runs or there is no backend.
+    fn start_reader(&self) {
+        let (Some(backend), Some(app)) = (&self.screen_backend, self.me.upgrade()) else {
+            return;
+        };
+        let mut slot = self.lock_reader();
+        if slot.as_ref().is_some_and(|r| !r.handle.is_finished()) {
+            return;
+        }
+        let generation = {
+            let mut st = self.lock();
+            st.screen_gen += 1;
+            st.set_status(Source::Screen, None);
+            self.publish_demand(&st);
+            st.screen_gen
+        };
+        let stop = Arc::new(AtomicBool::new(false));
+        let (backend, flag) = (Arc::clone(backend), Arc::clone(&stop));
+        let spawned = thread::Builder::new()
+            .name("qt-screen".to_string())
+            .spawn(move || screen::run_reader(app, backend, generation, flag));
+        match spawned {
+            Ok(handle) => *slot = Some(ReaderHandle { stop, handle }),
+            Err(e) => {
+                self.diag(&format!("error: screen reader: the thread did not start: {e}"));
+                self.diag("screen: refused: stopped after an error");
+                self.lock()
+                    .set_status(Source::Screen, Some(StatusLine::warn(screen::STOPPED_STATUS)));
+            }
+        }
+    }
+
+    /// Stops the screen reader and waits for it up to [`SHUTDOWN_TIMEOUT`],
+    /// as a tailer restart does; what it queued is dropped and its status
+    /// line cleared.
+    fn stop_reader(&self) {
+        let reader = self.lock_reader().take();
+        let ended = reader.map(|r| {
+            r.stop.store(true, Ordering::Release);
+            join_by(r.handle, Instant::now() + SHUTDOWN_TIMEOUT)
+        });
+        {
+            let mut st = self.lock();
+            st.screen_gen += 1;
+            st.set_status(Source::Screen, None);
+            self.publish_demand(&st);
+        }
+        if ended == Some(false) {
+            self.diag(&format!(
+                "error: screen reader: did not end within {} ms",
+                SHUTDOWN_TIMEOUT.as_millis()
+            ));
+        }
+        self.diag("screen: off");
+    }
+
+    /// The shell's clock, for the reader's times.
+    pub(crate) fn clock_ms(&self) -> u64 {
+        self.clock.now_ms()
+    }
+
+    /// The worker's channel, for the reader's messages.
+    pub(crate) fn sender(&self) -> &Sender<Inbound> {
+        &self.tx
+    }
+
+    /// Where the worker publishes the reader's demand.
+    pub(crate) fn demand_slot(&self) -> &Mutex<Arc<DemandSnapshot>> {
+        &self.screen_demand
+    }
+
+    fn lock_reader(&self) -> MutexGuard<'_, Option<ReaderHandle>> {
+        self.reader.lock().unwrap_or_else(|p| p.into_inner())
     }
 
     /// The worker's housekeeping between batches: a quiet relog window
@@ -1187,6 +1460,11 @@ impl App {
     fn tick_via(&self, worker: Option<&WorkerWindow>) {
         self.close_quiet_relog_window();
         self.follow_foreground_via(worker);
+        // A pid its window in front confirmed reaches the reader's demand.
+        {
+            let st = self.lock();
+            self.publish_demand(&st);
+        }
         self.save_if_due(false);
     }
 
@@ -1481,6 +1759,9 @@ impl App {
             if new.log_path != old.log_path {
                 after.retail = true;
             }
+            if new.screen_reading != old.screen_reading {
+                after.screen = Some(new.screen_reading);
+            }
             Ok(after)
         })
     }
@@ -1590,6 +1871,7 @@ impl App {
         let view = self.build(st);
         self.emitter.view(&view);
         st.last_view = Some(view.clone());
+        self.publish_demand(st);
         view
     }
 
@@ -1614,12 +1896,17 @@ impl App {
             }
         };
         self.save_if_due(false);
-        let again = after.hotkey.is_some() || after.retail;
+        let again = after.hotkey.is_some() || after.retail || after.screen.is_some();
         if let Some(h) = after.hotkey {
             self.register_hotkey(&h, "change it in Settings");
         }
         if after.retail {
             self.start_tailer();
+        }
+        match after.screen {
+            Some(true) => self.start_reader(),
+            Some(false) => self.stop_reader(),
+            None => {}
         }
         if again {
             let mut st = self.lock();
@@ -1785,7 +2072,7 @@ impl App {
         };
         let stop = Arc::new(AtomicBool::new(false));
         let tx = self.tx.clone();
-        let sink = move |event| tx.send((generation, event)).is_ok();
+        let sink = move |event| tx.send(Inbound::Tail(generation, event)).is_ok();
         match qt_tailer::spawn_follower(follower, TailerClock, sink, Arc::clone(&stop)) {
             Ok(handle) => {
                 self.diag(&format!(
@@ -2009,7 +2296,7 @@ fn join_by(handle: JoinHandle<()>, deadline: Instant) -> bool {
 /// [`WORKER_TICK`] without one, so a quiet log's relog window still closes.
 /// Ends within one [`WORKER_TICK`] of `stop` being set, even while one of its
 /// window calls waits for the main thread ([`WorkerWindow`]).
-fn run_worker(app: Arc<App>, rx: Receiver<(u64, TailEvent)>, stop: Arc<AtomicBool>) {
+fn run_worker(app: Arc<App>, rx: Receiver<Inbound>, stop: Arc<AtomicBool>) {
     let window = match WorkerWindow::start(Arc::clone(&app.window), Arc::clone(&stop)) {
         Ok(w) => Some(w),
         Err(e) => {
@@ -2029,7 +2316,7 @@ fn run_worker(app: Arc<App>, rx: Receiver<(u64, TailEvent)>, stop: Arc<AtomicBoo
                         Err(_) => break,
                     }
                 }
-                app.handle_tail_events_of(batch);
+                app.handle_inbound(batch);
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
@@ -2181,6 +2468,7 @@ mod tests {
                 front: Arc::default(),
             }),
             clock: Box::new(ZeroClock),
+            screen: None,
         });
         app.start();
         let view = app.get_view();
@@ -2301,6 +2589,7 @@ mod tests {
                 front: Arc::default(),
             }),
             clock: Box::new(ZeroClock),
+            screen: None,
         });
         let fingerprint = qt_tailer::Fingerprint::of(b"fixture log");
         let lines = |texts: &[&str], catch_up: bool| -> Vec<TailEvent> {
@@ -2382,6 +2671,7 @@ mod tests {
                 front: Arc::clone(&front),
             }),
             clock: Box::new(ManualClock(Arc::clone(&clock))),
+            screen: None,
         });
         let fingerprint = qt_tailer::Fingerprint::of(b"fixture log");
         let line = |pid: u32, catch_up: bool| -> Vec<TailEvent> {
@@ -2497,6 +2787,7 @@ mod tests {
                     front: Arc::clone(&front),
                 }),
                 clock: Box::new(ManualClock(Arc::clone(&clock))),
+                screen: None,
             });
             PidRig { _dir: dir, store, app, calls, front, clock }
         }

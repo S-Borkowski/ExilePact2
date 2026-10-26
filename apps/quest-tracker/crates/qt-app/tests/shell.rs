@@ -332,6 +332,7 @@ fn harness_in(dir: tempfile::TempDir, setup: Setup) -> Harness {
         emitter: Box::new(FakeEmitter(Arc::clone(&views))),
         window: Box::new(FakeWindow(Arc::clone(&window))),
         clock: Box::new(FakeClock(Arc::clone(&clock))),
+        screen: None,
     });
     Harness {
         _dir: dir,

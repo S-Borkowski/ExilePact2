@@ -20,11 +20,16 @@
 //! - [`discover`]: which `Client.txt` to follow.
 //! - [`diag`]: what the diagnostic log may say.
 //! - [`seed`]: the current area read back from the log when a tailer starts.
+//! - [`screen`]: the opt-in screen reader's thread, which reads the game's
+//!   window through a [`ScreenBackend`] the glue hands [`AppConfig`]
+//!   (`qt-capture` on Windows), and its diagnostic lines (Context "Design:
+//!   the reader thread").
 
 pub mod app;
 pub mod cli;
 pub mod diag;
 pub mod discover;
+pub mod screen;
 pub mod seed;
 
 use std::collections::BTreeMap;
@@ -41,6 +46,7 @@ pub use app::{
 pub use cli::Options;
 // What the glue names without depending on the library crates itself.
 pub use qt_engine::QuestAction;
+pub use qt_screen::ScreenBackend;
 pub use qt_store::Store;
 pub use qt_tailer::DEFAULT_POLL_INTERVAL;
 pub use qt_viewmodel::{Frame, Mode, RowChange, View, ViewKind};
