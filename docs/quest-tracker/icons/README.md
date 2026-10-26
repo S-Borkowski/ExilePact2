@@ -82,8 +82,8 @@ importing. An external `<img>` does not inherit the parent page's text colour.
 
 When inlining multiple SVGs, give the title and `aria-labelledby` a unique
 ID per instance, or replace them with the host component's accessible label.
-Collapse/expand assume the default right dock; mirror them horizontally for
-a left dock. Strokes scale normally with the viewBox.
+Collapse/expand are drawn for the overlay's default place on the right-hand
+side of the screen. Strokes scale normally with the viewBox.
 
 The specimen uses warm ivory on charcoal, with antique gold for worth levels.
 Use a dark solid panel behind the default resistance colours; on a light

@@ -692,6 +692,41 @@ eighth, with her first line only:
 - Una's town lines match no signal, because each of her signals names its
   area and its exact line.
 
+**Beira of the Rotten Pack, Blackjaw and Lythara** (the tracker's reading
+of "Rewards after a boss kill" above, the owner's decision of 2026-10-25).
+Beira's steps are "Reach Clearfell" (the `G1_2` entry, measured), "Find
+Beira of the Rotten Pack" (any of her lines in `G1_2`, measured: her first
+line comes when she is met), "Defeat Beira of the Rotten Pack" (no signal:
+no line marking her defeat was observed, a negative not yet set against a
+known kill, so the player ticks it), "Use the item it dropped" (no signal:
+the use is not logged) and `done`, the `+10% to Cold Resistance` reward line
+in any area (measured in Clearfell and, in 2 sessions, in the Mud Burrow;
+that it may come in any area where the item is used is **inferred** from
+those two). So her lines leave the defeat current whatever area comes next,
+the tick shows the use, and the reward finishes the quest from either step.
+No leave or timer inference marks the defeat (rejected by the owner,
+2026-10-25). Blackjaw, the Remnant and Lythara, the Wayward Spear get the
+same split, by analogy (**inferred**): their lines reach "Find …",
+"Defeat …" has no signal, the "Use any item left after the fight" hint is
+unchanged. Evidence an older build stored for a boss line on the fight step
+matches no compiled signal now and is ignored, so such a character shows the
+step its other evidence reaches.
+
+**Treacherous Ground** (the tracker's reading of "Town dialogue" above).
+Its unlock is the Clearfell Encampment entry (`G1_town`) or the Clearfell
+entry (`G1_2`), whichever comes first. The pickup from Renly is a talk the
+log does not record (two measured town visits); the town entry, where Renly
+stands and on which Finding the Forge already unlocks, is the earliest
+evidence of it. That the town entry stands for the pickup is **inferred**
+(2026-10-25); a player who enters the town without talking to Renly sees
+the quest available early.
+
+**Find-it tips** (not a measurement). Five steps carry the owner's own
+"how to find it" text in their `tip` field (2026-10-25): Slay the Bloated
+Miller, Find the Mud Burrow, Find Beira of the Rotten Pack, Travel to the
+Grelwood and Search the Grelwood. They are the owner's advice, not read
+from the log or from poe2db, and change no signal.
+
 | Act | Quest | Worth | Detection | Evidence |
 |---|---|---|---|---|
 | 1 | Reaching Clearfell | yes | auto (inferred) | measured |

@@ -43,6 +43,18 @@ What it is:
   `Ctrl+Alt+Q`) switches between them.
 - **Two views.** *Next up* lists only what is available or in progress now,
   grouped by worth; *All* lists every act's quests under the act's header.
+- **Skip sets a quest aside without losing it.** Any quest can be skipped
+  in edit mode, one not picked up yet included, and so can the quests of a
+  character still shown as "New character". A skipped quest stays
+  tracked: the log keeps moving it, *Show skipped quests* lists it with the
+  step it has reached, and Unskip shows it exactly where that progress is.
+- **A find-it tip under a step.** A short "how to find it" hint, the
+  owner's own words, shows under the step it helps with, from a `tip`
+  field in the quest data that can be extended by hand ("Quest data").
+- **A tray icon.** The app's icon sits in the notification area, tooltip
+  "Quest Tracker", with one menu entry, *Quit Quest Tracker*: the way to
+  close the overlay even while play mode has it hidden. Closing its window
+  quits too.
 - **The row itself changes** when a quest becomes available, is started,
   has a step done or is done, while you play: the row is highlighted in its
   new status colour for about 2.5 s, the completed step fades out and the
@@ -113,6 +125,12 @@ fatal: the overlay starts without options and says so in its status line and
 diagnostic log. A second launch while one is running is refused (single
 instance).
 
+To quit, choose *Quit Quest Tracker* from the tray icon's menu (it works
+while the overlay is hidden), or close the overlay's window (a close
+request, `WM_CLOSE`, ends it shown or hidden). Either writes one `quit:`
+line to the diagnostic log and then stops the tracker as on any exit,
+saving progress first (`stop: ...`).
+
 Which log it follows: `--log`, else the Settings log path, else the first of
 the standalone and Steam paths above whose file exists. With none, the panel
 shows the "no log found" state.
@@ -122,17 +140,26 @@ Settings (edit mode, the settings frame) and their defaults:
 - **Opacity** `0.9`, a slider from 0 to 1 in 0.05 steps. It is the panel
   background's opacity only: at 0 the background is gone, while text,
   icons, the panel's border and the edit-mode accent stay fully opaque,
-  so edit mode is still told apart.
+  so edit mode is still told apart. It applies while the slider is
+  dragged (at most one update per animation frame, the last value always
+  sent), not only on release.
 - **Scale** `auto`: an *Auto scale* switch, plus a slider for a fixed
   factor from 0.75 to 2 in 0.05 steps, applied as the webview zoom (see
-  below). Moving the slider turns Auto off. `settings.json` stores
+  below). Moving the slider turns Auto off. It too applies while dragged:
+  since each step rezooms the page under the pointer, the value follows
+  the pointer's travel since the press, in screen pixels, over the track's
+  width at the press, so the zoom changing does not move it; the arrow
+  keys still step it. `settings.json` stores
   `"auto"` or the factor as a number; the earlier `"1"`, `"1.33"` and
   `"2"` load as those factors, and a malformed or out-of-range value loads
   as Auto.
 - **Show skipped quests** (off): with it on, a skipped quest is shown
-  whatever *Only worth-it* says. **Only worth-it quests** (off) hides the
-  quests that are not worth it and not skipped. Neither changes an act's
-  counts.
+  whatever *Only worth-it* says: in *All* always, and in *Next up* when its
+  tracked progress is available or in progress, after the unskipped rows of
+  its worth group. It keeps its skipped mark and shows the step that
+  progress has reached. With it off, no skipped quest is listed. **Only
+  worth-it quests** (off) hides the quests that are not worth it and not
+  skipped. Neither changes an act's counts.
 - **Log path** (unset: discovery) and **hotkey** `Ctrl+Alt+Q` (the
   global-shortcut plugin's accelerator syntax).
 
@@ -216,15 +243,33 @@ log. The lines to look for when a quest did not advance:
 - `row change <id> <kind> (<quest id>)` for each live change sent to a
   row (`available`, `step_done` or `quest_done`; a quest started by its
   `start` signal is a `step_done` with no step completed).
-- `visibility: hidden (another window is in front)` when play mode hides
-  the overlay because neither the game's window nor the overlay's own is
-  in front, and `visibility: shown` when it shows again (or edit mode
-  shows it). Each change is written once; no window title or other
-  program's name is ever written. The game's window is told by its
-  process id, the `<pid>` in the `[<LEVEL> Client <pid>]` header of the
-  newest log line read (at start, read back from the log before the start
-  position with the current area). Until a line with that header has been
-  read, the overlay stays shown.
+- `visibility: hidden (the window in front is neither the overlay nor the
+  game pid from the log)` when play mode hides the overlay because neither
+  the game's window nor the overlay's own is in front, and `visibility:
+  shown` when it shows again (or edit mode shows it). Each change is
+  written once; no window title, other program's name or other pid is
+  ever written. The game's window is told by its process id, the `<pid>`
+  in the `[<LEVEL> Client <pid>]` header of the newest log line read (at
+  start, read back from the log before the start position with the
+  current area). Until a line with that header has been read, the overlay
+  stays shown.
+- The game pid it compares with, each time it changes: `game pid: <pid>
+  (from <source>)`, the source being `a live line's header`, `a catch-up
+  line's header` or `the log before the tailer's start`. A pid from a live
+  line is the running game's. One read only from catch-up or from before
+  the start may be an old log's, so it is trusted for 10 s: `game pid:
+  <pid> confirmed (its window is in front)` when a window of that pid comes
+  to the front within them, or `game pid: <pid> not used to hide the
+  overlay (no live line and no window of it in front for 10 s: the log may
+  be one the running game does not write to)` when none does. From then on
+  that pid hides nothing, and only a live line with it trusts it again (a
+  window in front does not, since Windows reuses pids).
+- `tray: icon shown` at start, or `error: tray icon: <reason>` when the
+  tray icon could not be made; the overlay then runs on without it (quit by
+  closing its window).
+- `quit: from the tray` or `quit: the window was closed`: the first quit
+  request (a second writes nothing), followed by the `stop: ...` line of
+  the shutdown.
 
 Build it:
 
@@ -366,6 +411,27 @@ with no step reached, so its first step is the current one; the row
 changes once, saying the quest started. Applying the same line twice
 changes nothing, so re-reading a log is safe.
 
+**Skipped quests stay tracked.** Skipping is an override on top of the
+quest's evidence, not a stop: the log's signals keep being recorded for a
+skipped quest, and the engine keeps its *tracked* status, the one the rules
+above give with the skip left out. A skipped row keeps its skipped mark and
+muted style, but carries the step that tracked progress reaches, as an
+in-progress row does, and its detail shows the steps done and current. With
+*Show skipped quests* on, Next up lists a skipped quest whose tracked
+status is available or in progress (whatever *Only worth-it* says, after
+the unskipped rows of its worth group), and All lists every skipped quest.
+Progress on a skipped quest plays no row change and is not announced.
+Unskip shows exactly the status and step the evidence gives. An act's
+counts and whether it is done do not change.
+
+**Quest actions on the new character.** Mark done, Skip, Unskip, Reset and
+a step's tick apply to the character the panel shows: the pinned one, else
+the active one, else the unnamed new character from The Riverbank (below).
+The new character's overrides are kept in its record, so they survive a
+restart of the overlay, and pass to the character it becomes when a
+level-up names it or a pin takes its progress. A quest command is refused
+(`no character yet`) only when there is no character at all.
+
 **Secrets in the Dark, The Mysterious Shade and Una's Grelwood lines.**
 Renly gives Secrets in the Dark in a talk the log does not record, so the
 quest has a `start` signal instead: Reaching Clearfell being done, which
@@ -373,11 +439,15 @@ happens on entering Clearfell (`G1_2`), the earliest evidence of that talk.
 It is an inference, written in the quest's notes; without it the quest
 stayed *available* from Clearfell and showed in progress only from the
 Grelwood (measured in Live 2). In the Grelwood (`G1_4`), Una's lines move
-the quest on: her first line there, "What happened here...?", and "I'll
-wait here. The old magicks will protect me." a few seconds later complete
-"Ask Una for help" (and so the steps before it), leaving "Find the Red
-Vale" current; her "Good. Now the others!" there completes "Use the Rune
-Spikes" (an inference from where it falls, after the Red Vale). In the
+the quest on: her first line there, "What happened here...?", comes when
+you summon her at the Tree of Souls and completes "Search the Grelwood",
+leaving "Ask Una for help" current. "I'll wait here. The old magicks will
+protect me.", which came a few seconds later in the sessions where the
+player talked to her, completes "Ask Una for help" and leaves "Find the
+Red Vale" current (that it follows the talk is inferred). Where that line
+never comes, entering the Red Vale completes the steps before it. Her
+"Good. Now the others!" there completes "Use the Rune Spikes" (an
+inference from where it falls, after the Red Vale). In the
 Grim Tangle (`G1_6`), her "The old magicks still thrive! The way is
 open. Please, hurry." completes The Mysterious Shade's "Speak to Una
 about the roots". The Mysterious Shade is no longer started by entering
@@ -403,9 +473,25 @@ character from The Riverbank holds the pin it released (below).
 The Riverbank (`G1_1`), an area of level 1. The area's level says nothing
 about the character, and a character relogging inside The Riverbank enters
 `G1_1` again, with the same instance (the same seed), so the entry alone
-cannot tell a new character from a relog. So an entry to `G1_1` at area
-level 1, when no new character is already open, first opens a *relog
-window* of 5 s and changes nothing else: the active character and the pin
+cannot tell a new character from a relog. Two things can: the seed of the
+character's Riverbank instance, and a name line inside a short window.
+
+- **A relog by the seed.** Each stored character keeps the seed of the
+  Riverbank instance it was last decided to be in (in its
+  `characters/<name>.json`). A level-1 `G1_1` entry whose seed is that of
+  exactly one stored character, and of no parked new character, is that
+  character's relog, decided at the entry with no wait: it becomes active,
+  a pin stays, and the diagnostic log says `character: <name> relogged in
+  The Riverbank, kept`. A character gets its seed when a decision puts it in
+  that Riverbank instance: the new character's seed passes to the name its
+  level-up gives it, or to the character a pin hands its progress to, and a
+  relog records the entry's seed. An event routed to a pinned character
+  never does. Two characters with one seed, or a seed no character has, go
+  to the window below.
+
+Otherwise an entry to `G1_1` at area level 1, when no new character is
+already open, first opens a *relog window* of 5 s and changes nothing
+else: the active character and the pin
 stay, nothing is written, and the events that come meanwhile wait. The
 window closes on the first of a character build line that makes the entry
 a relog (below), another area entry, any line more than 5 s after the
@@ -426,8 +512,9 @@ at level 1, and it is not in the character picker. If a character was
 pinned, the pin is released then, not at the entry (the diagnostic log
 says so).
 
-- **A relog.** When the client's character build line (`Character <name>
-  has unknown build of path: None`) comes no more than 5 s after that
+- **A relog by the name line.** When the client's character build line
+  (`Character <name> has unknown build of path: None`) comes no more than
+  5 s after that
   entry, before any other area entry, and names a character the tracker
   already stores, the entry was a relog: the relog window closes having
   changed nothing, so no new character starts and no pin is released;
@@ -438,8 +525,8 @@ says so).
   or the line coming later, changes nothing, and the window then decides
   as above, starting a new character that stays open until its level-up.
   The client wrote that line on some relogs and not on others, so a relog
-  without it still starts a new character once the window closes (Known
-  limitations).
+  the seed does not decide and the line does not follow still starts a new
+  character once the window closes (Known limitations).
 - **Named.** The first level-up after the entry, from a name not seen
   joining or leaving the area, names it: that name becomes your character,
   active, with the progress so far, and is stored; if the entry released a
@@ -467,7 +554,9 @@ detection".
 talk happens in a dialogue window, whose text was not seen in `Client.txt`
 (one measured visit to Clearfell Encampment in which the player talked to
 its NPCs logged no NPC line), and the voiced lines Clearfell Encampment's
-NPCs did log are vendor, gambling and farewell lines. That is not proof
+NPCs did log are vendor, gambling and farewell lines; Live 3's visit, in
+which the player picked up Treacherous Ground from Renly, logged no NPC
+line either. That is not proof
 that a talk is never logged, but the tracker cannot count on it, so a talk
 step does not advance from the talk itself. Where the game
 can only produce the next recorded signal after the talk (for example
@@ -475,18 +564,32 @@ entering Clearfell after talking to Renly in Clearfell Encampment), that
 signal completes the talk step too, and the quest's notes say `inferred`;
 a player who skips the talk is then shown done too early. Where nothing
 recorded follows the talk (the reward talks of Treacherous Ground and
-Finding the Forge, for instance), the step stays a manual tick. See
+Finding the Forge, for instance), the step stays a manual tick. A quest
+given in town is shown from the town entry where the giver stands:
+Treacherous Ground, which Renly gives in Clearfell Encampment, is
+available from the `G1_town` entry, as Finding the Forge is, and in
+progress from the Clearfell entry as before (that the town entry stands
+for the pickup is inferred). See
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Town dialogue".
 
-**Using the item a boss dropped.** For Beira of the Rotten Pack the reward
-line comes only after you use the item she dropped, which can be minutes
-after the kill (seen once, in Live 1); her last step is "Use the item it
-dropped". For Blackjaw, the Remnant and Lythara, the Wayward Spear the
-reward line also came seconds after the boss's last line, never with it,
-but whether they drop an item to use is not established, so their last
-step is "Use any item left after the fight", worded as a hint. After the
-boss's line the row shows the fight as reached and the use as the step to
-do, and the reward line finishes the quest. See
+**A boss: find it, defeat it, use the item it dropped.** Beira of the
+Rotten Pack's steps are "Reach Clearfell" (the `G1_2` entry), "Find Beira
+of the Rotten Pack" (any of her lines in Clearfell, the first of which
+comes when she is met), "Defeat Beira of the Rotten Pack" and "Use the item
+it dropped". No line marking her defeat is known (not observed, and not yet
+set against a known kill), so the defeat step has no signal: **tick it by
+hand** when she falls, and the row then shows "Use the item it dropped".
+Until then her lines leave "Defeat Beira of the Rotten Pack" current,
+whatever area comes next. Her reward line comes only after you use the
+item she dropped, which can be minutes after the kill (seen once, in Live
+1), and finishes the quest in any area, from either step: using the item
+at once needs no tick. Blackjaw, the Remnant and Lythara, the Wayward
+Spear have the same split: their lines reach "Find …", "Defeat …" is
+ticked by hand, and their last step is "Use any item left after the
+fight", worded as a hint, since whether they drop an item to use is not
+established. A character saved by an older build, when a boss's lines were
+its fight step, shows the step its other evidence reaches: that stored
+line matches no signal now and is ignored. See
 [`quest-tracker-research.md`](quest-tracker-research.md) § "Rewards after a
 boss kill".
 
@@ -539,7 +642,8 @@ What is stored, and where:
 - `settings.json`; `position.json` (the log's path, fingerprint and read
   offset); `characters.json` (your character names with class, level, own
   or unconfirmed, pinned); `characters/<name>.json` (one character's quest
-  evidence, overrides and ticks); `new-character.json` (only while a new
+  evidence, overrides and ticks, and the seed of the Riverbank instance it
+  was last in, a number the game generated); `new-character.json` (only while a new
   character from The Riverbank has no name yet: its progress, its event
   count, the pin it released, the seed of its Riverbank instance and
   whether it is open; it has no name of its own, and it is removed once a level-up,
@@ -606,6 +710,33 @@ a patch:
    --locked`, which validates the shipped file), and `quest-tracker-replay
    state` over the log to see that quests still advance.
 
+**Find-it tips.** A step may carry a `"tip"`: a short "how to find it"
+hint, shown on its own line under the step in the row (when it is the step
+the row shows, a skipped row included) and under the step's text in the
+quest detail. The tips are the owner's own words; poe2db's `extract` never
+writes one, and the file is curated by hand, so a rebuild keeps them. To
+add one, find the quest by its `id`, then the step by its `title`, and add
+a field after `text`:
+
+```json
+{
+  "id": "step-2",
+  "title": "Slay the Bloated Miller",
+  "text": "...",
+  "tip": "Follow up river.",
+  "signals": [...]
+}
+```
+
+A tip is one line, not empty after trimming, and at most 120 characters;
+anything else fails validation naming the quest, the step and the field
+(`qt-engine`'s tests validate the shipped file; a `--data` file that fails
+falls back to the built-in data, as for any invalid file). The shipped
+file is compiled in, so rebuild after the edit, or pass the edited file
+with `--data` to see it at once. This version carries five: Slay the Bloated Miller, Find the Mud
+Burrow, Find Beira of the Rotten Pack, Travel to the Grelwood and Search
+the Grelwood.
+
 The data contract (every field, signal kind and reward category) is the
 validator in `apps/quest-tracker/crates/qt-engine/`.
 
@@ -623,7 +754,7 @@ project):
 | `crates/qt-viewmodel/` | `View` and `RowChange`: what the panel shows and what changed in a row, built in Rust. |
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`). |
 | `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery. Tested with a fake window, emitter and clock. |
-| `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the command wrappers. |
+| `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the tray icon and its Quit, the close request, the command wrappers. |
 | `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
 | `data/quests.json` | The shipped quest data. |
@@ -761,21 +892,22 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   character in the picker when this matters. A brand-new character is the
   exception: its entry to The Riverbank (an area of level 1) starts it as
   soon as the 5 s relog window after the entry closes without a relog
-  (How detection works). The entry alone cannot tell a new character from one re-entering
-  The Riverbank, so a relog is recognised only when the client's character
-  build line names a stored character within 5 s of the entry. That rule
-  rests on one player's log: the line came on 4 sessions' relogs of one
-  instance by one character, still unnamed then, and not on that
-  character's fifth entry or for any of the 7 other new characters, so it
-  is not a general signal. A relog the line does not follow, or one by a
-  character the tracker never stored, starts a "New character" instead;
-  its next level-up hands the progress back to it by name (and takes over
-  a pin the entry released). The measured relogs were of the second kind
-  (the character had no level-up yet, so no name was stored): there each
-  session that ends parks the new character rather than dropping it, and
-  the next entry to the same instance resumes it. A character past level
-  1 re-entering The Riverbank was not observed (not proof that it never
-  happens).
+  (How detection works). The entry line alone cannot tell a new character
+  from one re-entering The Riverbank; its seed can. A stored character
+  relogging into the Riverbank instance it was last in is recognised by
+  that seed at once, and otherwise when the client's character build line
+  names it within 5 s of the entry. Both rest on one player's log: every
+  one of its 6 relogs came back to the same seed, and no new instance was a
+  stored character's return; the build line followed only 3 of those
+  relogs, all by one character, so it is not a general signal. What is
+  left: a stored character returning to The Riverbank in a **fresh
+  instance** (its old one closed), or one the tracker stored before it had
+  a seed, still starts a "New character" (not observed in the log); its
+  next level-up hands the progress back to it by name (and takes over a pin
+  the entry released). A character relogging before its first level-up has
+  no name stored: there each session that ends parks the new character
+  rather than dropping it, and the next entry to the same instance resumes
+  it.
 - **"Probably done" is an inference.** A row or step with the
   "probably done" mark was finished by a later signal, not its own, so a player who
   skipped that step is shown it done too early. Secrets in the Dark's
@@ -795,10 +927,19 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   window by the process id in the log lines' `Client <pid>` header. Until
   the overlay has read a line with that header (at start it reads back
   the lines before its start position), it does not know the game's id
-  and stays shown over every window. After the game restarts, the id read
-  back is the previous launch's until the new client writes its first
-  line, so the overlay can stay hidden over the new game's window until
-  then. If the window in front cannot be told, it is shown too.
+  and stays shown over every window. An id read only from catch-up or from
+  the log before the start position is trusted for 10 s: if no live line
+  and no window of that id comes to the front by then, it hides nothing
+  until a live line confirms it (`game pid: … not used to hide the
+  overlay` in the diagnostic log). So after the game restarts, when the id
+  read back is the previous launch's, the overlay is hidden over the new
+  game's window for at most 10 s, or until the new client writes its first
+  line. The same bound covers the wrong log: an old standalone
+  `Client.txt` found before the Steam one, or a `log_path` setting naming
+  a log the running game does not write to, hides the overlay for at most
+  10 s, and it is then shown over every window, the game's or not, until
+  the right log is set. If the window in front cannot be told, it is shown
+  too.
 - **The area after a start mid-zone.** The read-back for the current area
   covers at most 8 MiB of the log before the start position. That is a
   bound, not a guarantee: a zone's area line is normally well inside it,
@@ -811,6 +952,21 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   the tracker does not rely on it. A talk step is completed by the next
   recorded signal only where the game cannot produce that signal without
   the talk; otherwise it is a manual tick ("How detection works").
+- **A boss's defeat is ticked by hand.** No log line marking the defeat of
+  Beira of the Rotten Pack is known: over 9 sessions with her lines,
+  nothing but chat, window-focus and client lines came between her last
+  line and the next area or her reward. That negative is not yet set
+  against a known kill time, so it is "not observed", not "never logged".
+  Her "Defeat Beira of the Rotten Pack", and Blackjaw's and Lythara's
+  "Defeat …" steps, have no signal: tick them when the boss falls, or let
+  the reward line finish the quest. Without the tick the row keeps showing
+  the defeat step after the boss's lines.
+- **Una's wait line.** "Ask Una for help" moves on Una's "I'll wait here.
+  The old magicks will protect me.", which the log recorded only from
+  December 2025 on (older clients' sessions never have it) and only, as far
+  as measured, after a talk with her. Where it does not come, the quest
+  shows "Ask Una for help" until you enter the Red Vale, which completes
+  it.
 - **The "Use" step after Blackjaw and Lythara.** Only Beira's reward was
   seen to come on using an item she dropped. That Blackjaw, the Remnant
   and Lythara, the Wayward Spear work the same way is an inference from
@@ -883,7 +1039,16 @@ Revisit this feature when:
 - In play mode the overlay is shown only while the game's window or its
   own is in front, and hidden over any other program (`visibility:`
   lines in the diagnostic log); edit mode always shows it. It stays shown
-  until it has read the game's process id from a log line.
+  until it has read the game's process id from a log line. An id read only
+  from an older part of the log hides it for at most 10 s unless the game
+  confirms it, so a wrong log (an old standalone `Client.txt`, or a wrong
+  log path) leaves the overlay shown over every window instead of hidden
+  over the game.
+- A tray icon (the app's icon, tooltip "Quest Tracker") with one entry,
+  *Quit Quest Tracker*, which closes the overlay cleanly even while play
+  mode has it hidden; closing the overlay's window quits the same way.
+  Each writes a `quit:` line, then progress is saved and the tracker
+  stops.
 - In edit mode the window moves by dragging the panel's header, and the
   position is kept; there is no dock side.
 - When a quest becomes available, is started, has a step done or is done
@@ -898,11 +1063,21 @@ Revisit this feature when:
   changed.
 - Settings: opacity from 0 to 1 (at 0 only the panel's background goes;
   text, icons, the border and the edit accent stay opaque), scale as an
-  Auto switch plus a slider for a fixed factor from 0.75x to 2x, "Show
-  skipped quests", which shows skipped quests even with "Only worth-it"
-  on, and "Only worth-it quests". Settings files from before load as they
+  Auto switch plus a slider for a fixed factor from 0.75x to 2x, both
+  applied while dragged, not only on release; "Show skipped quests", which
+  shows skipped quests even with "Only worth-it" on, in Next up as well as
+  All; and "Only worth-it quests". Settings files from before load as they
   were: their `1`, `1.33` or `2` scale as that factor, and their dock side
   ignored.
+- Skip works on any quest, one not picked up yet included, and on the
+  quests of the unnamed "New character", whose overrides pass to the
+  character it becomes. A skipped quest stays tracked: the log keeps moving
+  it, its row shows the step it has reached, and Unskip shows it where its
+  progress is.
+- A find-it tip under a step: the owner's short "how to find it" hints,
+  from a `tip` field in the quest data, shown under the step they help
+  with in the row and the quest detail; five in this version, more added
+  by hand.
 - Play mode never takes focus from the game; edit mode takes keyboard
   focus, so the Settings fields accept typing. A shortcut that cannot be
   registered at launch leaves the overlay in edit mode, with the reason in
@@ -950,10 +1125,11 @@ Revisit this feature when:
   (at most about 7.5 s after the entry on a quiet log), Act 1 progress shows
   under "New character", and its first level-up names it and stores it. A
   pinned character's pin passes to the new one then, not at the entry. A
-  relog into The Riverbank is told apart when the client's character build
-  line names a stored character within that window: that character and
-  its pin are kept, nothing else changes, and "New character" never shows
-  (Known limitations says when it is not told apart).
+  named character's relog into The Riverbank is told apart by the seed of
+  its Riverbank instance, at the entry, or when the client's character
+  build line names a stored character within that window: that character
+  and its pin are kept, nothing else changes, and "New character" never
+  shows (Known limitations says when it is not told apart).
 - The unnamed new character is saved in `new-character.json`: a relaunch
   of the overlay mid-session shows it again with its rows, a game restart
   parks it (and gives a released pin back), and a later entry to the same
@@ -965,10 +1141,14 @@ Revisit this feature when:
   a tooltip and the same words as accessible text; it is not a control,
   and such a step cannot be ticked by hand.
 - Secrets in the Dark shows in progress from Clearfell (a start inferred
-  from Reaching Clearfell), and Una's Grelwood lines move it past "Ask Una
-  for help" and "Use the Rune Spikes"; her Grim Tangle line completes The
+  from Reaching Clearfell). Summoning Una in the Grelwood ends "Search the
+  Grelwood", her wait line after the talk ends "Ask Una for help", so "Find
+  the Red Vale" shows after the talk, not at the summon; her later line
+  ends "Use the Rune Spikes". Her Grim Tangle line completes The
   Mysterious Shade's "Speak to Una about the roots", which no longer shows
   in progress on the way through the Grelwood.
+- Treacherous Ground shows from Clearfell Encampment, where Renly gives it,
+  not only from Clearfell.
 - Signals tied to an area that arrive while the area is unknown are
   refused, logged per quest and counted in the status line; only quests
   that could still change for that character count.
@@ -977,11 +1157,13 @@ Revisit this feature when:
   32 detected automatically, 42 partly, 13 by manual tick. Talk steps the
   log cannot show are completed by the next signal the game can only
   produce after them where the order is supported, and otherwise stay a
-  tick. Beira of the Rotten Pack ends with a "Use the item it dropped"
-  step, since her reward came when that item was used; Blackjaw, the
-  Remnant and Lythara, the Wayward Spear end with "Use any item left after
-  the fight", a hint, since that they work the same way is inferred, not
-  observed.
+  tick. Beira of the Rotten Pack's steps are find her (her lines), defeat
+  her (ticked by hand: no log line marks the defeat as far as measured)
+  and "Use the item it dropped", since her reward came when that item was
+  used; the reward finishes the quest in any area. Blackjaw, the Remnant
+  and Lythara, the Wayward Spear get the same find and defeat steps and end
+  with "Use any item left after the fight", a hint, since that they work
+  the same way is inferred, not observed.
 - `quest-tracker-replay` (`events`, `state`, `import`, `scan`; the summary
   counts held events, the two kinds of dropped event and refused signals,
   and decides a relog window still open at the end of the log as the
