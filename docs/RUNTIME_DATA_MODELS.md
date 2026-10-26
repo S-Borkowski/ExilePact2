@@ -27,10 +27,10 @@ below was measured on 2026-10-24 from one player's log of 818,412 lines
   with levels `INFO`, `DEBUG`, `WARN` and `CRIT`. Lines without a timestamp
   are continuations of multi-line warnings and carry nothing to read.
 - **The `<ms counter>`** (measured once, 2026-10-26, the research note's
-  "Client.txt line format"). It counts the milliseconds since the system
-  started: one line's value matched the time since the machine's boot, and
-  a `GetTickCount64` reading the same day agreed, within the line's
-  one-second resolution (one comparison).
+  "Client.txt line format"). It counts the milliseconds
+  since the system started: one line's value matched the time since the
+  machine's boot, and a `GetTickCount64` reading the same day agreed,
+  within the line's one-second resolution (one comparison).
 - **The `<pid>` in the header** (measured 2026-10-25, in Live 2). It is
   the process id of the running game client: the session's `[INFO Client
   <pid>]` lines carried the same number that Windows' task list gave the
