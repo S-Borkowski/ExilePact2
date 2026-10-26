@@ -1169,6 +1169,19 @@ cry. File reads are not viable on this evidence (`i1-target` was
   the frames during the fight, so the detector needs a run of frames, not
   one. One kill, one character, English client, borderless windowed at
   2560×1440.
+  - **A covered bar** (not measured). The session had no panel open
+    during the fight, so what the bar's area shows while the inventory,
+    character panel, passive tree, world map, Escape menu or the map
+    overlay is open is not established. A covered bar that hides the kill
+    only costs a tick the reward line gives anyway; a panel that hides
+    the bar would read as her death. So the detector should class each
+    frame as bar present, bar absent, or bar not visible, and tick only on
+    present followed by a run of visible-and-absent frames with no
+    not-visible gap between them. The owner's direction (2026-10-26) is to
+    use the bar for bosses whose death leaves no log line. The build
+    workorder's first step measures each of those panels during a fight
+    (no kill needed), and the tracker overlay must stay off the bar's
+    band.
 - **The audio template** needs no admin, but a template is an extracted
   asset that cannot ship, so the product would have to rebuild it, boss by
   boss, from the player's own install.
