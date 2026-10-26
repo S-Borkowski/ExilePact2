@@ -356,7 +356,11 @@ process-loopback recording of the game's audio, and screen captures read by
 OCR afterwards, with the session analysis that checks them. The tracker
 does not use them. Every command and script, the live folder, the one step
 that needs an admin prompt and what never leaves the machine are in
-[`outside-instruments.md`](outside-instruments.md).
+[`outside-instruments.md`](outside-instruments.md). Live 8's on-screen
+text session (the boss bar under each panel, the character's kill remark,
+Renly's dialogue window and the `output_all_dialogue_to_chat` option) is
+checked by the `screentext` session analysis,
+`py -3 -m tools.quest_tracker.outside.screentext`, described there.
 
 ### npm scripts
 

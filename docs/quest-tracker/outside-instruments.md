@@ -388,7 +388,7 @@ unelevated instruments against the game's pid:
 
 | Command | Options | What it does |
 |---|---|---|
-| `start` | `--live L`, `--pid P` (required, from the game lease), `--timeout S` (default 30), `--max-minutes M` (default 90) | Launches `loopback.ps1`, `capture.ps1` and `marker.ps1`, each detached with its output in its log file (`i2\recorder.log`, `i3\capture.log`, `marker.log`), so they outlive the shell. Waits for each one's ready line, prints one line per instrument and records the pids in `run.json`. Exits 0 when all three are ready, 1 otherwise; an instrument still alive keeps running until `stop`. |
+| `start` | `--live L`, `--pid P` (required, from the game lease), `--timeout S` (default 30), `--max-minutes M` (default 90), `--top x0,y0,x1,y1\|off`, `--bottom x0,y0,x1,y1\|off` | Launches `loopback.ps1`, `capture.ps1` and `marker.ps1`, each detached with its output in its log file (`i2\recorder.log`, `i3\capture.log`, `marker.log`), so they outlive the shell. Waits for each one's ready line, prints one line per instrument and records the pids in `run.json`. Exits 0 when all three are ready, 1 otherwise; an instrument still alive keeps running until `stop`. `--top` and `--bottom` replace the capture's top and bottom bands (its `-Top` and `-Bottom`), as fractions of the client rect or `off`. Each is checked as `capture.ps1` checks a band (four numbers in 0..1, with x1 > x0 and y1 > y0) before anything is spawned, and both `off` is refused. Without them the capture keeps its own bands (top `0.25,0,0.75,0.14`, bottom `0,0.35,1,1`) and its command is unchanged. Live 8's procedure passes `--bottom 0,0,1,1`, the whole client area, because where a dialogue window draws is not known. |
 | `stop` | `--live L`, `--timeout S` (default 300) | Creates every stop file, `stop-i1` included, which asks the elevated controller to save its trace. Waits for each instrument in `run.json` to exit, and for `i1\status.txt` to reach `session-trace-stopped` or `error`. Prints one line each, and exits 0 when everything ended in time. |
 
 The file trace is started separately, behind its admin prompt, because
@@ -438,6 +438,102 @@ to.
 The analysis starts no program except `ocr.ps1`, for frames not yet in
 `i3\ocr.jsonl`. The constants of each check are pinned in `analyse.py` and
 its tests.
+
+## The on-screen text session: `screentext`
+
+**`py -3 -m tools.quest_tracker.outside.screentext`** is Live 8's
+analysis. That session asks what the screen shows of three sources (a
+boss's health bar, with each game panel open and after the player walks
+away; the character's remark at a kill; an NPC's quest dialogue window),
+and whether the client option `output_all_dialogue_to_chat` decides
+whether NPC lines reach `Client.txt`. It runs beside the three instruments
+above, started with `run start --bottom 0,0,1,1`, and reuses their live
+folder, the marker and the capture's frames and OCR cache.
+
+| Command | Options | What it does |
+|---|---|---|
+| `stage` | `--live L`, `--name NAME` | Appends `{"utc", "name"}` to `L\stages.jsonl`. The names are `test`, `boss`, `remark`, `dialogue`, `town-on`, `toggle-off`, `town-off`, `town-on-again`, `relaunch-off` and `end`; any other is refused. |
+| `config` | `--live L`, `--label LABEL`, `--ini PATH` | Reads the client config, never writing it, and appends one record to `L\config.jsonl`. Prints one line. |
+| `analyse` | `--live L`, `--pid P`, `--relaunch-pid P2`, `--character NAME`, `--boss NAME` (default `The Bloated Miller`), `--npc NAME` (repeatable), `--dialogue-option TEXT`, `--setting-label TEXT`, `--setting-found yes\|no`, `--panels LIST`, `--confirmed yes\|no`, `--only NAME,...` | Prints one capture line per check, `- <name> \| expected: ... \| observed: ... \| <verdict>`, in the order below, then how many stage runs it ignored, and writes `L\analysis.json`. |
+
+- **`stages.jsonl`.** A stage runs from its stamp to the next stamp,
+  whatever its name, and each marker press belongs to the stage that holds
+  it. Stages may come in any order. A name may be stamped again (a repeat
+  on the fallback boss stamps `boss` or `remark` a second time): every
+  check reads only the last run of each stage, and `analyse` prints how
+  many earlier runs it ignored, per name.
+- **The presses.** The last `boss` run's presses are, in order, the bar
+  coming up, an open and a close press for each panel in `--panels` order,
+  and the walk away. Any other count makes every `bar-*` check
+  `not-run (instrument: presses do not pair: <n>)`. The last `remark` run's
+  first press is the kill, made when the boss dies, and one press follows
+  each remark heard. The last `dialogue` run's first two presses are the
+  window opening and closing; fewer than two makes the `dlg-*` checks
+  `not-run`. `test` holds the marker's test press.
+- **`config.jsonl`.** Each record holds the label, the time, the file's
+  path, mtime and sha256, and two values, each `true`, `false` or
+  `missing` and each read from its own section:
+  `output_all_dialogue_to_chat` (section `UI`) and `enable_subtitles`
+  (section `GENERAL`). The default file is
+  `My Games\Path of Exile 2\poe2_production_Config.ini` under the
+  Documents known folder, which follows a OneDrive redirect. `analyse`
+  reads the records labelled `before` and `after-toggle-off`.
+- **Speakers** are Clearfell Encampment's vendors, the dialogue NPC
+  (`Renly`), each `--npc` and `--boss`. A screen line is
+  *speaker-prefixed by NAME* when its text before the first colon,
+  normalised as `screen.normalize` does, equals NAME normalised, or, for a
+  NAME of 6 or more letters, scores at least 0.8 against it. A greeting's
+  window is [press − 6 s, press + 1 s] for logged lines and [press − 6 s,
+  press + 2 s] for frames.
+- **`--panels`** defaults to
+  `inventory,character,passive-tree,world-map,escape-menu,map-overlay`.
+  A panel name is lowercase letters, digits and dashes, named once, and
+  never `control` or `away`.
+- **`--only`** computes the named checks, and silently the checks their
+  verdicts read, and merges the results into an existing `analysis.json`.
+- **Failures.** A missing input makes the checks that need it
+  `not-run (instrument: <why>)`. A log check is `not-observed` only when
+  its controls passed, and `not-run` otherwise. An error inside one check
+  names it, and the run exits 1 after printing every other check.
+- **OCR.** The OCR runner is `ocr.ps1`, through `screen.ocr_frames`. Only
+  the frames in the windows the asked checks need are read, once, and
+  cached in `i3\ocr.jsonl`.
+
+The checks, in order (*pass* means what the line says was seen):
+
+| Check | What it reads |
+|---|---|
+| `control` | After the session's offset in `Client.txt`: a `LOG FILE OPENING`, lines from `[INFO Client <pid>]` with `--pid`, and an area entry line from that pid (a fresh character starts in The Riverbank, `G1_1`, which counts). |
+| `marker` | `markers.txt`'s `# registered` header, a press in stage `test`, and `--confirmed yes`. |
+| `i3-rehearsal` | `screen.rehearsal_check` on `L\i3\rehearsal`: each probe line scores ≥ 0.8 in a captured frame. |
+| `i3-town` | A speaker's line logged in a `town-on` greeting window scores ≥ 0.8 in a bottom-band frame within [L, L + 4 s] of it. |
+| `cfg-on-log` | A speaker line logged in the greeting window of at least one `town-on` press. |
+| `cfg-setting-found` | `--setting-found yes`: the person found the option in the game's Options; observed carries `--setting-label`. |
+| `cfg-file-written` | The last `after-toggle-off` config record reads `output_all_dialogue_to_chat=false`; `not-observed` when it still reads `true`. Observed says whether the file changed since `before`. |
+| `cfg-off-shown` | At least 2 `town-off` presses each have a bottom-band line in their window that is speaker-prefixed by a speaker, or scores ≥ 0.8 against a line logged in `town-on`. |
+| `cfg-off-log` | A speaker line logged, or a logged line repeating the shown text, in the window of a shown `town-off` greeting. Controls: `cfg-on-log` and `cfg-off-shown`. |
+| `cfg-on-again-log` | As `cfg-on-log`, for `town-on-again`. |
+| `cfg-off-relaunch-log` | As `cfg-on-log`, for `relaunch-off` presses and lines from `--relaunch-pid`; the press is the control. `not-run (not needed: ...)` when the stage is absent. |
+| `dlg-window` | Between the dialogue's open and close: at least 3 lines of 3 or more words, each in 2 or more frames of [open + 0.5 s, close − 0.5 s] and in none of [open − 5 s, open − 1 s], plus the NPC's name. Observed: their union box. |
+| `dlg-option` | `--dialogue-option`, the topic the person chose, scores ≥ 0.8 in a frame between open and close. |
+| `dlg-subtitle` | A line speaker-prefixed by the NPC within [open, close + 2 s]. |
+| `dlg-log` | An NPC line logged in [open, close + 2 s], or a logged line repeating a `dlg-window` line. Controls: `cfg-on-log` and `dlg-window`. |
+| `bar-control` | `--boss` scores ≥ 0.8 in at least half (and at least 4) of the top-band frames in [bar-up + 0.5 s, first panel open − 0.5 s]. |
+| `bar-<panel>`, one per `--panels` entry | The boss's name reads in at least half of the top-band frames in [open + 0.5 s, close − 0.5 s] of that panel; *fail* means covered or unreadable. Observed: the share, the band's median luma mean and standard deviation against `bar-control`'s, and the count of other top-band OCR lines. `not-run` without a passing `bar-control`. |
+| `bar-away` | The boss's name in no top-band frame within [away + 1 s, away + 6 s]. |
+| `remark-shown` | A line speaker-prefixed by `--character` in the window of a `remark` press after the first. `not-run` when there is no such press. |
+| `remark-kill` | Such a line in a bottom-band frame within [kill − 2 s, kill + 15 s] of the kill press; *fail* means no remark shown at the kill. Observed: the first frame's delay from the press. |
+| `remark-log` | For each remark `remark-shown` or `remark-kill` found, a logged line repeating its text after the prefix, or a line with the character as speaker, within [t − 8 s, t + 2 s] of its first frame. Controls: `cfg-on-log` and a remark found. |
+
+**Privacy.** The full-window bottom band holds the chat panel and the
+character's name. The printed lines carry no OCR text: only scores against
+known targets (an NPC, the boss, a logged greeting, the option the person
+named), counts, times, and boxes as fractions of the client rect, taken
+from each frame's `rect` and `client` in `frames.jsonl`. The character's
+name is printed as `<character>`, and `--character` itself is never
+printed. `analysis.json` stays in the live folder and may keep OCR text,
+with the character's name masked the same way. Every command that writes
+refuses a folder inside a git checkout.
 
 ## Re-running the analysis on kept captures
 
@@ -517,7 +613,7 @@ section is about the tools.
 From the repository's root:
 
 ```
-py -3 -m unittest tests.test_quest_tracker_outside_common tests.test_quest_tracker_outside_ggpk tests.test_quest_tracker_outside_fileio tests.test_quest_tracker_outside_index tests.test_quest_tracker_outside_audio tests.test_quest_tracker_outside_desktop tests.test_quest_tracker_outside_analyse
+py -3 -m unittest tests.test_quest_tracker_outside_common tests.test_quest_tracker_outside_ggpk tests.test_quest_tracker_outside_fileio tests.test_quest_tracker_outside_index tests.test_quest_tracker_outside_audio tests.test_quest_tracker_outside_desktop tests.test_quest_tracker_outside_analyse tests.test_quest_tracker_outside_screentext
 ```
 
 The tests are fast, and touch no audio device, no window, no network and
