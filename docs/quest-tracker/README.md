@@ -27,7 +27,9 @@ What it is:
 - **Shown only over the game.** In play mode the overlay is visible only
   while the game's window or the overlay's own is in front; switch to a
   browser or the desktop and it hides, switch back and it shows again,
-  without taking focus. In edit mode it is always shown.
+  without taking focus. From the game's start until a character is in an
+  area it stays hidden, so it does not cover the login and
+  character-select screens. In edit mode it is always shown.
 - **A campaign quest list** (Acts 1 to 6 as poe2db numbers them, 87 quests in
   this version): each quest's status (locked, available, in progress, done,
   skipped, unknown), whether it is worth doing (`yes` for permanent stats such
