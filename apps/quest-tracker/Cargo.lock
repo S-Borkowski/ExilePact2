@@ -2741,6 +2741,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "qt-capture"
+version = "0.1.0"
+dependencies = [
+ "qt-screen",
+ "windows",
+]
+
+[[package]]
 name = "qt-engine"
 version = "0.1.0"
 dependencies = [
@@ -2816,6 +2824,7 @@ name = "quest-tracker"
 version = "0.1.0"
 dependencies = [
  "qt-app",
+ "qt-capture",
  "serde",
  "serde_json",
  "tauri",

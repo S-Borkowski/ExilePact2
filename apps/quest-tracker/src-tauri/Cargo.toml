@@ -24,3 +24,5 @@ serde_json = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true }
+# The screen reader's real backend (Win32 capture and Windows OCR).
+qt-capture = { path = "../crates/qt-capture" }
