@@ -90,6 +90,9 @@ CONFIG_JSONL = "config.jsonl"
 CONFIG_RELATIVE = Path("My Games") / "Path of Exile 2" / "poe2_production_Config.ini"
 DIALOGUE_KEY = ("UI", "output_all_dialogue_to_chat")
 SUBTITLE_KEY = ("GENERAL", "enable_subtitles")
+# Live procedure 1's step F reads the config with the game closed, before the
+# relaunch: after-exit-off, then after-edit-off when the file had to be edited.
+RELAUNCH_CONFIG_LABELS = ("after-exit-off", "after-edit-off")
 FOLDERID_DOCUMENTS = "{FDD39AD0-238F-46AF-ADB4-6C85480369C7}"
 
 DEFAULT_BOSS = "The Bloated Miller"
@@ -721,7 +724,10 @@ EXPECTED = {
                    "press + 1 s] of a shown town-off greeting (controls: cfg-on-log, cfg-off-shown)",
     "cfg-on-again-log": "a speaker line logged in [press - 6 s, press + 1 s] of at least one town-on-again press",
     "cfg-off-relaunch-log": "a speaker line from the relaunched pid logged in [press - 6 s, press + 1 s] of at "
-                            "least one relaunch-off press (the press is the control)",
+                            "least one relaunch-off press (controls: a LOG FILE OPENING and an area entry from "
+                            "the relaunched pid after the stamp, and the last after-exit-off or after-edit-off "
+                            "config record between the stamp and that opening reads "
+                            "output_all_dialogue_to_chat=false)",
     "dlg-window": "between the first two dialogue presses, at least %d lines of %d or more words, each in %d or "
                   "more frames of [open + 0.5, close - 0.5] and in none of [open - 5, open - 1], plus the "
                   "NPC's name" % (DLG_MIN_LINES, DLG_MIN_WORDS, DLG_MIN_FRAMES),
@@ -852,14 +858,48 @@ def check_cfg_on_again_log(s: Session) -> dict:
     return result("cfg-on-again-log", EXPECTED["cfg-on-again-log"], observed, "pass" if ok else "fail")
 
 
+def relaunch_controls(s: Session, run: Run) -> tuple[str | None, str]:
+    """(why not, observed) for the relaunch's two controls: the log reader sees
+    the relaunched client, and the config read with the game closed, before the
+    relaunch, has the option off. `why` is None when both hold."""
+    log = s.log()
+    pid = s.relaunch_pid
+    openings = [o for o in log.openings() if o.utc >= run.start]
+    areas = [a for a in log.areas() if a.pid == pid and a.utc >= run.start]
+    seen = "LOG FILE OPENING after the stamp x%d; %d lines from Client %d; area entries %s" % (
+        len(openings), log.pids.get(pid, 0), pid,
+        ", ".join("%s %s" % (a.text, _hms(a.utc)) for a in areas[:3]) if areas else "none")
+    if pid == s.pid:
+        return "control: --relaunch-pid is the first client's pid %d" % pid, seen
+    if not openings or not areas:
+        return "control: no %s from Client %d after the relaunch" % (
+            "LOG FILE OPENING" if not openings else "area entry", pid), seen
+    relaunched = openings[0].utc
+    records = [r for r in s.config_records() if r.get("label") in RELAUNCH_CONFIG_LABELS
+               and run.start <= common.parse_utc(r["utc"]) < relaunched]
+    if not records:
+        return "control: no %s config record between the stamp and the relaunch" % (
+            " or ".join(RELAUNCH_CONFIG_LABELS)), seen
+    rec = records[-1]
+    value = rec.get(DIALOGUE_KEY[1], "missing")
+    seen += "; config %s at %s: %s=%s" % (rec.get("label"), rec.get("utc", "?")[11:], DIALOGUE_KEY[1], value)
+    if value != "false":
+        return "control: the option read %s before the relaunch" % value, seen
+    return None, seen
+
+
 def check_cfg_off_relaunch_log(s: Session) -> dict:
-    if s.run("relaunch-off") is None:
+    expected = EXPECTED["cfg-off-relaunch-log"]
+    run = s.run("relaunch-off")
+    if run is None:
         raise NotRun("not needed: no relaunch-off stage")
     if s.relaunch_pid is None:
         raise missing("no --relaunch-pid")
+    why, seen = relaunch_controls(s, run)
+    if why:
+        return result("cfg-off-relaunch-log", expected, seen, "not-run (%s)" % why)
     ok, observed = _logged_per_press(s, "relaunch-off", s.relaunch_pid)
-    return result("cfg-off-relaunch-log", EXPECTED["cfg-off-relaunch-log"], observed,
-                  "pass" if ok else "not-observed")
+    return result("cfg-off-relaunch-log", expected, seen + "; " + observed, "pass" if ok else "not-observed")
 
 
 def check_cfg_setting_found(s: Session) -> dict:
