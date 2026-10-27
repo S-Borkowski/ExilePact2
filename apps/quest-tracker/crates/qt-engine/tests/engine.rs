@@ -2132,16 +2132,18 @@ fn relog_window_events_count_refusals_once() {
     assert_eq!(engine.refused_count(), 2);
     assert!(engine.refused_quests().is_empty());
 
-    // Decided as a new character: counted for it, once each.
+    // Decided as a new character: the line held before the entry is another
+    // character's and is dropped, so only the window's is counted, once.
     let mut engine = setup();
     expire(&mut engine);
     assert!(engine.new_character_open());
     assert_eq!(engine.held_count(), 0);
-    assert_eq!(engine.refused_count(), 2);
-    assert_eq!(engine.take_refused(), twice);
+    assert_eq!(engine.dropped_count(), 1);
+    assert_eq!(engine.refused_count(), 1);
+    assert_eq!(engine.take_refused(), ["fixture-crowbell".to_string()]);
     expire(&mut engine);
     feed(&mut engine, &[character_line("12:00:07", CORISANDE)], true);
-    assert_eq!(engine.refused_count(), 2);
+    assert_eq!(engine.refused_count(), 1);
     assert!(engine.refused_quests().is_empty());
 }
 
@@ -3238,4 +3240,93 @@ fn new_character_overrides_survive_naming_and_the_record() {
     assert_eq!(status(&engine, CORISANDE, "fixture-candles"), Status::Done);
     let overrides = &engine.character(CORISANDE).unwrap().overrides;
     assert!(!overrides["fixture-candles"].skipped);
+}
+
+// -- a character switch to a brand-new character (Live 10 of the screen
+// reader workorder, 2026-10-27) -----------------------------------------------
+
+/// Another character, never named this session, enters The Bell's area at
+/// 11:59:30 and earns its passive points: both lines are held, since no
+/// character is active yet.
+fn other_character_held() -> Vec<String> {
+    vec![
+        MARKER.to_string(),
+        line_at(
+            "11:59:30",
+            "DEBUG",
+            r#"Generating level 32 area "G1_11" with seed 7"#,
+        ),
+        line_at("11:59:31", "INFO", POINTS),
+    ]
+}
+
+#[test]
+fn baseline_held_lines_carry_their_characters_evidence() {
+    // Positive control: the held lines do carry evidence, and a level-up of
+    // the character that wrote them gets it (rule 4).
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &other_character_held(), true);
+    assert_eq!(engine.held_count(), 2);
+    feed(
+        &mut engine,
+        &[line_at(
+            "11:59:40",
+            "INFO",
+            &format!(": {ODILE} (Warrior) is now level 32"),
+        )],
+        true,
+    );
+    assert_eq!(status(&engine, ODILE, "fixture-crowbell"), Status::Done);
+    assert_eq!(engine.dropped_count(), 0);
+}
+
+#[test]
+fn new_character_never_inherits_lines_held_before_its_entry() {
+    // Target: the player switches to a brand-new character. Its level-1
+    // Riverbank entry starts it with nothing of the other character's: the
+    // lines held before the entry are dropped and counted, and only the
+    // entry and what follows are its own.
+    let mut engine = Engine::new(data());
+    feed(&mut engine, &other_character_held(), true);
+    let mut transitions = feed(
+        &mut engine,
+        &[riverbank_entry_at("12:00:00", RIVERBANK_SEED)],
+        true,
+    );
+    transitions.extend(expire(&mut engine));
+    assert!(engine.new_character_open());
+    assert_eq!(engine.held_count(), 0);
+    assert_eq!(engine.dropped_count(), 2);
+    let states = engine.new_character_states().unwrap();
+    let crowbell = states
+        .iter()
+        .find(|q| q.quest_id == "fixture-crowbell")
+        .unwrap();
+    assert_eq!(crowbell.status, Status::Locked);
+    let riverbank = states
+        .iter()
+        .find(|q| q.quest_id == "fixture-riverbank")
+        .unwrap();
+    assert_eq!(riverbank.status, Status::InProgress);
+    assert!(
+        transitions.iter().all(|t| t.quest_id != "fixture-crowbell"),
+        "{transitions:?}"
+    );
+
+    // Its level-up names it with its own progress only.
+    feed(
+        &mut engine,
+        &[line_at(
+            "12:05:00",
+            "INFO",
+            &format!(": {ODILE} (Warrior) is now level 2"),
+        )],
+        true,
+    );
+    assert_eq!(engine.current(), Some(ODILE));
+    assert_eq!(status(&engine, ODILE, "fixture-crowbell"), Status::Locked);
+    assert_eq!(
+        status(&engine, ODILE, "fixture-riverbank"),
+        Status::InProgress
+    );
 }

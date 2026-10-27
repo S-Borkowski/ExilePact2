@@ -33,8 +33,9 @@
 //! that character. Any other close (another area entry, a line more than 5 s
 //! later, a level-up, a session marker, or [`Engine::expire_relog_window`])
 //! lets the entry take effect: a new character with no name yet starts (or
-//! resumes), the pin is released, and the session's events go to it, so its
-//! Act 1 progress shows; the first level-up of a name not seen joining or
+//! resumes), the pin is released, the events held before the entry are
+//! dropped (another character's: a new character's first area is The
+//! Riverbank), and the window's events go to it, so its Act 1 progress shows; the first level-up of a name not seen joining or
 //! leaving names it. A session marker parks the new character, and a later
 //! level-1 entry to the same instance (seed) resumes it (Context "Launch 7
 //! fixes (owner scope)", "Launch 8: wait, then decide").
@@ -476,7 +477,8 @@ pub struct Engine {
     new_char: Option<NewCharacter>,
     /// The level-1 Riverbank entry still waiting to be decided.
     relog: Option<RelogWindow>,
-    /// Held events dropped at a session marker with no character.
+    /// Held events dropped at a session marker with no character, or when a
+    /// new character from The Riverbank starts or resumes.
     dropped: u64,
     /// Events of a parked new character another instance replaced.
     dropped_new: u64,
@@ -1046,9 +1048,10 @@ impl Engine {
     /// instance (seed) resumes it, and one to another instance replaces it
     /// (its events are counted as dropped new-character events). Either way
     /// the pin is released (the named character takes it), the active
-    /// character stops being active, and the events held before the entry
-    /// and those of the window go to the new character, counted for refusals
-    /// as routed events are. With no window it does nothing.
+    /// character stops being active, the events held before the entry are
+    /// dropped and counted (another character's), and those of the window go
+    /// to the new character, counted for refusals as routed events are. With
+    /// no window it does nothing.
     fn close_relog_window(&mut self, out: &mut Vec<Transition>) {
         let Some(w) = self.relog.take() else {
             return;
@@ -1092,9 +1095,11 @@ impl Engine {
         }
         self.active = None;
         self.pending = None;
-        let mut released = std::mem::take(&mut self.held);
-        released.extend(w.taken);
-        for h in released {
+        // A new character's first area is The Riverbank: what was held
+        // before the entry is another character's, never this one's.
+        self.dropped += self.held.len() as u64;
+        self.held.clear();
+        for h in w.taken {
             self.receive(Target::New, h, out);
         }
     }
@@ -1495,8 +1500,9 @@ impl Engine {
         self.held.len()
     }
 
-    /// Events dropped because a session ended with no character (rule 5):
-    /// those that came before any character.
+    /// Events dropped because a session ended with no character (rule 5), or
+    /// because a new character from The Riverbank started or resumed after
+    /// them: those that came before any character.
     pub fn dropped_count(&self) -> u64 {
         self.dropped
     }

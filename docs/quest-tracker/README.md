@@ -354,7 +354,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | Command | Prints |
 |---|---|
 | `events` | One recognised event per line (never chat, unknown speakers or other players' names). |
-| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped before any character, <x> dropped with a replaced new character, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none; `dropped_new_character` counts, apart from it, the events of an unnamed new character that a level-1 entry to another instance of The Riverbank replaced; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. A level-1 entry to The Riverbank whose relog window is still open at the end of the log is decided as the overlay would decide it on a quiet log, 6 s after the last line, and the summary then adds `a relog window was still open: closed at the end of the log, as the overlay would 6 s after the last line`. With `--json`, one object `{"lines", "client_version", "held", "dropped", "dropped_new_character", "refused", "relog_window_closed_at_end", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}], "new_character"}` (`new_character`: the unnamed new character's class, level, event count, quests and acts, or `null`). |
+| `state` | The engine over the whole log, no store: a summary line (`<n> lines, client <version>, <h> events held, <d> dropped before any character, <x> dropped with a replaced new character, <r> refused`), then per own character its class, level and quests by status per act. `dropped` counts events that came before any character and went to none (including those held when a new character from The Riverbank started); `dropped_new_character` counts, apart from it, the events of an unnamed new character that a level-1 entry to another instance of The Riverbank replaced; `refused` counts area-tied signals refused while the area was unknown, so a quest that did not advance because the area was unknown is told apart from a signal that never matched. A level-1 entry to The Riverbank whose relog window is still open at the end of the log is decided as the overlay would decide it on a quiet log, 6 s after the last line, and the summary then adds `a relog window was still open: closed at the end of the log, as the overlay would 6 s after the last line`. With `--json`, one object `{"lines", "client_version", "held", "dropped", "dropped_new_character", "refused", "relog_window_closed_at_end", "characters": [{"name", "class", "level", "own", "active", "quests": {<id>: <status>}, "acts"}], "new_character"}` (`new_character`: the unnamed new character's class, level, event count, quests and acts, or `null`). |
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
 | `screen` | The screen reader's trackers over a kept research capture instead of a log (below). |
@@ -569,7 +569,8 @@ session; a level-up of yours makes it active and records class and level; a
 level-up of an unknown name makes it active but *unconfirmed* until a reward
 line or you confirm it in the character picker. Events before any active
 character are held for the first one that becomes active in that session,
-and dropped and counted in the status line if none does. A character you pin
+and dropped and counted in the status line if none does, or if a new
+character from The Riverbank starts first (below). A character you pin
 in the picker gets every event until you unpin it, except while a new
 character from The Riverbank holds the pin it released (below).
 
@@ -611,7 +612,11 @@ closed inside the window reads the entry again on its next start and
 decides it then. Only when it closes
 without a relog does the entry start a *new character* for the session,
 with no pick: the window's events go to it, so Act 1 progress shows from
-the first step. Until something names it, the header shows "New character"
+the first step. Events held from before the entry are not its own (a new
+character's first area is The Riverbank; they are another character's,
+played earlier in the session and never named, such as one you switched
+away from at the character select), so they are dropped and counted, never
+given to it. Until something names it, the header shows "New character"
 at level 1, and it is not in the character picker. If a character was
 pinned, the pin is released then, not at the entry (the diagnostic log
 says so).
