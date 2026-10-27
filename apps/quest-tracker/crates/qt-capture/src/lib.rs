@@ -17,6 +17,8 @@
 //!
 //! - [`decode_jpeg_file`]: a kept capture's JPEG frame back into an image,
 //!   through WinRT's bitmap decoder, for `quest-tracker-replay panels`.
+//! - [`make_process_dpi_aware`]: physical pixels for a process with no
+//!   manifest saying so, for `quest-tracker-replay panels grab`.
 //!
 //! [`pixels`] holds the pure arithmetic and builds everywhere; the backend
 //! and the decode only on Windows.
@@ -31,7 +33,7 @@ mod win;
 #[cfg(windows)]
 pub use decode::{decode_jpeg, decode_jpeg_file};
 #[cfg(windows)]
-pub use win::{WindowsBackend, OCR_LANGUAGE};
+pub use win::{make_process_dpi_aware, WindowsBackend, OCR_LANGUAGE};
 
 /// The real backend as `qt-screen`'s trait object. `overlay_hwnd` is the
 /// overlay window's `HWND` as an integer, or `None` when it has none.

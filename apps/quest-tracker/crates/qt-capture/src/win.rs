@@ -22,7 +22,7 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED};
 use windows::Win32::UI::WindowsAndMessaging::{
     EnumWindows, GetClientRect, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId,
-    IsIconic, IsWindow, IsWindowVisible,
+    IsIconic, IsWindow, IsWindowVisible, SetProcessDPIAware,
 };
 
 use crate::pixels::{ocr_scale, opaque, resize, scaled_size, union_of_words, unscale_box};
@@ -46,6 +46,15 @@ pub struct WindowsBackend {
     ocr: Option<Ocr>,
     no_english: bool,
     apartment: Option<ThreadId>,
+}
+
+/// Makes the calling process system DPI-aware (`SetProcessDPIAware`), so
+/// that its window rects and screen copies are in physical pixels rather
+/// than scaled ones. For a command-line tool such as `quest-tracker-replay
+/// panels grab`, which has no manifest saying so. Whether the call took
+/// effect; `false` when Windows refused it.
+pub fn make_process_dpi_aware() -> bool {
+    unsafe { SetProcessDPIAware() }.as_bool()
 }
 
 fn hwnd(h: isize) -> HWND {

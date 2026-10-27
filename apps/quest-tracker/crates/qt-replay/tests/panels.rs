@@ -6,12 +6,20 @@
 //! `qt-replay` is a binary, so the module is included here by path and
 //! driven through its frame source with a painter; the refusal of a folder
 //! without its index runs the binary itself.
+//!
+//! `grab` is driven through a fake backend handing back a painted copy, and
+//! its refusals through a backend maker that records whether it was asked:
+//! no test copies the screen.
 
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::sync::{Arc, Mutex};
 
-use qt_screen::{Image, Millis, PanelEntry, PanelProbe, PanelTable, Rect};
+use qt_screen::{
+    BackendError, Image, Millis, OcrReadiness, OverlayState, PanelEntry, PanelProbe, PanelTable,
+    PixelLine, PixelRect, ProbeStats, Rect, ScreenBackend, WindowHandle,
+};
 use serde_json::{json, Value};
 
 #[allow(dead_code)]
@@ -483,4 +491,375 @@ fn panels_replay_refuses_a_folder_without_its_index() {
     // The top-level usage names the command.
     let o = Command::new(BIN).arg("--help").output().unwrap();
     assert!(String::from_utf8(o.stdout).unwrap().contains("panels"));
+}
+
+// -- grab and probe ------------------------------------------------------------------
+
+/// An image whose every byte, alpha included, depends on its place, at a
+/// width that is no multiple of 4.
+fn speckled(width: u32, height: u32) -> Image {
+    let bgra = (0..width * height * 4)
+        .map(|i| (i.wrapping_mul(2_654_435_761) >> 13) as u8)
+        .collect();
+    Image {
+        width,
+        height,
+        bgra,
+    }
+}
+
+/// A backend with one game window, of process `pid`, whose client rect is
+/// `client` and whose copies are `image`; it records the area it was asked
+/// to copy.
+struct FakeGame {
+    pid: u32,
+    client: PixelRect,
+    image: Image,
+    copied: Arc<Mutex<Option<PixelRect>>>,
+}
+
+impl ScreenBackend for FakeGame {
+    fn game_window(&mut self, pid: u32) -> Result<Option<WindowHandle>, BackendError> {
+        Ok((pid == self.pid).then_some(WindowHandle(7)))
+    }
+    fn foreground_pid(&mut self) -> Result<Option<u32>, BackendError> {
+        Ok(Some(self.pid))
+    }
+    fn client_rect(&mut self, window: WindowHandle) -> Result<Option<PixelRect>, BackendError> {
+        assert_eq!(window, WindowHandle(7));
+        Ok(Some(self.client))
+    }
+    fn overlay(&mut self) -> Result<Option<OverlayState>, BackendError> {
+        Ok(None)
+    }
+    fn capture(&mut self, _window: WindowHandle, area: PixelRect) -> Result<Image, BackendError> {
+        *self.copied.lock().unwrap() = Some(area);
+        Ok(self.image.clone())
+    }
+    fn ocr_readiness(&mut self) -> Result<OcrReadiness, BackendError> {
+        panic!("grab never reads text")
+    }
+    fn ocr(&mut self, _image: &Image) -> Result<Vec<PixelLine>, BackendError> {
+        panic!("grab never reads text")
+    }
+}
+
+fn fixed_utc() -> String {
+    "2026-10-27T12:00:00.000Z".to_string()
+}
+
+#[test]
+fn panels_grab_frame_round_trips_losslessly() {
+    let dir = tempfile::tempdir().unwrap();
+
+    // The writer and the reader, byte for byte.
+    let image = speckled(37, 23);
+    let path = dir.path().join("frame.bmp");
+    panels::write_frame(&path, &image).expect("write");
+    let bytes = fs::read(&path).unwrap();
+    assert_eq!(&bytes[..2], b"BM");
+    assert_eq!(bytes.len(), 54 + 37 * 23 * 4, "uncompressed 32-bit");
+    assert_eq!(&bytes[54..], &image.bgra[..], "the pixels as copied");
+    let back = panels::read_frame(&path).expect("read");
+    assert_eq!(back, image);
+    // It never writes over a file.
+    assert!(panels::write_frame(&path, &speckled(2, 2)).is_err());
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+    // A file it did not write is refused rather than misread.
+    let other = dir.path().join("other.bmp");
+    let mut foreign = bytes.clone();
+    foreign[28] = 24; // 24 bits a pixel
+    fs::write(&other, &foreign).unwrap();
+    assert!(panels::read_frame(&other).is_err());
+
+    // `grab` through a backend: the whole client rect, once, into a folder
+    // it makes, and one JSON line naming the client's size.
+    let client = PixelRect::new(100, 50, 164, 86);
+    let painted = speckled(64, 36);
+    let copied = Arc::new(Mutex::new(None));
+    let mut made = 0;
+    let mut make = || -> Result<Box<dyn ScreenBackend>, String> {
+        made += 1;
+        Ok(Box::new(FakeGame {
+            pid: 4242,
+            client,
+            image: painted.clone(),
+            copied: Arc::clone(&copied),
+        }))
+    };
+    let target = dir.path().join("grabs").join("inventory-open.bmp");
+    let mut out = Vec::new();
+    panels::grab(&target, 4242, &mut make, &fixed_utc, &mut out).expect("grab");
+    assert_eq!(
+        *copied.lock().unwrap(),
+        Some(client),
+        "the whole client rect"
+    );
+    let lines = objects(&out);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(lines[0]["client"], json!([64, 36]));
+    assert_eq!(lines[0]["utc"], fixed_utc());
+    assert!(lines[0]["grab"]
+        .as_str()
+        .unwrap()
+        .ends_with("inventory-open.bmp"));
+    assert_eq!(panels::read_frame(&target).expect("read"), painted);
+
+    // A pid with no window is an error, and nothing is written.
+    let none = dir.path().join("grabs").join("nobody.bmp");
+    match panels::grab(&none, 1, &mut make, &fixed_utc, &mut Vec::new()) {
+        Err(PanelsError::Error(message)) => assert!(message.contains("process 1"), "{message}"),
+        other => panic!("expected an error, got {other:?}"),
+    }
+    assert!(!none.exists());
+    assert_eq!(made, 2, "one backend per grab");
+}
+
+#[test]
+fn panels_grab_refuses_a_path_inside_a_git_checkout() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut asked = 0u32;
+    let mut make = || -> Result<Box<dyn ScreenBackend>, String> {
+        asked += 1;
+        Err("no backend in this test".to_string())
+    };
+
+    // A `.git` folder in the frame's folder, or a `.git` file (a worktree)
+    // in a parent of a folder not made yet.
+    let repo = dir.path().join("repo");
+    fs::create_dir_all(repo.join(".git")).unwrap();
+    let worktree = dir.path().join("worktree");
+    fs::create_dir_all(&worktree).unwrap();
+    fs::write(worktree.join(".git"), "gitdir: elsewhere\n").unwrap();
+    for target in [
+        repo.join("frame.bmp"),
+        worktree.join("a").join("b").join("frame.bmp"),
+    ] {
+        match panels::grab(&target, 4242, &mut make, &fixed_utc, &mut Vec::new()) {
+            Err(PanelsError::Error(message)) => {
+                assert!(message.contains("inside a git checkout"), "{message}");
+                assert!(!message.contains('\n'), "one line: {message}");
+            }
+            other => panic!("expected a refusal, got {other:?}"),
+        }
+        assert!(!target.exists());
+    }
+    assert!(!worktree.join("a").exists(), "no folder made");
+
+    // An existing file, outside any checkout, is never written over.
+    let kept = dir.path().join("kept.bmp");
+    fs::write(&kept, "keep").unwrap();
+    match panels::grab(&kept, 4242, &mut make, &fixed_utc, &mut Vec::new()) {
+        Err(PanelsError::Error(message)) => {
+            assert!(message.contains("already exists"), "{message}")
+        }
+        other => panic!("expected a refusal, got {other:?}"),
+    }
+    assert_eq!(fs::read_to_string(&kept).unwrap(), "keep");
+    assert_eq!(asked, 0, "refused before any backend was made");
+
+    // The binary: the error exit with one line, never 2 (no capture index).
+    let target = repo.join("sub").join("frame.bmp");
+    let o = Command::new(BIN)
+        .args(["panels", "grab", "--pid", "1", "--out"])
+        .arg(&target)
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(1));
+    assert!(o.stdout.is_empty());
+    let err = String::from_utf8(o.stderr).unwrap();
+    assert_eq!(err.lines().count(), 1, "{err}");
+    assert!(err.contains("inside a git checkout"), "{err}");
+    assert!(!target.exists() && !repo.join("sub").exists());
+    let o = Command::new(BIN)
+        .args(["panels", "grab", "--out"])
+        .arg(dir.path().join("x.bmp"))
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(64), "no --pid");
+    // `--help` names the research commands.
+    let o = Command::new(BIN)
+        .args(["panels", "--help"])
+        .output()
+        .unwrap();
+    let help = String::from_utf8(o.stdout).unwrap();
+    assert!(help.contains("panels grab") && help.contains("panels probe"));
+}
+
+/// A probe's test colour, and the colour of a probe that is nowhere near it.
+const PROBE_BGR: [u8; 3] = [60, 120, 180];
+const FAR_BGR: [u8; 3] = [200, 30, 30];
+
+/// The probe test's table: probe 0 in colour but textured, probe 1 flat but
+/// in another colour, probe 2 matching.
+fn probe_table() -> PanelTable {
+    let probe = |rect: Rect| PanelProbe {
+        rect,
+        bgr: PROBE_BGR.map(f64::from),
+        tolerance: [10.0; 3],
+        max_luma_std: 6.0,
+    };
+    PanelTable::new(vec![PanelEntry {
+        id: "test-frame",
+        opens_for: vec!["inventory"],
+        footprint: Rect::new(0.05, 0.05, 0.60, 0.40),
+        probes: vec![
+            probe(Rect::new(0.10, 0.10, 0.125, 0.15)),
+            probe(Rect::new(0.30, 0.10, 0.325, 0.15)),
+            probe(Rect::new(0.50, 0.30, 0.525, 0.35)),
+        ],
+        min_match: 1,
+    }])
+}
+
+/// A grey frame with the three probes' patches painted: a checkerboard of
+/// the probe colour plus and minus 40 (its mean in colour, its spread far
+/// too wide), a flat far colour, and the flat probe colour.
+fn probe_frame(table: &PanelTable) -> Image {
+    let client = PixelRect::new(0, 0, W as i32, H as i32);
+    let areas: Vec<PixelRect> = table.entries[0]
+        .probes
+        .iter()
+        .map(|p| p.pixels(client))
+        .collect();
+    let inside =
+        |a: &PixelRect, x: i32, y: i32| x >= a.left && x < a.right && y >= a.top && y < a.bottom;
+    let mut bgra = Vec::with_capacity((W * H * 4) as usize);
+    for y in 0..H as i32 {
+        for x in 0..W as i32 {
+            let c = if inside(&areas[0], x, y) {
+                let d: i16 = if (x + y) % 2 == 0 { 40 } else { -40 };
+                PROBE_BGR.map(|v| (v as i16 + d) as u8)
+            } else if inside(&areas[1], x, y) {
+                FAR_BGR
+            } else if inside(&areas[2], x, y) {
+                PROBE_BGR
+            } else {
+                [128, 128, 128]
+            };
+            bgra.extend_from_slice(&[c[0], c[1], c[2], 255]);
+        }
+    }
+    Image {
+        width: W,
+        height: H,
+        bgra,
+    }
+}
+
+#[test]
+fn panels_probe_reports_each_probe_on_a_synthetic_frame() {
+    let table = probe_table();
+    let entry = &table.entries[0];
+    let frame = probe_frame(&table);
+    // `qt-screen`'s own counts for the same copies, the reference.
+    let copies: Vec<Option<ProbeStats>> = entry
+        .probes
+        .iter()
+        .map(|p| Some(ProbeStats::of_frame(&frame, p.rect)))
+        .collect();
+    let check = |lines: &[Value], overlay: &Rect, visible: bool| {
+        let want = entry.counts(overlay, visible, &copies);
+        let counts = &lines[3]["counts"];
+        assert_eq!(lines[3]["entry"], "test-frame");
+        assert_eq!(counts["read"], want.read);
+        assert_eq!(counts["in_colour"], want.in_colour);
+        assert_eq!(counts["within_spread"], want.within_spread);
+        assert_eq!(counts["match"], want.matched);
+        assert_eq!(counts["needed"], entry.min_match);
+        assert_eq!(lines[4]["summary"]["client"], json!([W, H]));
+        assert_eq!(lines[4]["summary"]["frame"], "synthetic");
+    };
+    let flags = |l: &Value| {
+        (
+            l["readable"].as_bool().unwrap(),
+            l["in_colour"].as_bool().unwrap(),
+            l["within_spread"].as_bool().unwrap(),
+            l["match"].as_bool().unwrap(),
+        )
+    };
+
+    // No overlay: every probe is read.
+    let mut out = Vec::new();
+    panels::probe(&frame, "synthetic", &table, None, &mut out).expect("probe");
+    let lines = objects(&out);
+    assert_eq!(
+        lines.len(),
+        5,
+        "three probes, the entry, a summary: {lines:?}"
+    );
+    for (i, l) in lines[..3].iter().enumerate() {
+        assert_eq!(l["entry"], "test-frame");
+        assert_eq!(l["probe"], i);
+    }
+    assert_eq!(flags(&lines[0]), (true, true, false, false), "colour only");
+    assert_eq!(flags(&lines[1]), (true, false, true, false), "spread only");
+    assert_eq!(flags(&lines[2]), (true, true, true, true), "a match");
+    assert_eq!(lines[2]["mean_bgr"], json!([60.0, 120.0, 180.0]));
+    assert_eq!(lines[2]["luma_std"], json!(0.0));
+    assert!(lines[0]["luma_std"].as_f64().unwrap() > 6.0);
+    assert_eq!(lines[3]["read"], "open");
+    let nowhere = Rect::new(0.0, 0.0, 0.0, 0.0);
+    check(&lines, &nowhere, false);
+    assert_eq!(lines[3]["counts"]["match"], 1);
+
+    // The overlay over the matching probe: it is not read, and the entry
+    // reads closed on the other two.
+    let overlay = Rect::new(0.45, 0.25, 1.0, 1.0);
+    let mut out = Vec::new();
+    panels::probe(&frame, "synthetic", &table, Some(&overlay), &mut out).expect("probe");
+    let lines = objects(&out);
+    assert_eq!(lines.len(), 5);
+    assert_eq!(flags(&lines[2]), (false, false, false, false));
+    assert!(lines[2]["mean_bgr"].is_null() && lines[2]["luma_std"].is_null());
+    assert_eq!(flags(&lines[0]), (true, true, false, false));
+    assert_eq!(lines[3]["read"], "closed");
+    check(&lines, &overlay, true);
+    assert_eq!(lines[3]["counts"]["read"], 2);
+
+    // The binary reads a grab's file and the overlay's four fractions; the
+    // table it runs is whatever `qt-screen` ships, so only the summary is
+    // checked here.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("open.bmp");
+    panels::write_frame(&path, &frame).unwrap();
+    let o = Command::new(BIN)
+        .args(["panels", "probe", "--frame"])
+        .arg(&path)
+        .args(["--overlay", "0.78,0.30,1.0,0.97"])
+        .output()
+        .unwrap();
+    assert_eq!(
+        o.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&o.stderr)
+    );
+    let lines = objects(&o.stdout);
+    assert_eq!(lines.last().unwrap()["summary"]["client"], json!([W, H]));
+    let o = Command::new(BIN)
+        .args(["panels", "probe", "--frame"])
+        .arg(&path)
+        .args(["--overlay", "0.78,0.30"])
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(64), "four fractions");
+    let png = dir.path().join("open.png");
+    fs::write(&png, "not a frame").unwrap();
+    let o = Command::new(BIN)
+        .args(["panels", "probe", "--frame"])
+        .arg(&png)
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(1), "neither a grab nor a JPEG");
+    let o = Command::new(BIN)
+        .args(["panels", "probe", "--frame"])
+        .arg(dir.path().join("missing.bmp"))
+        .output()
+        .unwrap();
+    assert_eq!(
+        o.status.code(),
+        Some(1),
+        "a missing frame is an error, never 2"
+    );
 }

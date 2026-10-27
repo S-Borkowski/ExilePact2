@@ -38,8 +38,28 @@
 //! in `measure`'s statistics. Output is JSON lines of times, counts, rects
 //! and the colour statistics `measure` exists to report; nothing is written.
 //!
+//! Two research commands check the table against the raw copies the
+//! watcher reads, where `measure` and `detect` read JPEG frames:
+//!
+//! - `grab` copies the game's whole client area once, through `qt-capture`'s
+//!   backend (the GDI route the watcher copies through), with the process
+//!   made DPI-aware first, and writes it as an uncompressed 32-bit BMP of
+//!   our own ([`write_frame`]). Before any screen call it refuses a file
+//!   that exists and a folder inside a git checkout (a `.git` in it or in
+//!   any parent): a frame is research data kept beside a session's capture,
+//!   never in a repository. It is the only command here that writes.
+//! - `probe` reads one frame, a grab or a kept capture's JPEG, and prints
+//!   each shipped entry's probe statistics and counts. It cuts each probe at
+//!   the pixel rect the watcher copies ([`PanelProbe::pixels`] for the
+//!   frame's size) and takes the statistics of that cut as the watcher takes
+//!   them of a copy ([`ProbeStats::of_image`]); the counts and the verdict
+//!   are `qt-screen`'s own ([`PanelEntry::counts`], [`PanelEntry::verdict`]).
+//!   `--overlay` marks the probes touching that rect unreadable, as the
+//!   watcher does while the overlay is visible. Numbers go to stdout only.
+//!
 //! The module stands on its own (`tests/panels.rs` includes it): the UTC
-//! parser it needs is handed in by its caller, which is `screen`'s.
+//! parser and formatter it needs are handed in by its caller, which are
+//! `screen`'s, and `grab`'s backend comes from a maker its caller passes.
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -47,7 +67,10 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use qt_screen::{Image, Millis, PanelRead, PanelTable, ProbeStats, Rect, DEFAULT_OVERLAY_REACH};
+use qt_screen::{
+    Image, Millis, PanelRead, PanelTable, PixelRect, ProbeStats, Rect, ScreenBackend,
+    DEFAULT_OVERLAY_REACH,
+};
 use serde_json::{json, Map, Value};
 
 pub const USAGE: &str = "\
@@ -55,6 +78,8 @@ quest-tracker-replay panels: \"Hide under game panels\" over a kept capture.
 
 Usage: quest-tracker-replay panels measure --live FOLDER --windows FILE
        quest-tracker-replay panels detect  --live FOLDER [--windows FILE]
+       quest-tracker-replay panels grab    --pid PID --out FILE
+       quest-tracker-replay panels probe   --frame FILE [--overlay X0,Y0,X1,Y1]
 
 Reads FOLDER/i3/frames.jsonl and decodes its whole-client frames (band
 `bottom`, rect equal to client); every other line is skipped and counted.
@@ -66,13 +91,30 @@ FILE holds one window per line, `<panel-id> <round> <open-utc> <close-utc>`
   detect    the shipped panel table's raw test per frame; with --windows,
             per window the frames it caught, and the frames outside every
             window it read open; then a summary
+  grab      (research) copies the game's whole client area once, as the
+            panel watcher copies, and writes it losslessly to FILE, an
+            uncompressed 32-bit BMP; refused, before any screen call, when
+            FILE exists or its folder is inside a git checkout; prints
+            {\"grab\", \"utc\", \"client\": [w, h]}
+  probe     (research) per entry of the shipped table, each probe's colour
+            statistics and test on one frame (a grab's .bmp or a capture's
+            .jpg) at the pixels the watcher copies, and the entry's counts;
+            then a summary
 
 Options:
-  --live FOLDER     the kept live folder (required)
-  --windows FILE    the windows file (required by `measure`)
-  -h, --help        this text
+  --live FOLDER        the kept live folder (`measure`, `detect`)
+  --windows FILE       the windows file (required by `measure`)
+  --pid PID            the game's process id (`grab`)
+  --out FILE           the frame to write, outside every git checkout (`grab`)
+  --frame FILE         the frame to read (`probe`)
+  --overlay X0,Y0,X1,Y1
+                       the overlay's rect as fractions of the client rect, as
+                       the watcher's `panels: overlay at` line gives them;
+                       probes touching it are not read (`probe`)
+  -h, --help           this text
 
-Exit codes: 0 done, 1 error, 2 no capture index in FOLDER, 64 usage error.
+Exit codes: 0 done, 1 error (a refused grab included), 2 no capture index in
+FOLDER, 64 usage error.
 ";
 
 /// A window's frames start this long after its open press and end this long
@@ -135,17 +177,43 @@ pub const CANDIDATE_SPACING: usize = 3;
 /// A parser of the index's UTC text into milliseconds.
 pub type ParseUtc = fn(&str) -> Option<Millis>;
 
+/// Milliseconds since the Unix epoch as the index's UTC text.
+pub type FormatUtc = fn(Millis) -> String;
+
+/// Makes `grab`'s backend; an error is the reason there is none.
+pub type MakeBackend<'a> = dyn FnMut() -> Result<Box<dyn ScreenBackend>, String> + 'a;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Measure,
     Detect,
+    Grab,
+    Probe,
+}
+
+impl Mode {
+    fn name(self) -> &'static str {
+        match self {
+            Mode::Measure => "measure",
+            Mode::Detect => "detect",
+            Mode::Grab => "grab",
+            Mode::Probe => "probe",
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct PanelsArgs {
     pub mode: Mode,
-    pub live: PathBuf,
+    /// `measure`, `detect`.
+    pub live: Option<PathBuf>,
     pub windows: Option<PathBuf>,
+    /// `grab`.
+    pub pid: Option<u32>,
+    pub out: Option<PathBuf>,
+    /// `probe`.
+    pub frame: Option<PathBuf>,
+    pub overlay: Option<Rect>,
 }
 
 /// Why a run stopped.
@@ -170,6 +238,12 @@ pub fn parse_args(argv: impl IntoIterator<Item = OsString>) -> Result<Option<Pan
     let mut mode = None;
     let mut live = None;
     let mut windows = None;
+    let mut pid = None;
+    let mut out = None;
+    let mut frame = None;
+    let mut overlay = None;
+    // Each option given, for the check that it belongs to the mode.
+    let mut given: Vec<&'static str> = Vec::new();
     let mut rest = argv.into_iter();
     while let Some(arg) = rest.next() {
         let text = arg.to_str().map(str::to_string);
@@ -187,6 +261,14 @@ pub fn parse_args(argv: impl IntoIterator<Item = OsString>) -> Result<Option<Pan
                 mode = Some(Mode::Detect);
                 continue;
             }
+            Some("grab") if mode.is_none() => {
+                mode = Some(Mode::Grab);
+                continue;
+            }
+            Some("probe") if mode.is_none() => {
+                mode = Some(Mode::Probe);
+                continue;
+            }
             _ => return Err(format!("unexpected argument {}", arg.to_string_lossy())),
         };
         let mut value = |name: &str| -> Result<OsString, String> {
@@ -197,21 +279,102 @@ pub fn parse_args(argv: impl IntoIterator<Item = OsString>) -> Result<Option<Pan
         };
         match flag.as_str() {
             "-h" | "--help" => return Ok(None),
-            "--live" => live = Some(PathBuf::from(value("--live")?)),
-            "--windows" => windows = Some(PathBuf::from(value("--windows")?)),
+            "--live" => {
+                live = Some(PathBuf::from(value("--live")?));
+                given.push("--live");
+            }
+            "--windows" => {
+                windows = Some(PathBuf::from(value("--windows")?));
+                given.push("--windows");
+            }
+            "--pid" => {
+                let text = value("--pid")?;
+                pid = Some(
+                    text.to_str()
+                        .and_then(|t| t.parse::<u32>().ok())
+                        .filter(|&p| p != 0)
+                        .ok_or_else(|| {
+                            format!("--pid needs a process id, not {}", text.to_string_lossy())
+                        })?,
+                );
+                given.push("--pid");
+            }
+            "--out" => {
+                out = Some(PathBuf::from(value("--out")?));
+                given.push("--out");
+            }
+            "--frame" => {
+                frame = Some(PathBuf::from(value("--frame")?));
+                given.push("--frame");
+            }
+            "--overlay" => {
+                let text = value("--overlay")?;
+                overlay = Some(text.to_str().and_then(parse_overlay).ok_or_else(|| {
+                    format!(
+                        "--overlay needs four fractions X0,Y0,X1,Y1 from 0 to 1, not {}",
+                        text.to_string_lossy()
+                    )
+                })?);
+                given.push("--overlay");
+            }
             other => return Err(format!("unknown option {other}")),
         }
     }
-    let mode = mode.ok_or("panels needs `measure` or `detect`")?;
-    let live = live.ok_or("panels needs --live FOLDER")?;
-    if mode == Mode::Measure && windows.is_none() {
-        return Err("panels measure needs --windows FILE".to_string());
+    let mode = mode.ok_or("panels needs `measure`, `detect`, `grab` or `probe`")?;
+    let allowed: &[&str] = match mode {
+        Mode::Measure | Mode::Detect => &["--live", "--windows"],
+        Mode::Grab => &["--pid", "--out"],
+        Mode::Probe => &["--frame", "--overlay"],
+    };
+    if let Some(stray) = given.iter().find(|g| !allowed.contains(g)) {
+        return Err(format!("panels {} takes no {stray}", mode.name()));
+    }
+    match mode {
+        Mode::Measure | Mode::Detect => {
+            if live.is_none() {
+                return Err("panels needs --live FOLDER".to_string());
+            }
+            if mode == Mode::Measure && windows.is_none() {
+                return Err("panels measure needs --windows FILE".to_string());
+            }
+        }
+        Mode::Grab => {
+            if pid.is_none() {
+                return Err("panels grab needs --pid PID".to_string());
+            }
+            if out.is_none() {
+                return Err("panels grab needs --out FILE".to_string());
+            }
+        }
+        Mode::Probe => {
+            if frame.is_none() {
+                return Err("panels probe needs --frame FILE".to_string());
+            }
+        }
     }
     Ok(Some(PanelsArgs {
         mode,
         live,
         windows,
+        pid,
+        out,
+        frame,
+        overlay,
     }))
+}
+
+/// `X0,Y0,X1,Y1` as a rect of fractions: four numbers from 0 to 1, each
+/// right and bottom edge past its left and top.
+fn parse_overlay(text: &str) -> Option<Rect> {
+    let n: Vec<f64> = text
+        .split(',')
+        .map(|p| p.trim().parse::<f64>().ok())
+        .collect::<Option<_>>()?;
+    let [x0, y0, x1, y1] = n[..] else {
+        return None;
+    };
+    let unit = |v: f64| (0.0..=1.0).contains(&v);
+    (n.iter().all(|&v| unit(v)) && x0 < x1 && y0 < y1).then(|| Rect::new(x0, y0, x1, y1))
 }
 
 // -- the index ---------------------------------------------------------------------
@@ -875,23 +1038,394 @@ pub fn measure(
     Ok(())
 }
 
-/// Runs `args` over the capture's JPEGs, with the shipped table for
-/// `detect`.
-pub fn run(args: &PanelsArgs, parse_utc: ParseUtc, out: &mut dyn Write) -> Result<(), PanelsError> {
-    let index = read_index(&args.live, parse_utc)?;
-    let windows = match &args.windows {
-        Some(path) => Some(read_windows(path, parse_utc)?),
-        None => None,
+/// Runs `args`: `measure` and `detect` over the capture's JPEGs, `grab`
+/// through `qt-capture`'s backend, `probe` over one frame; the shipped
+/// table for `detect` and `probe`.
+pub fn run(
+    args: &PanelsArgs,
+    parse_utc: ParseUtc,
+    format_utc: FormatUtc,
+    out: &mut dyn Write,
+) -> Result<(), PanelsError> {
+    let need = |what: Option<&PathBuf>, flag: &str| {
+        what.cloned()
+            .ok_or_else(|| PanelsError::Error(format!("panels {} needs {flag}", args.mode.name())))
     };
-    let mut source = JpegFiles;
+    let capture = || -> Result<(Index, Option<Vec<Window>>), PanelsError> {
+        let index = read_index(&need(args.live.as_ref(), "--live FOLDER")?, parse_utc)?;
+        let windows = match &args.windows {
+            Some(path) => Some(read_windows(path, parse_utc)?),
+            None => None,
+        };
+        Ok((index, windows))
+    };
     match args.mode {
-        Mode::Detect => detect(
-            &index,
-            windows.as_deref(),
-            &qt_screen::shipped_panels(),
-            &mut source,
-            out,
-        ),
-        Mode::Measure => measure(&index, windows.as_deref().unwrap_or(&[]), &mut source, out),
+        Mode::Detect => {
+            let (index, windows) = capture()?;
+            detect(
+                &index,
+                windows.as_deref(),
+                &qt_screen::shipped_panels(),
+                &mut JpegFiles,
+                out,
+            )
+        }
+        Mode::Measure => {
+            let (index, windows) = capture()?;
+            measure(
+                &index,
+                windows.as_deref().unwrap_or(&[]),
+                &mut JpegFiles,
+                out,
+            )
+        }
+        Mode::Grab => {
+            let path = need(args.out.as_ref(), "--out FILE")?;
+            let pid = args
+                .pid
+                .ok_or_else(|| PanelsError::Error("panels grab needs --pid PID".to_string()))?;
+            let now = || format_utc(now_ms());
+            grab(&path, pid, &mut windows_backend, &now, out)
+        }
+        Mode::Probe => {
+            let path = need(args.frame.as_ref(), "--frame FILE")?;
+            let image = read_frame(&path)?;
+            probe(
+                &image,
+                &path.display().to_string(),
+                &qt_screen::shipped_panels(),
+                args.overlay.as_ref(),
+                out,
+            )
+        }
     }
+}
+
+// -- grab and probe ------------------------------------------------------------------
+
+/// The size of a BMP's file header and its `BITMAPINFOHEADER`.
+const BMP_FILE_HEADER: usize = 14;
+const BMP_INFO_HEADER: usize = 40;
+const BMP_PIXELS_AT: usize = BMP_FILE_HEADER + BMP_INFO_HEADER;
+
+/// `image` as an uncompressed 32-bit BMP: a `BITMAPINFOHEADER` with a
+/// negative height (rows top-down, as the copy holds them) and the copy's
+/// own B, G, R, A bytes after it, unchanged.
+pub fn frame_bmp(image: &Image) -> Result<Vec<u8>, String> {
+    let (w, h) = (image.width as usize, image.height as usize);
+    let size = w
+        .checked_mul(h)
+        .and_then(|n| n.checked_mul(4))
+        .filter(|&n| n == image.bgra.len() && n <= (u32::MAX as usize - BMP_PIXELS_AT))
+        .ok_or_else(|| format!("the copy's pixels do not fill {w}x{h}"))?;
+    let width = i32::try_from(w).map_err(|_| "the copy is too wide".to_string())?;
+    let height = i32::try_from(h).map_err(|_| "the copy is too tall".to_string())?;
+    let mut b = Vec::with_capacity(BMP_PIXELS_AT + size);
+    b.extend_from_slice(b"BM");
+    b.extend_from_slice(&((BMP_PIXELS_AT + size) as u32).to_le_bytes());
+    b.extend_from_slice(&[0; 4]); // reserved
+    b.extend_from_slice(&(BMP_PIXELS_AT as u32).to_le_bytes());
+    b.extend_from_slice(&(BMP_INFO_HEADER as u32).to_le_bytes());
+    b.extend_from_slice(&width.to_le_bytes());
+    b.extend_from_slice(&(-height).to_le_bytes());
+    b.extend_from_slice(&1u16.to_le_bytes()); // planes
+    b.extend_from_slice(&32u16.to_le_bytes()); // bits a pixel
+    b.extend_from_slice(&0u32.to_le_bytes()); // BI_RGB: uncompressed
+    b.extend_from_slice(&(size as u32).to_le_bytes());
+    b.extend_from_slice(&[0; 16]); // resolution and palette: none
+    b.extend_from_slice(&image.bgra);
+    Ok(b)
+}
+
+/// A BMP [`frame_bmp`] wrote, back into the image it was made from. Any
+/// other BMP (another header, depth, compression or row order) is refused
+/// rather than misread.
+pub fn read_bmp(bytes: &[u8]) -> Result<Image, String> {
+    let not_ours = || "not a frame `panels grab` wrote".to_string();
+    if bytes.len() < BMP_PIXELS_AT || &bytes[..2] != b"BM" {
+        return Err(not_ours());
+    }
+    let u32_at =
+        |i: usize| u32::from_le_bytes([bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]]);
+    let u16_at = |i: usize| u16::from_le_bytes([bytes[i], bytes[i + 1]]);
+    let width = u32_at(18) as i32;
+    let height = u32_at(22) as i32;
+    if u32_at(10) as usize != BMP_PIXELS_AT
+        || u32_at(14) as usize != BMP_INFO_HEADER
+        || u16_at(26) != 1
+        || u16_at(28) != 32
+        || u32_at(30) != 0
+        || width < 0
+        || height > 0
+    {
+        return Err(not_ours());
+    }
+    let (w, h) = (width as usize, height.unsigned_abs() as usize);
+    let size = w * h * 4;
+    if bytes.len() != BMP_PIXELS_AT + size {
+        return Err(format!("{}: the pixels do not fill {w}x{h}", not_ours()));
+    }
+    Ok(Image {
+        width: w as u32,
+        height: h as u32,
+        bgra: bytes[BMP_PIXELS_AT..].to_vec(),
+    })
+}
+
+/// Writes `image` to `path` as [`frame_bmp`] lays it out. Never over a
+/// file: one that exists is an error.
+pub fn write_frame(path: &Path, image: &Image) -> io::Result<()> {
+    let bytes = frame_bmp(image).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)?;
+    file.write_all(&bytes)?;
+    file.sync_all()
+}
+
+/// One frame for `probe`, by its extension: a grab's `.bmp`, or a kept
+/// capture's `.jpg` / `.jpeg` decoded by `qt-capture`.
+pub fn read_frame(path: &Path) -> Result<Image, PanelsError> {
+    let bad = |e: String| PanelsError::Error(format!("{}: {e}", path.display()));
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase);
+    match extension.as_deref() {
+        Some("bmp") => {
+            let bytes = fs::read(path).map_err(|e| bad(e.to_string()))?;
+            read_bmp(&bytes).map_err(bad)
+        }
+        Some("jpg" | "jpeg") => decode_jpeg(path).map_err(bad),
+        _ => Err(bad(
+            "a frame is a grab's .bmp or a capture's .jpg".to_string()
+        )),
+    }
+}
+
+#[cfg(windows)]
+fn decode_jpeg(path: &Path) -> Result<Image, String> {
+    qt_capture::decode_jpeg_file(path).map_err(|e| e.message)
+}
+
+#[cfg(not(windows))]
+fn decode_jpeg(_path: &Path) -> Result<Image, String> {
+    Err("decoding a capture's JPEG frames needs Windows".to_string())
+}
+
+/// The git checkout `folder` lies in, if any: the nearest folder, `folder`
+/// itself or a parent, holding a `.git` (a folder, or a worktree's file).
+/// Both the path as given and the real path of its nearest existing folder
+/// are walked, so neither a folder not made yet nor a link hides one.
+pub fn git_checkout_of(folder: &Path) -> Option<PathBuf> {
+    let holds_git = |a: &Path| a.join(".git").symlink_metadata().is_ok();
+    if let Some(root) = folder.ancestors().find(|a| holds_git(a)) {
+        return Some(root.to_path_buf());
+    }
+    let existing = folder.ancestors().find(|a| a.is_dir())?;
+    let real = fs::canonicalize(existing).ok()?;
+    real.ancestors()
+        .find(|a| holds_git(a))
+        .map(Path::to_path_buf)
+}
+
+/// Where `grab` may write `path`: its absolute form, or the one-line reason
+/// it may not (the file exists, or its folder is inside a git checkout).
+pub fn grab_target(path: &Path) -> Result<PathBuf, String> {
+    let target = std::path::absolute(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if target.symlink_metadata().is_ok() {
+        return Err(format!(
+            "refusing to grab into {}: it already exists",
+            target.display()
+        ));
+    }
+    let folder = target.parent().ok_or_else(|| {
+        format!(
+            "refusing to grab into {}: it has no folder",
+            target.display()
+        )
+    })?;
+    if let Some(root) = git_checkout_of(folder) {
+        return Err(format!(
+            "refusing to grab into {}: its folder is inside a git checkout ({}); keep frames \
+             beside the session's capture, outside every repository",
+            target.display(),
+            root.display()
+        ));
+    }
+    Ok(target)
+}
+
+/// `grab`: refuses `path` as [`grab_target`] says before making a backend,
+/// then copies process `pid`'s game window's whole client area once, writes
+/// it with [`write_frame`] (making its folder) and prints
+/// `{"grab": <path>, "utc", "client": [<w>, <h>]}`, `utc` from `now_utc`
+/// right after the copy.
+pub fn grab(
+    path: &Path,
+    pid: u32,
+    make_backend: &mut MakeBackend<'_>,
+    now_utc: &dyn Fn() -> String,
+    out: &mut dyn Write,
+) -> Result<(), PanelsError> {
+    let target = grab_target(path).map_err(PanelsError::Error)?;
+    let mut backend = make_backend().map_err(PanelsError::Error)?;
+    let screen = |e: qt_screen::BackendError| PanelsError::Error(e.message);
+    let window = backend
+        .game_window(pid)
+        .map_err(screen)?
+        .ok_or_else(|| PanelsError::Error(format!("process {pid} has no visible window")))?;
+    let client = backend
+        .client_rect(window)
+        .map_err(screen)?
+        .ok_or_else(|| {
+            PanelsError::Error(format!(
+                "process {pid}'s window is minimized or has no client area; nothing was copied"
+            ))
+        })?;
+    let image = backend.capture(window, client).map_err(screen)?;
+    let utc = now_utc();
+    if (image.width as i32, image.height as i32) != (client.width(), client.height()) {
+        return Err(PanelsError::Error(format!(
+            "the copy is {}x{}, not the client area's {}x{}; nothing was written",
+            image.width,
+            image.height,
+            client.width(),
+            client.height()
+        )));
+    }
+    let wrote = |e: io::Error| PanelsError::Error(format!("{}: {e}", target.display()));
+    if let Some(folder) = target.parent() {
+        fs::create_dir_all(folder).map_err(wrote)?;
+    }
+    write_frame(&target, &image).map_err(wrote)?;
+    writeln!(
+        out,
+        "{}",
+        json!({
+            "grab": target.display().to_string(), "utc": utc,
+            "client": [image.width, image.height],
+        })
+    )?;
+    Ok(())
+}
+
+/// The real backend for `grab`: the process made DPI-aware, so that the
+/// client rect and the copy are in physical pixels, then `qt-capture`'s
+/// backend with no overlay.
+#[cfg(windows)]
+fn windows_backend() -> Result<Box<dyn ScreenBackend>, String> {
+    // A refusal leaves the awareness the process already has; the grab's
+    // line names the client size it copied either way.
+    let _ = qt_capture::make_process_dpi_aware();
+    Ok(qt_capture::backend(None))
+}
+
+#[cfg(not(windows))]
+fn windows_backend() -> Result<Box<dyn ScreenBackend>, String> {
+    Err("grabbing the game's window needs Windows".to_string())
+}
+
+fn now_ms() -> Millis {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as Millis)
+        .unwrap_or(0)
+}
+
+/// The pixels of `area` (inside `image`) as an image of their own: what a
+/// copy of that area holds.
+fn cut(image: &Image, area: PixelRect) -> Image {
+    let w = image.width as usize;
+    let (x0, x1) = (area.left.max(0) as usize, area.right.max(0) as usize);
+    let (y0, y1) = (area.top.max(0) as usize, area.bottom.max(0) as usize);
+    let mut bgra = Vec::with_capacity((x1 - x0) * (y1 - y0) * 4);
+    for y in y0..y1 {
+        bgra.extend_from_slice(&image.bgra[(y * w + x0) * 4..(y * w + x1) * 4]);
+    }
+    Image {
+        width: (x1 - x0) as u32,
+        height: (y1 - y0) as u32,
+        bgra,
+    }
+}
+
+fn read_name(read: PanelRead) -> &'static str {
+    match read {
+        PanelRead::Open => "open",
+        PanelRead::Closed => "closed",
+        PanelRead::Unseen => "unseen",
+        PanelRead::Black => "black",
+    }
+}
+
+/// `probe`: for each entry of `table`, one line per probe with its
+/// statistics and test on `image` (a copy of the whole client rect), then
+/// the entry's read and counts; then `{"summary": {"frame", "client"}}`.
+/// A probe is read as the watcher reads it: cut at its pixel rect for the
+/// frame's size, its statistics those of the cut, and not read when
+/// `overlay` (fractions, the overlay visible) touches it or its rect is
+/// empty. An unread probe's statistics are null.
+pub fn probe(
+    image: &Image,
+    frame: &str,
+    table: &PanelTable,
+    overlay: Option<&Rect>,
+    out: &mut dyn Write,
+) -> Result<(), PanelsError> {
+    let (w, h) = (image.width, image.height);
+    if image.bgra.len() != w as usize * h as usize * 4 {
+        return Err(PanelsError::Error(format!(
+            "{frame}: the pixels do not fill {w}x{h}"
+        )));
+    }
+    let client = PixelRect::new(0, 0, w as i32, h as i32);
+    let nowhere = Rect::new(0.0, 0.0, 0.0, 0.0);
+    let (place, visible) = match overlay {
+        Some(r) => (*r, true),
+        None => (nowhere, false),
+    };
+    for entry in &table.entries {
+        let mut copies: Vec<Option<ProbeStats>> = vec![None; entry.probes.len()];
+        for (i, p) in entry.probes.iter().enumerate() {
+            let area = p.pixels(client);
+            if p.is_readable(&place, visible) && !area.is_empty() {
+                copies[i] = Some(ProbeStats::of_image(&cut(image, area)));
+            }
+            let line = match &copies[i] {
+                Some(s) => json!({
+                    "entry": entry.id, "probe": i, "readable": true,
+                    "mean_bgr": colour_json(&s.mean_bgr), "luma_std": round_to(s.luma_std, 2),
+                    "in_colour": p.in_colour(s), "within_spread": p.within_spread(s),
+                    "match": p.matches(s),
+                }),
+                None => json!({
+                    "entry": entry.id, "probe": i, "readable": false,
+                    "mean_bgr": null, "luma_std": null,
+                    "in_colour": false, "within_spread": false, "match": false,
+                }),
+            };
+            writeln!(out, "{line}")?;
+        }
+        let counts = entry.counts(&place, visible, &copies);
+        writeln!(
+            out,
+            "{}",
+            json!({
+                "entry": entry.id, "read": read_name(entry.verdict(&counts)),
+                "counts": {
+                    "read": counts.read, "in_colour": counts.in_colour,
+                    "within_spread": counts.within_spread, "match": counts.matched,
+                    "needed": entry.min_match,
+                },
+            })
+        )?;
+    }
+    writeln!(
+        out,
+        "{}",
+        json!({"summary": {"frame": frame, "client": [w, h]}})
+    )?;
+    Ok(())
 }

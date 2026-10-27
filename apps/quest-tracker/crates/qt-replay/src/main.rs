@@ -19,7 +19,11 @@
 //! capture instead of a log. `screen` runs the screen reader's trackers over
 //! it (module [`screen`]) and prints events and counts, never OCR text;
 //! `panels` measures the game panels' footprints in it and runs "Hide under
-//! game panels"' probe test over it (module [`panels`]).
+//! game panels"' probe test over it (module [`panels`]). Two `panels`
+//! research commands check that test on the raw route the app's watcher
+//! reads: `panels grab` copies the game's window once and writes it as a
+//! lossless frame (refused inside any git checkout, never by the app), and
+//! `panels probe` prints each probe's statistics on one such frame.
 //!
 //! Exit codes: 0 done, 1 an error (unreadable data, a store refusal, a read
 //! failure), 2 the log file (or, for `panels`, the capture index) does not
@@ -71,7 +75,8 @@ Commands:
   screen   the screen reader's trackers over a kept capture instead of a log
            (`quest-tracker-replay screen --help`)
   panels   game panels' footprints in a kept capture, and the panel table's
-           test over it (`quest-tracker-replay panels --help`)
+           test over it; `panels grab` and `panels probe`, the raw route's
+           research commands (`quest-tracker-replay panels --help`)
 
 Options:
   --data PATH        quest data file (default: the data/quests.json built in)
@@ -183,7 +188,7 @@ fn panels_main(argv: impl Iterator<Item = OsString>) -> ExitCode {
     };
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
-    let result = panels::run(&args, screen::parse_utc, &mut out)
+    let result = panels::run(&args, screen::parse_utc, screen::format_utc, &mut out)
         .map_err(|e| match e {
             panels::PanelsError::NoIndex(path) => Failure::NoIndex(path),
             panels::PanelsError::Error(message) => Failure::Error(message),
