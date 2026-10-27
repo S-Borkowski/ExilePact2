@@ -54,6 +54,10 @@
 //!   visibility with Win32 calls and never calls into Tauri. Elsewhere it
 //!   gets none, and the "Read the screen" setting starts nothing. No
 //!   capability is involved.
+//! - **Panel watcher**: on Windows the shell also gets a second
+//!   `qt-capture` backend from the same handle, the watcher's own, so the
+//!   "Hide under game panels" check never waits on the reader's lock.
+//!   Elsewhere it gets none, and that setting starts nothing.
 //! - **Main-thread callbacks** (the shortcut, window moves, a DPI scale
 //!   change, a second launch, the tray menu, a close request)
 //!   hand their work to a blocking task, so the main thread never waits for
@@ -62,8 +66,8 @@
 use std::sync::{Arc, Mutex};
 
 use qt_app::{
-    App, AppConfig, Frame, Mode, MonitorMetrics, Options, Placement, QuestAction, QuitFrom,
-    RowChange, ScreenBackend, Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL,
+    App, AppConfig, Frame, Mode, MonitorMetrics, Options, PanelConfig, Placement, QuestAction,
+    QuitFrom, RowChange, ScreenBackend, Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL,
     SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
@@ -347,8 +351,9 @@ fn no_activate(_window: &WebviewWindow, shell: &App) {
 /// overlay's own rect and visibility with Win32 calls instead of waiting on
 /// this main thread. A handle that cannot be read is passed as none
 /// (`no_activate` logs why); the backend then sees no overlay, and the
-/// reader reports it with its `screen: overlay check off (no overlay window)`
-/// line.
+/// reader pauses: it copies and reads nothing, writes its `screen: overlay
+/// check off (no overlay window)` line and shows the status "Screen reading
+/// is paused: the overlay cannot find its own window."
 #[cfg(windows)]
 fn screen_backend(window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
     let overlay = window.hwnd().ok().map(|handle| handle.0 as isize);
@@ -359,6 +364,25 @@ fn screen_backend(window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
 /// nothing.
 #[cfg(not(windows))]
 fn screen_backend(_window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
+    None
+}
+
+/// The panel watcher's backend: a second `qt-capture` backend from the same
+/// overlay handle, never the screen reader's (the reader holds its own
+/// through each OCR call). A handle that cannot be read is passed as none
+/// here too; the watcher then pauses, never hiding the overlay, with its
+/// `panels: paused (no overlay window)` line and the status "Hiding under
+/// game panels is paused: the overlay cannot find its own window."
+#[cfg(windows)]
+fn panel_backend(window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
+    let overlay = window.hwnd().ok().map(|handle| handle.0 as isize);
+    Some(qt_capture::backend(overlay))
+}
+
+/// Elsewhere there is no backend, and the `hide_under_panels` setting
+/// starts nothing.
+#[cfg(not(windows))]
+fn panel_backend(_window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
     None
 }
 
@@ -523,21 +547,28 @@ pub fn run() {
             let window = app
                 .get_webview_window(OVERLAY)
                 .ok_or("tauri.conf.json has no overlay window")?;
-            let shell = App::new(AppConfig {
-                options,
-                options_error,
-                store: Store::open_default().map_err(|e| e.to_string()),
-                data: None,
-                candidates: qt_app::discover::default_candidates(),
-                poll_interval: DEFAULT_POLL_INTERVAL,
-                emitter: Box::new(TauriEmitter(handle.clone())),
-                window: Box::new(TauriWindow {
-                    app: handle,
-                    hotkey: Mutex::new(None),
-                }),
-                clock: Box::new(SystemClock::default()),
-                screen: screen_backend(&window),
-            });
+            let panels = PanelConfig {
+                backend: panel_backend(&window),
+                table: None,
+            };
+            let shell = App::with_panels(
+                AppConfig {
+                    options,
+                    options_error,
+                    store: Store::open_default().map_err(|e| e.to_string()),
+                    data: None,
+                    candidates: qt_app::discover::default_candidates(),
+                    poll_interval: DEFAULT_POLL_INTERVAL,
+                    emitter: Box::new(TauriEmitter(handle.clone())),
+                    window: Box::new(TauriWindow {
+                        app: handle,
+                        hotkey: Mutex::new(None),
+                    }),
+                    clock: Box::new(SystemClock::default()),
+                    screen: screen_backend(&window),
+                },
+                panels,
+            );
             app.manage(Arc::clone(&shell));
             shell.start();
             no_activate(&window, &shell);
