@@ -1627,7 +1627,12 @@ Revisit this feature when:
   its Riverbank instance, at the entry, or when the client's character
   build line names a stored character within that window: that character
   and its pin are kept, nothing else changes, and "New character" never
-  shows (Known limitations says when it is not told apart).
+  shows (Known limitations says when it is not told apart). Events held
+  from before its entry (another character's, never named this session)
+  are dropped and counted, never given to it, so a new character no longer
+  starts with an earlier character's Act 2 progress.
+- The diagnostic log `overlay.log` never names a character: it writes
+  `character #<token>`, a token that changes every run.
 - The unnamed new character is saved in `new-character.json`: a relaunch
   of the overlay mid-session shows it again with its rows, a game restart
   parks it (and gives a released pin back), and a later entry to the same
@@ -1663,6 +1668,11 @@ Revisit this feature when:
   and Lythara, the Wayward Spear get the same find and defeat steps and end
   with "Use any item left after the fight", a hint, since that they work
   the same way is inferred, not observed.
+- Slay the Bloated Miller ticks after his death, on Mortimer's "Well done!
+  Please come inside." in The Riverbank, not on the Miller's first line:
+  before, the row showed "Enter town" while he was still alive (two live
+  sessions). Where Mortimer's line does not come, entering Clearfell
+  Encampment still completes the step.
 - `quest-tracker-replay` (`events`, `state`, `import`, `scan`, `screen`; the summary
   counts held events, the two kinds of dropped event and refused signals,
   and decides a relog window still open at the end of the log as the

@@ -1499,7 +1499,8 @@ row showed the step after the furthest one reached and fell back to the
 last step when there was none. The press timing was the person's late
 press, not the reader's: the one tick came as the banner showed. Item
 `rowfix` changed the row so that a quest with every step reached and not
-yet done shows its name alone; Live 10 re-checked it.
+yet done shows its name alone; Live 10 could not check it (another
+character's record); Live 11 confirmed it.
 
 **OCR time.** In town the whole dialogue window was read once a second
 while nobody talked: 16576 ms of OCR in a minute in which Renly's heading
