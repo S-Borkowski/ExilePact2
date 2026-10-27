@@ -15,12 +15,15 @@
 //! engine stored (own or unconfirmed) after the whole log, never a join or
 //! leave line; `scan` prints counts per area and no character name at all.
 //!
-//! `screen` is the odd one out: it runs the screen reader's trackers over a
-//! kept research capture instead of a log (module [`screen`]), and prints
-//! events and counts, never OCR text.
+//! `screen` and `panels` are the odd ones out: they read a kept research
+//! capture instead of a log. `screen` runs the screen reader's trackers over
+//! it (module [`screen`]) and prints events and counts, never OCR text;
+//! `panels` measures the game panels' footprints in it and runs "Hide under
+//! game panels"' probe test over it (module [`panels`]).
 //!
 //! Exit codes: 0 done, 1 an error (unreadable data, a store refusal, a read
-//! failure), 2 the log file does not exist, 64 a usage error.
+//! failure), 2 the log file (or, for `panels`, the capture index) does not
+//! exist, 64 a usage error.
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::ffi::OsString;
@@ -36,6 +39,7 @@ use qt_store::{Loaded, Store};
 use qt_tailer::{read_whole_file, Position};
 use serde_json::{json, Map, Value};
 
+mod panels;
 mod screen;
 
 /// The shipped quest data, compiled in so the CLI runs the app's data.
@@ -43,6 +47,7 @@ const EMBEDDED_DATA: &str = include_str!("../../../data/quests.json");
 
 const EXIT_ERROR: u8 = 1;
 const EXIT_NO_LOG: u8 = 2;
+const EXIT_NO_INDEX: u8 = 2;
 const EXIT_USAGE: u8 = 64;
 
 const USAGE: &str = "\
@@ -65,6 +70,8 @@ Commands:
            character names)
   screen   the screen reader's trackers over a kept capture instead of a log
            (`quest-tracker-replay screen --help`)
+  panels   game panels' footprints in a kept capture, and the panel table's
+           test over it (`quest-tracker-replay panels --help`)
 
 Options:
   --data PATH        quest data file (default: the data/quests.json built in)
@@ -97,6 +104,8 @@ struct Args {
 enum Failure {
     Usage(String),
     NoLog(PathBuf),
+    /// `panels`: the live folder has no capture index.
+    NoIndex(PathBuf),
     Error(String),
     /// Whoever reads the output closed it (`| head`): their choice, not an
     /// error.
@@ -117,6 +126,9 @@ fn main() -> ExitCode {
     let argv: Vec<OsString> = std::env::args_os().skip(1).collect();
     if argv.first().is_some_and(|a| a == "screen") {
         return screen_main(argv.into_iter().skip(1));
+    }
+    if argv.first().is_some_and(|a| a == "panels") {
+        return panels_main(argv.into_iter().skip(1));
     }
     let args = match parse_args(argv) {
         Ok(Some(args)) => args,
@@ -156,6 +168,34 @@ fn screen_main(argv: impl Iterator<Item = OsString>) -> ExitCode {
     }
 }
 
+/// `panels`, which reads a kept capture's frames rather than a log.
+fn panels_main(argv: impl Iterator<Item = OsString>) -> ExitCode {
+    let args = match panels::parse_args(argv) {
+        Ok(Some(args)) => args,
+        Ok(None) => {
+            print!("{}", panels::USAGE);
+            return ExitCode::SUCCESS;
+        }
+        Err(message) => {
+            eprintln!("quest-tracker-replay: {message}\n\n{}", panels::USAGE);
+            return ExitCode::from(EXIT_USAGE);
+        }
+    };
+    let stdout = io::stdout();
+    let mut out = BufWriter::new(stdout.lock());
+    let result = panels::run(&args, screen::parse_utc, &mut out)
+        .map_err(|e| match e {
+            panels::PanelsError::NoIndex(path) => Failure::NoIndex(path),
+            panels::PanelsError::Error(message) => Failure::Error(message),
+            panels::PanelsError::Write(e) => Failure::from(e),
+        })
+        .and_then(|()| out.flush().map_err(Failure::from));
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(failure) => fail(failure),
+    }
+}
+
 fn fail(failure: Failure) -> ExitCode {
     match failure {
         Failure::Usage(message) => {
@@ -165,6 +205,13 @@ fn fail(failure: Failure) -> ExitCode {
         Failure::NoLog(path) => {
             eprintln!("quest-tracker-replay: no log file at {}", path.display());
             ExitCode::from(EXIT_NO_LOG)
+        }
+        Failure::NoIndex(path) => {
+            eprintln!(
+                "quest-tracker-replay: no capture index at {}",
+                path.display()
+            );
+            ExitCode::from(EXIT_NO_INDEX)
         }
         Failure::Closed => ExitCode::SUCCESS,
         Failure::Error(message) => {

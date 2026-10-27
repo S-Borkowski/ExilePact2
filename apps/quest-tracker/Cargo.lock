@@ -2773,6 +2773,7 @@ dependencies = [
 name = "qt-replay"
 version = "0.1.0"
 dependencies = [
+ "qt-capture",
  "qt-engine",
  "qt-logline",
  "qt-screen",

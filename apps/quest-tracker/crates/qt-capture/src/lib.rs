@@ -15,14 +15,21 @@
 //! OCR text is private: it is returned to the caller and nothing here
 //! formats, logs or keeps it. Errors name the call and the system's error.
 //!
+//! - [`decode_jpeg_file`]: a kept capture's JPEG frame back into an image,
+//!   through WinRT's bitmap decoder, for `quest-tracker-replay panels`.
+//!
 //! [`pixels`] holds the pure arithmetic and builds everywhere; the backend
-//! itself only on Windows.
+//! and the decode only on Windows.
 
 pub mod pixels;
 
 #[cfg(windows)]
+mod decode;
+#[cfg(windows)]
 mod win;
 
+#[cfg(windows)]
+pub use decode::{decode_jpeg, decode_jpeg_file};
 #[cfg(windows)]
 pub use win::{WindowsBackend, OCR_LANGUAGE};
 
