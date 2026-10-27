@@ -414,7 +414,9 @@ library only.
 | Command | Options | What it does |
 |---|---|---|
 | `fetch` | `--cache DIR`, `--delay S` (default 3, refused under 2), `--only SLUG ...`, `--max-age DAYS` (default 7), `--include-endgame` | Reads `robots.txt` and skips what it disallows, then fetches the quest index and the campaign quest pages one at a time, `--delay` seconds apart, with a User-Agent naming the tool and this repository. Pages cached within `--max-age` days are left alone. Act 10 and act-less MasterMission quests only with `--include-endgame`. |
+| `fetch-classes` | `CLASS ...` (e.g. `Warrior Mercenary`), `--cache DIR`, `--delay S`, `--max-age DAYS` | Fetches the named poe2db class pages into the cache, politely and under the same robots.txt and delay rules as `fetch`, for their kill remarks. |
 | `extract` | `--cache DIR`, `--out FILE` (default `<cache>\quests-draft.json`), `--with-dialogue` | Drafts one JSON entry per cached quest page (slug, URL, fetch date, name, type, act, rewards, steps; NPC dialogue only with `--with-dialogue`). A page without a steps table is drafted with zero steps and named on stderr; an index with no quest, a malformed steps table, or no steps table in any page stops with a non-zero exit naming the slug. |
+| `remarks` | `--cache DIR`, `--data FILE` (default `apps/quest-tracker/data/quests.json`), `--class CLASS ...` | Prints a draft of the cached class pages' kill-remark rows whose boss the quest data names (`remarks` table entries), never a whole table. |
 | `coverage` | `--log LOG` (required, read-only), `--cache DIR` | Per cached page, how many dialogue snippets match a logged line of the same NPC exactly, by containment, or by a shared 4-word run. Counts only, never text. |
 
 The cache defaults to `%LOCALAPPDATA%\ExilePact2\quest-tracker\poe2db-cache\`;
@@ -845,8 +847,10 @@ strip, by either kind of read, is less than 10 s old. It cannot miss a
 banner the whole-window reads would catch: a banner counts only within
 10 s after a read with the heading, and that heading opened the gate. The
 NPC's name over him in the world (y 0.461 to 0.484 for Renly) is outside
-the strip and opens nothing. Whether Windows' OCR reads the cropped strip
-as well as the whole window is not established yet (Live 10 checks it).
+the strip and opens nothing. On the live crop the strip read Renly's
+heading in 23 of 57 reads in the minute before his banner, enough to open
+the gate, and the banner was caught (Live 10); other NPCs' headings in the
+strip are not measured.
 
 **The remark rule (`kill_remark`).** A line of the voiced-lines list of
 the form `<speaker>: <text>` whose text matches a known kill-remark text
@@ -1124,8 +1128,10 @@ project):
 | `crates/qt-store/` | App-data folder, atomic JSON, quarantine, diagnostic log. |
 | `crates/qt-engine/` | Quest data contract and validator (`data`), the per-character state machine with character detection, the new character from The Riverbank and the refused-signal count (`engine`), and the area read back from the log before a tailer's start (`area`: `area_from_log`, `LogArea`, seeded with `Engine::seed_area`). |
 | `crates/qt-viewmodel/` | `View` and `RowChange`: what the panel shows and what changed in a row, built in Rust. |
+| `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and kill-remark trackers behind a backend trait. |
+| `crates/qt-capture/` | The Windows backend for `qt-screen`: GDI copy of a client-area region and `Windows.Media.Ocr` (en-US) in memory, through the `windows` crate. |
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`). |
-| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery. Tested with a fake window, emitter and clock. |
+| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`). Tested with a fake window, emitter and clock. |
 | `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the tray icon and its Quit, the close request, the command wrappers. |
 | `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
@@ -1533,9 +1539,11 @@ Revisit this feature when:
   the lower-left list of voiced lines and the dialogue window), only while
   the game is in front and a step the screen can finish is open in the
   current area, and reads them with Windows' own OCR, in memory. Beira of
-  the Rotten Pack's, Blackjaw's and Lythara's defeat steps tick when their
-  bar goes, and "Take Renly's reward" when the QUEST COMPLETE banner shows
-  in his window. The passive tree or world map over the bar ticks
+  the Rotten Pack's defeat step ticks when her bar goes (seen live);
+  Blackjaw's and Lythara's are set up the same way by analogy, not yet
+  seen. A Mercenary's "Defeat Blackjaw, the Remnant" also ticks on the
+  character's kill remark (not yet seen on screen). "Take Renly's reward"
+  ticks when the QUEST COMPLETE banner shows in his window. The passive tree or world map over the bar ticks
   nothing; neither does the overlay over a region, a missing English OCR
   or a window that is not 16:9, and the status line says which. Nothing
   read is stored, logged or shown.
@@ -1637,6 +1645,7 @@ Revisit this feature when:
   counts held events, the two kinds of dropped event and refused signals,
   and decides a relog window still open at the end of the log as the
   overlay would) and the developer-only `py -3 -m
-  tools.quest_tracker.poe2db` (`fetch`, `extract`, `coverage`).
+  tools.quest_tracker.poe2db` (`fetch`, `fetch-classes`, `extract`,
+  `remarks`, `coverage`).
   `npm run release` builds both `quest-tracker.exe` and
   `quest-tracker-replay.exe`.

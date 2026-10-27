@@ -1517,7 +1517,7 @@ name's column as covered; which of these those reads were is not
 established. Beira's name read again after the tree closed (22 present in
 that minute), and its going came only at the kill.
 
-#### Live 10: Renly's reward re-checked
+### Live 10: Renly's reward re-checked
 
 Measured 2026-10-27 with Live procedure 2 (capture
 `.claude/workorders/quest-tracker-screen-text-build-live-2.md`), on a new
@@ -1555,7 +1555,7 @@ the wait, also counted 22 full reads and 33 skipped; what opened the gate
 then is not established. The heading gate took the town minute from
 16576 ms (Live 9) to about 1.9 s.
 
-#### Live 11: the row on a clean character
+### Live 11: the row on a clean character
 
 Measured 2026-10-27 with Live procedure 3 (capture
 `.claude/workorders/quest-tracker-screen-text-build-live-3.md`), on a new
