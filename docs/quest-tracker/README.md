@@ -226,7 +226,12 @@ move or a DPI change).
 
 **What the diagnostic log says.** `overlay.log`, in the store folder
 ("Privacy"), records the tracker's decisions, never a line of the game's
-log. The lines to look for when a quest did not advance:
+log. It never names a character: where a line below shows `<name>`, the
+log writes `character #<token>` for one of yours (six hex digits that stand
+for one name until the overlay exits, so its lines can be followed within a
+run, and are drawn at random each run, so a shared log cannot be checked
+against a guessed name), `an unconfirmed character` for one only a level-up
+named, or `none`. The lines to look for when a quest did not advance:
 
 - `area from log: <area code>`: the current area, read back from the log
   before the position the tailer starts at ("How detection works"). When
@@ -589,7 +594,8 @@ character's Riverbank instance, and a name line inside a short window.
   exactly one stored character, and of no parked new character, is that
   character's relog, decided at the entry with no wait: it becomes active,
   a pin stays, and the diagnostic log says `character: <name> relogged in
-  The Riverbank, kept`. A character gets its seed when a decision puts it in
+  The Riverbank, kept` (the character by its token, "What the diagnostic
+  log says"). A character gets its seed when a decision puts it in
   that Riverbank instance: the new character's seed passes to the name its
   level-up gives it, or to the character a pin hands its progress to, and a
   relog records the entry's seed. An event routed to a pinned character
@@ -968,7 +974,10 @@ What is stored, and where:
   temporary file, synced, renamed over the old one); one that cannot be read
   back is renamed `<file>.corrupt-<timestamp>` and the status line says so.
 - Only your own and unconfirmed-active character names are ever written
-  (the pin `new-character.json` keeps is one of yours).
+  (the pin `new-character.json` keeps is one of yours), and only to the
+  JSON files above: `overlay.log` writes no character name, yours
+  included, only a token per character that changes every run ("What the
+  diagnostic log says").
   Names seen in join or leave lines (party members) live in memory for one
   session and are never written to disk or to the diagnostic log.
 - Chat is ignored: chat lines are dropped by the parser, and no chat text,
