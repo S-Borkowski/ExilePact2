@@ -1607,6 +1607,39 @@ To preview a frame in a browser, run `npm --prefix apps/quest-tracker run
 dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
 (`&scale=2` for the 2× zoom); see `src/preview.ts`.
 
+**Cutting a release.** A release is the annotated tag
+`quest-tracker-v<version>` on the tip of `main`. The version is the one in
+`package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`, the
+workspace's `Cargo.toml` and `Cargo.lock`. These must agree, and "Release
+notes" below needs a `### <version>` section for it:
+
+1. Bump the version in those files (build once so `Cargo.lock` follows),
+   and write the version's release notes. Land both on `main` through a
+   pull request.
+2. On an up-to-date `main`:
+
+   ```sh
+   py -3 -m tools.quest_tracker.release check            # every version agrees; the notes exist
+   py -3 -m tools.quest_tracker.release notes 0.1.0      # the release body, as it will read
+   py -3 -m tools.quest_tracker.release cut --push       # tag HEAD and push the tag
+   ```
+
+   `cut` refuses uncommitted changes to tracked files, a HEAD that is not
+   the tip of `origin/main`, and a tag that already exists here or on the
+   remote. Without `--push` it only creates the tag and prints the push
+   command.
+3. The pushed tag starts `.github/workflows/quest-tracker-release.yml`. It
+   checks the tag against the files, builds with Rust 1.98.1 and Node
+   24.19.0 on a Windows runner, and creates a **draft** release. The draft
+   holds `quest-tracker.exe`, `quest-tracker-replay.exe`, `SHA256SUMS.txt`
+   and the body from step 2.
+4. Open the draft on GitHub, check it, publish it, and tick "Set as the
+   latest release". The workflow never publishes.
+
+To rebuild a tag, for a failed run or a lost asset, run the workflow by
+hand (Actions › Quest Tracker Release › Run workflow) with the tag. If the
+release already exists, only its assets are replaced.
+
 ## Known limitations
 
 - **Party play.** Only your own characters are tracked. While in a party, a
