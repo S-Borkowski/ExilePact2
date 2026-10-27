@@ -29,8 +29,8 @@ use qt_app::{
     Window, HIDDEN_LINE, PANEL_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
 };
 use qt_screen::{
-    overlay_fraction, BackendError, Image, OcrReadiness, OverlayState, PanelEntry, PanelProbe,
-    PanelTable, PixelLine, PixelRect, Rect, WindowHandle,
+    overlay_fraction, shipped_panels, BackendError, Image, OcrReadiness, OverlayState, PanelEntry,
+    PanelProbe, PanelTable, PixelLine, PixelRect, Rect, WindowHandle,
 };
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
@@ -142,6 +142,9 @@ struct Scene {
     /// The panels showing, and how their probes' copies are painted.
     showing: Mutex<BTreeMap<&'static str, Paint>>,
     capture_fails: AtomicBool,
+    /// Copies painted from a fixture's sample, by the probe's pixel rect.
+    /// When there are any, every other copy is the scene's grey.
+    painted: Mutex<Vec<(PixelRect, Image)>>,
     calls: Mutex<Vec<String>>,
 }
 
@@ -160,6 +163,7 @@ impl Scene {
             client: Mutex::new(CLIENT),
             showing: Mutex::new(BTreeMap::new()),
             capture_fails: AtomicBool::new(false),
+            painted: Mutex::new(Vec::new()),
             calls: Mutex::new(Vec::new()),
         }
     }
@@ -272,6 +276,20 @@ impl ScreenBackend for FakeBackend {
         if self.0.capture_fails.load(Ordering::SeqCst) {
             return Err(BackendError::new("capture: the fake failed"));
         }
+        {
+            let painted = self.0.painted.lock().unwrap();
+            if !painted.is_empty() {
+                let grey = Image {
+                    width: 4,
+                    height: 4,
+                    bgra: [GREY[0], GREY[1], GREY[2], 255].repeat(16),
+                };
+                return Ok(painted
+                    .iter()
+                    .find(|(rect, _)| *rect == area)
+                    .map_or(grey, |(_, image)| image.clone()));
+            }
+        }
         let showing = self.0.showing.lock().unwrap();
         let paint = showing
             .iter()
@@ -380,6 +398,8 @@ struct Setup {
     on: bool,
     /// Whether the app gets a panel backend at all.
     backend: bool,
+    /// The app's own table (`shipped_panels`) instead of the synthetic one.
+    shipped: bool,
 }
 
 impl Default for Setup {
@@ -387,6 +407,7 @@ impl Default for Setup {
         Setup {
             on: true,
             backend: true,
+            shipped: false,
         }
     }
 }
@@ -417,7 +438,7 @@ fn harness(setup: Setup) -> Harness {
             config,
             PanelConfig {
                 backend: Some(Box::new(FakeBackend(Arc::clone(&scene)))),
-                table: Some(table()),
+                table: (!setup.shipped).then(table),
             },
         )
     } else {
@@ -635,7 +656,11 @@ fn panels_setting_off_starts_no_watcher_and_never_hides_baseline() {
     // The same session, on an app with the setting off and a panel showing
     // in the fake's copies, and on one with no panel backend at all.
     let run = |backend: bool| {
-        let h = harness(Setup { on: false, backend });
+        let h = harness(Setup {
+            on: false,
+            backend,
+            ..Setup::default()
+        });
         h.scene.show("right");
         h.scene.show("left");
         h.app.start();
@@ -1125,4 +1150,111 @@ fn panels_lines_use_only_the_pinned_shapes() {
         assert!(lines.iter().any(|l| l == shape), "{shape}: {lines:#?}");
     }
     assert_pinned(&h);
+}
+
+// ---------------------------------------------------------------------------
+// The shipped table, on a measured sample.
+
+const PANEL_FIXTURE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../fixtures/panels/shipped_panels.json"
+);
+
+/// A 16 × 16 copy with the mean `mean` (blue, green, red) and the luma
+/// spread `luma_std`: two levels, the same offset in every channel, in the
+/// share of pixels that keeps both inside 0..255.
+fn paint_sample(mean: [f64; 3], luma_std: f64) -> Image {
+    const N: usize = 256;
+    let lo = mean.iter().cloned().fold(f64::MAX, f64::min);
+    let hi = mean.iter().cloned().fold(f64::MIN, f64::max);
+    let (k, up, down) = (1..N)
+        .map(|k| {
+            let p = k as f64 / N as f64;
+            (k, luma_std * ((1.0 - p) / p).sqrt(), luma_std * (p / (1.0 - p)).sqrt())
+        })
+        .filter(|&(_, up, down)| hi + up <= 255.0 && lo - down >= 0.0)
+        .min_by_key(|&(k, _, _)| k.abs_diff(N / 2))
+        .expect("a spread that fits");
+    let level = |d: f64| -> [u8; 4] {
+        let c = |x: f64| (x + d).round().clamp(0.0, 255.0) as u8;
+        [c(mean[0]), c(mean[1]), c(mean[2]), 255]
+    };
+    let (a, b) = (level(up), level(-down));
+    Image {
+        width: 16,
+        height: 16,
+        bgra: (0..N).flat_map(|i| if i < k { a } else { b }).collect(),
+    }
+}
+
+#[test]
+fn panels_shipped_table_hides_the_overlay_on_a_measured_sample_target() {
+    let raw = fs::read_to_string(PANEL_FIXTURE).expect("the panel fixture");
+    let data: serde_json::Value = serde_json::from_str(&raw).expect("JSON");
+    let sample = data["samples"]
+        .as_array()
+        .expect("samples")
+        .iter()
+        .find(|s| {
+            s["kind"] == "open" && s["entry"] == "inventory" && s["window"]["panel"] == "inventory"
+        })
+        .expect("an open sample of the inventory")
+        .clone();
+    let table = shipped_panels();
+    let inventory = table
+        .entries
+        .iter()
+        .find(|e| e.id == "inventory")
+        .expect("the inventory's entry");
+    let probes = sample["probes"]["inventory"].as_array().expect("its probes");
+    assert_eq!(probes.len(), inventory.probes.len());
+    let painted: Vec<(PixelRect, Image)> = inventory
+        .probes
+        .iter()
+        .zip(probes)
+        .map(|(p, s)| {
+            let mean: Vec<f64> = s["mean_bgr"]
+                .as_array()
+                .expect("a mean")
+                .iter()
+                .map(|v| v.as_f64().expect("a number"))
+                .collect();
+            let std = s["luma_std"].as_f64().expect("a spread");
+            (p.pixels(CLIENT), paint_sample([mean[0], mean[1], mean[2]], std))
+        })
+        .collect();
+
+    let h = harness(Setup {
+        shipped: true,
+        ..Setup::default()
+    });
+    // Negative control first: the scene's grey everywhere, nothing hides.
+    *h.scene.painted.lock().unwrap() = vec![(PixelRect::new(0, 0, 1, 1), paint_sample([91.0; 3], 0.0))];
+    h.app.start();
+    h.feed(&in_the_riverbank());
+    h.in_front(Some(GAME));
+    h.wait_diag(&["panels: overlay at x 0.78 to 1.00, y 0.30 to 0.97"]);
+    wait_until("several copies", || h.scene.copies().len() >= 40);
+    assert!(h.scene.window_calls().is_empty(), "{:?}", h.scene.window_calls());
+    assert!(h.visibility_lines().is_empty(), "{:?}", h.visibility_lines());
+
+    // The inventory's open sample under the overlay at its default place.
+    *h.scene.painted.lock().unwrap() = painted;
+    h.wait_diag(&["panels: inventory open"]);
+    h.wait_diag(&[PANEL_LINE]);
+    wait_until("the overlay hidden", || {
+        h.scene.window_calls() == vec!["visible false"]
+    });
+    // The panel closes: the overlay shows again.
+    *h.scene.painted.lock().unwrap() = vec![(PixelRect::new(0, 0, 1, 1), paint_sample([91.0; 3], 0.0))];
+    h.wait_diag(&["panels: inventory closed"]);
+    wait_until("the overlay shown", || {
+        h.scene.window_calls() == vec!["visible false", "visible true"]
+    });
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+    for l in h.panel_lines() {
+        for n in ["mean", "bgr"] {
+            assert!(!l.contains(n), "{l}");
+        }
+    }
 }

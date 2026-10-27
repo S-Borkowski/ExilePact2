@@ -211,7 +211,7 @@ pub enum PanelRead {
     Closed,
     /// Fewer than `min_match` probes readable: nothing to judge by.
     Unseen,
-    /// A readable probe's copy was black: the capture got nothing back.
+    /// Every readable probe's copy was black: the capture got nothing back.
     Black,
 }
 
@@ -290,13 +290,15 @@ impl PanelEntry {
     }
 
     /// What a read with these counts says: fewer than `min_match` read is
-    /// Unseen; else any black copy is Black; else Open or Closed by the
-    /// number that match.
+    /// Unseen; else every copy black is Black (the capture got nothing
+    /// back); else Open or Closed by the number that match. A black copy
+    /// among others is no reason to hold the state: it simply does not
+    /// match, as a dark scene behind a closed panel would not.
     pub fn verdict(&self, counts: &PanelCounts) -> PanelRead {
         let need = self.min_match.max(1);
         if counts.read < need {
             PanelRead::Unseen
-        } else if counts.black > 0 {
+        } else if counts.black == counts.read {
             PanelRead::Black
         } else if counts.matched >= need {
             PanelRead::Open
@@ -665,12 +667,18 @@ mod tests {
             check(&NO_OVERLAY, false, &[gold, None, None]),
             (counts(1, 1, 1, 1, 0), PanelRead::Unseen)
         );
-        // A black copy is counted like any other, and makes the read Black.
+        // A black copy is counted like any other: among matching ones it
+        // simply does not match; only an all-black read is Black.
         let black = stats([0, 0, 0]);
         let (n, read) = check(&NO_OVERLAY, false, &[black, gold, gold]);
         assert_eq!(
             (n.read, n.matched, n.black, read),
-            (3, 2, 1, PanelRead::Black)
+            (3, 2, 1, PanelRead::Open)
+        );
+        let (n, read) = check(&NO_OVERLAY, false, &[black, black, black]);
+        assert_eq!(
+            (n.read, n.matched, n.black, read),
+            (3, 0, 3, PanelRead::Black)
         );
         // No copies at all: every count zero.
         assert_eq!(
@@ -736,12 +744,24 @@ mod tests {
             stats([40, 110, 150]),
             stats([40, 110, 150]),
         ];
+        // One black copy beside two matching ones: open at `min_match` 2.
         let mut blacked = open;
         blacked[0] = black;
         assert_eq!(
             entry.classify(&NO_OVERLAY, false, &blacked),
-            PanelRead::Black
+            PanelRead::Open
         );
+        // One black copy among copies that do not match: closed, not held.
+        let off = stats([90, 90, 90]);
+        assert_eq!(
+            entry.classify(&NO_OVERLAY, false, &[black, off, off]),
+            PanelRead::Closed
+        );
+        assert_eq!(
+            entry.classify(&NO_OVERLAY, false, &[black, black, off]),
+            PanelRead::Closed
+        );
+        // Only when every copy is black is the read Black.
         assert_eq!(
             entry.classify(&NO_OVERLAY, false, &[black, black, black]),
             PanelRead::Black
@@ -774,6 +794,30 @@ mod tests {
         assert_eq!(t.feed(PanelRead::Closed), None);
         assert_eq!(t.feed(PanelRead::Black), None);
         assert_eq!(t.feed(PanelRead::Closed), Some(PanelChange::Closed));
+    }
+
+    #[test]
+    fn panel_dark_scene_probe_does_not_hold_an_open_entry() {
+        // A panel closes over a dark scene: one probe now sits on ground
+        // dark enough to copy as black, the others on the scene's colours.
+        let entry = left_panel();
+        let gold = stats([40, 110, 150]);
+        let mut t = PanelTracker::new();
+        assert_eq!(
+            t.feed(entry.classify(&NO_OVERLAY, false, &[gold, gold, gold])),
+            Some(PanelChange::Opened)
+        );
+        let dark = [stats([0, 0, 0]), stats([60, 70, 50]), stats([90, 90, 90])];
+        assert_eq!(entry.classify(&NO_OVERLAY, false, &dark), PanelRead::Closed);
+        for _ in 1..PANEL_CLOSED_READS {
+            assert_eq!(t.feed(entry.classify(&NO_OVERLAY, false, &dark)), None);
+            assert!(t.is_open());
+        }
+        assert_eq!(
+            t.feed(entry.classify(&NO_OVERLAY, false, &dark)),
+            Some(PanelChange::Closed)
+        );
+        assert!(!t.is_open());
     }
 
     #[test]
