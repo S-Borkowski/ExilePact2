@@ -36,6 +36,7 @@ export interface SettingsPatch {
   log_path?: string | null;
   hotkey?: string;
   screen_reading?: boolean;
+  hide_under_panels?: boolean;
 }
 
 /** Every command the UI sends, with its arguments. `get_view` is the bridge's own. */

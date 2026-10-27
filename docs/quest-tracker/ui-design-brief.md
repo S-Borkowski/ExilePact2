@@ -188,6 +188,10 @@ name, until it is done.
    after Live 2). A "Read the screen" toggle, off by default, follows "only
    worth-it quests", with a helper line saying it reads the game's window
    for boss bars and quest dialogue and saves nothing (owner, 2026-10-26).
+   A "Hide under game panels" toggle, off by default, follows "Read the
+   screen", with a helper line saying it hides the tracker while a game
+   panel is open under it, reads a few pixels of the game's window and
+   saves nothing (owner, 2026-10-27).
 7. **Edit mode vs. play mode** [`mode-play`, `mode-edit`]. The same panel in
    both. Play mode is click-through (mouse goes to the game) and shows no
    buttons; edit mode (hotkey) accepts clicks and shows the controls. The
