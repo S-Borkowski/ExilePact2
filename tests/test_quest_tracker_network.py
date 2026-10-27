@@ -14,12 +14,20 @@ must keep holding after it:
   permissions, and no capability file grants an `http:`, `updater:`,
   `websocket:`, `upload:`, `shell:`, `fs:`, `process:` or `opener:`
   permission or a `remote` URL;
-- no `Cargo.toml` under the app depends on an HTTP client or a Tauri network
-  plugin, and `package.json` on no Tauri network plugin;
+- no `Cargo.toml` under the app depends on an HTTP client, a socket, TLS or
+  WebSocket crate, or a Tauri network plugin, and `package.json` on no
+  Tauri network plugin;
+- the binary's compiled graph (`cargo tree -i`, skipped when cargo is not on
+  PATH) holds none of those crates but `socket2` through tokio, Tauri's
+  runtime: `Cargo.lock` lists optional ones that are not compiled, and a
+  feature turned on in a manifest could link them;
 - no Rust source outside `crates/qt-net/` (the transport crate) names a
-  socket, WinHTTP, WinINet or an HTTP client crate;
-- no UI source but the tests calls `fetch(`, `XMLHttpRequest`, `WebSocket`,
-  `EventSource` or `sendBeacon`.
+  socket (std's, tokio's, or Winsock through the `windows` crates),
+  WinHTTP, WinINet, urlmon's `URLDownloadToFile`, an HTTP client crate, or a
+  webview on a remote page (`WebviewUrl::External`);
+- no UI source but the tests, and no root `*.html` entry page of a window,
+  calls `fetch(`, `XMLHttpRequest`, `WebSocket`, `EventSource` or
+  `sendBeacon`.
 
 Every matcher is first run on a synthetic offender in the same test, so a
 matcher that sees nothing cannot pass, and every walk must find files. A
@@ -52,6 +60,8 @@ import fnmatch
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tomllib
 import unittest
@@ -89,8 +99,18 @@ FORBIDDEN_PERMISSION_PREFIXES = (
 )
 FORBIDDEN_CRATES = (
     "reqwest", "ureq", "hyper", "isahc", "curl", "attohttpc", "minreq", "surf",
+    "socket2", "tungstenite", "tokio-tungstenite", "native-tls",
     "tauri-plugin-http", "tauri-plugin-updater", "tauri-plugin-websocket", "tauri-plugin-upload",
 )
+# The compiled graph of the app's binary, read with `cargo tree`. A
+# forbidden crate may be in it only through the dependents listed here:
+# `socket2` comes with tokio, Tauri's async runtime, which the app does not
+# call for the network (the Rust name check below sees `tokio::net`).
+GRAPH_PACKAGE = "quest-tracker"
+GRAPH_ALLOWED_DEPENDENTS = {"socket2": {"tokio"}}
+# A crate the binary is known to compile, with the app as a direct
+# dependent: the graph reader's positive control.
+GRAPH_CONTROL = "tauri"
 FORBIDDEN_NPM = (
     "@tauri-apps/plugin-http", "@tauri-apps/plugin-updater",
     "@tauri-apps/plugin-websocket", "@tauri-apps/plugin-upload",
@@ -105,6 +125,13 @@ RUST_NETWORK_NAMES = [
     ("reqwest", re.compile(r"\breqwest\b")),
     ("ureq", re.compile(r"\bureq\b")),
     ("hyper::", re.compile(r"\bhyper\s*::")),
+    # Raw sockets through the `windows`/`windows-sys` crates
+    # (`Win32::Networking::WinSock`), urlmon's one-call download, tokio's
+    # sockets, and a webview whose page is a remote URL.
+    ("WinSock", re.compile(r"\bWinSock\b|\bWSAStartup\b")),
+    ("URLDownloadToFile", re.compile(r"\bURLDownloadToFile")),
+    ("tokio::net", re.compile(r"\btokio\s*::\s*net\b")),
+    ("WebviewUrl::External", re.compile(r"\bWebviewUrl\s*::\s*External\b")),
 ]
 UI_NETWORK_NAMES = [
     ("fetch(", re.compile(r"\bfetch\s*\(")),
@@ -204,6 +231,51 @@ def text_offences(name: str, text: str, matchers) -> list[str]:
 
 def is_ui_test(path: Path) -> bool:
     return ".test." in path.name or path.name.startswith("test-support.")
+
+
+def ui_entry_pages() -> list[Path]:
+    """Every root `*.html` of the app: one entry page per window."""
+    return sorted(APP.glob("*.html"))
+
+
+def lock_forbidden(lock: dict) -> list[str]:
+    """`name@version` of each package of a `Cargo.lock` that is a forbidden
+    crate, for `cargo tree -i`."""
+    return sorted(
+        f"{package['name']}@{package['version']}" for package in lock.get("package", [])
+        if forbidden_crate(package["name"])
+    )
+
+
+def graph_dependents(stdout: str) -> list[str]:
+    """The direct dependents `cargo tree -i <crate> --depth 1 --prefix none`
+    printed: every line after the crate's own, by package name. Nothing
+    printed (the crate is not compiled) is none."""
+    lines = [line.split()[0] for line in stdout.splitlines() if line.strip()]
+    return lines[1:]
+
+
+def graph_offences(spec: str, stdout: str, allowed: dict[str, set[str]]) -> list[str]:
+    """Each direct dependent through which a forbidden crate is compiled
+    into the binary that `allowed` does not list for it."""
+    name = spec.split("@")[0]
+    return [
+        f"{spec} <- {dependent}" for dependent in graph_dependents(stdout)
+        if dependent not in allowed.get(name, set())
+    ]
+
+
+def cargo_tree_dependents(spec: str) -> subprocess.CompletedProcess:
+    """`cargo tree` of the binary's compiled graph (normal and build edges,
+    the host target), inverted on `spec`, direct dependents only."""
+    return subprocess.run(
+        [
+            "cargo", "tree", "--manifest-path", str(APP / "Cargo.toml"), "--locked", "--offline",
+            "-p", GRAPH_PACKAGE, "-e", "normal,build", "-i", spec,
+            "--depth", "1", "--prefix", "none", "--format", "{p}",
+        ],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
+    )
 
 
 # --- Layer 2: reading Rust without its comments, strings and test items ---
@@ -534,6 +606,12 @@ hyper-util = "0.1"
             ],
         )
         self.assertEqual(manifest_offences("clean/Cargo.toml", '[dependencies]\nserde = "1"\n'), [])
+        sockets = '[dependencies]\nsocket2 = "0.6"\ntungstenite = "0.27"\ntokio-tungstenite = "0.27"\nnative-tls = "0.2"\n'
+        self.assertEqual(
+            manifest_offences("sockets/Cargo.toml", sockets),
+            [f"sockets/Cargo.toml: [dependencies] {dep}"
+             for dep in ("socket2", "tungstenite", "tokio-tungstenite", "native-tls")],
+        )
 
         manifests = walk(APP, names={"Cargo.toml"})
         self.assertIn(APP / "Cargo.toml", manifests)
@@ -543,6 +621,46 @@ hyper-util = "0.1"
         for path in manifests:
             offences += manifest_offences(rel(path), path.read_text(encoding="utf-8"))
         self.assertEqual(offences, [], "Cargo manifests depend on network crates:\n" + "\n".join(offences))
+
+    def test_compiled_graph_has_no_network_crate(self):
+        # The manifests name direct dependencies only; `Cargo.lock` already
+        # lists optional clients (tauri's reqwest) that are not compiled.
+        # Only the compiled graph tells a feature that links one apart.
+        lock = tomllib.loads(
+            '[[package]]\nname = "reqwest"\nversion = "0.13.5"\n'
+            '[[package]]\nname = "hyper-util"\nversion = "0.1.21"\n'
+            '[[package]]\nname = "serde"\nversion = "1.0.0"\n'
+        )
+        self.assertEqual(lock_forbidden(lock), ["hyper-util@0.1.21", "reqwest@0.13.5"])
+        allowed = {"socket2": {"tokio"}}
+        self.assertEqual(graph_offences("reqwest@0.13.5", "", allowed), [])
+        self.assertEqual(graph_offences("socket2@0.6.5", "socket2 v0.6.5\ntokio v1.54.1\n", allowed), [])
+        self.assertEqual(
+            graph_offences("socket2@0.6.5", "socket2 v0.6.5\ntokio v1.54.1\nqt-app v0.1.0 (C:\\x)\n", allowed),
+            ["socket2@0.6.5 <- qt-app"],
+        )
+        self.assertEqual(
+            graph_offences("reqwest@0.13.5", "reqwest v0.13.5\ntauri v2.12.3\n", allowed),
+            ["reqwest@0.13.5 <- tauri"],
+        )
+
+        if shutil.which("cargo") is None:
+            self.skipTest("cargo is not on PATH: the compiled graph was not read")
+        # Positive control: the reader sees a crate the binary does compile.
+        control = cargo_tree_dependents(GRAPH_CONTROL)
+        self.assertEqual(control.returncode, 0, control.stderr)
+        self.assertIn(GRAPH_PACKAGE, graph_dependents(control.stdout), control.stdout)
+
+        specs = lock_forbidden(tomllib.loads((APP / "Cargo.lock").read_text(encoding="utf-8")))
+        offences = []
+        for spec in specs:
+            tree = cargo_tree_dependents(spec)
+            self.assertEqual(tree.returncode, 0, f"cargo tree -i {spec}: {tree.stderr}")
+            offences += graph_offences(spec, tree.stdout, GRAPH_ALLOWED_DEPENDENTS)
+        self.assertEqual(
+            offences, [],
+            f"network crates compiled into {GRAPH_PACKAGE}:\n" + "\n".join(offences),
+        )
 
     def test_package_json_has_no_network_plugin(self):
         synthetic = {
@@ -570,6 +688,22 @@ hyper-util = "0.1"
         for label, _ in RUST_NETWORK_NAMES:
             self.assertTrue(text_offences("synthetic.rs", label, RUST_NETWORK_NAMES), f"matcher misses {label}")
         self.assertEqual(text_offences("clean.rs", "use std::fs;\nlet requested = 1;\n", RUST_NETWORK_NAMES), [])
+        doors = (
+            "use windows::Win32::Networking::WinSock::{connect, socket};\n"
+            "unsafe { windows_sys::Win32::Networking::WinSock::WSAStartup(0x202, &mut data) };\n"
+            "URLDownloadToFileW(None, url, path, 0, None);\n"
+            "let addrs = tokio::net::lookup_host(host).await;\n"
+            "WebviewWindowBuilder::new(&app, \"w\", WebviewUrl::External(url));\n"
+        )
+        self.assertEqual(
+            text_offences("doors.rs", doors, RUST_NETWORK_NAMES),
+            ["doors.rs:1: WinSock", "doors.rs:2: WinSock", "doors.rs:3: URLDownloadToFile",
+             "doors.rs:4: tokio::net", "doors.rs:5: WebviewUrl::External"],
+        )
+        self.assertEqual(
+            text_offences("clean.rs", "use tokio::sync::mpsc;\nWebviewUrl::App(page.into());\n", RUST_NETWORK_NAMES),
+            [],
+        )
 
         sources = [
             path for path in walk(APP, suffixes={".rs"})
@@ -598,10 +732,19 @@ hyper-util = "0.1"
         self.assertTrue(is_ui_test(UI_SRC / "app.test.ts"))
         self.assertFalse(is_ui_test(UI_SRC / "main.ts"))
 
-        sources = [path for path in walk(UI_SRC, suffixes=UI_SUFFIXES) if not is_ui_test(path)]
-        sources.append(APP / "index.html")
+        # Every window's entry page is read, not one named here: an inline
+        # script in a page the walk missed would pass unseen.
+        self.assertEqual(
+            text_offences("synthetic.html", '<body>\n<script>fetch("https://x")</script>\n', UI_NETWORK_NAMES),
+            ["synthetic.html:2: fetch("],
+        )
+        pages = ui_entry_pages()
+        self.assertIn(APP / "index.html", pages)
+        self.assertIn(APP / "settings.html", pages)
+        sources = [path for path in walk(UI_SRC, suffixes=UI_SUFFIXES) if not is_ui_test(path)] + pages
         self.assertIn(UI_SRC / "main.ts", sources)
         self.assertIn(UI_SRC / "App.svelte", sources)
+        self.assertIn(UI_SRC / "settings" / "main.ts", sources)
         offences = []
         for path in sources:
             offences += text_offences(rel(path), path.read_text(encoding="utf-8"), UI_NETWORK_NAMES)

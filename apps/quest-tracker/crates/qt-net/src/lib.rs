@@ -14,9 +14,11 @@
 //!   [`API_VERSION`] and `User-Agent: `[`USER_AGENT`] (GitHub refuses a
 //!   request without one; it names no version and no machine detail).
 //!   GitHub sees the machine's IP address and that header set.
-//! - No cookie is kept or sent, no credential is sent (WinHTTP's autologon
-//!   policy is set high), and no redirect is followed: a 3xx is returned as
-//!   the answer.
+//! - No cookie is sent: each fetch opens a WinHTTP session of its own, with
+//!   cookies turned off, and closes it, so a cookie a server set is gone
+//!   with it (tested: a fetch after an answer that set one sends no
+//!   `Cookie`). No credential is sent (WinHTTP's autologon policy is set
+//!   high), and no redirect is followed: a 3xx is returned as the answer.
 //! - The proxy is the system's. TLS and the certificate checks are Windows'
 //!   own.
 //!
@@ -296,6 +298,37 @@ mod tests {
             );
             for absent in ["Cookie", "Authorization", "Proxy-Authorization", "Referer"] {
                 assert!(header(&head, absent).is_empty(), "{absent} sent: {head}");
+            }
+        }
+
+        #[test]
+        fn loopback_cookie_set_by_one_answer_is_not_sent_by_the_next_fetch() {
+            let (listener, port) = listen();
+            let server = thread::spawn(move || {
+                let mut heads = Vec::new();
+                for _ in 0..2 {
+                    let mut stream = accept(&listener);
+                    heads.push(read_head(&mut stream));
+                    write!(
+                        stream,
+                        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nSet-Cookie: kept=yes; Path=/\r\nConnection: close\r\n\r\n[]"
+                    )
+                    .unwrap();
+                }
+                heads
+            });
+
+            let first = get(&target(port)).expect("the first answer");
+            let second = get(&target(port)).expect("the second answer");
+            let heads = server.join().unwrap();
+
+            assert_eq!((first.status, second.status), (200, 200));
+            // Both requests reached the server, the second after the first
+            // answer set a cookie for this host and path.
+            assert_eq!(heads.len(), 2);
+            for head in &heads {
+                assert!(head.starts_with(&format!("GET {PATH} ")), "{head}");
+                assert!(header(head, "Cookie").is_empty(), "Cookie sent: {head}");
             }
         }
 

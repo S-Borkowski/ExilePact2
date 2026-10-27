@@ -99,9 +99,13 @@ pub trait Emitter: Send + Sync + 'static {
     fn view(&self, view: &View);
     fn row_change(&self, change: &RowChange);
     /// The Settings window's view changed (an update check's progress, the
-    /// `check_updates` setting). Called with no lock of the app held, so an
-    /// implementation may wait for the main thread (the tray's menu follows
-    /// it). An emitter that has no Settings window ignores it.
+    /// `check_updates` setting). Called with no lock of the app held, on the
+    /// caller's thread: a check's own thread, the worker, or whichever thread
+    /// runs the `check_for_updates` or `update_settings` command, which may be
+    /// the main thread (a tray click handled in place). So an implementation
+    /// must not block on the main thread: whatever has to run there (the
+    /// tray's menu follows the view) is posted to it and not waited for. An
+    /// emitter that has no Settings window ignores it.
     fn app_settings(&self, _view: &AppSettingsView) {}
 }
 

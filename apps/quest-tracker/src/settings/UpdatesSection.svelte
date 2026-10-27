@@ -33,7 +33,7 @@
     role="switch"
     checked={view.check_updates}
     aria-describedby="updates-help"
-    onchange={() => send('update_settings', { patch: { check_updates: !view.check_updates } })}
+    onchange={(e) => send('update_settings', { patch: { check_updates: e.currentTarget.checked } })}
   />
 </label>
 <p class="help" id="updates-help">

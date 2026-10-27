@@ -1422,7 +1422,8 @@ Network:
   port 443 only, made from Rust through Windows' own WinHTTP, with three
   headers: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version:
   2022-11-28` and `User-Agent: ExilePact2-quest-tracker` (no version, no
-  machine detail). No cookie is kept or sent, no credential is sent, no
+  machine detail). No cookie is sent (each check opens a WinHTTP session
+  of its own, with cookies off, and closes it), no credential is sent, no
   redirect is followed, and the proxy is the system's. GitHub sees your
   IP address and those headers; nothing else leaves. The answer is read
   up to 2 MiB within 20 s, used only to find the newest release, and
@@ -1436,7 +1437,16 @@ Network:
   window's `capabilities/settings.json` grants `core:event:default`
   alone), and no Rust source outside `qt-net`, the transport crate, uses
   HTTP or socket code; `tests.test_quest_tracker_network` checks all of
-  that from the files. Fonts and icons are bundled. The poe2db link and
+  that from the files. Its name checks cover std's and tokio's sockets,
+  Winsock through the `windows` crates, WinHTTP, WinINet, urlmon's
+  `URLDownloadToFile`, the HTTP client crates and a webview on a remote
+  page (`WebviewUrl::External`); its UI check reads every root `*.html`
+  entry page (the overlay's and the Settings window's) beside `src/`. It
+  also reads the compiled dependency graph (`cargo tree -i`, skipped when
+  cargo is not installed), because `Cargo.lock` already lists HTTP crates
+  Tauri can link but does not compile today: no HTTP client, socket, TLS
+  or WebSocket crate is compiled into the app, except `socket2` through
+  tokio, Tauri's async runtime. Fonts and icons are bundled. The poe2db link and
   the release page open in your default browser, through the opener
   plugin, from Rust. The screen reader's OCR is Windows' own, run on this
   machine.
@@ -1658,6 +1668,18 @@ change to the types, regenerate and review the diff:
 QT_UPDATE_FIXTURES=1 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p qt-viewmodel --locked
 ```
 
+The Settings window's fixtures, one `AppSettingsView` per update state in
+`fixtures/app-settings/`, are written the same way by `qt-app`'s `updates`
+test, and `src/settings/settings-window.test.ts` renders each one:
+
+```sh
+QT_UPDATE_FIXTURES=1 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p qt-app --locked --test updates
+```
+
+`fixtures/updates/releases.json` is the release list that test feeds the
+update check: written by hand in the shape of GitHub's answer, never
+fetched (its `README.md` says which entry takes which path).
+
 **Adding a command:**
 
 1. Add the method to `App` in `crates/qt-app/src/app.rs`. If it changes
@@ -1675,7 +1697,14 @@ QT_UPDATE_FIXTURES=1 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p
 
 **Dependencies** are pinned exactly in `[workspace.dependencies]` and
 `package.json`; build with `--locked` and `npm ci`. A new crate or npm
-package is a decision, not a side effect of a change.
+package is a decision, not a side effect of a change. A Windows API
+feature is a dependency too: the `Win32_Networking_WinHttp` feature of
+`windows-sys` is turned on in `crates/qt-net/Cargo.toml` alone, never in
+the workspace's list, so no other member compiles WinHTTP. The network
+guard (`tests/test_quest_tracker_network.py`) depends on that: it allows
+WinHTTP names only in `qt-net`'s sources, and a network crate in a
+manifest or in the compiled graph fails it, so turning on a network
+feature (Tauri's HTTP client, Winsock) is a decision for the guard too.
 
 **The look.** The design is the owner's, made in Figma from
 [`ui-design-brief.md`](ui-design-brief.md) and harvested once into `theme/`
@@ -1707,7 +1736,9 @@ control transitions) stops under `prefers-reduced-motion: reduce`
 (Windows' "Animation effects" off): a row's step change is then instant,
 and still highlighted (the highlight is colour and opacity only, with no
 movement) and announced. The transition's design check is
-[`design/review-row-transition.md`](design/review-row-transition.md).
+[`design/review-row-transition.md`](design/review-row-transition.md), and
+the Settings window's is
+[`design/review-settings-window.md`](design/review-settings-window.md).
 `src/styled.test.ts` checks that every contract token and icon id is
 harvested, that every custom property the UI reads has a plain default and
 comes from the harvest (no token invented in code), and that fonts and

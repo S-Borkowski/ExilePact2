@@ -168,6 +168,29 @@ describe('the Settings window', () => {
     expect(toggle(root).checked).toBe(false);
   });
 
+  it('toggle_sends_its_own_state_when_clicked_twice_before_a_view', async () => {
+    // The shell has not answered the first click when the second comes: the
+    // second sends what the switch now shows (off), not the negation of the
+    // last view (which would send on a second time and lose the click).
+    const off = fixture('idle');
+    const bridge = fakeBridge(off);
+    const root = await render(bridge);
+    toggle(root).click();
+    flushSync();
+    expect(toggle(root).checked).toBe(true);
+    toggle(root).click();
+    flushSync();
+    expect(bridge.calls).toEqual([
+      { name: 'update_settings', args: { patch: { check_updates: true } } },
+      { name: 'update_settings', args: { patch: { check_updates: false } } },
+    ]);
+
+    // The views then arrive in order, and the switch ends on the last one.
+    bridge.push({ ...off, check_updates: true });
+    bridge.push(off);
+    expect(toggle(root).checked).toBe(false);
+  });
+
   it('check_now_sends_check_for_updates', async () => {
     const bridge = fakeBridge(fixture('up-to-date'));
     const root = await render(bridge);
