@@ -391,14 +391,19 @@ Each region is observed from the frames of the smallest captured band that
 contains it, and each frame becomes one read as the reader would make it:
 a frame the capture skipped, one taken with the game not in front, and a
 black copy are hidden reads; any other frame with cached OCR is a visible
-read of the lines whose box centre lies in the region; a frame with no
-cached OCR is skipped, never counted absent. It prints one JSON object per
-event, `{"event", "target", "at"}` (its kind, the boss or NPC, and when, in
-UTC; a `bar_gone` adds `"last_present"`), then a summary line
-`{"summary": {"frames", "ocr_cached", "regions", "bar": {"present",
-"absent", "covered"}, "events"}}`. It prints no OCR text and writes
-nothing. Exit codes: `0` done, `1` a missing or unreadable index, `64`
-usage error. The kept captures of Lives 6 and 8 are what the trackers'
+read of the lines whose box lies wholly inside the region (the heading
+strip, for a shut read of the dialogue window); a frame with no cached OCR
+is skipped, never counted absent. The overlay's reader copies only the
+region, so it would read a line across the region's edge clipped; the cache
+holds that line whole, so the replay drops it and the summary counts it in
+the region's `straddling`. It prints one JSON object per event, `{"event",
+"target", "at"}` (its kind, the boss or NPC, and when, in UTC; a
+`bar_gone` adds `"last_present"`), then a summary line `{"summary":
+{"frames", "ocr_cached", "regions", "bar": {"present", "absent",
+"covered"}, "events"}}`, where each region's object holds `"band"`,
+`"visible"`, `"hidden"`, `"no_ocr"` and `"straddling"`. It prints no OCR
+text and writes nothing. Exit codes: `0` done, `1` a missing or unreadable
+index, `64` usage error. The kept captures of Lives 6 and 8 are what the trackers'
 numbers were settled against; they stay outside the repository.
 
 ### `py -3 -m tools.quest_tracker.poe2db` (developer-only)
@@ -1332,7 +1337,10 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
 - **Read the screen: one measured setup.** The regions were measured on a
   2560×1440 borderless window, English client, at one in-game UI scale.
   A window that is not 16:9 is refused; other 16:9 resolutions, other UI
-  scales and other client languages are untested.
+  scales and other client languages are untested. The replay settles the
+  trackers, but it reads cached OCR of a wider band, while the live crop
+  is OCR'd on its own and can split or clip a line differently; Live 9's
+  per-route minute lines are the control on the live crop.
 - **Read the screen: keep the overlay off the regions.** A region the
   overlay's window lies over is not read, and its status line says so;
   nothing moves the overlay for you. Keep it at the right of the screen,

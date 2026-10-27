@@ -14,15 +14,22 @@
 //!   with the game not in front, and a black copy are hidden reads, as the
 //!   reader would have them;
 //! - any other frame with cached OCR is a visible read of the lines whose
-//!   box centre lies in the region (the reader copies only the region);
+//!   box lies wholly inside the region;
 //! - any other frame with no cached OCR is skipped, never counted absent.
 //!
+//! The reader copies only the region, so a line across the region's edge
+//! reaches its OCR clipped, or not at all. The cache holds the OCR of a
+//! wider band, and a cached line's text cannot be cut at a pixel edge, so
+//! the replay drops such a line rather than read it whole, and counts it in
+//! the region's `straddling` summary field.
+//!
 //! The dialogue window's reads go through the reader's [`DialogueGate`]
-//! first. While it is shut, a read is the heading strip alone: the replay has
-//! only whole-region OCR, so it keeps the cached lines whose box centre lies
-//! in the strip ([`strip_of`]). A strip read that opens the gate is followed
-//! by the whole read of the same frame, as the reader reads the whole region
-//! in the same tick.
+//! first. While it is shut, a read is [`HEADING_STRIP`] alone, which the
+//! reader copies by itself: the replay keeps the cached lines whose box lies
+//! wholly inside the strip, and counts the ones across its edge as the
+//! dialogue window's `straddling`. A strip read that opens the gate is
+//! followed by the whole read of the same frame, as the reader reads the
+//! whole region in the same tick.
 //!
 //! The reads go through [`Trackers`] in time order, on UTC milliseconds from
 //! the index. One JSON object per event goes to the output, then a summary
@@ -35,8 +42,8 @@ use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
 
 use qt_screen::{
-    strip_of, Demand, DialogueGate, DialogueRead, Hidden, Millis, Observation, PixelLine,
-    PixelRect, Region, RemarkDemand, ScreenEvent, Trackers, BLACK_LUMA_MEAN, BLACK_LUMA_STD,
+    Demand, DialogueGate, DialogueRead, Hidden, Millis, Observation, PixelLine, PixelRect, Rect,
+    Region, RemarkDemand, ScreenEvent, Trackers, BLACK_LUMA_MEAN, BLACK_LUMA_STD, HEADING_STRIP,
 };
 use serde_json::{json, Value};
 
@@ -50,8 +57,11 @@ Usage: quest-tracker-replay screen --live FOLDER [--bar NAME]... [--dialogue NPC
 
 Reads FOLDER/i3/frames.jsonl and FOLDER/i3/ocr.jsonl (a research session's
 capture and its OCR cache) and prints one JSON object per event, then a
-summary line. A frame with no cached OCR is skipped. No OCR text is printed
-and nothing is written.
+summary line. A frame with no cached OCR is skipped. A read keeps the cached
+lines whose box lies wholly inside the region (the heading strip, for a shut
+read of the dialogue window); the summary counts each line dropped across
+the edge as the region's `straddling`. No OCR text is printed and nothing
+is written.
 
 Options:
   --live FOLDER     the kept live folder (required)
@@ -304,6 +314,9 @@ struct RegionCounts {
     visible: u64,
     hidden: u64,
     no_ocr: u64,
+    /// Cached lines a read dropped because their box crosses the edge of
+    /// what it copies (the region, or the heading strip).
+    straddling: u64,
 }
 
 /// For each region, the band whose frames observe it: the smallest band
@@ -336,7 +349,26 @@ fn contains(outer: &PixelRect, inner: &PixelRect) -> bool {
         && inner.bottom <= outer.bottom
 }
 
-/// The read of `region` this frame gives, or `None` when it gives none.
+/// The read of `area` alone from `obs`, a read of the whole band: the lines
+/// whose box lies wholly inside it. Each line across its edge is dropped and
+/// counted in `straddling`; a line wholly outside it is not counted.
+fn crop(obs: &Observation, area: Rect, straddling: &mut u64) -> Observation {
+    let mut out = obs.clone();
+    out.lines.retain(|l| {
+        if area.contains(&l.bbox) {
+            return true;
+        }
+        if area.overlaps(&l.bbox) {
+            *straddling += 1;
+        }
+        false
+    });
+    out
+}
+
+/// The frame's visible read of the whole band, in client fractions, or the
+/// hidden read of `region`; `None` when it gives none. A visible read is
+/// cropped by its caller to what the reader copies.
 fn observe(
     region: Region,
     frame: &Frame,
@@ -364,7 +396,6 @@ fn observe(
         counts.no_ocr += 1;
         return None;
     };
-    let area = region.rect();
     if !contains(&rect, &region.pixels(client)) {
         counts.no_ocr += 1;
         return None;
@@ -373,37 +404,41 @@ fn observe(
         counts.no_ocr += 1;
         return None;
     };
-    let mut obs = Observation::from_ocr(region, frame.at, client, rect, lines.clone());
-    obs.lines.retain(|l| {
-        let (cx, cy) = (
-            (l.bbox.left + l.bbox.right) / 2.0,
-            (l.bbox.top + l.bbox.bottom) / 2.0,
-        );
-        cx >= area.left && cx <= area.right && cy >= area.top && cy <= area.bottom
-    });
     counts.visible += 1;
-    Some(obs)
+    Some(Observation::from_ocr(
+        region,
+        frame.at,
+        client,
+        rect,
+        lines.clone(),
+    ))
 }
 
 /// The reads the reader would make of the dialogue window from one frame's
-/// whole read `obs`, through `gate`: the strip alone while it is shut, then
-/// the whole read too when that strip read opens it; the whole read while
-/// it is open. A hidden read is the frame's only read.
-fn gated(gate: &mut DialogueGate, npcs: &[String], obs: Observation) -> Vec<Observation> {
-    if !obs.is_visible() {
-        return vec![obs];
+/// band read `band`, through `gate`: the strip alone while it is shut, then
+/// the whole region too when that strip read opens it; the whole region
+/// while it is open. A hidden read is the frame's only read.
+fn gated(
+    gate: &mut DialogueGate,
+    npcs: &[String],
+    band: Observation,
+    straddling: &mut u64,
+) -> Vec<Observation> {
+    if !band.is_visible() {
+        return vec![band];
     }
     let mut reads = Vec::new();
-    if !gate.is_open(obs.at) {
-        let strip = strip_of(&obs);
+    if !gate.is_open(band.at) {
+        let strip = crop(&band, HEADING_STRIP, straddling);
         let open = gate.observe(npcs, &strip, DialogueRead::Strip);
         reads.push(strip);
         if !open {
             return reads;
         }
     }
-    gate.observe(npcs, &obs, DialogueRead::Full);
-    reads.push(obs);
+    let whole = crop(&band, Region::DialogueWindow.rect(), straddling);
+    gate.observe(npcs, &whole, DialogueRead::Full);
+    reads.push(whole);
     reads
 }
 
@@ -481,7 +516,9 @@ pub fn run(args: &ScreenArgs, out: &mut impl Write) -> Result<(), Failure> {
                 continue;
             };
             let reads = if region == Region::DialogueWindow {
-                gated(&mut gate, &demand.dialogues, obs)
+                gated(&mut gate, &demand.dialogues, obs, &mut c.straddling)
+            } else if obs.is_visible() {
+                vec![crop(&obs, region.rect(), &mut c.straddling)]
             } else {
                 vec![obs]
             };
@@ -505,6 +542,7 @@ pub fn run(args: &ScreenArgs, out: &mut impl Write) -> Result<(), Failure> {
                     "visible": c.visible,
                     "hidden": c.hidden,
                     "no_ocr": c.no_ocr,
+                    "straddling": c.straddling,
                 }),
             )
         })

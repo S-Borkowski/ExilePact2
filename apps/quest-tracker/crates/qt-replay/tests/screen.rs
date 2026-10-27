@@ -368,3 +368,107 @@ fn screen_replay_gates_the_dialogue_window_on_its_heading_strip() {
     assert_eq!(s["dialogue_gate"], json!({"full": 3, "skipped": 4}));
     assert_eq!(s["regions"]["dialogue window"]["visible"], 6);
 }
+
+/// Runs the replay over `live` with `args` after `--live <folder>`, and
+/// returns its events and its summary.
+fn replay(live: &Live, args: &[&str]) -> (Vec<Value>, Value) {
+    let dir = tempfile::tempdir().unwrap();
+    live.write(dir.path(), true, true);
+    let mut all = vec!["screen", "--live", dir.path().to_str().unwrap()];
+    all.extend_from_slice(args);
+    let o = run(&all);
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+    assert!(!String::from_utf8_lossy(&o.stdout).contains(SENTINEL));
+    let mut objs = objects(&o);
+    let summary = objs.pop().expect("a summary line")["summary"].clone();
+    (objs, summary)
+}
+
+#[test]
+fn screen_replay_drops_lines_straddling_the_region_edge() {
+    // Boxes in the client's pixels (2560x1440; this band is the whole
+    // client). The dialogue window is y 0.20 to 0.85, so its bottom edge is
+    // at y 1224.
+    let heading = ("Renly".to_string(), [1372, 382, 1436, 399]);
+    let inside = ("QUEST COMPLETE".to_string(), [1144, 1117, 1416, 1152]);
+    // Centre at y 1220, inside the window; bottom at 1240, below it. The
+    // live reader copies only the region and would read it clipped.
+    let across = ("QUEST COMPLETE".to_string(), [1144, 1200, 1416, 1240]);
+    let dialogue = |banner: &(String, [i32; 4])| {
+        let mut live = Live::new();
+        live.frame("bottom", 0, Some(vec![heading.clone()]));
+        live.frame("bottom", 1_000, Some(vec![heading.clone(), banner.clone()]));
+        live.frame("bottom", 2_000, Some(vec![banner.clone()]));
+        live
+    };
+
+    // The banner across the edge is the folder's only banner: no event, and
+    // the summary counts it (two whole reads hold it).
+    let (events, s) = replay(&dialogue(&across), &["--dialogue", RENLY]);
+    assert_eq!(events, Vec::<Value>::new());
+    let dw = &s["regions"]["dialogue window"];
+    assert!(dw["straddling"].as_u64().unwrap() >= 1, "{s}");
+    assert_eq!(dw["straddling"], 2);
+    assert_eq!(s["dialogue_gate"]["full"], 3);
+
+    // Control: the same banner wholly inside fires, and nothing straddles.
+    let (events, s) = replay(&dialogue(&inside), &["--dialogue", RENLY]);
+    assert_eq!(
+        events,
+        vec![json!({"event": "quest_complete", "target": RENLY, "at": utc(1_000)})]
+    );
+    assert_eq!(s["regions"]["dialogue window"]["straddling"], 0);
+
+    // A shut read is the heading strip alone (y 0.24 to 0.31, bottom edge at
+    // y 446): a line inside the window across the strip's edge is dropped
+    // from it, and counted under the dialogue window.
+    let mut live = Live::new();
+    let body = (
+        format!("Words of thanks {SENTINEL}"),
+        [1075, 425, 1690, 455],
+    );
+    live.frame("bottom", 0, Some(vec![body]));
+    let (events, s) = replay(&live, &["--dialogue", RENLY]);
+    assert!(events.is_empty());
+    assert_eq!(s["dialogue_gate"], json!({"full": 0, "skipped": 1}));
+    assert_eq!(s["regions"]["dialogue window"]["straddling"], 1);
+
+    // The voiced lines (x 0.00 to 0.45, right edge at x 1152) take the same
+    // rule: an invented kill remark running across the edge never fires,
+    // and the same remark inside it does. Under a box-centre rule both would.
+    const BOSS: &str = "Beira of the Rotten Pack";
+    const REMARK: &str = "Invented words over a fallen beast.";
+    let dir = tempfile::tempdir().unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/quests_min.json");
+    let mut data: Value = serde_json::from_str(&fs::read_to_string(fixture).unwrap()).unwrap();
+    data["remarks"] = json!([{
+        "class": "Witch", "boss": BOSS, "key": "kill", "text": REMARK,
+        "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-26",
+    }]);
+    let data_path = dir.path().join("quests.json");
+    fs::write(&data_path, data.to_string()).unwrap();
+    let data_arg = data_path.to_str().unwrap();
+    let shout = (format!("Kestrella: {SENTINEL}"), [77, 994, 768, 1022]);
+    let voiced = |right: i32| {
+        let remark = (format!("Kestrella: {REMARK}"), [77, 1022, right, 1051]);
+        let mut live = Live::new();
+        for n in 0..6 {
+            live.frame("bottom", n * 500, Some(vec![shout.clone()]));
+        }
+        for n in 6..14 {
+            live.frame("bottom", n * 500, Some(vec![shout.clone(), remark.clone()]));
+        }
+        live
+    };
+    let args = ["--class", "Witch", "--data", data_arg];
+    // Centre at x 688, inside; right edge at 1300, past the region's.
+    let (events, s) = replay(&voiced(1300), &args);
+    assert_eq!(events, Vec::<Value>::new());
+    assert_eq!(s["regions"]["voiced lines"]["straddling"], 8);
+    let (events, s) = replay(&voiced(768), &args);
+    assert_eq!(
+        events,
+        vec![json!({"event": "kill_remark", "target": BOSS, "at": utc(3_000)})]
+    );
+    assert_eq!(s["regions"]["voiced lines"]["straddling"], 0);
+}
