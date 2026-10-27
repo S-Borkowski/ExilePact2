@@ -1621,6 +1621,16 @@ map.
 | `panel-character` | pass | 19 (A) and 16 (B) frames |
 | `black` | pass | 0 black frames |
 
+**The Escape menu, measured and left out.** Its entry was measured and
+chosen here like the others' (the footprint and probes below), and Live
+13 then saw it hide the overlay in the game. During that session the
+owner chose, on 2026-10-27, to leave the Escape menu out of the panels
+that hide the tracker, so it stays shown while the game's menu is open.
+The Escape menu does not hide the overlay. Its numbers stay in the
+fixture's `not_shipped` (`apps/quest-tracker/fixtures/panels/shipped_panels.json`),
+and its frames among the closed samples; the replay figures below for
+the Escape menu were taken while the table still had its entry.
+
 **Footprints.** `quest-tracker-replay panels measure` over the capture
 found every panel's changed area to be the whole client, or nearly (the
 inventory's union x 0 to 1, y 0 to 0.84; the passive tree's y 0 to 0.98;

@@ -78,10 +78,13 @@ What it is:
   Renly's window ticks "Take Renly's reward". Nothing read is stored,
   logged or shown ("How detection works", "Privacy").
 - **Hide under game panels, off by default.** With this setting on, the
-  overlay hides itself in play mode while one of eight game panels is open
+  overlay hides itself in play mode while one of seven game panels is open
   under its window (the inventory, the passive tree, the shop on M, the
-  Escape menu, the options on O, the world map on U, the stash and a
-  merchant's trade window), and shows again once the panel closes. It
+  options on O, the world map on U, the stash and a merchant's trade
+  window), and shows again once the panel closes. The Escape menu does not
+  hide the overlay. That is the owner's choice of 2026-10-27, made after a
+  live session had seen it hide: with the game's menu open, the tracker
+  stays in view. It
   tells a panel is open by the colour of a few small patches of the game's
   window where that panel draws its frame, measured in a live session, and
   stores, logs and shows no pixel. With it off, nothing of it runs.
@@ -1106,15 +1109,21 @@ probes and `min_match`. The shipped table (`qt-screen`'s
 | `inventory` | `inventory`, `stash`, `merchant` | x 0.65 to 1.0, y 0 to 0.845 (the inventory's panel) | 6, on its header plate | 3 |
 | `passive-tree` | `passive-tree` | the whole client | 5, on its title plate and its right frame | 3 |
 | `key-m` | `key-m` (M: the shop) | the whole client | 7, on its left column and top right | 3 |
-| `escape-menu` | `escape-menu` | the whole client (it dims everything) | 5, on the top of the menu box | 3 |
 | `key-o` | `key-o` (O: the options) | x 0 to 0.345, y 0 to 0.8 | 5, on its header and its foot | 3 |
 | `key-u` | `key-u` (U: the world map) | the whole client | 6, on its title plate and its frame | 3 |
 
 The stash's and a merchant's windows open the inventory beside their own
 window on the left, so the inventory's entry stands for them through
 `opens_for`; their own left-hand windows have no entry (Known
-limitations). The character panel (C), the map overlay (Tab) and any other
-panel have none and never hide the overlay.
+limitations). The Escape menu, the character panel (C), the map overlay
+(Tab) and any other panel have none and never hide the overlay. The Escape
+menu does not hide the overlay. Live 12 measured it and the first table
+had an entry for it, which Live 13 saw hide the overlay; the owner then
+chose, on 2026-10-27, to keep the tracker shown while the game's menu is
+open, and the entry left the table. Its measured footprint (the whole
+client, which it dims) and its five probes on the top of the menu box stay
+as data, under `not_shipped` in the fixture
+(`fixtures/panels/shipped_panels.json`) and in the research note's Live 12.
 
 **The probe test.** A probe is one patch of a 160 × 90 grid of the client
 area (16 px square at 2560 wide), with an expected mean blue, green and
@@ -1133,6 +1142,13 @@ overlay); while it is hidden every probe is read. Per read, an entry is:
 
 Unseen and Black reads change nothing. Only entries whose footprint
 intersects the overlay's rect are judged; the others are not copied.
+
+A probe whose largest luma spread is above 127.5 tests colour only: the
+luma of an 8-bit copy lies in 0 to 255, so its spread can never exceed
+127.5 and the spread limit never fails. The shipped table has one such
+probe, key-o's at cell 27, 67 (largest spread 174); its best-read counts
+always show it within spread, and its colour tolerance alone decides
+whether it matches.
 
 **When it reads.** Only in play mode, while the overlay is shown or hidden
 by a panel alone, with the game's pid confirmed, its window found and not
@@ -1239,9 +1255,10 @@ measured (Known limitations). Over Live 12's capture every window of the
 shipped panels reads open from its first frame, the character panel's
 windows read nothing open, and nothing reads open outside the windows
 but three stretches where the inventory was open before its press. Over
-Live 8's capture, a session the table was not chosen on, the inventory,
-the passive tree and the Escape menu are found and its 464 foreground
-play frames read nothing open.
+Live 8's capture, a session the table was not chosen on, the inventory
+and the passive tree are found (and the Escape menu was, by the entry it
+had before it left the table) and its 464 foreground play frames read
+nothing open.
 
 **Shutdown.** The watcher stops with the others, by the same deadline;
 when it ran, the `stop:` line names the panel watcher among the threads.
@@ -1750,11 +1767,13 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   rather than measured. Whether a raw copy of each panel matches is
   confirmed only by a live session (Live 13); until then the hide is
   replayed over JPEG frames, not seen working in the game.
-- **Hide under game panels: only the owner's eight game panels.** The
-  inventory, the passive tree, M (the shop), the Escape menu, O (the
-  options), U (the world map), the stash and a merchant's trade window.
-  The character panel (C), the map overlay (Tab) and every other panel
-  leave the overlay shown. The stash and a merchant share the inventory's
+- **Hide under game panels: only the owner's seven game panels.** The
+  inventory, the passive tree, M (the shop), O (the options), U (the world
+  map), the stash and a merchant's trade window. The Escape menu does not
+  hide the overlay. It was measured and once had an entry, but the owner
+  chose on 2026-10-27 to keep the tracker shown while the game's menu is
+  open. The character panel (C), the map overlay (Tab) and every other
+  panel leave the overlay shown too. The stash and a merchant share the inventory's
   entry, found on the inventory they open on the right; their own windows
   on the left have no entry, so an overlay moved to the left of the screen
   does not hide under a merchant's window. Over Live 12's capture the
@@ -1845,7 +1864,7 @@ Revisit this feature when:
   trackers' constants in `qt-screen` until it gives one event per kill or
   banner again and none under the covering panels.
 - **A patch moves or redraws a game panel** (one of *Hide under game
-  panels*' eight): capture a no-kill session that opens and closes each
+  panels*' seven): capture a no-kill session that opens and closes each
   panel with the research instruments, as Live 12 did, run
   `quest-tracker-replay panels measure` over it with its windows file,
   retune the panel table in `qt-screen` (`panel_table.rs` and its fixture)
