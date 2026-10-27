@@ -1,0 +1,98 @@
+# Root .gitignore for ExilePact2
+
+# Game binaries and proprietary assets -- never committed (AGENTS.md § "Legal")
+*.exe
+*.dll
+*.ggpk
+*.bundle.bin
+**/Bundles2/
+*.dds
+*.ogg
+*.wav
+*.bank
+**/data/raw/
+**/raw/
+**/extracted/
+
+# Decompiler / disassembler artifacts -- never committed, see "Legal: Decompiled
+# Output Never Reaches Any Origin" in AGENTS.md. Full function dumps stay on the
+# researcher's machine only.
+*.i64
+*.idb0
+*.idb1
+*.til
+*.gpr
+*.rep/
+*.bndb
+**/ghidra_projects/
+**/decompiled/
+**/disassembly/
+*.dis
+# tools/decomp_index.py's index of local decompiles (docs/tools/decomp-index.md)
+decomp-index*.jsonl
+
+# Python build, bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# C++ build artifacts
+*.obj
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.idb
+bin/
+out/
+x64/
+x86/
+
+# Node / TypeScript
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+
+# IDE & OS
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+.vscode/
+
+# Claude Code: the shared configuration in .claude/ is committed on purpose --
+# hooks, agents and skills are project rules, not personal taste. Only the
+# per-machine override file is local.
+.claude/settings.local.json
+
+# Worktrees created under .claude/; `git add -A` would embed each one as a
+# nested repository.
+.claude/worktrees/
+.claude/scratch*/
+.claude/scratch-*
+
+# Planning documents: a plan is out of date the moment the thing is built.
+# Keep the plan on your own machine (AGENTS.md § "Documentation").
+*-plan.md
+
+# Workorder context files, round snapshots, raw session logs, per-workorder
+# output directories and JSON: working notes and evidence for the run, not
+# documentation of the change.
+.claude/workorders/*-context.md
+.claude/workorders/.rounds/
+.claude/workorders/*.log
+.claude/workorders/*/
+.claude/workorders/*.json
+# live-operator's session captures, folded into docs by the record round.
+.claude/workorders/*-live-*.md
+
+# Playwright MCP snapshots and screenshots (per-session output)
+.playwright-mcp/

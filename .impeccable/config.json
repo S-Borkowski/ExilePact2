@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "tests/fixtures/quest_tracker/poe2db/Warrior.html"
+        ],
+        "createdAt": "2026-10-27T07:44:38.627Z",
+        "reason": "Claude: synthetic parser fixture mirroring poe2db.tw class-page markup for tests/test_quest_tracker_poe2db.py; not a rendered UI"
+      },
+      {
+        "rule": "skipped-heading",
+        "value": "*",
+        "files": [
+          "tests/fixtures/quest_tracker/poe2db/Warrior.html"
+        ],
+        "createdAt": "2026-10-27T07:44:38.808Z",
+        "reason": "Claude: synthetic parser fixture mirroring poe2db.tw class-page markup for tests/test_quest_tracker_poe2db.py; not a rendered UI"
+      }
+    ]
+  }
+}

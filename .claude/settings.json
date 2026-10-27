@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(py -3 -m unittest discover -s tests:*)",
+      "Bash(py -3 -m unittest tests.test_claude_hooks:*)",
+      "Bash(node --test:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash|PowerShell|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "py -3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_tool_use.py\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  },
+  "worktree": {
+    "bgIsolation": "none"
+  },
+  "enabledPlugins": {
+    "claude-code-setup@claude-plugins-official": true,
+    "impeccable@impeccable": true,
+    "taste-skill@taste-skill": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/anthropics/claude-plugins-official.git"
+      }
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
+    },
+    "taste-skill": {
+      "source": {
+        "source": "github",
+        "repo": "Leonxlnx/taste-skill"
+      }
+    }
+  }
+}
