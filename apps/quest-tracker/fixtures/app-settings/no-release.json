@@ -1,0 +1,9 @@
+{
+  "check_updates": true,
+  "update": {
+    "newer": null,
+    "state": "no-release",
+    "text": "No Quest Tracker release is published yet."
+  },
+  "version": "1.2.0"
+}

@@ -1,0 +1,9 @@
+{
+  "check_updates": true,
+  "update": {
+    "newer": "1.3.0",
+    "state": "failed",
+    "text": "Could not check for updates: GitHub answered 500."
+  },
+  "version": "1.2.0"
+}

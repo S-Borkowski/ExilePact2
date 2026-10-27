@@ -388,6 +388,11 @@ pub struct Settings {
     /// of the panel's frame, and shows again once it closes. Off by
     /// default; a file written before it existed loads it off.
     pub hide_under_panels: bool,
+    /// "Automatically check for updates": with it on, the app asks GitHub
+    /// for the repository's release list at launch and then once a day. Off
+    /// by default, and with it off the app makes no request unless the user
+    /// asks for a check; a file written before it existed loads it off.
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -401,6 +406,7 @@ impl Default for Settings {
             hotkey: Settings::DEFAULT_HOTKEY.to_string(),
             screen_reading: false,
             hide_under_panels: false,
+            check_updates: false,
         }
     }
 }

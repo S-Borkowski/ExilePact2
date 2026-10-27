@@ -37,6 +37,7 @@ export interface SettingsPatch {
   hotkey?: string;
   screen_reading?: boolean;
   hide_under_panels?: boolean;
+  check_updates?: boolean;
 }
 
 /** Every command the UI sends, with its arguments. `get_view` is the bridge's own. */

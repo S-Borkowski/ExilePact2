@@ -1,0 +1,9 @@
+{
+  "check_updates": true,
+  "update": {
+    "newer": null,
+    "state": "up-to-date",
+    "text": "You have the latest version (1.2.0)."
+  },
+  "version": "1.2.0"
+}

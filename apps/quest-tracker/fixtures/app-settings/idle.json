@@ -1,0 +1,9 @@
+{
+  "check_updates": false,
+  "update": {
+    "newer": null,
+    "state": "idle",
+    "text": "Not checked yet."
+  },
+  "version": "1.2.0"
+}

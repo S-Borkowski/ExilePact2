@@ -1,0 +1,53 @@
+[
+  {
+    "tag_name": "quest-tracker-v1.12.0",
+    "name": "Quest Tracker 1.12.0 (a draft, not published)",
+    "draft": true,
+    "prerelease": false,
+    "html_url": "https://github.com/S-Borkowski/ExilePact2/releases/tag/untagged-0000000000000000"
+  },
+  {
+    "tag_name": "quest-tracker-v1.11.0",
+    "name": "Quest Tracker 1.11.0 (a prerelease)",
+    "draft": false,
+    "prerelease": true,
+    "html_url": "https://github.com/S-Borkowski/ExilePact2/releases/tag/quest-tracker-v1.11.0"
+  },
+  {
+    "tag_name": "log-reader-v9.9.9",
+    "name": "Another tool of the repository",
+    "draft": false,
+    "prerelease": false,
+    "html_url": "https://github.com/S-Borkowski/ExilePact2/releases/tag/log-reader-v9.9.9"
+  },
+  {
+    "tag_name": "quest-tracker-v1.10.0",
+    "name": "Quest Tracker 1.10.0",
+    "draft": false,
+    "prerelease": false,
+    "html_url": "https://example.invalid/elsewhere/quest-tracker-v1.10.0"
+  },
+  {
+    "tag_name": "quest-tracker-v1.9.3",
+    "name": "Quest Tracker 1.9.3",
+    "draft": false,
+    "prerelease": false,
+    "html_url": "https://github.com/S-Borkowski/ExilePact2/releases/tag/quest-tracker-v1.9.3"
+  },
+  { "tag_name": "quest-tracker-v2.0", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v2.0.0.1", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v2.0.0-rc1", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v+2.0.0", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v 2.0.0", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v2..0", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-vX.Y.Z", "draft": false, "prerelease": false },
+  { "tag_name": "Quest-Tracker-v2.0.0", "draft": false, "prerelease": false },
+  { "tag_name": "v2.0.0", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v99999999999999999999.0.0", "draft": false, "prerelease": false },
+  { "tag_name": 200, "draft": false, "prerelease": false },
+  { "name": "no tag at all", "draft": false, "prerelease": false },
+  { "tag_name": "quest-tracker-v3.0.0", "prerelease": false },
+  { "tag_name": "quest-tracker-v3.0.0", "draft": "false", "prerelease": false },
+  "not a release",
+  null
+]

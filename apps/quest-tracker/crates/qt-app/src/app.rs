@@ -37,6 +37,16 @@
 //! under the overlay on the same channel, under its own generation. The
 //! worker hides the overlay for it ([`PANEL_LINE`]); with the setting off
 //! nothing of it runs and the visibility rule is as it was.
+//!
+//! The update check (`crate::updates`) keeps its state behind a lock of its
+//! own, never taken with the state lock held. It starts from the
+//! `check_for_updates` command or, with the `check_updates` setting on, from
+//! the worker's tick when a check is due; either only starts it, and its one
+//! request runs on a thread of its own that holds no lock, so neither the
+//! commands nor the worker ever wait for the network. One check runs at a
+//! time. The Settings window's view is sent with no lock held, and
+//! [`App::shutdown`] does not wait for a check: one ending after it began
+//! changes, logs and sends nothing.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -65,6 +75,7 @@ use crate::panels::{
 };
 use crate::screen::{self, DemandSnapshot, NotCounted, ReaderHandle, ScreenMsg, SharedBackend};
 use crate::seed;
+use crate::updates::{self, AppSettingsView, Begin, Checker, TransportError, UpdateConfig};
 
 /// The shortest time between two saves.
 pub const SAVE_INTERVAL_MS: u64 = 2_000;
@@ -82,10 +93,16 @@ pub const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 /// stop flag ([`WorkerWindow`]).
 const STOP_POLL: Duration = Duration::from_millis(5);
 
-/// Sends `qt:view` and `qt:row-change` to the `overlay` window.
+/// Sends `qt:view` and `qt:row-change` to the `overlay` window, and
+/// `qt:app-settings` to the Settings window.
 pub trait Emitter: Send + Sync + 'static {
     fn view(&self, view: &View);
     fn row_change(&self, change: &RowChange);
+    /// The Settings window's view changed (an update check's progress, the
+    /// `check_updates` setting). Called with no lock of the app held, so an
+    /// implementation may wait for the main thread (the tray's menu follows
+    /// it). An emitter that has no Settings window ignores it.
+    fn app_settings(&self, _view: &AppSettingsView) {}
 }
 
 /// Where the window goes: its default place (the right side of its
@@ -526,6 +543,8 @@ struct After {
     screen: Option<bool>,
     /// The panel watcher is to start (`true`) or stop (`false`).
     panels: Option<bool>,
+    /// Automatic update checks were turned on (`true`) or off (`false`).
+    updates: Option<bool>,
 }
 
 struct Tailer {
@@ -570,6 +589,8 @@ pub struct App {
     /// takes it with `try_lock` and never waits.
     panel_snapshot: Mutex<Arc<PanelSnapshot>>,
     watcher: Mutex<Option<WatcherHandle>>,
+    /// The update check ([`crate::updates`]), behind its own lock.
+    updates: Checker,
     worker: Mutex<Option<JoinHandle<()>>>,
     worker_stop: Arc<AtomicBool>,
     stopped: AtomicBool,
@@ -609,8 +630,20 @@ impl App {
 
     /// [`App::new`], with what the panel watcher needs: its own backend and
     /// the table of panels, [`qt_screen::shipped_panels`] unless `panels`
-    /// names another.
+    /// names another. There is no update transport: a check ends failed
+    /// with [`updates::NO_TRANSPORT`] ([`App::with_updates`]).
     pub fn with_panels(config: AppConfig, panels: PanelConfig) -> Arc<App> {
+        App::with_updates(config, panels, UpdateConfig::default())
+    }
+
+    /// [`App::with_panels`], with what the update check needs: the
+    /// transport that makes its one request, and the running version
+    /// releases are compared with ([`UpdateConfig`]).
+    pub fn with_updates(
+        config: AppConfig,
+        panels: PanelConfig,
+        updates: UpdateConfig,
+    ) -> Arc<App> {
         let PanelConfig {
             backend: panel_backend,
             table: panel_table,
@@ -867,6 +900,7 @@ impl App {
             panel_table: Arc::new(panel_table.unwrap_or_else(qt_screen::shipped_panels)),
             panel_snapshot: Mutex::new(Arc::default()),
             watcher: Mutex::new(None),
+            updates: Checker::new(updates),
             worker: Mutex::new(None),
             worker_stop: Arc::new(AtomicBool::new(false)),
             stopped: AtomicBool::new(false),
@@ -979,9 +1013,12 @@ impl App {
     /// unsaved. True when every thread ended in time. An OCR call or a copy
     /// in flight is not interrupted: a thread inside one past the deadline
     /// is logged as not ended, like the others. The stop line names the
-    /// reader and the watcher only when they ran.
+    /// reader and the watcher only when they ran. An update check is not
+    /// waited for: its request ends on its own thread, and an end after this
+    /// began writes and announces nothing.
     pub fn shutdown(&self, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
+        self.updates.stop();
         self.worker_stop.store(true, Ordering::Release);
         let tailer = self.lock_tailer().take();
         if let Some(t) = &tailer {
@@ -1623,8 +1660,9 @@ impl App {
     }
 
     /// The worker's housekeeping between batches: a quiet relog window
-    /// decided, the window shown or hidden for what is in front, then a save
-    /// when one is due.
+    /// decided, the window shown or hidden for what is in front, a save
+    /// when one is due, then, with `check_updates` on, an update check when
+    /// one is due (started, never waited for).
     pub fn tick(&self) {
         self.tick_via(None);
     }
@@ -1642,6 +1680,11 @@ impl App {
             self.publish_panels(&st);
         }
         self.save_if_due(false);
+        // With the setting off this reads one bool and does nothing else.
+        if self.lock().settings.check_updates {
+            let now = self.clock.now_ms();
+            self.run_check(false, self.updates.begin_auto(now, true));
+        }
     }
 
     /// Shows or hides the window by [`overlay_shown`]: in play mode it reads
@@ -1962,6 +2005,9 @@ impl App {
             if new.hide_under_panels != old.hide_under_panels {
                 after.panels = Some(new.hide_under_panels);
             }
+            if new.check_updates != old.check_updates {
+                after.updates = Some(new.check_updates);
+            }
             Ok(after)
         })
     }
@@ -1983,6 +2029,97 @@ impl App {
         })?;
         self.diag(&format!("opened the source page of {quest_id}"));
         Ok(())
+    }
+
+    // -- the update check (crate::updates) ------------------------------------
+
+    /// `get_app_settings`: what the Settings window shows.
+    pub fn get_app_settings(&self) -> AppSettingsView {
+        let on = self.lock().settings.check_updates;
+        self.updates.view(on)
+    }
+
+    /// `check_for_updates`: starts a manual check and returns the view at
+    /// once, never waiting for the request. While a check runs, a request
+    /// starts nothing and returns the view as it is.
+    pub fn check_for_updates(&self) -> AppSettingsView {
+        let now = self.clock.now_ms();
+        self.run_check(true, self.updates.begin_manual(now));
+        self.get_app_settings()
+    }
+
+    /// `open_release_page`: opens the newer version's release page in the
+    /// default browser, built from its tag. Refused when no newer version is
+    /// known.
+    pub fn open_release_page(&self) -> Result<(), String> {
+        let Some(newer) = self.updates.newer() else {
+            let e = "no newer version is known".to_string();
+            self.diag(&format!("command open_release_page refused: {e}"));
+            return Err(e);
+        };
+        self.window.open_url(&newer.release_page()).map_err(|e| {
+            self.diag(&format!("error: opening the release page of {newer}: {e}"));
+            format!("could not open the release page: {e}")
+        })?;
+        self.diag(&updates::opened_line(newer));
+        Ok(())
+    }
+
+    /// Carries out what [`Checker::begin_manual`] or [`Checker::begin_auto`]
+    /// decided: a started check is logged and announced, and its request
+    /// runs on a thread of its own ([`Checker::spawn`]). Without a transport
+    /// it ends failed at once, with no request. Called with no lock held.
+    fn run_check(&self, manual: bool, begin: Begin) {
+        let Begin::Run(transport) = begin else {
+            return;
+        };
+        self.diag(updates::started_line(manual));
+        self.emit_app_settings();
+        let Some(transport) = transport else {
+            self.finish_check(manual, Err(TransportError::Unsupported));
+            return;
+        };
+        let app = self.me.clone();
+        let spawned = Checker::spawn(transport, move |answer| {
+            if let Some(app) = app.upgrade() {
+                app.finish_check(manual, answer);
+            }
+        });
+        if let Err(e) = spawned {
+            self.diag(&format!("error: the update check thread did not start: {e}"));
+            let code = e.raw_os_error().map_or(0, |c| c as u32);
+            self.finish_check(manual, Err(TransportError::Other(code)));
+        }
+    }
+
+    /// A check's request ended: its outcome is kept, logged and announced,
+    /// unless the app began shutting down first.
+    fn finish_check(&self, manual: bool, answer: Result<updates::Answer, TransportError>) {
+        let now = self.clock.now_ms();
+        let Some(outcome) = self.updates.finish(now, manual, answer) else {
+            return;
+        };
+        self.diag(&updates::outcome_line(&outcome, self.updates.running()));
+        self.emit_app_settings();
+    }
+
+    /// Sends the Settings window's view, with no lock held while it is sent.
+    /// When something changed the view meanwhile (another thread may have
+    /// sent the newer one first), the newest is sent again, so the last view
+    /// sent is always the current one. The number is read first: a change
+    /// raises it after it is made, so one that raised it later was not seen.
+    fn emit_app_settings(&self) {
+        loop {
+            if self.updates.is_stopped() {
+                return;
+            }
+            let seq = self.updates.seq();
+            let view = self.get_app_settings();
+            self.emitter.app_settings(&view);
+            if self.updates.seq() == seq {
+                return;
+            }
+        }
     }
 
     /// The window was moved, in any mode (a drag in edit mode, a placement
@@ -2116,6 +2253,13 @@ impl App {
             Some(true) => self.start_watcher(),
             Some(false) => self.stop_watcher(),
             None => {}
+        }
+        // Turned on, the worker's next tick starts a check when one is due;
+        // turned off, no tick starts one (a check running ends as it would).
+        if let Some(on) = after.updates {
+            self.diag(updates::turned_line(on));
+            self.updates.changed();
+            self.emit_app_settings();
         }
         if again {
             let mut st = self.lock();

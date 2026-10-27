@@ -164,6 +164,8 @@ export interface Settings {
   screen_reading: boolean;
   /** "Hide under game panels": in play mode, the overlay hides while a game panel is open under it; off by default, it stores no pixel. */
   hide_under_panels: boolean;
+  /** "Automatically check for updates" (the Settings window): off by default; with it off the app makes no request unless asked. */
+  check_updates: boolean;
 }
 
 export interface View {
@@ -320,6 +322,7 @@ const settings = record<Settings>({
   hotkey: str,
   screen_reading: bool,
   hide_under_panels: bool,
+  check_updates: bool,
 });
 const view = record<View>({
   schema: uint,
