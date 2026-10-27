@@ -878,6 +878,7 @@ fn updates_failure_reasons_are_one_line_each() {
         (Err(TransportError::Unreachable), "GitHub could not be reached"),
         (Err(TransportError::NotSecure), "the connection to GitHub was not secure"),
         (Err(TransportError::TooLarge), "GitHub's answer was too large"),
+        (Err(TransportError::Panicked), "the request stopped unexpectedly"),
         (Err(TransportError::Other(12_175)), "the request failed (error 12175)"),
         (Err(TransportError::Unsupported), "this build cannot check for updates"),
         (status(403), "GitHub refused the check for now (rate limit), try again later"),

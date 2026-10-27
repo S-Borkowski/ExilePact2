@@ -228,8 +228,9 @@ at the bottom; later settings are new sections. *Updates* has:
   connection to GitHub was not secure`, `GitHub refused the check for now
   (rate limit), try again later` (status 403 or 429), `GitHub answered
   <status>`, `GitHub's answer was too large`, `GitHub's answer could not
-  be read`, `the request failed (error <code>)` or `this build cannot
-  check for updates`.
+  be read`, `the request stopped unexpectedly` (the request's own thread
+  ended without an answer), `the request failed (error <code>)` or `this
+  build cannot check for updates`.
 - **Check now**, disabled while a check runs, and **Open the release
   page** while a newer version is known; under them, the running version.
 

@@ -45,20 +45,32 @@ const CHUNK: usize = 64 * 1024;
 /// The caller is answered at the deadline regardless; the thread then ends
 /// within its own bounds and its late answer is dropped.
 pub(crate) fn get(target: &Target) -> Result<Response, FetchError> {
-    let deadline = Instant::now() + target.timeouts.total;
     let target = *target;
+    on_own_thread(target.timeouts.total, move |deadline| {
+        request(&target, deadline)
+    })
+}
+
+/// Runs `work` on a thread of its own and waits for its answer until
+/// `total` has passed. A thread that ends without answering (it panicked)
+/// is [`FetchError::Panicked`].
+fn on_own_thread<F>(total: Duration, work: F) -> Result<Response, FetchError>
+where
+    F: FnOnce(Deadline) -> Result<Response, FetchError> + Send + 'static,
+{
+    let deadline = Instant::now() + total;
     let (send, answer) = mpsc::channel();
     thread::Builder::new()
         .name("qt-net request".into())
         .spawn(move || {
-            let _ = send.send(request(&target, Deadline(deadline)));
+            let _ = send.send(work(Deadline(deadline)));
         })
         .map_err(|e| FetchError::Other(e.raw_os_error().unwrap_or(0) as u32))?;
     match answer.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
         Ok(result) => result,
         Err(RecvTimeoutError::Timeout) => Err(FetchError::Timeout),
         // The thread ended without an answer: it panicked.
-        Err(RecvTimeoutError::Disconnected) => Err(FetchError::Other(0)),
+        Err(RecvTimeoutError::Disconnected) => Err(FetchError::Panicked),
     }
 }
 
@@ -306,4 +318,42 @@ fn millis(d: Duration) -> i32 {
 
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(iter::once(0)).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_request_thread_that_panics_is_panicked_not_other() {
+        let started = Instant::now();
+        let result = on_own_thread(Duration::from_secs(5), |_| {
+            panic!("the request's own thread panicked (expected by this test)")
+        });
+        assert_eq!(result, Err(FetchError::Panicked));
+        // Answered when the thread ended, not at the deadline.
+        assert!(started.elapsed() < Duration::from_secs(4));
+        assert_eq!(
+            FetchError::Panicked.to_string(),
+            "the request stopped unexpectedly"
+        );
+    }
+
+    #[test]
+    fn a_request_thread_that_answers_is_its_answer() {
+        // Control for the test above: the same runner passes an answer on.
+        let result = on_own_thread(Duration::from_secs(5), |_| {
+            Ok(Response {
+                status: 204,
+                body: Vec::new(),
+            })
+        });
+        assert_eq!(
+            result,
+            Ok(Response {
+                status: 204,
+                body: Vec::new()
+            })
+        );
+    }
 }

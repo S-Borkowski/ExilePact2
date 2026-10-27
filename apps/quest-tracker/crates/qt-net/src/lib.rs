@@ -75,6 +75,8 @@ pub enum FetchError {
     NotSecure,
     /// The body was longer than [`MAX_BODY`].
     TooLarge,
+    /// The request's thread ended without an answer (it panicked).
+    Panicked,
     /// Any other failure, with WinHTTP's (or the system's) error code.
     Other(u32),
 }
@@ -87,6 +89,7 @@ impl fmt::Display for FetchError {
             FetchError::Unreachable => f.write_str("the server could not be reached"),
             FetchError::NotSecure => f.write_str("the secure connection failed"),
             FetchError::TooLarge => f.write_str("the answer was too large"),
+            FetchError::Panicked => f.write_str("the request stopped unexpectedly"),
             FetchError::Other(code) => write!(f, "the request failed (error {code})"),
         }
     }

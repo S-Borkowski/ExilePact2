@@ -156,11 +156,25 @@ impl qt_app::Emitter for TauriEmitter {
 
     /// Sends the view to the Settings window only (nothing when it is not
     /// open), then brings the tray's menu and tooltip up to date. `qt-app`
-    /// calls this with no lock of its own held, so waiting here for the main
-    /// thread, which owns the tray, cannot hold up a command or the worker.
+    /// calls this on whichever thread ran the change, which may be the main
+    /// thread itself (a tray click handled in place), so nothing here waits
+    /// for the main thread: the tray, which the main thread owns, is updated
+    /// by a task posted to it and not waited for (run in place when the
+    /// caller is the main thread). Posted tasks run in order, so the menu
+    /// ends on the last view.
     fn app_settings(&self, view: &AppSettingsView) {
         let _ = self.app.emit_to(SETTINGS, "qt:app-settings", view);
-        if let Err(e) = self.tray.update(&self.app, view) {
+        let app = self.app.clone();
+        let tray = Arc::clone(&self.tray);
+        let view = view.clone();
+        let posted = self.app.run_on_main_thread(move || {
+            if let Err(e) = tray.update(&app, &view) {
+                if let Some(shell) = app.try_state::<Arc<App>>() {
+                    shell.diag(&format!("error: tray menu: {e}"));
+                }
+            }
+        });
+        if let Err(e) = posted {
             if let Some(shell) = self.app.try_state::<Arc<App>>() {
                 shell.diag(&format!("error: tray menu: {e}"));
             }
@@ -186,6 +200,7 @@ impl UpdateTransport for NetTransport {
                 qt_net::FetchError::Unreachable => TransportError::Unreachable,
                 qt_net::FetchError::NotSecure => TransportError::NotSecure,
                 qt_net::FetchError::TooLarge => TransportError::TooLarge,
+                qt_net::FetchError::Panicked => TransportError::Panicked,
                 qt_net::FetchError::Other(code) => TransportError::Other(code),
             }),
         }

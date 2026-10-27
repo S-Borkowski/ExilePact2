@@ -140,6 +140,8 @@ pub enum TransportError {
     Unreachable,
     NotSecure,
     TooLarge,
+    /// The request stopped without an answer (its thread panicked).
+    Panicked,
     /// Any other failure, with the system's error code.
     Other(u32),
 }
@@ -194,6 +196,7 @@ pub fn transport_reason(e: TransportError) -> String {
         TransportError::Unreachable => "GitHub could not be reached".to_string(),
         TransportError::NotSecure => "the connection to GitHub was not secure".to_string(),
         TransportError::TooLarge => "GitHub's answer was too large".to_string(),
+        TransportError::Panicked => "the request stopped unexpectedly".to_string(),
         TransportError::Other(code) => format!("the request failed (error {code})"),
     }
 }
