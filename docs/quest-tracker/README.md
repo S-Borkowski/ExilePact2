@@ -5,7 +5,10 @@ quests, says which ones are worth doing and why, and keeps each character's
 progress. It learns that progress from the game's `Client.txt` log and from
 nothing else, unless you turn on the opt-in *Read the screen* setting, which
 also lets it read three regions of the game's window with Windows' own OCR
-("How detection works" › "Reading the screen").
+("How detection works" › "Reading the screen"). The opt-in
+*Hide under game panels* setting copies small patches of the game's window
+too, to hide the overlay while a game panel is open under it, and reads no
+text ("How detection works" › "Hiding under game panels").
 
 - Design brief (what the overlay shows, frames, icons, tokens, the export
   contract): [`ui-design-brief.md`](ui-design-brief.md)
@@ -74,9 +77,17 @@ What it is:
   Rotten Pack, Blackjaw and Lythara, and the QUEST COMPLETE banner in
   Renly's window ticks "Take Renly's reward". Nothing read is stored,
   logged or shown ("How detection works", "Privacy").
+- **Hide under game panels, off by default.** With this setting on, the
+  overlay hides itself in play mode while one of eight game panels is open
+  under its window (the inventory, the passive tree, the shop on M, the
+  Escape menu, the options on O, the world map on U, the stash and a
+  merchant's trade window), and shows again once the panel closes. It
+  tells a panel is open by the colour of a few small patches of the game's
+  window where that panel draws its frame, measured in a live session, and
+  stores, logs and shows no pixel. With it off, nothing of it runs.
 - **A replay CLI**, `quest-tracker-replay`, that runs the same engine over a
-  saved log without the game, and the screen reader's trackers over a kept
-  research capture (`screen`).
+  saved log without the game, the screen reader's trackers over a kept
+  research capture (`screen`), and the panel check over one (`panels`).
 - **A developer-only Python tool**, `py -3 -m tools.quest_tracker.poe2db`,
   that fetches poe2db.tw's quest pages to rebuild the quest data after a
   patch.
@@ -87,7 +98,8 @@ What it is not:
   to Grinding Gear Games. It reads one log file and draws its own window;
   only with *Read the screen* on does it also copy regions of the game's
   window from the screen, as a screenshot would, and read them with
-  Windows' OCR.
+  Windows' OCR, and only with *Hide under game panels* on does it copy
+  small patches of that window and compare their colour, reading no text.
 - It does not track party members, endgame or Atlas quests, or a client in a
   language other than English.
 - It is not an installer: there is no setup, auto-update, code signing or
@@ -118,6 +130,12 @@ What it is not:
   window, English client, at the in-game UI scale used then. A window that
   is not 16:9 is refused while it lasts; other 16:9 sizes and other UI
   scales are untested (Known limitations).
+- **For *Hide under game panels* only: a 16:9 window,** as for *Read the
+  screen*. The patches it copies are fractions of the game's client area,
+  measured on the same setup (2560×1440 borderless, English client). While
+  the window is not 16:9 it pauses, with the status line "Hiding under game
+  panels is paused while the game's window is not 16:9 (<w>x<h>).", and the
+  overlay is not hidden for a panel. It needs no OCR.
 - **A `Client.txt` the game is writing.** The standalone client's is
   `C:\Program Files (x86)\Grinding Gear Games\Path of Exile 2\logs\Client.txt`
   (measured). The Steam client's is assumed to be
@@ -197,6 +215,18 @@ Settings (edit mode, the settings frame) and their defaults:
   turning it off stops it (`screen: off` in the diagnostic log); an
   overlay started with it on starts the reader too. On a Windows without
   English OCR it refuses (Platforms and prerequisites).
+- **Hide under game panels** (off), the toggle under *Read the screen*,
+  with the helper text "Hides the tracker while a game panel is open under
+  it. Reads a few pixels of the game's window and saves nothing." With it
+  on, play mode also hides the overlay while one of the game panels in
+  "How detection works" › "Hiding under game panels" is open under the
+  overlay's window, and shows it again once the panel closes. It works on
+  a 16:9 game window only (Platforms and prerequisites). `settings.json`
+  stores it as `"hide_under_panels"`. Turning it on starts the panel
+  watcher at once (`panels: on`), and turning it off stops it (`panels:
+  off`) and shows an overlay a panel had hidden; an overlay started with
+  it on starts the watcher too. With it off, nothing of it runs and the
+  overlay is shown and hidden exactly as without it.
 
 There is no dock side. A window with no saved position goes to the right
 side of its monitor, below the game's minimap; in edit mode you drag it by the panel's header
@@ -305,6 +335,13 @@ named, or `none`. The lines to look for when a quest did not advance:
   The hide holds only while the game pid from the log is trusted: once
   that pid is not used to hide the overlay (below), it shows as before.
   Edit mode is always shown, so the hotkey still reaches the settings.
+- `visibility: hidden (a game panel is open under the overlay)`, with
+  *Hide under game panels* on, when play mode hides the overlay because
+  the panel watcher reads a game panel open under it, and `visibility:
+  shown` once the panel closes (or the setting is turned off, or the
+  watcher pauses or stops). The other two hides come first: with no
+  character in an area yet, or another program's window in front, the
+  line names that reason and the watcher does not read.
 - The game pid it compares with, each time it changes: `game pid: <pid>
   (from <source>)`, the source being `a live line's header`, `a catch-up
   line's header` or `the log before the tailer's start`. A pid from a live
@@ -322,10 +359,26 @@ named, or `none`. The lines to look for when a quest did not advance:
 - `quit: from the tray` or `quit: the window was closed`: the first quit
   request (a second writes nothing), followed by the `stop: ...` line of
   the shutdown. With the screen reader running, that line names it too
-  (`stop: tailer, worker and screen reader ended, progress saved`).
+  (`stop: tailer, worker and screen reader ended, progress saved`), and so
+  with the panel watcher (`stop: tailer, worker, screen reader and panel
+  watcher ended, progress saved` with both, `stop: tailer, worker and
+  panel watcher ended, progress saved` with the watcher alone).
 - `screen: ...` lines, with *Read the screen* on: when the reader starts,
   idles, reads, is refused or covered, sees a bar go or a banner, and once
   a minute. Every form is in "How detection works" › "Reading the screen".
+- `panels: ...` lines, with *Hide under game panels* on: `panels: on` and
+  `panels: off`; `panels: idle (<reason>)` and `panels: paused (<reason>)`,
+  `panels: resumed` and `panels: stopped after an error`; `panels: overlay
+  at x <a> to <b>, y <c> to <d>`, the overlay's place over the game's
+  window; `panels: <entry> open`, `panels: <entry> closed` and `panels:
+  <entry> unseen under the overlay`; and once a minute `panels: minute:
+  <n> reads, <n> copies, <n> open, <n> black copies, busy <n> ms`,
+  followed by one `panels: <entry> best read: <r> of <n> probes read, <c>
+  in colour, <s> within spread, <m> match, <k> needed` line per entry read
+  in that minute, which says in counts why an entry kept reading closed.
+  An error's detail goes on an `error: panel watcher: ` line. Every form,
+  and how to read a best-read line, is in "How detection works" › "Hiding
+  under game panels".
 
 Build it:
 
@@ -363,6 +416,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
 | `screen` | The screen reader's trackers over a kept research capture instead of a log (below). |
+| `panels` | *Hide under game panels* over a kept research capture: `measure` (the panels' footprints and probe candidates) and `detect` (the shipped panel table's test per frame); and two research commands for the raw copies the app reads, `grab` and `probe` (below). |
 
 | Option | What it does |
 |---|---|
@@ -372,7 +426,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | `-h`, `--help` | The usage text. |
 
 The log is opened read-only. Exit codes: `0` done, `1` error, `2` no such log
-file, `64` usage error.
+file (for `panels`, a capture folder without its index), `64` usage error.
 
 **`quest-tracker-replay screen`** runs the same trackers the overlay's
 screen reader uses over a research session's kept capture, without the
@@ -410,6 +464,75 @@ the region's `straddling`. It prints one JSON object per event, `{"event",
 text and writes nothing. Exit codes: `0` done, `1` a missing or unreadable
 index, `64` usage error. The kept captures of Lives 6 and 8 are what the trackers'
 numbers were settled against; they stay outside the repository.
+
+**`quest-tracker-replay panels`** runs *Hide under game panels*' probe test
+over a kept capture, measures where each panel draws, and, for a
+developer checking the table, copies the game's window once and reports
+each probe on that copy:
+
+```text
+Usage: quest-tracker-replay panels measure --live FOLDER --windows FILE
+       quest-tracker-replay panels detect  --live FOLDER [--windows FILE]
+       quest-tracker-replay panels grab    --pid PID --out FILE
+       quest-tracker-replay panels probe   --frame FILE [--overlay X0,Y0,X1,Y1]
+```
+
+| Option | What it does |
+|---|---|
+| `--live FOLDER` | The kept live folder (`measure`, `detect`). It reads `FOLDER\i3\frames.jsonl` and decodes its whole-client frames (band `bottom`, with a path, `rect` equal to `client`) from their JPEGs; every other line is skipped and counted. A folder without the index is refused with exit `2` and one line naming the missing file. |
+| `--windows FILE` | The windows file (required by `measure`, optional for `detect`): one window per line, `<panel-id> <round> <open-utc> <close-utc>`, the open press made once the panel is fully open and the close press once it has closed; `#` starts a comment. A window's frames are those from 0.5 s after its open press to 0.5 s before its close press. |
+| `--pid PID` | The game's process id (`grab`). |
+| `--out FILE` | The frame `grab` writes, outside every git checkout. |
+| `--frame FILE` | The frame `probe` reads: a grab's `.bmp` or a kept capture's `.jpg`. |
+| `--overlay X0,Y0,X1,Y1` | The overlay's rect as fractions of the client rect, as the watcher's `panels: overlay at` line gives them; `probe` reads none of the probes touching it, as the watcher reads none while the overlay is visible. |
+| `-h`, `--help` | The usage text. |
+
+What each prints, as JSON lines:
+
+- **`measure`**, one line per panel id in the windows file, `{"panel",
+  "windows", "frames", "footprint", "candidates", "probes",
+  "suspect_closed"}`: each window's frames, closed reference frames and
+  footprint, their union, and the ranked probe candidates, each with its
+  `rect`, `bgr`, `spread`, `luma_std`, `margin`, `least`, `closed_near` and
+  `outside_reach` (outside the default overlay's reach, x 0.78 to 1.0,
+  y 0.30 to 0.97); then `{"summary": {"frames", "skipped", "black",
+  "background", "closed", "panels"}}`. A footprint is the bounding box of
+  the grid cells (32 px at 2560 wide) whose colour changed from the
+  window's closed reference in 90% of its frames; a candidate is a 16 px
+  patch stable in the panel's open frames and far from itself in every
+  closed one, ranked by that margin. `suspect_closed` names closed frames
+  near most candidates: a panel open outside every window.
+- **`detect`**, per frame `{"utc", "foreground", "open": [<entry ids>]}`,
+  the shipped table's raw test (no tracker, no overlay); with `--windows`,
+  per window `{"window", "round", "from", "to", "frames", "detected",
+  "covered"}` (`detected`: the window's frames with an entry open whose
+  `opens_for` holds the window's panel; `covered`: whether any entry
+  stands for it) and once `{"outside": {"frames", "detected": {<entry>:
+  <n>}}}` over the frames more than 3 s before or 2 s after every window;
+  last `{"summary": {"frames", "skipped", "black", "table": {<entry>:
+  [<opens_for>]}}}`.
+- **`grab`** (research) copies the game's whole client area once, through
+  the same GDI route the panel watcher copies through, with the process
+  made DPI-aware first, and writes it losslessly as an uncompressed 32-bit
+  BMP. Before any screen call it refuses, with exit `1` and one line
+  saying why, a `FILE` that exists and a folder inside a git checkout (a
+  `.git` in it or in any parent): a frame is research data kept beside a
+  session's capture, never in a repository. It prints `{"grab": <path>,
+  "utc", "client": [<w>, <h>]}`; the client size says whether the copy is
+  in physical pixels. The app never writes a frame.
+- **`probe`** (research), for each entry of the shipped table, per probe
+  `{"entry", "probe", "readable", "mean_bgr", "luma_std", "in_colour",
+  "within_spread", "match"}` and per entry `{"entry", "read", "counts":
+  {"read", "in_colour", "within_spread", "match", "needed"}}`, then
+  `{"summary": {"frame", "client"}}`. It cuts each probe at the pixel rect
+  the watcher copies for the frame's size, and its counts and verdict are
+  the watcher's own, so an entry's counts are the ones a `best read:` line
+  would give for a read of that frame.
+
+Nothing but `grab` writes, and numbers go to stdout only: no pixel array,
+crop or image. `measure` and `detect` read the quality-90 JPEG frames of
+the research capture, `probe` a raw grab as the watcher reads it, which is
+how a table tuned on JPEG frames is checked against raw copies.
 
 ### `py -3 -m tools.quest_tracker.poe2db` (developer-only)
 
@@ -805,16 +928,20 @@ research instruments' fuzzy match, ported with the same scores: a score of
 at least 0.8 for the name against any stretch of the line of about the
 name's length. So a short name, such as "Blackjaw", matches a longer bar
 title that contains it. Before each read the reader checks the window's
-shape (16:9 within 1%) and whether the overlay's own window lies over a
-region; a region the overlay covers is not read, and counts as a covered
-read. A missed read is skipped, never caught up.
+shape (16:9 within 1%), that it can find the overlay's own window, and
+whether that window lies over a region; a region the overlay covers is
+not read, and counts as a covered read. While the overlay's own window
+cannot be found, nothing is copied or read at all, and each due read
+counts as covered (the overlay-window pause, Status lines below). A missed
+read is skipped, never caught up.
 
 **The bar rule (`bar_gone`).** Each read of the band is, for the boss:
 
 - *present*: the boss's name matches a line anywhere in the band. Its place
   is not checked, since the inventory moves the name left;
-- *covered*: the band could not be seen (the overlay over it, the game not
-  in front or minimized, a failed or black copy, a failed OCR), or a line
+- *covered*: the band could not be seen (the overlay over it, the
+  overlay's own window not found, the game not in front or minimized, a
+  failed or black copy, a failed OCR), or a line
   that is not the name lies over the name's column (x 0.40 to 0.60, its top
   at most y 0.08). The passive tree's title, the world map's headings and an
   ordinary monster's name sit there, and the bar under them cannot be
@@ -890,9 +1017,12 @@ quest fires, the first in data order. With the area unknown it is refused
 and counted with the log's refusals (`area unknown: refused <quest id>`).
 It never reads or moves the log's time.
 
-**Status lines.** The screen has one status line of its own, shown after
-every other source's; each change of what it says has its diagnostic line
-(below), and nothing behind it retries in a loop:
+**Status lines.** The screen reader is one source of the overlay's status
+line, and the panel watcher ("Hiding under game panels", below) is
+another. The most severe line shows; between equals, the screen reader's
+comes after every source but the panel watcher's, and the panel
+watcher's last. Each change of what the reader says has its diagnostic
+line (below), and nothing behind it retries in a loop:
 
 - "Screen reading is off: Windows has no English OCR." The reader ends.
 - "Screen reading is paused while the game's window is not 16:9
@@ -953,6 +1083,169 @@ names come from the quest data, never from what was read.
 deadline; an OCR call in flight is not interrupted, and a reader past the
 deadline is logged as not ended, like the others.
 
+### Hiding under game panels
+
+*Hide under game panels* (off by default, Command reference) adds a panel
+watcher, a thread of its own (`qt-panels`) beside the screen reader. It
+copies a few small patches of the game's window where a game panel draws
+its frame, compares their colour with the colour measured for that panel,
+and tells the worker when a panel is open under the overlay; the worker
+then hides the overlay. It reads no text and uses no OCR. With the setting
+off there is no thread, no copy and no `panels:` line. The measurements
+behind the table are in [`quest-tracker-research.md`](quest-tracker-research.md)
+§ "Live 12: the game panels' footprints".
+
+**The panel table.** Each entry is one panel frame: an id, `opens_for`
+(the panels whose windows it stands for), a footprint (the part of the
+client area the panel covers, as fractions, a dimmed area included), its
+probes and `min_match`. The shipped table (`qt-screen`'s
+`shipped_panels()`), measured at 2560×1440:
+
+| Entry | `opens_for` | Footprint | Probes | `min_match` |
+|---|---|---|---|---|
+| `inventory` | `inventory`, `stash`, `merchant` | x 0.65 to 1.0, y 0 to 0.845 (the inventory's panel) | 6, on its header plate | 3 |
+| `passive-tree` | `passive-tree` | the whole client | 5, on its title plate and its right frame | 3 |
+| `key-m` | `key-m` (M: the shop) | the whole client | 7, on its left column and top right | 3 |
+| `escape-menu` | `escape-menu` | the whole client (it dims everything) | 5, on the top of the menu box | 3 |
+| `key-o` | `key-o` (O: the options) | x 0 to 0.345, y 0 to 0.8 | 5, on its header and its foot | 3 |
+| `key-u` | `key-u` (U: the world map) | the whole client | 6, on its title plate and its frame | 3 |
+
+The stash's and a merchant's windows open the inventory beside their own
+window on the left, so the inventory's entry stands for them through
+`opens_for`; their own left-hand windows have no entry (Known
+limitations). The character panel (C), the map overlay (Tab) and any other
+panel have none and never hide the overlay.
+
+**The probe test.** A probe is one patch of a 160 × 90 grid of the client
+area (16 px square at 2560 wide), with an expected mean blue, green and
+red, a tolerance per channel and a largest luma spread. A copy of the
+patch matches when each channel's mean is within its tolerance and its
+luma spread is at most the largest. While the overlay is visible, a probe
+that touches the overlay's rect is not read (the copy would hold the
+overlay); while it is hidden every probe is read. Per read, an entry is:
+
+- *Open*: at least `min_match` probes read, and at least `min_match` of
+  them match;
+- *Closed*: at least `min_match` read, fewer matching;
+- *Unseen*: fewer than `min_match` read;
+- *Black*: every probe read came back black (the capture got nothing). A
+  black copy among others simply does not match.
+
+Unseen and Black reads change nothing. Only entries whose footprint
+intersects the overlay's rect are judged; the others are not copied.
+
+**When it reads.** Only in play mode, while the overlay is shown or hidden
+by a panel alone, with the game's pid confirmed, its window found and not
+minimized. Otherwise it idles, looking again at most every 100 ms, and
+writes `panels: idle (<reason>)`, the first that held of `edit mode`,
+`overlay hidden` (no character in an area yet, or another program in
+front), `pid unconfirmed`, `no game window` and `minimized`, again only
+when the reason changes. Reading, it ticks at most every 250 ms: the
+game's window by pid, its shape (16:9 only), the overlay's own rect, the
+entries under it, one copy of each readable probe of those entries, the
+test and the trackers. A tick that overruns skips the ones it missed.
+
+**The hide and the show.** An entry opens after 1 Open read and closes
+after 2 Closed reads in a row (`PANEL_OPEN_READS`, `PANEL_CLOSED_READS`),
+so the overlay hides at the first read that sees the panel and shows
+again about half a second after it closes. The worker applies the hide as
+soon as the watcher's message arrives. The order of the hides is: no
+character in an area yet, then another program's window in front, then a
+game panel, else shown; edit mode is always shown and the watcher idles
+in it. **It fails open:** idle, paused or stopped, the watcher forgets
+what it read and tells the worker no panel is open, so it never keeps the
+overlay hidden. The screen reader needs nothing new: it already treats a
+hidden overlay as covering nothing.
+
+**Status lines,** its own source, after the screen reader's (Reading the
+screen › Status lines):
+
+- "Hiding under game panels is paused: the overlay cannot find its own
+  window." Without the overlay's rect it cannot tell which panels are
+  under it.
+- "Hiding under game panels is paused while the game's window is not 16:9
+  (<w>x<h>)."
+- "Hiding under game panels cannot copy the game's window (the capture
+  failed 10 times in a row)."
+- "Hiding under game panels stopped after an error; turn it off and on to
+  retry." The cause goes on an `error: panel watcher: ` line.
+
+**Diagnostic lines.** Every watcher line is `panels: ` and one of:
+
+- `on`, `off`, `resumed`, `stopped after an error`;
+- `idle (<reason>)`, the reasons above;
+- `paused (<reason>)`: `paused (no overlay window)`, `paused (the game
+  window is not 16:9 (<w>x<h>))` or `paused (the capture failed 10 times in
+  a row)`, each with its status line; `resumed` when it ends;
+- `overlay at x <a> to <b>, y <c> to <d>`: the overlay's rect as fractions
+  of the game's client rect, two decimals, written when an edge moves by
+  0.01 or more;
+- `<entry> open`, `<entry> closed`, and `<entry> unseen under the overlay`
+  (once per stretch: the overlay over too many of its probes);
+- `minute: <n> reads, <n> copies, <n> open, <n> black copies, busy <n>
+  ms`, once a minute with reads in it;
+- `<entry> best read: <r> of <n> probes read, <c> in colour, <s> within
+  spread, <m> match, <k> needed`, right after each `minute:` line, one per
+  entry read in that minute, in table order. `<n>` is the entry's probe
+  count and `<k>` its `min_match`; the others count, for the minute's
+  best read of the entry (the most matching, then the most in colour,
+  then the most within spread, then the most read), the probes read,
+  those whose colour was within tolerance, those within the luma spread,
+  and those that did both.
+
+When the watcher stops with reads not yet in a `minute:` line, it writes
+that part minute's lines first. With the panel hide, the visibility line
+is `visibility: hidden (a game panel is open under the overlay)`. No
+line, status or error carries a colour, a pixel value or a probe's
+numbers.
+
+**Reading a best-read line.** For an entry whose panel was open under the
+overlay while the overlay stayed shown (no `panels: <entry> open` line):
+
+- `<r>` below `<k>`: the probes it needs were not read (the overlay over
+  them, or outside the client), as the `unseen under the overlay` line
+  says. The fix is the probes' places, not a colour number.
+- `<r>` at least `<k>`, `<c>` below `<k>`: a colour miss, the copies'
+  means outside the tolerance. The fix is the expected colour or the
+  tolerance, from a raw grab of the open panel (`quest-tracker-replay
+  panels probe`).
+- `<c>` at least `<k>`, `<s>` below `<k>`: a spread miss, the raw copy's
+  spread above the largest luma spread tuned on JPEG frames. The fix is
+  that limit, from the grab's spreads.
+- `<c>` and `<s>` at least `<k>`, `<m>` below `<k>`: the probes in colour
+  are not the ones within spread. The fix is the probe choice, or both
+  limits.
+- `<m>` at least `<k>` and still no `open` line: not a table number. Look
+  at the minute line's `black copies` and at `idle` or `paused` lines in
+  the same stretch.
+
+The best read is the minute's, so in a minute that also held closed reads
+it may be one of those; the order puts an open read first whenever it
+matches or colours more probes.
+
+**Where the numbers come from** (Live 12, a no-kill session in a town,
+2026-10-27): each panel opened and closed twice over two backgrounds, and
+`quest-tracker-replay panels measure` over the capture. Each footprint is
+the panel's own extent as its frames show it. Each probe's tolerance is
+the larger of 3 × its spread and 6 levels per channel, never more than half
+its distance to the closed frames; its largest luma spread is 2 × its
+measured spread + 8, at least 16; no probe's colour less its largest
+tolerance is darker than luma 16, so a black copy never matches; and at
+least 3 probes of each entry lie outside the default
+overlay's reach (x 0.78 to 1.0, y 0.30 to 0.97). Every number comes from
+quality-90 JPEG frames, while the watcher compares raw copies: those
+margins are this version's allowance for the difference, which is not yet
+measured (Known limitations). Over Live 12's capture every window of the
+shipped panels reads open from its first frame, the character panel's
+windows read nothing open, and nothing reads open outside the windows
+but three stretches where the inventory was open before its press. Over
+Live 8's capture, a session the table was not chosen on, the inventory,
+the passive tree and the Escape menu are found and its 464 foreground
+play frames read nothing open.
+
+**Shutdown.** The watcher stops with the others, by the same deadline;
+when it ran, the `stop:` line names the panel watcher among the threads.
+
 ## Privacy
 
 What is read:
@@ -971,6 +1264,19 @@ What is read:
   leaves the reader is the kind of event, a boss or NPC name from the quest
   data, times, counts and region names. With the setting off, nothing is
   copied.
+- With *Hide under game panels* on, and only then: small patches of the
+  game's window (16 px squares at 2560 wide, at most 34 per read),
+  copied the same way, only in play mode while the overlay is shown or
+  hidden by a panel ("How detection works" › "Hiding under game panels").
+  A copy lives only for the read that took it, and its colour reaches
+  nothing but the probe test: only counts, entry ids, reasons and the
+  overlay's place as fractions are logged, and no pixel or colour is
+  written, shown or put in an error. With the setting off, nothing is
+  copied.
+- `quest-tracker-replay panels grab` is a developer's research command,
+  not part of the overlay: it copies the game's window once and writes
+  that frame only outside every git checkout, refusing any folder inside
+  one. The overlay never saves a frame.
 
 What is stored, and where:
 
@@ -1155,10 +1461,10 @@ project):
 | `crates/qt-store/` | App-data folder, atomic JSON, quarantine, diagnostic log. |
 | `crates/qt-engine/` | Quest data contract and validator (`data`), the per-character state machine with character detection, the new character from The Riverbank and the refused-signal count (`engine`), and the area read back from the log before a tailer's start (`area`: `area_from_log`, `LogArea`, seeded with `Engine::seed_area`). |
 | `crates/qt-viewmodel/` | `View` and `RowChange`: what the panel shows and what changed in a row, built in Rust. |
-| `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and kill-remark trackers behind a backend trait. |
-| `crates/qt-capture/` | The Windows backend for `qt-screen`: GDI copy of a client-area region and `Windows.Media.Ocr` (en-US) in memory, through the `windows` crate. |
-| `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`). |
-| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`). Tested with a fake window, emitter and clock. |
+| `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and kill-remark trackers behind a backend trait. *Hide under game panels*' too: the panel table type, the probe test and its counts, and the panel tracker (`panels`), and the shipped table (`panel_table`, its numbers in `fixtures/panels/shipped_panels.json`). |
+| `crates/qt-capture/` | The Windows backend for `qt-screen`: GDI copy of a client-area region and `Windows.Media.Ocr` (en-US) in memory, through the `windows` crate. Also the JPEG decode of a kept capture's frames through WinRT's bitmap decoder (`decode`), and the call that makes a process DPI-aware, for `quest-tracker-replay panels`. |
+| `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`), with `screen` (`src/screen.rs`) and `panels` (`src/panels.rs`: `measure`, `detect`, `grab`, `probe`); it depends on `qt-capture` for the decode and the grab. |
+| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`). Tested with a fake window, emitter and clock. |
 | `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the tray icon and its Quit, the close request, the command wrappers. |
 | `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
@@ -1436,6 +1742,51 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   where its default place is, clear of the regions: the bar's band spans
   x 0.25 to 0.75 of the game's window at the top, the dialogue window
   x 0.22 to 0.70, the voiced lines x 0 to 0.45 at the lower left.
+- **Hide under game panels: not yet confirmed in the game.** The table's
+  numbers come from quality-90 JPEG frames of a research capture (Live
+  12), while the watcher compares raw GDI copies. JPEG smooths a patch's
+  texture and can move a small patch's colour near an edge, so the
+  tolerances and spread limits carry margins for raw copies, chosen
+  rather than measured. Whether a raw copy of each panel matches is
+  confirmed only by a live session (Live 13); until then the hide is
+  replayed over JPEG frames, not seen working in the game.
+- **Hide under game panels: only the owner's eight game panels.** The
+  inventory, the passive tree, M (the shop), the Escape menu, O (the
+  options), U (the world map), the stash and a merchant's trade window.
+  The character panel (C), the map overlay (Tab) and every other panel
+  leave the overlay shown. The stash and a merchant share the inventory's
+  entry, found on the inventory they open on the right; their own windows
+  on the left have no entry, so an overlay moved to the left of the screen
+  does not hide under a merchant's window. Over Live 12's capture the
+  options' entry also read open whenever the stash was, the stash's window
+  drawing its header where the options panel draws its own, so an overlay
+  over the options' place hides under the stash too (a replay reading,
+  not seen live).
+- **Hide under game panels: a panel whose probes the overlay covers.**
+  While the overlay is shown, a probe under its window is not read, and an
+  entry with fewer than 3 probes read is unseen: it neither hides nor
+  shows the overlay, and the log says `<entry> unseen under the overlay`.
+  Each entry keeps at least 3 probes outside the default place's reach
+  (x 0.78 to 1.0, y 0.30 to 0.97 of the game's window); an overlay moved
+  or scaled over a panel's probes may not hide under that panel.
+- **Hide under game panels: a brief show when the game comes back in
+  front.** While another program is in front the watcher does not read
+  and forgets what it read, so when the game comes back in front with a
+  panel open the overlay shows until the watcher's next read, which comes
+  within about one 250 ms tick, and then hides again (not measured in the
+  game).
+- **Hide under game panels: dark spots.** A probe whose copy is black (a
+  dark spot of the scene, a loading screen) does not match. When every
+  copy of a read is black, the read changes nothing, so a panel opened or
+  closed during it is seen only at the next read with colour. Each entry
+  keeps one probe that was never black in a closed frame of either
+  session, so a dark scene alone does not make a whole read black.
+- **Hide under game panels: one measured setup.** The patches were
+  measured on a 2560×1440 borderless window, English client, at one
+  in-game UI scale. A window that is not 16:9 pauses the watcher with a
+  status line; other 16:9 sizes, other UI scales and other client
+  languages are untested, and exclusive fullscreen cannot show the
+  overlay at all.
 - **Una's wait line.** "Ask Una for help" moves on Una's "I'll wait here.
   The old magicks will protect me.", which the log recorded only from
   December 2025 on (older clients' sessions never have it) and only, as far
@@ -1493,6 +1844,14 @@ Revisit this feature when:
   `quest-tracker-replay screen` over it, and retune the regions and the
   trackers' constants in `qt-screen` until it gives one event per kill or
   banner again and none under the covering panels.
+- **A patch moves or redraws a game panel** (one of *Hide under game
+  panels*' eight): capture a no-kill session that opens and closes each
+  panel with the research instruments, as Live 12 did, run
+  `quest-tracker-replay panels measure` over it with its windows file,
+  retune the panel table in `qt-screen` (`panel_table.rs` and its fixture)
+  until `quest-tracker-replay panels detect` finds each window and nothing
+  outside them, and then check it on the raw route: `panels grab` the game
+  with each retuned panel open and closed, and `panels probe` each grab.
 - **poe2db changes its page structure**: `extract` fails loudly naming the
   slug; fix the extractor and its synthetic fixture under
   `tests/fixtures/quest_tracker/poe2db/`.
@@ -1571,11 +1930,26 @@ Revisit this feature when:
   seen. A Mercenary's "Defeat Blackjaw, the Remnant" also ticks on the
   character's kill remark (not yet seen on screen). "Take Renly's reward"
   ticks when the QUEST COMPLETE banner shows in his window. The passive tree or world map over the bar ticks
-  nothing; neither does the overlay over a region, a missing English OCR
-  or a window that is not 16:9, and the status line says which. Nothing
-  read is stored, logged or shown.
+  nothing; neither does the overlay over a region, a missing English OCR,
+  a window that is not 16:9, or the overlay when it cannot find its own
+  window (reading then pauses, with the status line "Screen reading is
+  paused: the overlay cannot find its own window."), and the status line
+  says which. Nothing read is stored, logged or shown.
   `quest-tracker-replay screen` runs the same trackers over a kept
   capture.
+- *Hide under game panels*, a setting off by default: with it on, play
+  mode hides the overlay while one of eight game panels (the inventory,
+  the passive tree, the shop on M, the Escape menu, the options on O, the
+  world map on U, the stash and a merchant's trade window) is open under
+  it, and shows it again once the panel closes, by the colour of a few
+  small patches of the game's window where the panel draws its frame. It
+  pauses, with a status line, on a window that is not 16:9 or when the
+  overlay cannot find its own window, and never keeps the overlay hidden
+  while paused. Nothing it copies is stored, logged or shown. Measured
+  over a research capture and replayed, not yet confirmed in the game.
+  `quest-tracker-replay panels` measures the panels and runs the same
+  test over a kept capture, and its `grab` and `probe` check the table on
+  a raw copy.
 - A find-it tip under a step: the owner's short "how to find it" hints,
   from a `tip` field in the quest data, shown under the step they help
   with in the row and the quest detail; five in this version, more added
@@ -1678,7 +2052,7 @@ Revisit this feature when:
   before, the row showed "Enter town" while he was still alive (two live
   sessions). Where Mortimer's line does not come, entering Clearfell
   Encampment still completes the step.
-- `quest-tracker-replay` (`events`, `state`, `import`, `scan`, `screen`; the summary
+- `quest-tracker-replay` (`events`, `state`, `import`, `scan`, `screen`, `panels`; the summary
   counts held events, the two kinds of dropped event and refused signals,
   and decides a relog window still open at the end of the log as the
   overlay would) and the developer-only `py -3 -m

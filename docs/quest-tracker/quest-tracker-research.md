@@ -1584,6 +1584,119 @@ banner (to 10:50:19Z) counted 10530 ms at 61 frames, with 43 full reads
 and 7 skipped, and the minute spanning the banner (to 10:51:19Z) 3920 ms
 at 15 frames.
 
+### Live 12: the game panels' footprints
+
+Measured 2026-10-27 with the panels workorder's Live procedure 1 (capture
+`.claude/workorders/quest-tracker-panels-live-1.md`), the no-kill session
+behind *Hide under game panels*' table. No overlay build was involved:
+Quest Tracker stayed closed so the frames show the game alone, and the
+instruments were `capture.ps1` (whole client rect at 4 frames a second,
+2560×1440 borderless, English client) and `marker.ps1` at the branch head,
+unchanged. An existing character stood still in a town with a stash and a
+merchant, nothing bought, sold, moved or set. The capture ran from
+12:50:32Z to 12:56:57Z (1538 frames, none skipped, none black, 88.7% with
+the game in front). In round A the person opened and closed, in order, I
+(inventory), P (passive tree), M, Esc, O, U, C (character panel), the stash
+and a merchant's trade window, pressing the marker once each panel was
+fully open and right after it had closed, and hovering one item in the
+inventory and the stash; round B did the same from another spot of the
+town, where the ground behind the panels differs. 37 presses: the test
+press and 18 per round, no slip reported. The owner's names for the three
+keys: M opens the microtransactions shop, O the options and U the (world)
+map.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `capture` | pass | `capture: ready` with client [0,0,2560,1440] and `capture: stopped` after 1538 frames, 0 skipped; whole-client frames at 4.00 a second |
+| `marker` | pass | the `# registered Ctrl+Alt+M (MOD_NOREPEAT)` header and the test press at 12:51:39.130Z |
+| `control` | pass | the Escape menu darkens the client: round A's window at a mean luma of 14.36 against 24.79 before it, a ratio of 0.579 (below 0.700) |
+| `panel-inventory` | pass | windows of 51 (A) and 37 (B) frames |
+| `panel-passive-tree` | pass | 24 (A) and 13 (B) frames |
+| `panel-key-m` | pass | 17 (A) and 15 (B) frames; the person: M opens the microtransactions shop |
+| `panel-escape-menu` | pass | 23 (A) and 14 (B) frames |
+| `panel-key-o` | pass | 20 (A) and 14 (B) frames; the person: O opens the options |
+| `panel-key-u` | pass | 20 (A) and 15 (B) frames; the person: U opens the map |
+| `panel-stash` | pass | 38 (A) and 25 (B) frames |
+| `panel-merchant` | pass | 38 (A) and 26 (B) frames |
+| `panel-character` | pass | 19 (A) and 16 (B) frames |
+| `black` | pass | 0 black frames |
+
+**Footprints.** `quest-tracker-replay panels measure` over the capture
+found every panel's changed area to be the whole client, or nearly (the
+inventory's union x 0 to 1, y 0 to 0.84; the passive tree's y 0 to 0.98;
+the options' x 0 to 0.96, y 0 to 0.89): between a window and its closed
+reference the town's background and the HUD change too, and round B's
+windows have no reference frames at all, since they follow each other
+closer than the 1.5 s after a close and 3 s before an open that the
+reference takes. So each footprint the table uses is the panel's own
+extent as its frames show it, looked at locally, as fractions of the
+client area:
+
+- the inventory: a panel on the right, x 0.65 to 1.0, y 0 to 0.845;
+- the passive tree, the shop (M) and the world map (U): the whole client;
+- the Escape menu: the whole client dimmed, its menu box in the centre
+  (the box's top, where the probes sit, at about x 0.44 to 0.53, y 0.28
+  to 0.37);
+- the options (O): a panel on the left, x 0 to 0.345, y 0 to 0.8;
+- the stash and a merchant's window: the inventory on the right, as
+  above, beside a window of their own on the left (within about x 0 to
+  0.50);
+- the character panel (C): on the left; it is not one of the owner's
+  panels and has no entry.
+
+Three stretches had the inventory open before its own press (with the
+stash too in the second): 12:50:36.500Z to 12:50:45.000Z, 12:53:17.000Z to
+12:53:22.600Z and 12:54:19.000Z to 12:54:20.300Z. They are left out of the
+closed frames.
+
+**The table.** Each probe is one 16 px patch of `measure`'s 160 × 90 grid,
+chosen among its printed candidates: on the inventory's header plate
+(which also finds the stash's and a merchant's windows, so those share
+its entry), on the passive tree's title plate (the one place that is the
+same for another character), on the shop's left column and top right, on
+the top of the Escape menu's box (static art, the same in both
+sessions), on the options' header and foot, and on the world map's title
+plate and frame. Every entry has 5 to 7 probes and needs 3 to match, and
+at least 3 of each lie outside the default overlay's reach (x 0.78 to 1.0,
+y 0.30 to 0.97).
+
+**The numbers come from quality-90 JPEG frames**, which `capture.ps1`
+writes through GDI+, while the overlay's watcher compares raw GDI copies.
+No raw copy of a panel existed to compare with, so the table carries
+margins for raw copies instead of a measurement: per channel a tolerance
+of the larger of 3 × the patch's spread over the open frames and 6
+levels, never more than half its distance to the closed frames (every
+patch came out at 6 but the shop's, at up to 16); a largest luma spread
+of 2 × the patch's measured spread + 8, at least 16, since JPEG smooths
+texture and a raw patch reads rougher; no patch so dark that its colour
+less its largest tolerance is under luma 16, so a black copy cannot
+match; and probes chosen so that colour alone keeps every entry closed
+in this session's closed frames and in Live 8's play. These factors are
+a choice, not a measurement; Live 13's raw grabs are what measures them.
+
+**The replay over Live 12 and Live 8.** `quest-tracker-replay panels
+detect` with the shipped table:
+
+- Over this capture, every window of the owner's panels read open from its
+  first frame (half a second after the open press) on, with misses only
+  at the end, where the close press came after the panel had closed: for
+  example the inventory 43 of 47 frames in round A and 31 of 33 in round B,
+  the options 16 of 16 and 10 of 10, a merchant's window 29 of 34 and 17
+  of 22. The character panel's windows read nothing open. Outside every
+  window, 53 frames read open, all inside the three stretches above,
+  where the inventory was open; in 16 of them, with the stash's window
+  open, the options' entry read open as well. It did so in every frame of
+  both stash windows in which the inventory's entry did (32 and 19), and
+  in no merchant frame: the stash's window draws a header where the
+  options panel draws its own.
+- Over Live 8's kept capture, the session the table was not chosen on
+  (another character, The Riverbank, 2 frames a second): the inventory 10
+  of 12 frames (its two misses at the start, before the panel was drawn
+  about 1.8 s after the press), the passive tree 7 of 7, the Escape menu 7
+  of 8, and the two stretches where the Escape menu was open unlabelled in
+  the play spans 140 of 140 and 6 of 6. Of the play spans' 464 foreground
+  frames outside every window's margins, none read open.
+
 ## Negative results
 
 Each of these is "not observed" in the log measured on 2026-10-24, not "does

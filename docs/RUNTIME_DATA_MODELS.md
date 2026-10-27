@@ -466,3 +466,25 @@ rect.
   region, 0.75 s and 0.5 s before a press made as it showed (Lives 10 and
   11). A strip of the window's top, x 0.22 to 0.70, y 0.24 to 0.31, read
   Renly's name as its heading before the banner (Live 10).
+- **Where the game's panels draw** (measured 2026-10-27, Live 12, a no-kill
+  session in a town, each panel opened twice over two backgrounds, whole
+  client frames at 4 Hz, 2560×1440;
+  [`quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+  § "Live 12: the game panels' footprints"). As fractions of the client
+  area, each panel's own extent as its frames show it: the inventory (I)
+  a panel on the right, x 0.65 to 1.0, y 0 to 0.845; the passive tree (P),
+  the microtransactions shop (M) and the world map (U) the whole client;
+  the Escape menu dims the whole client (its mean luma 0.58 of the frames
+  before it), its menu box in the centre, the box's top at about x 0.44
+  to 0.53, y 0.28 to 0.37; the options (O) a panel on the left, x 0 to
+  0.345, y 0 to 0.8; the stash and a merchant's trade window open the
+  inventory on the right, as above, beside a window of their own on the
+  left (within about x 0 to 0.50), the stash's drawing a header where
+  the options panel draws its own; the character panel (C) sits on the
+  left. A frame-difference footprint does not give these: the town's
+  background and the HUD change while a panel is open, so every panel's
+  changed area was the whole client or nearly. The inventory's header
+  plate, the passive tree's title plate and the top of the Escape menu's
+  box kept their colours in Live 8, another character's session in The
+  Riverbank. All of it read from quality-90 JPEG frames; raw copies not
+  yet compared.
