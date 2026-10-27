@@ -20,6 +20,10 @@
 //! - [`DialogueGate`]: the dialogue window's heading gate. While no demanded
 //!   NPC's heading has read lately, only the window's [`HEADING_STRIP`] is
 //!   read; the whole region once the heading shows there.
+//! - "Hide under game panels": the [`PanelTable`] of panel frames, the
+//!   [`PanelProbe`] colour test on small copies of the game's window, and
+//!   the per-entry [`PanelTracker`]. [`shipped_panels`] is the measured
+//!   table the app uses.
 //!
 //! Times are [`Millis`] on one clock the caller supplies: the reader passes a
 //! monotonic clock, the replay UTC from the capture's index.
@@ -38,6 +42,8 @@ mod fuzzy;
 mod gate;
 mod geometry;
 mod observation;
+mod panel_table;
+mod panels;
 mod region;
 mod remark;
 mod trackers;
@@ -60,6 +66,12 @@ pub use gate::{strip_of, DialogueGate, DialogueRead, GateCounts, HEADING_STRIP};
 pub use geometry::{aspect_is_16_9, PixelRect, Rect, ASPECT_TOLERANCE};
 pub use observation::{
     Hidden, Image, Line, Observation, PixelLine, Visibility, BLACK_LUMA_MEAN, BLACK_LUMA_STD,
+};
+pub use panel_table::shipped_panels;
+pub use panels::{
+    overlay_fraction, PanelChange, PanelEntry, PanelProbe, PanelRead, PanelTable, PanelTracker,
+    ProbeStats, DEFAULT_OVERLAY_REACH, PANEL_CLOSED_READS, PANEL_IDS, PANEL_OPEN_READS,
+    PANEL_TICK_MS,
 };
 pub use region::{
     Region, BOSS_BAR_PERIOD_MS, BOSS_BAR_RECT, DIALOGUE_WINDOW_PERIOD_MS, DIALOGUE_WINDOW_RECT,
