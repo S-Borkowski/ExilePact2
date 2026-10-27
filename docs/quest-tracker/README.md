@@ -1346,9 +1346,9 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   cancels it (the owner's choice, 2026-10-26). An area entry cancels a
   going whose bar was last seen before it. A death cancels the next going
   of each bar that was up at the death, and the bar must show again
-  before a going counts. Whether the bar stays up through the death
-  screen is not measured; the rule covers both cases, a bar that goes at
-  the death and one that goes on the walk back.
+  before a going counts. Whether the bar stays up through the
+  death screen is not measured; the rule covers both cases, a bar that
+  goes at the death and one that goes on the walk back.
 - **Read the screen: panels that hide the bar.** The passive tree and the
   world map draw their own titles over the bar's name; the bar then counts
   as not visible, and a kill while one of them is open is not seen
