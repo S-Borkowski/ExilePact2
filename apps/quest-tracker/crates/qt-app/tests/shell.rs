@@ -727,14 +727,17 @@ fn diag_log_never_holds_chat_or_party_names() {
     let _ = h.app.pin_character(None);
     let log = h.diag_text();
 
-    // Positive controls: the log was written, with places and the own name.
+    // Positive controls: the log was written, with places and the own
+    // character by its token.
     assert!(log.contains("session start"), "{log}");
     assert!(log.contains("area G1_2"), "{log}");
     assert!(log.contains("catch-up:"), "{log}");
-    assert!(log.contains(OWN), "{log}");
+    assert!(log.contains(&logged(OWN)), "{log}");
     assert!(log.contains("an unconfirmed character"), "{log}");
 
     for forbidden in [
+        // the player's own name
+        OWN,
         // party members (fixtures/sessions/party.txt)
         "Bram_Holloway",
         "Wren_Ashdown",
@@ -1435,7 +1438,7 @@ fn riverbank_new_character_is_logged() {
     let diag = h.diag_text();
     assert_eq!(diag.matches(NEW).count(), 2, "{diag}");
     assert!(
-        diag.contains(&format!("character: pin on {OWN} released for the new character")),
+        diag.contains(&format!("character: pin on {} released for the new character", logged(OWN))),
         "{diag}"
     );
 
@@ -1483,6 +1486,12 @@ fn build_line(at: &str, name: &str) -> String {
     format!(
         "2026/03/12 {at} 6006000 9a1c0002 [WARN Client 7120] Character {name} has unknown build of path: None"
     )
+}
+
+/// How the diagnostic log writes the own character `name`: by its token for
+/// this run, never by name.
+fn logged(name: &str) -> String {
+    format!("character #{}", qt_app::diag::token(name))
 }
 
 /// Every quest row's id and status in the view, act by act.
@@ -1550,7 +1559,7 @@ fn provisional_character_survives_relaunch() {
             .as_ref()
             .is_some_and(|c| c.name == OWN && !c.provisional)
     });
-    h.wait_diag(&[&format!("character: the new character named {OWN} by a level-up")]);
+    h.wait_diag(&[&format!("character: the new character named {} by a level-up", logged(OWN))]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
     assert!(h.stored("new-character.json").is_none());
     assert!(!h.store_dir().join("new-character.json").exists());
@@ -1589,7 +1598,7 @@ fn catch_up_logs_new_character_and_released_pin() {
     quiet_for(&h, 6_000);
     let diag = h.diag_text();
     assert_eq!(diag.matches(NEW_LINE).count(), base + 1, "{diag}");
-    let released = format!("character: pin on {OWN} released for the new character");
+    let released = format!("character: pin on {} released for the new character", logged(OWN));
     assert_eq!(diag.matches(&released).count(), 1, "{diag}");
     assert!(h.app.get_view().character.unwrap().provisional);
 
@@ -1601,7 +1610,7 @@ fn catch_up_logs_new_character_and_released_pin() {
     let diag = h.diag_text();
     assert!(
         diag.contains(&format!(
-            "character: the new character parked at a session start, pin on {OWN} restored"
+            "character: the new character parked at a session start, pin on {} restored", logged(OWN)
         )),
         "{diag}"
     );
@@ -1634,7 +1643,7 @@ fn catch_up_logs_new_character_and_released_pin() {
 
 #[test]
 fn riverbank_relog_is_logged() {
-    let relogged = format!("character: {OWN} relogged in The Riverbank, kept");
+    let relogged = format!("character: {} relogged in The Riverbank, kept", logged(OWN));
     for catch_up in [false, true] {
         let h = harness(Setup::default());
         h.app.handle_tail_events(events(&own_character_lines(), true));
@@ -1703,7 +1712,7 @@ fn wait_count(h: &Harness, needle: &str, n: usize) -> String {
 
 #[test]
 fn relog_window_expires_on_worker_tick() {
-    let released = format!("character: pin on {OWN} released for the new character");
+    let released = format!("character: pin on {} released for the new character", logged(OWN));
     for catch_up in [false, true] {
         let h = harness(Setup::default());
         h.app.handle_tail_events(events(&own_character_lines(), true));
@@ -1779,7 +1788,7 @@ fn relog_window_expires_on_worker_tick() {
 
 #[test]
 fn riverbank_relog_writes_no_new_character_line() {
-    let relogged = format!("character: {OWN} relogged in The Riverbank, kept");
+    let relogged = format!("character: {} relogged in The Riverbank, kept", logged(OWN));
     for catch_up in [false, true] {
         let h = harness(Setup::default());
         h.app.handle_tail_events(events(&own_character_lines(), true));
@@ -1799,7 +1808,7 @@ fn riverbank_relog_writes_no_new_character_line() {
         assert_eq!(diag.matches(&relogged).count(), 1, "catch-up {catch_up}:\n{diag}");
         assert_eq!(diag.matches(NEW_LINE).count(), base, "catch-up {catch_up}:\n{diag}");
         assert!(
-            !diag.contains(&format!("pin on {OWN} released for the new character")),
+            !diag.contains(&format!("pin on {} released for the new character", logged(OWN))),
             "catch-up {catch_up}:\n{diag}"
         );
         let v = h.app.get_view();
@@ -2515,4 +2524,32 @@ fn shutdown_inside_relog_window_saves_the_entry_position() {
     h.wait_diag(&["catch-up:"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
     assert_eq!(h.stored("position.json").unwrap()["offset"], json!(head.len() as u64));
+}
+
+#[test]
+fn diag_log_never_names_the_player() {
+    // A new character from The Riverbank, named by its first level-up: the
+    // two character lines the 2026-10-27 live session saw with the name.
+    let h = harness(log_setup(text(&riverbank_at("10:00", 31)), true));
+    h.app.start();
+    h.wait_diag(&["catch-up:", "area G1_1"]);
+    h.clock.fetch_add(6_000, Ordering::SeqCst);
+    h.wait_diag(&[NEW_LINE]);
+    append(
+        &h.root.join("Client.txt"),
+        &[format!(
+            "2026/03/12 10:01:00 6060000 9a1c0003 [INFO Client 7120] : {OWN} (Witch) is now level 2"
+        )],
+    );
+    // Positive control: both lines are written, the character by its token.
+    let own = logged(OWN);
+    assert!(own.starts_with("character #") && own.len() == "character #".len() + 6, "{own}");
+    h.wait_diag(&[&format!("character: the new character named {own} by a level-up")]);
+    h.wait_diag(&[&format!("character: none -> {own}")]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+    // The roster holds the name: it was known, and the log still never has it.
+    assert_eq!(h.stored("characters.json").expect("roster")[OWN]["own"], true);
+    let diag = h.diag_text();
+    assert!(!diag.contains(OWN), "overlay.log names the player:
+{diag}");
 }

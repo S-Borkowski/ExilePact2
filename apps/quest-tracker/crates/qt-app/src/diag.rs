@@ -6,9 +6,13 @@
 //! row changes, the shortcut and errors. It never holds chat, an NPC line's text,
 //! or another player's name: an event is described by its kind and the
 //! fields that name a place or a quest, never by its line; party lines are
-//! not described at all; and a character is named only when it is known to
-//! be the player's own; one only taken to be by a level-up is "an
-//! unconfirmed character".
+//! not described at all; and no character is ever named: the player's own
+//! is "character #<token>", a token that stands for one name for the run
+//! and that cannot be turned back into it, and one only taken to be own by
+//! a level-up is "an unconfirmed character".
+
+use std::hash::{BuildHasher, RandomState};
+use std::sync::OnceLock;
 
 use qt_engine::{CharacterNote, Engine, LogArea, Ownership, Transition};
 use qt_logline::{Event, EventKind};
@@ -17,16 +21,26 @@ use qt_viewmodel::RowChange;
 
 use crate::seed::MAX_SEED_BYTES;
 
-/// How a character appears in the log: its name when it is own, else a
+/// How a character appears in the log: a token when it is own, else a
 /// placeholder (a level-up alone does not prove the name is the player's).
+/// Never its name: a log shared in a bug report must not name the player.
 pub fn character(engine: &Engine, name: Option<&str>) -> String {
     match name {
         None => "none".to_string(),
         Some(n) => match engine.character(n).map(|c| c.ownership) {
-            Some(Ownership::Own) => n.to_string(),
+            Some(Ownership::Own) => format!("character #{}", token(n)),
             _ => "an unconfirmed character".to_string(),
         },
     }
+}
+
+/// Six hex digits for `name`, the same for the whole run so its lines can
+/// be followed, and keyed at random per run so no one can check a guessed
+/// name against a shared log (a plain hash would let them).
+pub fn token(name: &str) -> String {
+    static KEY: OnceLock<RandomState> = OnceLock::new();
+    let h = KEY.get_or_init(RandomState::new).hash_one(name);
+    format!("{:06x}", h & 0xff_ffff)
 }
 
 /// A live event worth a line, or `None`. Only the session marker, area
