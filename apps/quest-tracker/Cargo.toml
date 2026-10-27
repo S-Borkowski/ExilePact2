@@ -1,6 +1,7 @@
 # The quest-tracker Cargo workspace: the log tailer, parser, quest engine,
-# view-model, store, replay CLI and app logic as library crates, plus the
-# Tauri shell in `src-tauri/`. Every external dependency is pinned here with
+# view-model, store, replay CLI, app logic and the update check's transport
+# (`qt-net`, the only crate that talks to the network) as library crates,
+# plus the Tauri shell in `src-tauri/`. Every external dependency is pinned here with
 # `=` and taken by members with `workspace = true`; a member never names a
 # version of its own.
 
@@ -16,6 +17,7 @@ members = [
     "crates/qt-capture",
     "crates/qt-replay",
     "crates/qt-app",
+    "crates/qt-net",
     "src-tauri",
 ]
 
