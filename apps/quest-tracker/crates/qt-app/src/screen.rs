@@ -11,6 +11,13 @@
 //!   nothing while the demand is empty, the pid unconfirmed, or the game's
 //!   window missing, minimized or not in front, and its `idle (<reason>)`
 //!   line names the first of those that held.
+//! - **The overlay check.** Each tick asks the backend for the overlay's
+//!   own window and counts a demanded region under it as covered rather
+//!   than copying it. While that window cannot be found, the reader pauses:
+//!   it copies and reads nothing, counts each due read as covered so no
+//!   going fires across the pause, and sets [`NO_OVERLAY_STATUS`]; a copy
+//!   would hold the overlay's rows, which name the bar's boss. The pause
+//!   ends, and its status clears, the tick the window is found again.
 //! - **A death with a bar up.** The demand also counts the character's live
 //!   deaths. When the count changes, each demanded boss whose bar the reader
 //!   has seen and whose going it has not reported is marked: its next going
@@ -95,6 +102,12 @@ pub const PANEL_STATUS: &str = "A panel or a name over the boss bar hides it; sc
 /// for [`GONE_RUN`] reads with no sight of it since: as with a panel, its
 /// going cannot count until the bar shows again.
 pub const OUT_OF_SIGHT_STATUS: &str = "The boss bar was out of sight after it showed; screen reading counts the bar going only once it shows again.";
+
+/// The status line while the overlay cannot find its own window: a copy
+/// would hold the overlay's rows, which name the bar's boss, so nothing is
+/// read until the window is found again.
+pub const NO_OVERLAY_STATUS: &str =
+    "Screen reading is paused: the overlay cannot find its own window.";
 
 /// The backend, shared by every reader the app starts (one at a time).
 pub(crate) type SharedBackend = Arc<Mutex<Box<dyn ScreenBackend>>>;
@@ -687,7 +700,7 @@ struct Reader {
     /// The client size refused for its aspect ratio, while it lasts.
     aspect: Option<(i32, i32)>,
     /// Whether the last overlap check had no overlay window to check, and
-    /// said so.
+    /// said so. Reading pauses while it holds.
     overlay_off: bool,
     /// Failed copies in a row.
     capture_failures: u32,
@@ -928,9 +941,9 @@ impl Reader {
         self.death_marked.observe(&obs);
     }
 
-    /// A covered frame for each due region: the game is not in front, or is
-    /// minimized, so nothing is copied, but a bar's run of absent frames
-    /// cannot go on across the gap.
+    /// A covered frame for each due region: the game is not in front, is
+    /// minimized, or the overlay cannot find its own window, so nothing is
+    /// copied, but a bar's run of absent frames cannot go on across the gap.
     fn hidden_frames(&mut self, why: Hidden) {
         let now = self.app.clock_ms() as Millis;
         for region in self.due(now) {
@@ -951,10 +964,13 @@ impl Reader {
         self.covered = covered;
     }
 
-    /// The status line for what holds now: a refused shape, failing copies,
-    /// black copies, the overlay over a region, or a bar that was up hidden
-    /// since, by a panel or out of sight.
+    /// The status line for what holds now: a refused shape, the pause for
+    /// no overlay window, failing copies, black copies, the overlay over a
+    /// region, or a bar that was up hidden since, by a panel or out of sight.
     fn current_status(&self) -> Option<StatusLine> {
+        if self.aspect.is_none() && self.overlay_off {
+            return Some(StatusLine::warn(NO_OVERLAY_STATUS));
+        }
         Self::status_for(
             self.aspect,
             self.capture_failures,
@@ -1035,8 +1051,9 @@ impl Reader {
         }
         self.aspect = None;
         // The overlay over a region, demand or not. With no overlay window
-        // to check, nothing counts as covered and the copy holds whatever
-        // is in front, the overlay included: say so once, until it is back.
+        // to check, a copy would hold whatever is in front, the overlay's
+        // own rows included, and the tracker could read itself: say so once,
+        // until it is back, and pause reading meanwhile.
         let overlay = backend.overlay()?;
         match (overlay.is_some(), self.overlay_off) {
             (false, false) => {
@@ -1058,6 +1075,15 @@ impl Reader {
         let regions = self.trackers.regions();
         if regions.is_empty() {
             self.go_idle("no demand");
+            return Ok(());
+        }
+        // Paused: nothing is copied or read, the dialogue window's heading
+        // strip included, and each due region's read counts as covered, so
+        // no going fires across the pause. The reading line comes again
+        // once the window is back.
+        if self.overlay_off {
+            self.hidden_frames(Hidden::Overlay);
+            self.activity = Activity::Unknown;
             return Ok(());
         }
         if backend.foreground_pid()? != Some(pid) {

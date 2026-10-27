@@ -1237,6 +1237,38 @@ fn screen_without_an_overlay_window_says_the_overlay_check_is_off() {
 }
 
 #[test]
+fn screen_without_an_overlay_window_pauses_reading_with_a_status_line() {
+    const PAUSED: &str = "Screen reading is paused: the overlay cannot find its own window.";
+    let paused = |v: &View| v.status.as_ref().is_some_and(|s| s.text == PAUSED);
+    let h = harness(Setup::default(), |s| {
+        *s.overlay.lock().unwrap() = None;
+    });
+    h.app.start();
+    h.feed(&at_the_fight());
+    h.views.wait_for("with the pause's status line", paused);
+    h.wait_diag(&["screen: overlay check off (no overlay window)"]);
+    // The bar falls due again and again; nothing is copied or read, since
+    // a copy would hold the overlay's own rows.
+    h.time_passes(6);
+    assert!(h.screen.reads().is_empty(), "{:?}", h.screen.reads());
+    assert!(paused(&h.app.get_view()));
+
+    // The overlay's window found again: the line clears and the bar is read.
+    *h.screen.overlay.lock().unwrap() = Some(OverlayState {
+        rect: OVERLAY_ASIDE,
+        visible: true,
+    });
+    h.wait_diag(&["screen: overlay check on"]);
+    h.views.wait_for("without it", |v| !paused(v));
+    h.time_passes(2);
+    wait_until("a copy of the bar", || {
+        h.screen.reads().contains(&"capture boss bar".to_string())
+    });
+    assert!(!paused(&h.app.get_view()));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
 fn screen_black_copies_are_not_reported_as_failed_captures() {
     // A dark band for longer than the limit, then the bar's band again.
     let limit = CAPTURE_FAILURE_LIMIT;
