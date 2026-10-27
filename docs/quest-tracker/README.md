@@ -1418,6 +1418,21 @@ Network:
   default; then a check at launch, once a day, and an hour after a failed
   automatic check). A default install, with the setting off and no check
   clicked, sends and receives nothing.
+- Measured in the built app on 2026-10-27: version 0.1.0 ran with a store
+  folder of its own while a sampler listed, every 200 ms, the TCP
+  connections of `quest-tracker.exe` and of every process it started.
+  With the defaults (the setting off, no check clicked),
+  `quest-tracker.exe` itself opened no connection in the five minutes
+  from launch to turning the setting on, nor in the minute and a half
+  after a relaunch with the setting turned off again. The same sampler
+  saw each check's own connection: the automatic check's, to
+  `api.github.com` on port 443, within a second of its `updates: check
+  started` line, then the manual check's and the next launch's automatic
+  check's. So the quiet stretches are a measured silence, at the
+  sampler's 200 ms resolution, not a blind instrument. The WebView2
+  processes that draw the windows did connect, with the setting off as
+  well: that is Microsoft's runtime, not the app's code ("Known
+  limitations").
 - A check is one `GET
   https://api.github.com/repos/S-Borkowski/ExilePact2/releases?per_page=30`,
   port 443 only, made from Rust through Windows' own WinHTTP, with three
@@ -2042,6 +2057,18 @@ release already exists, only its assets are replaced.
   GitHub answers at most 60 unauthenticated requests an hour from one IP
   address (GitHub's documentation, not measured here); past that a check
   says so. It runs on Windows only.
+- **WebView2 connects on its own.** The WebView2 processes the app starts
+  to draw its windows are Microsoft's runtime, outside the app's code but
+  under its name, and they open connections of their own. In the
+  measured session ("Privacy" › Network) they held connections on port
+  443 from 3 s after launch until the quit, with *Automatically check for
+  updates* off as well as on: 5 WebView2 processes over three launches,
+  to 5 addresses, all in IPv6 ranges registered to Microsoft
+  (`2603:1026:…` and `2620:1ec:33::11`), seen in 1394 sampler lines over
+  about ten minutes. Which Microsoft services they are, and what they
+  send, was not established. The app sets no WebView2 arguments today; a
+  later change could, while the content security policy already keeps the
+  page itself from reaching any remote source.
 - **Not covered:** endgame and Atlas quests, non-English clients, an
   installer, auto-update (the update check announces a newer version and
   downloads nothing).
