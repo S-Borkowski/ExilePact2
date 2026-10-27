@@ -1,0 +1,604 @@
+"""Tests for the opt-in AI review workflow.
+
+`ai-review.yml` reviews a pull request only when a person asks. Three things
+are worth pinning, and "the YAML parses" is not one of them.
+
+**That review stays opt-in.** Automation may open pull requests by itself --
+a dependency or pointer bump -- and a one-line version change has nothing to
+review. So the workflow listens for a label being added and for a comment
+being created, and never for a pull request being opened or pushed to.
+
+The issue and pull request numbers cited below (`hub #56`, `ForgePact #141`
+and the rest) are from the sister project hero-siege-offline-toolkit, where
+this workflow was developed; they are the evidence for each rule.
+
+**That an unrelated event cannot cancel a review in progress.** Every issue
+comment and every label starts a run of this workflow, whether or not it is a
+request. Concurrency was first declared at workflow level, where a run joins its
+group when it is queued -- before any job's `if` is looked at -- so a plain
+"thanks" comment joined `ai-review-<PR>` and, with `cancel-in-progress`, killed
+the review that was running. Origin's review of PR #42 found it. The group is
+now on the job and is only shared when the event is a real request; anything
+else gets a group unique to its own run.
+
+**That the two copies of the request predicate agree.** Neither `concurrency`
+nor a job's `if` can read a value the other computes, so the predicate is
+written out twice. If they drift, the group can go back to being shared by
+events the `if` rejects -- the original bug, reintroduced by an edit to one
+side. The comparison has a negative control, because a check that cannot fail
+proves nothing.
+
+**That the review is allowed to do its job.** `--allowedTools` replaces the
+code-review command's own tool list rather than adding to it. The first version
+listed only the inline-comment tool, so the review could neither read the pull
+request (`gh pr view`, `gh pr diff`) nor post its "No issues found" summary
+(`gh pr comment`); the job went green with five denied tool calls and nothing
+on the PR (hub #56). The allow-list is now checked against every tool that
+command declares, and the full result file is uploaded so the next denial is
+visible rather than a bare count.
+
+**That the review runs to the end, and that a run which posts nothing fails.**
+On hub #59 the job went green after four turns with nothing on the PR. The
+code-review command works through subagents, which run in the background by
+default; the model launched one, ended its turn to wait for it, and a headless
+run ends with the turn. `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` keeps agents in
+the foreground, and a final step fails the job when no comment appeared, so the
+next variant of this bug is red instead of silent.
+
+**That a posted comment is not taken for a review.** On hub #365 and ForgePact
+#141 the model skipped the command's agents, read part of the diff itself in
+10-20 seconds, posted "No issues found" and said in its last message that it
+had not run the review; both jobs went green. The model is now set (by family alias), the notes
+say the agents are not optional, the read-only text tools a review reaches for
+are allowed, and a step reads the transcript and fails a run that launched
+fewer agents than steps 1 to 4 of the command do, finished in seconds, or
+admitted skipping. Where `bash` and `jq` are both on the path (they are on a
+GitHub runner), that step's own script is run against small transcripts.
+
+The file is read as text rather than parsed: CI runs this suite with
+`python -m unittest discover -s tests` and installs nothing, so PyYAML is not
+available there.
+"""
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import tempfile
+import textwrap
+import unittest
+from pathlib import Path
+
+
+REPO = Path(__file__).resolve().parents[1]
+WORKFLOW = REPO / ".github/workflows/ai-review.yml"
+
+
+def workflow_text():
+    return WORKFLOW.read_text(encoding="utf-8").replace("\r\n", "\n")
+
+
+def squash(text):
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def folded_block(text, key, indent):
+    """The body of a `key: >-` folded scalar at the given indentation."""
+    match = re.search(
+        rf"(?m)^{' ' * indent}{re.escape(key)}: >-\n((?:{' ' * (indent + 2)}.*\n|\s*\n)+)",
+        text,
+    )
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def request_predicate(text):
+    return folded_block(text, "if", 4)
+
+
+def concurrency_group(text):
+    return folded_block(text, "group", 6)
+
+
+def predicate_shared_with_group(text):
+    predicate = request_predicate(text)
+    group = concurrency_group(text)
+    if predicate is None or group is None:
+        return False
+    return squash(predicate) in squash(group)
+
+
+class TriggersStayOptIn(unittest.TestCase):
+    def test_listens_only_for_a_label_being_added(self):
+        text = workflow_text()
+        self.assertRegex(text, r"(?m)^  pull_request:\n    types: \[labeled\]\n")
+
+    def test_listens_only_for_a_comment_being_created(self):
+        text = workflow_text()
+        self.assertRegex(text, r"(?m)^  issue_comment:\n    types: \[created\]\n")
+
+    def test_never_reviews_on_open_or_push(self):
+        # `synchronize` and `opened` are what would sweep in every automated
+        # bump pull request.
+        text = workflow_text()
+        for action in ("opened", "synchronize", "reopened"):
+            self.assertNotRegex(text, rf"types: \[[^\]]*\b{action}\b")
+
+    def test_request_predicate_names_the_label_and_the_comment(self):
+        predicate = request_predicate(workflow_text())
+        self.assertIsNotNone(predicate, "job `if: >-` block not found")
+        self.assertIn("github.event.label.name == 'ai-review'", predicate)
+        self.assertIn("startsWith(github.event.comment.body, '@claude review')", predicate)
+        self.assertIn("github.event.issue.pull_request != null", predicate)
+
+
+class UnrelatedEventsCannotCancelAReview(unittest.TestCase):
+    def test_no_workflow_level_concurrency(self):
+        # At column 0 a concurrency group applies to the run as it is queued,
+        # before the job `if` has rejected an ordinary comment.
+        self.assertNotRegex(workflow_text(), r"(?m)^concurrency:")
+
+    def test_the_job_declares_concurrency_and_cancels_superseded_requests(self):
+        text = workflow_text()
+        self.assertRegex(text, r"(?m)^    concurrency:\n")
+        self.assertRegex(text, r"(?m)^      cancel-in-progress: true$")
+
+    def test_a_request_shares_the_pull_request_group(self):
+        group = squash(concurrency_group(workflow_text()) or "")
+        self.assertIn(
+            "format('ai-review-{0}', github.event.pull_request.number || github.event.issue.number)",
+            group,
+        )
+
+    def test_anything_else_gets_a_group_of_its_own(self):
+        # `github.run_id` is unique per run, so this branch of the group can
+        # never match -- and so never cancel -- another run.
+        group = squash(concurrency_group(workflow_text()) or "")
+        self.assertRegex(group, r"\|\| format\('ai-review-unrequested-\{0\}', github\.run_id\)")
+
+    def test_the_request_branch_is_taken_first(self):
+        # `a && shared || unique`: the shared name must be the `&&` arm. The
+        # other order would give every request a unique group and every
+        # unrelated event the shared one -- the bug, inverted, and still live.
+        group = squash(concurrency_group(workflow_text()) or "")
+        shared = group.find("format('ai-review-{0}'")
+        unique = group.find("format('ai-review-unrequested-{0}'")
+        self.assertGreater(shared, -1)
+        self.assertGreater(unique, shared)
+        self.assertIn(") && format('ai-review-{0}'", group)
+
+
+class PredicateCopiesAgree(unittest.TestCase):
+    def test_the_group_uses_exactly_the_job_predicate(self):
+        self.assertTrue(
+            predicate_shared_with_group(workflow_text()),
+            "the concurrency group no longer contains the job's `if` predicate "
+            "verbatim; edit both copies together",
+        )
+
+    def test_negative_control_drift_in_the_if_is_detected(self):
+        # Change the label name only in the job `if` (the first occurrence)
+        # and confirm the comparison notices. Without this, a helper that
+        # always returned True would pass the test above.
+        text = workflow_text()
+        needle = "github.event.label.name == 'ai-review'"
+        self.assertEqual(text.count(needle), 2, "expected the predicate twice")
+        drifted = text.replace(needle, "github.event.label.name == 'ai-review-x'", 1)
+        self.assertFalse(predicate_shared_with_group(drifted))
+
+    def test_negative_control_drift_in_the_group_is_detected(self):
+        text = workflow_text()
+        needle = "startsWith(github.event.comment.body, '@claude review')"
+        self.assertEqual(text.count(needle), 2, "expected the predicate twice")
+        first = text.find(needle)
+        second = text.find(needle, first + 1)
+        drifted = (
+            text[:second]
+            + "startsWith(github.event.comment.body, '@claude please')"
+            + text[second + len(needle):]
+        )
+        self.assertFalse(predicate_shared_with_group(drifted))
+
+
+# The `allowed-tools` frontmatter of the code-review command the workflow runs
+# (plugins/code-review/commands/code-review.md in anthropics/claude-code, read
+# 2026-09-16). If the plugin adds a tool, add it here and to the workflow.
+CODE_REVIEW_COMMAND_TOOLS = (
+    "Bash(gh issue view:*)",
+    "Bash(gh search:*)",
+    "Bash(gh issue list:*)",
+    "Bash(gh pr comment:*)",
+    "Bash(gh pr diff:*)",
+    "Bash(gh pr view:*)",
+    "Bash(gh pr list:*)",
+    "mcp__github_inline_comment__create_inline_comment",
+)
+
+
+def allowed_tools(text):
+    match = re.search(r'--allowedTools "([^"]*)"', text)
+    if match is None:
+        return None
+    return {tool.strip() for tool in match.group(1).split(",") if tool.strip()}
+
+
+class TheReviewCanReadAndPost(unittest.TestCase):
+    def test_allow_list_covers_every_tool_the_command_declares(self):
+        tools = allowed_tools(workflow_text())
+        self.assertIsNotNone(tools, "--allowedTools not found in claude_args")
+        missing = [tool for tool in CODE_REVIEW_COMMAND_TOOLS if tool not in tools]
+        self.assertEqual(missing, [], "denied at run time, silently: %s" % missing)
+
+    def test_negative_control_the_original_allow_list_fails(self):
+        # The shape that shipped first and posted nothing on hub #56.
+        original = """claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'"""
+        tools = allowed_tools(original)
+        self.assertEqual(tools, {"mcp__github_inline_comment__create_inline_comment"})
+        self.assertTrue(any(tool not in tools for tool in CODE_REVIEW_COMMAND_TOOLS))
+
+    def test_the_workflow_token_can_write_to_pull_requests(self):
+        self.assertRegex(workflow_text(), r"(?m)^  pull-requests: write$")
+
+    def test_the_full_result_is_kept_even_when_the_review_fails(self):
+        text = workflow_text()
+        step = re.search(
+            r"(?ms)^      - name: Keep the run's full result\n(.*?)(?=^      - |\Z)", text
+        )
+        self.assertIsNotNone(step, "result upload step not found")
+        body = step.group(1)
+        self.assertIn("if: always()", body)
+        self.assertIn("uses: actions/upload-artifact@", body)
+        self.assertIn("path: ${{ runner.temp }}/claude-execution-output.json", body)
+
+    def test_the_review_step_times_out_before_the_job(self):
+        # ForgePact #105's review hit the job's limit, so the whole job was
+        # cancelled. A shorter limit on the review step leaves the job time to
+        # run the checks and the upload after it.
+        text = workflow_text()
+        job = re.search(r"(?m)^    timeout-minutes: (\d+)\s*$", text)
+        step = re.search(
+            r"(?m)^      - uses: anthropics/claude-code-action@v1\s*\n"
+            r"        timeout-minutes: (\d+)\s*$",
+            text,
+        )
+        self.assertIsNotNone(job, "job timeout not found")
+        self.assertIsNotNone(step, "review step timeout not found")
+        self.assertLessEqual(int(step.group(1)) + 5, int(job.group(1)))
+
+    def test_the_notes_say_how_to_post_without_a_file(self):
+        # Write and shell redirection are not on the allow-list; ForgePact
+        # #105's review spent four refused turns trying them before posting.
+        text = workflow_text()
+        self.assertIn("gh pr comment <number> --body", text)
+        self.assertNotIn("Write", allowed_tools(text) or set())
+
+    def test_the_notes_list_files_not_worth_reading(self):
+        text = workflow_text()
+        self.assertIn("git diff --numstat --no-renames", text)
+        self.assertIn("'*/licenses/*'", text)
+        self.assertIn('printf -- \'- %s\\n\' "${skip[@]}"', text)
+
+    def test_the_plugin_command_itself_is_allowed(self):
+        # The prompt is `/code-review:code-review`, which the model loads
+        # through the Skill tool; hub #59's run was denied that first call.
+        self.assertIn("Skill", allowed_tools(workflow_text()) or set())
+
+
+def step_body(text, name):
+    match = re.search(
+        rf"(?ms)^      - name: {re.escape(name)}\n(.*?)(?=^      - |\Z)", text
+    )
+    return None if match is None else match.group(1)
+
+
+def review_step(text):
+    match = re.search(
+        r"(?ms)^      - uses: anthropics/claude-code-action@[^\n]*\n(.*?)(?=^      - |\Z)",
+        text,
+    )
+    return None if match is None else match.group(1)
+
+
+def background_tasks_disabled(step):
+    return re.search(
+        r'(?m)^        env:\n(?:          .*\n)*?          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"$',
+        step or "",
+    ) is not None
+
+
+class TheReviewRunsToTheEnd(unittest.TestCase):
+    """hub #59: the job went green after 4 turns with nothing posted.
+
+    The code-review command does its work through subagents, which run in the
+    background by default. The model launched its eligibility check, ended its
+    turn to wait for the notification, and a headless run ends with the turn.
+    """
+
+    def test_agents_run_in_the_foreground(self):
+        self.assertTrue(
+            background_tasks_disabled(review_step(workflow_text())),
+            "the claude-code-action step must set CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
+        )
+
+    def test_negative_control_the_setting_on_another_step_is_not_enough(self):
+        text = workflow_text()
+        step = review_step(text)
+        self.assertIsNotNone(step)
+        stripped = step.replace('CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"', "OTHER: \"1\"")
+        self.assertFalse(background_tasks_disabled(stripped))
+
+    def test_a_run_that_posted_nothing_fails(self):
+        text = workflow_text()
+        body = step_body(text, "Fail if the review posted nothing")
+        self.assertIsNotNone(body, "outcome check step not found")
+        self.assertIn("issues/$PR/comments", body)
+        self.assertIn("pulls/$PR/comments", body)
+        self.assertIn("exit 1", body)
+        # Only comments made after the review started count, or the request
+        # comment itself would satisfy the check.
+        self.assertIn("SINCE: ${{ steps.started.outputs.at }}", body)
+        self.assertIsNotNone(step_body(text, "Note when the review started"))
+
+    def test_the_check_runs_after_the_review(self):
+        text = workflow_text()
+        started = text.find("- name: Note when the review started")
+        review = text.find("- uses: anthropics/claude-code-action@")
+        check = text.find("- name: Fail if the review posted nothing")
+        self.assertTrue(-1 < started < review < check, (started, review, check))
+
+
+# The last messages of the runs that skipped the review, as the
+# `claude-execution-output` artifacts recorded them (2026-10-02).
+SKIPPED_REVIEW_MESSAGES = {
+    "hub #365": "I did not run the full multi-agent review. I read the code diff for "
+    "`tools/live_checks.py` and `mining_reward_model.py` myself and found no bugs.",
+    "ForgePact #141": "I reviewed the diff myself in a single pass and did not launch the "
+    "parallel review and validation agents the workflow describes.",
+    "ForgePact #140": "I ran one bug pass and one CLAUDE.md pass, not the four the review "
+    "recipe describes.",
+}
+
+# What a review that followed the command might say, including what it did not
+# run that has nothing to do with its agents.
+REAL_REVIEW_MESSAGE = (
+    "No issues found. Checked for bugs and CLAUDE.md compliance. The four review "
+    "agents flagged two candidates and validation rejected both. I did not run the "
+    "test suite, and I did not build anything."
+)
+
+PROCESS_GATE = "Fail if the review skipped the command's agents"
+SUMMARY_STEP = "Summarize the review run"
+
+
+def step_env(body, key):
+    match = re.search(rf'(?m)^          {re.escape(key)}: "(.*)"$', body or "")
+    return None if match is None else match.group(1)
+
+
+def step_script(body):
+    _, _, script = (body or "").partition("        run: |\n")
+    return textwrap.dedent(script)
+
+
+def claude_args(text):
+    match = re.search(r"(?m)^          claude_args: '(.*)'$", text)
+    return None if match is None else match.group(1)
+
+
+class TheReviewFollowsTheCommand(unittest.TestCase):
+    """hub #365, ForgePact #141: a comment was posted, and no review was run."""
+
+    def test_the_model_that_follows_the_command_is_set_by_alias(self):
+        # A family alias, so each run gets the latest model in it; a dated
+        # version would need bumping by hand.
+        args = claude_args(workflow_text())
+        self.assertIsNotNone(args, "claude_args not found")
+        self.assertRegex(args, r"--model (opus|sonnet|haiku) ")
+        self.assertNotRegex(args, r"--model claude-")
+
+    def test_the_notes_say_the_agents_are_not_optional(self):
+        body = step_body(workflow_text(), "Read the request") or ""
+        self.assertIn("Run the review through the code-review command's agents", body)
+        self.assertIn("Do not replace them with a review of your own", body)
+
+    def test_the_read_only_text_tools_are_allowed(self):
+        tools = allowed_tools(workflow_text()) or set()
+        for tool in ("Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)", "Bash(sed -n:*)"):
+            self.assertIn(tool, tools)
+        # Plain `sed` would allow `sed -i`, an edit; only the printing form is wanted.
+        self.assertNotIn("Bash(sed:*)", tools)
+
+    def test_the_gate_counts_agents_against_steps_1_to_4(self):
+        body = step_body(workflow_text(), PROCESS_GATE)
+        self.assertIsNotNone(body, "process gate step not found")
+        self.assertIn('.name == "Agent" or .name == "Task"', body)
+        self.assertGreaterEqual(int(step_env(body, "MIN_AGENTS") or 0), 7)
+        self.assertGreaterEqual(int(step_env(body, "MIN_SECONDS") or 0), 30)
+        self.assertIn("exit 1", body)
+
+    def test_the_gate_runs_after_the_posted_nothing_check(self):
+        text = workflow_text()
+        posted = text.find("- name: Fail if the review posted nothing")
+        gate = text.find(f"- name: {PROCESS_GATE}")
+        self.assertTrue(-1 < posted < gate, (posted, gate))
+
+    def test_admitted_matches_every_recorded_skip(self):
+        pattern = re.compile(step_env(step_body(workflow_text(), PROCESS_GATE), "ADMITTED"), re.I)
+        for run, message in SKIPPED_REVIEW_MESSAGES.items():
+            self.assertRegex(message, pattern, run)
+
+    def test_negative_control_admitted_spares_a_real_review(self):
+        pattern = re.compile(step_env(step_body(workflow_text(), PROCESS_GATE), "ADMITTED"), re.I)
+        self.assertIsNone(pattern.search(REAL_REVIEW_MESSAGE))
+
+    def test_the_summary_points_at_the_artifact_whatever_happened(self):
+        text = workflow_text()
+        body = step_body(text, SUMMARY_STEP)
+        self.assertIsNotNone(body, "summary step not found")
+        self.assertIn("if: always()", body)
+        self.assertIn('>> "$GITHUB_STEP_SUMMARY"', body)
+        self.assertIn("claude-execution-output", body)
+        upload = text.find("- name: Keep the run's full result")
+        self.assertTrue(-1 < upload < text.find(f"- name: {SUMMARY_STEP}"))
+
+
+def transcript(agents, seconds, message):
+    """A minimal `claude-execution-output.json` in the shape the action writes."""
+    calls = [
+        {"type": "tool_use", "name": "Agent", "input": {"description": f"agent {i}"}}
+        for i in range(agents)
+    ]
+    return [
+        {"type": "system", "subtype": "init", "model": "claude-opus-5-5"},
+        {"type": "assistant", "message": {"content": calls + [{"type": "text", "text": "x"}]}},
+        {
+            "type": "result",
+            "subtype": "success",
+            "num_turns": 4,
+            "duration_ms": seconds * 1000,
+            "total_cost_usd": 0.2,
+            "permission_denials": [],
+            "result": message,
+        },
+    ]
+
+
+@unittest.skipUnless(shutil.which("bash") and shutil.which("jq"), "needs bash and jq")
+class TheGateScriptsRun(unittest.TestCase):
+    """The steps' own scripts, run against small transcripts."""
+
+    def run_step(self, name, data):
+        body = step_body(workflow_text(), name)
+        self.assertIsNotNone(body, name)
+        with tempfile.TemporaryDirectory() as tmp:
+            result = Path(tmp, "claude-execution-output.json")
+            result.write_text(json.dumps(data), encoding="utf-8")
+            summary = Path(tmp, "summary.md")
+            env = dict(os.environ, RESULT_FILE=str(result), GITHUB_STEP_SUMMARY=str(summary), PR="1")
+            for key in ("MIN_AGENTS", "MIN_SECONDS", "ADMITTED"):
+                value = step_env(body, key)
+                if value is not None:
+                    env[key] = value
+            proc = subprocess.run(
+                ["bash", "-e", "-c", step_script(body)],
+                env=env, capture_output=True, text=True, encoding="utf-8",
+            )
+            written = summary.read_text(encoding="utf-8") if summary.exists() else ""
+        return proc, written
+
+    def test_a_skipped_review_fails(self):
+        proc, _ = self.run_step(PROCESS_GATE, transcript(0, 10, SKIPPED_REVIEW_MESSAGES["hub #365"]))
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("launched no agent", proc.stdout)
+        self.assertIn("its last message says so", proc.stdout)
+
+    def test_an_eligibility_stop_is_named_as_one(self):
+        proc, _ = self.run_step(PROCESS_GATE, transcript(1, 25, "The pull request is a draft; stopping."))
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("launched 1 agent(s)", proc.stdout)
+        self.assertIn("- agent 0", proc.stdout)
+        self.assertIn("The pull request is a draft; stopping.", proc.stdout)
+
+    def test_negative_control_a_full_review_passes(self):
+        proc, _ = self.run_step(PROCESS_GATE, transcript(9, 150, REAL_REVIEW_MESSAGE))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_the_summary_names_the_numbers_and_the_artifact(self):
+        proc, written = self.run_step(SUMMARY_STEP, transcript(9, 150, REAL_REVIEW_MESSAGE))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("| Agents launched | 9 |", written)
+        self.assertIn("| Duration | 150 s |", written)
+        self.assertIn("claude-execution-output", written)
+        self.assertIn(REAL_REVIEW_MESSAGE, written)
+
+TRIGGER = "@claude review"
+
+
+def usable_bash():
+    """A bash that is not WSL's System32 launcher, or None."""
+    found = shutil.which("bash")
+    return found if found and "system32" not in found.lower() else None
+
+
+def run_request_step(comment):
+    """The "Read the request" script run with `gh` and `git` stubbed out (a
+    `main` base, no binaries); returns the `notes` output it wrote."""
+    body = step_body(workflow_text(), "Read the request")
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, out in (("gh", "main"), ("git", "")):
+            stub = Path(tmp, name)
+            stub.write_text(f"#!/bin/sh\necho '{out}'\n" if out else "#!/bin/sh\nexit 0\n", encoding="utf-8", newline="\n")
+            stub.chmod(0o755)
+        output = Path(tmp, "output")
+        env = dict(os.environ, GITHUB_OUTPUT=str(output), GH_TOKEN="x", PR="1", COMMENT_BODY=comment,
+                   GITHUB_REPOSITORY="o/r", PATH=tmp + os.pathsep + os.environ.get("PATH", ""))
+        proc = subprocess.run([usable_bash(), "-e", "-c", step_script(body)], env=env,
+                              capture_output=True, text=True, encoding="utf-8")
+        if proc.returncode != 0:
+            raise AssertionError(proc.stdout + proc.stderr)
+        return output.read_text(encoding="utf-8")
+
+
+class TheRequestCarriesItsInstructions(unittest.TestCase):
+    """Text after `@claude review` reaches the reviewer as scope instructions."""
+
+    def test_the_slice_skips_exactly_the_trigger_phrase(self):
+        body = step_body(workflow_text(), "Read the request")
+        self.assertIsNotNone(body, "request step not found")
+        self.assertIn('instructions="${COMMENT_BODY:%d}"' % len(TRIGGER), body)
+
+    def test_the_comment_reaches_the_shell_only_through_the_environment(self):
+        # `${{ github.event.comment.body }}` inside `run:` would be spliced
+        # into the script before bash parses it: a comment could run commands.
+        body = step_body(workflow_text(), "Read the request")
+        self.assertIsNotNone(body)
+        env, _, script = body.partition("        run: |\n")
+        self.assertIn("COMMENT_BODY: ${{ github.event.comment.body }}", env)
+        self.assertNotIn("${{", script)
+
+    def test_the_output_delimiter_cannot_be_guessed(self):
+        # A fixed heredoc delimiter lets a comment containing it end the
+        # output early and write further step outputs.
+        body = step_body(workflow_text(), "Read the request") or ""
+        self.assertIn('delim="EOF_$(openssl rand -hex 16)"', body)
+
+    @unittest.skipUnless(usable_bash() and shutil.which("openssl"), "needs bash and openssl")
+    def test_every_request_says_an_earlier_review_is_no_reason_to_stop(self):
+        # hub #382 (run 37051071633): a bare `@claude review` after fixes hit
+        # the command's "Claude has already commented" stop, posted nothing
+        # and failed the gate; the note only went to a request with
+        # instructions. A label run (empty body) gets it too: hub #350's
+        # reruns after an outage stopped the same way.
+        for comment in ("@claude review", "@claude review only tools/", ""):
+            with self.subTest(comment=comment):
+                notes = run_request_step(comment)
+                self.assertIn("an earlier review on this pull request is not a reason", notes)
+                self.assertIn("which commits are new since that review", notes)
+                self.assertEqual("<requester-instructions>" in notes, comment.startswith("@claude review "), notes)
+
+    def test_the_prompt_carries_the_notes(self):
+        step = review_step(workflow_text()) or ""
+        self.assertIn("${{ steps.request.outputs.notes }}", step)
+
+    def test_the_request_is_read_before_the_review(self):
+        text = workflow_text()
+        request = text.find("- name: Read the request")
+        review = text.find("- uses: anthropics/claude-code-action@")
+        self.assertTrue(-1 < request < review, (request, review))
+
+    def test_the_reviewer_can_read_a_subset_of_the_change(self):
+        tools = allowed_tools(workflow_text()) or set()
+        for tool in ("Read", "Grep", "Glob", "Bash(git diff:*)"):
+            self.assertIn(tool, tools)
+
+    def test_the_pull_request_head_is_checked_out(self):
+        self.assertIn(
+            "ref: refs/pull/${{ github.event.pull_request.number || github.event.issue.number }}/head",
+            workflow_text(),
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
