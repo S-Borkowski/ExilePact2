@@ -16,8 +16,12 @@
 //!   has seen and whose going it has not reported is marked: its next going
 //!   is not counted, so a bar that stays up through the death screen and
 //!   goes on the walk back ticks nothing. The bar must show again before a
-//!   going counts. The worker still drops a going last seen before the
-//!   death, for one already queued when the line came.
+//!   going counts: a mark ends with the going it was for, or, when the
+//!   band was out of sight and the tracker could not report that going,
+//!   once the bar has been absent for a going's run and then present for
+//!   the tracker's minimum ([`DeathMarks`]). A lost or refused window
+//!   forgets the marks with the trackers. The worker still drops a going
+//!   last seen before the death, for one already queued when the line came.
 //! - **Locks.** The reader takes no `App` state lock and never calls the
 //!   shell's `Window`: everything it needs of the system goes through the
 //!   backend, and everything the view needs goes to the worker as a
@@ -53,6 +57,7 @@ use qt_screen::{
     BarClass, Demand, DialogueGate, DialogueRead, GateCounts, Hidden, Millis, Observation,
     OcrReadiness, PixelRect, Region, RemarkDemand, ScreenBackend, ScreenEvent, Trackers,
     BANNER_AREA, BANNER_TEXT, GONE_RUN, HEADING_STRIP, HEADING_WINDOW_MS, MATCH_THRESHOLD,
+    MIN_PRESENT,
 };
 use qt_viewmodel::StatusLine;
 
@@ -443,6 +448,79 @@ impl BarWatch {
     }
 }
 
+/// One boss marked at a death, its bar up then.
+#[derive(Clone, Copy, Debug, Default)]
+struct DeathMark {
+    /// Absent reads since the bar's last present read. A covered read
+    /// neither counts nor breaks the run: the band out of sight on the death
+    /// screen or behind another window says nothing about the bar.
+    absent: u32,
+    /// The bar went after the death: [`GONE_RUN`] absent reads with no
+    /// present one between, whether or not its tracker reported the going (a
+    /// covered read spoils the tracker, which then reports nothing).
+    gone: bool,
+    /// Present reads since it went.
+    shown: u32,
+}
+
+/// The bosses whose next going is not counted because their bar was up when
+/// a death came. A mark ends when that going is reported (not counted), or,
+/// when the tracker could not report it, once the bar has gone and then
+/// shown again [`MIN_PRESENT`] times: the going after that is the fight's
+/// own and counts. Each read is classed with the trackers' own
+/// [`classify_bar`]; only counts are kept, never text.
+#[derive(Clone, Debug, Default)]
+struct DeathMarks {
+    marks: BTreeMap<String, DeathMark>,
+}
+
+impl DeathMarks {
+    /// A death: each boss in `up` has its next going not counted, a mark it
+    /// already had starting over.
+    fn mark<'a>(&mut self, up: impl Iterator<Item = &'a String>) {
+        for boss in up {
+            self.marks.insert(boss.clone(), DeathMark::default());
+        }
+    }
+
+    /// Forget the bosses no longer demanded, as the trackers do.
+    fn follow(&mut self, bosses: &[String]) {
+        self.marks.retain(|boss, _| bosses.contains(boss));
+    }
+
+    /// Forget every mark, as fresh trackers forget the bars they saw.
+    fn clear(&mut self) {
+        self.marks.clear();
+    }
+
+    /// Whether `boss`'s reported going is not counted; its mark ends.
+    fn take(&mut self, boss: &str) -> bool {
+        self.marks.remove(boss).is_some()
+    }
+
+    /// One read, after its events were taken.
+    fn observe(&mut self, obs: &Observation) {
+        if obs.region != Region::BossBar {
+            return;
+        }
+        self.marks.retain(|boss, m| {
+            match classify_bar(boss, obs) {
+                BarClass::Present if m.gone => {
+                    m.shown += 1;
+                    return m.shown < MIN_PRESENT;
+                }
+                BarClass::Present => m.absent = 0,
+                BarClass::Absent if !m.gone => {
+                    m.absent += 1;
+                    m.gone = m.absent >= GONE_RUN;
+                }
+                BarClass::Absent | BarClass::Covered => {}
+            }
+            true
+        });
+    }
+}
+
 /// One NPC's dialogue window over a minute, for its `minute: dialogue
 /// window, ...` line. Each count is of visible reads; a hidden read is a
 /// frame of the per-minute line and nothing here.
@@ -619,7 +697,7 @@ struct Reader {
     deaths: u64,
     /// The bosses whose next going is not counted: their bar was up when a
     /// death came.
-    death_marked: BTreeSet<String>,
+    death_marked: DeathMarks,
     last_read: BTreeMap<Region, Millis>,
     minute: Minute,
     minute_start: u64,
@@ -662,7 +740,7 @@ pub(crate) fn run_reader(
         capture_failures: 0,
         black_copies: 0,
         deaths: 0,
-        death_marked: BTreeSet::new(),
+        death_marked: DeathMarks::default(),
         last_read: BTreeMap::new(),
         minute: Minute::default(),
         minute_start: now,
@@ -757,14 +835,12 @@ impl Reader {
             // walk back. A bar not up is not marked.
             if newest.deaths != self.deaths {
                 self.deaths = newest.deaths;
-                let up: Vec<String> = self.bar_watch.up().cloned().collect();
-                self.death_marked.extend(up);
+                self.death_marked.mark(self.bar_watch.up());
             }
             self.trackers.set_demand(&newest.demand);
             self.bar_watch.follow(&newest.demand.bars);
             self.routes.follow(&newest.demand.dialogues);
-            self.death_marked
-                .retain(|boss| newest.demand.bars.contains(boss));
+            self.death_marked.follow(&newest.demand.bars);
             self.snapshot = newest;
         }
     }
@@ -790,6 +866,7 @@ impl Reader {
     fn reset_trackers(&mut self) {
         self.trackers = Trackers::for_demand(&self.snapshot.demand);
         self.bar_watch = BarWatch::default();
+        self.death_marked.clear();
         self.routes.reset();
         self.gate.reset();
         self.last_read.clear();
@@ -839,7 +916,7 @@ impl Reader {
             let (wall_ms, after_death) = match &event {
                 ScreenEvent::BarGone {
                     boss, last_present, ..
-                } => (self.wall(*last_present), self.death_marked.remove(boss)),
+                } => (self.wall(*last_present), self.death_marked.take(boss)),
                 other => (self.wall(other.at()), false),
             };
             self.send(ScreenMsg::Seen {
@@ -848,6 +925,7 @@ impl Reader {
                 after_death,
             });
         }
+        self.death_marked.observe(&obs);
     }
 
     /// A covered frame for each due region: the game is not in front, or is
@@ -1402,6 +1480,154 @@ mod tests {
         assert_eq!(w.hides(), Some(BarHidden::Panel));
         w.follow(&[]);
         assert_eq!(w.hides(), None);
+    }
+
+    /// Feeds `before` to Beira's tracker and watch, comes to a death as the
+    /// reader does when the demand's deaths change, then feeds `after`.
+    /// Returns, for each `bar_gone` after the death, whether it counted.
+    fn through_a_death(before: &[Observation], after: &[Observation]) -> Vec<bool> {
+        let bosses = vec![BEIRA.to_string()];
+        let mut tracker = qt_screen::BarTracker::new(BEIRA);
+        let mut w = BarWatch::default();
+        let mut marks = DeathMarks::default();
+        let mut counted = Vec::new();
+        let mut feed = |obs: &Observation, w: &mut BarWatch, marks: &mut DeathMarks| {
+            let events: Vec<ScreenEvent> = tracker.observe(obs).1.into_iter().collect();
+            w.observe(&bosses, obs, &events);
+            let gone: Vec<bool> = events
+                .iter()
+                .filter_map(|e| match e {
+                    ScreenEvent::BarGone { boss, .. } => Some(!marks.take(boss)),
+                    _ => None,
+                })
+                .collect();
+            marks.observe(obs);
+            gone
+        };
+        for obs in before {
+            assert!(
+                feed(obs, &mut w, &mut marks).is_empty(),
+                "no going before the death"
+            );
+        }
+        marks.mark(w.up());
+        for obs in after {
+            counted.extend(feed(obs, &mut w, &mut marks));
+        }
+        counted
+    }
+
+    /// Reads from `at`, 500 ms apart: `n` of Beira's bar present, or absent.
+    fn bar_run(at: &mut Millis, n: u32, present: bool) -> Vec<Observation> {
+        (0..n)
+            .map(|_| {
+                *at += 500;
+                let lines = if present {
+                    vec![beira_name()]
+                } else {
+                    Vec::new()
+                };
+                bar_read(*at, lines)
+            })
+            .collect()
+    }
+
+    fn hidden_run(at: &mut Millis, n: u32, why: Hidden) -> Vec<Observation> {
+        (0..n)
+            .map(|_| {
+                *at += 500;
+                Observation::hidden(Region::BossBar, *at, why)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_death_mark_ends_when_the_bar_shows_again_after_a_going_its_tracker_could_not_report() {
+        let mut at = 0;
+        let up = bar_run(&mut at, 2, true);
+        // Death with her bar up; the person alt-tabs on the death screen,
+        // respawns and walks back, her bar out of sight all the while. The
+        // covered reads spoil the tracker, so that going reports nothing.
+        let mut after = hidden_run(&mut at, 3, Hidden::NotForeground);
+        after.extend(hidden_run(&mut at, 2, Hidden::Black));
+        after.extend(bar_run(&mut at, GONE_RUN, false));
+        // Back at the fight: her bar shows again, and she dies.
+        after.extend(bar_run(&mut at, MIN_PRESENT, true));
+        after.extend(bar_run(&mut at, GONE_RUN, false));
+        assert_eq!(through_a_death(&up, &after), vec![true], "the kill counts");
+
+        // A bar that flickered once before the death: the same.
+        let mut at = 0;
+        let flicker = bar_run(&mut at, 1, true);
+        let mut after = bar_run(&mut at, GONE_RUN, false);
+        after.extend(bar_run(&mut at, MIN_PRESENT, true));
+        after.extend(bar_run(&mut at, GONE_RUN, false));
+        assert_eq!(through_a_death(&flicker, &after), vec![true]);
+    }
+
+    #[test]
+    fn a_death_mark_outlives_cover_a_flicker_and_a_single_showing() {
+        // The negative controls: a going after each of these is the one the
+        // death was for, and does not count.
+        let mut at = 0;
+        let up = bar_run(&mut at, 2, true);
+
+        // Her bar stays up through the death screen and goes on the walk.
+        let mut a = at;
+        let mut after = bar_run(&mut a, 2, true);
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        // Then she is fought again: that going counts.
+        after.extend(bar_run(&mut a, MIN_PRESENT, true));
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        assert_eq!(through_a_death(&up, &after), vec![false, true]);
+
+        // The death screen covers the band, her bar shows again on it, and
+        // goes on the walk: cover alone is no going.
+        let mut a = at;
+        let mut after = hidden_run(&mut a, 4, Hidden::Black);
+        after.extend(bar_run(&mut a, MIN_PRESENT, true));
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        assert_eq!(through_a_death(&up, &after), vec![false]);
+
+        // One read missing her bar is no going either.
+        let mut a = at;
+        let mut after = bar_run(&mut a, 1, false);
+        after.extend(bar_run(&mut a, MIN_PRESENT, true));
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        assert_eq!(through_a_death(&up, &after), vec![false]);
+
+        // Out of sight, gone, then one present read: the tracker's present
+        // count carries over and reports the next going, which does not
+        // count until the bar has shown again the tracker's minimum.
+        let mut a = at;
+        let mut after = hidden_run(&mut a, 1, Hidden::NotForeground);
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        after.extend(bar_run(&mut a, MIN_PRESENT - 1, true));
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        after.extend(bar_run(&mut a, MIN_PRESENT, true));
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        assert_eq!(through_a_death(&up, &after), vec![false, true]);
+
+        // A bar not up at the death is not marked.
+        let mut a = 0;
+        let mut after = bar_run(&mut a, MIN_PRESENT, true);
+        after.extend(bar_run(&mut a, GONE_RUN, false));
+        assert_eq!(through_a_death(&[], &after), vec![true]);
+    }
+
+    #[test]
+    fn death_marks_follow_the_demand_and_clear_with_the_trackers() {
+        let beira = vec![BEIRA.to_string()];
+        let mut marks = DeathMarks::default();
+        marks.mark(beira.iter());
+        marks.follow(&beira);
+        assert!(marks.take(BEIRA), "still demanded");
+        marks.mark(beira.iter());
+        marks.follow(&[]);
+        assert!(!marks.take(BEIRA), "no longer demanded");
+        marks.mark(beira.iter());
+        marks.clear();
+        assert!(!marks.take(BEIRA), "the trackers were reset");
     }
 
     const RENLY: &str = "Renly";
