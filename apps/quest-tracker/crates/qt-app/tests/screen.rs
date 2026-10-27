@@ -10,6 +10,11 @@
 //! Baseline: with `screen_reading` off no reader starts and the backend is
 //! never called. Target: with it on, in `G1_2` with the first step reached,
 //! the bar's going ticks the fight step, with its row change and line.
+//!
+//! The dialogue window's tests run over the shipped data instead, in
+//! Clearfell Encampment, where Renly's QUEST COMPLETE banner ticks "Take
+//! Renly's reward"; the fake tells a copy of the window's heading strip from
+//! a copy of the whole window by its area.
 
 use std::collections::{BTreeMap, VecDeque};
 use std::fs;
@@ -26,7 +31,7 @@ use qt_app::{
 use qt_engine::QuestData;
 use qt_screen::{
     BackendError, Image, OcrReadiness, OverlayState, PixelLine, PixelRect, Rect, Region,
-    WindowHandle, GONE_RUN, MIN_PRESENT,
+    WindowHandle, BANNER_AREA, GONE_RUN, HEADING_STRIP, MIN_PRESENT,
 };
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
@@ -118,6 +123,47 @@ impl Clock for FakeClock {
     }
 }
 
+/// What a copy was of: one of the regions, or the dialogue window's heading
+/// strip ([`HEADING_STRIP`]), which the reader copies alone while the window's
+/// gate is shut. Each has a script of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Area {
+    Region(Region),
+    Strip,
+}
+
+impl From<Region> for Area {
+    fn from(region: Region) -> Area {
+        Area::Region(region)
+    }
+}
+
+impl Area {
+    /// The name its calls are recorded under.
+    fn name(self) -> &'static str {
+        match self {
+            Area::Region(r) => r.name(),
+            Area::Strip => "heading strip",
+        }
+    }
+
+    /// Where it sits in the client rect's pixels.
+    fn pixels(self) -> PixelRect {
+        match self {
+            Area::Region(r) => r.pixels(CLIENT),
+            Area::Strip => HEADING_STRIP.to_pixels(CLIENT),
+        }
+    }
+
+    /// How far a copy of it moves the shell's clock: its region's period.
+    fn period_ms(self) -> u64 {
+        match self {
+            Area::Region(r) => r.period_ms() as u64,
+            Area::Strip => Region::DialogueWindow.period_ms() as u64,
+        }
+    }
+}
+
 /// One scripted read of a region.
 enum Frame {
     /// What the OCR reads: each line's text and its box as fractions of the
@@ -130,11 +176,11 @@ enum Frame {
 /// What the fake backend does and what it was asked, shared with the test.
 struct ScreenLog {
     calls: Mutex<Vec<String>>,
-    scripts: Mutex<BTreeMap<Region, VecDeque<Frame>>>,
+    scripts: Mutex<BTreeMap<Area, VecDeque<Frame>>>,
     no_english: AtomicBool,
     overlay: Mutex<Option<OverlayState>>,
-    /// The region of the last copy, which the next OCR call reads.
-    pending: Mutex<Option<Region>>,
+    /// The area of the last copy, which the next OCR call reads.
+    pending: Mutex<Option<Area>>,
     /// A [`Frame::Gate`] holds the copy while this is closed.
     gate_open: Mutex<bool>,
     gate_moved: Condvar,
@@ -143,8 +189,8 @@ struct ScreenLog {
     ocr_hold: Mutex<Option<Duration>>,
     in_ocr: AtomicBool,
     release: AtomicBool,
-    /// OCR lines handed out that carried the sentinel, per region.
-    sentinel_served: Mutex<BTreeMap<Region, u64>>,
+    /// OCR lines handed out that carried the sentinel, per area.
+    sentinel_served: Mutex<BTreeMap<Area, u64>>,
     clock: Arc<AtomicU64>,
 }
 
@@ -186,11 +232,11 @@ impl ScreenLog {
             .collect()
     }
 
-    fn script(&self, region: Region, frames: Vec<Frame>) {
+    fn script(&self, area: impl Into<Area>, frames: Vec<Frame>) {
         self.scripts
             .lock()
             .unwrap()
-            .entry(region)
+            .entry(area.into())
             .or_default()
             .extend(frames);
     }
@@ -224,11 +270,13 @@ impl ScreenLog {
 
 struct FakeBackend(Arc<ScreenLog>);
 
-fn region_of(area: PixelRect) -> Region {
+fn area_of(area: PixelRect) -> Area {
     Region::ALL
         .into_iter()
-        .find(|r| r.pixels(CLIENT) == area)
-        .expect("a copy of one of the regions")
+        .map(Area::Region)
+        .chain([Area::Strip])
+        .find(|a| a.pixels() == area)
+        .expect("a copy of one of the regions or of the heading strip")
 }
 
 impl ScreenBackend for FakeBackend {
@@ -253,7 +301,7 @@ impl ScreenBackend for FakeBackend {
     }
 
     fn capture(&mut self, _: WindowHandle, area: PixelRect) -> Result<Image, BackendError> {
-        let region = region_of(area);
+        let region = area_of(area);
         self.0.record(format!("capture {}", region.name()));
         loop {
             let gate = {
@@ -275,7 +323,7 @@ impl ScreenBackend for FakeBackend {
         *self.0.pending.lock().unwrap() = Some(region);
         self.0
             .clock
-            .fetch_add(region.period_ms() as u64, Ordering::SeqCst);
+            .fetch_add(region.period_ms(), Ordering::SeqCst);
         Ok(Image {
             width: 8,
             height: 8,
@@ -317,7 +365,7 @@ impl ScreenBackend for FakeBackend {
             Some(Frame::Lines(lines)) => lines,
             _ => Vec::new(),
         };
-        let area = region.pixels(CLIENT);
+        let area = region.pixels();
         let served = lines.iter().filter(|(t, _)| t.contains(SENTINEL)).count() as u64;
         *self
             .0
@@ -394,6 +442,13 @@ fn screen_data(remark: bool) -> Arc<QuestData> {
     Arc::new(QuestData::from_value(&v).unwrap_or_else(|e| panic!("{e}")))
 }
 
+/// The shipped data, as the app builds it in: Reaching Clearfell's "Take
+/// Renly's reward" is ended by the QUEST COMPLETE banner in his window in
+/// `G1_town`.
+fn shipped_data() -> Arc<QuestData> {
+    Arc::new(QuestData::parse(qt_app::EMBEDDED_DATA).unwrap_or_else(|e| panic!("{e}")))
+}
+
 fn line(time: &str, message: &str) -> String {
     format!("2026/03/10 {time} 4000000 7e2c0001 [INFO Client {GAME}] {message}")
 }
@@ -423,6 +478,15 @@ fn at_the_fight() -> Vec<String> {
         "19:05:30",
         "Beira of the Rotten Pack: Fixture line: the pack gathers.",
     ));
+    lines
+}
+
+/// The character in Clearfell Encampment after The Riverbank, over the
+/// shipped data: Reaching Clearfell is in progress, and its "Take Renly's
+/// reward" is open there.
+fn in_the_encampment() -> Vec<String> {
+    let mut lines = in_the_riverbank();
+    lines.push(area("19:03:00", "G1_town"));
     lines
 }
 
@@ -462,6 +526,8 @@ struct Setup {
     /// Whether the config carries the fake backend.
     backend: bool,
     remark: bool,
+    /// The shipped quest data instead of the fixture.
+    shipped: bool,
 }
 
 impl Default for Setup {
@@ -470,6 +536,7 @@ impl Default for Setup {
             on: true,
             backend: true,
             remark: false,
+            shipped: false,
         }
     }
 }
@@ -494,7 +561,11 @@ fn harness(setup: Setup, prepare: impl FnOnce(&ScreenLog)) -> Harness {
         options: Default::default(),
         options_error: None,
         store: Store::open(root.join("store")).map_err(|e| e.to_string()),
-        data: Some(screen_data(setup.remark)),
+        data: Some(if setup.shipped {
+            shipped_data()
+        } else {
+            screen_data(setup.remark)
+        }),
         candidates: Vec::new(),
         poll_interval: Duration::from_millis(20),
         emitter: Box::new(FakeEmitter(Arc::clone(&views))),
@@ -815,8 +886,10 @@ fn screen_text_never_reaches_disk_view_or_log() {
     // Positive control: the OCR did hand the sentinel to the reader, from
     // both regions.
     let served = h.screen.sentinel_served.lock().unwrap().clone();
-    assert!(served.get(&Region::BossBar).copied().unwrap_or(0) > 0, "{served:?}");
-    assert!(served.get(&Region::VoicedLines).copied().unwrap_or(0) > 0, "{served:?}");
+    for region in [Region::BossBar, Region::VoicedLines] {
+        let n = served.get(&Area::Region(region)).copied().unwrap_or(0);
+        assert!(n > 0, "{served:?}");
+    }
     assert!(h
         .screen_lines()
         .iter()
@@ -955,5 +1028,137 @@ fn screen_empty_demand_captures_nothing() {
     std::thread::sleep(Duration::from_millis(400));
     assert!(h.screen.reads().is_empty(), "{:?}", h.screen.reads());
     assert!(!h.diag_text().contains("screen: reading"));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+// ---------------------------------------------------------------------------
+// The dialogue window's heading gate.
+
+const RENLY: &str = "Renly";
+const RENLY_STEP: &str = "reaching-clearfell/step-6";
+
+/// Renly's heading where the kept captures read it, inside the strip.
+fn renly_heading() -> (String, Rect) {
+    (RENLY.to_string(), Rect::new(0.536, 0.265, 0.561, 0.277))
+}
+
+/// The banner in its place.
+fn quest_complete() -> (String, Rect) {
+    let banner = ("QUEST COMPLETE".to_string(), Rect::new(0.447, 0.776, 0.553, 0.800));
+    assert!(BANNER_AREA.contains(&banner.1));
+    banner
+}
+
+/// A body line of the window, below the strip.
+fn window_text() -> (String, Rect) {
+    ("Some words of thanks.".to_string(), Rect::new(0.42, 0.51, 0.66, 0.53))
+}
+
+#[test]
+fn screen_dialogue_without_a_heading_reads_only_the_strip_baseline() {
+    let h = harness(
+        Setup {
+            shipped: true,
+            ..Setup::default()
+        },
+        |s| {
+            // The strip shows the town's own text, never Renly's heading; the
+            // whole window would show a body line and a banner, no heading.
+            let strip = (0..90)
+                .map(|_| {
+                    Frame::Lines(vec![(
+                        "Clearfell Encampment".to_string(),
+                        Rect::new(0.40, 0.25, 0.60, 0.28),
+                    )])
+                })
+                .collect();
+            s.script(Area::Strip, strip);
+            let window = (0..90)
+                .map(|_| Frame::Lines(vec![window_text(), quest_complete()]))
+                .collect();
+            s.script(Region::DialogueWindow, window);
+        },
+    );
+    h.app.start();
+    h.feed(&in_the_encampment());
+    h.wait_diag(&[&format!("screen: reading dialogue window for {RENLY_STEP}")]);
+
+    // A minute of reads: every one of them the strip alone.
+    let gate = h.wait_diag(&["screen: minute: dialogue window gate, "]);
+    let skipped = h.screen.reads().iter().filter(|c| *c == "capture heading strip").count();
+    assert!(skipped > 0);
+    assert!(gate.ends_with("screen: minute: dialogue window gate, 0 full reads, 60 skipped"), "{gate}");
+    // A strip read counts as a read of the window.
+    h.wait_diag(&["screen: minute: dialogue window, Renly's heading in 0 of 60 reads, 0 banners in place"]);
+    let reads = h.screen.reads();
+    assert!(reads.contains(&"ocr heading strip".to_string()), "{reads:?}");
+    assert!(!reads.iter().any(|c| c.ends_with(" dialogue window")), "{reads:?}");
+
+    assert!(!h.diag_text().contains("screen: quest complete in"));
+    assert!(h
+        .row_changes()
+        .iter()
+        .all(|c| c.step_done.as_deref() != Some("Take Renly's reward")));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
+fn screen_dialogue_heading_in_the_strip_opens_the_full_read_and_ticks_target() {
+    let h = harness(
+        Setup {
+            shipped: true,
+            ..Setup::default()
+        },
+        |s| {
+            s.script(
+                Area::Strip,
+                vec![
+                    Frame::Lines(vec![]),
+                    Frame::Lines(vec![]),
+                    Frame::Lines(vec![renly_heading()]),
+                ],
+            );
+            s.script(
+                Region::DialogueWindow,
+                vec![
+                    Frame::Lines(vec![renly_heading(), window_text()]),
+                    Frame::Lines(vec![renly_heading(), quest_complete()]),
+                ],
+            );
+        },
+    );
+    h.app.start();
+    h.feed(&in_the_encampment());
+
+    let line = h.wait_diag(&["screen: quest complete in Renly's window ("]);
+    assert!(line.ends_with(&format!("): ticked {RENLY_STEP}")), "{line}");
+    wait_until("the row change", || {
+        h.row_changes()
+            .iter()
+            .any(|c| c.step_done.as_deref() == Some("Take Renly's reward"))
+    });
+
+    // Three strip reads, the third with the heading; the whole window is
+    // copied right after it, in the same tick (no new look for the window).
+    let calls = h.screen.calls();
+    let first_full = calls
+        .iter()
+        .position(|c| c == "capture dialogue window")
+        .unwrap_or_else(|| panic!("no copy of the whole window: {calls:?}"));
+    let before = &calls[..first_full];
+    assert_eq!(
+        before.iter().filter(|c| *c == "ocr heading strip").count(),
+        3,
+        "{calls:?}"
+    );
+    let last_strip = before.iter().rposition(|c| c == "ocr heading strip").unwrap();
+    assert_eq!(last_strip + 1, first_full, "{calls:?}");
+    // At least two whole-window reads: the one the heading opened, then the
+    // banner's (the gate stays open until the tick empties the demand).
+    let reads = h.screen.reads();
+    assert!(
+        reads.iter().filter(|c| *c == "ocr dialogue window").count() >= 2,
+        "{reads:?}"
+    );
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }

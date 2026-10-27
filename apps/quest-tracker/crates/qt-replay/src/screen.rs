@@ -17,6 +17,13 @@
 //!   box centre lies in the region (the reader copies only the region);
 //! - any other frame with no cached OCR is skipped, never counted absent.
 //!
+//! The dialogue window's reads go through the reader's [`DialogueGate`]
+//! first. While it is shut, a read is the heading strip alone: the replay has
+//! only whole-region OCR, so it keeps the cached lines whose box centre lies
+//! in the strip ([`strip_of`]). A strip read that opens the gate is followed
+//! by the whole read of the same frame, as the reader reads the whole region
+//! in the same tick.
+//!
 //! The reads go through [`Trackers`] in time order, on UTC milliseconds from
 //! the index. One JSON object per event goes to the output, then a summary
 //! line of counts. OCR text is never printed, and nothing is written.
@@ -28,8 +35,8 @@ use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
 
 use qt_screen::{
-    Demand, Hidden, Millis, Observation, PixelLine, PixelRect, Region, RemarkDemand, ScreenEvent,
-    Trackers, BLACK_LUMA_MEAN, BLACK_LUMA_STD,
+    strip_of, Demand, DialogueGate, DialogueRead, Hidden, Millis, Observation, PixelLine,
+    PixelRect, Region, RemarkDemand, ScreenEvent, Trackers, BLACK_LUMA_MEAN, BLACK_LUMA_STD,
 };
 use serde_json::{json, Value};
 
@@ -378,6 +385,28 @@ fn observe(
     Some(obs)
 }
 
+/// The reads the reader would make of the dialogue window from one frame's
+/// whole read `obs`, through `gate`: the strip alone while it is shut, then
+/// the whole read too when that strip read opens it; the whole read while
+/// it is open. A hidden read is the frame's only read.
+fn gated(gate: &mut DialogueGate, npcs: &[String], obs: Observation) -> Vec<Observation> {
+    if !obs.is_visible() {
+        return vec![obs];
+    }
+    let mut reads = Vec::new();
+    if !gate.is_open(obs.at) {
+        let strip = strip_of(&obs);
+        let open = gate.observe(npcs, &strip, DialogueRead::Strip);
+        reads.push(strip);
+        if !open {
+            return reads;
+        }
+    }
+    gate.observe(npcs, &obs, DialogueRead::Full);
+    reads.push(obs);
+    reads
+}
+
 fn demand(args: &ScreenArgs) -> Result<Demand, Failure> {
     let mut demand = Demand {
         bars: args.bars.clone(),
@@ -440,6 +469,7 @@ pub fn run(args: &ScreenArgs, out: &mut impl Write) -> Result<(), Failure> {
         })
         .collect();
     let mut trackers = Trackers::for_demand(&demand);
+    let mut gate = DialogueGate::new();
     let mut events = 0u64;
     for frame in &frames {
         for &region in &regions {
@@ -450,13 +480,21 @@ pub fn run(args: &ScreenArgs, out: &mut impl Write) -> Result<(), Failure> {
             let Some(obs) = observe(region, frame, &ocr, c) else {
                 continue;
             };
-            for event in trackers.observe(&obs) {
-                events += 1;
-                writeln!(out, "{}", event_json(&event))?;
+            let reads = if region == Region::DialogueWindow {
+                gated(&mut gate, &demand.dialogues, obs)
+            } else {
+                vec![obs]
+            };
+            for obs in &reads {
+                for event in trackers.observe(obs) {
+                    events += 1;
+                    writeln!(out, "{}", event_json(&event))?;
+                }
             }
         }
     }
     let bar = trackers.take_counts();
+    let gate = gate.take_counts();
     let regions_json: serde_json::Map<String, Value> = counts
         .iter()
         .map(|(r, c)| {
@@ -477,6 +515,7 @@ pub fn run(args: &ScreenArgs, out: &mut impl Write) -> Result<(), Failure> {
             "ocr_cached": ocr.len(),
             "regions": regions_json,
             "bar": {"present": bar.present, "absent": bar.absent, "covered": bar.covered},
+            "dialogue_gate": {"full": gate.full, "skipped": gate.skipped},
             "events": events,
         }
     });

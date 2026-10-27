@@ -17,6 +17,9 @@
 //!   [`BarTracker`] (`bar_gone`), [`DialogueTracker`] (`quest_complete`) and
 //!   [`RemarkTracker`] (`kill_remark`), gathered for one [`Demand`] by
 //!   [`Trackers`]. They report [`ScreenEvent`]s.
+//! - [`DialogueGate`]: the dialogue window's heading gate. While no demanded
+//!   NPC's heading has read lately, only the window's [`HEADING_STRIP`] is
+//!   read; the whole region once the heading shows there.
 //!
 //! Times are [`Millis`] on one clock the caller supplies: the reader passes a
 //! monotonic clock, the replay UTC from the capture's index.
@@ -32,6 +35,7 @@ mod bar;
 mod dialogue;
 mod event;
 mod fuzzy;
+mod gate;
 mod geometry;
 mod observation;
 mod region;
@@ -52,6 +56,7 @@ pub use dialogue::{
 };
 pub use event::ScreenEvent;
 pub use fuzzy::{fuzzy_score, matches, normalize, normalized_len, MATCH_THRESHOLD, WINDOW_SLACK};
+pub use gate::{strip_of, DialogueGate, DialogueRead, GateCounts, HEADING_STRIP};
 pub use geometry::{aspect_is_16_9, PixelRect, Rect, ASPECT_TOLERANCE};
 pub use observation::{
     Hidden, Image, Line, Observation, PixelLine, Visibility, BLACK_LUMA_MEAN, BLACK_LUMA_STD,

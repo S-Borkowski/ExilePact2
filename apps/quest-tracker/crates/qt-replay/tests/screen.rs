@@ -320,3 +320,51 @@ fn screen_replay_refuses_a_folder_without_its_index() {
     let o = run(&["screen", "--live", dir.path().to_str().unwrap()]);
     assert_eq!(o.status.code(), Some(64));
 }
+
+#[test]
+fn screen_replay_gates_the_dialogue_window_on_its_heading_strip() {
+    // Boxes in the client's pixels (2560x1440; this band is the whole
+    // client). Renly's heading where the kept captures read it, inside the
+    // strip (y 0.265 to 0.277); his name over him in the world (y 0.461 to
+    // 0.484), which is a heading by the tracker's rule but outside the strip.
+    let heading = ("Renly".to_string(), [1372, 382, 1436, 399]);
+    let label = ("Renly".to_string(), [1229, 664, 1331, 697]);
+    let body = (
+        format!("Words of thanks {SENTINEL}"),
+        [1075, 734, 1690, 763],
+    );
+    let banner = ("QUEST COMPLETE".to_string(), [1144, 1117, 1416, 1152]);
+    let mut live = Live::new();
+    // Shut: the strip holds nothing. Ungated, the label and the banner at
+    // 1 s would fire; through the gate the banner is not seen.
+    live.frame("bottom", 0, Some(vec![label.clone(), body.clone()]));
+    live.frame("bottom", 1_000, Some(vec![label.clone(), banner.clone()]));
+    // The heading in the strip opens the gate, and the same frame is read
+    // whole; the banner's frame then fires once.
+    live.frame("bottom", 20_000, Some(vec![heading.clone(), body.clone()]));
+    live.frame("bottom", 21_000, Some(vec![heading.clone(), banner.clone()]));
+    live.frame("bottom", 22_000, Some(vec![banner.clone()]));
+    // Past the heading window: shut again.
+    live.frame("bottom", 40_000, Some(vec![body.clone(), banner]));
+    let dir = tempfile::tempdir().unwrap();
+    live.write(dir.path(), true, true);
+    let o = run(&[
+        "screen",
+        "--live",
+        dir.path().to_str().unwrap(),
+        "--dialogue",
+        RENLY,
+    ]);
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+    assert!(!String::from_utf8_lossy(&o.stdout).contains(SENTINEL));
+    let objs = objects(&o);
+    let (summary, events) = objs.split_last().expect("a summary line");
+    assert_eq!(
+        events.to_vec(),
+        vec![json!({"event": "quest_complete", "target": RENLY, "at": utc(21_000)})]
+    );
+    let s = &summary["summary"];
+    // Strip reads at 0, 1, 20 and 40 s; whole reads at 20, 21 and 22 s.
+    assert_eq!(s["dialogue_gate"], json!({"full": 3, "skipped": 4}));
+    assert_eq!(s["regions"]["dialogue window"]["visible"], 6);
+}

@@ -26,6 +26,11 @@
 //!   per-minute line is followed by one line per NPC whose dialogue window
 //!   and per boss whose voiced lines were read that minute, so a route that
 //!   ticked nothing says which of its parts never matched ([`RouteWatch`]).
+//! - **The dialogue window's gate.** While no demanded NPC's heading has
+//!   read lately, a due read of the dialogue window copies and reads only
+//!   its heading strip; the whole region once the heading shows there, in
+//!   the same tick ([`DialogueGate`]). Its counts go on a `minute: dialogue
+//!   window gate, ...` line.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{self, AssertUnwindSafe};
@@ -37,9 +42,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use qt_engine::{Engine, ScreenOutcome, ScreenWhat};
 use qt_screen::{
     aspect_is_16_9, classify_bar, fuzzy_score, is_banner, is_heading, remark_body, BackendError,
-    BarClass, Demand, Hidden, Millis, Observation, OcrReadiness, PixelRect, Region, RemarkDemand,
-    ScreenBackend, ScreenEvent, Trackers, BANNER_AREA, BANNER_TEXT, GONE_RUN, HEADING_WINDOW_MS,
-    MATCH_THRESHOLD,
+    BarClass, Demand, DialogueGate, DialogueRead, GateCounts, Hidden, Millis, Observation,
+    OcrReadiness, PixelRect, Region, RemarkDemand, ScreenBackend, ScreenEvent, Trackers,
+    BANNER_AREA, BANNER_TEXT, GONE_RUN, HEADING_STRIP, HEADING_WINDOW_MS, MATCH_THRESHOLD,
 };
 use qt_viewmodel::StatusLine;
 
@@ -528,6 +533,12 @@ impl RouteWatch {
         }
     }
 
+    /// Whether the dialogue window was read this minute, a hidden read
+    /// included.
+    fn read_dialogue_window(&self) -> bool {
+        !self.dialogues.is_empty()
+    }
+
     /// The minute's lines, one per NPC or boss whose region was read (a
     /// hidden read included, which reads `0 of 0`), and the counts reset.
     fn take_lines(&mut self) -> Vec<String> {
@@ -556,6 +567,8 @@ struct Reader {
     bar_watch: BarWatch,
     routes: RouteWatch,
     activity: Activity,
+    /// Whether a read of the dialogue window is of its heading strip alone.
+    gate: DialogueGate,
     /// The regions the overlay covered at the last check.
     covered: BTreeSet<Region>,
     /// The client size refused for its aspect ratio, while it lasts.
@@ -596,6 +609,7 @@ pub(crate) fn run_reader(
         trackers: Trackers::new(),
         bar_watch: BarWatch::default(),
         routes: RouteWatch::default(),
+        gate: DialogueGate::new(),
         activity: Activity::Unknown,
         covered: BTreeSet::new(),
         aspect: None,
@@ -717,6 +731,7 @@ impl Reader {
         self.trackers = Trackers::for_demand(&self.snapshot.demand);
         self.bar_watch = BarWatch::default();
         self.routes.reset();
+        self.gate.reset();
         self.last_read.clear();
     }
 
@@ -893,27 +908,62 @@ impl Reader {
             }
             let at = self.app.clock_ms() as Millis;
             self.last_read.insert(region, at);
-            let obs = if self.covered.contains(&region) {
-                Observation::hidden(region, at, Hidden::Overlay)
+            if self.covered.contains(&region) {
+                self.observe(Observation::hidden(region, at, Hidden::Overlay));
+            } else if region == Region::DialogueWindow {
+                for obs in self.read_dialogue(backend, window, client, at) {
+                    self.observe(obs);
+                }
             } else {
-                self.read(backend, window, client, region, at)
-            };
-            self.observe(obs);
+                let obs = self.read(backend, window, client, region, region.pixels(client), at);
+                self.observe(obs);
+            }
         }
         Ok(())
     }
 
-    /// Copies and reads one region. A failed or black copy, or a failed OCR
-    /// call, is a covered frame.
+    /// Reads the dialogue window through its gate: the heading strip alone
+    /// while the gate is shut, and the whole region while it is open or once
+    /// that strip read opens it, at once. Returns the reads in order, each
+    /// one an observation of the region for the trackers.
+    fn read_dialogue(
+        &mut self,
+        backend: &mut dyn ScreenBackend,
+        window: qt_screen::WindowHandle,
+        client: PixelRect,
+        at: Millis,
+    ) -> Vec<Observation> {
+        let region = Region::DialogueWindow;
+        let npcs = self.snapshot.demand.dialogues.clone();
+        let mut reads = Vec::new();
+        if !self.gate.is_open(at) {
+            let strip_area = HEADING_STRIP.to_pixels(client);
+            let strip = self.read(backend, window, client, region, strip_area, at);
+            let open = self.gate.observe(&npcs, &strip, DialogueRead::Strip);
+            reads.push(strip);
+            if !open {
+                return reads;
+            }
+        }
+        let at = self.app.clock_ms() as Millis;
+        let full = self.read(backend, window, client, region, region.pixels(client), at);
+        self.gate.observe(&npcs, &full, DialogueRead::Full);
+        reads.push(full);
+        reads
+    }
+
+    /// Copies and reads `area` (screen pixels) of `region`: the region, or
+    /// the dialogue window's heading strip. A failed or black copy, or a
+    /// failed OCR call, is a covered frame.
     fn read(
         &mut self,
         backend: &mut dyn ScreenBackend,
         window: qt_screen::WindowHandle,
         client: PixelRect,
         region: Region,
+        area: PixelRect,
         at: Millis,
     ) -> Observation {
-        let area = region.pixels(client);
         let image = match backend.capture(window, area) {
             Ok(image) if image.is_black() => {
                 self.capture_failed(None);
@@ -954,14 +1004,23 @@ impl Reader {
     }
 
     /// Writes the per-minute line when a minute has passed with any read,
-    /// then the dialogue window's and the voiced lines' lines.
+    /// then the dialogue window's and the voiced lines' lines, then the
+    /// dialogue window gate's when the window was read that minute.
     fn minute_line(&mut self) {
         let now = self.app.clock_ms();
         if now.saturating_sub(self.minute_start) < MINUTE_MS {
             return;
         }
         let counts = self.trackers.take_counts();
-        let routes = self.routes.take_lines();
+        let window_read = self.routes.read_dialogue_window();
+        let mut routes = self.routes.take_lines();
+        let gate = self.gate.take_counts();
+        if window_read || gate != GateCounts::default() {
+            routes.push(format!(
+                "screen: minute: dialogue window gate, {} full reads, {} skipped",
+                gate.full, gate.skipped
+            ));
+        }
         let m = std::mem::take(&mut self.minute);
         self.minute_start = now;
         if m.frames == 0 {

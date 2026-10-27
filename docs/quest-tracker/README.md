@@ -808,6 +808,22 @@ with the heading, is one `quest_complete` event. Reads of the banner less
 than 5 s apart are the same banner and fire once. The next quest's
 banner, its objective in capitals in the same place, does not match.
 
+**The dialogue window gate.** A read of the whole dialogue window costs
+about 276 ms of OCR, and in town nobody talks for most of a minute. So
+the dialogue window is read through its heading strip (x 0.22 to 0.70,
+y 0.24 to 0.31, about a tenth of the window, where the window draws the
+NPC's name) until the NPC's heading shows there. While the gate is shut,
+a read copies and reads the heading strip alone, and that read is the
+window's read for the rule above. A strip read that shows a demanded
+NPC's heading opens the gate, and the whole window is read at once, in
+the same tick; the gate stays open while the last heading read in the
+strip, by either kind of read, is less than 10 s old. It cannot miss a
+banner the whole-window reads would catch: a banner counts only within
+10 s after a read with the heading, and that heading opened the gate. The
+NPC's name over him in the world (y 0.461 to 0.484 for Renly) is outside
+the strip and opens nothing. Whether Windows' OCR reads the cropped strip
+as well as the whole window is not established yet (Live 10 checks it).
+
 **The remark rule (`kill_remark`).** A line of the voiced-lines list of
 the form `<speaker>: <text>` whose text matches a known kill-remark text
 for the boss (the quest data's `remarks` table, every class's texts) is
@@ -859,7 +875,11 @@ every other source's; each change of what it says has its diagnostic line
   `after a death`, `after an area change`, `area unknown` or `no open
   step`;
 - `minute: <n> frames, <n> present, <n> absent, <n> covered, <n> OCR
-  failures, busy <n> ms`, once a minute.
+  failures, busy <n> ms`, once a minute;
+- `minute: dialogue window gate, <n> full reads, <n> skipped`, with it, in
+  a minute the dialogue window was read: reads of the whole window, and
+  reads of its heading strip alone. A read the window was hidden for is in
+  neither; frames and busy time count both kinds.
 
 A region is `boss bar`, `voiced lines` or `dialogue window`; boss and NPC
 names come from the quest data, never from what was read.
