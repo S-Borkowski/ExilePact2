@@ -28,6 +28,12 @@
 //!   reader's, which holds its lock through OCR calls), behind a mutex taken
 //!   with `try_lock` for one tick at a time, so a watcher started while a
 //!   stopped one is still inside a copy waits for it.
+//! - **The minute.** Each minute with reads in it gets a `minute:` line of
+//!   counts and, right after it, one `<entry> best read:` line per entry read
+//!   in it: the [`PanelCounts`] of the minute's best read of that entry
+//!   (most matching, then most in colour, within spread, read), which say
+//!   why an entry under the overlay kept reading Closed. When the watcher
+//!   stops, the part minute's lines are written before it ends.
 //! - **Privacy.** A copy lives only for the tick that took it; its colour
 //!   reaches nothing but the probe test. Every line is `panels: ` and one of
 //!   the shapes the Context pins ("Diagnostic and status lines"), which hold
@@ -35,7 +41,7 @@
 //!   a colour; an error's detail, which names only the backend call, goes on
 //!   its own `error: panel watcher: ` line.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, TryLockError};
@@ -43,7 +49,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use qt_screen::{
-    aspect_is_16_9, overlay_fraction, BackendError, PanelChange, PanelRead,
+    aspect_is_16_9, overlay_fraction, BackendError, PanelChange, PanelCounts, PanelRead,
     PanelTable, PanelTracker, PixelRect, ProbeStats, Rect, ScreenBackend, WindowHandle,
     PANEL_TICK_MS,
 };
@@ -168,6 +174,17 @@ struct Minute {
     open: u64,
     black_copies: u64,
     busy: Duration,
+    /// Per entry read in the minute, by table index: its best read's counts
+    /// ([`better`]), for the best-read lines.
+    best: BTreeMap<usize, PanelCounts>,
+}
+
+/// Whether read `a` is a better read of an entry than `b`: more probes
+/// matching, then more in colour, then more within spread, then more read.
+/// So an open read, or the read nearest to one, is the one reported.
+fn better(a: &PanelCounts, b: &PanelCounts) -> bool {
+    let key = |n: &PanelCounts| (n.matched, n.in_colour, n.within_spread, n.read);
+    key(a) > key(b)
 }
 
 /// Runs `f` on the backend when no other watcher holds it; `None`, after a
@@ -254,6 +271,9 @@ pub(crate) fn run_watcher(
         status: None,
     };
     let ended = panic::catch_unwind(AssertUnwindSafe(|| watcher.run(&backend)));
+    // The part minute's lines come first, so a session's last panels reach
+    // the log before `panels: off` (or the error's lines).
+    watcher.write_minute();
     match ended {
         Ok(Ok(())) => {}
         Ok(Err(e)) => watcher.failed(&e.message),
@@ -426,6 +446,10 @@ impl Watcher {
         };
         let place = overlay_fraction(client, overlay.rect);
         let (reads, error) = self.copy_entries(backend, window, client, &place, overlay.visible);
+        // A read the stop cut short is not a read.
+        if self.stopped() {
+            return Ok(false);
+        }
         if self.capture_failures >= CAPTURE_FAILURE_LIMIT {
             self.go_paused(Pause::Capture);
             if let Some(e) = error {
@@ -437,8 +461,18 @@ impl Watcher {
         self.note_overlay(place);
         self.minute.reads += 1;
         let under: BTreeSet<usize> = reads.iter().map(|(i, _)| *i).collect();
-        for (i, read) in reads {
-            let id = self.table.entries[i].id;
+        for (i, counts) in reads {
+            let entry = &self.table.entries[i];
+            let (id, read) = (entry.id, entry.verdict(&counts));
+            self.minute
+                .best
+                .entry(i)
+                .and_modify(|b| {
+                    if better(&counts, b) {
+                        *b = counts;
+                    }
+                })
+                .or_insert(counts);
             if read == PanelRead::Unseen {
                 if self.unseen.insert(i) {
                     self.app
@@ -473,9 +507,9 @@ impl Watcher {
     }
 
     /// Copies each readable probe of each entry under the overlay at `place`
-    /// and judges the entry; the reads in table order, and the detail of the
-    /// failure that made the run of failed copies reach its limit, if one
-    /// did now.
+    /// and counts the entry's read; the counts in table order, and the
+    /// detail of the failure that made the run of failed copies reach its
+    /// limit, if one did now.
     fn copy_entries(
         &mut self,
         backend: &mut dyn ScreenBackend,
@@ -483,7 +517,7 @@ impl Watcher {
         client: PixelRect,
         place: &Rect,
         overlay_visible: bool,
-    ) -> (Vec<(usize, PanelRead)>, Option<BackendError>) {
+    ) -> (Vec<(usize, PanelCounts)>, Option<BackendError>) {
         let table = Arc::clone(&self.table);
         let mut reads = Vec::new();
         let mut limit_error = None;
@@ -515,19 +549,26 @@ impl Watcher {
                     }
                 }
             }
-            reads.push((i, entry.classify(place, overlay_visible, &copies)));
+            reads.push((i, entry.counts(place, overlay_visible, &copies)));
         }
         (reads, limit_error)
     }
 
-    /// Writes the per-minute line when a minute has passed with any read.
+    /// Writes the per-minute lines when a minute has passed with any read.
     fn minute_line(&mut self) {
         let now = self.app.clock_ms();
         if now.saturating_sub(self.minute_start) < MINUTE_MS {
             return;
         }
-        let m = std::mem::take(&mut self.minute);
         self.minute_start = now;
+        self.write_minute();
+    }
+
+    /// Writes the minute's line and, right after it, one best-read line per
+    /// entry read in it, in table order, when it read anything; then starts
+    /// a new minute. Counts only: no colour, spread or pixel value.
+    fn write_minute(&mut self) {
+        let m = std::mem::take(&mut self.minute);
         if m.reads == 0 {
             return;
         }
@@ -539,6 +580,19 @@ impl Watcher {
             m.black_copies,
             m.busy.as_millis()
         ));
+        for (i, n) in &m.best {
+            let entry = &self.table.entries[*i];
+            self.app.diag(&format!(
+                "panels: {} best read: {} of {} probes read, {} in colour, {} within spread, {} match, {} needed",
+                entry.id,
+                n.read,
+                entry.probes.len(),
+                n.in_colour,
+                n.within_spread,
+                n.matched,
+                entry.min_match
+            ));
+        }
     }
 
     /// The thread ends after an error: the cause, the line, the warning, and

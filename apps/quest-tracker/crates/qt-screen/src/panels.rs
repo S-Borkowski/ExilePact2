@@ -21,6 +21,9 @@
 //!   opens after [`PANEL_OPEN_READS`] Open reads in a row and closes after
 //!   [`PANEL_CLOSED_READS`] Closed reads in a row. Unseen and Black reads
 //!   change nothing.
+//! - Each read is decided from its [`PanelCounts`] (probes read, in colour,
+//!   within spread, matching), which the panel watcher and the replay also
+//!   report, so a count and a verdict never disagree.
 //!
 //! All geometry is fractions of the game's client rect, as for [`Region`].
 //! Colour read at run time is private, like OCR text: [`ProbeStats`]' `Debug`
@@ -174,11 +177,21 @@ impl PanelProbe {
         self.rect.to_pixels(client)
     }
 
-    /// Whether a copy with these statistics matches: each channel's mean
-    /// within its tolerance and the spread at most the largest.
-    pub fn matches(&self, stats: &ProbeStats) -> bool {
+    /// Whether a copy's colour is this probe's: each channel's mean within
+    /// its tolerance of `bgr`.
+    pub fn in_colour(&self, stats: &ProbeStats) -> bool {
         (0..3).all(|c| (stats.mean_bgr[c] - self.bgr[c]).abs() <= self.tolerance[c])
-            && stats.luma_std <= self.max_luma_std
+    }
+
+    /// Whether a copy's luma spread is at most `max_luma_std`.
+    pub fn within_spread(&self, stats: &ProbeStats) -> bool {
+        stats.luma_std <= self.max_luma_std
+    }
+
+    /// Whether a copy with these statistics matches: in colour and within
+    /// the spread.
+    pub fn matches(&self, stats: &ProbeStats) -> bool {
+        self.in_colour(stats) && self.within_spread(stats)
     }
 
     /// Whether it may be read with the overlay at `overlay` (fractions):
@@ -200,6 +213,22 @@ pub enum PanelRead {
     Unseen,
     /// A readable probe's copy was black: the capture got nothing back.
     Black,
+}
+
+/// The counts behind one read of one entry: of its probes, those *read*
+/// (readable and copied), those *in colour* (each channel's mean within its
+/// tolerance), those *within spread* (luma spread at most `max_luma_std`),
+/// those that *match* (both), and those whose copy was black. Counts only:
+/// they say why an entry read as it did without holding a colour.
+/// [`PanelEntry::classify`] decides from these, so a count and a verdict
+/// never disagree.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PanelCounts {
+    pub read: usize,
+    pub in_colour: usize,
+    pub within_spread: usize,
+    pub matched: usize,
+    pub black: usize,
 }
 
 /// One panel frame of the table.
@@ -233,37 +262,58 @@ impl PanelEntry {
             .collect()
     }
 
-    /// Judge one read. `copies[i]` is the copy of probe `i`, or `None` when
-    /// it was not copied (not readable, or its copy failed); a missing or
-    /// unreadable probe does not count as readable. Fewer than `min_match`
-    /// readable is Unseen; else any black copy is Black; else Open or
-    /// Closed by the number that match.
+    /// The counts behind one read. `copies[i]` is the copy of probe `i`, or
+    /// `None` when it was not copied (not readable, or its copy failed); a
+    /// missing or unreadable probe is not read.
+    pub fn counts(
+        &self,
+        overlay: &Rect,
+        overlay_visible: bool,
+        copies: &[Option<ProbeStats>],
+    ) -> PanelCounts {
+        let mut n = PanelCounts::default();
+        for (p, c) in self
+            .probes
+            .iter()
+            .zip(copies.iter())
+            .filter(|(p, _)| p.is_readable(overlay, overlay_visible))
+        {
+            let Some(c) = c else { continue };
+            let (colour, spread) = (p.in_colour(c), p.within_spread(c));
+            n.read += 1;
+            n.in_colour += colour as usize;
+            n.within_spread += spread as usize;
+            n.matched += (colour && spread) as usize;
+            n.black += c.black as usize;
+        }
+        n
+    }
+
+    /// What a read with these counts says: fewer than `min_match` read is
+    /// Unseen; else any black copy is Black; else Open or Closed by the
+    /// number that match.
+    pub fn verdict(&self, counts: &PanelCounts) -> PanelRead {
+        let need = self.min_match.max(1);
+        if counts.read < need {
+            PanelRead::Unseen
+        } else if counts.black > 0 {
+            PanelRead::Black
+        } else if counts.matched >= need {
+            PanelRead::Open
+        } else {
+            PanelRead::Closed
+        }
+    }
+
+    /// Judge one read: the [`verdict`](Self::verdict) of its
+    /// [`counts`](Self::counts).
     pub fn classify(
         &self,
         overlay: &Rect,
         overlay_visible: bool,
         copies: &[Option<ProbeStats>],
     ) -> PanelRead {
-        let read: Vec<(&PanelProbe, &ProbeStats)> = self
-            .probes
-            .iter()
-            .zip(copies.iter())
-            .filter(|(p, _)| p.is_readable(overlay, overlay_visible))
-            .filter_map(|(p, c)| c.as_ref().map(|c| (p, c)))
-            .collect();
-        let need = self.min_match.max(1);
-        if read.len() < need {
-            return PanelRead::Unseen;
-        }
-        if read.iter().any(|(_, c)| c.black) {
-            return PanelRead::Black;
-        }
-        let matched = read.iter().filter(|(p, c)| p.matches(c)).count();
-        if matched >= need {
-            PanelRead::Open
-        } else {
-            PanelRead::Closed
-        }
+        self.verdict(&self.counts(overlay, overlay_visible, copies))
     }
 
     /// The raw test on a copy of the whole client rect, with no overlay and
@@ -538,6 +588,94 @@ mod tests {
         assert_eq!(
             entry.classify(&NO_OVERLAY, false, &missing),
             PanelRead::Unseen
+        );
+    }
+
+    /// Two colours in alternate pixels whose mean is `GOLD`: in colour, but
+    /// with a luma spread of 30, above the probes' 10.
+    fn striped() -> Option<ProbeStats> {
+        let mut image = flat([0, 0, 0], 16, 16);
+        for (i, px) in image.bgra.chunks_mut(4).enumerate() {
+            let c: [u8; 3] = if i % 2 == 0 {
+                [10, 80, 120]
+            } else {
+                [70, 140, 180]
+            };
+            px[..3].copy_from_slice(&c);
+        }
+        Some(ProbeStats::of_image(&image))
+    }
+
+    #[test]
+    fn panel_entry_counts_probes_by_colour_and_spread() {
+        let entry = left_panel();
+        let p = &entry.probes[0];
+        let (gold, off, stripes) = (stats([40, 110, 150]), stats([90, 90, 90]), striped());
+        // The three kinds of copy, one probe at a time.
+        let s = stripes.unwrap();
+        assert!(p.in_colour(&s) && !p.within_spread(&s) && !p.matches(&s));
+        let o = off.unwrap();
+        assert!(!p.in_colour(&o) && p.within_spread(&o) && !p.matches(&o));
+        let g = gold.unwrap();
+        assert!(p.in_colour(&g) && p.within_spread(&g) && p.matches(&g));
+
+        let counts = |read, in_colour, within_spread, matched, black| PanelCounts {
+            read,
+            in_colour,
+            within_spread,
+            matched,
+            black,
+        };
+        let check = |overlay: &Rect, visible: bool, copies: &[Option<ProbeStats>]| {
+            let n = entry.counts(overlay, visible, copies);
+            // `classify` decides from the same counts.
+            assert_eq!(entry.classify(overlay, visible, copies), entry.verdict(&n));
+            (n, entry.verdict(&n))
+        };
+
+        // In colour above the spread, within the spread off colour, and one
+        // matching both: one match of the two needed.
+        assert_eq!(
+            check(&NO_OVERLAY, false, &[stripes, off, gold]),
+            (counts(3, 2, 2, 1, 0), PanelRead::Closed)
+        );
+        // Two matching, the third in colour only: open.
+        assert_eq!(
+            check(&NO_OVERLAY, false, &[gold, stripes, gold]),
+            (counts(3, 3, 2, 2, 0), PanelRead::Open)
+        );
+        // The probe under the visible overlay is not read, so its matching
+        // copy counts nowhere; hidden, it is read and the entry opens.
+        let over_one = Rect::new(0.46, 0.05, 0.60, 0.50);
+        assert_eq!(
+            check(&over_one, true, &[stripes, gold, gold]),
+            (counts(2, 2, 1, 1, 0), PanelRead::Closed)
+        );
+        assert_eq!(
+            check(&over_one, false, &[stripes, gold, gold]),
+            (counts(3, 3, 2, 2, 0), PanelRead::Open)
+        );
+        // Fewer read than needed: Unseen, whatever the one read holds.
+        let over_two = Rect::new(0.0, 0.0, 0.5, 0.5);
+        assert_eq!(
+            check(&over_two, true, &[gold, gold, gold]),
+            (counts(1, 1, 1, 1, 0), PanelRead::Unseen)
+        );
+        assert_eq!(
+            check(&NO_OVERLAY, false, &[gold, None, None]),
+            (counts(1, 1, 1, 1, 0), PanelRead::Unseen)
+        );
+        // A black copy is counted like any other, and makes the read Black.
+        let black = stats([0, 0, 0]);
+        let (n, read) = check(&NO_OVERLAY, false, &[black, gold, gold]);
+        assert_eq!(
+            (n.read, n.matched, n.black, read),
+            (3, 2, 1, PanelRead::Black)
+        );
+        // No copies at all: every count zero.
+        assert_eq!(
+            check(&NO_OVERLAY, false, &[]),
+            (PanelCounts::default(), PanelRead::Unseen)
         );
     }
 

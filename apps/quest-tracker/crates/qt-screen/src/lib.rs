@@ -69,9 +69,9 @@ pub use observation::{
 };
 pub use panel_table::shipped_panels;
 pub use panels::{
-    overlay_fraction, PanelChange, PanelEntry, PanelProbe, PanelRead, PanelTable, PanelTracker,
-    ProbeStats, DEFAULT_OVERLAY_REACH, PANEL_CLOSED_READS, PANEL_IDS, PANEL_OPEN_READS,
-    PANEL_TICK_MS,
+    overlay_fraction, PanelChange, PanelCounts, PanelEntry, PanelProbe, PanelRead, PanelTable,
+    PanelTracker, ProbeStats, DEFAULT_OVERLAY_REACH, PANEL_CLOSED_READS, PANEL_IDS,
+    PANEL_OPEN_READS, PANEL_TICK_MS,
 };
 pub use region::{
     Region, BOSS_BAR_PERIOD_MS, BOSS_BAR_RECT, DIALOGUE_WINDOW_PERIOD_MS, DIALOGUE_WINDOW_RECT,

@@ -1,8 +1,10 @@
 //! "Hide under game panels" in the shell (Context "Design: the panel
 //! watcher"), driven by a fake backend over a synthetic panel table. The
 //! fake paints a panel's frame colour into a copy when the copy is of one of
-//! that panel's probes and the test has the panel showing, and grey
-//! otherwise; the fake window keeps the overlay's shown state, so the
+//! that panel's probes and the test has the panel showing (or, for the
+//! best-read lines, stripes of the right mean but too much spread, or one
+//! colour off the frame's), and grey otherwise; the fake window keeps the
+//! overlay's shown state, so the
 //! overlay the backend reports is hidden once the shell hides it. Nothing
 //! here captures the screen or opens a window. Character names are
 //! invented.
@@ -13,7 +15,7 @@
 //! Target: with it on, a panel open under the overlay hides it, with its
 //! line, and the overlay shows again once the panel closes.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -27,8 +29,8 @@ use qt_app::{
     Window, HIDDEN_LINE, PANEL_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
 };
 use qt_screen::{
-    BackendError, Image, OcrReadiness, OverlayState, PanelEntry, PanelProbe, PanelTable,
-    PixelLine, PixelRect, Rect, WindowHandle,
+    overlay_fraction, BackendError, Image, OcrReadiness, OverlayState, PanelEntry, PanelProbe,
+    PanelTable, PixelLine, PixelRect, Rect, WindowHandle,
 };
 use qt_store::Store;
 use qt_tailer::{Fingerprint, Line, TailEvent};
@@ -49,6 +51,23 @@ const OVERLAY: PixelRect = PixelRect::new(1997, 432, 2560, 1397);
 const FRAME: [u8; 3] = [123, 157, 189];
 const GREY: [u8; 3] = [91, 91, 91];
 const PIXEL_NUMBERS: [&str; 4] = ["123", "157", "189", "91"];
+/// Two colours whose mean is `FRAME`, in alternate pixels: in colour, with a
+/// luma spread of 30, above the probes' 4.
+const STRIPES: [[u8; 3]; 2] = [[93, 127, 159], [153, 187, 219]];
+/// One colour throughout, 30 off `FRAME` in each channel: within the spread,
+/// off colour.
+const OFF_COLOUR: [u8; 3] = [153, 187, 219];
+
+/// How the fake paints the copies of a showing panel's probes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Paint {
+    /// The frame colour: every probe matches.
+    Frame,
+    /// [`STRIPES`]: in colour, above the spread.
+    Striped,
+    /// [`OFF_COLOUR`]: within the spread, off colour.
+    OffColour,
+}
 
 // ---------------------------------------------------------------------------
 // The synthetic table.
@@ -120,7 +139,8 @@ struct Scene {
     window_fails: AtomicBool,
     minimized: AtomicBool,
     client: Mutex<PixelRect>,
-    showing: Mutex<BTreeSet<&'static str>>,
+    /// The panels showing, and how their probes' copies are painted.
+    showing: Mutex<BTreeMap<&'static str, Paint>>,
     capture_fails: AtomicBool,
     calls: Mutex<Vec<String>>,
 }
@@ -138,14 +158,19 @@ impl Scene {
             window_fails: AtomicBool::new(false),
             minimized: AtomicBool::new(false),
             client: Mutex::new(CLIENT),
-            showing: Mutex::new(BTreeSet::new()),
+            showing: Mutex::new(BTreeMap::new()),
             capture_fails: AtomicBool::new(false),
             calls: Mutex::new(Vec::new()),
         }
     }
 
     fn show(&self, id: &'static str) {
-        self.showing.lock().unwrap().insert(id);
+        self.paint(id, Paint::Frame);
+    }
+
+    /// Paints `id`'s probes' copies with `paint` from now on.
+    fn paint(&self, id: &'static str, paint: Paint) {
+        self.showing.lock().unwrap().insert(id, paint);
     }
 
     fn close(&self, id: &'static str) {
@@ -248,12 +273,27 @@ impl ScreenBackend for FakeBackend {
             return Err(BackendError::new("capture: the fake failed"));
         }
         let showing = self.0.showing.lock().unwrap();
-        let painted = showing.iter().any(|id| which.starts_with(&format!("{id}#")));
-        let c = if painted { FRAME } else { GREY };
+        let paint = showing
+            .iter()
+            .find(|(id, _)| which.starts_with(&format!("{id}#")))
+            .map(|(_, p)| *p);
+        // Two colours in alternate pixels, or one throughout.
+        let (a, b) = match paint {
+            Some(Paint::Frame) => (FRAME, FRAME),
+            Some(Paint::Striped) => (STRIPES[0], STRIPES[1]),
+            Some(Paint::OffColour) => (OFF_COLOUR, OFF_COLOUR),
+            None => (GREY, GREY),
+        };
+        let bgra = (0..16)
+            .flat_map(|i| {
+                let c = if i % 2 == 0 { a } else { b };
+                [c[0], c[1], c[2], 255]
+            })
+            .collect();
         Ok(Image {
             width: 4,
             height: 4,
-            bgra: [c[0], c[1], c[2], 255].repeat(16),
+            bgra,
         })
     }
 
@@ -480,6 +520,16 @@ fn number(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit())
 }
 
+/// Whether `text`'s words are `shape`'s, each `#` a number.
+fn fits(text: &str, shape: &[&str]) -> bool {
+    let words: Vec<&str> = text.split(' ').collect();
+    words.len() == shape.len()
+        && words
+            .iter()
+            .zip(shape)
+            .all(|(w, s)| if *s == "#" { number(w) } else { w == s })
+}
+
 /// Whether `line` (from `panels: `) has one of the shapes the Context pins.
 fn pinned(line: &str) -> bool {
     let Some(rest) = line.strip_prefix("panels: ") else {
@@ -526,15 +576,23 @@ fn pinned(line: &str) -> bool {
             && fraction2(parts[6]);
     }
     if let Some(r) = rest.strip_prefix("minute: ") {
-        let words: Vec<&str> = r.split(' ').collect();
-        let shape = [
-            "#", "reads,", "#", "copies,", "#", "open,", "#", "black", "copies,", "busy", "#", "ms",
-        ];
-        return words.len() == shape.len()
-            && words
-                .iter()
-                .zip(shape)
-                .all(|(w, s)| if s == "#" { number(w) } else { *w == s });
+        return fits(
+            r,
+            &[
+                "#", "reads,", "#", "copies,", "#", "open,", "#", "black", "copies,", "busy", "#",
+                "ms",
+            ],
+        );
+    }
+    if let Some((id, r)) = rest.split_once(" best read: ") {
+        return ENTRY_IDS.contains(&id)
+            && fits(
+                r,
+                &[
+                    "#", "of", "#", "probes", "read,", "#", "in", "colour,", "#", "within",
+                    "spread,", "#", "match,", "#", "needed",
+                ],
+            );
     }
     ENTRY_IDS.iter().any(|id| {
         [" open", " closed", " unseen under the overlay"]
@@ -863,6 +921,109 @@ fn panels_watcher_stops_within_the_shutdown_deadline() {
     assert!(h
         .diag_text()
         .contains("stop: tailer, worker and panel watcher ended, progress saved"));
+    assert_pinned(&h);
+}
+
+/// The best-read line the Context pins, for `id` and its counts.
+fn best_read(id: &str, [r, n, c, s, m, k]: [usize; 6]) -> String {
+    format!(
+        "panels: {id} best read: {r} of {n} probes read, {c} in colour, {s} within spread, {m} match, {k} needed"
+    )
+}
+
+/// The panel lines from the `n`th `minute:` line (0 is the first) on.
+fn after_minute(h: &Harness, n: usize) -> Vec<String> {
+    let lines = h.panel_lines();
+    let at = lines
+        .iter()
+        .enumerate()
+        .filter(|(_, l)| l.starts_with("panels: minute: "))
+        .nth(n)
+        .map(|(i, _)| i)
+        .unwrap_or_else(|| panic!("no minute line {n}: {lines:#?}"));
+    lines[at..].to_vec()
+}
+
+#[test]
+fn panels_minute_reports_each_entrys_best_read_in_counts() {
+    // `right` at the overlay's default place: three probes, two needed, the
+    // third under the visible overlay and so not read while it shows.
+    let t = table();
+    let right = &t.entries[0];
+    let place = overlay_fraction(CLIENT, OVERLAY);
+    assert_eq!(right.readable_probes(&place, true), vec![0, 1]);
+    assert_eq!((right.probes.len(), right.min_match), (3, 2));
+    assert!(!t.entries[1].is_under(&place));
+
+    // Copies of the right mean with too much spread.
+    let h = harness(Setup::default());
+    h.scene.paint("right", Paint::Striped);
+    h.app.start();
+    h.feed(&in_the_riverbank());
+    h.in_front(Some(GAME));
+    wait_until("six copies", || h.scene.copies().len() >= 6);
+    // The game window lost, so no read crosses into the next minute, then a
+    // minute on the shell's clock.
+    h.scene.no_window.store(true, Ordering::SeqCst);
+    h.wait_diag(&["panels: idle (no game window)"]);
+    h.clock.fetch_add(60_000, Ordering::SeqCst);
+    h.wait_diag(&["panels: right best read: "]);
+    let minute = after_minute(&h, 0);
+    assert_eq!(minute[1], best_read("right", [2, 3, 2, 0, 0, 2]), "{minute:#?}");
+    assert!(minute.iter().all(|l| !l.contains("left best read")));
+
+    // Copies within the spread, off colour.
+    h.scene.paint("right", Paint::OffColour);
+    let copied = h.scene.copies().len();
+    h.scene.no_window.store(false, Ordering::SeqCst);
+    wait_until("six more copies", || h.scene.copies().len() >= copied + 6);
+    h.scene.no_window.store(true, Ordering::SeqCst);
+    h.wait_count("panels: idle (no game window)", 2);
+    h.clock.fetch_add(60_000, Ordering::SeqCst);
+    h.wait_count("panels: right best read: ", 2);
+    let minute = after_minute(&h, 1);
+    assert_eq!(minute[1], best_read("right", [2, 3, 0, 2, 0, 2]), "{minute:#?}");
+
+    // Neither read open: the overlay stayed shown throughout.
+    let lines = h.panel_lines();
+    assert!(lines.iter().all(|l| l != "panels: right open"), "{lines:#?}");
+    assert!(h.visibility_lines().is_empty(), "{:?}", h.visibility_lines());
+    assert!(h.scene.window_calls().is_empty());
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+    assert_pinned(&h);
+}
+
+#[test]
+fn panels_stop_writes_the_pending_minute() {
+    // Reads for less than a minute on the shell's clock, nothing showing.
+    let h = playing(Setup::default());
+    wait_until("four copies", || h.scene.copies().len() >= 4);
+    assert!(h
+        .panel_lines()
+        .iter()
+        .all(|l| !l.starts_with("panels: minute: ")));
+
+    h.app
+        .update_settings(&json!({ "hide_under_panels": false }))
+        .expect("the setting off");
+    // The part minute's lines, then the stop line.
+    let minute = after_minute(&h, 0);
+    assert_eq!(
+        minute,
+        vec![
+            minute[0].clone(),
+            best_read("right", [2, 3, 0, 2, 0, 2]),
+            "panels: off".to_string(),
+        ]
+    );
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+    assert_eq!(
+        h.panel_lines()
+            .iter()
+            .filter(|l| l.starts_with("panels: minute: "))
+            .count(),
+        1
+    );
     assert_pinned(&h);
 }
 
