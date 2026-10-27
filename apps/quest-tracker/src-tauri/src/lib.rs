@@ -346,7 +346,9 @@ fn no_activate(_window: &WebviewWindow, shell: &App) {
 /// handle, read here as `no_activate` reads it, so the reader can check the
 /// overlay's own rect and visibility with Win32 calls instead of waiting on
 /// this main thread. A handle that cannot be read is passed as none
-/// (`no_activate` logs why); the backend then sees no overlay.
+/// (`no_activate` logs why); the backend then sees no overlay, and the
+/// reader reports it with its `screen: overlay check off (no overlay window)`
+/// line.
 #[cfg(windows)]
 fn screen_backend(window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
     let overlay = window.hwnd().ok().map(|handle| handle.0 as isize);

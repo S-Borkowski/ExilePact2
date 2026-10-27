@@ -9,7 +9,15 @@
 //!   remark texts, and the confirmed game pid. The reader takes the newest
 //!   at each tick with `try_lock` and never waits for it. It captures
 //!   nothing while the demand is empty, the pid unconfirmed, or the game's
-//!   window missing, minimized or not in front.
+//!   window missing, minimized or not in front, and its `idle (<reason>)`
+//!   line names the first of those that held.
+//! - **A death with a bar up.** The demand also counts the character's live
+//!   deaths. When the count changes, each demanded boss whose bar the reader
+//!   has seen and whose going it has not reported is marked: its next going
+//!   is not counted, so a bar that stays up through the death screen and
+//!   goes on the walk back ticks nothing. The bar must show again before a
+//!   going counts. The worker still drops a going last seen before the
+//!   death, for one already queued when the line came.
 //! - **Locks.** The reader takes no `App` state lock and never calls the
 //!   shell's `Window`: everything it needs of the system goes through the
 //!   backend, and everything the view needs goes to the worker as a
@@ -57,7 +65,9 @@ pub const IDLE_SLEEP: Duration = Duration::from_millis(100);
 /// The shortest sleep between two ticks.
 const MIN_SLEEP: Duration = Duration::from_millis(5);
 
-/// How many failed or black copies in a row set a status line.
+/// How many failed copies in a row, or black copies in a row, set a status
+/// line. The two runs are counted apart: a black copy is a dark scene or a
+/// loading screen as often as a copy that got nothing back.
 pub const CAPTURE_FAILURE_LIMIT: u32 = 10;
 
 /// How often the reader writes its per-minute line, on the shell's clock.
@@ -93,6 +103,9 @@ pub(crate) struct DemandSnapshot {
     pub steps: Vec<(String, String)>,
     /// The game's pid, once a live line or its window in front confirmed it.
     pub pid: Option<u32>,
+    /// The current character's live deaths the worker received. Only a
+    /// change means anything: the reader marks the bars up at that moment.
+    pub deaths: u64,
 }
 
 impl DemandSnapshot {
@@ -100,7 +113,7 @@ impl DemandSnapshot {
     /// each NPC's window, and each boss's kill remark that has a text, with
     /// the steps they would tick. A `kill_remark` with no text reads nothing
     /// and names no step.
-    pub fn of(engine: &Engine, pid: Option<u32>) -> DemandSnapshot {
+    pub fn of(engine: &Engine, pid: Option<u32>, deaths: u64) -> DemandSnapshot {
         let mut demand = Demand::default();
         let mut steps: Vec<(String, String)> = Vec::new();
         for want in engine.screen_demand() {
@@ -138,7 +151,12 @@ impl DemandSnapshot {
                 steps.push(step);
             }
         }
-        DemandSnapshot { demand, steps, pid }
+        DemandSnapshot {
+            demand,
+            steps,
+            pid,
+            deaths,
+        }
     }
 }
 
@@ -147,7 +165,13 @@ impl DemandSnapshot {
 pub(crate) enum ScreenMsg {
     /// A tracker's event, with the wall-clock time (Unix milliseconds) its
     /// line names: when the bar was last seen, or when the event was seen.
-    Seen { event: ScreenEvent, wall_ms: i64 },
+    /// `after_death` is set on a bar's first going after a death the reader
+    /// saw while the bar was up, which is not counted.
+    Seen {
+        event: ScreenEvent,
+        wall_ms: i64,
+        after_death: bool,
+    },
     /// The `Source::Screen` status line, or `None` to clear it.
     Status(Option<StatusLine>),
 }
@@ -302,7 +326,10 @@ enum End {
 #[derive(Debug, Clone, PartialEq)]
 enum Activity {
     Unknown,
-    Idle,
+    /// Idle, for the first gate of the tick that stopped it: `pid
+    /// unconfirmed`, `no game window`, `minimized`, `no demand` or `not in
+    /// front`.
+    Idle(&'static str),
     Reading(Vec<Region>, Vec<(String, String)>),
 }
 
@@ -310,6 +337,8 @@ enum Activity {
 #[derive(Default)]
 struct Minute {
     frames: u64,
+    /// Black copies of any region (each also a covered read).
+    black_copies: u64,
     ocr_failures: u64,
     busy: Duration,
 }
@@ -405,6 +434,12 @@ impl BarWatch {
         } else {
             Some(BarHidden::OutOfSight)
         }
+    }
+
+    /// The bosses whose bar is up: seen since the tracker last (re)armed,
+    /// its going not yet reported (hidden since or not).
+    fn up(&self) -> impl Iterator<Item = &String> {
+        self.bars.iter().filter(|(_, s)| s.seen).map(|(boss, _)| boss)
     }
 }
 
@@ -573,8 +608,18 @@ struct Reader {
     covered: BTreeSet<Region>,
     /// The client size refused for its aspect ratio, while it lasts.
     aspect: Option<(i32, i32)>,
-    /// Failed or black copies in a row.
+    /// Whether the last overlap check had no overlay window to check, and
+    /// said so.
+    overlay_off: bool,
+    /// Failed copies in a row.
     capture_failures: u32,
+    /// Black copies in a row.
+    black_copies: u32,
+    /// The deaths count of the demand last taken.
+    deaths: u64,
+    /// The bosses whose next going is not counted: their bar was up when a
+    /// death came.
+    death_marked: BTreeSet<String>,
     last_read: BTreeMap<Region, Millis>,
     minute: Minute,
     minute_start: u64,
@@ -613,7 +658,11 @@ pub(crate) fn run_reader(
         activity: Activity::Unknown,
         covered: BTreeSet::new(),
         aspect: None,
+        overlay_off: false,
         capture_failures: 0,
+        black_copies: 0,
+        deaths: 0,
+        death_marked: BTreeSet::new(),
         last_read: BTreeMap::new(),
         minute: Minute::default(),
         minute_start: now,
@@ -703,17 +752,28 @@ impl Reader {
             Err(TryLockError::WouldBlock) => return,
         };
         if !Arc::ptr_eq(&newest, &self.snapshot) {
+            // A death since the last demand: each bar up now has its next
+            // going not counted, whether it goes at the death or after the
+            // walk back. A bar not up is not marked.
+            if newest.deaths != self.deaths {
+                self.deaths = newest.deaths;
+                let up: Vec<String> = self.bar_watch.up().cloned().collect();
+                self.death_marked.extend(up);
+            }
             self.trackers.set_demand(&newest.demand);
             self.bar_watch.follow(&newest.demand.bars);
             self.routes.follow(&newest.demand.dialogues);
+            self.death_marked
+                .retain(|boss| newest.demand.bars.contains(boss));
             self.snapshot = newest;
         }
     }
 
-    fn go_idle(&mut self) {
-        if self.activity != Activity::Idle {
-            self.activity = Activity::Idle;
-            self.app.diag("screen: idle");
+    /// Idle, for `reason`: a line when the reason differs from the last.
+    fn go_idle(&mut self, reason: &'static str) {
+        if self.activity != Activity::Idle(reason) {
+            self.activity = Activity::Idle(reason);
+            self.app.diag(&format!("screen: idle ({reason})"));
         }
     }
 
@@ -751,7 +811,7 @@ impl Reader {
     /// How long to sleep before the next region is due.
     fn next_wait(&self) -> Duration {
         let regions = self.trackers.regions();
-        if regions.is_empty() || self.activity == Activity::Idle {
+        if regions.is_empty() || matches!(self.activity, Activity::Idle(_)) {
             return IDLE_SLEEP;
         }
         let now = self.app.clock_ms() as Millis;
@@ -776,11 +836,17 @@ impl Reader {
             .observe(&self.snapshot.demand.bars, &obs, &events);
         self.routes.observe(&self.snapshot.demand, &obs, &events);
         for event in events {
-            let wall_ms = self.wall(match &event {
-                ScreenEvent::BarGone { last_present, .. } => *last_present,
-                other => other.at(),
+            let (wall_ms, after_death) = match &event {
+                ScreenEvent::BarGone {
+                    boss, last_present, ..
+                } => (self.wall(*last_present), self.death_marked.remove(boss)),
+                other => (self.wall(other.at()), false),
+            };
+            self.send(ScreenMsg::Seen {
+                event,
+                wall_ms,
+                after_death,
             });
-            self.send(ScreenMsg::Seen { event, wall_ms });
         }
     }
 
@@ -808,12 +874,13 @@ impl Reader {
     }
 
     /// The status line for what holds now: a refused shape, failing copies,
-    /// the overlay over a region, or a bar that was up hidden since, by a
-    /// panel or out of sight.
+    /// black copies, the overlay over a region, or a bar that was up hidden
+    /// since, by a panel or out of sight.
     fn current_status(&self) -> Option<StatusLine> {
         Self::status_for(
             self.aspect,
             self.capture_failures,
+            self.black_copies,
             &self.covered,
             &self.bar_watch,
         )
@@ -822,6 +889,7 @@ impl Reader {
     fn status_for(
         aspect: Option<(i32, i32)>,
         capture_failures: u32,
+        black_copies: u32,
         covered: &BTreeSet<Region>,
         bar_watch: &BarWatch,
     ) -> Option<StatusLine> {
@@ -832,6 +900,10 @@ impl Reader {
         } else if capture_failures >= CAPTURE_FAILURE_LIMIT {
             Some(StatusLine::warn(format!(
                 "Screen reading cannot copy the game's window (the capture failed {CAPTURE_FAILURE_LIMIT} times in a row)."
+            )))
+        } else if black_copies >= CAPTURE_FAILURE_LIMIT {
+            Some(StatusLine::warn(format!(
+                "Screen reading sees the game's window copied black ({CAPTURE_FAILURE_LIMIT} times in a row); a dark scene or a loading screen looks the same."
             )))
         } else if !covered.is_empty() {
             Some(covered_status(covered))
@@ -856,17 +928,17 @@ impl Reader {
     fn tick_inner(&mut self, backend: &mut dyn ScreenBackend) -> Result<(), BackendError> {
         // The game's window, by the confirmed pid.
         let Some(pid) = self.snapshot.pid else {
-            self.go_idle();
+            self.go_idle("pid unconfirmed");
             return Ok(());
         };
         let Some(window) = backend.game_window(pid)? else {
             self.reset_trackers();
-            self.go_idle();
+            self.go_idle("no game window");
             return Ok(());
         };
         let Some(client) = backend.client_rect(window)? else {
             self.hidden_frames(Hidden::Minimized);
-            self.go_idle();
+            self.go_idle("minimized");
             return Ok(());
         };
         // Its shape: positions were measured at 16:9 only.
@@ -884,8 +956,22 @@ impl Reader {
             return Ok(());
         }
         self.aspect = None;
-        // The overlay over a region, demand or not.
+        // The overlay over a region, demand or not. With no overlay window
+        // to check, nothing counts as covered and the copy holds whatever
+        // is in front, the overlay included: say so once, until it is back.
         let overlay = backend.overlay()?;
+        match (overlay.is_some(), self.overlay_off) {
+            (false, false) => {
+                self.app
+                    .diag("screen: overlay check off (no overlay window)");
+                self.overlay_off = true;
+            }
+            (true, true) => {
+                self.app.diag("screen: overlay check on");
+                self.overlay_off = false;
+            }
+            _ => {}
+        }
         let covered: BTreeSet<Region> = Region::ALL
             .into_iter()
             .filter(|r| overlay.is_some_and(|o| o.visible && r.covered_by(client, o.rect)))
@@ -893,12 +979,12 @@ impl Reader {
         self.note_covered(covered);
         let regions = self.trackers.regions();
         if regions.is_empty() {
-            self.go_idle();
+            self.go_idle("no demand");
             return Ok(());
         }
         if backend.foreground_pid()? != Some(pid) {
             self.hidden_frames(Hidden::NotForeground);
-            self.go_idle();
+            self.go_idle("not in front");
             return Ok(());
         }
         self.go_reading(&regions);
@@ -954,7 +1040,8 @@ impl Reader {
 
     /// Copies and reads `area` (screen pixels) of `region`: the region, or
     /// the dialogue window's heading strip. A failed or black copy, or a
-    /// failed OCR call, is a covered frame.
+    /// failed OCR call, is a covered frame. Failed and black copies run
+    /// apart: each run ends at a copy of the other kind or a good copy.
     fn read(
         &mut self,
         backend: &mut dyn ScreenBackend,
@@ -966,20 +1053,19 @@ impl Reader {
     ) -> Observation {
         let image = match backend.capture(window, area) {
             Ok(image) if image.is_black() => {
-                self.capture_failed(None);
+                self.end_failures();
+                self.copied_black();
                 return Observation::hidden(region, at, Hidden::Black);
             }
             Ok(image) => image,
             Err(e) => {
-                self.capture_failed(Some(e));
+                self.black_copies = 0;
+                self.capture_failed(e);
                 return Observation::hidden(region, at, Hidden::CaptureFailed);
             }
         };
-        if self.capture_failures >= CAPTURE_FAILURE_LIMIT {
-            // Copies work again: say what is read, as after any refusal.
-            self.activity = Activity::Unknown;
-        }
-        self.capture_failures = 0;
+        self.end_failures();
+        self.black_copies = 0;
         match backend.ocr(&image) {
             Ok(lines) => Observation::from_ocr(region, at, client, area, lines),
             Err(_) => {
@@ -989,17 +1075,36 @@ impl Reader {
         }
     }
 
-    /// Counts a failed (`Some`) or black (`None`) copy; the tenth in a row
-    /// writes its line, with the last failure's detail.
-    fn capture_failed(&mut self, error: Option<BackendError>) {
+    /// Counts a failed copy; the tenth in a row writes its line, with the
+    /// failure's detail.
+    fn capture_failed(&mut self, error: BackendError) {
         self.capture_failures += 1;
         if self.capture_failures == CAPTURE_FAILURE_LIMIT {
             self.app.diag(&format!(
                 "screen: refused: the capture failed {CAPTURE_FAILURE_LIMIT} times in a row"
             ));
-            if let Some(e) = error {
-                self.app.diag(&format!("error: screen reader: {e}"));
-            }
+            self.app.diag(&format!("error: screen reader: {error}"));
+        }
+    }
+
+    /// Ends a run of failed copies: a copy came back.
+    fn end_failures(&mut self) {
+        if self.capture_failures >= CAPTURE_FAILURE_LIMIT {
+            // Copies work again: say what is read, as after any refusal.
+            self.activity = Activity::Unknown;
+        }
+        self.capture_failures = 0;
+    }
+
+    /// Counts a black copy; the tenth in a row writes its line. It is not a
+    /// failure: a dark scene or a loading screen copies the same.
+    fn copied_black(&mut self) {
+        self.minute.black_copies += 1;
+        self.black_copies += 1;
+        if self.black_copies == CAPTURE_FAILURE_LIMIT {
+            self.app.diag(&format!(
+                "screen: black: {CAPTURE_FAILURE_LIMIT} copies in a row"
+            ));
         }
     }
 
@@ -1027,11 +1132,12 @@ impl Reader {
             return;
         }
         self.app.diag(&format!(
-            "screen: minute: {} frames, {} present, {} absent, {} covered, {} OCR failures, busy {} ms",
+            "screen: minute: {} frames, {} present, {} absent, {} covered, {} black copies, {} OCR failures, busy {} ms",
             m.frames,
             counts.present,
             counts.absent,
             counts.covered,
+            m.black_copies,
             m.ocr_failures,
             m.busy.as_millis()
         ));
@@ -1179,7 +1285,7 @@ mod tests {
     }
 
     fn status_of(w: &BarWatch) -> Option<String> {
-        Reader::status_for(None, 0, &BTreeSet::new(), w).map(|s| s.text)
+        Reader::status_for(None, 0, 0, &BTreeSet::new(), w).map(|s| s.text)
     }
 
     /// Beira's bar up for two reads, then `cover`, then absent reads until
@@ -1216,7 +1322,7 @@ mod tests {
         // The overlay's own line comes first.
         let over: BTreeSet<Region> = [Region::BossBar].into();
         assert_eq!(
-            Reader::status_for(None, 0, &over, &w).map(|s| s.text),
+            Reader::status_for(None, 0, 0, &over, &w).map(|s| s.text),
             Some(covered_status(&over).text)
         );
         // Her bar back clears it.

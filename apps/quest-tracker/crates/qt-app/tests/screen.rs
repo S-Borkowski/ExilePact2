@@ -23,7 +23,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
-use qt_app::screen::NO_ENGLISH_STATUS;
+use qt_app::screen::{CAPTURE_FAILURE_LIMIT, NO_ENGLISH_STATUS};
 use qt_app::{
     App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, ScreenBackend, Window,
     SHUTDOWN_TIMEOUT,
@@ -171,6 +171,8 @@ enum Frame {
     Lines(Vec<(String, Rect)>),
     /// The copy waits here until the test opens the gate.
     Gate,
+    /// The copy comes back black (`Image::is_black`), and is not read.
+    Black,
 }
 
 /// What the fake backend does and what it was asked, shared with the test.
@@ -179,6 +181,12 @@ struct ScreenLog {
     scripts: Mutex<BTreeMap<Area, VecDeque<Frame>>>,
     no_english: AtomicBool,
     overlay: Mutex<Option<OverlayState>>,
+    /// The game's window is not found by its pid.
+    no_window: AtomicBool,
+    /// The game's window is minimized: it has no client rect.
+    minimized: AtomicBool,
+    /// The game's window is in front.
+    in_front: AtomicBool,
     /// The area of the last copy, which the next OCR call reads.
     pending: Mutex<Option<Area>>,
     /// A [`Frame::Gate`] holds the copy while this is closed.
@@ -204,6 +212,9 @@ impl ScreenLog {
                 rect: OVERLAY_ASIDE,
                 visible: true,
             })),
+            no_window: AtomicBool::new(false),
+            minimized: AtomicBool::new(false),
+            in_front: AtomicBool::new(true),
             pending: Mutex::default(),
             gate_open: Mutex::new(false),
             gate_moved: Condvar::new(),
@@ -282,17 +293,18 @@ fn area_of(area: PixelRect) -> Area {
 impl ScreenBackend for FakeBackend {
     fn game_window(&mut self, pid: u32) -> Result<Option<WindowHandle>, BackendError> {
         self.0.record(format!("game_window {pid}"));
-        Ok((pid == GAME).then_some(WindowHandle(1)))
+        let found = pid == GAME && !self.0.no_window.load(Ordering::SeqCst);
+        Ok(found.then_some(WindowHandle(1)))
     }
 
     fn foreground_pid(&mut self) -> Result<Option<u32>, BackendError> {
         self.0.record("foreground_pid".to_string());
-        Ok(Some(GAME))
+        Ok(self.0.in_front.load(Ordering::SeqCst).then_some(GAME))
     }
 
     fn client_rect(&mut self, _: WindowHandle) -> Result<Option<PixelRect>, BackendError> {
         self.0.record("client_rect".to_string());
-        Ok(Some(CLIENT))
+        Ok((!self.0.minimized.load(Ordering::SeqCst)).then_some(CLIENT))
     }
 
     fn overlay(&mut self) -> Result<Option<OverlayState>, BackendError> {
@@ -303,32 +315,41 @@ impl ScreenBackend for FakeBackend {
     fn capture(&mut self, _: WindowHandle, area: PixelRect) -> Result<Image, BackendError> {
         let region = area_of(area);
         self.0.record(format!("capture {}", region.name()));
-        loop {
-            let gate = {
+        let black = loop {
+            let front = {
                 let mut scripts = self.0.scripts.lock().unwrap();
                 let queue = scripts.entry(region).or_default();
                 match queue.front() {
                     Some(Frame::Gate) => {
                         queue.pop_front();
-                        true
+                        Some(Frame::Gate)
                     }
-                    _ => false,
+                    // A black copy is not read, so its frame goes here.
+                    Some(Frame::Black) => {
+                        queue.pop_front();
+                        Some(Frame::Black)
+                    }
+                    _ => None,
                 }
             };
-            if !gate {
-                break;
+            match front {
+                Some(Frame::Gate) => self.0.pass_gate(),
+                Some(Frame::Black) => break true,
+                _ => break false,
             }
-            self.0.pass_gate();
-        }
+        };
         *self.0.pending.lock().unwrap() = Some(region);
         self.0
             .clock
             .fetch_add(region.period_ms(), Ordering::SeqCst);
-        Ok(Image {
+        let pixel = if black { [0, 0, 0, 255] } else { [90, 90, 90, 255] };
+        let image = Image {
             width: 8,
             height: 8,
-            bgra: [90, 90, 90, 255].repeat(64),
-        })
+            bgra: pixel.repeat(64),
+        };
+        assert_eq!(image.is_black(), black, "the fake's copy is what it means");
+        Ok(image)
     }
 
     fn ocr_readiness(&mut self) -> Result<OcrReadiness, BackendError> {
@@ -406,6 +427,11 @@ fn present(n: u32) -> Vec<Frame> {
     (0..n).map(|_| Frame::Lines(vec![name_line()])).collect()
 }
 
+/// `n` reads of the band with no bar.
+fn absent(n: u32) -> Vec<Frame> {
+    (0..n).map(|_| Frame::Lines(Vec::new())).collect()
+}
+
 // ---------------------------------------------------------------------------
 // Data and log lines.
 
@@ -479,6 +505,16 @@ fn at_the_fight() -> Vec<String> {
         "Beira of the Rotten Pack: Fixture line: the pack gathers.",
     ));
     lines
+}
+
+/// The lines [`at_the_fight`] adds to [`in_the_riverbank`].
+fn into_the_fight() -> Vec<String> {
+    at_the_fight()[in_the_riverbank().len()..].to_vec()
+}
+
+/// The character's death.
+fn slain() -> String {
+    line("19:06:00", &format!(": {OWN} has been slain."))
 }
 
 /// The character in Clearfell Encampment after The Riverbank, over the
@@ -747,7 +783,7 @@ fn screen_reading_on_ticks_beira_from_the_bar_target() {
 
     // The step is done: nothing more to read, so the reader idles.
     wait_until("idle after the tick", || {
-        h.screen_lines().last().map(String::as_str) == Some("screen: idle")
+        h.screen_lines().last().map(String::as_str) == Some("screen: idle (no demand)")
     });
     // It read at least the bar's minimum and run, and saved the tick.
     let bars = h
@@ -777,16 +813,20 @@ fn screen_reading_on_ticks_beira_from_the_bar_target() {
 
 #[test]
 fn screen_bar_gone_after_a_death_is_not_counted() {
+    // The bar was seen, then absent; the character's death arrives while the
+    // reader is inside the read that completes the absent run. That going is
+    // reported before the reader can see the death in its demand, so the
+    // worker's check on the bar's last present read is what drops it.
     let h = harness(Setup::default(), |s| {
         let mut frames = present(3);
+        frames.extend(absent(GONE_RUN - 1));
         frames.push(Frame::Gate);
         s.script(Region::BossBar, frames);
     });
     h.app.start();
     h.feed(&at_the_fight());
-    // The bar was seen; before its run of absent reads, the character dies.
     h.screen.wait_at_gate();
-    h.feed(&[line("19:06:00", &format!(": {OWN} has been slain."))]);
+    h.feed(&[slain()]);
     h.screen.open_gate();
 
     let line = h.wait_diag(&["screen: bar of Beira of the Rotten Pack gone"]);
@@ -796,6 +836,76 @@ fn screen_bar_gone_after_a_death_is_not_counted() {
         .row_changes()
         .iter()
         .all(|c| c.step_done.as_deref() != Some("Defeat the pack leader")));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+/// The `bar of Beira ... gone` lines so far.
+fn bar_lines(h: &Harness) -> Vec<String> {
+    h.screen_lines()
+        .into_iter()
+        .filter(|l| l.starts_with(&format!("screen: bar of {BEIRA} gone")))
+        .collect()
+}
+
+#[test]
+fn screen_bar_up_through_a_death_then_gone_is_not_counted() {
+    // The bar is up; the character dies while it still reads present, and it
+    // stays up through the death screen (two reads and more), then goes on
+    // the walk back. Its last present read is after the death, so only the
+    // reader's mark keeps that going from ticking the fight step.
+    let h = harness(Setup::default(), |s| {
+        let mut frames = present(3);
+        frames.push(Frame::Gate);
+        frames.extend(present(3));
+        s.script(Region::BossBar, frames);
+    });
+    h.app.start();
+    h.feed(&at_the_fight());
+    h.screen.wait_at_gate();
+    h.feed(&[slain()]);
+    h.screen.open_gate();
+
+    let line = h.wait_diag(&["screen: bar of Beira of the Rotten Pack gone"]);
+    assert!(bar_line_shape(&line), "{line}");
+    assert!(line.ends_with("): not counted (after a death)"), "{line}");
+    // The reads after it are absent: nothing more goes, nothing ticks.
+    h.time_passes(2 * GONE_RUN);
+    assert_eq!(bar_lines(&h).len(), 1, "{:?}", bar_lines(&h));
+    assert!(!h.diag_text().contains(&format!("ticked {QUEST}/fight")));
+    assert!(h
+        .row_changes()
+        .iter()
+        .all(|c| c.step_done.as_deref() != Some("Defeat the pack leader")));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
+fn screen_bar_seen_again_after_a_death_then_gone_ticks() {
+    // As above, and then the bar shows again and goes: that going counts.
+    let h = harness(Setup::default(), |s| {
+        let mut frames = present(3);
+        frames.push(Frame::Gate);
+        frames.extend(present(3));
+        frames.extend(absent(GONE_RUN));
+        frames.extend(present(MIN_PRESENT + 1));
+        s.script(Region::BossBar, frames);
+    });
+    h.app.start();
+    h.feed(&at_the_fight());
+    h.screen.wait_at_gate();
+    h.feed(&[slain()]);
+    h.screen.open_gate();
+
+    h.wait_diag(&[&format!("ticked {QUEST}/fight")]);
+    let lines = bar_lines(&h);
+    assert_eq!(lines.len(), 2, "{lines:?}");
+    assert!(lines[0].ends_with("): not counted (after a death)"), "{lines:?}");
+    assert!(lines[1].ends_with(&format!("): ticked {QUEST}/fight")), "{lines:?}");
+    wait_until("the row change", || {
+        h.row_changes()
+            .iter()
+            .any(|c| c.step_done.as_deref() == Some("Defeat the pack leader"))
+    });
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }
 
@@ -1021,13 +1131,152 @@ fn screen_empty_demand_captures_nothing() {
     h.app.start();
     // An own character in an area no screen signal names.
     h.feed(&in_the_riverbank());
-    h.wait_diag(&["screen: idle"]);
+    h.wait_diag(&["screen: idle (no demand)"]);
     wait_until("the overlap check", || {
         h.screen.calls().contains(&"overlay".to_string())
     });
     std::thread::sleep(Duration::from_millis(400));
     assert!(h.screen.reads().is_empty(), "{:?}", h.screen.reads());
     assert!(!h.diag_text().contains("screen: reading"));
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+/// The `screen: idle ...` lines so far.
+fn idle_lines(h: &Harness) -> Vec<String> {
+    h.screen_lines()
+        .into_iter()
+        .filter(|l| l.starts_with("screen: idle"))
+        .collect()
+}
+
+#[test]
+fn screen_idle_line_names_its_reason() {
+    let h = harness(Setup::default(), |_| {});
+    h.app.start();
+    // No live line yet: the game's pid is not confirmed.
+    h.wait_diag(&["screen: idle (pid unconfirmed)"]);
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(idle_lines(&h).len(), 1, "one line while it holds");
+
+    // A character where no screen signal can fire.
+    h.feed(&in_the_riverbank());
+    h.wait_diag(&["screen: idle (no demand)"]);
+    std::thread::sleep(Duration::from_millis(300));
+
+    // The game's window gone; then minimized (set first, so no tick between
+    // the two sees a third reason).
+    h.screen.no_window.store(true, Ordering::SeqCst);
+    h.wait_diag(&["screen: idle (no game window)"]);
+    std::thread::sleep(Duration::from_millis(300));
+    h.screen.minimized.store(true, Ordering::SeqCst);
+    h.screen.no_window.store(false, Ordering::SeqCst);
+    h.wait_diag(&["screen: idle (minimized)"]);
+    std::thread::sleep(Duration::from_millis(300));
+
+    // The fight opens while it is minimized and behind another window; then
+    // it is restored, still behind.
+    h.screen.in_front.store(false, Ordering::SeqCst);
+    h.feed(&into_the_fight());
+    std::thread::sleep(Duration::from_millis(300));
+    h.screen.minimized.store(false, Ordering::SeqCst);
+    h.wait_diag(&["screen: idle (not in front)"]);
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(h.screen.reads().is_empty(), "{:?}", h.screen.reads());
+
+    // In front: it reads.
+    h.screen.in_front.store(true, Ordering::SeqCst);
+    h.wait_diag(&[&format!("screen: reading boss bar for {QUEST}/fight")]);
+
+    // One line per reason, in the order they held, and never a bare `idle`.
+    assert_eq!(
+        idle_lines(&h),
+        [
+            "screen: idle (pid unconfirmed)",
+            "screen: idle (no demand)",
+            "screen: idle (no game window)",
+            "screen: idle (minimized)",
+            "screen: idle (not in front)",
+        ]
+    );
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
+fn screen_without_an_overlay_window_says_the_overlay_check_is_off() {
+    const OFF: &str = "screen: overlay check off (no overlay window)";
+    const ON: &str = "screen: overlay check on";
+    let count = |h: &Harness, line: &str| h.screen_lines().iter().filter(|l| *l == line).count();
+    let h = harness(Setup::default(), |s| {
+        *s.overlay.lock().unwrap() = None;
+    });
+    h.app.start();
+    h.feed(&at_the_fight());
+    h.wait_diag(&[OFF]);
+    // However many ticks pass, the line is written once.
+    let checks = |h: &Harness| h.screen.calls().iter().filter(|c| *c == "overlay").count();
+    let before = checks(&h);
+    wait_until("more overlap checks", || checks(&h) >= before + 5);
+    assert_eq!(count(&h, OFF), 1, "{:?}", h.screen_lines());
+    assert_eq!(count(&h, ON), 0);
+
+    // The overlay's window found again.
+    *h.screen.overlay.lock().unwrap() = Some(OverlayState {
+        rect: OVERLAY_ASIDE,
+        visible: true,
+    });
+    h.wait_diag(&[ON]);
+    let before = checks(&h);
+    wait_until("more overlap checks", || checks(&h) >= before + 5);
+    assert_eq!(count(&h, ON), 1, "{:?}", h.screen_lines());
+    assert_eq!(count(&h, OFF), 1);
+
+    // Lost again: the off line again.
+    *h.screen.overlay.lock().unwrap() = None;
+    wait_until("the second off line", || count(&h, OFF) == 2);
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
+fn screen_black_copies_are_not_reported_as_failed_captures() {
+    // A dark band for longer than the limit, then the bar's band again.
+    let limit = CAPTURE_FAILURE_LIMIT;
+    let black_copies = limit + 30;
+    let h = harness(Setup::default(), |s| {
+        s.script(
+            Region::BossBar,
+            (0..black_copies).map(|_| Frame::Black).collect(),
+        );
+    });
+    h.app.start();
+    h.feed(&at_the_fight());
+    let black = format!(
+        "Screen reading sees the game's window copied black ({limit} times in a row); a dark scene or a loading screen looks the same."
+    );
+    h.views.wait_for("with the black-copy status", |v| {
+        v.status.as_ref().is_some_and(|s| s.text == black)
+    });
+    h.wait_diag(&[&format!("screen: black: {limit} copies in a row")]);
+    // A good copy ends the run and clears it.
+    wait_until("the status cleared after a good copy", || {
+        let last = h.views.views.lock().unwrap().last().cloned();
+        h.screen.reads().contains(&"ocr boss bar".to_string())
+            && last.is_some_and(|v| v.status.as_ref().is_none_or(|s| s.text != black))
+    });
+    // The minute's line counts them.
+    let minute = h.wait_diag(&["screen: minute: ", " frames, "]);
+    assert!(
+        minute.contains(&format!(", {black_copies} black copies, 0 OCR failures, busy ")),
+        "{minute}"
+    );
+
+    // Not a failed capture: no refusal, no capture-failure status.
+    let text = h.diag_text();
+    assert!(!text.contains("refused: the capture failed"), "{text}");
+    assert_eq!(text.matches("screen: black: ").count(), 1, "{text}");
+    for view in h.views.views.lock().unwrap().iter() {
+        let status = view.status.as_ref().map(|s| s.text.as_str()).unwrap_or("");
+        assert!(!status.contains("cannot copy"), "{status}");
+    }
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }
 

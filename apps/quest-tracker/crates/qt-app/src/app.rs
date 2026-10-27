@@ -404,9 +404,15 @@ struct State {
     /// entry, and the last live `has been slain` line of the current
     /// character: a bar last seen before either went for that reason, not
     /// for the boss's death (Context "Design: the reader thread" › "Cancel
-    /// at the worker").
+    /// at the worker"). That catches a going the reader had already queued
+    /// when the line came; a bar that stays up through the death screen is
+    /// last seen after it, and the reader's own mark drops its going.
     screen_area_ms: Option<u64>,
     screen_death_ms: Option<u64>,
+    /// The live deaths of the current character the worker received, which
+    /// the demand carries so the reader can mark the bars up at a death
+    /// (`DemandSnapshot::deaths`).
+    screen_deaths: u64,
 }
 
 /// The last handled line's place in log time (see `State::log_clock`).
@@ -763,6 +769,7 @@ impl App {
             screen_gen: 0,
             screen_area_ms: None,
             screen_death_ms: None,
+            screen_deaths: 0,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
         state.dirty = !(had_settings && had_roster);
@@ -1202,7 +1209,8 @@ impl App {
                                 EventKind::Slain { name }
                                     if st.engine.current() == Some(name.as_str()) =>
                                 {
-                                    st.screen_death_ms = Some(self.clock.now_ms())
+                                    st.screen_death_ms = Some(self.clock.now_ms());
+                                    st.screen_deaths += 1;
                                 }
                                 _ => {}
                             }
@@ -1302,13 +1310,13 @@ impl App {
     // -- the screen reader ---------------------------------------------------
 
     /// Publishes what the screen reader should look for now: nothing while
-    /// the setting is off, else the engine's screen demand and the game pid
-    /// once confirmed. Replaced only when it changed, so the reader keeps
-    /// its trackers' state across batches.
+    /// the setting is off, else the engine's screen demand, the game pid
+    /// once confirmed and the character's live deaths. Replaced only when it
+    /// changed, so the reader keeps its trackers' state across batches.
     fn publish_demand(&self, st: &State) {
         let snapshot = if st.settings.screen_reading {
             let pid = st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed);
-            DemandSnapshot::of(&st.engine, pid)
+            DemandSnapshot::of(&st.engine, pid, st.screen_deaths)
         } else {
             DemandSnapshot::default()
         };
@@ -1321,23 +1329,29 @@ impl App {
     /// One message of the running screen reader: its status line, or a
     /// tracker's event checked, handed to the engine and logged with its
     /// outcome. A bar last seen before the worker received an area entry or
-    /// the character's death went for that reason and is not counted; an
-    /// event no character would take now (a relog window open, or no
-    /// character yet) is not counted either.
+    /// the character's death went for that reason and is not counted, and
+    /// so is the going the reader marked as the first after a death with the
+    /// bar up (Context "The review fixes" › 1); an event no character would
+    /// take now (a relog window open, or no character yet) is not counted
+    /// either.
     fn apply_screen_msg(&self, st: &mut State, msg: ScreenMsg, out: &mut Vec<Transition>) {
-        let (event, wall_ms) = match msg {
+        let (event, wall_ms, after_death) = match msg {
             ScreenMsg::Status(line) => {
                 st.set_status(Source::Screen, line);
                 return;
             }
-            ScreenMsg::Seen { event, wall_ms } => (event, wall_ms),
+            ScreenMsg::Seen {
+                event,
+                wall_ms,
+                after_death,
+            } => (event, wall_ms, after_death),
         };
         let cancelled = match &event {
             qt_screen::ScreenEvent::BarGone { last_present, .. } => {
                 let before = |t: Option<u64>| t.is_some_and(|t| *last_present < t as i64);
                 if before(st.screen_area_ms) {
                     Some(NotCounted::AfterAreaChange)
-                } else if before(st.screen_death_ms) {
+                } else if after_death || before(st.screen_death_ms) {
                     Some(NotCounted::AfterDeath)
                 } else {
                     None

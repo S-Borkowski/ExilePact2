@@ -754,11 +754,14 @@ step of an available or in-progress quest, and the game's process id once
 a live line or its window in front has confirmed it. The demand is empty
 while the area is unknown, while a Riverbank relog window is open, or with
 no character. The reader takes the newest demand at each tick without
-waiting for it, and copies nothing while the demand is empty, the game's
-pid is unconfirmed, or the game's window is missing, minimized or not in
-front (`screen: idle`); it then looks again at most every 100 ms. The
-game's window is the largest visible top-level window of that pid, and
-its client area is read in physical pixels.
+waiting for it, and copies nothing while the game's pid is unconfirmed,
+the game's window is missing or minimized, the demand is empty, or the
+game's window is not in front; it then looks again at most every 100 ms.
+Its line names the first of these that held, in that order: `screen: idle
+(pid unconfirmed)`, `(no game window)`, `(minimized)`, `(no demand)` or
+`(not in front)`, written again only when the reason changes. The game's
+window is the largest visible top-level window of that pid, and its
+client area is read in physical pixels.
 
 **The three regions,** as fractions of the game's client area (left to
 right, top to bottom), each read only while a demanded signal needs it:
@@ -801,8 +804,19 @@ tell a band with the bar from one without. The worker then drops a
 `bar_gone` whose last present read came before an area entry, or before a
 `has been slain` line of the character, that it had received
 (`not counted (after an area change)`, `not counted (after a death)`), so
-leaving the area or dying does not tick the fight. Walking away from a
-living boss is not caught (Known limitations).
+leaving the area or dying does not tick the fight.
+
+A death with the bar up is caught by the reader too. The demand counts the
+character's live deaths, and when the count changes, each demanded boss
+whose bar is up (seen present, its going not yet reported) has its next
+going not counted, with the same `not counted (after a death)` line. That
+holds whether the bar goes at the death or stays up through the death
+screen and goes on the walk back, when its last present read is after the
+death. The bar must then show again (2 present reads) before a going
+counts. A boss whose bar was not up at the death is not marked, so dying
+to ordinary monsters before the fight costs nothing. The worker's check
+stays, for a going the reader had already reported when the death line
+came. Walking away from a living boss is not caught (Known limitations).
 
 **The QUEST COMPLETE rule (`quest_complete`).** The NPC's window is open
 while a read of the dialogue window shows the NPC's name as a heading: a
@@ -860,27 +874,40 @@ every other source's; each change of what it says has its diagnostic line
   for you. The overlap is checked every tick the reader is on, demand or
   not.
 - "Screen reading cannot copy the game's window (the capture failed 10
-  times in a row)." Failed or black copies before that count as covered
-  reads only.
+  times in a row)." Failed copies before that count as covered reads only.
+  A black copy is not a failed one and does not count toward it.
+- "Screen reading sees the game's window copied black (10 times in a
+  row); a dark scene or a loading screen looks the same." A near-black copy
+  stays a covered read; its run counts apart from the failed copies', and
+  each run ends at a copy of the other kind or a good copy.
 - "Screen reading stopped after an error; turn it off and on to retry."
   The cause goes on an `error: screen reader: ` line.
 
 **Diagnostic lines.** Every reader line is `screen: ` and one of:
 
-- `on (OCR en-US)`, `off`, `idle`;
+- `on (OCR en-US)`, `off`;
+- `idle (<reason>)`, the reason being `pid unconfirmed`, `no game window`,
+  `minimized`, `no demand` or `not in front` (The demand, above);
 - `refused: <reason>`: `no English OCR`, `the game window is not 16:9
   (<w>x<h>)`, `the capture failed <n> times in a row` or `stopped after an
   error`;
 - `reading <regions> for <quest>/<step>[, <quest>/<step>]...`;
 - `covered: <region> by the overlay` and `uncovered: <region>`;
+- `overlay check off (no overlay window)`, when the overlay's own window
+  cannot be found, once until it is found again, and then
+  `overlay check on`. While it is off nothing counts as covered, and a copy
+  holds the overlay where it lies over a region;
+- `black: <n> copies in a row`, at the black-copy status's limit;
 - `bar of <boss> gone (last seen <hh:mm:ss.mmm>Z): <outcome>`,
   `quest complete in <npc>'s window (<hh:mm:ss.mmm>Z): <outcome>` and
   `kill remark for <boss> (<hh:mm:ss.mmm>Z): <outcome>`, where the outcome
   is `ticked <quest>/<step>` or `not counted (<why>)`, `<why>` being
   `after a death`, `after an area change`, `area unknown` or `no open
   step`;
-- `minute: <n> frames, <n> present, <n> absent, <n> covered, <n> OCR
-  failures, busy <n> ms`, once a minute;
+- `minute: <n> frames, <n> present, <n> absent, <n> covered,
+  <n> black copies, <n> OCR failures, busy <n> ms`, once a minute. The
+  black copies are every region's; a black copy of the boss bar is in
+  `covered` too;
 - `minute: dialogue window gate, <n> full reads, <n> skipped`, with it, in
   a minute the dialogue window was read: reads of the whole window, and
   reads of its heading strip alone. A read the window was hidden for is in
@@ -1316,13 +1343,23 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   when you walk out of a living boss's range. The reader cannot tell that
   from a kill, so staying out of range for 3 s ticks the defeat step and
   the row shows the next step early; only an area entry or your death
-  before the bar went cancels it (the owner's choice, 2026-10-26).
+  cancels it (the owner's choice, 2026-10-26). An area entry cancels a
+  going whose bar was last seen before it. A death cancels the next going
+  of each bar that was up at the death, and the bar must show again
+  before a going counts. Whether the bar stays up through the death
+  screen is not measured; the rule covers both cases, a bar that goes at
+  the death and one that goes on the walk back.
 - **Read the screen: panels that hide the bar.** The passive tree and the
   world map draw their own titles over the bar's name; the bar then counts
   as not visible, and a kill while one of them is open is not seen
   (tick it by hand, or let the reward line finish the quest). The
   inventory, the character panel, the Escape menu and the map overlay
   leave the name readable.
+- **Read the screen: dark scenes.** A near-black copy of a region is a
+  covered read, with its own status line after 10 in a row; it is not
+  taken for a failed copy. So a band dark enough to copy black can leave
+  a bar's going unseen, as a panel does. Beira's arena was read in a
+  session; Blackjaw's and Lythara's arenas are not measured.
 - **Read the screen: Blackjaw's and Lythara's bars are not measured.** Only
   Beira's bar text was read in a session. Blackjaw's and Lythara's
   signals use their short names, matched by containment against the full
