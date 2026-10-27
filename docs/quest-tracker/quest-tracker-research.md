@@ -1682,7 +1682,10 @@ texture and a raw patch reads rougher; no patch so dark that its colour
 less its largest tolerance is under luma 16, so a black copy cannot
 match; and probes chosen so that colour alone keeps every entry closed
 in this session's closed frames and in Live 8's play. These factors are
-a choice, not a measurement; Live 13's raw grabs are what measures them.
+a choice, not a measurement. Live 13 then measured the gap they allow
+for, on the inventory's six probes: a raw copy with the panel open sat
+within 0.8 levels per channel of these JPEG numbers, its luma spreads
+0.989 to 1.014 times theirs (§ "Live 13: hiding under game panels").
 
 **The replay over Live 12 and Live 8.** `quest-tracker-replay panels
 detect` with the shipped table:
@@ -1706,6 +1709,72 @@ detect` with the shipped table:
   of 8, and the two stretches where the Escape menu was open unlabelled in
   the play spans 140 of 140 and 6 of 6. Of the play spans' 464 foreground
   frames outside every window's margins, none read open.
+
+### Live 13: hiding under game panels
+
+Measured 2026-10-27 with the panels workorder's Live procedure 2 (capture
+`.claude/workorders/quest-tracker-panels-live-2.md`), on a new character
+never played before (class not recorded), the first entered in that game
+session, 2560×1440 borderless, English client, with *Read the screen*
+off. The build was the release exes of commit `cd20a66` (the overlay
+written at 16:37:32Z, SHA-256 `390c8cdf…ca54`; the replay at 16:37:53Z,
+`48843f52…feca`), whose table still had the Escape menu's entry. The
+overlay started at 16:39:16Z, the character entered The Riverbank at
+16:40:23Z, the person pressed the marker as the Miller died at
+16:43:28.766Z and entered Clearfell Encampment at 16:43:56Z. The setting
+was turned on at 16:46:20Z, the inventory held open under the overlay at
+its default place from 16:47:56Z to 16:49:49Z with a raw grab of the
+client at 16:48:12Z and another after the close at 16:50:18Z, the panel
+cases ran from 16:53:32Z to 16:54:40Z, the overlay moved to the left of
+the screen at 16:55:08Z, and it was quit from the tray at 16:55:52Z. The
+cases: the setting off (the baseline), the inventory held open (the raw
+route's positive control), the inventory, the passive tree, the Escape
+menu and the stash opened briefly, and the overlay moved off the
+inventory.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | HEAD `cd20a66`; both exes written after the head commit (16:29:46Z) |
+| `marker` | pass | the test press at 16:40:34.462Z, in The Riverbank |
+| `control` | pass | `step/step-3/0` in Reaching Clearfell's evidence after the town entry; `panels: on` at 16:46:20Z and `panels: overlay at x 0.81 to 0.99, y 0.30 to 0.89` at 16:46:25Z |
+| `miller-step` | pass | the person: the row showed the Miller's step during the fight, and moved to the town step after his death, not at the kill; the step ticked at 16:43:43Z, 15 s after the press made as he died, and `step/step-2/0` is in the evidence |
+| `off-baseline` | pass | no log line at all from 16:44:47Z to 16:46:07Z, around the press made with the inventory open (16:45:57.178Z); the first `panels:` line at 16:46:20Z; the person: the tracker stayed visible |
+| `raw-control` | pass | `panels: inventory open` and the line `visibility: hidden (a game panel is open under the overlay)` at 16:47:56Z, and again at 16:48:01Z after another window had been in front; after the first minute of open reads only (to 16:49:20Z, 120 reads, 120 open): `inventory best read: 6 of 6 probes read, 6 in colour, 6 within spread, 6 match, 3 needed`; the person: the tracker disappeared |
+| `raw-vs-jpeg` | pass | both grabs at a client of 2560×1440; the inventory's probes on the open grab against the same probes' 23 open samples in the fixture (quality-90 JPEG frames of Lives 12 and 8), shift per channel (B, G, R) and spread ratio: probe 0 +0.2, −0.2, 0.0 and 1.014; probe 1 0.0, +0.2, −0.3 and 1.010; probe 2 +0.5, −0.3, 0.0 and 0.995; probe 3 0.0, +0.2, −0.1 and 0.999; probe 4 0.0, −0.3, −0.1 and 0.989; probe 5 −0.8, 0.0, +0.4 and 1.001; on the closed grab, with the overlay's place left out, 0 of the inventory's probes match, 3 needed |
+| `on-inventory` | pass | `panels: inventory open` and the hide line at 16:53:32Z, the press made once it was open at 16:53:35.0Z; `visibility: shown` at 16:53:41Z, the close press at 16:53:41.9Z; the person: it disappeared and came back |
+| `on-passive-tree` | pass | `panels: passive-tree open` and the hide line at 16:54:00Z (press 16:54:01.1Z); shown at 16:54:06Z (close press 16:54:07.0Z); the same words |
+| `on-escape-menu` | pass | `panels: escape-menu open` and the hide line at 16:54:16Z (press 16:54:16.8Z); shown at 16:54:21Z (close press 16:54:21.9Z); the same words. The owner then took the Escape menu off the list of panels that hide the overlay, and the table that ships has no entry for it (§ "Live 12: the game panels' footprints") |
+| `on-stash` | pass | `panels: inventory open` (the inventory's entry stands for the stash) and the hide line at 16:54:34Z (press 16:54:34.7Z); shown at 16:54:40Z (close press 16:54:40.4Z); the same words |
+| `left-no-hide` | pass | `panels: overlay at x 0.00 to 0.18, y 0.24 to 0.83` at 16:55:08Z; no hide line from the move to 16:55:25.7Z, 2 s after the inventory's press (16:55:23.7Z), the next one, at 16:55:46Z, another window in front at the tray quit; the person: it stayed visible |
+| `panels-busy` | pass | the two minutes spanning the panel cases: 102 reads and `busy` 29250 ms (to 16:54:20Z, the largest), 109 reads and 26721 ms (to 16:55:20Z) |
+| `stop-clean` | pass | `stop: tailer, worker and panel watcher ended, progress saved` at 16:55:52Z, after the part minute's line |
+| `panels-log` | pass | 110 `panels:` lines, none outside the pinned shapes |
+
+**The raw route.** The table's numbers came from JPEG frames (Live 12),
+and this was the first reading of them on the raw GDI copies the watcher
+takes. On the inventory's six probes the gap is under a level per
+channel and the spreads are the same within 1.4%, far inside the table's
+margins (a tolerance of 6 levels per channel, a spread limit of at least
+twice the measured spread): the JPEG frames did not move the colours the
+table reads. The passive tree's and the Escape menu's probes matched on
+raw copies too (their best-read lines in the minute to 16:54:20Z, 4 and
+5 match, 3 needed), but no raw grab of them was taken, so their shifts
+are not measured.
+
+**Copy time.** Every minute with 120 reads counted a `busy` of about
+34.4 s (to 16:49:20Z with the inventory open, to 16:51:20Z with nothing
+open, to 16:52:20Z), about 29 copies and 0.29 s a read; the other
+minutes, with fewer reads (an idle stretch, a part minute), counted
+16.6 to 32.9 s. 19 to 43% of the copies were black in each minute.
+Measured on one machine.
+
+**Other observations.** When another window had been in front with the
+inventory open, the overlay showed again at 16:48:00Z and hid at
+16:48:01Z, so the brief show on coming back lasted under 2 s by the
+log's whole-second times. From 16:52:06Z to 16:52:43Z, before the panel
+cases' first press and with no press among them, the log has nine
+`inventory open` and `inventory closed` pairs, each with its hide and
+show; what was open then is not recorded.
 
 ## Negative results
 

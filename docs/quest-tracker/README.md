@@ -672,7 +672,8 @@ level-up names it or a pin takes its progress. A quest command is refused
 **Slay the Bloated Miller.** Reaching Clearfell's "Slay the Bloated
 Miller" ticks on Mortimer's "Well done! Please come inside." in The
 Riverbank (`G1_1`), which the log records after the kill, before you enter
-the encampment. The Miller's own lines do not tick it: they start with the
+the encampment (confirmed live, Live 13: the row kept the step through
+the fight and moved on 15 s after his death). The Miller's own lines do not tick it: they start with the
 fight ("Saw you in half!"), and when they were the signal the row showed
 "Enter town" while he was still alive (two live sessions, 2026-10-27).
 Mortimer's line came after the Miller's last line in all 13 of its
@@ -1250,8 +1251,9 @@ tolerance is darker than luma 16, so a black copy never matches; and at
 least 3 probes of each entry lie outside the default
 overlay's reach (x 0.78 to 1.0, y 0.30 to 0.97). Every number comes from
 quality-90 JPEG frames, while the watcher compares raw copies: those
-margins are this version's allowance for the difference, which is not yet
-measured (Known limitations). Over Live 12's capture every window of the
+margins are this version's allowance for the difference, which Live 13
+measured on the inventory's probes: under a level per channel, the
+spreads within 1.4% (Known limitations). Over Live 12's capture every window of the
 shipped panels reads open from its first frame, the character panel's
 windows read nothing open, and nothing reads open outside the windows
 but three stretches where the inventory was open before its press. Over
@@ -1759,14 +1761,23 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   where its default place is, clear of the regions: the bar's band spans
   x 0.25 to 0.75 of the game's window at the top, the dialogue window
   x 0.22 to 0.70, the voiced lines x 0 to 0.45 at the lower left.
-- **Hide under game panels: not yet confirmed in the game.** The table's
-  numbers come from quality-90 JPEG frames of a research capture (Live
-  12), while the watcher compares raw GDI copies. JPEG smooths a patch's
-  texture and can move a small patch's colour near an edge, so the
-  tolerances and spread limits carry margins for raw copies, chosen
-  rather than measured. Whether a raw copy of each panel matches is
-  confirmed only by a live session (Live 13); until then the hide is
-  replayed over JPEG frames, not seen working in the game.
+- **Hide under game panels: confirmed in the game on three panels.** The
+  table's numbers come from quality-90 JPEG frames of a research capture
+  (Live 12), while the watcher compares raw GDI copies, so the tolerances
+  and spread limits carry margins for raw copies. Live 13 saw the overlay
+  hide under the inventory, the passive tree and the stash and come back
+  once each closed, and a raw copy of the inventory's six patches sat
+  within 0.8 levels per channel of the JPEG numbers, its spreads 0.989 to
+  1.014 times theirs, far inside those margins. The other panels' raw
+  copies were not grabbed, and the shop (M), the options (O), the world
+  map (U) and a merchant's window are replayed over JPEG frames, not seen
+  in the game.
+- **Hide under game panels: copy time.** Each `panels: minute:` line's
+  `busy` is the time the watcher spent copying and testing that minute,
+  measured on one machine: about 34.4 s at 120 reads (2 a second, about
+  29 copies each), whether a panel was open or not, and 29.3 s at 102
+  reads in the busiest minute of the panel cases (Live 13). Other
+  machines are not measured.
 - **Hide under game panels: only the owner's seven game panels.** The
   inventory, the passive tree, M (the shop), O (the options), U (the world
   map), the stash and a merchant's trade window. The Escape menu does not
@@ -1792,8 +1803,8 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   front.** While another program is in front the watcher does not read
   and forgets what it read, so when the game comes back in front with a
   panel open the overlay shows until the watcher's next read, which comes
-  within about one 250 ms tick, and then hides again (not measured in the
-  game).
+  within about one 250 ms tick, and then hides again. Live 13 saw it
+  once: under 2 s by the log's whole-second times.
 - **Hide under game panels: dark spots.** A probe whose copy is black (a
   dark spot of the scene, a loading screen) does not match. When every
   copy of a read is black, the read changes nothing, so a panel opened or
@@ -1957,18 +1968,19 @@ Revisit this feature when:
   `quest-tracker-replay screen` runs the same trackers over a kept
   capture.
 - *Hide under game panels*, a setting off by default: with it on, play
-  mode hides the overlay while one of eight game panels (the inventory,
-  the passive tree, the shop on M, the Escape menu, the options on O, the
-  world map on U, the stash and a merchant's trade window) is open under
-  it, and shows it again once the panel closes, by the colour of a few
-  small patches of the game's window where the panel draws its frame. It
-  pauses, with a status line, on a window that is not 16:9 or when the
-  overlay cannot find its own window, and never keeps the overlay hidden
-  while paused. Nothing it copies is stored, logged or shown. Measured
-  over a research capture and replayed, not yet confirmed in the game.
-  `quest-tracker-replay panels` measures the panels and runs the same
-  test over a kept capture, and its `grab` and `probe` check the table on
-  a raw copy.
+  mode hides the overlay while one of seven game panels (the inventory,
+  the passive tree, the shop on M, the options on O, the world map on U,
+  the stash and a merchant's trade window) is open under it, and shows it
+  again once the panel closes, by the colour of a few small patches of
+  the game's window where the panel draws its frame. The Escape menu does
+  not hide the overlay. It pauses, with a status line, on a window that
+  is not 16:9 or when the overlay cannot find its own window, and never
+  keeps the overlay hidden while paused. Nothing it copies is stored,
+  logged or shown. Measured over a research capture and replayed;
+  confirmed in the game on the inventory, the passive tree and the stash
+  (Live 13). `quest-tracker-replay panels` measures the panels and runs
+  the same test over a kept capture, and its `grab` and `probe` check the
+  table on a raw copy.
 - A find-it tip under a step: the owner's short "how to find it" hints,
   from a `tip` field in the quest data, shown under the step they help
   with in the row and the quest detail; five in this version, more added

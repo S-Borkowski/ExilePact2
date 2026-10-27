@@ -486,5 +486,13 @@ rect.
   changed area was the whole client or nearly. The inventory's header
   plate, the passive tree's title plate and the top of the Escape menu's
   box kept their colours in Live 8, another character's session in The
-  Riverbank. All of it read from quality-90 JPEG frames; raw copies not
-  yet compared.
+  Riverbank. All of it read from quality-90 JPEG frames. A raw GDI copy
+  of the client matched them (measured 2026-10-27, Live 13, 2560×1440,
+  the inventory open, another new character in Clearfell Encampment): on
+  each of the inventory header plate's six 16 px patches the mean per
+  channel sat within 0.8 levels of the same patch's mean over 23 open
+  quality-90 JPEG frames, and its luma spread at 0.989 to 1.014 times
+  theirs; with the inventory closed, none of the six held its open
+  colour. Read on raw copies by the overlay's watcher, the passive tree's
+  title plate and the top of the Escape menu's box also kept their
+  colours in Live 13; their raw copies were not compared patch by patch.
