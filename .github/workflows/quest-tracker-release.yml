@@ -1,0 +1,107 @@
+name: Quest Tracker Release
+
+# Builds the quest tracker from a release tag and attaches both executables
+# to a DRAFT release. Nothing is published by this workflow: the owner opens
+# the draft, checks it, publishes it and ticks "Set as the latest release" by
+# hand.
+#
+# Cutting a release (docs/quest-tracker/README.md, "Working on the app" ›
+# "Cutting a release"):
+#   py -3 -m tools.quest_tracker.release cut --push
+# tags the tip of main as `quest-tracker-v<version>` and pushes the tag,
+# which starts this workflow. The version comes from the app's files, and
+# the release body from the guide's "Release notes" for that version.
+#
+# To rebuild an existing tag (a failed run, a lost asset), run this workflow
+# by hand with the tag. If a release for the tag exists, its assets are
+# replaced and its body and draft state are left alone.
+
+on:
+  push:
+    tags:
+      - "quest-tracker-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, e.g. quest-tracker-v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quest-tracker-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'S-Borkowski/ExilePact2'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Check the tag against the app's version and notes
+        run: |
+          case "$TAG" in
+            quest-tracker-v*) ;;
+            *) echo "::error::$TAG is not a quest-tracker-v<version> tag"; exit 1 ;;
+          esac
+          version="${TAG#quest-tracker-v}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          python -m tools.quest_tracker.release check "$version"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24.19.0"
+          cache: npm
+          cache-dependency-path: apps/quest-tracker/package-lock.json
+
+      # The toolchain the app is built with locally (docs/quest-tracker/README.md,
+      # "Platforms and prerequisites"); the MSVC target is the runner's default.
+      - name: Install Rust 1.98.1
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup default 1.98.1
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/quest-tracker
+
+      - name: Build
+        run: |
+          npm --prefix apps/quest-tracker ci
+          npm --prefix apps/quest-tracker run release
+
+      - name: Collect the assets
+        run: |
+          mkdir -p dist-release
+          cp apps/quest-tracker/target/release/quest-tracker.exe dist-release/
+          cp apps/quest-tracker/target/release/quest-tracker-replay.exe dist-release/
+          (cd dist-release && sha256sum quest-tracker.exe quest-tracker-replay.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          python -m tools.quest_tracker.release notes "$VERSION" --out release-notes.md
+
+      - name: Create or update the draft release
+        run: |
+          assets=(dist-release/quest-tracker.exe dist-release/quest-tracker-replay.exe dist-release/SHA256SUMS.txt)
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+            echo "Replaced the assets of the existing release $TAG."
+          else
+            gh release create "$TAG" "${assets[@]}" --draft --verify-tag \
+              --title "Quest Tracker $VERSION" --notes-file release-notes.md
+            echo "Created the draft release $TAG; publish it and set it as latest by hand."
+          fi
