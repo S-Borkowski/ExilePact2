@@ -120,8 +120,10 @@ fn data_file_validates() {
     assert!(!data.areas.is_empty(), "the shipped data names no area");
     assert_ne!(data.game_version, "unchecked", "game_version is not set");
     assert_eq!(data.source, "https://poe2db.tw/us/Quest");
-    // Every area belongs to a campaign act and every speaker is used, so the
-    // allowlist stays the curated one and not a dump of every logged name.
+    // Every area belongs to a campaign act and every speaker is used, by a
+    // signal or as a kill remark's boss (The Bloated Miller, whose own lines
+    // tick nothing), so the allowlist stays the curated one and not a dump of
+    // every logged name.
     for (code, area) in &data.areas {
         assert!(
             CAMPAIGN_ACTS.contains(&area.act),
@@ -145,6 +147,9 @@ fn data_file_validates() {
                 used.insert(speaker);
             }
         }
+    }
+    for r in &data.remarks {
+        used.insert(&r.boss);
     }
     for npc in &data.npcs {
         assert!(used.contains(npc.as_str()), "npc {npc:?} is allowlisted but no quest uses it");
@@ -338,13 +343,16 @@ const TOWN_TALK_CHARACTER: &str = "Maelis_Thornby";
 /// The town voices of Clearfell Encampment: what the log records of them in
 /// the encampment is greetings and vendor lines, never a quest's talk
 /// (research note "Town dialogue"), so none of their town lines is a signal.
-/// Una alone is on the allowlist, for her lines in the Grelwood and the Grim
-/// Tangle (Live 2, 2026-10-25); each of her signals names its area and its
-/// exact line ([`TOWN_SPOKEN`]).
+/// Una is on the allowlist for her lines in the Grelwood and the Grim Tangle
+/// (Live 2, 2026-10-25), and Mortimer for his line in The Riverbank after the
+/// Miller's death (2026-10-27); each of their signals names its area and its
+/// exact line ([`TOWN_LISTED`]).
 const TOWN_VOICES: [&str; 4] = ["Una", "Finn", "Renly", "Mortimer"];
 
-/// The town voice the shipped allowlist reads, and the encampment's code.
+/// The town voice the shipped allowlist reads in `town_voices.txt`, the town
+/// voices it lists, and the encampment's code.
 const TOWN_SPOKEN: &str = "Una";
+const TOWN_LISTED: [&str; 2] = [TOWN_SPOKEN, MORTIMER];
 const TOWN_CODE: &str = "G1_town";
 
 /// Every `npc` signal of `speaker` in the data, wherever a quest holds it, as
@@ -482,15 +490,16 @@ fn talk_steps_are_inferred_or_ticks() {
     let data = data();
     for voice in TOWN_VOICES {
         let listed = data.npcs.iter().any(|n| n == voice);
-        if voice != TOWN_SPOKEN {
+        if !TOWN_LISTED.contains(&voice) {
             assert!(!listed, "{voice}'s greetings are on the speaker allowlist");
             continue;
         }
-        // Una is listed, and no signal of hers can match a line in town: each
-        // names an area outside the encampment and an exact line.
+        // Una and Mortimer are listed, and no signal of theirs can match a
+        // line in town: each names an area outside the encampment and an
+        // exact line.
         assert!(listed, "{voice} is not on the speaker allowlist");
         let signals = npc_signals(&data, voice);
-        assert!(!signals.is_empty(), "{voice} is listed but no signal uses her");
+        assert!(!signals.is_empty(), "{voice} is listed but no signal uses them");
         for (area, line) in signals {
             assert!(
                 area.is_some_and(|a| a != TOWN_CODE) && line.is_some(),
@@ -1282,6 +1291,56 @@ fn treacherous_ground_available_in_town() {
     assert_eq!(s.status, Status::InProgress);
     assert_eq!(s.current_step.as_deref(), Some("step-1"));
     assert_eq!(next_title(&data, &s), "Find the Mud Burrow");
+}
+
+const MORTIMER: &str = "Mortimer";
+const MILLER: &str = "The Bloated Miller";
+
+/// The Riverbank's fight with The Bloated Miller as the owner's log recorded
+/// it on 2026-10-27: Mortimer's call, the Miller's lines from the fight's
+/// start to his last, and Mortimer's line after the kill.
+const MORTIMER_CALLS: &str = "Foundling! We need your strength!";
+const MILLER_LINES: [&str; 4] = ["Saw you in half!", "Split you!", "Die!", "Die!"];
+const MORTIMER_THANKS: &str = "Well done! Please come inside.";
+
+/// 2026-10-27, two live sessions: "Slay the Bloated Miller" ticked on his
+/// first line, at the fight's start, and the row showed "Enter town" while he
+/// was alive. The step waits for Mortimer's line after the kill.
+#[test]
+fn miller_step_waits_for_his_death() {
+    let data = Arc::new(data());
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+
+    // Baseline: in The Riverbank the row shows the Miller's step.
+    let s = r.state("reaching-clearfell");
+    assert_eq!((s.status, s.current_step.as_deref()), (Status::InProgress, Some("step-1")));
+    assert_eq!(next_title(&data, &s), "Slay the Bloated Miller");
+
+    // The fight: Mortimer's call and every line of the Miller's, from the
+    // first, move nothing.
+    let mut moved = r.say(MORTIMER, MORTIMER_CALLS);
+    for line in MILLER_LINES {
+        moved.extend(r.say(MILLER, line));
+    }
+    assert!(moved.is_empty(), "{moved:?}");
+    assert_eq!(next_title(&data, &r.state("reaching-clearfell")), "Slay the Bloated Miller");
+
+    // Target: Mortimer's line after the kill ticks it, in one transition, and
+    // "Enter town" is next.
+    let moved = r.say(MORTIMER, MORTIMER_THANKS);
+    let s = r.state("reaching-clearfell");
+    assert_eq!(s.current_step.as_deref(), Some("step-2"));
+    assert_eq!(next_title(&data, &s), "Enter town");
+    assert_eq!(moved.len(), 1, "{moved:?}");
+    assert_eq!(moved[0].step_to.as_deref(), Some("step-2"));
+
+    // Negative control: the same line in the encampment, where Mortimer is a
+    // gambling vendor, ticks nothing.
+    let mut town = Replay::start(&data, GRELWOOD_CHARACTER);
+    town.enter(TOWN_CODE);
+    let before = town.state("reaching-clearfell");
+    assert!(town.say(MORTIMER, MORTIMER_THANKS).is_empty());
+    assert_eq!(town.state("reaching-clearfell"), before);
 }
 
 const BEIRA: &str = "beira-of-the-rotten-pack";

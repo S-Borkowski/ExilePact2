@@ -543,6 +543,19 @@ restart of the overlay, and pass to the character it becomes when a
 level-up names it or a pin takes its progress. A quest command is refused
 (`no character yet`) only when there is no character at all.
 
+**Slay the Bloated Miller.** Reaching Clearfell's "Slay the Bloated
+Miller" ticks on Mortimer's "Well done! Please come inside." in The
+Riverbank (`G1_1`), which the log records after the kill, before you enter
+the encampment. The Miller's own lines do not tick it: they start with the
+fight ("Saw you in half!"), and when they were the signal the row showed
+"Enter town" while he was still alive (two live sessions, 2026-10-27).
+Mortimer's line came after the Miller's last line in all 13 of its
+occurrences in one player's log, 14 to 20 s after it in the three
+2026-10-27 sessions. Where it does not come, entering Clearfell Encampment
+still completes the step. Mortimer is on the speaker allowlist for that
+line alone: his signal names The Riverbank and the exact line, so his
+gambling and farewell lines in the encampment move nothing.
+
 **Secrets in the Dark, The Mysterious Shade and Una's Grelwood lines.**
 Renly gives Secrets in the Dark in a talk the log does not record, so the
 quest has a `start` signal instead: Reaching Clearfell being done, which
@@ -1006,7 +1019,7 @@ Network:
 `apps/quest-tracker/data/quests.json` is compiled into both executables
 (`--data` overrides it). This version: schema 1, checked against client
 `4.5.3`, poe2db fetched 2026-10-25, 87 campaign quests over Acts 1 to 6, 98
-areas, 37 allowlisted speakers. The validator in `qt-engine` fails, naming
+areas, 39 allowlisted speakers. The validator in `qt-engine` fails, naming
 the quest and field, on a duplicate id, a value outside an enum, a bad URL
 or date, an unknown signal kind or field, or a signal naming a quest,
 speaker, system line or area the file does not define.
