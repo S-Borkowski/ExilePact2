@@ -622,6 +622,37 @@ fn pinned(line: &str) -> bool {
     })
 }
 
+/// `l` with the minute line's `busy <N> ms` figure blanked to `busy # ms`.
+/// That figure is measured wall-clock time, so it may be any number,
+/// including one of the fake's pixel values; it is the one number the
+/// pixel scan must not read. The rest of the line is still scanned.
+fn without_busy_ms(l: &str) -> String {
+    let Some(at) = l.find(" busy ") else {
+        return l.to_owned();
+    };
+    let start = at + " busy ".len();
+    let digits = l[start..].bytes().take_while(u8::is_ascii_digit).count();
+    if digits == 0 || !l[start + digits..].starts_with(" ms") {
+        return l.to_owned();
+    }
+    format!("{}#{}", &l[..start], &l[start + digits..])
+}
+
+#[test]
+fn pixel_scan_skips_only_the_busy_figure() {
+    // The measured figure is blanked, whatever it is.
+    let line = "panels: minute: 2 reads, 4 copies, 1 open, 0 black copies, busy 91 ms";
+    assert_eq!(
+        without_busy_ms(line),
+        "panels: minute: 2 reads, 4 copies, 1 open, 0 black copies, busy # ms"
+    );
+    // Negative control: a pixel number anywhere else on the line still shows.
+    let elsewhere = "panels: minute: 91 reads, 4 copies, 1 open, 0 black copies, busy 3 ms";
+    assert!(without_busy_ms(elsewhere).contains("91"));
+    // A line without the figure is left alone.
+    assert_eq!(without_busy_ms("status 123"), "status 123");
+}
+
 /// Every `panels:` line has a pinned shape, and none of them, no
 /// visibility line, error line or status carries a number of the fake's
 /// pixels.
@@ -635,8 +666,9 @@ fn assert_pinned(h: &Harness) {
     said.extend(h.lines_from("error: panel watcher: "));
     said.extend(h.status().map(|s| s.text));
     for l in &said {
+        let scanned = without_busy_ms(l);
         for n in PIXEL_NUMBERS {
-            assert!(!l.contains(n), "{l:?} carries {n}");
+            assert!(!scanned.contains(n), "{l:?} carries {n}");
         }
     }
     for l in h.visibility_lines() {

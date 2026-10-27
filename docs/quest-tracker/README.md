@@ -2150,7 +2150,9 @@ Revisit this feature when:
   the tray (*Update available: X*), with a way to open its release page in
   your browser. Nothing is downloaded or installed. *Automatically check
   for updates* in that window, off by default, checks at launch and once a
-  day. With it off and no check clicked, the app makes no network request.
+  day. With it off and no check clicked, the app's own code makes no
+  network request (WebView2, Microsoft's runtime that draws its windows,
+  connects on its own: see Known limitations).
   The window also carries the line "Created by ST4H".
 - In edit mode the window moves by dragging the panel's header, and the
   position is kept; there is no dock side.
