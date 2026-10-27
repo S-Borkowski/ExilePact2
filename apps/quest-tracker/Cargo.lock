@@ -2770,6 +2770,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "qt-net"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "qt-replay"
 version = "0.1.0"
 dependencies = [
@@ -2826,6 +2833,7 @@ version = "0.1.0"
 dependencies = [
  "qt-app",
  "qt-capture",
+ "qt-net",
  "serde",
  "serde_json",
  "tauri",

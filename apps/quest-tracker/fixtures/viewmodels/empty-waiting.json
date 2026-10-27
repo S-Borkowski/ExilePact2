@@ -9,6 +9,7 @@
   "next_up": [],
   "schema": 1,
   "settings": {
+    "check_updates": false,
     "hide_under_panels": false,
     "hotkey": "Ctrl+Alt+Q",
     "log_path": null,

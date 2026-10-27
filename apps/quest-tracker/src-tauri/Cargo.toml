@@ -15,6 +15,9 @@ tauri-build = { workspace = true }
 
 [dependencies]
 qt-app = { path = "../crates/qt-app" }
+# The update check's transport: the app's only network code, one fixed
+# request for the release list, made only when a check runs.
+qt-net = { path = "../crates/qt-net" }
 tauri = { workspace = true }
 tauri-plugin-global-shortcut = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }

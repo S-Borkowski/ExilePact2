@@ -10,6 +10,13 @@ export default defineConfig(({ mode }) => ({
   // condition) so components mount in jsdom; the dev server and the build
   // keep Vite's default conditions.
   resolve: mode === 'test' ? { conditions: ['browser'] } : undefined,
+  // Two pages: the overlay (`index.html`) and the tray's Settings window
+  // (`settings.html`). Paths are relative to the Vite root, this folder.
+  build: {
+    rolldownOptions: {
+      input: { main: 'index.html', settings: 'settings.html' },
+    },
+  },
   // Keep Rust errors visible when run under `tauri dev`.
   clearScreen: false,
   server: {

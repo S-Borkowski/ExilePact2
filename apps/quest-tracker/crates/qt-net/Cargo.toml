@@ -1,0 +1,12 @@
+[package]
+name = "qt-net"
+description = "The quest tracker's only network code: one fixed HTTPS GET of the repository's GitHub release list, through Windows' own WinHTTP."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# WinHTTP comes with the already-pinned `windows-sys`; the feature is added
+# here so no other member compiles it. Elsewhere than Windows the crate has
+# no dependency at all and every fetch is refused as unsupported.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Networking_WinHttp"] }

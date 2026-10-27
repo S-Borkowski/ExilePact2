@@ -11,7 +11,12 @@ progress from the game's `Client.txt` log. Two settings are opt-in: *Read the
 screen* also reads three regions of the game's window with Windows' own OCR,
 and *Hide under game panels* hides the overlay while a game panel such as the
 inventory is open under it. It sends no input to the game and never reads the
-game's memory.
+game's memory. It makes no network request unless you ask it to check for
+updates (the tray icon's *Check for updates*, or *Automatically check for
+updates* in its *Settings*, off by default); a check only asks GitHub whether
+a newer release is out, and downloads nothing. (WebView2, Microsoft's runtime
+that draws its windows, connects on its own: see the guide's Known
+limitations.)
 
 - Download: the latest Quest Tracker release on the
   [releases page](https://github.com/S-Borkowski/ExilePact2/releases). Each

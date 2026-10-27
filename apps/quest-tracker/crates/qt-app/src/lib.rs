@@ -4,8 +4,9 @@
 //! command-line options and log path discovery.
 //!
 //! `src-tauri` is glue around this crate: it implements [`Emitter`] (the
-//! `qt:view` and `qt:row-change` events) and [`Window`] (click-through, zoom,
-//! placement, the global shortcut, opening a link, the monitor's metrics
+//! `qt:view` and `qt:row-change` events, and `qt:app-settings` for the
+//! Settings window with the tray's menu and tooltip) and [`Window`]
+//! (click-through, zoom, placement, the global shortcut, opening a link, the monitor's metrics
 //! for the `auto` scale, the pid of the window in front and showing or
 //! hiding the overlay for it), forwards each IPC
 //! command to the [`App`] method of the same name, and makes a quit request
@@ -28,6 +29,15 @@
 //!   while a game panel is open under it, through a backend of its own the
 //!   glue hands [`App::with_panels`] in a [`PanelConfig`] (Context "Design:
 //!   the panel watcher").
+//! - [`updates`]: the update check, asked only when the user orders it (the
+//!   tray's *Check for updates*, the Settings window's *Check now*, or the
+//!   opt-in `check_updates` setting, at launch and then daily): when a check
+//!   is due, its one request on a thread of its own through an
+//!   [`UpdateTransport`] the glue hands [`App::with_updates`] in an
+//!   [`UpdateConfig`] (`qt-net` on Windows), what the release list means,
+//!   the Settings window's view ([`AppSettingsView`], `qt:app-settings`) and
+//!   the tray menu's entries ([`tray_menu`]). This crate makes no request
+//!   itself and does not depend on `qt-net`.
 
 pub mod app;
 pub mod cli;
@@ -36,6 +46,7 @@ pub mod discover;
 pub mod panels;
 pub mod screen;
 pub mod seed;
+pub mod updates;
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -50,6 +61,10 @@ pub use app::{
 };
 pub use cli::Options;
 pub use panels::PanelConfig;
+pub use updates::{
+    tray_menu, AppSettingsView, TrayAction, TrayItem, TrayMenu, UpdateConfig, UpdateState,
+    UpdateTransport, Version,
+};
 // What the glue names without depending on the library crates itself.
 pub use qt_engine::QuestAction;
 pub use qt_screen::ScreenBackend;

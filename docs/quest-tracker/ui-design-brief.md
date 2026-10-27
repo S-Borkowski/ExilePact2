@@ -35,10 +35,16 @@ web's means; the names in [Export contract](#export-contract) are final.
   after Live 3), so the panel's own look is the slider's preview.
 - **A tray icon.** While the overlay runs it has an icon in the Windows
   notification area: the app's own icon (no icon drawn for it), tooltip
-  "Quest Tracker", and a menu with one entry, "Quit Quest Tracker", which
-  closes the overlay even while it is hidden (owner, 2026-10-25, after
-  Live 3). Nothing else is in the menu, and nothing in the panel changes
-  for it.
+  "Quest Tracker", or "Quest Tracker (1.3.0 available)" while a newer
+  version is known. Its menu, top to bottom: "Update available: 1.3.0"
+  (only while a newer version is known; opens that release's page in the
+  default browser), "Check for updates" (opens the Settings window and
+  starts a check), "Settings" (opens the
+  [Settings window](#the-settings-window)), a separator, and "Quit Quest
+  Tracker", which closes the overlay even while it is hidden (owner,
+  2026-10-25, after Live 3; the update entries and Settings, owner,
+  2026-10-27). Nothing in the panel changes for it: an update is never
+  announced inside the overlay.
 - **What the web UI can do over the game.** The window is transparent per
   pixel, so these all work and may be designed for: rounded corners, soft
   shadows (drawn by CSS inside a transparent margin around the panel; the
@@ -248,6 +254,63 @@ closes detail, settings, the picker and the icon key (owner, 2026-10-25).
 | Toggle, slider, dropdown | standard states | h 24 | Settings |
 | Collapsed badge | idle / has-new (count) | 48×48 | Count of available worth-it quests |
 | Row transition | step out / step in; highlight; reduced motion (instant swap, highlight kept) | the quest row | Not a component of its own: the quest row's step line and band. The completed step fades out (~150 ms), the next fades in from ~0.2 opacity rising 4-6 px (~220 ms, ease-out); the row is highlighted with an existing token for ~2.5 s, also under `prefers-reduced-motion: reduce`, where the swap is instant; the collapsed badge shows the highlight too; announced in a polite live region |
+
+## The Settings window
+
+The app's own settings, apart from the overlay (owner, 2026-10-27). It is
+not an overlay frame: it is a small ordinary window of its own, opened from
+the tray's "Settings" and "Check for updates", so the
+[Export contract](#export-contract)'s frame ids do not change. The panel's
+Settings frame stays as it is; nothing moves between the two and neither
+links to the other.
+
+- **Purpose.** For now it holds one setting, "Automatically check for
+  updates", off by default, and the line "Created by ST4H". It is built to
+  take more: its body is a list of sections drawn in order, so a later
+  setting is a new section, not a new layout.
+- **Size.** About 420 px wide at 1×, as tall as its content (about 280 px
+  with one section), not resizable, centred on the screen. A native,
+  dark title bar ("Quest Tracker Settings") with the system's close
+  button; it is in the taskbar while open and not always on top.
+- **Layout, top to bottom.** The title "Settings" (Title style); then each
+  section: its name as a group label (Act style, `color.text-muted`), its
+  rows; sections are divided by a 1 px `color.panel-divider` line. A
+  footer under a divider: "Created by ST4H" (Caption, `color.text-muted`),
+  plain text, no link.
+- **The Updates section.** A setting row "Automatically check for updates"
+  with a toggle (on as the app says), and under it a helper line (Label
+  size, not Caption: it is the privacy promise): it asks
+  GitHub once a day whether a newer version is out and downloads nothing;
+  off, Quest Tracker never connects unless you ask it to check. Then the
+  status line (Step style, with a 16 px icon), the buttons "Check now"
+  (secondary) and "Open the release page" (primary, with the external-link
+  icon, only while a newer version is known), and "Version 1.2.0"
+  (Caption).
+- **Its states** are the update check's: *not checked yet* (no icon);
+  *checking* ("Checking for updates…", the refresh icon, "Check now"
+  disabled); *up to date* (the check icon); *available* ("Quest Tracker
+  1.3.0 is available. You have 1.2.0.", the available mark in
+  `color.status-available`, the release-page button shown); *no release
+  published* (no icon); *failed* ("Could not check for updates: <reason>.",
+  the warning icon in `color.warning`; the release-page button stays while
+  a newer version found earlier is kept). The text says what happened in
+  every state; the icon and its colour only repeat it.
+- **Tokens and components it reuses.** The panel's tokens
+  (`color.panel-bg` as the window's background, the text colours, the type
+  styles, the 4 px grid) and the styled layer's Toggle, Button, group label
+  and Caption, unchanged. No new token, icon or component variant.
+- **Keyboard and screen reader.** Tab moves from the toggle to "Check now"
+  to "Open the release page"; Space flips the toggle, Enter or Space presses
+  a button; focus shows as the edit accent's ring, as in the panel. The
+  toggle is a `switch` named by its label and described by its helper line;
+  each section is a region named by its heading; the status line is a polite
+  live region, so a check's result is read out when it arrives. The window
+  is closed by its title bar (or Alt+F4); Esc does nothing.
+- **No remote load.** Like the overlay, the window is a page of the app's
+  own bundle: fonts and icons are local, the content security policy blocks
+  every remote load, and the page itself never calls the network. The check
+  is made by the app, not the page, and only when asked; the release page
+  opens in the default browser, never inside the window.
 
 ## Icons (24×24 grid, SVG only, single colour unless noted)
 

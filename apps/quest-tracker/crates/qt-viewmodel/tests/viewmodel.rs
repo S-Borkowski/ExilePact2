@@ -776,6 +776,41 @@ fn hide_under_panels_is_off_by_default_and_patched_as_a_bool() {
 }
 
 #[test]
+fn check_updates_is_off_by_default_and_patched_as_a_bool() {
+    // Baseline: off by default, and a file written before the setting
+    // existed loads with it off, whatever else it turned on.
+    assert!(!Settings::default().check_updates);
+    for old in [
+        serde_json::json!({ "opacity": 0.5, "hotkey": "F8" }),
+        serde_json::json!({ "screen_reading": true, "hide_under_panels": true }),
+    ] {
+        let s: Settings = serde_json::from_value(old).expect("an old file loads");
+        assert!(!s.check_updates);
+    }
+    // Target: a patch turns it on, on its own, and it round-trips by its name.
+    let on = Settings::default()
+        .patched(&serde_json::json!({ "check_updates": true }))
+        .expect("a bool patch");
+    assert!(on.check_updates);
+    assert!(!on.screen_reading && !on.hide_under_panels);
+    let written = serde_json::to_value(&on).unwrap();
+    assert_eq!(written["check_updates"], true);
+    let back: Settings = serde_json::from_value(written).expect("it loads back");
+    assert_eq!(back, on);
+    let off = on
+        .patched(&serde_json::json!({ "check_updates": false }))
+        .expect("a bool patch");
+    assert!(!off.check_updates);
+    // Negative control: a value that is not a bool is refused.
+    for bad in [serde_json::json!(1), serde_json::json!("true"), Value::Null] {
+        let err = Settings::default()
+            .patched(&serde_json::json!({ "check_updates": bad }))
+            .unwrap_err();
+        assert!(err.contains("bad settings patch"), "{err}");
+    }
+}
+
+#[test]
 fn scale_fixed_factor_roundtrips_and_clamps() {
     // Serialised form: the string "auto", or the factor as a JSON number.
     assert_eq!(serde_json::to_value(Scale::Auto).unwrap(), Value::String("auto".into()));
