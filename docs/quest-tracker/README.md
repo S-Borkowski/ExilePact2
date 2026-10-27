@@ -897,6 +897,9 @@ every other source's; each change of what it says has its diagnostic line
 - "Screen reading is off: Windows has no English OCR." The reader ends.
 - "Screen reading is paused while the game's window is not 16:9
   (<w>x<h>)." While it lasts.
+- "Screen reading is paused: the overlay cannot find its own window."
+  While it lasts; a copy would hold the overlay's own rows, which name the
+  bar's boss.
 - "The overlay covers the boss bar; move it to let screen reading see it."
   (or the regions it covers, named together). Nothing moves the overlay
   for you. The overlap is checked every tick the reader is on, demand or
@@ -923,8 +926,10 @@ every other source's; each change of what it says has its diagnostic line
 - `covered: <region> by the overlay` and `uncovered: <region>`;
 - `overlay check off (no overlay window)`, when the overlay's own window
   cannot be found, once until it is found again, and then
-  `overlay check on`. While it is off nothing counts as covered, and a copy
-  holds the overlay where it lies over a region;
+  `overlay check on`. While it is off, screen reading pauses: nothing is
+  copied or read (the dialogue window's heading strip included), each due
+  read counts as covered so no going fires across the pause, and the status
+  line says so (Status lines, above);
 - `black: <n> copies in a row`, at the black-copy status's limit;
 - `bar of <boss> gone (last seen <hh:mm:ss.mmm>Z): <outcome>`,
   `quest complete in <npc>'s window (<hh:mm:ss.mmm>Z): <outcome>` and
