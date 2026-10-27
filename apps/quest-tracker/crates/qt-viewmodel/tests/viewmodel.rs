@@ -9,14 +9,17 @@
 //! frame id to `fixtures/viewmodels/<frame id>.json`, which
 //! the UI tests and the browser preview read, all built from one story
 //! (`fixtures/sessions/frames/story.txt`); `QT_UPDATE_FIXTURES=1` rewrites
-//! them, and two more tests hold the set consistent and varied. All
-//! character names are invented.
+//! them, and two more tests hold the set consistent and varied. Two tests
+//! run over the shipped data (`data/quests.json`) with screen events: a row
+//! moves on after a screen tick, and shows no step once its last step is
+//! reached. All character names are invented.
 
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use qt_engine::{
-    Engine, QuestAction, QuestData, RewardCategory, Status, Timestamp, Transition, Worth,
+    Engine, QuestAction, QuestData, RewardCategory, ScreenEvent, ScreenOutcome, Status, Timestamp,
+    Transition, Worth,
 };
 use qt_viewmodel::{
     build_view, reward_icon, Frame, LogState, Mode, RowChange, RowChangeKind, RowChanges, Scale,
@@ -408,7 +411,8 @@ fn skipped_row_shows_its_tracked_step() {
     assert_eq!(step_marks(&detail), step_marks(&detail_before));
 
     // Evidence keeps arriving while skipped: the king's last step is reached,
-    // and the skipped detail shows it done.
+    // the skipped detail shows it done, and the row, by its tracked
+    // progress, shows no step (every step reached, the quest not done).
     feed(&mut engine, &[king_line()], true);
     let detail = detail_of(&engine, "fixture-king");
     assert_eq!(detail.row.status, Status::Skipped);
@@ -418,7 +422,8 @@ fn skipped_row_shows_its_tracked_step() {
     );
     let skipped_marks = step_marks(&detail);
     let skipped_step = detail.row.current_step.clone();
-    assert_eq!(skipped_step.as_deref(), Some("Face the king"));
+    assert_eq!(skipped_step, None);
+    assert_eq!(detail.row.current_tip, None);
 
     // Unskip shows exactly the status and step that evidence gives.
     engine
@@ -912,11 +917,27 @@ fn row_change_carries_steps_and_announcement() {
         assert!(lute.text.contains(part), "{:?} lacks {part:?}", lute.text);
     }
 
-    // A quest done: the step its row showed goes out, nothing comes in.
+    // A quest done: the step its row showed goes out, nothing comes in. The
+    // king's row shows "Face the king" after act1.txt, and its reward finishes
+    // it.
+    let mut engine = replay("act1.txt");
+    let t = engine.feed_line(&client_line(": Corisande_Fell has received +30 to Spirit."), true);
+    let made = RowChanges::new().make(&data, &t);
+    let king = made
+        .iter()
+        .find(|c| c.quest_id == "fixture-king")
+        .unwrap_or_else(|| panic!("the king's reward is a row change: {made:#?}"));
+    assert_eq!(king.kind, RowChangeKind::QuestDone);
+    assert_eq!(king.step_done.as_deref(), Some("Face the king"));
+    assert_eq!(king.step_next, None);
+
+    // A quest done after its last step was reached: its row showed no step,
+    // so none goes out (the riverbank, "Reach the encampment" reached before
+    // Renly's line).
     let made = live_at(at("Renly: "));
     let riverbank = &made[0];
     assert_eq!(riverbank.kind, RowChangeKind::QuestDone);
-    assert_eq!(riverbank.step_done.as_deref(), Some("Reach the encampment"));
+    assert_eq!(riverbank.step_done, None);
     assert_eq!(riverbank.step_next, None);
     let name = &data.quest("fixture-riverbank").unwrap().name;
     assert!(riverbank.text.contains(name.as_str()), "{:?} lacks {name:?}", riverbank.text);
@@ -1022,6 +1043,171 @@ fn started_quest_makes_a_row_change() {
     let t = feed(&mut engine, &lines[..=renly], false);
     assert!(t.iter().any(|t| t.quest_id == "fixture-beira" && t.to == Status::InProgress));
     assert!(RowChanges::new().make(&data, &t).is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// The row after its last step (Live 9): over the shipped quest data, a screen
+// tick moves a row on to the step after it, and a tick on a quest's last
+// step leaves the row with no step until the quest is done.
+
+/// The invented character of the shipped-data routes.
+const SHIPPED_CHARACTER: &str = "Wendell_Morrow";
+
+/// The shipped quest data (`data/quests.json`).
+fn shipped_data() -> Arc<QuestData> {
+    let path = root().join("data/quests.json");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let v: Value = serde_json::from_str(&text).expect("the shipped data is JSON");
+    Arc::new(QuestData::from_value(&v).expect("the shipped data validates"))
+}
+
+/// An Act 1 route over the shipped data, line by line in the shapes the log
+/// writes: the log opening, The Riverbank at level 1 and the level-up that
+/// names the character, then each `enter` and `say` a minute or a few
+/// seconds after the last line.
+struct ShippedRoute {
+    engine: Engine,
+    clock: u32,
+}
+
+impl ShippedRoute {
+    fn start(data: &Arc<QuestData>) -> ShippedRoute {
+        let mut r = ShippedRoute { engine: Engine::new(Arc::clone(data)), clock: 0 };
+        let open = format!("{} ***** LOG FILE OPENING *****", &Self::stamp(0)[..19]);
+        r.engine.feed_line(&open, false);
+        r.enter("G1_1", false);
+        r.clock += 200;
+        let up = format!(
+            "{} [INFO Client 6200] : {SHIPPED_CHARACTER} (Ranger) is now level 2",
+            Self::stamp(r.clock)
+        );
+        r.engine.feed_line(&up, false);
+        assert_eq!(r.engine.active(), Some(SHIPPED_CHARACTER));
+        r
+    }
+
+    fn stamp(seconds: u32) -> String {
+        let (h, m, s) = (20 + seconds / 3600, seconds / 60 % 60, seconds % 60);
+        format!("2026/03/22 {h:02}:{m:02}:{s:02} {} 8f3d{seconds:04x}", 5_000_000 + seconds * 1000)
+    }
+
+    fn enter(&mut self, code: &str, live: bool) -> Vec<Transition> {
+        let (level, seed, name) = match code {
+            "G1_1" => (1, 1_414_213_562, "The Riverbank"),
+            "G1_town" => (15, 1, "Clearfell Encampment"),
+            "G1_2" => (2, 1_732_050_807, "Clearfell"),
+            _ => panic!("no entry for {code}"),
+        };
+        self.clock += 60;
+        let t = Self::stamp(self.clock);
+        let lines = [
+            format!("{t} [INFO Client 6200] Connecting to instance server"),
+            format!("{t} [DEBUG Client 6200] Generating level {level} area \"{code}\" with seed {seed}"),
+            format!("{t} [INFO Client 6200] [SCENE] Set Source [(null)]"),
+            format!("{t} [INFO Client 6200] [SCENE] Set Source [{name}]"),
+        ];
+        lines.iter().flat_map(|l| self.engine.feed_line(l, live)).collect()
+    }
+
+    fn say(&mut self, speaker: &str, line: &str) -> Vec<Transition> {
+        self.clock += 3;
+        let l = format!("{} [INFO Client 6200] {speaker}: {line}", Self::stamp(self.clock));
+        self.engine.feed_line(&l, false)
+    }
+}
+
+const REACHING_CLEARFELL: &str = "reaching-clearfell";
+const SHIPPED_BEIRA: &str = "beira-of-the-rotten-pack";
+const SHIPPED_BEIRA_NAME: &str = "Beira of the Rotten Pack";
+/// Her first line each fight, as the owner's log recorded it.
+const SHIPPED_BEIRA_FIRST: &str = "Sleep in ice, wake in snow. Sleep my pretties as you grow...";
+
+#[test]
+fn row_after_a_screen_tick_shows_the_next_step_baseline() {
+    let data = shipped_data();
+    let mut r = ShippedRoute::start(&data);
+
+    // Reaching Clearfell after the town entry: the step after "Enter town".
+    r.enter("G1_town", false);
+    let row = campaign_row(&r.engine, REACHING_CLEARFELL);
+    assert_eq!(row.status, Status::InProgress);
+    assert_eq!(row.current_step.as_deref(), Some("Talk to the Blacksmith"));
+
+    // Beira's bar going after her line: "Defeat ..." is reached, and the row
+    // moves on to the step after it, which is not her last.
+    r.enter("G1_2", false);
+    r.say(SHIPPED_BEIRA_NAME, SHIPPED_BEIRA_FIRST);
+    assert_eq!(
+        campaign_row(&r.engine, SHIPPED_BEIRA).current_step.as_deref(),
+        Some("Defeat Beira of the Rotten Pack")
+    );
+    let got = r.engine.apply_screen(&ScreenEvent::bar_gone(SHIPPED_BEIRA_NAME));
+    assert_eq!(
+        got.outcome,
+        ScreenOutcome::Ticked { quest_id: SHIPPED_BEIRA.to_string(), step_id: "fight".to_string() }
+    );
+    let row = campaign_row(&r.engine, SHIPPED_BEIRA);
+    assert_eq!(row.status, Status::InProgress);
+    assert_eq!(row.current_step.as_deref(), Some("Use the item it dropped"));
+    let made = RowChanges::new().make(&data, &got.transitions);
+    let beira: Vec<&RowChange> = made.iter().filter(|c| c.quest_id == SHIPPED_BEIRA).collect();
+    assert_eq!(beira.len(), 1, "{made:#?}");
+    assert_eq!(beira[0].step_done.as_deref(), Some("Defeat Beira of the Rotten Pack"));
+    assert_eq!(beira[0].step_next.as_deref(), Some("Use the item it dropped"));
+}
+
+#[test]
+fn row_after_a_screen_ticked_last_step_shows_no_step_target() {
+    let data = shipped_data();
+    let quest = data.quest(REACHING_CLEARFELL).unwrap();
+    let last = quest.steps.last().unwrap();
+    assert_eq!((last.id.as_str(), last.title.as_str()), ("step-6", "Take Renly's reward"));
+
+    let mut r = ShippedRoute::start(&data);
+    r.enter("G1_town", false);
+
+    // Renly's QUEST COMPLETE banner ticks the quest's last step.
+    let got = r.engine.apply_screen(&ScreenEvent::quest_complete("Renly"));
+    assert_eq!(
+        got.outcome,
+        ScreenOutcome::Ticked { quest_id: REACHING_CLEARFELL.to_string(), step_id: "step-6".to_string() }
+    );
+
+    // The quest stays in progress, and its row shows no step and no tip:
+    // never the step just done.
+    let row = campaign_row(&r.engine, REACHING_CLEARFELL);
+    assert_eq!(row.status, Status::InProgress);
+    assert_eq!((row.current_step.as_deref(), row.current_tip.as_deref()), (None, None), "{row:#?}");
+    let view = build_view(&r.engine, &Settings::default(), &reading(ViewKind::NextUp));
+    let next = view
+        .next_up
+        .iter()
+        .find(|r| r.id == REACHING_CLEARFELL)
+        .unwrap_or_else(|| panic!("an in-progress quest is in next up: {view:#?}"));
+    assert_eq!((next.current_step.as_deref(), next.current_tip.as_deref()), (None, None));
+
+    // Its detail shows every step done, and the row in it no step either.
+    let detail = detail_of(&r.engine, REACHING_CLEARFELL);
+    assert!(detail.steps.iter().all(|s| s.state == StepPhase::Done), "{detail:#?}");
+    assert_eq!(detail.row.current_step, None);
+
+    // The live row change names the step done, and no next step.
+    let made = RowChanges::new().make(&data, &got.transitions);
+    let change: Vec<&RowChange> = made.iter().filter(|c| c.quest_id == REACHING_CLEARFELL).collect();
+    assert_eq!(change.len(), 1, "{made:#?}");
+    assert_eq!(change[0].kind, RowChangeKind::StepDone);
+    assert_eq!(change[0].step_done.as_deref(), Some("Take Renly's reward"));
+    assert_eq!(change[0].step_next, None);
+
+    // The Clearfell entry, live, finishes the quest; the row showed no step,
+    // so the change names no completed step.
+    let t = r.enter("G1_2", true);
+    let made = RowChanges::new().make(&data, &t);
+    let done: Vec<&RowChange> = made.iter().filter(|c| c.quest_id == REACHING_CLEARFELL).collect();
+    assert_eq!(done.len(), 1, "{made:#?}");
+    assert_eq!(done[0].kind, RowChangeKind::QuestDone);
+    assert_eq!((done[0].step_done.as_deref(), done[0].step_next.as_deref()), (None, None));
+    assert_eq!(campaign_row(&r.engine, REACHING_CLEARFELL).status, Status::Done);
 }
 
 #[test]

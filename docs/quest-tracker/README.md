@@ -1423,7 +1423,9 @@ Revisit this feature when:
   while you play, its own row changes in place: it is highlighted in its
   new status colour for about 2.5 s, the completed step fades out, then
   the next step fades in from low opacity with a small upward move (about
-  150 ms and 220 ms). A second change restarts it; a row that is not on
+  150 ms and 220 ms). When the step done is the quest's last one and the
+  quest is not done yet, the completed step fades out and no next step
+  comes in. A second change restarts it; a row that is not on
   screen does not play it, and the collapsed badge is highlighted the same
   way. With reduced motion (Windows' animation effects off) the step
   change is instant and the highlight still shows. Every change is

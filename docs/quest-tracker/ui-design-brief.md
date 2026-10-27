@@ -163,7 +163,9 @@ frame exactly that.
 
 In every view, an in-progress quest always shows its next step as a second
 line under its name (owner, 2026-10-25), and that step's find-it tip, if it
-has one, on a line under the step.
+has one, on a line under the step. A quest whose every step is done but
+which is not done yet has no next step, and shows none (Live 9): only its
+name, until it is done.
 3. **Collapsed state** [`collapsed`]. The small button/badge, with a
    count of worth-it quests currently available. A live change of a row
    shows the same highlight on the badge (frame 9).

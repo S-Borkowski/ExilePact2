@@ -31,7 +31,9 @@
 //! before it; the step after the furthest one reached is `current`, the
 //! one to do next. That is the step an in-progress row shows as its second
 //! line (the brief: "its next step"); a quest whose every step is reached
-//! but which is not done shows its last step. A step's find-it `tip` goes
+//! but which is not done shows no step, and no tip, until it is done (Live
+//! 9: Renly's banner ticked Reaching Clearfell's last step, and the row
+//! kept showing that step, already done). A step's find-it `tip` goes
 //! with it: on its `StepView`, and as the row's `current_tip` when it is the
 //! step the row shows (Context "Find-it tips").
 //!
@@ -652,14 +654,11 @@ fn step_phases(quest: &Quest, state: &QuestState) -> (Vec<StepPhase>, Option<usi
 
 fn row(quest: &Quest, state: &QuestState) -> QuestRow {
     // The step the row shows: an in-progress quest's next one (a skipped
-    // quest's by its tracked progress), else none.
+    // quest's by its tracked progress), else none. Once its last step is
+    // reached there is no next one, and the row shows none until it is done.
     let shown = if progress_status(state) == Status::InProgress {
         let (_, next) = step_phases(quest, state);
-        let reached = state
-            .current_step
-            .as_deref()
-            .and_then(|id| quest.steps.iter().position(|s| s.id == id));
-        next.or(reached).map(|i| &quest.steps[i])
+        next.map(|i| &quest.steps[i])
     } else {
         None
     };
@@ -968,15 +967,11 @@ fn step_index(quest: &Quest, id: Option<&String>) -> Option<usize> {
 }
 
 /// The step title an in-progress row shows with `reached` as its furthest
-/// step reached: the one after it, or the last one when every step is
-/// reached (the same rule as the row's `current_step`).
+/// step reached: the one after it, or none when every step is reached (the
+/// same rule as the row's `current_step`).
 fn shown_step(quest: &Quest, reached: Option<&String>) -> Option<String> {
-    let r = step_index(quest, reached);
-    let next = r.map_or(0, |r| r + 1);
-    (next < quest.steps.len())
-        .then_some(next)
-        .or(r)
-        .map(|i| quest.steps[i].title.clone())
+    let next = step_index(quest, reached).map_or(0, |r| r + 1);
+    quest.steps.get(next).map(|s| s.title.clone())
 }
 
 /// What a transition changes in its row, if anything the UI shows as a
