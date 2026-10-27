@@ -1359,7 +1359,9 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   as not visible, and a kill while one of them is open is not seen
   (tick it by hand, or let the reward line finish the quest). The
   inventory, the character panel, the Escape menu and the map overlay
-  leave the name readable.
+  leave the name readable. Live 9 opened the passive tree for about 12.5 s
+  during Beira's fight: no going was reported while it was open, her name
+  read again once it closed, and the going came at the kill.
 - **Read the screen: dark scenes.** A near-black copy of a region is a
   covered read, with its own status line after 10 in a row; it is not
   taken for a failed copy. So a band dark enough to copy black can leave
@@ -1381,8 +1383,20 @@ dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
   A window that is not 16:9 is refused; other 16:9 resolutions, other UI
   scales and other client languages are untested. The replay settles the
   trackers, but it reads cached OCR of a wider band, while the live crop
-  is OCR'd on its own and can split or clip a line differently; Live 9's
-  per-route minute lines are the control on the live crop.
+  is OCR'd on its own and can split or clip a line differently. On the
+  live crop, Live 9 read Beira's bar to her kill (its last read 1.4 s
+  before a press made as she died), and Lives 9 to 11 caught Renly's
+  QUEST COMPLETE banner once in each session (0.75 s and 0.5 s before a
+  press made as it showed, in Lives 10 and 11); the heading strip read
+  Renly's name well enough to open the dialogue window's gate (Live 10).
+- **Read the screen: OCR time.** Each minute line's `busy` is the time
+  the reader spent copying and reading that minute, measured on one
+  machine. Waiting in town for Renly's step with no window open, the
+  heading gate shut, it was about 1.9 to 2.0 s a minute at 60 reads
+  (Live 10; 16.6 s before the gate, Live 9). With Renly's window open it
+  rose to 10.2 s (Live 10) and 10.5 s (Live 11) in the minute of the talk.
+  During Beira's fight, with only the bar's band read, it was 5.5 to 8.0
+  s a minute at 120 reads (Live 9). Other machines are not measured.
 - **Read the screen: keep the overlay off the regions.** A region the
   overlay's window lies over is not read, and its status line says so;
   nothing moves the overlay for you. Keep it at the right of the screen,

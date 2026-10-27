@@ -451,3 +451,18 @@ rect.
   recorded above for the bar gone was one spot. The overlay's reader classes the band by OCR text and
   position, never luma ([`quest-tracker/README.md`](quest-tracker/README.md)
   § "How detection works").
+- **Beira's bar under the passive tree and at her kill, read live**
+  (measured 2026-10-27, Live 9, one fight; the overlay's own reader
+  copying the band about twice a second from the running window,
+  [`quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+  § "Live 9: the screen reader in the overlay"). With the passive tree
+  open for about 12.5 s during her fight, her bar was never read as gone,
+  and her name read again once the tree closed, as the Miller's did under
+  the same panel in Live 8. Her name's last read was 1.4 s before a press
+  made as she died.
+- **The QUEST COMPLETE banner in Renly's window, read live** (measured
+  2026-10-27, Lives 9 to 11, one talk each, same source). After the reward
+  was taken the banner was read once per session in the dialogue window's
+  region, 0.75 s and 0.5 s before a press made as it showed (Lives 10 and
+  11). A strip of the window's top, x 0.22 to 0.70, y 0.24 to 0.31, read
+  Renly's name as its heading before the banner (Live 10).

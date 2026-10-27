@@ -1455,6 +1455,134 @@ sources into the overlay, settled against the kept captures of Lives 6
 and 8 by `quest-tracker-replay screen` ([`README.md`](README.md) § "How
 detection works").
 
+### Live 9: the screen reader in the overlay
+
+Measured 2026-10-27 with the build workorder's Live procedure 1 (capture
+`.claude/workorders/quest-tracker-screen-text-build-live-1.md`; the
+session's store and marker file kept outside the repository), on a new
+Warrior made for the session, English client, borderless windowed on a
+monitor 1440 px high. The build was the release exe of commit `42439c9`,
+written at 07:47:29Z (SHA-256 `F3F06F53…D7AE`). It ran as its own process
+beside the game, with a store folder of its own; nothing was installed
+into the game. Times are UTC. The overlay started at 07:53:26Z, the
+character entered The Riverbank at 07:55:58Z, "Read the screen" was turned
+on at 07:56:33Z, the character entered Clearfell Encampment at 08:00:28Z
+and Clearfell at 08:10:54Z, Beira died at about 08:14:44Z, and the overlay
+was quit from its tray at 08:16:50Z.
+
+The cases run were Renly's reward for The Bloated Miller (the dialogue
+window), the overlay dragged over the bar's band in edit mode (the
+refusal), the passive tree opened during Beira's fight (a panel that hides
+the bar) and Beira's kill (the bar). Not run: walking away from a living
+boss, a death during a fight, and Blackjaw and Lythara.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | HEAD `42439c9`; the exe written at 07:47:29Z, after the head commit (23:08:50Z the day before) |
+| `marker` | pass | the test press at 07:56:18.233Z, in The Riverbank; the person said the game did nothing and a beep played |
+| `control` | pass | `step/step-3/0` in Reaching Clearfell's evidence after the town entry; `step/find/0` in Beira's, at 08:12:23Z |
+| `screen-on` | pass | `screen: on (OCR en-US)` at 07:56:33Z; the settings file holds `"screen_reading": true` |
+| `dialogue-reward` | fail | one `quest complete in Renly's window` line, at 08:02:52.430Z, ticking `reaching-clearfell/step-6`, and `step/step-6/0` in the evidence; but the press came 21.8 s after it (the person pressed 5 to 10 s after the banner showed), outside the window from 5 s before the press to 3 s after it, and the main row still showed "Take Renly's reward" while the quest's detail showed that step done |
+| `overlay-covers-band` | pass | `covered: boss bar by the overlay` at 08:06:22Z, then `uncovered: boss bar` at 08:06:36Z, both in edit mode with the overlay at the top centre; the dialogue window and the voiced lines were covered and uncovered with it, and the status text the person read named all three |
+| `bar-panel` | pass | the passive tree open from 08:14:14.862Z to 08:14:27.413Z, during the fight; no going of Beira's bar with a last-seen time in that span; the minute to 08:14:34Z counted 22 present, 66 absent and 32 covered |
+| `bar-kill` | pass | one `bar of Beira of the Rotten Pack gone` line, last seen 08:14:43.264Z, 1.4 s before the press made as she died, ticking `beira-of-the-rotten-pack/fight`; the person read the row's step as "Use the item it dropped" |
+| `stop-clean` | pass | `stop: tailer, worker and screen reader ended, progress saved` at 08:16:50Z |
+| `privacy-log` | pass | 39 `screen:` lines, none outside the pinned shapes |
+| `remark` | not-run (instrument: no remark text for this class and boss) | no kill remark line; the quest data's `remarks` table has no text for Beira, for any class |
+| `screen-busy` | pass | the largest `busy` in a minute of the Renly step: 16576 ms at 60 frames (to 08:02:33Z, Renly's heading read in 0 of 60 reads); in Beira's fight: 8004 ms at 120 frames (to 08:12:34Z) |
+
+**The row after its last step.** Renly's banner moved Reaching Clearfell
+from step-3 to step-6, its last step, and the quest stayed in progress
+until its done signal, the Clearfell entry at 08:10:54Z. Until then the
+main row showed that last step's title, a step already done, because the
+row showed the step after the furthest one reached and fell back to the
+last step when there was none. The press timing was the person's late
+press, not the reader's: the one tick came as the banner showed. Item
+`rowfix` changed the row so that a quest with every step reached and not
+yet done shows its name alone; Live 10 re-checked it.
+
+**OCR time.** In town the whole dialogue window was read once a second
+while nobody talked: 16576 ms of OCR in a minute in which Renly's heading
+matched in none of 60 reads. Item `ocrgate` added the heading gate, which
+reads a strip of the window until the NPC's name shows there
+([`README.md`](README.md) § "How detection works"). In Beira's fight, with
+only the bar's band demanded, the four minute lines counted 5458 to 8004
+ms at 79 to 120 frames.
+
+**Covered reads in the fight.** The bar's minute counts do not single out
+the passive tree: the three minutes in Clearfell before the fight, with no
+panel asked for, counted 27 to 36 covered reads as well. The rule also
+counts the game not in front and an ordinary monster's name over the
+name's column as covered; which of these those reads were is not
+established. Beira's name read again after the tree closed (22 present in
+that minute), and its going came only at the kill.
+
+#### Live 10: Renly's reward re-checked
+
+Measured 2026-10-27 with Live procedure 2 (capture
+`.claude/workorders/quest-tracker-screen-text-build-live-2.md`), on a new
+character (class not recorded), with the same setup as Live 9. It ran
+because Live 9's `dialogue-reward` failed on the main row and on the press
+timing, and to re-measure `screen-busy` after `ocrgate`. The build was the
+release exe of commit `d26d132`, written at 10:09:48Z (SHA-256
+`1007be22…2312`), which carries `rowfix`, `ocrgate`, `reviewfixes` and
+`replaycrop`. The overlay started at 10:11:37Z, the new character entered
+The Riverbank at 10:13:54Z and Clearfell Encampment at 10:22:18Z, the
+person waited in town without talking from 10:22:37Z to 10:27:00Z, the
+banner was ticked at 10:28:01Z, and the overlay was quit at 10:29:17Z.
+
+The game session's first area was an Act 2 town at level 32: an earlier
+character had been entered by accident before the new one was made. The
+new character's record, opened at 10:14:00Z on its Riverbank entry, then
+carried that character's quest state (Earning Passage done, three Act 2
+quests available, ten unknown), and the owner chose to carry on.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | HEAD `d26d132`; the exe written at 10:09:48Z, after the head commit (09:48:57Z); the `rowfix`, `ocrgate` and `reviewfixes` commits in the first-parent history |
+| `marker` | pass | the test press at 10:14:00.498Z, in The Riverbank; the person said the combination does nothing in the game and only beeps |
+| `control` | pass | `step/step-3/0` in Reaching Clearfell's evidence after the town entry; `reading dialogue window for reaching-clearfell/step-6` at 10:22:18Z |
+| `dialogue-reward` | fail | the log and evidence parts held: one `quest complete in Renly's window` line, at 10:28:01.185Z, 0.75 s before the press made at the banner, ticking `reaching-clearfell/step-6`, and `step/step-6/0` in the evidence; the row part did not: the person saw no Reaching Clearfell row, the list still showing the earlier character's Act 2 state |
+| `stop-clean` | pass | `stop: tailer, worker and screen reader ended, progress saved` at 10:29:17Z |
+| `privacy-log` | pass | 27 `screen:` lines, none outside the pinned shapes |
+| `screen-busy` | pass | the wait's three minutes (to 10:24:15Z, 10:25:15Z and 10:26:15Z): 60 frames each, `busy` 1956, 1890 and 1958 ms, each gate line 0 full reads and 60 skipped; the minute with Renly's window open (to 10:28:15Z): 10179 ms at 46 frames, 46 full reads |
+
+**The heading strip.** The cropped strip read Renly's name well enough to
+open the gate: in the minute before the banner (to 10:27:15Z) his heading
+read in 23 of 57 reads, with 27 full reads and 30 skipped, and the banner
+was then caught. The minute of the arrival in town (to 10:23:15Z), before
+the wait, also counted 22 full reads and 33 skipped; what opened the gate
+then is not established. The heading gate took the town minute from
+16576 ms (Live 9) to about 1.9 s.
+
+#### Live 11: the row on a clean character
+
+Measured 2026-10-27 with Live procedure 3 (capture
+`.claude/workorders/quest-tracker-screen-text-build-live-3.md`), on a new
+character never played before (class not recorded), the first and only
+character entered in that game session, with the same setup. It ran
+because Live 10's row reading came from a record carrying another
+character's state. The build was the release exe of commit `b140592`,
+written at 10:39:31Z (SHA-256 `6fe1d439…13a3`): Live 10's build plus the
+fix that keeps a new character from taking over events held before its
+Riverbank entry. The overlay started at 10:42:11Z, the character entered
+The Riverbank at 10:45:02Z and Clearfell Encampment at 10:49:16Z, the
+banner was ticked at 10:50:33.856Z, and the overlay was quit at 10:52:16Z.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | HEAD `b140592`; the exe written at 10:39:31Z, after the head commit (10:36:04Z) |
+| `clean-start` | pass | the first area line, at 10:45:02Z, is `area G1_1 (level 1)`; only the startup's `area from log:` line comes before it |
+| `control` | pass | `step/step-3/0` in Reaching Clearfell's evidence after the town entry; `screen: on (OCR en-US)` at 10:45:19Z, and `reading dialogue window for reaching-clearfell/step-6` at 10:49:30Z |
+| `dialogue-reward` | pass | one `quest complete in Renly's window` line, at 10:50:33.856Z, 0.525 s before the press made at the banner, ticking `reaching-clearfell/step-6`; `step/step-6/0` in the evidence; the person read the main row as its name with no line under it, the quest still in progress |
+| `stop-clean` | pass | `stop: tailer, worker and screen reader ended, progress saved` at 10:52:16Z |
+| `privacy-log` | pass | 15 `screen:` lines, none outside the pinned shapes |
+
+`screen-busy` was not a check here. For reference, the minute before the
+banner (to 10:50:19Z) counted 10530 ms at 61 frames, with 43 full reads
+and 7 skipped, and the minute spanning the banner (to 10:51:19Z) 3920 ms
+at 15 frames.
+
 ## Negative results
 
 Each of these is "not observed" in the log measured on 2026-10-24, not "does
