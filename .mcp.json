@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "ghidra": {
+      "command": "py",
+      "args": ["-3", "-m", "tools.ghidra_mcp"]
+    },
+    "x64dbg": {
+      "command": "py",
+      "args": ["-3", "-m", "tools.x64dbg_mcp"]
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "-p", "@upstash/context7-mcp@4.1.1", "context7-mcp"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.82", "--browser", "msedge", "--headless", "--isolated"]
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_MCP_PAT}"
+      }
+    }
+  }
+}
