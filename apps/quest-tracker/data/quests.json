@@ -42,7 +42,8 @@
     "Zolin, Blood Priest",
     "Oswin, The Dread Warden",
     "Lythara, The Wayward Spear",
-    "Una"
+    "Una",
+    "Mortimer"
   ],
   "system_lines": [],
   "areas": {
@@ -171,7 +172,7 @@
           "title": "Slay the Bloated Miller",
           "text": "A logging encampment is under attack by a diseased monstrosity that was once human. Kill it.",
           "tip": "Follow up river.",
-          "signals": [{"kind": "npc", "speaker": "The Bloated Miller", "area": "G1_1"}]
+          "signals": [{"kind": "npc", "speaker": "Mortimer", "area": "G1_1", "line": "Well done! Please come inside."}]
         },
         {
           "id": "step-3",
@@ -199,7 +200,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Reaching_Clearfell",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early. With the opt-in screen reading on, the QUEST COMPLETE banner in Renly's dialogue window ticks \"Take Renly's reward\" (the banner seen in Live 8).",
+      "notes": "Done (inferred) on entering Clearfell (G1_2). The talk with Renly and his reward happen in a dialogue window the log does not record. Every own character in the owner's log that started at The Riverbank went to Clearfell Encampment first and stayed 83 to 363 s on that first visit, and in Live 1 the player talked to Renly there before leaving (measured 2026-10-25). A player who leaves the encampment without talking to him is shown done too early. \"Slay the Bloated Miller\" ticks on Mortimer's \"Well done! Please come inside.\" in The Riverbank (G1_1), not on the Miller's own lines: those come from the fight's start (\"Saw you in half!\") on, and in two live sessions on 2026-10-27 they moved the row to \"Enter town\" before he died. Mortimer's line came after the Miller's last line in all 13 of its occurrences in the owner's log, each in The Riverbank, 14 to 20 s after it in the three 2026-10-27 sessions and before the encampment entry (measured 2026-10-27). Two Riverbank visits with the Miller's lines had no such line before the encampment; there the encampment entry reaches \"Enter town\" as before. With the opt-in screen reading on, the QUEST COMPLETE banner in Renly's dialogue window ticks \"Take Renly's reward\" (the banner seen in Live 8).",
       "done_inferred": true
     },
     {
