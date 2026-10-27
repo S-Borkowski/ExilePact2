@@ -1,7 +1,7 @@
 <script lang="ts">
   // The settings frame: one 40-high row per setting, label left and control
-  // right, helper text under the opacity, click-through and "Read the screen"
-  // rows. Each control
+  // right, helper text under the opacity, click-through, "Read the screen"
+  // and "Hide under game panels" rows. Each control
   // sends `update_settings` with the one field it changes and shows what the
   // next `qt:view` says; the UI keeps no copy of its own. Play mode lists the
   // values with no control.

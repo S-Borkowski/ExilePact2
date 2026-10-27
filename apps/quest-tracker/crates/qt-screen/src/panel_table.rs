@@ -19,8 +19,13 @@
 //!
 //! The stash's and a merchant's windows share the inventory's entry: their
 //! own left-hand windows have no entry, so an overlay moved to the left does
-//! not hide under them. The character panel (C) is not one of the owner's
-//! panels and has no entry.
+//! not hide under them. The entries hide the overlay under the owner's seven
+//! panels: the inventory (I), the passive tree (P), M, O, U, the stash and a
+//! merchant's window. The character panel (C) and the Escape menu were
+//! measured too and have no entry: C is not one of the owner's panels, and
+//! the Escape menu leaves the overlay shown by the owner's choice of
+//! 2026-10-27. The fixture keeps the Escape menu's measured numbers under
+//! `not_shipped`, and its frames among the closed samples.
 
 use crate::geometry::Rect;
 use crate::panels::{PanelEntry, PanelProbe, PanelTable};
@@ -87,21 +92,6 @@ pub fn shipped_panels() -> PanelTable {
                 probe(cell(14, 5), [22.0, 32.0, 36.0], [10.0, 10.0, 10.0], 16.0),
                 probe(cell(140, 9), [17.0, 51.0, 73.0], [15.5, 15.5, 15.5], 24.0),
                 probe(cell(150, 8), [17.0, 34.0, 59.0], [12.0, 6.0, 12.0], 58.0),
-            ],
-            min_match: 3,
-        },
-        // The top of the Escape menu's box: static art over the dimmed
-        // client.
-        PanelEntry {
-            id: "escape-menu",
-            opens_for: vec!["escape-menu"],
-            footprint: Rect::new(0.0, 0.0, 1.0, 1.0),
-            probes: vec![
-                probe(cell(72, 32), [66.0, 92.0, 95.0], [6.0, 6.0, 6.0], 178.0),
-                probe(cell(75, 32), [57.0, 79.0, 82.0], [6.0, 6.0, 6.0], 162.0),
-                probe(cell(71, 25), [53.0, 73.0, 76.0], [6.0, 6.0, 6.0], 170.0),
-                probe(cell(78, 32), [56.0, 78.0, 81.0], [6.0, 6.0, 6.0], 166.0),
-                probe(cell(84, 32), [63.0, 87.0, 91.0], [6.0, 6.0, 6.0], 172.0),
             ],
             min_match: 3,
         },
@@ -276,9 +266,10 @@ mod tests {
         ] {
             assert!(seen.iter().any(|s| s == want), "{want}: {seen:?}");
         }
-        for want in ["live-8/passive-tree", "live-8/escape-menu"] {
-            assert!(seen.iter().any(|s| s == want), "{want}: {seen:?}");
-        }
+        assert!(
+            seen.iter().any(|s| s == "live-8/passive-tree"),
+            "live-8/passive-tree: {seen:?}"
+        );
     }
 
     #[test]
@@ -298,6 +289,16 @@ mod tests {
         }
         // The character panel's windows are among them: C hides nothing.
         assert!(closed.iter().any(|s| s["window"]["panel"] == "character"));
+        // So are the Escape menu's, in both sessions: it hides nothing
+        // either, by the owner's choice.
+        for session in ["live-1", "live-8"] {
+            assert!(
+                closed
+                    .iter()
+                    .any(|s| s["window"]["panel"] == "escape-menu" && s["session"] == session),
+                "{session}"
+            );
+        }
     }
 
     #[test]
@@ -324,10 +325,15 @@ mod tests {
         for id in &covered {
             assert!(PANEL_IDS.contains(id), "{id}");
         }
-        for id in ["inventory", "passive-tree", "escape-menu", "stash"] {
+        for id in ["inventory", "passive-tree", "stash"] {
             assert!(covered.contains(&id), "{id}");
         }
-        assert!(!covered.contains(&"character"));
+        // Measured, not shipped: C is not the owner's, and the Escape menu
+        // leaves the overlay shown (the owner's choice of 2026-10-27).
+        for id in ["escape-menu", "character"] {
+            assert!(!covered.contains(&id), "{id}");
+            assert!(table.entries.iter().all(|e| e.id != id), "{id}");
+        }
         let mut ids: Vec<&str> = table.entries.iter().map(|e| e.id).collect();
         ids.sort();
         ids.dedup();

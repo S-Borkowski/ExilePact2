@@ -53,9 +53,12 @@ pub const PANEL_TICK_MS: Millis = 250;
 /// at least `min_match` probes outside it, so it is seen beside the overlay.
 pub const DEFAULT_OVERLAY_REACH: Rect = Rect::new(0.78, 0.30, 1.0, 0.97);
 
-/// The owner's eight panels, by the ids the table's `opens_for` and the
-/// replay's windows file use: the inventory (I), the passive tree (P), the
-/// panels on M, Escape, O and U, the stash and a merchant's trade window.
+/// The ids of the panels the replay knows, as its windows files and the
+/// table's `opens_for` use them: the inventory (I), the passive tree (P), the
+/// panels on M, Escape, O and U, the stash and a merchant's trade window. The
+/// Escape menu is among them without hiding the overlay: the shipped table
+/// has no entry for it (the owner's choice of 2026-10-27), and Live 1's and
+/// Live 8's windows files still name it.
 pub const PANEL_IDS: [&str; 8] = [
     "inventory",
     "passive-tree",
