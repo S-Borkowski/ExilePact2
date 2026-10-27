@@ -59,9 +59,22 @@ What it is:
   owner's own words, shows under the step it helps with, from a `tip`
   field in the quest data that can be extended by hand ("Quest data").
 - **A tray icon.** The app's icon sits in the notification area, tooltip
-  "Quest Tracker", with one menu entry, *Quit Quest Tracker*: the way to
+  "Quest Tracker", with three menu entries: *Check for updates*,
+  *Settings* and, under a separator, *Quit Quest Tracker*, the way to
   close the overlay even while play mode has it hidden. Closing its window
-  quits too.
+  quits too. While a newer version is known, a fourth entry, *Update
+  available: X*, sits at the top and opens that release's page in your
+  browser.
+- **A Settings window of its own**, opened from the tray, separate from
+  the panel's settings frame. For now it holds one setting, *Automatically
+  check for updates*, off by default, a *Check now* button with what the
+  last check said, and the line "Created by ST4H".
+- **An update check, only when you ask.** *Check for updates* in the tray,
+  or *Check now* in the Settings window, asks GitHub once whether a newer
+  Quest Tracker release is published; with *Automatically check for
+  updates* on, it also asks once at launch and then once a day. A newer
+  version is announced in the window and the tray, with a way to open its
+  release page in your browser. Nothing is downloaded or installed.
 - **The row itself changes** when a quest becomes available, is started,
   has a step done or is done, while you play: the row is highlighted in its
   new status colour for about 2.5 s, the completed step fades out and the
@@ -106,9 +119,14 @@ What it is not:
 - It does not track party members, endgame or Atlas quests, or a client in a
   language other than English.
 - It is not an installer: there is no setup, auto-update, code signing or
-  bundled WebView2 runtime.
-- It makes no network request of its own. The one link it opens, a quest's
-  poe2db page, opens in your default browser.
+  bundled WebView2 runtime. The update check only tells you a newer
+  version is out; it downloads nothing and replaces nothing.
+- It makes no network request unless you ask it to check for updates (the
+  tray's *Check for updates*, the Settings window's *Check now*, or
+  *Automatically check for updates* turned on), and then only the one
+  request to GitHub's API that "Privacy" › Network describes. The links it
+  opens, a quest's poe2db page and a release page, open in your default
+  browser.
 
 ## Platforms and prerequisites
 
@@ -177,6 +195,55 @@ while the overlay is hidden), or close the overlay's window (a close
 request, `WM_CLOSE`, ends it shown or hidden). Either writes one `quit:`
 line to the diagnostic log and then stops the tracker as on any exit,
 saving progress first (`stop: ...`).
+
+The tray icon's menu, top to bottom: *Update available: X* (only while a
+newer version X is known: opens its release page in your default
+browser), *Check for updates* (opens or focuses the Settings window and
+starts a check), *Settings* (opens or focuses the Settings window), a
+separator, and *Quit Quest Tracker*. Its tooltip is `Quest Tracker`, or
+`Quest Tracker (X available)` while a newer version is known. A left click
+opens the menu too.
+
+**The Settings window**, titled "Quest Tracker Settings", is an ordinary
+window, decorated, dark and not resizable (420 by 280 at 1x, centred,
+in the taskbar while open), separate from the panel's settings frame and
+reached only from the tray. It is made the first time it is asked for and
+destroyed when closed; asked for again while open, it is shown and
+focused. It holds one section, *Updates*, and the line "Created by ST4H"
+at the bottom; later settings are new sections. *Updates* has:
+
+- **Automatically check for updates** (off), with the helper text "Asks
+  GitHub once a day whether a newer version is out. Downloads nothing.
+  Off: Quest Tracker never connects unless you ask it to check."
+  `settings.json` stores it as `"check_updates"`; a file written before
+  it existed loads it off. With it on, a check runs when the app starts
+  (on the worker's first tick), then once a day after the last check
+  started, and an hour after an automatic check failed. When checks
+  happen is not stored: each launch with it on checks once.
+- What the last check said: `Not checked yet.`, `Checking for updates…`,
+  `You have the latest version (<running>).`, `Quest Tracker <new> is
+  available. You have <running>.`, `No Quest Tracker release is published
+  yet.` or `Could not check for updates: <reason>.`, the reason being one
+  of `GitHub did not answer in time`, `GitHub could not be reached`, `the
+  connection to GitHub was not secure`, `GitHub refused the check for now
+  (rate limit), try again later` (status 403 or 429), `GitHub answered
+  <status>`, `GitHub's answer was too large`, `GitHub's answer could not
+  be read`, `the request failed (error <code>)` or `this build cannot
+  check for updates`.
+- **Check now**, disabled while a check runs, and **Open the release
+  page** while a newer version is known; under them, the running version.
+
+A check never holds up the panel, the commands or the tracker's worker:
+its one request runs on a thread of its own, and one check runs at a
+time (a second request while one runs starts nothing). The newest release
+is the highest published, non-prerelease release tagged
+`quest-tracker-v<major>.<minor>.<patch>`; drafts, prereleases and other
+tags are skipped. It is compared with the running build's version: newer
+is announced, equal or older is up to date. The release page opened is
+`https://github.com/S-Borkowski/ExilePact2/releases/tag/quest-tracker-v<version>`,
+built from the version, never taken from GitHub's answer. In play mode,
+with the Settings window in front, the overlay hides as it does for any
+other window that is not the game's.
 
 Which log it follows: `--log`, else the Settings log path, else the first of
 the standalone and Steam paths above whose file exists. With none, the panel
@@ -358,7 +425,19 @@ named, or `none`. The lines to look for when a quest did not advance:
   window in front does not, since Windows reuses pids).
 - `tray: icon shown` at start, or `error: tray icon: <reason>` when the
   tray icon could not be made; the overlay then runs on without it (quit by
-  closing its window).
+  closing its window). `error: tray menu: <reason>` when its menu could not
+  be brought up to date.
+- `updates: ...` lines: `updates: automatic checks turned on` and
+  `updates: automatic checks turned off` when the setting changes;
+  `updates: check started (manual)` or `updates: check started
+  (automatic)`; then one of `updates: up to date (running <cur>, latest
+  <new>)`, `updates: <new> available (running <cur>)`, `updates: no
+  release published` and `updates: check failed: <reason>` (the reasons of
+  the Settings window above); and `updates: opened the release page of
+  <new>`. `command open_release_page refused: no newer version is known`
+  when there is no page to open, and `error: opening the release page of
+  <new>: <reason>` or `error: the update check thread did not start:
+  <reason>` on those failures. Nothing of GitHub's answer is ever logged.
 - `quit: from the tray` or `quit: the window was closed`: the first quit
   request (a second writes nothing), followed by the `stop: ...` line of
   the shutdown. With the screen reader running, that line names it too
@@ -1332,17 +1411,39 @@ What is stored, and where:
 
 Network:
 
-- The app makes no network request. Its content security policy allows only
-  the bundled page and Tauri's own IPC (`default-src 'self'`, no remote
-  script, style, font, image or connection source), its capabilities grant
-  only core event and window permissions, and its Rust sources use no HTTP
-  or socket code. Fonts and icons are bundled. The poe2db link opens in your
-  default browser, through the opener plugin, from Rust. The screen
-  reader's OCR is Windows' own, run on this machine.
+- The app makes one kind of network request, the update check, and only
+  when you order it: the tray's *Check for updates*, the Settings window's
+  *Check now*, or *Automatically check for updates* turned on (off by
+  default; then a check at launch, once a day, and an hour after a failed
+  automatic check). A default install, with the setting off and no check
+  clicked, sends and receives nothing.
+- A check is one `GET
+  https://api.github.com/repos/S-Borkowski/ExilePact2/releases?per_page=30`,
+  port 443 only, made from Rust through Windows' own WinHTTP, with three
+  headers: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version:
+  2022-11-28` and `User-Agent: ExilePact2-quest-tracker` (no version, no
+  machine detail). No cookie is kept or sent, no credential is sent, no
+  redirect is followed, and the proxy is the system's. GitHub sees your
+  IP address and those headers; nothing else leaves. The answer is read
+  up to 2 MiB within 20 s, used only to find the newest release, and
+  never stored or logged. Nothing is downloaded or installed: a newer
+  version is only announced, and its release page opens in your default
+  browser when you choose it.
+- The rest of the app stays offline. Its content security policy allows
+  only the bundled page and Tauri's own IPC (`default-src 'self'`, no
+  remote script, style, font, image or connection source), its
+  capabilities grant only core event and window permissions (the Settings
+  window's `capabilities/settings.json` grants `core:event:default`
+  alone), and no Rust source outside `qt-net`, the transport crate, uses
+  HTTP or socket code; `tests.test_quest_tracker_network` checks all of
+  that from the files. Fonts and icons are bundled. The poe2db link and
+  the release page open in your default browser, through the opener
+  plugin, from Rust. The screen reader's OCR is Windows' own, run on this
+  machine.
 - The global shortcut is a system hotkey registration: no keyboard hook, and
   nothing is sent to the game.
-- The only network code in this feature is the developer-only poe2db tool,
-  which you run yourself.
+- Apart from the update check, the only network code in this feature is
+  the developer-only poe2db tool, which you run yourself.
 
 ## Quest data
 
@@ -1483,9 +1584,10 @@ project):
 | `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and kill-remark trackers behind a backend trait. *Hide under game panels*' too: the panel table type, the probe test and its counts, and the panel tracker (`panels`), and the shipped table (`panel_table`, its numbers in `fixtures/panels/shipped_panels.json`). |
 | `crates/qt-capture/` | The Windows backend for `qt-screen`: GDI copy of a client-area region and `Windows.Media.Ocr` (en-US) in memory, through the `windows` crate. Also the JPEG decode of a kept capture's frames through WinRT's bitmap decoder (`decode`), and the call that makes a process DPI-aware, for `quest-tracker-replay panels`. |
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`), with `screen` (`src/screen.rs`) and `panels` (`src/panels.rs`: `measure`, `detect`, `grab`, `probe`); it depends on `qt-capture` for the decode and the grab. |
-| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`). Tested with a fake window, emitter and clock. |
-| `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the tray icon and its Quit, the close request, the command wrappers. |
-| `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. |
+| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`), and the update check (`updates.rs`: when a check is due, the newest release in GitHub's answer, the Settings window's view and the tray menu, behind an `UpdateTransport` trait; tested in `tests/updates.rs` with a recording fake transport). Tested with a fake window, emitter and clock. |
+| `crates/qt-net/` | The app's only network code: one fixed HTTPS `GET` of the repository's GitHub release list (`api.github.com`, port 443) through Windows' WinHTTP, with its bounds and no caller-given URL. Elsewhere than Windows every fetch is refused as unsupported. Its tests talk only to a server they run on `127.0.0.1`. |
+| `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the tray icon and its menu, the Settings window (label `settings`, its capability `capabilities/settings.json`), the update transport over `qt-net`, the close request, the command wrappers. |
+| `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, one component per section listed in `sections.ts`, `UpdatesSection.svelte`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
 | `data/quests.json` | The shipped quest data. |
 | `fixtures/` | Synthetic logs, sessions, minimal quest data and serialised views shared by the Rust and UI tests; every name in them is invented. |
@@ -1494,10 +1596,13 @@ Tests:
 
 ```sh
 cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-engine   # one crate
+cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-net      # the transport, against 127.0.0.1 only
+cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-app --test updates  # the update check, fake transport
 npm --prefix apps/quest-tracker run build                                        # needed before the workspace build
 cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked --workspace    # every crate
 npm --prefix apps/quest-tracker test                                             # the UI, in jsdom
 py -3 -m unittest tests.test_quest_tracker_poe2db                                # the poe2db tool, no network
+py -3 -m unittest tests.test_quest_tracker_network                               # no network door but the update check
 ```
 
 `src-tauri` embeds the built UI at compile time, so anything that builds the
@@ -1535,7 +1640,12 @@ Commands, UI to Rust: `get_view`, `set_mode`, `set_view_kind`,
 `set_collapsed`, `toggle_act`, `open_detail`, `open_frame`, `quest_action`
 (`mark_done`|`unmark_done`|`skip`|`unskip`|`reset`), `tick_step`,
 `select_character`, `pin_character`, `confirm_character`, `update_settings`,
-`open_source`. Field names in events are snake_case exactly as `serde`
+`open_source`. The Settings window has its own: it is sent
+`qt:app-settings` with an `AppSettingsView` (the running version, the
+`check_updates` setting and the update state, text and newer version;
+serialised in `fixtures/app-settings/`), and calls `get_app_settings`,
+`check_for_updates` (starts a check and answers at once),
+`open_release_page` and `update_settings` (for `check_updates`). Field names in events are snake_case exactly as `serde`
 writes them; command argument keys are camelCase on the JavaScript side
 (`questId`, `stepId`), Tauri's default. `src/ipc.ts` mirrors the Rust types,
 and `src/ipc.test.ts` holds every file in `fixtures/viewmodels/` against
@@ -1890,8 +2000,19 @@ release already exists, only its assets are replaced.
 - **Exclusive fullscreen** cannot show the overlay (see "Platforms and
   prerequisites").
 - **Steam install path** is unverified.
+- **The update check reads the 30 most recent releases** of the
+  repository, all its tools' together. A Quest Tracker release older than
+  the 30 newest is not seen, so when the repository has published more
+  than 30 releases since the last Quest Tracker one, a check says no
+  release is published. The check uses Windows' own network stack and
+  its proxy settings: a network that needs a proxy Windows is not set up
+  for, or blocks `api.github.com`, makes it fail with a one-line reason.
+  GitHub answers at most 60 unauthenticated requests an hour from one IP
+  address (GitHub's documentation, not measured here); past that a check
+  says so. It runs on Windows only.
 - **Not covered:** endgame and Atlas quests, non-English clients, an
-  installer, auto-update.
+  installer, auto-update (the update check announces a newer version and
+  downloads nothing).
 
 ## Maintenance triggers
 
@@ -1926,6 +2047,14 @@ Revisit this feature when:
 - **A dependency is bumped**: keep `tauri`, its plugins, `@tauri-apps/api`
   and `@tauri-apps/cli` on the same minor line, refresh both lock files, and
   re-check the CSP and capabilities.
+- **GitHub changes its API** (the "List releases" endpoint, its fields
+  `tag_name`, `draft` and `prerelease`, its headers or `api.github.com`
+  itself), **or the repository, the `quest-tracker-v` tag prefix or the
+  release flow changes**: update `qt-net` (its host, path and headers),
+  `crates/qt-app/src/updates.rs` (the tag prefix, the release page and
+  what counts as a release) and `tests/test_quest_tracker_network.py`
+  together, and keep them in step with `tools/quest_tracker/release.py`'s
+  `TAG_PREFIX` and `REPO_URL`.
 - **Someone verifies the Steam path**: update `crates/qt-app/src/discover.rs`
   and this guide.
 - **A new display mode or Windows version** behaves differently over the
@@ -1951,11 +2080,19 @@ Revisit this feature when:
 - In play mode the overlay stays hidden from the game's start until a
   character is in an area (the session's first area line), so it does not
   cover the login and character-select screens; edit mode still shows it.
-- A tray icon (the app's icon, tooltip "Quest Tracker") with one entry,
-  *Quit Quest Tracker*, which closes the overlay cleanly even while play
-  mode has it hidden; closing the overlay's window quits the same way.
-  Each writes a `quit:` line, then progress is saved and the tracker
-  stops.
+- A tray icon (the app's icon, tooltip "Quest Tracker") with *Check for
+  updates*, *Settings* and *Quit Quest Tracker*, which closes the overlay
+  cleanly even while play mode has it hidden; closing the overlay's
+  window quits the same way. Each writes a `quit:` line, then progress is
+  saved and the tracker stops.
+- *Check for updates*: the tray's entry, or *Check now* in a new Settings
+  window opened from the tray, asks GitHub's API once whether a newer
+  Quest Tracker release is published, and announces one in the window and
+  the tray (*Update available: X*), with a way to open its release page in
+  your browser. Nothing is downloaded or installed. *Automatically check
+  for updates* in that window, off by default, checks at launch and once a
+  day. With it off and no check clicked, the app makes no network request.
+  The window also carries the line "Created by ST4H".
 - In edit mode the window moves by dragging the panel's header, and the
   position is kept; there is no dock side.
 - When a quest becomes available, is started, has a step done or is done
