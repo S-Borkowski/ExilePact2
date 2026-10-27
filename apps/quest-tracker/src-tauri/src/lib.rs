@@ -1,9 +1,10 @@
-//! Tauri glue for the quest-tracker overlay: the `overlay` window, the
-//! commands as thin wrappers over `qt-app`, and the emitter that sends
-//! `qt:view` and `qt:row-change`. Every decision is `qt-app`'s; this file only
+//! Tauri glue for the quest-tracker overlay: the `overlay` window, the tray's
+//! Settings window, the commands as thin wrappers over `qt-app`, the emitter
+//! that sends `qt:view`, `qt:row-change` and `qt:app-settings`, and the
+//! update check's transport. Every decision is `qt-app`'s; this file only
 //! connects it to Tauri.
 //!
-//! - **Window**: the one `overlay` window of `tauri.conf.json` (transparent,
+//! - **Window**: the `overlay` window of `tauri.conf.json` (transparent,
 //!   undecorated, always on top, off the taskbar, not focusable). At
 //!   creation `WS_EX_NOACTIVATE` is added through `windows-sys` so the game
 //!   keeps focus, and the handle and its extended style go to the
@@ -34,15 +35,38 @@
 //!   WebView thread; none calls `block_on`. Argument keys follow Tauri's
 //!   default, camelCase on the JavaScript side: `invoke("quest_action",
 //!   { questId, action })`, `invoke("tick_step", { questId, stepId,
-//!   ticked })`, `invoke("update_settings", { patch })`.
+//!   ticked })`, `invoke("update_settings", { patch })`. The Settings
+//!   window's own are `get_app_settings` (sync, like `get_view`),
+//!   `check_for_updates` (starts a check and answers at once) and
+//!   `open_release_page`.
 //! - **Auto scale**: every window move and every DPI scale change of the
 //!   window has `qt-app` re-read the monitor, which re-applies the zoom only
 //!   when it differs from the one applied.
 //! - **Tray**: Tauri's own tray icon (feature `tray-icon`), with the app's
-//!   default window icon, the tooltip `Quest Tracker` and one menu entry,
-//!   `Quit Quest Tracker`. Built in Rust at setup; no capability, CSP or
-//!   JavaScript is involved. It logs `tray: icon shown`, or `error: tray
-//!   icon: <reason>` and the overlay runs on without it.
+//!   default window icon. Its menu and tooltip are `qt-app`'s
+//!   (`qt_app::tray_menu` of the app-settings view): *Update available: X*
+//!   while a newer version is known, *Check for updates*, *Settings*, a
+//!   separator and *Quit Quest Tracker*; the tooltip `Quest Tracker`, or
+//!   `Quest Tracker (X available)`. Built in Rust at setup, before the
+//!   worker starts, and rebuilt whenever the app-settings view changes the
+//!   menu (the emitter's `app_settings`, called with no app lock held). Each
+//!   entry's action runs on a blocking task, never on the main thread. No
+//!   capability, CSP or JavaScript is involved. It logs `tray: icon shown`,
+//!   or `error: tray icon: <reason>` and the overlay runs on without it.
+//! - **Settings window**: label `settings`, the page `settings.html`, opened
+//!   from the tray's *Settings* and *Check for updates*: created when first
+//!   asked for, from a spawned task (Tauri's window builder deadlocks on
+//!   Windows when called in a synchronous event handler, and the tray's menu
+//!   handler is one), and shown, unminimised and focused when it is already
+//!   open. Decorated, dark, not resizable, 420 by 280 at 1x, centred, in the
+//!   taskbar while open; closing it destroys it. Its capability
+//!   (`capabilities/settings.json`) grants `core:event:default` alone, and
+//!   `qt:app-settings` is sent to it only. Moves, DPI changes and close
+//!   requests of this window are not the overlay's and are left alone. In
+//!   play mode, with it in front, the overlay hides as for any other window.
+//! - **Update transport**: `qt-net`'s one request for the release list,
+//!   passed to `qt-app`, which alone decides when it runs (a manual check, or
+//!   the `check_updates` setting on). Its errors map one to one.
 //! - **Quit**: the tray's Quit and a close request to the overlay's window
 //!   (`WM_CLOSE`), shown or hidden, both make `qt-app`'s quit request (which
 //!   writes the `quit:` line; the first request wins) and then exit the app.
@@ -62,32 +86,40 @@
 //!   change, a second launch, the tray menu, a close request)
 //!   hand their work to a blocking task, so the main thread never waits for
 //!   the app's lock while a command holding it waits for the main thread.
+//!   The tray's rebuild waits for the main thread with no app lock held.
 
 use std::sync::{Arc, Mutex};
 
+use qt_app::updates::{Answer, TransportError};
 use qt_app::{
-    App, AppConfig, Frame, Mode, MonitorMetrics, Options, PanelConfig, Placement, QuestAction,
-    QuitFrom, RowChange, ScreenBackend, Store, SystemClock, View, ViewKind, DEFAULT_POLL_INTERVAL,
+    App, AppConfig, AppSettingsView, Frame, Mode, MonitorMetrics, Options, PanelConfig, Placement,
+    QuestAction, QuitFrom, RowChange, ScreenBackend, Store, SystemClock, TrayAction, TrayItem,
+    TrayMenu, UpdateConfig, UpdateTransport, View, ViewKind, DEFAULT_POLL_INTERVAL,
     SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{
-    AppHandle, Emitter as _, LogicalSize, Manager, PhysicalPosition, RunEvent, WebviewWindow,
-    WindowEvent,
+    AppHandle, Emitter as _, LogicalSize, Manager, PhysicalPosition, RunEvent, Theme, WebviewUrl,
+    WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_opener::OpenerExt;
 
-/// The one window's label.
+/// The overlay window's label (`tauri.conf.json`).
 const OVERLAY: &str = "overlay";
 
-/// The tray icon's id, its tooltip, and its one menu entry's id and text.
+/// The tray's Settings window: its label, page, title and size at scale 1
+/// (as tall as its content, `docs/quest-tracker/design/component-spec.md`).
+const SETTINGS: &str = "settings";
+const SETTINGS_PAGE: &str = "settings.html";
+const SETTINGS_TITLE: &str = "Quest Tracker Settings";
+const SETTINGS_WIDTH: f64 = 420.0;
+const SETTINGS_HEIGHT: f64 = 280.0;
+
+/// The tray icon's id. Its menu and tooltip are `qt_app::tray_menu`'s.
 const TRAY: &str = "quest-tracker";
-const TRAY_TOOLTIP: &str = "Quest Tracker";
-const QUIT_ID: &str = "quit";
-const QUIT_TEXT: &str = "Quit Quest Tracker";
 
 /// The window's size at scale 1, as `tauri.conf.json` sets it.
 const WIDTH: f64 = 360.0;
@@ -107,15 +139,56 @@ type Shell<'a> = tauri::State<'a, Arc<App>>;
 // ---------------------------------------------------------------------------
 // The emitter and the window, for qt-app.
 
-struct TauriEmitter(AppHandle);
+struct TauriEmitter {
+    app: AppHandle,
+    /// The tray menu shown now, shared with the setup that builds the tray.
+    tray: Arc<TrayShown>,
+}
 
 impl qt_app::Emitter for TauriEmitter {
     fn view(&self, view: &View) {
-        let _ = self.0.emit_to(OVERLAY, "qt:view", view);
+        let _ = self.app.emit_to(OVERLAY, "qt:view", view);
     }
 
     fn row_change(&self, change: &RowChange) {
-        let _ = self.0.emit_to(OVERLAY, "qt:row-change", change);
+        let _ = self.app.emit_to(OVERLAY, "qt:row-change", change);
+    }
+
+    /// Sends the view to the Settings window only (nothing when it is not
+    /// open), then brings the tray's menu and tooltip up to date. `qt-app`
+    /// calls this with no lock of its own held, so waiting here for the main
+    /// thread, which owns the tray, cannot hold up a command or the worker.
+    fn app_settings(&self, view: &AppSettingsView) {
+        let _ = self.app.emit_to(SETTINGS, "qt:app-settings", view);
+        if let Err(e) = self.tray.update(&self.app, view) {
+            if let Some(shell) = self.app.try_state::<Arc<App>>() {
+                shell.diag(&format!("error: tray menu: {e}"));
+            }
+        }
+    }
+}
+
+/// The update check's transport: `qt-net`'s one request for the release
+/// list, its answer and errors carried over one to one. `qt-app` calls it,
+/// on a check's own thread, only when a check runs.
+struct NetTransport;
+
+impl UpdateTransport for NetTransport {
+    fn fetch_releases(&self) -> Result<Answer, TransportError> {
+        match qt_net::fetch_release_list() {
+            Ok(r) => Ok(Answer {
+                status: r.status,
+                body: r.body,
+            }),
+            Err(e) => Err(match e {
+                qt_net::FetchError::Unsupported => TransportError::Unsupported,
+                qt_net::FetchError::Timeout => TransportError::Timeout,
+                qt_net::FetchError::Unreachable => TransportError::Unreachable,
+                qt_net::FetchError::NotSecure => TransportError::NotSecure,
+                qt_net::FetchError::TooLarge => TransportError::TooLarge,
+                qt_net::FetchError::Other(code) => TransportError::Other(code),
+            }),
+        }
     }
 }
 
@@ -412,30 +485,134 @@ fn quit(app: &AppHandle, from: QuitFrom) {
     }
 }
 
-/// The tray icon: the app's default window icon, the tooltip and one menu
-/// entry, "Quit Quest Tracker", which quits. A failure is the caller's to
-/// log; the overlay runs on without the icon.
-fn tray_icon(app: &AppHandle) -> Result<(), String> {
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .ok_or_else(|| "the app has no default window icon".to_string())?;
-    let quit_item = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)
-        .map_err(|e| e.to_string())?;
-    let menu = Menu::with_items(app, &[&quit_item]).map_err(|e| e.to_string())?;
-    TrayIconBuilder::with_id(TRAY)
-        .icon(icon)
-        .tooltip(TRAY_TOOLTIP)
-        .menu(&menu)
-        .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| {
-            if event.id() == QUIT_ID {
-                quit(app, QuitFrom::Tray);
+/// The tray menu shown now, so a view that leaves the menu as it is (a
+/// check starting, the setting turned) rebuilds nothing, and two threads
+/// never interleave a rebuild: the lock is held across one, and the main
+/// thread, which the rebuild waits for, never takes it once the worker runs.
+#[derive(Default)]
+struct TrayShown(Mutex<Option<TrayMenu>>);
+
+impl TrayShown {
+    /// Builds the tray icon with the menu and tooltip for `view`, at setup,
+    /// before the worker starts. A failure is the caller's to log; the
+    /// overlay runs on without the icon.
+    fn build(&self, app: &AppHandle, view: &AppSettingsView) -> Result<(), String> {
+        let model = qt_app::tray_menu(view);
+        let mut shown = self.0.lock().unwrap_or_else(|p| p.into_inner());
+        let icon = app
+            .default_window_icon()
+            .cloned()
+            .ok_or_else(|| "the app has no default window icon".to_string())?;
+        let menu = tray_menu(app, &model)?;
+        TrayIconBuilder::with_id(TRAY)
+            .icon(icon)
+            .tooltip(&model.tooltip)
+            .menu(&menu)
+            .show_menu_on_left_click(true)
+            .on_menu_event(|app, event| tray_action(app, event.id().as_ref()))
+            .build(app)
+            .map_err(|e| e.to_string())?;
+        *shown = Some(model);
+        Ok(())
+    }
+
+    /// Brings the tray's menu and tooltip up to `view`, when they differ
+    /// from the ones shown. Nothing when the tray icon was never built.
+    fn update(&self, app: &AppHandle, view: &AppSettingsView) -> Result<(), String> {
+        let model = qt_app::tray_menu(view);
+        let mut shown = self.0.lock().unwrap_or_else(|p| p.into_inner());
+        if shown.as_ref() == Some(&model) {
+            return Ok(());
+        }
+        let Some(tray) = app.tray_by_id(TRAY) else {
+            return Ok(());
+        };
+        let menu = tray_menu(app, &model)?;
+        tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
+        tray.set_tooltip(Some(&model.tooltip))
+            .map_err(|e| e.to_string())?;
+        *shown = Some(model);
+        Ok(())
+    }
+}
+
+/// The tray's menu, rendered from `qt-app`'s entries in their order.
+fn tray_menu(app: &AppHandle, model: &TrayMenu) -> Result<Menu<tauri::Wry>, String> {
+    let menu = Menu::new(app).map_err(|e| e.to_string())?;
+    for item in &model.items {
+        match item {
+            TrayItem::Entry { id, text } => {
+                let entry = MenuItem::with_id(app, *id, text, true, None::<&str>)
+                    .map_err(|e| e.to_string())?;
+                menu.append(&entry).map_err(|e| e.to_string())?;
             }
-        })
-        .build(app)
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+            TrayItem::Separator => {
+                let line = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+                menu.append(&line).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok(menu)
+}
+
+/// What a tray entry does, by its id (`TrayAction::from_id`). Called on the
+/// main thread, so every action is handed on: the app's work to a blocking
+/// task, the window to a spawned one.
+fn tray_action(app: &AppHandle, id: &str) {
+    match TrayAction::from_id(id) {
+        Some(TrayAction::OpenReleasePage) => later(app, |shell| {
+            // A refusal or a failure is logged by `qt-app`.
+            let _ = shell.open_release_page();
+        }),
+        Some(TrayAction::CheckForUpdates) => {
+            open_settings(app);
+            later(app, |shell| {
+                shell.check_for_updates();
+            });
+        }
+        Some(TrayAction::OpenSettings) => open_settings(app),
+        Some(TrayAction::Quit) => quit(app, QuitFrom::Tray),
+        None => {}
+    }
+}
+
+/// Opens the Settings window, or shows, unminimises and focuses it when it
+/// is open already, on a blocking task: never in the tray's synchronous
+/// menu handler, where Tauri's window builder deadlocks on Windows. The
+/// lock keeps two quick clicks from building it twice. A failure is logged.
+fn open_settings(app: &AppHandle) {
+    static OPENING: Mutex<()> = Mutex::new(());
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _one = OPENING.lock().unwrap_or_else(|p| p.into_inner());
+        let result = match app.get_webview_window(SETTINGS) {
+            Some(w) => w
+                .show()
+                .and_then(|()| w.unminimize())
+                .and_then(|()| w.set_focus())
+                .map_err(|e| e.to_string()),
+            None => WebviewWindowBuilder::new(&app, SETTINGS, WebviewUrl::App(SETTINGS_PAGE.into()))
+                .title(SETTINGS_TITLE)
+                .inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
+                .resizable(false)
+                .maximizable(false)
+                .decorations(true)
+                .theme(Some(Theme::Dark))
+                .center()
+                .focusable(true)
+                .focused(true)
+                .always_on_top(false)
+                .skip_taskbar(false)
+                .build()
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
+        };
+        if let Err(e) = result {
+            if let Some(shell) = app.try_state::<Arc<App>>() {
+                shell.diag(&format!("error: settings window: {e}"));
+            }
+        }
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -516,6 +693,23 @@ fn open_source(shell: Shell<'_>, quest_id: String) -> Result<(), String> {
     shell.open_source(&quest_id)
 }
 
+// The Settings window's commands.
+
+#[tauri::command]
+fn get_app_settings(shell: Shell<'_>) -> AppSettingsView {
+    shell.get_app_settings()
+}
+
+#[tauri::command(async)]
+fn check_for_updates(shell: Shell<'_>) -> AppSettingsView {
+    shell.check_for_updates()
+}
+
+#[tauri::command(async)]
+fn open_release_page(shell: Shell<'_>) -> Result<(), String> {
+    shell.open_release_page()
+}
+
 // ---------------------------------------------------------------------------
 
 /// Builds and runs the Tauri application.
@@ -551,7 +745,12 @@ pub fn run() {
                 backend: panel_backend(&window),
                 table: None,
             };
-            let shell = App::with_panels(
+            let updates = UpdateConfig {
+                transport: Some(Box::new(NetTransport)),
+                running: None,
+            };
+            let tray = Arc::new(TrayShown::default());
+            let shell = App::with_updates(
                 AppConfig {
                     options,
                     options_error,
@@ -559,7 +758,10 @@ pub fn run() {
                     data: None,
                     candidates: qt_app::discover::default_candidates(),
                     poll_interval: DEFAULT_POLL_INTERVAL,
-                    emitter: Box::new(TauriEmitter(handle.clone())),
+                    emitter: Box::new(TauriEmitter {
+                        app: handle.clone(),
+                        tray: Arc::clone(&tray),
+                    }),
                     window: Box::new(TauriWindow {
                         app: handle,
                         hotkey: Mutex::new(None),
@@ -568,25 +770,30 @@ pub fn run() {
                     screen: screen_backend(&window),
                 },
                 panels,
+                updates,
             );
             app.manage(Arc::clone(&shell));
+            // Before the worker starts, so no check can change the menu
+            // while it is built; logged after the start's own lines.
+            let tray_built = tray.build(app.handle(), &shell.get_app_settings());
             shell.start();
             no_activate(&window, &shell);
-            match tray_icon(app.handle()) {
+            match tray_built {
                 Ok(()) => shell.diag("tray: icon shown"),
                 Err(e) => shell.diag(&format!("error: tray icon: {e}")),
             }
             Ok(())
         })
         .on_window_event(|window, event| match event {
-            // Every move, in any mode: `auto` follows the window to its
-            // monitor (Tauri has no drag-end event; the shell applies a zoom
-            // only when it differs), and an edit-mode move is kept.
-            WindowEvent::Moved(at) => {
+            // Every move of the overlay, in any mode: `auto` follows the
+            // window to its monitor (Tauri has no drag-end event; the shell
+            // applies a zoom only when it differs), and an edit-mode move is
+            // kept. The Settings window's moves are its own.
+            WindowEvent::Moved(at) if window.label() == OVERLAY => {
                 let (x, y) = (at.x, at.y);
                 later(window.app_handle(), move |shell| shell.window_moved(x, y));
             }
-            WindowEvent::ScaleFactorChanged { .. } => {
+            WindowEvent::ScaleFactorChanged { .. } if window.label() == OVERLAY => {
                 later(window.app_handle(), |shell| shell.follow_monitor());
             }
             // `WM_CLOSE` to the overlay, shown or hidden: hold the close and
@@ -612,6 +819,9 @@ pub fn run() {
             confirm_character,
             update_settings,
             open_source,
+            get_app_settings,
+            check_for_updates,
+            open_release_page,
         ])
         .build(tauri::generate_context!())
         .expect("quest-tracker: the Tauri application failed to start");
