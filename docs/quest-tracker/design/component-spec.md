@@ -217,3 +217,27 @@ add a character". "Waiting for the game": "Press [F8] then ⚙ › Log file".
 Opened from Settings or F1, closed by Esc or ✕. Groups (Act style): Status,
 Worth it, Detection; each row an instance + name (14 Medium) over meaning
 (Caption).
+
+### SettingsWindow — 420 wide, its own window (owner, 2026-10-27)
+Not an overlay frame: the tray's Settings window (the brief's
+"The Settings window"), built from the components above, no new token.
+- Window: fill `color.panel-bg` edge to edge, no border, no cut corners or
+  shadow (the native title bar frames it). Padding 16 at the sides.
+- Title "Settings" (Title), 16 above and 4 below. Each section: a group
+  label (Act, `color.text-muted`), then SettingRows (40 high, padding
+  0/16 here) and their helper lines (13 / 18, `color.text-muted`: larger
+  than the panel's Caption, as the help states what the window connects
+  to). The window is as tall as its content, about 280 at 1×. A 1 px
+  `color.panel-divider` line between sections and above the footer.
+- Updates: SettingRow "Automatically check for updates" + Toggle; helper
+  "Asks GitHub once a day whether a newer version is out. Downloads
+  nothing. Off: Quest Tracker never connects unless you ask it to check.";
+  status line (Step, `color.text-primary`, 16 icon 8 before it:
+  `ui-refresh` checking, `ui-check` up to date, `status-available` in
+  `color.status-available` available, `ui-warning` in `color.warning`
+  failed, none otherwise); buttons 8 apart: "Check now" (secondary,
+  disabled while checking), "Open the release page" (primary,
+  `ui-external-link` 14 after the label, only while a newer version is
+  known); "Version 1.2.0" (Caption, `color.text-muted`, tabular figures).
+- Footer: "Created by ST4H" (Caption, `color.text-muted`), plain text,
+  padding 12/16.
