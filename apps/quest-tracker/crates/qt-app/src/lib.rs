@@ -24,11 +24,16 @@
 //!   window through a [`ScreenBackend`] the glue hands [`AppConfig`]
 //!   (`qt-capture` on Windows), and its diagnostic lines (Context "Design:
 //!   the reader thread").
+//! - [`panels`]: the opt-in panel watcher's thread, which hides the overlay
+//!   while a game panel is open under it, through a backend of its own the
+//!   glue hands [`App::with_panels`] in a [`PanelConfig`] (Context "Design:
+//!   the panel watcher").
 
 pub mod app;
 pub mod cli;
 pub mod diag;
 pub mod discover;
+pub mod panels;
 pub mod screen;
 pub mod seed;
 
@@ -41,9 +46,10 @@ use qt_engine::QuestData;
 pub use app::{
     auto_rescale, overlay_shown, scale_factor, waiting_for_area, App, AppConfig, Clock, Emitter,
     MonitorMetrics, Placement, QuitFrom, SystemClock, Window, HIDDEN_LINE, NO_AREA_LINE,
-    SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT, WORKER_TICK,
+    PANEL_LINE, SAVE_INTERVAL_MS, SHOWN_LINE, SHUTDOWN_TIMEOUT, WORKER_TICK,
 };
 pub use cli::Options;
+pub use panels::PanelConfig;
 // What the glue names without depending on the library crates itself.
 pub use qt_engine::QuestAction;
 pub use qt_screen::ScreenBackend;

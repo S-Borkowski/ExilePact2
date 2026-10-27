@@ -142,6 +142,7 @@
   "next_up": [],
   "schema": 1,
   "settings": {
+    "hide_under_panels": false,
     "hotkey": "Ctrl+Alt+Q",
     "log_path": null,
     "only_worth_it": false,

@@ -29,6 +29,14 @@
 //! the worker's channel, beside the tailer's lines, each tagged with its
 //! producer's generation so a stopped reader's events are dropped like a
 //! stopped tailer's.
+//!
+//! The panel watcher (`crate::panels`), with the `hide_under_panels` setting
+//! on, is another, built the same way: the worker publishes whether the
+//! overlay may be read (play mode, shown or hidden by a panel alone) with
+//! the confirmed game pid, and the watcher sends which game panel is open
+//! under the overlay on the same channel, under its own generation. The
+//! worker hides the overlay for it ([`PANEL_LINE`]); with the setting off
+//! nothing of it runs and the visibility rule is as it was.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -39,7 +47,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use qt_engine::{Engine, QuestAction, QuestData, Transition};
-use qt_screen::ScreenBackend;
+use qt_screen::{PanelTable, ScreenBackend};
 use qt_logline::{client_pid, parse_line, EventKind, Timestamp};
 use qt_store::{Loaded, Store, StoreError};
 use qt_tailer::{Position, SystemClock as TailerClock, TailEvent};
@@ -52,6 +60,9 @@ use serde_json::{json, Map, Value};
 use crate::cli::Options;
 use crate::diag;
 use crate::discover;
+use crate::panels::{
+    self, PanelConfig, PanelMsg, PanelSnapshot, SharedPanelBackend, WatcherHandle,
+};
 use crate::screen::{self, DemandSnapshot, NotCounted, ReaderHandle, ScreenMsg, SharedBackend};
 use crate::seed;
 
@@ -162,6 +173,9 @@ pub const SHOWN_LINE: &str = "visibility: shown";
 /// What the diagnostic log says when play mode hides the overlay because
 /// the session has no area line yet ([`waiting_for_area`]).
 pub const NO_AREA_LINE: &str = "visibility: hidden (no character in an area yet this session)";
+/// What the diagnostic log says when play mode hides the overlay because
+/// the panel watcher reads a game panel open under it (`hide_under_panels`).
+pub const PANEL_LINE: &str = "visibility: hidden (a game panel is open under the overlay)";
 
 /// Whether play mode hides the overlay because no character is in an area
 /// yet (owner, after Live 4: not over the login and character-select
@@ -185,6 +199,9 @@ enum Visibility {
     Hidden,
     /// No character in an area yet ([`waiting_for_area`]; [`NO_AREA_LINE`]).
     NoArea,
+    /// A game panel is open under the overlay, as the panel watcher last
+    /// said, and nothing above hides it ([`PANEL_LINE`]).
+    Panel,
 }
 
 /// The diagnostic line written each time the game pid the visibility rule
@@ -327,15 +344,18 @@ enum Source {
     /// The screen reader: a refusal, the overlay over a region, failing
     /// copies, or the reader stopped after an error.
     Screen,
+    /// The panel watcher: a pause, or the watcher stopped after an error.
+    Panels,
 }
 
-/// What reaches the worker on its one channel: a tailer's event or the
-/// screen reader's, each tagged with its producer's generation
-/// (`State::tail_gen`, `State::screen_gen`).
+/// What reaches the worker on its one channel: a tailer's event, the
+/// screen reader's or the panel watcher's, each tagged with its producer's
+/// generation (`State::tail_gen`, `State::screen_gen`, `State::panel_gen`).
 #[derive(Debug)]
 pub(crate) enum Inbound {
     Tail(u64, TailEvent),
     Screen(u64, ScreenMsg),
+    Panels(u64, PanelMsg),
 }
 
 fn severity(kind: StatusKind) -> u8 {
@@ -413,6 +433,12 @@ struct State {
     /// the demand carries so the reader can mark the bars up at a death
     /// (`DemandSnapshot::deaths`).
     screen_deaths: u64,
+    /// Which panel watcher's messages count: raised each time one is
+    /// started or stopped, so what a stopped one queued is dropped.
+    panel_gen: u64,
+    /// The game panel the running watcher last read open under the overlay;
+    /// `None` when none is, or no watcher runs.
+    panel_open: Option<&'static str>,
 }
 
 /// The last handled line's place in log time (see `State::log_clock`).
@@ -498,6 +524,8 @@ struct After {
     retail: bool,
     /// The screen reader is to start (`true`) or stop (`false`).
     screen: Option<bool>,
+    /// The panel watcher is to start (`true`) or stop (`false`).
+    panels: Option<bool>,
 }
 
 struct Tailer {
@@ -534,6 +562,14 @@ pub struct App {
     /// `try_lock` and never waits.
     screen_demand: Mutex<Arc<DemandSnapshot>>,
     reader: Mutex<Option<ReaderHandle>>,
+    /// The panel watcher's own backend, shared by each watcher started.
+    panel_backend: Option<SharedPanelBackend>,
+    /// The panels the watcher looks for.
+    panel_table: Arc<PanelTable>,
+    /// The newest snapshot the worker published for the watcher, which
+    /// takes it with `try_lock` and never waits.
+    panel_snapshot: Mutex<Arc<PanelSnapshot>>,
+    watcher: Mutex<Option<WatcherHandle>>,
     worker: Mutex<Option<JoinHandle<()>>>,
     worker_stop: Arc<AtomicBool>,
     stopped: AtomicBool,
@@ -565,7 +601,20 @@ impl QuitFrom {
 impl App {
     /// Loads the settings, the characters and the saved position, and
     /// decides which log to follow. Starts nothing: see [`App::start`].
+    /// There is no panel watcher backend: the `hide_under_panels` setting
+    /// starts nothing ([`App::with_panels`]).
     pub fn new(config: AppConfig) -> Arc<App> {
+        App::with_panels(config, PanelConfig::default())
+    }
+
+    /// [`App::new`], with what the panel watcher needs: its own backend and
+    /// the table of panels, [`qt_screen::shipped_panels`] unless `panels`
+    /// names another.
+    pub fn with_panels(config: AppConfig, panels: PanelConfig) -> Arc<App> {
+        let PanelConfig {
+            backend: panel_backend,
+            table: panel_table,
+        } = panels;
         let AppConfig {
             options,
             options_error,
@@ -770,6 +819,8 @@ impl App {
             screen_area_ms: None,
             screen_death_ms: None,
             screen_deaths: 0,
+            panel_gen: 0,
+            panel_open: None,
         };
         // What was just loaded is what is on disk; a first run starts dirty.
         state.dirty = !(had_settings && had_roster);
@@ -812,6 +863,10 @@ impl App {
             screen_backend: screen.map(|b| Arc::new(Mutex::new(b))),
             screen_demand: Mutex::new(Arc::default()),
             reader: Mutex::new(None),
+            panel_backend: panel_backend.map(|b| Arc::new(Mutex::new(b))),
+            panel_table: Arc::new(panel_table.unwrap_or_else(qt_screen::shipped_panels)),
+            panel_snapshot: Mutex::new(Arc::default()),
+            watcher: Mutex::new(None),
             worker: Mutex::new(None),
             worker_stop: Arc::new(AtomicBool::new(false)),
             stopped: AtomicBool::new(false),
@@ -912,14 +967,19 @@ impl App {
         if self.lock().settings.screen_reading {
             self.start_reader();
         }
+        if self.lock().settings.hide_under_panels {
+            self.start_watcher();
+        }
         let mut st = self.lock();
         self.announce(&mut st);
     }
 
-    /// Stops the tailer, the worker and the screen reader, waits for them up
-    /// to `timeout`, and saves whatever is unsaved. True when every thread
-    /// ended in time. An OCR call in flight is not interrupted: a reader
-    /// inside one past the deadline is logged as not ended, like the others.
+    /// Stops the tailer, the worker, the screen reader and the panel
+    /// watcher, waits for them up to `timeout`, and saves whatever is
+    /// unsaved. True when every thread ended in time. An OCR call or a copy
+    /// in flight is not interrupted: a thread inside one past the deadline
+    /// is logged as not ended, like the others. The stop line names the
+    /// reader and the watcher only when they ran.
     pub fn shutdown(&self, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
         self.worker_stop.store(true, Ordering::Release);
@@ -931,6 +991,10 @@ impl App {
         if let Some(r) = &reader {
             r.stop.store(true, Ordering::Release);
         }
+        let watcher = self.lock_watcher().take();
+        if let Some(w) = &watcher {
+            w.stop.store(true, Ordering::Release);
+        }
         let worker = self
             .worker
             .lock()
@@ -939,32 +1003,22 @@ impl App {
         let tailer_ok = tailer.map_or(true, |t| join_by(t.handle, deadline));
         let worker_ok = worker.map_or(true, |w| join_by(w, deadline));
         let reader_ok = reader.map(|r| join_by(r.handle, deadline));
+        let watcher_ok = watcher.map(|w| join_by(w.handle, deadline));
         self.save_if_due(true);
-        let ended = |ok: bool| if ok { "ended" } else { "did not end" };
         if !self.stopped.swap(true, Ordering::AcqRel) {
-            self.diag(&match reader_ok {
-                None if tailer_ok && worker_ok => {
-                    "stop: tailer and worker ended, progress saved".to_string()
-                }
-                None => format!(
-                    "stop: tailer {}, worker {} within {} ms; progress saved",
-                    ended(tailer_ok),
-                    ended(worker_ok),
-                    timeout.as_millis()
-                ),
-                Some(true) if tailer_ok && worker_ok => {
-                    "stop: tailer, worker and screen reader ended, progress saved".to_string()
-                }
-                Some(reader_ok) => format!(
-                    "stop: tailer {}, worker {}, screen reader {} within {} ms; progress saved",
-                    ended(tailer_ok),
-                    ended(worker_ok),
-                    ended(reader_ok),
-                    timeout.as_millis()
-                ),
-            });
+            let mut threads = vec![("tailer", tailer_ok), ("worker", worker_ok)];
+            threads.extend(reader_ok.map(|ok| ("screen reader", ok)));
+            threads.extend(watcher_ok.map(|ok| ("panel watcher", ok)));
+            self.diag(&stop_line(&threads, timeout));
         }
-        tailer_ok && worker_ok && reader_ok.unwrap_or(true)
+        tailer_ok && worker_ok && reader_ok.unwrap_or(true) && watcher_ok.unwrap_or(true)
+    }
+
+    /// True while a panel watcher thread runs.
+    pub fn panel_watcher_running(&self) -> bool {
+        self.lock_watcher()
+            .as_ref()
+            .is_some_and(|w| !w.handle.is_finished())
     }
 
     /// True while a screen reader thread runs.
@@ -1137,6 +1191,14 @@ impl App {
                     }
                     continue;
                 }
+                Inbound::Panels(tag, msg) => {
+                    // A stopped watcher's are dropped: turning the setting
+                    // off has already shown the overlay.
+                    if tag == st.panel_gen {
+                        apply_panel_msg(&mut st, msg);
+                    }
+                    continue;
+                }
             };
             if tag != generation {
                 stale += 1;
@@ -1305,6 +1367,7 @@ impl App {
             self.diag(&diag::row_change(c));
         }
         self.publish_demand(st);
+        self.publish_panels(st);
     }
 
     // -- the screen reader ---------------------------------------------------
@@ -1462,6 +1525,103 @@ impl App {
         self.reader.lock().unwrap_or_else(|p| p.into_inner())
     }
 
+    // -- the panel watcher ---------------------------------------------------
+
+    /// Publishes what the panel watcher needs to know: whether the overlay
+    /// is in play mode, whether it is hidden for a reason other than a
+    /// panel, and the game pid once confirmed. Nothing while the setting is
+    /// off. Replaced only when it changed.
+    fn publish_panels(&self, st: &State) {
+        let snapshot = if st.settings.hide_under_panels {
+            PanelSnapshot {
+                play: st.ui.mode == Mode::Play,
+                overlay_hidden: matches!(st.visibility, Visibility::Hidden | Visibility::NoArea),
+                pid: st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed),
+            }
+        } else {
+            PanelSnapshot::default()
+        };
+        let mut slot = self.panel_slot().lock().unwrap_or_else(|p| p.into_inner());
+        if **slot != snapshot {
+            *slot = Arc::new(snapshot);
+        }
+    }
+
+    /// Where the worker publishes the watcher's snapshot.
+    pub(crate) fn panel_slot(&self) -> &Mutex<Arc<PanelSnapshot>> {
+        &self.panel_snapshot
+    }
+
+    /// Starts the panel watcher, unless one runs or there is no backend.
+    fn start_watcher(&self) {
+        let (Some(backend), Some(app)) = (&self.panel_backend, self.me.upgrade()) else {
+            return;
+        };
+        let mut slot = self.lock_watcher();
+        if slot.as_ref().is_some_and(|w| !w.handle.is_finished()) {
+            return;
+        }
+        let generation = {
+            let mut st = self.lock();
+            st.panel_gen += 1;
+            st.panel_open = None;
+            st.set_status(Source::Panels, None);
+            self.publish_panels(&st);
+            st.panel_gen
+        };
+        let stop = Arc::new(AtomicBool::new(false));
+        let (backend, table, flag) = (
+            Arc::clone(backend),
+            Arc::clone(&self.panel_table),
+            Arc::clone(&stop),
+        );
+        let spawned = thread::Builder::new()
+            .name("qt-panels".to_string())
+            .spawn(move || panels::run_watcher(app, backend, table, generation, flag));
+        match spawned {
+            Ok(handle) => *slot = Some(WatcherHandle { stop, handle }),
+            Err(e) => {
+                self.diag(&format!("error: panel watcher: the thread did not start: {e}"));
+                self.diag("panels: stopped after an error");
+                self.lock()
+                    .set_status(Source::Panels, Some(StatusLine::warn(panels::STOPPED_STATUS)));
+            }
+        }
+    }
+
+    /// Stops the panel watcher: first drops any panel hide (the overlay
+    /// shows at once, unless something else hides it), then waits for the
+    /// thread up to [`SHUTDOWN_TIMEOUT`]; what it queued is dropped and its
+    /// status line cleared.
+    fn stop_watcher(&self) {
+        let watcher = self.lock_watcher().take();
+        if let Some(w) = &watcher {
+            w.stop.store(true, Ordering::Release);
+        }
+        {
+            let mut st = self.lock();
+            st.panel_gen += 1;
+            st.panel_open = None;
+            st.set_status(Source::Panels, None);
+            if st.visibility == Visibility::Panel {
+                self.apply_visibility(&mut st, Visibility::Shown, None);
+            }
+            self.publish_panels(&st);
+        }
+        let ended = watcher.map(|w| join_by(w.handle, Instant::now() + SHUTDOWN_TIMEOUT));
+        if ended == Some(false) {
+            self.diag(&format!(
+                "error: panel watcher: did not end within {} ms",
+                SHUTDOWN_TIMEOUT.as_millis()
+            ));
+        }
+        self.diag("panels: off");
+    }
+
+    fn lock_watcher(&self) -> MutexGuard<'_, Option<WatcherHandle>> {
+        self.watcher.lock().unwrap_or_else(|p| p.into_inner())
+    }
+
     /// The worker's housekeeping between batches: a quiet relog window
     /// decided, the window shown or hidden for what is in front, then a save
     /// when one is due.
@@ -1474,10 +1634,12 @@ impl App {
     fn tick_via(&self, worker: Option<&WorkerWindow>) {
         self.close_quiet_relog_window();
         self.follow_foreground_via(worker);
-        // A pid its window in front confirmed reaches the reader's demand.
+        // A pid its window in front confirmed reaches the reader's demand,
+        // and it and the visibility reach the panel watcher.
         {
             let st = self.lock();
             self.publish_demand(&st);
+            self.publish_panels(&st);
         }
         self.save_if_due(false);
     }
@@ -1486,9 +1648,12 @@ impl App {
     /// the pid of the window in front, and hides the overlay unless that is
     /// the game or the overlay itself, and before that it hides the overlay
     /// while the session has no character in an area ([`waiting_for_area`]).
-    /// Each change is applied and logged once ([`HIDDEN_LINE`],
-    /// [`NO_AREA_LINE`], [`SHOWN_LINE`]); showing never activates the
-    /// window, so the game keeps focus. A game pid read only from catch-up
+    /// With `hide_under_panels` on, it also hides the overlay in play mode
+    /// while the panel watcher reads a game panel open under it, when
+    /// nothing before that hides it. Each change is applied and logged once
+    /// ([`HIDDEN_LINE`], [`NO_AREA_LINE`], [`PANEL_LINE`], [`SHOWN_LINE`]);
+    /// showing never activates the window, so the game keeps focus. A game
+    /// pid read only from catch-up
     /// or the seed is confirmed when its window is in front within
     /// [`UNCONFIRMED_PID_GRACE_MS`], and stops hiding the overlay when it is
     /// not; both are logged once. A pid gone stale is confirmed only by a
@@ -1549,21 +1714,39 @@ impl App {
         let used = if st.pid_trust == PidTrust::Stale { None } else { game };
         let visibility = if waiting_for_area(mode, st.awaiting_area, used.is_some()) {
             Visibility::NoArea
-        } else if overlay_shown(mode, used, front, std::process::id()) {
-            Visibility::Shown
-        } else {
+        } else if !overlay_shown(mode, used, front, std::process::id()) {
             Visibility::Hidden
+        } else if mode == Mode::Play && st.settings.hide_under_panels && st.panel_open.is_some()
+        {
+            Visibility::Panel
+        } else {
+            Visibility::Shown
         };
+        self.apply_visibility(&mut st, visibility, worker);
+    }
+
+    /// Applies and logs `visibility` when it differs from the one applied:
+    /// shows or hides the window only when shown-ness changes, and writes
+    /// the line of the new reason either way. The panel watcher's snapshot
+    /// follows.
+    fn apply_visibility(
+        &self,
+        st: &mut State,
+        visibility: Visibility,
+        worker: Option<&WorkerWindow>,
+    ) {
         if st.visibility == visibility {
             return;
         }
         let was_shown = st.visibility == Visibility::Shown;
         st.visibility = visibility;
+        self.publish_panels(st);
         let shown = visibility == Visibility::Shown;
         let line = match visibility {
             Visibility::Shown => SHOWN_LINE,
             Visibility::Hidden => HIDDEN_LINE,
             Visibility::NoArea => NO_AREA_LINE,
+            Visibility::Panel => PANEL_LINE,
         };
         if was_shown == shown {
             // Hidden either way, for another reason: only the line changes.
@@ -1776,6 +1959,9 @@ impl App {
             if new.screen_reading != old.screen_reading {
                 after.screen = Some(new.screen_reading);
             }
+            if new.hide_under_panels != old.hide_under_panels {
+                after.panels = Some(new.hide_under_panels);
+            }
             Ok(after)
         })
     }
@@ -1886,6 +2072,7 @@ impl App {
         self.emitter.view(&view);
         st.last_view = Some(view.clone());
         self.publish_demand(st);
+        self.publish_panels(st);
         view
     }
 
@@ -1910,7 +2097,10 @@ impl App {
             }
         };
         self.save_if_due(false);
-        let again = after.hotkey.is_some() || after.retail || after.screen.is_some();
+        let again = after.hotkey.is_some()
+            || after.retail
+            || after.screen.is_some()
+            || after.panels.is_some();
         if let Some(h) = after.hotkey {
             self.register_hotkey(&h, "change it in Settings");
         }
@@ -1920,6 +2110,11 @@ impl App {
         match after.screen {
             Some(true) => self.start_reader(),
             Some(false) => self.stop_reader(),
+            None => {}
+        }
+        match after.panels {
+            Some(true) => self.start_watcher(),
+            Some(false) => self.stop_watcher(),
             None => {}
         }
         if again {
@@ -2292,6 +2487,41 @@ fn quest_target(st: &State) -> Result<String, String> {
         .quest_target()
         .map(str::to_string)
         .ok_or_else(|| "no character yet: play until one is detected, or pick one".to_string())
+}
+
+/// One message of the running panel watcher: which panel is open under the
+/// overlay (applied by the worker's visibility pass, which runs after each
+/// batch), or its status line.
+fn apply_panel_msg(st: &mut State, msg: PanelMsg) {
+    match msg {
+        PanelMsg::Open(open) => st.panel_open = open,
+        PanelMsg::Status(line) => st.set_status(Source::Panels, line),
+    }
+}
+
+/// The shutdown's line for `threads` (each name with whether it ended in
+/// time): `stop: tailer, worker and screen reader ended, progress saved`
+/// when all did, else `stop: tailer ended, worker did not end within 2000
+/// ms; progress saved`.
+fn stop_line(threads: &[(&str, bool)], timeout: Duration) -> String {
+    if threads.iter().all(|(_, ok)| *ok) {
+        let names: Vec<&str> = threads.iter().map(|(name, _)| *name).collect();
+        let listed = match names.split_last() {
+            Some((last, rest)) if !rest.is_empty() => format!("{} and {last}", rest.join(", ")),
+            _ => names.join(""),
+        };
+        format!("stop: {listed} ended, progress saved")
+    } else {
+        let each: Vec<String> = threads
+            .iter()
+            .map(|(name, ok)| format!("{name} {}", if *ok { "ended" } else { "did not end" }))
+            .collect();
+        format!(
+            "stop: {} within {} ms; progress saved",
+            each.join(", "),
+            timeout.as_millis()
+        )
+    }
 }
 
 /// Joins `handle` if it ends before `deadline`.

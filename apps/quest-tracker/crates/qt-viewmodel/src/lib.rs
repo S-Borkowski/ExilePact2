@@ -382,6 +382,12 @@ pub struct Settings {
     /// while a step it can finish is open, and stores nothing it reads.
     /// Off by default; a file written before it existed loads it off.
     pub screen_reading: bool,
+    /// "Hide under game panels": in play mode, the overlay hides while one
+    /// of the game's panels (the inventory, the passive tree, the stash...)
+    /// is open under its window, told from the colour of a few small copies
+    /// of the panel's frame, and shows again once it closes. Off by
+    /// default; a file written before it existed loads it off.
+    pub hide_under_panels: bool,
 }
 
 impl Default for Settings {
@@ -394,6 +400,7 @@ impl Default for Settings {
             log_path: None,
             hotkey: Settings::DEFAULT_HOTKEY.to_string(),
             screen_reading: false,
+            hide_under_panels: false,
         }
     }
 }
