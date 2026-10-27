@@ -1,0 +1,242 @@
+{
+  "grid": 24,
+  "strokeWidth": 1.8,
+  "monochrome": "currentColor",
+  "total": 46,
+  "icons": [
+    {
+      "id": "reward/passive-point",
+      "file": "reward/passive-point.svg",
+      "label": "Passive point"
+    },
+    {
+      "id": "reward/weapon-set-point",
+      "file": "reward/weapon-set-point.svg",
+      "label": "Weapon-set point"
+    },
+    {
+      "id": "reward/spirit",
+      "file": "reward/spirit.svg",
+      "label": "Spirit"
+    },
+    {
+      "id": "reward/resistance-fire",
+      "file": "reward/resistance-fire.svg",
+      "label": "Fire resistance",
+      "defaultColor": "#E99568"
+    },
+    {
+      "id": "reward/resistance-cold",
+      "file": "reward/resistance-cold.svg",
+      "label": "Cold resistance",
+      "defaultColor": "#91C9DE"
+    },
+    {
+      "id": "reward/resistance-lightning",
+      "file": "reward/resistance-lightning.svg",
+      "label": "Lightning resistance",
+      "defaultColor": "#E3C76F"
+    },
+    {
+      "id": "reward/resistance-chaos",
+      "file": "reward/resistance-chaos.svg",
+      "label": "Chaos resistance",
+      "defaultColor": "#BA9ACD"
+    },
+    {
+      "id": "reward/life",
+      "file": "reward/life.svg",
+      "label": "Life"
+    },
+    {
+      "id": "reward/mana",
+      "file": "reward/mana.svg",
+      "label": "Mana"
+    },
+    {
+      "id": "reward/skill-gem",
+      "file": "reward/skill-gem.svg",
+      "label": "Skill gem"
+    },
+    {
+      "id": "reward/support-gem",
+      "file": "reward/support-gem.svg",
+      "label": "Support gem"
+    },
+    {
+      "id": "reward/ascendancy",
+      "file": "reward/ascendancy.svg",
+      "label": "Ascendancy"
+    },
+    {
+      "id": "reward/item",
+      "file": "reward/item.svg",
+      "label": "Item / currency"
+    },
+    {
+      "id": "reward/unlock",
+      "file": "reward/unlock.svg",
+      "label": "Unlock"
+    },
+    {
+      "id": "reward/story-only",
+      "file": "reward/story-only.svg",
+      "label": "Story only"
+    },
+    {
+      "id": "reward/resistance-all",
+      "file": "reward/resistance-all.svg",
+      "label": "All elemental resistances"
+    },
+    {
+      "id": "reward/attribute",
+      "file": "reward/attribute.svg",
+      "label": "Attribute"
+    },
+    {
+      "id": "reward/charm",
+      "file": "reward/charm.svg",
+      "label": "Charm"
+    },
+    {
+      "id": "reward/flask",
+      "file": "reward/flask.svg",
+      "label": "Flask"
+    },
+    {
+      "id": "reward/defences",
+      "file": "reward/defences.svg",
+      "label": "Defences"
+    },
+    {
+      "id": "reward/other",
+      "file": "reward/other.svg",
+      "label": "Other permanent stat"
+    },
+    {
+      "id": "status/locked",
+      "file": "status/locked.svg",
+      "label": "Locked"
+    },
+    {
+      "id": "status/available",
+      "file": "status/available.svg",
+      "label": "Available"
+    },
+    {
+      "id": "status/in-progress",
+      "file": "status/in-progress.svg",
+      "label": "In progress"
+    },
+    {
+      "id": "status/done",
+      "file": "status/done.svg",
+      "label": "Done"
+    },
+    {
+      "id": "status/skipped",
+      "file": "status/skipped.svg",
+      "label": "Skipped"
+    },
+    {
+      "id": "status/unknown",
+      "file": "status/unknown.svg",
+      "label": "Unknown"
+    },
+    {
+      "id": "worth/full",
+      "file": "worth/full.svg",
+      "label": "Worth it"
+    },
+    {
+      "id": "worth/half",
+      "file": "worth/half.svg",
+      "label": "Optional"
+    },
+    {
+      "id": "worth/none",
+      "file": "worth/none.svg",
+      "label": "Not worth it"
+    },
+    {
+      "id": "ui/chevron-down",
+      "file": "ui/chevron-down.svg",
+      "label": "Chevron down"
+    },
+    {
+      "id": "ui/chevron-up",
+      "file": "ui/chevron-up.svg",
+      "label": "Chevron up"
+    },
+    {
+      "id": "ui/chevron-left",
+      "file": "ui/chevron-left.svg",
+      "label": "Chevron left"
+    },
+    {
+      "id": "ui/chevron-right",
+      "file": "ui/chevron-right.svg",
+      "label": "Chevron right"
+    },
+    {
+      "id": "ui/collapse",
+      "file": "ui/collapse.svg",
+      "label": "Collapse"
+    },
+    {
+      "id": "ui/expand",
+      "file": "ui/expand.svg",
+      "label": "Expand"
+    },
+    {
+      "id": "ui/settings",
+      "file": "ui/settings.svg",
+      "label": "Settings"
+    },
+    {
+      "id": "ui/close",
+      "file": "ui/close.svg",
+      "label": "Close"
+    },
+    {
+      "id": "ui/edit",
+      "file": "ui/edit.svg",
+      "label": "Edit"
+    },
+    {
+      "id": "ui/click-through",
+      "file": "ui/click-through.svg",
+      "label": "Click through"
+    },
+    {
+      "id": "ui/external-link",
+      "file": "ui/external-link.svg",
+      "label": "External link"
+    },
+    {
+      "id": "ui/character",
+      "file": "ui/character.svg",
+      "label": "Character"
+    },
+    {
+      "id": "ui/refresh",
+      "file": "ui/refresh.svg",
+      "label": "Refresh"
+    },
+    {
+      "id": "ui/manual-tick",
+      "file": "ui/manual-tick.svg",
+      "label": "Manual entry"
+    },
+    {
+      "id": "ui/warning",
+      "file": "ui/warning.svg",
+      "label": "Error"
+    },
+    {
+      "id": "ui/check",
+      "file": "ui/check.svg",
+      "label": "Step done"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+2026/03/09 20:00:01 3001000 6d1b0001 [INFO Client 6120] #Hollis_Varne: anyone selling a fixture charm
+2026/03/09 20:00:02 3002000 6d1b0002 [INFO Client 6120] $Ottoline_Brack: WTB invented test item, 5 ex
+2026/03/09 20:00:03 3003000 6d1b0003 [INFO Client 6120] %Hollis_Varne: party chat line in a fixture
+2026/03/09 20:00:04 3004000 6d1b0004 [INFO Client 6120] @From Quillon_Reed: Hi, I would like to buy your invented fixture ring
+2026/03/09 20:00:05 3005000 6d1b0005 [INFO Client 6120] @To Quillon_Reed: sure, inviting
+2026/03/09 20:00:06 3006000 6d1b0006 [INFO Client 6120] &Ottoline_Brack: guild line in a fixture
+2026/03/09 20:00:07 3007000 6d1b0007 [INFO Client 6120] Hollis_Varne: local chat shaped exactly like an NPC line
+2026/03/09 20:00:08 3008000 6d1b0008 [INFO Client 6120] #Renly: global chat from a player named like an NPC
+2026/03/09 20:01:00 3060000 6d1b0009 [INFO Client 6120] Connecting to instance server
+2026/03/09 20:01:01 3061000 6d1b000a [DEBUG Client 6120] Generating level 65 area "G_Endgame_Town" with seed 1
+2026/03/09 20:01:02 3062000 6d1b000b [INFO Client 6120] [SCENE] Set Source [Fixture Endgame Town]
+2026/03/09 20:02:00 3120000 6d1b000c [INFO Client 6120] Connecting to instance server
+2026/03/09 20:02:01 3121000 6d1b000d [DEBUG Client 6120] Generating level 79 area "MapFixtureForest" with seed 551203
+2026/03/09 20:02:02 3122000 6d1b000e [INFO Client 6120] [SCENE] Set Source [Fixture Forest]
+2026/03/09 20:02:30 3150000 6d1b000f [INFO Client 6120] Open the fixture eye of the storm.
+2026/03/09 20:03:00 3180000 6d1b0010 [INFO Client 6120] : You have received 2 Atlas Passive Skill Points.

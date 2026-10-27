@@ -1,0 +1,19 @@
+[package]
+name = "qt-app"
+description = "The overlay shell's logic, with no Tauri dependency, so it tests without a WebView."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+qt-logline = { path = "../qt-logline" }
+qt-tailer = { path = "../qt-tailer" }
+qt-store = { path = "../qt-store" }
+qt-engine = { path = "../qt-engine" }
+qt-viewmodel = { path = "../qt-viewmodel" }
+qt-screen = { path = "../qt-screen" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

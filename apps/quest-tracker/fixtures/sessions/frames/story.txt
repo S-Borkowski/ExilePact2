@@ -1,0 +1,30 @@
+2026/03/07 20:00:00 ***** LOG FILE OPENING *****
+2026/03/07 20:00:10 1010000 4b2c0001 [INFO Client 4120] Connecting to instance server
+2026/03/07 20:00:11 1011000 4b2c0002 [DEBUG Client 4120] Generating level 1 area "G1_1" with seed 1849302211
+2026/03/07 20:00:12 1012000 4b2c0003 [INFO Client 4120] [SCENE] Set Source [The Riverbank]
+2026/03/07 20:01:30 1090000 4b2c0004 [INFO Client 4120] : Odile_Marsh (Mercenary) is now level 2
+2026/03/07 20:01:40 1100000 4b2c0005 [INFO Client 4120] : Odile_Marsh has received +10 to Strength.
+2026/03/07 20:03:00 1180000 4b2c0006 [INFO Client 4120] : Odile_Marsh (Mercenary) is now level 3
+2026/03/08 18:00:00 ***** LOG FILE OPENING *****
+2026/03/08 18:00:10 2010000 5c0a0001 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:00:11 2011000 5c0a0002 [DEBUG Client 5120] Generating level 1 area "G1_1" with seed 1849302211
+2026/03/08 18:00:12 2012000 5c0a0003 [INFO Client 5120] [SCENE] Set Source [The Riverbank]
+2026/03/08 18:01:30 2090000 5c0a0004 [INFO Client 5120] : Corisande_Fell (Witch) is now level 2
+2026/03/08 18:01:40 2100000 5c0a0005 [INFO Client 5120] : Corisande_Fell has received +10 to Intelligence.
+2026/03/08 18:02:40 2160000 5c0a0006 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:02:41 2161000 5c0a0007 [DEBUG Client 5120] Generating level 15 area "G1_town" with seed 1
+2026/03/08 18:02:42 2162000 5c0a0008 [INFO Client 5120] [SCENE] Set Source [Clearfell Encampment]
+2026/03/08 18:02:50 2170000 5c0a0009 [INFO Client 5120] Renly: Fixture line: welcome to the encampment.
+2026/03/08 18:04:00 2240000 5c0a000a [INFO Client 5120] Connecting to instance server
+2026/03/08 18:04:01 2241000 5c0a000b [DEBUG Client 5120] Generating level 2 area "G1_2" with seed 2077351921
+2026/03/08 18:04:02 2242000 5c0a000c [INFO Client 5120] [SCENE] Set Source [Clearfell]
+2026/03/08 18:06:10 2370000 5c0a000d [INFO Client 5120] : Corisande_Fell (Witch) is now level 3
+2026/03/08 18:07:20 2440000 5c0a000e [INFO Client 5120] : Corisande_Fell (Witch) is now level 4
+2026/03/08 18:08:16 2496000 5c0a000f [INFO Client 5120] : Corisande_Fell (Witch) is now level 5
+2026/03/08 18:12:00 2720000 5c0a0010 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:12:01 2721000 5c0a0011 [DEBUG Client 5120] Generating level 6 area "G1_12" with seed 410772093
+2026/03/08 18:12:02 2722000 5c0a0012 [INFO Client 5120] [SCENE] Set Source [Freythorn]
+2026/03/08 18:15:00 2900000 5c0a0013 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:15:01 2901000 5c0a0014 [DEBUG Client 5120] Generating level 15 area "G1_town" with seed 1
+2026/03/08 18:15:02 2902000 5c0a0015 [INFO Client 5120] [SCENE] Set Source [Clearfell Encampment]
+2026/03/08 18:15:20 2920000 5c0a0016 [INFO Client 5120] Una: Fixture line: Una hums a tune.

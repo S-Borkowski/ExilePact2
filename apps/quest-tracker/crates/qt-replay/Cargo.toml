@@ -1,0 +1,26 @@
+[package]
+name = "qt-replay"
+description = "quest-tracker-replay: the overlay's engine over a saved Client.txt, without the game."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The binary lives in src/main.rs, never src/bin/: the root .gitignore drops
+# every `bin/` directory.
+[[bin]]
+name = "quest-tracker-replay"
+path = "src/main.rs"
+
+[dependencies]
+qt-logline = { path = "../qt-logline" }
+qt-tailer = { path = "../qt-tailer" }
+qt-store = { path = "../qt-store" }
+qt-engine = { path = "../qt-engine" }
+qt-screen = { path = "../qt-screen" }
+# `panels` decodes a kept capture's JPEG frames (Windows only).
+qt-capture = { path = "../qt-capture" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

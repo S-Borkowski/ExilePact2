@@ -1,0 +1,65 @@
+# The quest-tracker Cargo workspace: the log tailer, parser, quest engine,
+# view-model, store, replay CLI and app logic as library crates, plus the
+# Tauri shell in `src-tauri/`. Every external dependency is pinned here with
+# `=` and taken by members with `workspace = true`; a member never names a
+# version of its own.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/qt-logline",
+    "crates/qt-tailer",
+    "crates/qt-store",
+    "crates/qt-engine",
+    "crates/qt-viewmodel",
+    "crates/qt-screen",
+    "crates/qt-capture",
+    "crates/qt-replay",
+    "crates/qt-app",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+# `tray-icon`: the tray icon with "Quit Quest Tracker" (Tauri's own tray, no
+# extra crate; the lock already carries it).
+tauri = { version = "=2.12.3", features = ["tray-icon"] }
+tauri-build = { version = "=2.7.2", features = [] }
+tauri-plugin-global-shortcut = "=2.4.1"
+tauri-plugin-single-instance = "=2.5.3"
+tauri-plugin-opener = "=2.7.1"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.152"
+sha2 = "=0.11.0"
+regex = "=1.13.1"
+# Windows-only: the overlay adds WS_EX_NOACTIVATE to its window so the game
+# keeps focus (Get/SetWindowLongPtrW and the style constants).
+windows-sys = { version = "=0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
+# Windows-only, used by `qt-capture` alone: the screen reader's window
+# lookup, GDI copy and `Windows.Media.Ocr` (WinRT). The lock already carries
+# this version as a dependency of Tauri's, so nothing new is downloaded.
+windows = { version = "=0.62.2", features = [
+    "Foundation",
+    "Globalization",
+    "Graphics_Imaging",
+    "Media_Ocr",
+    "Storage_Streams",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_WinRT",
+    "Win32_UI_WindowsAndMessaging",
+] }
+# Dev-only: temporary directories for tests.
+tempfile = "=3.27.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

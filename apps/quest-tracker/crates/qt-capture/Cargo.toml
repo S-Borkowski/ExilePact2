@@ -1,0 +1,12 @@
+[package]
+name = "qt-capture"
+description = "The screen reader's real backend: the game's window, a GDI copy of a region and Windows' own OCR, behind qt-screen's backend trait."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+qt-screen = { path = "../qt-screen" }
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true }

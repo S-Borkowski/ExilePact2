@@ -1,0 +1,267 @@
+{
+ "note": "Synthetic pairs for the fuzzy match's parity between tools/quest_tracker/outside/screen.py (fuzzy_score) and the Rust port in crates/qt-screen. Each score is what the Python function returned when the fixture was written; tests/test_quest_tracker_screen_parity.py checks it still does, and the Rust test fuzzy_matches_the_python_scores checks the port within 1e-9. Character names are invented; boss, NPC and UI labels are real.",
+ "match_threshold": 0.8,
+ "window_slack": 0.2,
+ "pairs": [
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "BEIRA OF THE ROTTEN PACK",
+   "score": 1.0
+  },
+  {
+   "target": "The Bloated Miller",
+   "text": "THE BLOATED MILLER",
+   "score": 1.0
+  },
+  {
+   "target": "Blackjaw",
+   "text": "BLACKJAW, THE REMNANT",
+   "score": 1.0
+  },
+  {
+   "target": "Lythara",
+   "text": "LYTHARA, THE WAYWARD SPEAR",
+   "score": 1.0
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "QUEST COMPLETE",
+   "score": 1.0
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "SLAY THE DEVOURER",
+   "score": 0.3076923076923077
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "Beira 0f the R0tten Pack",
+   "score": 0.9166666666666666
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "Beiraofthe Rotten Pack",
+   "score": 0.9565217391304348
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "BElRA OF THE R0TTEN PAGK",
+   "score": 0.875
+  },
+  {
+   "target": "The Bloated Miller",
+   "text": "The Bloated Mi11er",
+   "score": 0.8888888888888888
+  },
+  {
+   "target": "The Bloated Miller",
+   "text": "Tha Blaated Millar",
+   "score": 0.8333333333333334
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "QUEST C0MPLETE",
+   "score": 0.9285714285714286
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "QUESTCOMPLETE",
+   "score": 0.9629629629629629
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "QIJEST COMPI.ETE",
+   "score": 0.8461538461538461
+  },
+  {
+   "target": "Renly",
+   "text": "Rerly",
+   "score": 0.8
+  },
+  {
+   "target": "Renly",
+   "text": "RENLY",
+   "score": 1.0
+  },
+  {
+   "target": "Renly",
+   "text": "Renly.",
+   "score": 1.0
+  },
+  {
+   "target": "Renly",
+   "text": "Renly: Well met, traveller. The road is long.",
+   "score": 1.0
+  },
+  {
+   "target": "Renly",
+   "text": "Talk to Renly in the encampment",
+   "score": 1.0
+  },
+  {
+   "target": "The Bloated Miller",
+   "text": "Kill the Bloated Miller and end his rage",
+   "score": 1.0
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "Torvald: Beira of the Rotten Pack is no more",
+   "score": 1.0
+  },
+  {
+   "target": "Blackjaw",
+   "text": "Some text about blackjaws den and more words",
+   "score": 1.0
+  },
+  {
+   "target": "That one won't be grinding any more.",
+   "text": "Kestrella: That one won't be grinding any more.",
+   "score": 1.0
+  },
+  {
+   "target": "That one won't be grinding any more.",
+   "text": "Kestrella: That one wont be grlnding any rnore",
+   "score": 0.927536231884058
+  },
+  {
+   "target": "That one won't be grinding any more.",
+   "text": "Kestrella: What happened here...?",
+   "score": 0.3548387096774194
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "Beira",
+   "score": 0.3448275862068966
+  },
+  {
+   "target": "The Bloated Miller",
+   "text": "Miller",
+   "score": 0.5
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "QUEST",
+   "score": 0.5263157894736842
+  },
+  {
+   "target": "Lythara",
+   "text": "Ly",
+   "score": 0.4444444444444444
+  },
+  {
+   "target": "Renly",
+   "text": "R",
+   "score": 0.3333333333333333
+  },
+  {
+   "target": "CHECKPOINT",
+   "text": "CHECK",
+   "score": 0.6666666666666666
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "Béira of the Rôtten Pack",
+   "score": 0.9166666666666666
+  },
+  {
+   "target": "Renly",
+   "text": "Rénly",
+   "score": 0.8
+  },
+  {
+   "target": "Straße",
+   "text": "STRASSE",
+   "score": 0.7692307692307693
+  },
+  {
+   "target": "Straße",
+   "text": "Straße am Fluss",
+   "score": 1.0
+  },
+  {
+   "target": "Город",
+   "text": "ГОРОД у реки",
+   "score": 1.0
+  },
+  {
+   "target": "ΣΟΦΟΣ",
+   "text": "σοφος",
+   "score": 1.0
+  },
+  {
+   "target": "Lythara",
+   "text": "Lythara — the spear",
+   "score": 1.0
+  },
+  {
+   "target": "Blackjaw",
+   "text": "Blackjaw the\tRemnant",
+   "score": 1.0
+  },
+  {
+   "target": "QUEST COMPLETE",
+   "text": "クエスト QUEST COMPLETE 完了",
+   "score": 1.0
+  },
+  {
+   "target": "Renly",
+   "text": "",
+   "score": 0.0
+  },
+  {
+   "target": "",
+   "text": "Renly",
+   "score": 0.0
+  },
+  {
+   "target": "...",
+   "text": "Renly",
+   "score": 0.0
+  },
+  {
+   "target": "PASSIVE SKILLS",
+   "text": "Beira of the Rotten Pack",
+   "score": 0.23076923076923078
+  },
+  {
+   "target": "WORLD",
+   "text": "ACT 1",
+   "score": 0.0
+  },
+  {
+   "target": "Beira of the Rotten Pack",
+   "text": "PASSIVE SKILLS",
+   "score": 0.15789473684210525
+  },
+  {
+   "target": "Una",
+   "text": "Una: Wait, look!",
+   "score": 1.0
+  },
+  {
+   "target": "Una",
+   "text": "Lunar",
+   "score": 1.0
+  },
+  {
+   "target": "ΣΟΦΟΣ",
+   "text": "Σοφός λόγος",
+   "score": 0.8
+  },
+  {
+   "target": "Ödön",
+   "text": "ODON",
+   "score": 0.5
+  },
+  {
+   "target": "ACT 1",
+   "text": "Act l",
+   "score": 0.8888888888888888
+  },
+  {
+   "target": "Renly",
+   "text": "René: ½ the road",
+   "score": 0.6666666666666666
+  }
+ ]
+}

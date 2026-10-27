@@ -11,3 +11,8 @@
 # not a gitignore/gitattributes one).
 .claude/workflows/*.js    text eol=lf
 .claude/workflows/*.mjs   text eol=lf
+
+# The quest tracker's outside PowerShell scripts are LF, and
+# tests/test_quest_tracker_outside_desktop.py fails on a CR byte in them.
+# Without this, `core.autocrlf` writes them back as CRLF on every checkout.
+tools/quest_tracker/outside/*.ps1   text eol=lf

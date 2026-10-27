@@ -1,0 +1,8 @@
+2026/03/07 10:07:00 51621000 3ef2a210 [WARN Client 4120] A made-up warning that spans several lines:
+	Renly: an indented continuation that looks like an NPC line
+Renly: a continuation at column zero that looks like an NPC line
+: Tessaly_Vane has received +30 to [Spirit|Spirit].
+Generating level 1 area "G1_1" with seed 99
+***** LOG FILE OPENING *****
+
+2026/03/07 10:07:01 51622000 3ef2a211 [INFO Client 4120] Renly: The line after the warning is parsed again.

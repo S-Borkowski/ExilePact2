@@ -1,0 +1,31 @@
+2026/03/08 18:00:00 ***** LOG FILE OPENING *****
+2026/03/08 18:00:01 2001000 5c0a0001 [INFO Client 5120] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/03/08 18:00:10 2010000 5c0a0002 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:00:11 2011000 5c0a0003 [DEBUG Client 5120] Generating level 1 area "G1_1" with seed 1849302211
+2026/03/08 18:00:11 2011040 5c0a0004 [INFO Client 5120] [SCENE] Set Source [(null)]
+2026/03/08 18:00:12 2012000 5c0a0005 [INFO Client 5120] [SCENE] Set Source [The Riverbank]
+2026/03/08 18:01:30 2090000 5c0a0006 [INFO Client 5120] : Corisande_Fell (Witch) is now level 2
+2026/03/08 18:02:00 2120000 5c0a0007 [INFO Client 5120] #Hollis_Varne: global chat in a fixture
+2026/03/08 18:02:40 2160000 5c0a0008 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:02:41 2161000 5c0a0009 [DEBUG Client 5120] Generating level 15 area "G1_town" with seed 1
+2026/03/08 18:02:41 2161030 5c0a000a [INFO Client 5120] [SCENE] Set Source [(unknown)]
+2026/03/08 18:02:41 2161040 5c0a000b [INFO Client 5120] [SCENE] Set Source [Act 1]
+2026/03/08 18:02:42 2162000 5c0a000c [INFO Client 5120] [SCENE] Set Source [Clearfell Encampment]
+2026/03/08 18:02:50 2170000 5c0a000d [INFO Client 5120] Renly: Fixture line: welcome to the encampment.
+2026/03/08 18:03:05 2185000 5c0a000e [INFO Client 5120] Una: Fixture line: Una hums a tune.
+2026/03/08 18:03:20 2200000 5c0a000f [INFO Client 5120] Fixture system line: a lute string hums.
+2026/03/08 18:04:00 2240000 5c0a0010 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:04:01 2241000 5c0a0011 [DEBUG Client 5120] Generating level 2 area "G1_2" with seed 2077351921
+2026/03/08 18:04:02 2242000 5c0a0012 [INFO Client 5120] [SCENE] Set Source [Clearfell]
+2026/03/08 18:06:10 2370000 5c0a0013 [INFO Client 5120] : Corisande_Fell (Witch) is now level 3
+2026/03/08 18:07:30 2450000 5c0a0014 [INFO Client 5120] Beira of the Rotten Pack: Fixture line: the pack gathers.
+2026/03/08 18:08:15 2495000 5c0a0015 [INFO Client 5120] : Corisande_Fell has received +10% to [Resistances|Cold Resistance].
+2026/03/08 18:08:16 2496000 5c0a0016 [INFO Client 5120] : Corisande_Fell (Witch) is now level 5
+2026/03/08 18:09:00 2540000 5c0a0017 [INFO Client 5120] Connecting to instance server
+2026/03/08 18:09:01 2541000 5c0a0018 [DEBUG Client 5120] Generating level 4 area "G1_11" with seed 993105472
+2026/03/08 18:09:02 2542000 5c0a0019 [INFO Client 5120] [SCENE] Set Source [Hunting Grounds]
+2026/03/08 18:10:30 2630000 5c0a001a [INFO Client 5120] : Corisande_Fell has been slain.
+2026/03/08 18:12:00 2720000 5c0a001b [INFO Client 5120] Connecting to instance server
+2026/03/08 18:12:01 2721000 5c0a001c [DEBUG Client 5120] Generating level 6 area "G1_12" with seed 410772093
+2026/03/08 18:12:02 2722000 5c0a001d [INFO Client 5120] [SCENE] Set Source [Freythorn]
+2026/03/08 18:12:30 2750000 5c0a001e [INFO Client 5120] $Ottoline_Brack: WTB invented test item, 5 ex

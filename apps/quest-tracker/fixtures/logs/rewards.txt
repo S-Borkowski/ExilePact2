@@ -1,0 +1,5 @@
+2026/03/07 10:05:00 51501000 3ef2a1f0 [INFO Client 4120] : Tessaly_Vane has received +10% to [Resistances|Cold Resistance].
+2026/03/07 10:05:01 51502000 3ef2a1f1 [INFO Client 4120] : Tessaly_Vane has received +1 [Charm] Slot.
+2026/03/07 10:05:02 51503000 3ef2a1f2 [INFO Client 4120] : Tessaly_Vane has received 30% increased Life Recovery from [Flask|Flasks].
+2026/03/07 10:05:03 51504000 3ef2a1f3 [INFO Client 4120] : Tessaly_Vane has received +5% to all [ElementalDamage|Elemental] [Resistances].
+2026/03/07 10:05:04 51505000 3ef2a1f4 [INFO Client 4120] : Tessaly_Vane has received 30% increased Global [Armour], [Evasion] and [EnergyShield|Energy Shield].

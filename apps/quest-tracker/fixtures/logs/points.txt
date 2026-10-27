@@ -1,0 +1,4 @@
+2026/03/07 10:06:00 51561000 3ef2a200 [INFO Client 4120] : You have received 2 Passive Skill Points.
+2026/03/07 10:06:00 51561010 3ef2a201 [INFO Client 4120] : You have received 2 Weapon Set Passive Skill Points.
+2026/03/07 10:06:01 51562000 3ef2a202 [INFO Client 4120] : You have received 1 Passive Skill Point.
+2026/03/07 10:06:02 51563000 3ef2a203 [INFO Client 4120] : You have received 3 Atlas Passive Skill Points.

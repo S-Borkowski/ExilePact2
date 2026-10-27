@@ -1,0 +1,95 @@
+//! The current area when a tailer starts, read back from the log.
+//!
+//! The engine learns the area from a `Generating level` line it reads. A
+//! tailer that starts mid-zone (resuming a saved position, or a first start
+//! at the end of the log) never reads that line, so before its first event
+//! reaches the engine the shell reads the log before the tailer's start
+//! position, at most [`MAX_SEED_BYTES`], read-only, and seeds the engine's
+//! area with what [`qt_engine::area_from_log`] makes of it. The same read
+//! gives the game's pid, from the newest line with a client header, so the
+//! overlay can tell the game's window before the first new line, and whether
+//! the last session has a character in an area yet, so the overlay stays
+//! hidden over character select. A start at 0 needs no seed: the tailer
+//! reads the area lines itself.
+
+use std::io::{self, Read, Seek, SeekFrom};
+use std::path::Path;
+
+use qt_engine::{area_from_log, LogArea};
+use qt_logline::{client_pid, parse_line, Allowlist, EventKind};
+
+/// The most bytes read back before a start position: a zone's area line is
+/// normally far inside it, and a start never reads the whole log.
+pub const MAX_SEED_BYTES: u64 = 8 * 1024 * 1024;
+
+/// What the log before a start position says.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Before {
+    /// The current area.
+    pub area: LogArea,
+    /// The pid in the newest client header, if any line has one.
+    pub pid: Option<u32>,
+    /// The newest session marker has no area line after it: the last
+    /// session read back has no character in an area yet (character
+    /// select, or a game closed there).
+    pub awaiting_area: bool,
+}
+
+/// What the log before `offset` says about the current area and the game's
+/// pid. Reads at most [`MAX_SEED_BYTES`] before `offset`, read-only, and
+/// closes the file before returning. A line cut at the start of that
+/// window, and an unfinished line at `offset`, are left out.
+pub fn area_before(path: &Path, offset: u64) -> io::Result<Before> {
+    let mut file = qt_tailer::open_read_only(path)?;
+    let start = offset.saturating_sub(MAX_SEED_BYTES);
+    // One byte before the window too, so a line starting exactly at its
+    // edge is recognised as whole.
+    let from = start.saturating_sub(1);
+    file.seek(SeekFrom::Start(from))?;
+    let mut bytes = Vec::new();
+    file.by_ref().take(offset - from).read_to_end(&mut bytes)?;
+    drop(file);
+
+    let first = if from > 0 {
+        bytes
+            .iter()
+            .position(|&b| b == b'\n')
+            .map_or(bytes.len(), |i| i + 1)
+    } else {
+        0
+    };
+    let end = bytes
+        .iter()
+        .rposition(|&b| b == b'\n')
+        .map_or(0, |i| i + 1)
+        .max(first);
+    let line = |raw: &[u8]| String::from_utf8_lossy(raw.strip_suffix(b"\r").unwrap_or(raw)).into_owned();
+    let window = &bytes[first..end];
+    let pid = window
+        .split(|&b| b == b'\n')
+        .rev()
+        .find_map(|raw| client_pid(&line(raw)));
+    let area = area_from_log(window.split(|&b| b == b'\n').map(line));
+    let awaiting_area = awaiting_area(window.split(|&b| b == b'\n').map(line));
+    Ok(Before { area, pid, awaiting_area })
+}
+
+/// Whether the newest of the session markers and area lines in `lines`
+/// (oldest first) is a marker. Neither, as in a log with no session, is
+/// `false`. Both need no allowlist.
+pub fn awaiting_area<I>(lines: I) -> bool
+where
+    I: IntoIterator,
+    I::Item: AsRef<str>,
+{
+    let allow = Allowlist::default();
+    let mut awaiting = false;
+    for l in lines {
+        match parse_line(l.as_ref(), &allow).map(|ev| ev.kind) {
+            Some(EventKind::SessionStart) => awaiting = true,
+            Some(EventKind::AreaEntered { .. }) => awaiting = false,
+            _ => {}
+        }
+    }
+    awaiting
+}

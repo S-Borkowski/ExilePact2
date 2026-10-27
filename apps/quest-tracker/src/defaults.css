@@ -1,0 +1,138 @@
+/*
+ * The UI's default for every token key of the brief's export contract
+ * (`docs/quest-tracker/ui-design-brief.md`), one custom property per key with
+ * the dot replaced by a dash. The harvested `theme/tokens.css` is imported
+ * after this file and overrides any key it sets; without it the UI still
+ * renders from these plain values.
+ */
+:root {
+  /* Token keys. */
+  --color-panel-bg: #141414;
+  --color-panel-border: #5a5a5a;
+  --color-text-primary: #ececec;
+  --color-text-secondary: #bdbdbd;
+  --color-text-muted: #959595;
+  --color-edit-accent: #3ccfcf;
+  --color-status-locked: #8a8a8a;
+  --color-status-available: #7bd88f;
+  --color-status-in-progress: #6cb6ff;
+  --color-status-done: #9aa88e;
+  --color-status-skipped: #959595;
+  --color-status-unknown: #b6a6e0;
+  --color-worth-gold: #d9b45a;
+  --color-res-fire: #e99568;
+  --color-res-cold: #91c9de;
+  --color-res-lightning: #e3c76f;
+  --color-res-chaos: #ba9acd;
+  --font-family: system-ui, "Segoe UI", sans-serif;
+  --font-file: none;
+  --size-title: 16px;
+  --size-row: 14px;
+  --size-step: 13px;
+  --size-caption: 12px;
+  --space-unit: 4px;
+  --space-row-pad: 8px;
+  --space-section-gap: 8px;
+  --space-panel-pad: 8px;
+  --radius: 4px;
+  --border-width: 1px;
+  --opacity-default: 0.9;
+
+  /* Optional token keys: plain values until the harvest designs them. */
+  --shadow-panel: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --gradient-panel: none;
+  --gradient-header: none;
+  --radius-row: 0px;
+  --radius-button: 3px;
+  --font-weight-title: 700;
+  --font-weight-row: 500;
+  --motion-duration: 150ms;
+  --motion-easing: ease-out;
+
+  /*
+   * The harvest's extras the styled layer reads (`theme.json` lists them;
+   * `docs/quest-tracker/design/harvest.md` says what each is for), with the
+   * plain look's values: no cut corners, plain greys.
+   */
+  --color-panel-raised: #1c1c1c;
+  --color-panel-sunken: #0c0c0c;
+  --color-panel-divider: #2a2a2a;
+  --color-text-on-light: #141414;
+  --color-edit-tint: #10302f;
+  --color-row-active-bg: #1a1a1a;
+  --color-select-active-bg: #1a2a2a;
+  --color-hover-outline: #6a6a6a;
+  --color-worth-none: #959595;
+  --color-action-primary-bg: #ececec;
+  --color-action-primary-hover: #ffffff;
+  --color-action-primary-pressed: #cfcfcf;
+  --color-action-secondary-bg: #1c1c1c;
+  --color-action-secondary-hover: #2a2a2a;
+  --color-action-secondary-pressed: #0c0c0c;
+  --color-action-danger: #e99568;
+  --color-action-disabled-bg: #1c1c1c;
+  --color-action-disabled-fg: #6a6a6a;
+  --color-warning: #e99568;
+  --font-family-caps: var(--font-family);
+  --line-title: 20px;
+  --line-row: 20px;
+  --line-step: 18px;
+  --line-caption: 16px;
+  --size-act: 12px;
+  --size-label: 13px;
+  --size-button-text: 12px;
+  --size-badge-count: 16px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 20px;
+  --size-icon-lg: 24px;
+  --size-manual-tick: 12px;
+  --size-control: 24px;
+  --size-button: 26px;
+  --size-row-height: 36px;
+  --size-row-height-tall: 52px;
+  --size-row-height-finished: 30px;
+  --size-header: 32px;
+  --size-act-header: 26px;
+  --size-badge: 48px;
+  --size-panel-width: 320px;
+  --border-width-strong: 2px;
+  --bar-in-progress: 3px;
+  --bar-countdown: 2px;
+  --chamfer-panel: 0px;
+  --chamfer-button: 0px;
+  --chamfer-badge: 0px;
+  --opacity-min: 0;
+  --opacity-stale-rows: 0.55;
+  --motion-confirm-ms: 3000ms;
+
+  /*
+   * Derived, not harvested: `shadow.panel` as a `filter` drop shadow, which
+   * follows a cut-corner shape where `box-shadow` is clipped. `theme.ts` sets
+   * it from `theme.json`; this is the plain one.
+   */
+  --drop-panel: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+/* The window is transparent; only the panel and the badge draw. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+}
+
+/* The preview's `scale` query stands in for the webview zoom. */
+html[data-preview-scale] {
+  zoom: var(--preview-scale);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+  }
+}

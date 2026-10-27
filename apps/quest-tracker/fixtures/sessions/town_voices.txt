@@ -1,0 +1,22 @@
+2026/03/21 20:00:00 ***** LOG FILE OPENING *****
+2026/03/21 20:00:01 4001500 7e2c0002 [INFO Client 5120] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/03/21 20:00:09 4009000 7e2c0003 [INFO Client 5120] [SCENE] Set Source [(unknown)]
+2026/03/21 20:01:30 4090000 7e2c0004 [INFO Client 5120] [SCENE] Set Source [(null)]
+2026/03/21 20:01:30 4090020 7e2c0005 [INFO Client 5120] Connecting to instance server
+2026/03/21 20:01:31 4090200 7e2c0006 [DEBUG Client 5120] Generating level 1 area "G1_1" with seed 1618033988
+2026/03/21 20:01:31 4090500 7e2c0007 [INFO Client 5120] [SCENE] Set Source [The Riverbank]
+2026/03/21 20:05:12 4311000 7e2c0008 [INFO Client 5120] : Odile_Brackwater (Mercenary) is now level 2
+2026/03/21 20:06:02 4361000 7e2c0009 [INFO Client 5120] Connecting to instance server
+2026/03/21 20:06:02 4361100 7e2c000a [DEBUG Client 5120] Generating level 15 area "G1_town" with seed 1
+2026/03/21 20:06:02 4361300 7e2c000b [INFO Client 5120] [SCENE] Set Source [(null)]
+2026/03/21 20:06:02 4361320 7e2c000c [INFO Client 5120] [SCENE] Set Source [Clearfell Encampment]
+2026/03/21 20:06:40 4399000 7e2c000d [INFO Client 5120] Renly: Here's what I've got.
+2026/03/21 20:06:58 4417000 7e2c000e [INFO Client 5120] Renly: I'll find some use for that.
+2026/03/21 20:07:21 4440000 7e2c000f [INFO Client 5120] Finn: Feelin' lucky?
+2026/03/21 20:07:33 4452000 7e2c0010 [INFO Client 5120] Finn: Sure, I'll take it off your hands.
+2026/03/21 20:08:05 4484000 7e2c0011 [INFO Client 5120] Una: I like to hold on to bits and pieces. Any that catch your eye?
+2026/03/21 20:08:19 4498000 7e2c0012 [INFO Client 5120] Una: I will treasure it.
+2026/03/21 20:09:10 4549000 7e2c0013 [INFO Client 5120] Connecting to instance server
+2026/03/21 20:09:10 4549100 7e2c0014 [DEBUG Client 5120] Generating level 2 area "G1_2" with seed 2236067977
+2026/03/21 20:09:10 4549300 7e2c0015 [INFO Client 5120] [SCENE] Set Source [(null)]
+2026/03/21 20:09:10 4549300 7e2c0016 [INFO Client 5120] [SCENE] Set Source [Clearfell]

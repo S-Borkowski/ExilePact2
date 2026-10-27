@@ -1,0 +1,19 @@
+2026/03/22 20:10:00 ***** LOG FILE OPENING *****
+2026/03/22 20:10:01 5001000 7e2c0001 [INFO Client 6312] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/03/22 20:10:09 5009000 7e2c0002 [INFO Client 6312] [SCENE] Set Source [(unknown)]
+2026/03/22 20:11:40 5100000 7e2c0003 [INFO Client 6312] [SCENE] Set Source [(null)]
+2026/03/22 20:11:40 5100020 7e2c0004 [INFO Client 6312] Connecting to instance server
+2026/03/22 20:11:41 5100200 7e2c0005 [DEBUG Client 6312] Generating level 1 area "G1_1" with seed 3141592653
+2026/03/22 20:11:41 5100500 7e2c0006 [INFO Client 6312] [SCENE] Set Source [The Riverbank]
+2026/03/22 20:22:35 5754000 7e2c0007 [INFO Client 6312] : Tamsin_Vodrey (Warrior) is now level 2
+2026/03/22 20:23:20 ***** LOG FILE OPENING *****
+2026/03/22 20:23:21 5800000 7e2c0101 [INFO Client 7044] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/03/22 20:23:29 5808000 7e2c0102 [INFO Client 7044] [SCENE] Set Source [(unknown)]
+2026/03/22 20:23:55 5834000 7e2c0103 [INFO Client 7044] [SCENE] Set Source [(null)]
+2026/03/22 20:23:55 5834020 7e2c0104 [INFO Client 7044] Connecting to instance server
+2026/03/22 20:23:56 5834200 7e2c0105 [DEBUG Client 7044] Generating level 1 area "G1_1" with seed 3141592653
+2026/03/22 20:23:56 5834500 7e2c0106 [INFO Client 7044] [SCENE] Set Source [The Riverbank]
+2026/03/22 20:26:12 5970000 7e2c0107 [INFO Client 7044] Connecting to instance server
+2026/03/22 20:26:12 5970100 7e2c0108 [DEBUG Client 7044] Generating level 2 area "G1_2" with seed 2950113870
+2026/03/22 20:26:12 5970300 7e2c0109 [INFO Client 7044] [SCENE] Set Source [(null)]
+2026/03/22 20:26:12 5970300 7e2c010a [INFO Client 7044] [SCENE] Set Source [Clearfell]

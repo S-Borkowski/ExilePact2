@@ -1,0 +1,8 @@
+2026/03/13 16:00:00 ***** LOG FILE OPENING *****
+2026/03/13 16:00:20 8020000 ab5f0001 [INFO Client 1120] : Corisande_Fell has received +20 to maximum Life.
+2026/03/13 16:01:00 8060000 ab5f0002 [INFO Client 1120] : Corisande_Fell (Witch) is now level 4
+2026/03/13 16:02:00 8120000 ab5f0003 [INFO Client 1120] : Corisande_Fell (Witch) is now level 5
+2026/03/13 16:03:00 8180000 ab5f0004 [DEBUG Client 1120] Generating level 5 area "G1_15" with seed 300218841
+2026/03/13 16:03:01 8181000 ab5f0005 [INFO Client 1120] [SCENE] Set Source [Ogham Manor]
+2026/03/13 16:10:00 8600000 ab5f0006 [DEBUG Client 1120] Generating level 6 area "G1_12" with seed 410772093
+2026/03/13 16:10:01 8601000 ab5f0007 [INFO Client 1120] [SCENE] Set Source [Freythorn]

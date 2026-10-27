@@ -1,0 +1,4 @@
+2026/03/07 10:08:00 51681000 3ef2a220 [INFO Client 4120] Sekhema Asala: Fixture text with ‘curly quotes’, an em dash — and “Kärmä”.
+2026/03/07 10:08:01 51682000 3ef2a221 [INFO Client 4120] [SCENE] Set Source [Fixture Grotto of Ölmé]
+2026/03/07 10:08:02 51683000 3ef2a222 [INFO Client 4120] : Tessaly_Vane has received +10% to [Resistances|Fire Resistance].
+2026/03/07 10:08:03 51684000 3ef2a223 [INFO Client 4120] Ünknöwn_Pläyer: local chat with non-ASCII, not an NPC

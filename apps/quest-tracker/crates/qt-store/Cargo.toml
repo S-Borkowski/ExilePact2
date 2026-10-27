@@ -1,0 +1,13 @@
+[package]
+name = "qt-store"
+description = "Per-character progress, settings and the diagnostic log in the app-data folder."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,4 @@
+2026/03/07 09:59:50 ***** LOG FILE OPENING *****
+2026/03/07 09:59:51 ***** LOG FILE OPENING *****
+2026/03/07 09:59:52 1203 9a0b11c0 [INFO Client 4120] [HTTP2] User agent: PoE poe2_production/tags/4.5.3 Windows x64
+2026/03/07 09:59:53 1204 9a0b11c1 [INFO Client 4120] [HTTP2] Connecting with the fixture's made-up options

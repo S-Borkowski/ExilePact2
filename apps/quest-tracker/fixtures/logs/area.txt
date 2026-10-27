@@ -1,0 +1,9 @@
+2026/03/07 10:00:01 51203906 3ef2a1b0 [INFO Client 4120] Connecting to instance server
+2026/03/07 10:00:02 51204011 3ef2a1b1 [DEBUG Client 4120] Generating level 1 area "G1_1" with seed 2147003311
+2026/03/07 10:00:02 51204050 3ef2a1b2 [INFO Client 4120] [SCENE] Set Source [(null)]
+2026/03/07 10:00:03 51204890 3ef2a1b3 [INFO Client 4120] [SCENE] Set Source [The Riverbank]
+2026/03/07 10:00:40 51241002 3ef2a1b4 [DEBUG Client 4120] Generating level 15 area "G1_town" with seed 1
+2026/03/07 10:00:40 51241020 3ef2a1b5 [INFO Client 4120] [SCENE] Set Source [(unknown)]
+2026/03/07 10:00:40 51241031 3ef2a1b6 [INFO Client 4120] [SCENE] Set Source [Act 1]
+2026/03/07 10:00:41 51241777 3ef2a1b7 [INFO Client 4120] [SCENE] Set Source [Clearfell Encampment]
+2026/03/07 10:01:15 51276400 3ef2a1b8 [INFO Client 4120] [SCENE] Set Source [Sel Khari Sanctuary ]
