@@ -452,7 +452,138 @@ repository, and against poe2db.
   established.
 - **Consequence for the data.** None: this is research only and the tracker
   is unchanged (the owner, 2026-10-25: "if not we can skip it"). A remark
-  cannot be a step signal while it is not observed in the log.
+  cannot be a step signal while it is not observed in the log. (Since
+  0.1.1 the remarks tick steps from the screen instead, below.)
+- **Every playable class's page, and every boss** (2026-10-28, read-only;
+  the owner, 2026-10-28: "we have info in poedb about other kill remarks.
+  we should support all classes", then "blackjaw and any other boss"). The
+  playable classes are the eight with ascendancies on poe2db's Ascendancy
+  page (https://poe2db.tw/us/Ascendancy_class, read 2026-10-28): Warrior,
+  Mercenary, Ranger, Huntress, Witch, Sorceress, Monk and Druid. Marauder,
+  Duelist, Shadow and Templar are listed there without ascendancies; the
+  Marauder page's table is an older character's (its audio is not under
+  the current characters' folder), so none of the four is used. The six
+  pages not fetched before (Ranger, Huntress, Witch, Sorceress, Monk,
+  Druid) were fetched on 2026-10-28 with `poe2db fetch-classes`, under the
+  tool's delay and robots.txt rules, into a cache outside the repository;
+  the Warrior's and the Mercenary's rows keep their 2026-10-27 fetch. Each
+  row's text is stored plain: page markup removed (the Warrior's Viper
+  line, the Sorceress's Kabala line), whitespace collapsed, trimmed (the
+  Monk's and the Druid's Miller lines carry a trailing space on the page).
+- **How a page key was tied to a step** (2026-10-28). A key was mapped to a
+  step of `data/quests.json` only on evidence: the key names the boss or
+  the step's area, or a class's line names one, *and* the line's audio
+  file is from the step's act (`_a<n>_` for act n; `_i<n>_` or `_p<n>_`
+  for the interlude areas `P<n>_*`). Only steps whose signals already
+  carry an area qualify, since a screen signal needs one. Evidence beyond
+  the key's own words: Geonor (the Monk's line names him), Ketzuli (the
+  Witch's names Kopec, the step's Temple of Kopec), Lythara (the key names
+  Kriar Village; the on-sight lines call her Azmeri) and Zolin (the key's
+  "blood" is in both twins' names; the lines are said to the defeated
+  pair). Two bosses on one step (Zolin and Zelina, Ekbab and Iktab) take
+  one label, the step's own npc. The result, nineteen bosses:
+
+  | Boss | Quest › step | Area | Key | Classes |
+  |---|---|---|---|---|
+  | The Bloated Miller | reaching-clearfell › step-2 | G1_1 | MillerKillComment | all |
+  | Blackjaw | blackjaw-the-remnant › fight | G3_6_1 | BlackjawKilled | Me Hu Wi So Mo Dr |
+  | Lythara | lythara-the-wayward-spear › fight | P3_2 | KriarViperDefeated | all |
+  | The Rust King | secrets-in-the-dark › step-19 | G1_5 | RedValeBossSlainComment | all |
+  | Asinia, the Praetor's Consort | sorrow-among-stones › step-4, step-19 | G1_9 | WifeSlainComment | all |
+  | Draven, the Eternal Praetor | sorrow-among-stones › step-9, step-14 | G1_8 | HusbandSlainComment | all |
+  | The Executioner | the-trail-of-corruption › step-5 | G1_13_2 | ExecutionerSlainComment | all |
+  | Geonor, the Putrid Wolf | the-mad-wolf-of-ogham › step-5 | G1_15 | IronCountKilledComment | all |
+  | Kabala, Constrictor Queen | kabala-constrictor-queen › fight | G2_4_1 | KethKabalaBossSlain | all |
+  | Iktab, the Deathlord | a-theft-of-ivory › step-4 | G2_5_2 | BonePitsBothBossesSlain | all |
+  | Ignagduk, the Bog Witch | tribal-vengeance › step-3 | G3_7 | IgnagdukKilled | all but Ra |
+  | Queen of Filth | legacy-of-the-vaal › step-36 | G3_11 | AggoratOvergrownQueenOfFilthKilled | all |
+  | Ketzuli, High Priest of the Sun | legacy-of-the-vaal › step-42 | G3_12 | SunWorshipperKilled | all |
+  | Viper Napuatzi | legacy-of-the-vaal › step-50 | G3_14 | ViperNapuatziKilled | all but Hu |
+  | Diamora, the Song of Death | whakapanu-island › step-4 | G4_3_2 | SingingCavernsSirenKilled | all |
+  | Yama The White | trial-of-the-ancestors › step-12 | G4_4_2 | HallsOfDeadYamaDefeated | all |
+  | Captain Hartlin | dark-mists › step-8 | G4_2_2 | CaptainHartlinKilled | Hu Mo |
+  | Thane Wulfric | recruit-the-ezomytes › step-25 | P1_6 | EstateTwinBossDefeated | all |
+  | Zolin, Blood Priest | recruit-the-vaal › step-18 | P3_7 | BloodTwinsBossDefeated | all |
+
+  Classes: Wa Warrior, Me Mercenary, Ra Ranger, Hu Huntress, Wi Witch, So
+  Sorceress, Mo Monk, Dr Druid.
+- **Not established** (2026-10-28; nothing added, no text guessed).
+  Blackjaw for the Warrior and the Ranger (no `BlackjawKilled` row; their
+  `RavineBlackjawBossDefeated` is the Interlude 3 Etched Ravine fight, not
+  the data's Act 3 one); Ignagduk for the Ranger (no row); Viper Napuatzi
+  for the Huntress (her line is three letters, too short to tell from other
+  speech; a row under 12 letters is never added); Captain Hartlin for the
+  six classes without the row (their `TempleSandHartlinBossDefeated` is an
+  interlude fight); Beira of the Rotten Pack (no row on any page); The
+  King in the Mists, Azarian, Mektul, Benedictus, Tavakai, Krutog, The
+  Prisoner, Siora, Elzarah, Azmadi, Stormgore, Oswin, and Heldra and
+  Isolde (no key the evidence rule ties to their step;
+  `IceVSFireBossDefeated`, `PrisonForsakenSonBossDefeated`,
+  `LowerPrisonBossKilled` and `QimarOlrothDefeated` are plausible but name
+  neither boss nor area); and every boss step with no area in the data
+  (the Devourer, Rathbreaker, Zalmarath, Rattlecage, the Machinarium
+  beast, the Scourge of the Skies, the Great White One and the rest),
+  whose rows exist but whose signal would need an area the data does not
+  have. The Monk's `RatKingBossDefeated` is a `[DNT]` placeholder.
+- **Not measured live.** No boss's remark has been seen ticking a step in
+  the overlay. The texts are checked by the screen matcher's tests (each
+  boss and class, with a class's on-sight line as the negative control)
+  and, for the Warrior's Miller remark, by a replay of Live 8's capture.
+
+### The Bloated Miller: what ticks his step
+
+Why "Slay the Bloated Miller" ticked 10 to 20 s after his death, and the
+level-up that ticks it at the kill since the tracker's 0.1.1. Read on
+2026-10-28 from the owner's store (the overlay's `overlay.log`) and
+`Client.txt`, read-only, by scripts kept outside the repository.
+
+- **The last playthrough** (measured). A new Warrior entered The Riverbank
+  at 08:29:51Z; *Read the screen* was turned on at 08:31:06Z and logged
+  `screen: idle (no demand)`, and no `screen:` line followed until the
+  encampment. The Miller's first line came at 08:32:53Z and his last at
+  08:33:39Z, and the level-up to 2 at 08:33:42Z (the kill). Mortimer's
+  "Well done! Please come inside." came at 08:33:52Z, and the tracker
+  logged the move to the next step in that same second; the encampment
+  loaded at 08:33:57Z. Live 13 had seen the same: the step changed near
+  the town, not on the kill.
+- **Cause** (measured). The engine did tick the step, but only on
+  Mortimer's line, 10 to 13 s after the kill, as the player neared the
+  encampment. No step of Reaching Clearfell carried a screen signal for
+  the Miller, so with *Read the screen* on the reader had no demand in The
+  Riverbank and never looked at his bar.
+- **The screen at his kill** (measured, a replay of Live 8's kept capture
+  with `quest-tracker-replay screen --bar "The Bloated Miller" --class
+  Warrior`, 2026-10-28). One `bar_gone` at the kill (his bar last seen at
+  20:19:44.847Z, the kill press at 20:19:45.913Z) and the Warrior's
+  `kill_remark` at 20:19:48.864Z. Also two `bar_gone` at 20:11:47Z and
+  20:13:04Z while he lived: Live 8's first run, in which the person walked
+  away from him.
+- **The level-up at the kill** (measured over the owner's whole log, its
+  lines from 2025-08 to 2026-10). Every visit to The Riverbank that held a
+  level-up held one, to level 2, after the Miller's first line and 0 to 9
+  s after his last: 17 of 17. The level-up is logged at the kill, before
+  Mortimer's thanks and the encampment entry; the bar goes about 2 s after
+  it and the remark about 3 s after it (the Live 8 replay). A first
+  level-up in The Riverbank before his death was not observed.
+- **Why a new signal kind** (static reading of the tracker's engine). The
+  existing `level` signal is read from the character's level whenever a
+  status is computed, in any area, so every character already at level 2,
+  and every stored one loaded at start, would count the step as reached.
+  The `level_up` signal is kept as evidence when the level-up line comes,
+  for the character the engine takes it as, in the named area, and is
+  never read from state.
+- **Decisions** (the owner, 2026-10-28). The level-up is the Miller's
+  signal: "use this. first level up can come only from the miller". His
+  bar and every class's kill remark ship too, with the walk-away early
+  tick (with *Read the screen* on) kept as a known limitation, as for
+  Beira, Blackjaw and Lythara. Mortimer's line stays the step's first
+  signal and ticks it when none of the others came.
+- **Consequence.** In practice the level-up ticks the step first, the
+  reader's demand for the Miller then ends, and the overlay never reads his
+  bar or remark; they are the route for a level-up the engine does not take
+  as the character's. So a class's Miller remark cannot be proved in the
+  overlay live; the texts are proved by the matcher's tests and the
+  Warrior's replay.
 
 ## Character detection
 

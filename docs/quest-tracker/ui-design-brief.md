@@ -29,7 +29,11 @@ web's means; the names in [Export contract](#export-contract) are final.
   always visible (owner, 2026-10-25, after Live 2).
 - **Scales.** Design at 1920×1080 (1×). It will be scaled to 1440p (1.33×)
   and 4K (2×) by the webview's zoom, or to any factor from 0.75× to 2× the
-  player sets, so keep icons as vectors and sizes on a 4 px grid.
+  player sets, so keep icons as vectors and sizes on a 4 px grid. The zoom
+  scales the content only: the player sizes the window, by dragging the
+  panel's edges and corners in edit mode, and the panel fills it (owner,
+  2026-10-28, for 0.1.1). Lay the panel out to stretch in both directions,
+  its body scrolling, down to the window's minimum of 320×240.
 - **Sliders apply while dragged.** The opacity and scale sliders change the
   panel as the thumb moves, not only when it is let go (owner, 2026-10-25,
   after Live 3), so the panel's own look is the slider's preview.
@@ -184,8 +188,7 @@ name, until it is done.
 6. **Settings** [`settings`]. Background opacity slider from 0% to 100% in
    5% steps (it fades the panel background only; at 0% the background is
    gone, and text, icons, the panel border and the edit-mode accent stay
-   fully opaque, so edit mode still reads as edit mode), click-through
-   toggle, scale as an "Auto" switch plus a slider for a fixed factor from
+   fully opaque, so edit mode still reads as edit mode), scale as an "Auto" switch plus a slider for a fixed factor from
    0.75× to 2× in 0.05 steps (moving the slider turns Auto off), "show
    skipped quests" (a skipped quest shows even with "only worth-it" on),
    "only worth-it quests", a Hotkeys section, log file path with a status
@@ -194,10 +197,10 @@ name, until it is done.
    after Live 2). A "Read the screen" toggle, off by default, follows "only
    worth-it quests", with a helper line saying it reads the game's window
    for boss bars and quest dialogue and saves nothing (owner, 2026-10-26).
-   A "Hide under game panels" toggle, off by default, follows "Read the
-   screen", with a helper line saying it hides the tracker while a game
-   panel is open under it, reads a few pixels of the game's window and
-   saves nothing (owner, 2026-10-27).
+   Since 0.1.1 there is no click-through switch and no switch for hiding
+   under game panels (owner, 2026-10-28): play mode is always
+   click-through and edit mode always takes clicks, and the overlay always
+   hides in play mode while a game panel is open under it.
 7. **Edit mode vs. play mode** [`mode-play`, `mode-edit`]. The same panel in
    both. Play mode is click-through (mouse goes to the game) and shows no
    buttons; edit mode (hotkey) accepts clicks and shows the controls. The

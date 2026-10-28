@@ -103,6 +103,18 @@ character and follows the client's setting, so it is no character signal.
 The `level 1` in the entry line is the area's level in every case,
 including Live 3's level-2 relog, and the entry line names no character.
 
+The first level-up and The Bloated Miller (read from the owner's log on
+2026-10-28, its lines from 2025-08 to 2026-10; the research note's
+[§ "The Bloated Miller: what ticks his step"](quest-tracker/quest-tracker-research.md#the-bloated-miller-what-ticks-his-step)):
+every visit to The Riverbank (`G1_1`) that held a level-up held exactly
+one, to level 2, of the character who entered, and it came after the
+Miller's first voiced line and 0 to 9 s after his last, 17 of 17. The game
+logs a new character's first level-up at his kill, in that area, before
+Mortimer's thanks and before the encampment entry. A first level-up
+before his death in The Riverbank was not observed (not proof that it
+cannot happen). The quest tracker ticks "Slay the Bloated Miller" on it
+since its 0.1.1.
+
 A boss's reward (measured 2026-10-25, the research note's "Rewards after a
 boss kill"): a quest boss's `has received` reward line never came with the
 boss's last voiced line. It came 5 to 465 s later, twice in the next area.

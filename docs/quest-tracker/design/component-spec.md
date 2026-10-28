@@ -10,8 +10,11 @@ use the same name with the dot as a dash: `color.panel-bg` →
 
 ## Global rules
 
-- **Grid:** 4 px (`space.unit`). Panel width 320 (`size.panel-width`),
-  height at most 60% of the screen (648 at 1×); the panel scrolls beyond it.
+- **Grid:** 4 px (`space.unit`). Panel width 320 (`size.panel-width`) in
+  the comps. Since 0.1.1 the panel fills the window inside its 12 px
+  shadow margin, in both directions, and its body scrolls: the player sizes
+  the window by the panel's edges in edit mode (320×384 by default, the
+  window at least 320×240), and the scale only zooms the content.
 - **Shape:** radius 0 everywhere (`radius`, `radius.row`, `radius.button`).
   Corners are cut at 45° on the top-left and bottom-right only: panel 6 px
   (`chamfer.panel`), buttons 3 px, the badge 4 px. In CSS, a
@@ -171,8 +174,9 @@ Square (radius 0). On = `color.edit-accent` track. Slider track
 ### SettingRow — 320×40
 Padding 0/12; label (Label) left, control right. Helper text below a row
 (Caption, `color.text-muted`, padding 0/12/6): under opacity "Text and icons
-always stay fully opaque."; under click-through "Off: the panel
-blocks clicks to the game."
+always stay fully opaque."; under "Read the screen" "Reads the game's
+window for boss bars and quest dialogue. Saves nothing it reads." Since
+0.1.1 there is no click-through row and no "Hide under game panels" row.
 
 Rows after Live 2 (owner, 2026-10-25): opacity is a Slider from 0% to 100%
 in 5% steps with its value as a percentage; scale is a Toggle "Auto" and a
