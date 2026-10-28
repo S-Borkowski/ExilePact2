@@ -1,0 +1,133 @@
+/* Quest tracker theme, harvested from Figma file OCm0ix5nud2HU18LNYKf3g on 2026-10-25. Generated; edit theme.json and regenerate. Paths are relative to theme/. */
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-ExtraBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans SC";
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSansSC-Bold.woff2") format("woff2");
+}
+
+:root {
+  --color-panel-bg: #121416;
+  --color-panel-border: #5C636D;
+  --color-text-primary: #ECE6D9;
+  --color-text-secondary: #BDB6A8;
+  --color-text-muted: #959084;
+  --color-edit-accent: #3CCFCF;
+  --color-status-locked: #8A857B;
+  --color-status-available: #7BD88F;
+  --color-status-in-progress: #6CB6FF;
+  --color-status-done: #9AA88E;
+  --color-status-skipped: #959084;
+  --color-status-unknown: #B6A6E0;
+  --color-worth-gold: #D9B45A;
+  --color-res-fire: #E99568;
+  --color-res-cold: #91C9DE;
+  --color-res-lightning: #E3C76F;
+  --color-res-chaos: #BA9ACD;
+  --font-family: "Alegreya Sans", sans-serif;
+  --font-file: url("fonts/AlegreyaSans-Medium.woff2");
+  --size-title: 16px;
+  --size-row: 16px;
+  --size-step: 14px;
+  --size-caption: 12px;
+  --space-unit: 4px;
+  --space-row-pad: 12px;
+  --space-section-gap: 8px;
+  --space-panel-pad: 8px;
+  --radius: 0px;
+  --border-width: 1px;
+  --opacity-default: 0.92;
+  --shadow-panel: 0 0 0 1px rgba(0,0,0,0.63), 0 4px 12px rgba(0,0,0,0.5);
+  --radius-row: 0px;
+  --radius-button: 0px;
+  --font-weight-title: 700;
+  --font-weight-row: 500;
+  --color-panel-raised: #1A1D20;
+  --color-panel-sunken: #0C0D0F;
+  --color-panel-divider: #262A2E;
+  --color-text-on-light: #121416;
+  --color-edit-tint: #0F3236;
+  --color-row-active-bg: #161C24;
+  --color-select-active-bg: #142628;
+  --color-hover-outline: #646B75;
+  --color-worth-none: #959084;
+  --color-action-primary-bg: #ECE6D9;
+  --color-action-primary-hover: #FFFFFF;
+  --color-action-primary-pressed: #CFC8BA;
+  --color-action-secondary-bg: #1A1D20;
+  --color-action-secondary-hover: #262A2E;
+  --color-action-secondary-pressed: #0C0D0F;
+  --color-action-danger: #F28B82;
+  --color-action-disabled-bg: #1A1D20;
+  --color-action-disabled-fg: #6A665E;
+  --color-warning: #F28B82;
+  --font-family-caps: "Alegreya Sans SC", sans-serif;
+  --font-file-regular: url("fonts/AlegreyaSans-Regular.woff2");
+  --font-file-bold: url("fonts/AlegreyaSans-Bold.woff2");
+  --font-file-extrabold: url("fonts/AlegreyaSans-ExtraBold.woff2");
+  --font-file-caps-bold: url("fonts/AlegreyaSansSC-Bold.woff2");
+  --line-title: 20px;
+  --line-row: 20px;
+  --line-step: 18px;
+  --line-caption: 16px;
+  --size-act: 13px;
+  --size-label: 13px;
+  --size-button-text: 13px;
+  --size-badge-count: 22px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 20px;
+  --size-icon-lg: 24px;
+  --size-manual-tick: 12px;
+  --size-control: 24px;
+  --size-button: 28px;
+  --size-row-height: 40px;
+  --size-row-height-tall: 56px;
+  --size-row-height-finished: 32px;
+  --size-header: 36px;
+  --size-act-header: 28px;
+  --size-badge: 48px;
+  --size-panel-width: 320px;
+  --border-width-strong: 2px;
+  --bar-in-progress: 3px;
+  --bar-countdown: 2px;
+  --chamfer-panel: 6px;
+  --chamfer-button: 3px;
+  --chamfer-badge: 4px;
+  --opacity-min: 0;
+  --opacity-stale-rows: 0.55;
+  --motion-confirm-ms: 3000ms;
+}
