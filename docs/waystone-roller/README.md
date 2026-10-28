@@ -222,6 +222,15 @@ py -3 -m unittest tests.test_waystone_roller_poe2db tests.test_waystone_roller_g
 above. A new or renamed modifier changes the file; check its diff, and the
 shipped-data test says if a token no longer tells a mod apart.
 
+**Changing the icon**: `src-tauri/icons/source.png` (the owner's own
+image) is the one source. Regenerate the icon files with
+`npm --prefix apps/waystone-roller exec tauri icon apps/waystone-roller/src-tauri/icons/source.png -- --output apps/waystone-roller/src-tauri/icons`,
+delete what it writes beyond the files `src-tauri/tauri.conf.json`'s
+`bundle.icon` names (plus `64x64.png` and `icon.png`), then run
+`cargo clean --manifest-path apps/waystone-roller/Cargo.toml --release -p waystone-roller`
+before `npm --prefix apps/waystone-roller run release`: an incremental
+build kept the old `icon.ico` in the exe (seen 2026-10-28).
+
 ## Known limitations
 
 - **Rare names and magic affix names.** A rare waystone has a random name
