@@ -1,7 +1,7 @@
 <script lang="ts">
   // The settings frame: one 40-high row per setting, label left and control
-  // right, helper text under the opacity, click-through and "Read the screen"
-  // rows. Each control
+  // right, helper text under the opacity and "Read the screen" rows. Each
+  // control
   // sends `update_settings` with the one field it changes and shows what the
   // next `qt:view` says; the UI keeps no copy of its own. Play mode lists the
   // values with no control.
@@ -20,6 +20,10 @@
   // slider tracks the pointer itself: its value follows the pointer's travel
   // since the press in screen pixels, because each update re-zooms the page
   // under the pointer. The keyboard still steps it as a range.
+  //
+  // 0.1.1 (owner): the click-through switch is gone. It never was a setting:
+  // play mode is click-through and edit mode takes clicks, and the edit
+  // footer's hotkey returns to play mode.
   import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
   import { type Scale, type View, SCALE_MAX, SCALE_MIN, SCALE_STEP } from '../ipc';
@@ -155,12 +159,6 @@
       <span class="value">{percent(opacity)}</span>
     </label>
     <p class="help">Text, icons and the panel's border always stay fully opaque.</p>
-
-    <label class="row">
-      <span class="label">Click-through (play mode)</span>
-      <input type="checkbox" class="toggle" role="switch" checked={false} onchange={() => send('set_mode', { mode: 'play' })} />
-    </label>
-    <p class="help">On: in play mode the panel passes clicks to the game.</p>
 
     <label class="row">
       <span class="label">Auto scale</span>

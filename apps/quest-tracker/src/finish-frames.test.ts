@@ -42,10 +42,10 @@ function pickerView(mode: Mode): View {
   return view;
 }
 
-function render(component: typeof Settings | typeof CharacterPicker, view: View): HTMLElement {
+function render(component: typeof Settings | typeof CharacterPicker, view: View, sendTo: Send = send): HTMLElement {
   const target = document.createElement('div');
   document.body.appendChild(target);
-  const app = mount(component, { target, props: { view, send } });
+  const app = mount(component, { target, props: { view, send: sendTo } });
   flushSync();
   mounted.push(() => {
     unmount(app);
@@ -63,14 +63,25 @@ function rule(source: string, selector: string): string {
 }
 
 describe('finish review: frames', () => {
-  it('settings_click_through_help_text', () => {
-    const root = render(Settings, settingsView('edit', null));
-    const toggle = Array.from(root.querySelectorAll('label.row')).find((l) => l.textContent?.includes('Click-through'));
-    expect(toggle).toBeTruthy();
-    const help = toggle?.nextElementSibling;
-    expect(help?.classList.contains('help')).toBe(true);
-    expect(help?.textContent?.trim()).toBe('On: in play mode the panel passes clicks to the game.');
+  it('settings_has_no_click_through_row', () => {
+    // Click-through is what play mode is, not a setting: the edit frame has
+    // no row or help line for it, and none of its switches leaves edit mode.
+    const sent: string[] = [];
+    const root = render(Settings, settingsView('edit', null), (cmd) => {
+      sent.push(cmd);
+    });
+    const rows = Array.from(root.querySelectorAll('label.row'));
+    expect(rows.find((l) => l.textContent?.includes('Click-through'))).toBeUndefined();
+    expect(root.textContent).not.toContain('passes clicks to the game');
     expect(root.textContent).not.toContain('On returns to play mode');
+
+    const toggles = Array.from(root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
+    expect(toggles.length).toBeGreaterThan(0);
+    for (const toggle of toggles) toggle.click();
+    flushSync();
+    // Positive control: the recorder sees the switches that remain.
+    expect(sent).toContain('update_settings');
+    expect(sent).not.toContain('set_mode');
 
     // The help under the stacked log-file field sits 4 px below it.
     const fieldHelp = root.querySelector('label.field + p.help');
