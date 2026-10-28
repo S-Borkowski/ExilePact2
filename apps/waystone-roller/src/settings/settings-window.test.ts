@@ -438,8 +438,8 @@ describe('the Settings window', () => {
     extraInner.update.url = 'x';
     expect(appSettingsProblems(extraInner)).toEqual(['app_settings.update.url: not in the TypeScript types']);
     const extraInstall = fixture('install-failed') as unknown as { install: Record<string, unknown> };
-    extraInstall.install.release_page = 'x';
-    expect(appSettingsProblems(extraInstall)).toEqual(['app_settings.install.release_page: not in the TypeScript types']);
+    extraInstall.install.browser_url = 'x';
+    expect(appSettingsProblems(extraInstall)).toEqual(['app_settings.install.browser_url: not in the TypeScript types']);
 
     // A missing key.
     const missing = fixture('idle') as unknown as Record<string, unknown>;

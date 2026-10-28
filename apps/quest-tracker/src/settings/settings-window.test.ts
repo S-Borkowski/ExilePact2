@@ -512,10 +512,10 @@ describe('the Settings window', () => {
     badType.check_updates = 'false';
     expect(appSettingsProblems(badType)).toEqual(['app_settings.check_updates: expected a boolean']);
 
-    // The install part: a release page smuggled in, a bad state, a missing progress field.
+    // The install part: a browser link smuggled in, a bad state, a missing progress field.
     const page = installFixture('failed') as unknown as { install: Record<string, unknown> };
-    page.install.release_page = 'https://github.com';
-    expect(appSettingsProblems(page)).toEqual(['app_settings.install.release_page: not in the TypeScript types']);
+    page.install.browser_url = 'https://github.com';
+    expect(appSettingsProblems(page)).toEqual(['app_settings.install.browser_url: not in the TypeScript types']);
     const badInstall = installFixture('ready') as unknown as { install: { state: string } };
     badInstall.install.state = 'open-page';
     expect(appSettingsProblems(badInstall)).toEqual([
