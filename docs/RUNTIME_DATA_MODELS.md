@@ -205,7 +205,12 @@ in a Ranger's session that reached the Tree of Souls in the Grelwood
 (`G1_4`), where poe2db lists every class's remark on first seeing the tree
 (key `SinTreeSeenComment`), the log from the Grelwood entry to the game's
 close held only chat, window-focus lines, one shop request and the close.
-That the remark played at that moment is poe2db's reading, not measured.
+That session had no control that the remark played. Live 15 (measured
+2026-10-28, a new Ranger, the research note's
+[§ "Live 15: a quest-moment remark in the game"](quest-tracker/quest-tracker-research.md#live-15-a-quest-moment-remark-in-the-game))
+had one: the remark showed on screen at the tree and the person heard it,
+and `Client.txt` from the Grelwood entry to it held only window-focus
+lines.
 
 NPC lines and the dialogue option (measured 2026-10-26, Live 8, the
 research note's
@@ -450,6 +455,18 @@ rect.
   character's combat shouts carry the same name prefix as its kill
   remarks, so only the text tells a kill remark; at the Miller's kill the
   two remarks the person heard came 0.4 s and 3.0 s after their press.
+- **A quest-moment remark shows in the same list** (measured 2026-10-28,
+  Live 15, one new Ranger, the quest tracker's reader copying the
+  voiced-lines region from the running window;
+  [`quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+  § "Live 15: a quest-moment remark in the game"). The character's
+  remark on reaching the Tree of Souls in the Grelwood (`G1_4`, poe2db
+  key `SinTreeSeenComment`), not a kill remark, showed in the lower-left
+  voiced-lines list as `<character name>: <text>`, the character's name
+  as its prefix, the text word for word poe2db's Ranger line for that key
+  (a screenshot by the person). The reader read it in 1 of the 44 reads
+  of its minute, before Una was summoned there. Other classes' lines and
+  other quest moments are not measured.
 - **A quest dialogue window** (measured 2026-10-26, Live 8, Renly's talk
   after The Bloated Miller). Drawn in the centre: the NPC's name as a
   heading, the text at x 0.42 to 0.66, y 0.51 to 0.61 (moved left while

@@ -914,8 +914,11 @@ you summon her at the Tree of Souls and completes "Search the Grelwood",
 leaving "Ask Una for help" current. With *Read the screen* on, the
 character's remark on first seeing the tree (`SinTreeSeenComment`, every
 class's) completes it earlier, before she is summoned ("Reading the
-screen" › "The remark rule (`remark`)"); the remark is not in the log, and
-that it plays at first sight is read from poe2db, not measured. "I'll wait here. The old magicks will
+screen" › "The remark rule (`remark`)"); the remark is not in the log.
+Seen live for a Ranger (Live 15, 2026-10-28): the remark showed in the
+voiced-lines list on reaching the tree and ticked the step 2 min 11 s
+before Una's first line, which then did not tick it again; for the other
+classes, that it plays there is read from poe2db. "I'll wait here. The old magicks will
 protect me.", which came a few seconds later in the sessions where the
 player talked to her, completes "Ask Una for help" and leaves "Find the
 Red Vale" current (that it follows the talk is inferred). Where that line
@@ -2320,12 +2323,16 @@ release already exists, only its assets are replaced.
   for the Warrior, the Ranger, the Witch and the Sorceress, and
   `QimarOlrothDefeated` (Azmadi) and `RavineBlackjawBossDefeated`
   (Stormgore) for the Huntress. That each remark plays at the moment its
-  key names is read from poe2db, not measured; that the Tree of Souls
-  remark plays at first sight of the tree is not measured either. The OCR
-  of the voiced lines was measured only for the Miller's remark in The
-  Riverbank, in a replay of Live 8's capture; their reading in the other
-  areas (a busier or darker lower left) is not measured. No remark at a
-  quest moment has been seen ticking a step live.
+  key names is read from poe2db, not measured, except the Tree of Souls
+  remark for the Ranger, seen live on reaching the tree (Live 15). The
+  OCR of the voiced lines was measured for the Miller's remark in The
+  Riverbank, in a replay of Live 8's capture, and live for the Ranger's
+  tree remark in the Grelwood (Live 15, read in 1 of its minute's 44
+  reads); their reading in the other areas (a busier or darker lower
+  left) is not measured. One remark at a quest moment has been seen
+  ticking a step live: the Ranger's at the Tree of Souls ticked "Search
+  the Grelwood" before Una was summoned (Live 15); the other classes and
+  the other 25 keys have not.
 - **Slay the Bloated Miller: a first level-up before his death.** The
   step ticks on the character's level-up to 2 in The Riverbank, which in
   one player's log came at the Miller's kill every time (17 of 17). A
@@ -2592,9 +2599,11 @@ Revisit this feature when:
 - Two new find-it tips in Secrets in the Dark: "Find the Red Vale" says to
   follow the river up, and "Return to the Grelwood" says to follow the
   mushrooms to the Grim Tangle, where more of them means you are closer.
-- The route is not yet seen live: no remark at a quest moment has ticked
-  a step in a live session yet (Known limitations, "Read the screen:
-  remarks at quest moments").
+- Seen live once: on a new Ranger, the remark at the Tree of Souls ticked
+  "Search the Grelwood" before Una was summoned, and her line did not
+  tick it again. The other classes and moments are checked by the
+  matcher's tests (Known limitations, "Read the screen: remarks at quest
+  moments").
 
 ### 0.1.2
 

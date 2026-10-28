@@ -552,14 +552,17 @@ accounted for (2026-10-28).
   known.
 - **The tree remark is not in the log** (not observed, 2026-10-28), as
   § "Character remarks" found for kill remarks: one session, no person
-  listening for it.
+  listening for it. Live 15 then had the control: the person heard the
+  remark and the screen showed it, and `Client.txt` still held no line
+  for it.
 - **poe2db** (static reading of the cached class pages). The key
   `SinTreeSeenComment` is on all eight pages, each with an act-1 sound.
   "Search the Grelwood" is followed by a step whose text opens on having
   found the Tree of Souls, so the sighting ends the search. Three nearby
   keys are other moments (the glowing roots, the rune spikes, Renly's
-  forge) and are not this one. That the remark plays at first sight is
-  not measured live.
+  forge) and are not this one. That the remark plays as the tree is
+  reached was seen live for the Ranger (§ "Live 15: a quest-moment remark
+  in the game"); at its first sight exactly was not timed.
 - **The rule.** Every key of the eight pages with a campaign-act sound is
   a campaign key, sorted into five parts by its sound's tag (`act1` to
   `act4`, `interludes`), and each is written into the remark ledger
@@ -608,9 +611,13 @@ accounted for (2026-10-28).
   the interlude ravine fight), Oswin (`PrisonForsakenSonBossDefeated`),
   and Torvian besides. Azarian, Benedictus, Tavakai, Siora and Elzarah
   stay not established.
-- **Not measured live.** No remark at a quest moment has been seen
-  ticking a step in the overlay; seeing the tree remark tick "Search the
-  Grelwood" on a fresh character is the live check still to run.
+- **Measured live** (2026-10-28, Live 15, one new Ranger). The tree
+  remark showed in the voiced-lines list with the character's name as
+  prefix, the reader matched it to the Ranger's row and ticked "Search
+  the Grelwood" 2 min 11 s before Una's first line, which did not tick
+  it again; `Client.txt` had no line for it (§ "Live 15: a quest-moment
+  remark in the game"). The other classes and the other 25 keys are not
+  measured live.
 
 ### The Bloated Miller: what ticks his step
 
@@ -2092,6 +2099,89 @@ his step in the overlay, because the level-up ticked it first and
 *Read the screen* was off by then; the Mortimer route was not run live;
 the scale's frame was judged by the person and the window's extent, not
 measured on a screen capture of the fixed build.
+
+### Live 15: a quest-moment remark in the game
+
+Measured 2026-10-28 with the `quest-tracker-remarks` workorder's live
+procedure (its capture is kept on the owner's machine), to see whether a
+character's remark at a quest moment, not a boss's death, moves a quest
+on. `Client.txt`'s local times were UTC+1, paired with the overlay's UTC
+through each area's `Generating level` line (0 to 1 s apart).
+
+The release exe of commit `8ebcd887` (0.1.3; written at 19:34:55Z, after
+that commit's 19:11:15Z, SHA-256 `253449b3…3fe0`) ran in place with a
+new store of its own whose `settings.json` turned *Read the screen* on.
+The shipped data had no `remark` signal in the Red Vale (`G1_5`), only
+The Rust King's `npc` and `kill_remark` signals there. The overlay
+started at 19:41:39Z and logged `start: quest-tracker 0.1.3` with that
+store and `screen: on (OCR en-US)` in the same second. The person
+created a new **Ranger**, the class of the original report.
+
+- **The Riverbank** (`G1_1`, from 19:42:38Z). The overlay took the
+  character as new and demanded the Miller's bar and the voiced lines at
+  19:42:44Z; its first `screen: minute:` line, at 19:43:39Z, counted 222
+  frames. Each of its three minutes there counted the Miller's kill
+  remark in 0 reads (of 111, 120 and 84). His step ticked at 19:45:22Z,
+  in the second of the level-up to 2, from the level-up, and the reader
+  went idle in that second. The two lines the person recalled hearing
+  after his death came after that, when nothing was looking for them.
+- **The Grelwood** (`G1_4`, from 19:48:50Z). The area line ticked
+  Secrets in the Dark's first step, and in the same second the reader
+  logged `screen: reading voiced lines for secrets-in-the-dark/step-2`:
+  the demand that was missing in the original report. The person then
+  walked to the Tree of Souls without summoning Una, the game twice
+  leaving the front and edit mode open for 17 s on the way (the reader
+  idle each time). The minutes before the tick counted the tree remark
+  (`SinTreeSeenComment`) in 0 of 90, 0 of 67 and 0 of 33 reads. At
+  19:52:02Z (19:52:02.079Z) the log had `screen: remark
+  SinTreeSeenComment (…): ticked secrets-in-the-dark/step-2` and the
+  quest's move from step-1 to step-2, live, and the reader went idle;
+  the minute that covered it counted the remark in 1 of 44 reads, 1 new.
+  The person: the line was said and the quest row changed. Their
+  screenshot showed the line in the voiced-lines list at the lower left,
+  prefixed with the character's name, its words those of the Ranger's
+  row of that key in the `remarks` table. `Client.txt` from the Grelwood
+  entry to the tick held no speech line at all, only window-focus lines.
+- **Una** (19:54:13Z). Her first line, "What happened here...?", came
+  2 min 11 s after the tick and did not tick the step again: the next
+  move, at 19:54:19Z with her "I'll wait here..." line, was step-2 to
+  step-3, and the overlay had only one step-2 line.
+- **The Red Vale** (`G1_5`, from 20:00:37Z, the person stopping at the
+  first obelisk). The area line moved the quest to its next step and the
+  reader turned to The Rust King's step; its three minutes there counted
+  his kill remark in 0 of 7, 120 and 95 reads, with no fight. With no
+  `remark` signal shipped in that area, there was no second remark to
+  see tick.
+- **The reader's cost.** `busy` in the Grelwood's minutes was 16494,
+  13420, 7653 and 7709 ms (120, 119, 120 and 44 frames), the voiced lines
+  alone; in The Riverbank, with the Miller's bar besides, 28109, 31111
+  and 22397 ms.
+- The person quit from the tray at 20:03:34Z, and the `stop:` line
+  followed in the same second.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | the exe written after the head commit `8ebcd887` |
+| `control` | pass | `start: quest-tracker 0.1.3` naming the session's store and `screen: on (OCR en-US)` 1 s after launch |
+| `screen-control` | pass | `screen: reading boss bar and voiced lines for reaching-clearfell/step-2` at 19:42:44Z, then `screen: minute: 222 frames` |
+| `tree-demand` | pass | `area G1_4`, Secrets in the Dark at step-1 and `screen: reading voiced lines for secrets-in-the-dark/step-2`, all at 19:48:50Z |
+| `tree-tick` | pass | `screen: remark SinTreeSeenComment (19:52:02.079Z): ticked secrets-in-the-dark/step-2` and the step-1 to step-2 move at 19:52:02Z |
+| `tree-route` | pass | the remark in 0 of 90, 0 of 67 and 0 of 33 reads before the tick, then in 1 of 44, 1 new, in the minute covering it |
+| `tree-shown` | pass | the person: the line was said and the row changed; the screenshot shows the line in the voiced-lines list |
+| `tree-before-una` | pass | no Una line in `Client.txt` before the tick; her first came at 19:54:13Z |
+| `no-double` | pass | Una's first line logged, one step-2 line in the overlay, then step-2 to step-3 at 19:54:19Z |
+| `stop-clean` | pass | `quit: from the tray` and the `stop:` line at 20:03:34Z |
+| `miller-route` | pass (n = 0, research) | 0 of 111, 120 and 84 reads; the step ticked by the level-up at 19:45:22Z |
+| `remark-text` | pass (research) | the screenshot's words equal the Ranger's row; the words the person typed were the two lines after the Miller's death |
+| `second-area` | not observed (research) | the Red Vale reached at 20:00:37Z; no `remark` signal ships there, and no `screen: remark` line came |
+| `busy-voiced` | recorded (research) | 16494, 13420, 7653 and 7709 ms in the Grelwood |
+
+What it leaves open: one class (the Ranger) and one key were seen; the
+other classes' tree remarks, the other 25 keys and every area's reading
+of the voiced lines other than the Grelwood's rest on the matcher's tests
+and poe2db. No kill remark ticked a step, since the Miller's level-up
+came first. That the remark plays at the tree's first sight, rather than
+somewhere on the walk to it, was not timed against the person's view.
 
 ## Negative results
 
