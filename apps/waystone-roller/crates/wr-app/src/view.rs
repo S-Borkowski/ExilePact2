@@ -213,6 +213,9 @@ pub struct View {
     pub selection: SelectionView,
     pub result: SearchResult,
     pub hotkey: String,
+    /// The shortcut pastes into the game after it copies (the window's
+    /// *Paste into the game's search box* checkbox).
+    pub auto_paste: bool,
     pub status: Option<StatusLine>,
     /// The newer version a check found this run (`1.3.0`), which the
     /// header's *Settings* button names; `None` while none is known.

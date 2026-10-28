@@ -161,6 +161,7 @@
     "unmatchable": []
   },
   "hotkey": "Ctrl+Alt+W",
+  "auto_paste": false,
   "status": {
     "kind": "error",
     "text": "Shortcut Ctrl+Alt+W is taken by another program. Choose another one below."

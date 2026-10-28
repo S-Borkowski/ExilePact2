@@ -172,6 +172,7 @@
     "unmatchable": []
   },
   "hotkey": "Ctrl+Alt+W",
+  "auto_paste": true,
   "status": {
     "kind": "info",
     "text": "Copied the search (34 characters). Paste it into the stash or a vendor's search box."
