@@ -27,7 +27,7 @@ export const ROW_CHANGE_EVENT = 'qt:row-change';
 /** The frames `open_frame` opens over the panel. */
 export type OverlayFrame = 'character-picker' | 'settings';
 
-/** A partial settings object for `update_settings`; Rust refuses unknown keys (`dock` among them since Live 2). */
+/** A partial settings object for `update_settings`; Rust refuses unknown keys (`dock` among them since Live 2, and the hide-under-panels switch since 0.1.1). */
 export interface SettingsPatch {
   opacity?: number;
   scale?: Scale;
@@ -36,7 +36,6 @@ export interface SettingsPatch {
   log_path?: string | null;
   hotkey?: string;
   screen_reading?: boolean;
-  hide_under_panels?: boolean;
   check_updates?: boolean;
 }
 

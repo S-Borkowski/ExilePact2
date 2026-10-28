@@ -30,13 +30,15 @@
 //! producer's generation so a stopped reader's events are dropped like a
 //! stopped tailer's.
 //!
-//! The panel watcher (`crate::panels`), with the `hide_under_panels` setting
-//! on, is another, built the same way: the worker publishes whether the
-//! overlay may be read (play mode, shown or hidden by a panel alone) with
-//! the confirmed game pid, and the watcher sends which game panel is open
-//! under the overlay on the same channel, under its own generation. The
-//! worker hides the overlay for it ([`PANEL_LINE`]); with the setting off
-//! nothing of it runs and the visibility rule is as it was.
+//! The panel watcher (`crate::panels`) is another, built the same way, and
+//! runs from start to shutdown whenever the shell gave the app a panel
+//! backend (hiding under game panels is always on since 0.1.1; no setting
+//! starts or stops it): the worker publishes whether the overlay may be
+//! read (play mode, shown or hidden by a panel alone) with the confirmed
+//! game pid, and the watcher sends which game panel is open under the
+//! overlay on the same channel, under its own generation. The worker hides
+//! the overlay for it ([`PANEL_LINE`]); with no backend nothing of it runs
+//! and the visibility rule is as it was.
 //!
 //! The update check (`crate::updates`) keeps its state behind a lock of its
 //! own, never taken with the state lock held. It starts from the
@@ -195,7 +197,7 @@ pub const SHOWN_LINE: &str = "visibility: shown";
 /// the session has no area line yet ([`waiting_for_area`]).
 pub const NO_AREA_LINE: &str = "visibility: hidden (no character in an area yet this session)";
 /// What the diagnostic log says when play mode hides the overlay because
-/// the panel watcher reads a game panel open under it (`hide_under_panels`).
+/// the panel watcher reads a game panel open under it (`crate::panels`).
 pub const PANEL_LINE: &str = "visibility: hidden (a game panel is open under the overlay)";
 
 /// Whether play mode hides the overlay because no character is in an area
@@ -545,8 +547,6 @@ struct After {
     retail: bool,
     /// The screen reader is to start (`true`) or stop (`false`).
     screen: Option<bool>,
-    /// The panel watcher is to start (`true`) or stop (`false`).
-    panels: Option<bool>,
     /// Automatic update checks were turned on (`true`) or off (`false`).
     updates: Option<bool>,
 }
@@ -626,8 +626,8 @@ impl QuitFrom {
 impl App {
     /// Loads the settings, the characters and the saved position, and
     /// decides which log to follow. Starts nothing: see [`App::start`].
-    /// There is no panel watcher backend: the `hide_under_panels` setting
-    /// starts nothing ([`App::with_panels`]).
+    /// There is no panel watcher backend, so no panel watcher starts
+    /// ([`App::with_panels`]).
     pub fn new(config: AppConfig) -> Arc<App> {
         App::with_panels(config, PanelConfig::default())
     }
@@ -1005,9 +1005,8 @@ impl App {
         if self.lock().settings.screen_reading {
             self.start_reader();
         }
-        if self.lock().settings.hide_under_panels {
-            self.start_watcher();
-        }
+        // Always on: it starts whenever there is a backend (Windows).
+        self.start_watcher();
         let mut st = self.lock();
         self.announce(&mut st);
     }
@@ -1570,17 +1569,13 @@ impl App {
 
     /// Publishes what the panel watcher needs to know: whether the overlay
     /// is in play mode, whether it is hidden for a reason other than a
-    /// panel, and the game pid once confirmed. Nothing while the setting is
-    /// off. Replaced only when it changed.
+    /// panel, and the game pid once confirmed. Replaced only when it
+    /// changed.
     fn publish_panels(&self, st: &State) {
-        let snapshot = if st.settings.hide_under_panels {
-            PanelSnapshot {
-                play: st.ui.mode == Mode::Play,
-                overlay_hidden: matches!(st.visibility, Visibility::Hidden | Visibility::NoArea),
-                pid: st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed),
-            }
-        } else {
-            PanelSnapshot::default()
+        let snapshot = PanelSnapshot {
+            play: st.ui.mode == Mode::Play,
+            overlay_hidden: matches!(st.visibility, Visibility::Hidden | Visibility::NoArea),
+            pid: st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed),
         };
         let mut slot = self.panel_slot().lock().unwrap_or_else(|p| p.into_inner());
         if **slot != snapshot {
@@ -1630,35 +1625,6 @@ impl App {
         }
     }
 
-    /// Stops the panel watcher: first drops any panel hide (the overlay
-    /// shows at once, unless something else hides it), then waits for the
-    /// thread up to [`SHUTDOWN_TIMEOUT`]; what it queued is dropped and its
-    /// status line cleared.
-    fn stop_watcher(&self) {
-        let watcher = self.lock_watcher().take();
-        if let Some(w) = &watcher {
-            w.stop.store(true, Ordering::Release);
-        }
-        {
-            let mut st = self.lock();
-            st.panel_gen += 1;
-            st.panel_open = None;
-            st.set_status(Source::Panels, None);
-            if st.visibility == Visibility::Panel {
-                self.apply_visibility(&mut st, Visibility::Shown, None);
-            }
-            self.publish_panels(&st);
-        }
-        let ended = watcher.map(|w| join_by(w.handle, Instant::now() + SHUTDOWN_TIMEOUT));
-        if ended == Some(false) {
-            self.diag(&format!(
-                "error: panel watcher: did not end within {} ms",
-                SHUTDOWN_TIMEOUT.as_millis()
-            ));
-        }
-        self.diag("panels: off");
-    }
-
     fn lock_watcher(&self) -> MutexGuard<'_, Option<WatcherHandle>> {
         self.watcher.lock().unwrap_or_else(|p| p.into_inner())
     }
@@ -1695,9 +1661,8 @@ impl App {
     /// the pid of the window in front, and hides the overlay unless that is
     /// the game or the overlay itself, and before that it hides the overlay
     /// while the session has no character in an area ([`waiting_for_area`]).
-    /// With `hide_under_panels` on, it also hides the overlay in play mode
-    /// while the panel watcher reads a game panel open under it, when
-    /// nothing before that hides it. Each change is applied and logged once
+    /// It also hides the overlay in play mode while the panel watcher reads
+    /// a game panel open under it, when nothing before that hides it. Each change is applied and logged once
     /// ([`HIDDEN_LINE`], [`NO_AREA_LINE`], [`PANEL_LINE`], [`SHOWN_LINE`]);
     /// showing never activates the window, so the game keeps focus. A game
     /// pid read only from catch-up
@@ -1763,8 +1728,7 @@ impl App {
             Visibility::NoArea
         } else if !overlay_shown(mode, used, front, std::process::id()) {
             Visibility::Hidden
-        } else if mode == Mode::Play && st.settings.hide_under_panels && st.panel_open.is_some()
-        {
+        } else if mode == Mode::Play && st.panel_open.is_some() {
             Visibility::Panel
         } else {
             Visibility::Shown
@@ -1981,7 +1945,9 @@ impl App {
     /// to the window at once; a new shortcut or log path is applied after
     /// the lock is released. A patch that names the scale has the monitor
     /// read first, before the lock, for `auto`. A key the settings do not
-    /// have (the old `dock` side among them) refuses the whole patch.
+    /// have (the old `dock` side and `hide_under_panels` switch among them)
+    /// refuses the whole patch. No setting starts or stops the panel
+    /// watcher.
     pub fn update_settings(&self, patch: &Value) -> Result<View, String> {
         let names_scale = patch.get("scale").is_some();
         let _scale = names_scale.then(|| self.scale_lock.lock().unwrap_or_else(|p| p.into_inner()));
@@ -2005,9 +1971,6 @@ impl App {
             }
             if new.screen_reading != old.screen_reading {
                 after.screen = Some(new.screen_reading);
-            }
-            if new.hide_under_panels != old.hide_under_panels {
-                after.panels = Some(new.hide_under_panels);
             }
             if new.check_updates != old.check_updates {
                 after.updates = Some(new.check_updates);
@@ -2238,10 +2201,7 @@ impl App {
             }
         };
         self.save_if_due(false);
-        let again = after.hotkey.is_some()
-            || after.retail
-            || after.screen.is_some()
-            || after.panels.is_some();
+        let again = after.hotkey.is_some() || after.retail || after.screen.is_some();
         if let Some(h) = after.hotkey {
             self.register_hotkey(&h, "change it in Settings");
         }
@@ -2251,11 +2211,6 @@ impl App {
         match after.screen {
             Some(true) => self.start_reader(),
             Some(false) => self.stop_reader(),
-            None => {}
-        }
-        match after.panels {
-            Some(true) => self.start_watcher(),
-            Some(false) => self.stop_watcher(),
             None => {}
         }
         // Turned on, the worker's next tick starts a check when one is due;

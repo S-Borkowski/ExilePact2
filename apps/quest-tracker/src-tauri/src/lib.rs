@@ -80,8 +80,10 @@
 //!   capability is involved.
 //! - **Panel watcher**: on Windows the shell also gets a second
 //!   `qt-capture` backend from the same handle, the watcher's own, so the
-//!   "Hide under game panels" check never waits on the reader's lock.
-//!   Elsewhere it gets none, and that setting starts nothing.
+//!   check for game panels under the overlay never waits on the reader's
+//!   lock. The watcher runs from start to shutdown (hiding under game
+//!   panels is always on, with no setting). Elsewhere it gets none, and no
+//!   watcher starts.
 //! - **Main-thread callbacks** (the shortcut, window moves, a DPI scale
 //!   change, a second launch, the tray menu, a close request)
 //!   hand their work to a blocking task, so the main thread never waits for
@@ -467,8 +469,7 @@ fn panel_backend(window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
     Some(qt_capture::backend(overlay))
 }
 
-/// Elsewhere there is no backend, and the `hide_under_panels` setting
-/// starts nothing.
+/// Elsewhere there is no backend, and no panel watcher starts.
 #[cfg(not(windows))]
 fn panel_backend(_window: &WebviewWindow) -> Option<Box<dyn ScreenBackend>> {
     None

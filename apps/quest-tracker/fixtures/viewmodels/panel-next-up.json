@@ -182,7 +182,6 @@
   "schema": 1,
   "settings": {
     "check_updates": false,
-    "hide_under_panels": false,
     "hotkey": "Ctrl+Alt+Q",
     "log_path": null,
     "only_worth_it": false,
