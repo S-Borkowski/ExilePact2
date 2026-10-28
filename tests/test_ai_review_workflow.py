@@ -416,6 +416,10 @@ class TheReviewFollowsTheCommand(unittest.TestCase):
         self.assertIn('.name == "Agent" or .name == "Task"', body)
         self.assertGreaterEqual(int(step_env(body, "MIN_AGENTS") or 0), 7)
         self.assertGreaterEqual(int(step_env(body, "MIN_SECONDS") or 0), 30)
+        # The recorded skips took 10.6 s and 20.3 s; the smallest floor must
+        # stay above them, and a big diff must still meet the full floor.
+        self.assertGreaterEqual(int(step_env(body, "MAX_SECONDS") or 0), 60)
+        self.assertGreater(int(step_env(body, "LINES_PER_SECOND") or 0), 0)
         self.assertIn("exit 1", body)
 
     def test_the_gate_runs_after_the_posted_nothing_check(self):
@@ -469,7 +473,7 @@ def transcript(agents, seconds, message):
 class TheGateScriptsRun(unittest.TestCase):
     """The steps' own scripts, run against small transcripts."""
 
-    def run_step(self, name, data):
+    def run_step(self, name, data, changed=None):
         body = step_body(workflow_text(), name)
         self.assertIsNotNone(body, name)
         with tempfile.TemporaryDirectory() as tmp:
@@ -477,7 +481,10 @@ class TheGateScriptsRun(unittest.TestCase):
             result.write_text(json.dumps(data), encoding="utf-8")
             summary = Path(tmp, "summary.md")
             env = dict(os.environ, RESULT_FILE=str(result), GITHUB_STEP_SUMMARY=str(summary), PR="1")
-            for key in ("MIN_AGENTS", "MIN_SECONDS", "ADMITTED"):
+            env.pop("CHANGED_LINES", None)
+            if changed is not None:
+                env["CHANGED_LINES"] = changed
+            for key in ("MIN_AGENTS", "MIN_SECONDS", "MAX_SECONDS", "LINES_PER_SECOND", "ADMITTED"):
                 value = step_env(body, key)
                 if value is not None:
                     env[key] = value
@@ -504,6 +511,27 @@ class TheGateScriptsRun(unittest.TestCase):
     def test_negative_control_a_full_review_passes(self):
         proc, _ = self.run_step(PROCESS_GATE, transcript(9, 150, REAL_REVIEW_MESSAGE))
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_a_full_review_of_a_small_diff_passes_under_a_minute(self):
+        # ExilePact2 #10: 6 changed lines, 7 agents, 55 s.
+        proc, _ = self.run_step(PROCESS_GATE, transcript(7, 55, REAL_REVIEW_MESSAGE), changed="6")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("Time floor: 30 s.", proc.stdout)
+
+    def test_a_large_diff_keeps_the_full_floor(self):
+        proc, _ = self.run_step(PROCESS_GATE, transcript(7, 55, REAL_REVIEW_MESSAGE), changed="5000")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("under the 60 s floor", proc.stdout)
+
+    def test_an_unreadable_diff_size_keeps_the_full_floor(self):
+        proc, _ = self.run_step(PROCESS_GATE, transcript(7, 55, REAL_REVIEW_MESSAGE), changed="")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("Diff size unknown. Time floor: 60 s.", proc.stdout)
+
+    def test_a_fast_skip_fails_even_on_a_tiny_diff(self):
+        proc, _ = self.run_step(PROCESS_GATE, transcript(7, 20, REAL_REVIEW_MESSAGE), changed="1")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("under the 30 s floor", proc.stdout)
 
     def test_the_summary_names_the_numbers_and_the_artifact(self):
         proc, written = self.run_step(SUMMARY_STEP, transcript(9, 150, REAL_REVIEW_MESSAGE))
