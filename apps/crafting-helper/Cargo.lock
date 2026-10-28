@@ -458,10 +458,39 @@ checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 name = "ch-app"
 version = "0.1.0"
 dependencies = [
+ "ch-engine",
  "ep-update",
  "serde",
  "serde_json",
  "tempfile",
+]
+
+[[package]]
+name = "ch-blueprint"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "toml 1.1.8+spec-1.1.0",
+]
+
+[[package]]
+name = "ch-data"
+version = "0.1.0"
+dependencies = [
+ "ch-item",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ch-engine"
+version = "0.1.0"
+dependencies = [
+ "ch-blueprint",
+ "ch-data",
+ "ch-item",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

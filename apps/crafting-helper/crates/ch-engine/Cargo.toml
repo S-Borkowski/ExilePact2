@@ -1,0 +1,13 @@
+[package]
+name = "ch-engine"
+description = "The crafting helper's engine: for a parsed item, its targets and the blocked currencies, picks a blueprint route, classifies each next item state as hit, miss or unexpected, and gives the next step with its odds."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+ch-blueprint = { path = "../ch-blueprint" }
+ch-data = { path = "../ch-data" }
+ch-item = { path = "../ch-item" }
+serde = { workspace = true }
+serde_json = { workspace = true }

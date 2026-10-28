@@ -28,6 +28,13 @@ serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.152"
 # Pinned for `ch-item`, should it take it; `ch-app` does not.
 regex = "=1.13.1"
+# `ch-blueprint` alone: the hand-edited blueprint files, with `Spanned` values
+# so every validation error names a line and column. The one pin the quest
+# tracker's workspace lacks, so the guard checks it differently: this version
+# and every package it pulls are already in both apps' locks, through the
+# Tauri build, so no registry package is added. Cargo ignores the build
+# metadata (`1.1.8+spec-1.1.0` in the lock) when matching.
+toml = "=1.1.8"
 # Windows-only, `src-tauri` alone: the clipboard read (CF_UNICODETEXT through
 # OpenClipboard), the refusal beep and the overlay's show and hide without
 # activating it. The feature set is the waystone roller's, which the guard

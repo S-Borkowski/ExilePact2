@@ -1,0 +1,11 @@
+[package]
+name = "ch-data"
+description = "The crafting helper's modifier data, embedded: what a parsed item can roll, which tier a modifier on it is, and the rough single-step odds of a currency outcome, or unknown where the weights are not established."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+ch-item = { path = "../ch-item" }
+serde = { workspace = true }
+serde_json = { workspace = true }

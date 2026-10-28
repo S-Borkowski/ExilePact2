@@ -9,6 +9,9 @@ publish.workspace = true
 # The update logic the apps share (apps/shared, a workspace of its own):
 # no network and no unsafe code; the glue hands it the transport.
 ep-update = { path = "../../../shared/crates/ep-update" }
+# The crafting engine, re-exported for the craft window (and through it the
+# data, the blueprints and the item parser).
+ch-engine = { path = "../ch-engine" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

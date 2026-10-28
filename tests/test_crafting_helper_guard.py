@@ -49,8 +49,11 @@ copied, with these differences:
 `Versions`: the workspace, `tauri.conf.json`, `package.json`, `ch-item`'s
 literal `version` key and every workspace member's entry in `Cargo.lock`
 carry one version; `ch-app` and `src-tauri` take their version and every
-external dependency from the workspace (`ch-item` writes its own, std-only);
-every directory the `crates/*` member glob finds has a `Cargo.toml`; the
+external dependency from the workspace (`ch-item` writes its own, std-only),
+and so does every other member crate (`ch-data`, `ch-blueprint`,
+`ch-engine` and any later one): its `version`, `edition` and `publish` keys
+and each external dependency come from the workspace, a local or shared
+crate by path; every directory the `crates/*` member glob finds has a `Cargo.toml`; the
 executable's name, library name and identifier are the pinned ones. The
 guide's `### <version>` release heading is pinned by the docs criterion of
 the workorder that wrote the guide, not here.
@@ -60,7 +63,11 @@ the workorder that wrote the guide, not here.
 `package-lock.json` is one the quest tracker's lock already holds, at the
 same version; the local packages are the workspace's members (`ch-item`
 included when it exists) and the shared `ep-net` and `ep-update`; and the
-npm and workspace versions equal the quest tracker's.
+npm and workspace versions equal the quest tracker's. One workspace pin may
+be one the quest tracker's workspace lacks: `toml`, for the blueprint files.
+Its exact version must be one the quest tracker's `Cargo.lock` already holds
+(build metadata aside), so the pin adds no registry package; every other pin
+still equals the quest tracker's.
 
 Every matcher runs on a synthetic offender first, so a matcher that sees
 nothing cannot pass, and every walk must find files. A failure names the
@@ -132,6 +139,12 @@ WATCH_NAMES = [
     ("RegisterRawInputDevices", re.compile(r"\bRegisterRawInputDevices\b")),
 ]
 UI_CLIPBOARD_NAMES = [("navigator.clipboard", re.compile(r"\bnavigator\s*\??\.\s*clipboard\b"))]
+# The workspace pins the quest tracker's workspace lacks: `ch-blueprint`'s
+# TOML reader, a package already in its lock (through the Tauri build).
+PINS_OUTSIDE_THE_QUEST_TRACKER = {"toml"}
+# The package keys every member but `ch-item` (std-only, literal keys) takes
+# from the workspace.
+PACKAGE_KEYS = ("version", "edition", "publish")
 
 
 def input_offences(name: str, text: str, glue: bool) -> list[str]:
@@ -173,6 +186,38 @@ def workspace_dependency_offences(name: str, manifest: dict) -> list[str]:
             if isinstance(spec, dict) and "version" not in spec and ("path" in spec or spec.get("workspace") is True):
                 continue
             offences.append(f"{name}: {label}.{dep} is not taken from the workspace")
+    return offences
+
+
+def package_key_offences(name: str, manifest: dict) -> list[str]:
+    """Each of a member manifest's `version`, `edition` and `publish` keys
+    not taken from the workspace."""
+    package = manifest.get("package", {})
+    return [
+        f"{name}: package.{key} is not taken from the workspace"
+        for key in PACKAGE_KEYS
+        if package.get(key) != {"workspace": True}
+    ]
+
+
+def pin_version(spec) -> str | None:
+    """The version of a workspace dependency, written as a string or a table."""
+    return spec if isinstance(spec, str) else spec.get("version")
+
+
+def lock_pin_offences(pins: dict, lock: dict, names: set[str]) -> list[str]:
+    """Each of `names` among the workspace `pins` that is not pinned exactly
+    to a version the parsed `lock` holds for that package, build metadata
+    aside (Cargo matches `=1.1.8` to `1.1.8+spec-1.1.0`)."""
+    offences = []
+    for name in sorted(names & set(pins)):
+        version = str(pin_version(pins[name]))
+        if not version.startswith("="):
+            offences.append(f"{name}: {version!r} is not pinned exactly")
+            continue
+        held = {p["version"].split("+")[0] for p in lock.get("package", []) if p["name"] == name}
+        if version[1:] not in held:
+            offences.append(f"{name}: {version[1:]} is not in the quest tracker's Cargo.lock")
     return offences
 
 
@@ -467,6 +512,30 @@ class Versions(unittest.TestCase):
             offences += workspace_dependency_offences(wr.rel(d / "Cargo.toml"), manifest)
         self.assertEqual(offences, [])
 
+    def test_every_new_crate_takes_everything_from_the_workspace(self):
+        offender = tomllib.loads(
+            '[package]\nname = "ch-new"\nversion.workspace = true\nedition = "2021"\n'
+            '[dependencies]\nch-item = { path = "../ch-item" }\nserde = { workspace = true }\n'
+            'toml = "=1.1.8"\n'
+        )
+        self.assertEqual(
+            package_key_offences("o", offender) + workspace_dependency_offences("o", offender),
+            [
+                "o: package.edition is not taken from the workspace",
+                "o: package.publish is not taken from the workspace",
+                "o: dependencies.toml is not taken from the workspace",
+            ],
+        )
+        crates = [d for d in member_dirs() if d not in (CH_ITEM, TAURI)]
+        # The walk finds the M4 crates, so a blind walk cannot pass.
+        self.assertLessEqual({"ch-app", "ch-data", "ch-blueprint", "ch-engine"}, {d.name for d in crates})
+        offences = []
+        for d in crates:
+            name = wr.rel(d / "Cargo.toml")
+            manifest = tomllib.loads(wr.read(d / "Cargo.toml"))
+            offences += package_key_offences(name, manifest) + workspace_dependency_offences(name, manifest)
+        self.assertEqual(offences, [])
+
     def test_names_are_pinned(self):
         conf = json.loads(wr.read(TAURI / "tauri.conf.json"))
         self.assertEqual(conf["identifier"], "net.exilepact2.crafting-helper")
@@ -506,14 +575,35 @@ class LockedToQuestTrackerPins(unittest.TestCase):
     def test_workspace_pins_equal_the_quest_trackers(self):
         ours = tomllib.loads(wr.read(APP / "Cargo.toml"))["workspace"]["dependencies"]
         theirs = tomllib.loads(wr.read(QT / "Cargo.toml"))["workspace"]["dependencies"]
-
-        def version(spec):
-            return spec if isinstance(spec, str) else spec.get("version")
-
         for dep, spec in ours.items():
+            if dep in PINS_OUTSIDE_THE_QUEST_TRACKER:
+                # Checked against the quest tracker's lock, below.
+                continue
             self.assertIn(dep, theirs, f"{dep} is not a quest tracker pin")
-            self.assertTrue(str(version(spec)).startswith("="), f"{dep} is not pinned exactly")
-            self.assertEqual(version(spec), version(theirs[dep]), dep)
+            self.assertTrue(str(pin_version(spec)).startswith("="), f"{dep} is not pinned exactly")
+            self.assertEqual(pin_version(spec), pin_version(theirs[dep]), dep)
+
+    def test_workspace_pins_outside_the_quest_tracker_are_in_its_lock(self):
+        lock = {"package": [
+            {"name": "toml", "version": "1.1.8+spec-1.1.0", "source": "registry+https://github.com/rust-lang/crates.io-index"},
+        ]}
+        names = {"toml", "leftpad"}
+        self.assertEqual(lock_pin_offences({"toml": "=1.1.8"}, lock, names), [])
+        self.assertEqual(
+            lock_pin_offences({"toml": "=1.1.9", "leftpad": {"version": "=0.1.0"}, "serde": "=9"}, lock, names),
+            [
+                "leftpad: 0.1.0 is not in the quest tracker's Cargo.lock",
+                "toml: 1.1.9 is not in the quest tracker's Cargo.lock",
+            ],
+        )
+        self.assertEqual(lock_pin_offences({"toml": "1.1.8"}, lock, names), ["toml: '1.1.8' is not pinned exactly"])
+
+        ours = tomllib.loads(wr.read(APP / "Cargo.toml"))["workspace"]["dependencies"]
+        theirs = tomllib.loads(wr.read(QT / "Cargo.toml"))["workspace"]["dependencies"]
+        # Each allowance is used and still needed (else it is stale).
+        self.assertEqual(set(ours) - set(theirs), PINS_OUTSIDE_THE_QUEST_TRACKER)
+        qt_lock = tomllib.loads(wr.read(QT / "Cargo.lock"))
+        self.assertEqual(lock_pin_offences(ours, qt_lock, PINS_OUTSIDE_THE_QUEST_TRACKER), [])
 
     def test_npm_versions_equal_the_quest_trackers(self):
         ours = json.loads(wr.read(APP / "package.json"))
