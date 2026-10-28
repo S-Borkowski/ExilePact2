@@ -5,7 +5,7 @@
   // (`qt:row-change`) is played by that row (`QuestRow`) and announced here,
   // in a polite live region, whether the row is on screen or not.
   import { onDestroy, onMount } from 'svelte';
-  import type { Bridge, Send } from './bridge';
+  import type { Bridge, ResizeDirection, Send } from './bridge';
   import type { RowChange, View } from './ipc';
   import { ANNOUNCED_KEEP, RowChanges, setRowChanges } from './rowchange';
   import Collapsed from './components/Collapsed.svelte';
@@ -22,6 +22,7 @@
     void bridge.command(name, args);
   };
   const drag = (): void => bridge.startDrag();
+  const resize = (direction: ResizeDirection): void => bridge.startResize(direction);
 
   function onRowChange(change: RowChange): void {
     changes.add(change);
@@ -66,7 +67,7 @@
     {#if view.frame === 'collapsed'}
       <Collapsed {view} {send} />
     {:else}
-      <Panel {view} {send} {drag} />
+      <Panel {view} {send} {drag} {resize} />
     {/if}
   {/if}
   <div class="announcer sr-only" aria-live="polite" aria-atomic="false">
@@ -77,14 +78,22 @@
 </div>
 
 <style>
-  /* The window's transparent margin holds the panel's shadow. The panel sits
-     at the window's right edge: with no saved position the shell places the
-     window where the old right dock did (the dock setting went after Live 2). */
+  /* The window's transparent margin holds the panel's shadow. The overlay is
+     the window's height, so the panel fills the window inside that margin in
+     both directions (the player sizes the window; the scale only zooms). The
+     collapsed badge sits at the window's right edge: with no saved position
+     the shell places the window where the old right dock did (the dock
+     setting went after Live 2). The preview's stand-in for the webview zoom
+     is a CSS `zoom` on the page, which scales `vh` with it, so the height
+     is divided by that scale there; inside the app it is unset (1). */
   .overlay {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
+    box-sizing: border-box;
+    height: calc(100vh / var(--preview-scale, 1));
     padding: 12px;
+    overflow: hidden;
     color: var(--color-text-primary);
     font-family: var(--font-family);
     font-size: var(--size-step);

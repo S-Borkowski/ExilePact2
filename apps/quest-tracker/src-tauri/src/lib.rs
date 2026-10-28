@@ -97,7 +97,7 @@ use qt_app::{
     App, AppConfig, AppSettingsView, Frame, Mode, MonitorMetrics, Options, PanelConfig, Placement,
     QuestAction, QuitFrom, RowChange, ScreenBackend, Store, SystemClock, TrayAction, TrayItem,
     TrayMenu, UpdateConfig, UpdateTransport, View, ViewKind, DEFAULT_POLL_INTERVAL,
-    SHUTDOWN_TIMEOUT,
+    MIN_WINDOW_SIZE, SHUTDOWN_TIMEOUT,
 };
 use serde_json::Value;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -123,9 +123,6 @@ const SETTINGS_HEIGHT: f64 = 280.0;
 /// The tray icon's id. Its menu and tooltip are `qt_app::tray_menu`'s.
 const TRAY: &str = "quest-tracker";
 
-/// The window's size at scale 1, as `tauri.conf.json` sets it.
-const WIDTH: f64 = 360.0;
-const HEIGHT: f64 = 640.0;
 
 /// The default place, for a window with no saved position (where the
 /// right-hand dock put it before the dock side was dropped): the gap to the
@@ -233,10 +230,21 @@ impl qt_app::Window for TauriWindow {
         w.set_ignore_cursor_events(on).map_err(|e| e.to_string())
     }
 
+    /// Zooms the content only; the window keeps the size the player gave it.
     fn set_scale(&self, factor: f64) -> Result<(), String> {
-        let w = self.window()?;
-        w.set_zoom(factor).map_err(|e| e.to_string())?;
-        w.set_size(LogicalSize::new(WIDTH * factor, HEIGHT * factor))
+        self.window()?.set_zoom(factor).map_err(|e| e.to_string())
+    }
+
+    /// Edit mode: the panel's edge handles resize the window through
+    /// `startResizeDragging`, and Tauri's own border for an undecorated
+    /// window (inside the transparent margin) works too. Play mode: neither.
+    fn set_resizable(&self, on: bool) -> Result<(), String> {
+        self.window()?.set_resizable(on).map_err(|e| e.to_string())
+    }
+
+    fn set_size(&self, width: f64, height: f64) -> Result<(), String> {
+        self.window()?
+            .set_size(LogicalSize::new(width, height))
             .map_err(|e| e.to_string())
     }
 
@@ -757,6 +765,10 @@ pub fn run() {
             let window = app
                 .get_webview_window(OVERLAY)
                 .ok_or("tauri.conf.json has no overlay window")?;
+            // The smallest size the edges can give the window, whatever the
+            // zoom (`qt_app::MIN_WINDOW_SIZE`); logged once the shell is up.
+            let (min_width, min_height) = MIN_WINDOW_SIZE;
+            let min_size = window.set_min_size(Some(LogicalSize::new(min_width, min_height)));
             let panels = PanelConfig {
                 backend: panel_backend(&window),
                 table: None,
@@ -792,6 +804,9 @@ pub fn run() {
             // Before the worker starts, so no check can change the menu
             // while it is built; logged after the start's own lines.
             let tray_built = tray.build(app.handle(), &shell.get_app_settings());
+            if let Err(e) = min_size {
+                shell.diag(&format!("error: window minimum size: {e}"));
+            }
             shell.start();
             no_activate(&window, &shell);
             match tray_built {
@@ -808,6 +823,17 @@ pub fn run() {
             WindowEvent::Moved(at) if window.label() == OVERLAY => {
                 let (x, y) = (at.x, at.y);
                 later(window.app_handle(), move |shell| shell.window_moved(x, y));
+            }
+            // Every resize of the overlay, in logical pixels, handed over off
+            // the main thread as moves are: one made in edit mode (by the
+            // panel's edges) is kept as the window's size.
+            WindowEvent::Resized(size) if window.label() == OVERLAY => {
+                let Ok(dpi) = window.scale_factor() else {
+                    return;
+                };
+                let logical = size.to_logical::<f64>(dpi);
+                let (width, height) = (logical.width, logical.height);
+                later(window.app_handle(), move |shell| shell.window_resized(width, height));
             }
             WindowEvent::ScaleFactorChanged { .. } if window.label() == OVERLAY => {
                 later(window.app_handle(), |shell| shell.follow_monitor());

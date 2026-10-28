@@ -220,6 +220,12 @@ impl Window for FakeWindow {
     fn set_scale(&self, _: f64) -> Result<(), String> {
         Ok(())
     }
+    fn set_resizable(&self, _: bool) -> Result<(), String> {
+        Ok(())
+    }
+    fn set_size(&self, _: f64, _: f64) -> Result<(), String> {
+        Ok(())
+    }
     fn place(&self, _: Placement) -> Result<(), String> {
         Ok(())
     }

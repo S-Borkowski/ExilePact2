@@ -22,7 +22,7 @@ use qt_app::cli::{self, Options};
 use qt_app::discover::{self, LogSource};
 use qt_app::{
     App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, QuitFrom, Window, HIDDEN_LINE,
-    NO_AREA_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
+    MIN_WINDOW_SIZE, NO_AREA_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
 };
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
@@ -167,6 +167,16 @@ impl Window for FakeWindow {
 
     fn set_scale(&self, factor: f64) -> Result<(), String> {
         self.0.calls.lock().unwrap().push(format!("scale {factor}"));
+        Ok(())
+    }
+
+    fn set_resizable(&self, on: bool) -> Result<(), String> {
+        self.0.calls.lock().unwrap().push(format!("resizable {on}"));
+        Ok(())
+    }
+
+    fn set_size(&self, width: f64, height: f64) -> Result<(), String> {
+        self.0.calls.lock().unwrap().push(format!("size {width} {height}"));
         Ok(())
     }
 
@@ -1204,6 +1214,206 @@ fn auto_scale_follows_window_to_other_monitor() {
     h.app.follow_monitor();
     assert_eq!(h.window.calls().len(), before);
     assert_eq!(scales(&h).last().map(String::as_str), Some("scale 1"));
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// ---------------------------------------------------------------------------
+// 0.1.1: the scale zooms the content and never sizes the window; the
+// window's size is the player's, set by its edges in edit mode, kept like a
+// move and applied at the next start.
+
+fn sizes(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("size"))
+        .collect()
+}
+
+fn resizable(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("resizable"))
+        .collect()
+}
+
+#[test]
+fn window_is_resizable_in_edit_mode_only() {
+    // Baseline: the app starts in play mode, where the window is not
+    // resizable (it is click-through there).
+    let h = harness(Setup::default());
+    h.app.start();
+    assert_eq!(resizable(&h), vec!["resizable false"]);
+
+    // Target: each switch of mode turns resizing with it, by `set_mode` and
+    // by the shortcut.
+    h.app.set_mode(Mode::Edit).unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable true");
+    h.app.set_mode(Mode::Play).unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable false");
+    h.app.toggle_mode().unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable true");
+    h.app.toggle_mode().unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable false");
+    assert_eq!(resizable(&h).len(), 5);
+
+    // Negative control: a command that is not about the mode leaves it.
+    h.app.set_view_kind(ViewKind::Campaign).unwrap();
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    assert_eq!(resizable(&h).len(), 5);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A start in edit mode (no shortcut to leave play mode) is resizable.
+    let h = harness(Setup {
+        hotkey_fails: true,
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(h.views.last().mode, Mode::Edit);
+    assert_eq!(resizable(&h), vec!["resizable true"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn window_size_from_edit_mode_is_kept_and_restored() {
+    let h = harness(Setup::default());
+    h.app.start();
+    // Baseline: a resize in play mode (the shell's own sizing) is not kept.
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(500.0, 700.0);
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    assert!(h.stored("settings.json").unwrap().get("window").is_none());
+
+    // Target: a resize in edit mode is saved as `width` and `height`, in
+    // whole logical pixels.
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(420.4, 759.6);
+    assert_eq!(
+        h.stored("settings.json").unwrap().get("window"),
+        Some(&json!({ "width": 420, "height": 760 }))
+    );
+
+    // Applied at the next start, before the window is placed, and the zoom
+    // does not change it.
+    let h = h.rerun(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 420 760"]);
+    let calls = h.window.calls();
+    let at = |what: &str| calls.iter().position(|c| c.starts_with(what)).unwrap();
+    assert!(at("size") < at("place"), "{calls:?}");
+
+    // A drag keeps the position beside the size.
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_moved(10, 20);
+    assert_eq!(
+        h.stored("settings.json").unwrap().get("window"),
+        Some(&json!({ "x": 10, "y": 20, "width": 420, "height": 760 }))
+    );
+    // The same size again (a DPI change keeps the logical size) saves
+    // nothing new, and a size of nothing (a minimised window) is ignored.
+    let saves = h.app.save_count();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(420.0, 760.0);
+    h.app.window_resized(0.0, 0.0);
+    assert_eq!(h.app.save_count(), saves);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A saved size under the minimum (a hand-edited file) opens at the
+    // minimum.
+    let h = harness_in(
+        store_with_settings(json!({ "window": { "width": 10, "height": 10 } })),
+        Setup::default(),
+    );
+    h.app.start();
+    let (w, hh) = MIN_WINDOW_SIZE;
+    assert_eq!(sizes(&h), vec![format!("size {w} {hh}")]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn scale_changes_zoom_only() {
+    let h = harness(Setup {
+        monitor: monitor_at(1080, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    // Baseline: the first start sizes the window once (below).
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+
+    // Target: a fixed scale zooms and never sizes.
+    for scale in [json!(1.5), json!(0.75), json!(2.0)] {
+        h.app.update_settings(&json!({ "scale": scale })).unwrap();
+    }
+    assert_eq!(scales(&h), vec!["scale 1", "scale 1.5", "scale 0.75", "scale 2"]);
+    // Auto too, from the monitor.
+    h.app.update_settings(&json!({ "scale": "auto" })).unwrap();
+    assert_eq!(scales(&h).last().unwrap(), "scale 1");
+    // And Auto following the window to another monitor, in play mode and in
+    // edit mode, and a DPI change.
+    *h.window.monitor.lock().unwrap() = monitor_at(1440, 1.0);
+    h.app.window_moved(3000, 300);
+    assert_eq!(scales(&h).last().unwrap(), "scale 1.33");
+    h.app.set_mode(Mode::Edit).unwrap();
+    *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.0);
+    h.app.window_moved(4000, 200);
+    assert_eq!(scales(&h).last().unwrap(), "scale 2");
+    *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.5);
+    h.app.follow_monitor();
+    assert_eq!(scales(&h).last().unwrap(), "scale 1.33");
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn first_start_sizes_the_window_from_the_zoom() {
+    // No saved size, as for every 0.1.0 user: the panel's 320 x 384 plus the
+    // 12 px margin on each side, times the starting zoom, rounded; applied
+    // after the zoom and before the window is placed at its default again,
+    // so the right margin holds for the size it now has.
+    let h = harness(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    let calls = h.window.calls();
+    let docked = format!("place {:?}", Placement::Default);
+    let scale = calls.iter().position(|c| c == "scale 1.33").unwrap();
+    let size = calls.iter().position(|c| c == "size 458 543").unwrap_or_else(|| panic!("{calls:?}"));
+    let last_place = calls.iter().rposition(|c| *c == docked).unwrap();
+    assert!(scale < size && size < last_place, "{calls:?}");
+    assert_eq!(sizes(&h), vec!["size 458 543"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A fixed scale: that zoom's size.
+    let h = harness_in(store_with_settings(json!({ "scale": 2.0 })), Setup::default());
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 688 816"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A saved position with no size (a 0.1.0 file): the default size, and
+    // the window goes to the saved position once.
+    let h = harness_in(
+        store_with_settings(json!({ "window": { "x": 10, "y": 20 } })),
+        Setup::default(),
+    );
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert_eq!(places(&h), vec![format!("place {:?}", Placement::At { x: 10, y: 20 })]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // Negative control: a saved size is the window's, whatever the zoom.
+    let h = harness_in(
+        store_with_settings(json!({ "scale": 2.0, "window": { "width": 400, "height": 500 } })),
+        Setup::default(),
+    );
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 400 500"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 

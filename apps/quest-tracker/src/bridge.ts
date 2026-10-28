@@ -24,6 +24,22 @@ import {
 export const VIEW_EVENT = 'qt:view';
 export const ROW_CHANGE_EVENT = 'qt:row-change';
 
+/**
+ * The edge or corner a resize drag starts from: the panel's eight handles in
+ * edit mode, named as Tauri's `startResizeDragging` names them.
+ */
+export const RESIZE_DIRECTIONS = [
+  'North',
+  'NorthEast',
+  'East',
+  'SouthEast',
+  'South',
+  'SouthWest',
+  'West',
+  'NorthWest',
+] as const;
+export type ResizeDirection = (typeof RESIZE_DIRECTIONS)[number];
+
 /** The frames `open_frame` opens over the panel. */
 export type OverlayFrame = 'character-picker' | 'settings';
 
@@ -71,6 +87,12 @@ export interface Bridge {
    * preview; the test bridge records it.
    */
   startDrag(): void;
+  /**
+   * Starts resizing the overlay window from `direction`'s edge or corner
+   * with the pressed mouse button (edit mode's panel edges). The shell keeps
+   * a size made in edit mode. The preview and the test bridge record it.
+   */
+  startResize(direction: ResizeDirection): void;
 }
 
 function warnIfOff(what: string, problems: string[]): void {
@@ -111,6 +133,11 @@ export function tauriBridge(): Bridge {
       getCurrentWindow()
         .startDragging()
         .catch((error) => console.error('quest-tracker: the window drag failed', error));
+    },
+    startResize(direction) {
+      getCurrentWindow()
+        .startResizeDragging(direction)
+        .catch((error) => console.error('quest-tracker: the window resize failed', error));
     },
   };
 }

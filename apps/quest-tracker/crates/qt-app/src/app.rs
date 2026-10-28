@@ -121,6 +121,29 @@ pub enum Placement {
     At { x: i32, y: i32 },
 }
 
+/// The window's size at zoom 1 when none was saved, in logical pixels: the
+/// panel's 320 × 384 CSS px (0.1.0's width and its old `60vh` cap) plus the
+/// 12 px transparent margin on each side that holds its shadow. A first
+/// start multiplies it by the starting zoom.
+pub const DEFAULT_WINDOW_SIZE: (f64, f64) = (344.0, 408.0);
+
+/// The smallest window, in logical pixels, whatever the zoom: at zoom 1 the
+/// edit-mode header (the EDIT chip, the name shortened to about five
+/// letters, the view switch and both buttons) and the way back to play mode
+/// each still fit on one line, measured in the browser preview, and the
+/// body between them keeps about 165 px for rows.
+pub const MIN_WINDOW_SIZE: (f64, f64) = (320.0, 240.0);
+
+/// A window size to keep, in whole logical pixels and never under
+/// [`MIN_WINDOW_SIZE`]; `None` for a size of nothing (a minimised window)
+/// or one that is not a number.
+fn saved_size(width: f64, height: f64) -> Option<(u32, u32)> {
+    let whole = |v: f64, min: f64| {
+        (v.is_finite() && v >= 1.0).then(|| v.round().clamp(min, f64::from(u32::MAX)) as u32)
+    };
+    Some((whole(width, MIN_WINDOW_SIZE.0)?, whole(height, MIN_WINDOW_SIZE.1)?))
+}
+
 /// What the shell does to its window and the desktop. Tauri implements it
 /// in `src-tauri`; tests use a fake that records the calls.
 pub trait Window: Send + Sync + 'static {
@@ -129,8 +152,13 @@ pub trait Window: Send + Sync + 'static {
     /// keyboard focus, so the Settings fields (log path, shortcut) can be
     /// typed in; a window that cannot be activated never receives keys.
     fn set_click_through(&self, on: bool) -> Result<(), String>;
-    /// The `scale` setting as a webview zoom factor (and window size).
+    /// The `scale` setting as a webview zoom factor. It zooms the content
+    /// only: the window's size is the player's ([`Window::set_size`]).
     fn set_scale(&self, factor: f64) -> Result<(), String>;
+    /// Whether the window can be resized by its edges: in edit mode only.
+    fn set_resizable(&self, on: bool) -> Result<(), String>;
+    /// Sizes the window, in logical pixels.
+    fn set_size(&self, width: f64, height: f64) -> Result<(), String>;
     fn place(&self, placement: Placement) -> Result<(), String>;
     /// Registers `hotkey` as the one global shortcut, replacing any other.
     fn register_hotkey(&self, hotkey: &str) -> Result<(), String>;
@@ -395,6 +423,9 @@ struct State {
     settings: Settings,
     /// Where the user dragged the window, saved with the settings.
     window_pos: Option<(i32, i32)>,
+    /// The size the user gave the window by its edges in edit mode, in
+    /// whole logical pixels, saved with the settings.
+    window_size: Option<(u32, u32)>,
     ui: qt_viewmodel::UiState,
     row_changes: RowChanges,
     /// Which tailer's events count: raised each time a tailer is started or
@@ -485,8 +516,17 @@ impl LogClock {
 impl State {
     fn settings_json(&self) -> Value {
         let mut v = serde_json::to_value(&self.settings).expect("settings serialise");
-        if let (Some((x, y)), Some(obj)) = (self.window_pos, v.as_object_mut()) {
-            obj.insert("window".to_string(), json!({ "x": x, "y": y }));
+        let mut window = Map::new();
+        if let Some((x, y)) = self.window_pos {
+            window.insert("x".to_string(), json!(x));
+            window.insert("y".to_string(), json!(y));
+        }
+        if let Some((width, height)) = self.window_size {
+            window.insert("width".to_string(), json!(width));
+            window.insert("height".to_string(), json!(height));
+        }
+        if let (false, Some(obj)) = (window.is_empty(), v.as_object_mut()) {
+            obj.insert("window".to_string(), Value::Object(window));
         }
         v
     }
@@ -707,6 +747,7 @@ impl App {
 
         let mut settings = Settings::default();
         let mut window_pos = None;
+        let mut window_size = None;
         let mut engine = Engine::new(data);
         let mut position = None;
         // Which files exist, so a first run writes its settings and roster.
@@ -730,6 +771,11 @@ impl App {
                     let x = w.get("x")?.as_i64()?;
                     let y = w.get("y")?.as_i64()?;
                     Some((i32::try_from(x).ok()?, i32::try_from(y).ok()?))
+                });
+                window_size = v.get("window").and_then(|w| {
+                    let width = w.get("width")?.as_f64()?;
+                    let height = w.get("height")?.as_f64()?;
+                    saved_size(width, height)
                 });
             }
             if let Some(Value::Object(roster)) =
@@ -831,6 +877,7 @@ impl App {
             engine,
             settings,
             window_pos,
+            window_size,
             ui,
             row_changes: RowChanges::new(),
             tail_gen: 0,
@@ -926,12 +973,13 @@ impl App {
     /// Applies the window state, registers the shortcut, starts the tailer
     /// and the worker, and announces the first view.
     pub fn start(self: &Arc<Self>) {
-        let (mode, scale, placement, hotkey, log) = {
+        let (mode, scale, placement, size, hotkey, log) = {
             let st = self.lock();
             (
                 st.ui.mode,
                 st.settings.scale,
                 st.placement(),
+                st.window_size,
                 st.settings.hotkey.clone(),
                 st.log_path.clone(),
             )
@@ -977,9 +1025,20 @@ impl App {
         if let Err(e) = self.window.set_click_through(mode == Mode::Play) {
             self.window_error("click-through", &e);
         }
+        if let Err(e) = self.window.set_resizable(mode == Mode::Edit) {
+            self.window_error("resizing", &e);
+        }
+        // A saved size is the window's whatever the zoom, so it is applied
+        // before the window is placed.
+        if let Some((width, height)) = size {
+            if let Err(e) = self.window.set_size(f64::from(width), f64::from(height)) {
+                self.window_error("size", &e);
+            }
+        }
         // Placed first, so `auto` reads the monitor the window was placed
-        // on; a window at its default place is placed again once the zoom
-        // has resized it, so its edge keeps the margin to the monitor's side.
+        // on; a window at its default place is placed again once the first
+        // start has sized it from the zoom, so its edge keeps the margin to
+        // the monitor's side.
         if let Err(e) = self.window.place(placement) {
             self.window_error("placement", &e);
         }
@@ -991,8 +1050,22 @@ impl App {
                 None
             };
             self.lock().scale_monitor = monitor;
-            if let Err(e) = self.window.set_scale(self.zoom(scale, monitor)) {
+            let zoom = self.zoom(scale, monitor);
+            if let Err(e) = self.window.set_scale(zoom) {
                 self.window_error("scale", &e);
+            }
+            // No saved size (a first start, or a 0.1.0 settings file): the
+            // default size at the starting zoom (never under the minimum, at
+            // a zoom below 1), which is not saved.
+            if size.is_none() {
+                let ((width, height), (min_w, min_h)) = (DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE);
+                let sized = self.window.set_size(
+                    (width * zoom).round().max(min_w),
+                    (height * zoom).round().max(min_h),
+                );
+                if let Err(e) = sized {
+                    self.window_error("size", &e);
+                }
             }
         }
         if placement == Placement::Default {
@@ -2108,10 +2181,34 @@ impl App {
         self.follow_monitor();
     }
 
+    /// The window was resized to `width` × `height` logical pixels, in any
+    /// mode. Only a resize in edit mode (by the panel's edges) is kept as the
+    /// window's size, like a move; one in play mode (the shell's own sizing)
+    /// is not, and a size of nothing (a minimised window) is ignored. The
+    /// zoom does not follow the size.
+    pub fn window_resized(&self, width: f64, height: f64) {
+        let Some(size) = saved_size(width, height) else {
+            return;
+        };
+        let keep = {
+            let mut st = self.lock();
+            let keep = st.ui.mode == Mode::Edit && st.window_size != Some(size);
+            if keep {
+                st.window_size = Some(size);
+                st.dirty = true;
+            }
+            keep
+        };
+        if keep {
+            self.save_if_due(false);
+        }
+    }
+
     /// Re-evaluates the `auto` scale on the window's monitor, after a move or
     /// a DPI scale change, and applies the zoom only when it differs from
-    /// the one applied. A fixed scale never reads the monitor. A window at
-    /// its default place is placed again after a new zoom has resized it.
+    /// the one applied. A fixed scale never reads the monitor. The zoom
+    /// never sizes the window (0.1.1); a window at its default place is
+    /// placed again after a new zoom, on the monitor it is now on.
     pub fn follow_monitor(&self) {
         let _scale = self.scale_lock.lock().unwrap_or_else(|p| p.into_inner());
         if self.lock().settings.scale != Scale::Auto {
@@ -2247,6 +2344,11 @@ impl App {
                     Some(StatusLine::error(format!("Click-through could not be set: {e}"))),
                 );
             }
+        }
+        // The window is resized by its edges in edit mode only. A failure is
+        // logged: the window keeps the size it has, and the mode still works.
+        if let Err(e) = self.window.set_resizable(mode == Mode::Edit) {
+            self.diag(&format!("error: window resizing: {e}"));
         }
         self.diag(&format!("mode {}", mode_str(mode)));
     }
@@ -2762,6 +2864,12 @@ mod tests {
             Ok(())
         }
         fn set_scale(&self, _: f64) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_resizable(&self, _: bool) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_size(&self, _: f64, _: f64) -> Result<(), String> {
             Ok(())
         }
         fn place(&self, _: Placement) -> Result<(), String> {

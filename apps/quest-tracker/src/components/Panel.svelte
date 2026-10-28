@@ -5,7 +5,15 @@
   // 1 px border that edit mode turns into the 2 px accent. At opacity 0 the
   // background is gone and the border and accent still draw: they are the
   // ring (`.cut::after`), which the setting does not touch.
-  import type { Send } from '../bridge';
+  //
+  // The panel fills the window inside its shadow margin, in both directions,
+  // and its body scrolls: the player sizes the window, the scale only zooms
+  // (0.1.1). In edit mode its four edges and four corners are resize
+  // handles, bands that straddle the border with the matching cursor and
+  // nothing drawn; a left press starts the window's resize from that edge
+  // (`resize`, the bridge's window resize), as the header's press moves it.
+  // Play mode has none: the window is click-through there.
+  import { RESIZE_DIRECTIONS, type ResizeDirection, type Send } from '../bridge';
   import type { QuestRow as Row, StatusKind, View, Worth } from '../ipc';
   import { WORTH_LABEL } from '../labels';
   import ActSection from './ActSection.svelte';
@@ -17,9 +25,20 @@
   import QuestRow from './QuestRow.svelte';
   import Settings from './Settings.svelte';
 
-  let { view, send, drag = () => {} }: { view: View; send: Send; drag?: () => void } = $props();
+  let {
+    view,
+    send,
+    drag = () => {},
+    resize = () => {},
+  }: { view: View; send: Send; drag?: () => void; resize?: (direction: ResizeDirection) => void } = $props();
 
   const edit = $derived(view.mode === 'edit');
+
+  function pressEdge(event: PointerEvent, direction: ResizeDirection): void {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    resize(direction);
+  }
   const STATUS_ICON = { ok: 'ui-check', info: null, warn: 'ui-warning', error: 'ui-warning' } as const;
 
   // Next up arrives sorted by worth (worth it, optional, not worth it). A
@@ -89,10 +108,24 @@
       </button>
     {/if}
   </div>
+  {#if edit}
+    {#each RESIZE_DIRECTIONS as direction (direction)}
+      <!-- A mouse gesture on the window's own frame, which the keyboard has
+           no use for: the window keeps its size otherwise. -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="resize-edge" data-resize={direction} aria-hidden="true" onpointerdown={(e) => pressEdge(e, direction)}></div>
+    {/each}
+  {/if}
 </div>
 
 <style>
+  /* The window's height and width inside the overlay's margin. */
   .panel-shadow {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    align-self: stretch;
+    min-height: 0;
     filter: var(--drop-panel);
   }
 
@@ -100,10 +133,11 @@
     --cut: var(--chamfer-panel);
     --ring-color: var(--color-panel-border);
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     box-sizing: border-box;
-    width: var(--size-panel-width);
-    max-height: 60vh;
+    width: 100%;
+    min-height: 0;
     border-radius: var(--radius);
     /* The opacity setting fades the background only; text and icons stay opaque. */
     background:
@@ -121,6 +155,7 @@
 
   .status-line {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 6px;
     margin: 0;
@@ -141,6 +176,8 @@
   }
 
   .body {
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     padding-bottom: var(--space-panel-pad);
     scrollbar-color: var(--color-panel-border) transparent;
@@ -156,6 +193,7 @@
 
   .back-to-play {
     display: flex;
+    flex: none;
     align-items: center;
     gap: 6px;
     width: 100%;
@@ -185,5 +223,80 @@
 
   .key {
     font-weight: var(--font-weight-title);
+  }
+
+  /* Edit mode's resize handles: an 8 px band straddling each edge (half in
+     the shadow margin, half over the border) and a 14 px square on each
+     corner, above the edges. Nothing is drawn: the cursor is the affordance. */
+  .resize-edge {
+    --band: 8px;
+    --corner: 14px;
+    position: absolute;
+    z-index: 1;
+  }
+
+  .resize-edge[data-resize='North'],
+  .resize-edge[data-resize='South'] {
+    right: calc(var(--corner) / 2);
+    left: calc(var(--corner) / 2);
+    height: var(--band);
+    cursor: ns-resize;
+  }
+
+  .resize-edge[data-resize='East'],
+  .resize-edge[data-resize='West'] {
+    top: calc(var(--corner) / 2);
+    bottom: calc(var(--corner) / 2);
+    width: var(--band);
+    cursor: ew-resize;
+  }
+
+  .resize-edge[data-resize='North'] {
+    top: calc(var(--band) / -2);
+  }
+
+  .resize-edge[data-resize='South'] {
+    bottom: calc(var(--band) / -2);
+  }
+
+  .resize-edge[data-resize='East'] {
+    right: calc(var(--band) / -2);
+  }
+
+  .resize-edge[data-resize='West'] {
+    left: calc(var(--band) / -2);
+  }
+
+  .resize-edge[data-resize='NorthWest'],
+  .resize-edge[data-resize='NorthEast'],
+  .resize-edge[data-resize='SouthEast'],
+  .resize-edge[data-resize='SouthWest'] {
+    z-index: 2;
+    width: var(--corner);
+    height: var(--corner);
+  }
+
+  .resize-edge[data-resize='NorthWest'] {
+    top: calc(var(--corner) / -2);
+    left: calc(var(--corner) / -2);
+    cursor: nwse-resize;
+  }
+
+  .resize-edge[data-resize='SouthEast'] {
+    right: calc(var(--corner) / -2);
+    bottom: calc(var(--corner) / -2);
+    cursor: nwse-resize;
+  }
+
+  .resize-edge[data-resize='NorthEast'] {
+    top: calc(var(--corner) / -2);
+    right: calc(var(--corner) / -2);
+    cursor: nesw-resize;
+  }
+
+  .resize-edge[data-resize='SouthWest'] {
+    bottom: calc(var(--corner) / -2);
+    left: calc(var(--corner) / -2);
+    cursor: nesw-resize;
   }
 </style>
