@@ -23,7 +23,7 @@ use std::sync::{Arc, Mutex};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter as _, Manager, RunEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
-use wr_app::{App, AppConfig, HotkeyError, Store, View};
+use wr_app::{App, AppConfig, BeepAttempt, HotkeyError, Store, View};
 
 /// The window's label (`tauri.conf.json`).
 const MAIN: &str = "main";
@@ -88,8 +88,8 @@ impl wr_app::Shell for TauriShell {
         clipboard::write(hwnd, text)
     }
 
-    fn beep(&self) {
-        clipboard::beep();
+    fn beep(&self) -> Vec<BeepAttempt> {
+        clipboard::beep()
     }
 
     fn emit_view(&self, view: &View) {
@@ -102,16 +102,25 @@ impl wr_app::Shell for TauriShell {
 mod clipboard {
     use std::time::Duration;
 
-    use windows_sys::Win32::Foundation::{GlobalFree, HWND};
+    use windows_sys::Win32::Foundation::{GetLastError, GlobalFree, HWND};
     use windows_sys::Win32::System::DataExchange::{
         CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData,
     };
-    use windows_sys::Win32::System::Diagnostics::Debug::MessageBeep;
+    use windows_sys::Win32::System::Diagnostics::Debug::{Beep, MessageBeep};
     use windows_sys::Win32::System::Memory::{
         GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE,
     };
     use windows_sys::Win32::System::Ole::CF_UNICODETEXT;
-    use windows_sys::Win32::UI::WindowsAndMessaging::MB_ICONHAND;
+    use wr_app::BeepAttempt;
+
+    /// The refusal tone: `Beep` plays a sine tone through the default audio
+    /// device and reads no entry of the sound scheme, so a muted or empty
+    /// "Critical Stop" cannot silence it (Live 2 heard nothing from
+    /// `MessageBeep(MB_ICONHAND)`). It blocks for its duration.
+    const TONE_HZ: u32 = 880;
+    const TONE_MS: u32 = 250;
+    /// `MessageBeep`'s "simple beep", the fallback when `Beep` fails.
+    const SIMPLE_BEEP: u32 = 0xFFFF_FFFF;
 
     /// How often, and how far apart, opening a clipboard another program
     /// holds is tried again.
@@ -178,10 +187,33 @@ mod clipboard {
         result
     }
 
-    /// The system's error tone.
-    pub fn beep() {
+    /// The error tone, then the simple beep only if the tone's call failed.
+    /// Each call's result is returned for `diag.log`; a call that returns
+    /// success still says nothing about whether it was heard.
+    pub fn beep() -> Vec<BeepAttempt> {
+        let tone = format!("tone {TONE_HZ} Hz {TONE_MS} ms");
+        // SAFETY: Beep takes a frequency and a duration and touches no
+        // memory of ours.
+        let ok = unsafe { Beep(TONE_HZ, TONE_MS) } != 0;
+        let first = attempt(tone, ok);
+        if first.result.is_ok() {
+            return vec![first];
+        }
         // SAFETY: MessageBeep takes a sound type and touches no memory of ours.
-        unsafe { MessageBeep(MB_ICONHAND) };
+        let ok = unsafe { MessageBeep(SIMPLE_BEEP) } != 0;
+        vec![first, attempt("simple beep".to_string(), ok)]
+    }
+
+    /// The call's outcome, with the thread's last error when it failed. Read
+    /// right after the call, before anything else can set it.
+    fn attempt(kind: String, ok: bool) -> BeepAttempt {
+        if ok {
+            return BeepAttempt::ok(kind);
+        }
+        // SAFETY: GetLastError reads this thread's last error code only.
+        let code = unsafe { GetLastError() };
+        let error = std::io::Error::from_raw_os_error(code as i32);
+        BeepAttempt::failed(kind, error.to_string())
     }
 }
 
@@ -193,7 +225,9 @@ mod clipboard {
         Err("the clipboard is written only on Windows".to_string())
     }
 
-    pub fn beep() {}
+    pub fn beep() -> Vec<wr_app::BeepAttempt> {
+        Vec::new()
+    }
 }
 
 /// Runs `f` with the app on a blocking task, off the main thread, when the

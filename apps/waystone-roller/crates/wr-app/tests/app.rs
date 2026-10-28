@@ -146,11 +146,15 @@ fn hotkey_over_limit_leaves_clipboard_alone_target() {
         status.text,
         format!("Not copied: the search is {length} characters, over the game's 250. Remove some selections.")
     );
+    // The press is named, then the refusal, then the sound that ran.
     let diag = diag_lines(dir.path());
-    assert!(
-        diag.last().unwrap().starts_with("copy refused: "),
-        "{diag:?}"
+    let tail: Vec<&str> = diag[diag.len() - 3..].iter().map(|s| s.as_str()).collect();
+    assert_eq!(tail[0], "copy from the shortcut", "{diag:?}");
+    assert_eq!(
+        tail[1],
+        format!("copy refused: the search is {length} characters, over 250")
     );
+    assert_eq!(tail[2], "refusal beep: tone ok", "{diag:?}");
 
     // Negative control: one wanted mod copies.
     app.update_selection(&json!({"want": [every[0]]})).unwrap();
@@ -179,11 +183,73 @@ fn copy_button_and_hotkey_copy_the_same_text() {
     assert_eq!(r.writes[0], by_button.result.regex);
     assert_eq!(r.beeps, 0);
     drop(r);
-    // Both write the same diagnostic line.
+    // Both write the same diagnostic line, each after a line naming the
+    // route, so a log tells a shortcut press from a button click.
     let diag = diag_lines(dir.path());
     let copied: Vec<&String> = diag.iter().filter(|l| l.starts_with("copied ")).collect();
     assert_eq!(copied.len(), 2);
     assert_eq!(copied[0], copied[1]);
+    let routes: Vec<&String> = diag.iter().filter(|l| l.starts_with("copy from ")).collect();
+    assert_eq!(
+        routes,
+        vec!["copy from the Copy button", "copy from the shortcut"],
+        "{diag:?}"
+    );
+    assert!(!diag.iter().any(|l| l.starts_with("refusal beep: ")), "{diag:?}");
+}
+
+#[test]
+fn refusal_beeps_once_and_logs_the_sound_that_ran() {
+    // A refusal calls the shell's beep exactly once and logs each sound it
+    // tried with its result, so a live check can tell "not run" from "not
+    // heard".
+    let dir = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(dir.path(), &shell);
+    app.copy_now();
+    assert_eq!(shell.rec().beeps, 1);
+    let diag = diag_lines(dir.path());
+    let beeps: Vec<&String> = diag.iter().filter(|l| l.starts_with("refusal beep: ")).collect();
+    assert_eq!(beeps, vec!["refusal beep: tone ok"], "{diag:?}");
+    assert_eq!(
+        &diag[diag.len() - 3..],
+        [
+            "copy from the Copy button",
+            "copy refused: nothing is selected",
+            "refusal beep: tone ok",
+        ]
+    );
+
+    // A tone that fails is logged with its error, then the fallback.
+    let dir = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    shell.rec().tone_fails = true;
+    let app = start(dir.path(), &shell);
+    app.hotkey_pressed();
+    assert_eq!(shell.rec().beeps, 1);
+    let diag = diag_lines(dir.path());
+    let beeps: Vec<&String> = diag.iter().filter(|l| l.starts_with("refusal beep: ")).collect();
+    assert_eq!(
+        beeps,
+        vec![
+            "refusal beep: tone failed (no sound device (os error 1))",
+            "refusal beep: simple beep ok",
+        ],
+        "{diag:?}"
+    );
+
+    // Negative control: a successful copy calls no beep and logs none.
+    let ids = tokened_ids(&app);
+    app.update_selection(&json!({"want": [ids[0]]})).unwrap();
+    app.hotkey_pressed();
+    assert_eq!(shell.rec().beeps, 1);
+    assert_eq!(shell.rec().writes.len(), 1);
+    let after = diag_lines(dir.path());
+    assert_eq!(
+        after.iter().filter(|l| l.starts_with("refusal beep: ")).count(),
+        2,
+        "{after:?}"
+    );
 }
 
 #[test]

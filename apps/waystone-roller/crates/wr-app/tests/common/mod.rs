@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use wr_app::{App, AppConfig, HotkeyError, Shell, Store, View};
+use wr_app::{App, AppConfig, BeepAttempt, HotkeyError, Shell, Store, View};
 use wr_regex::ModData;
 
 /// What the fake shell saw and holds.
@@ -23,12 +23,15 @@ pub struct Recorded {
     /// Every clipboard write, in order.
     pub writes: Vec<String>,
     pub beeps: usize,
+    /// The tone fails as Windows reports a failed call, and the shell falls
+    /// back to a second sound (as the Tauri shell does).
+    pub tone_fails: bool,
     pub views: Vec<View>,
 }
 
 /// A shell whose hotkey registration behaves as Windows' does (a taken
 /// combination is refused and the old one stays), with a clipboard and a
-/// beep counter.
+/// beep counter whose tone can be made to fail.
 #[derive(Clone, Default)]
 pub struct FakeShell {
     pub rec: Arc<Mutex<Recorded>>,
@@ -77,8 +80,17 @@ impl Shell for FakeShell {
         Ok(())
     }
 
-    fn beep(&self) {
-        self.rec.lock().unwrap().beeps += 1;
+    fn beep(&self) -> Vec<BeepAttempt> {
+        let mut r = self.rec.lock().unwrap();
+        r.beeps += 1;
+        if r.tone_fails {
+            vec![
+                BeepAttempt::failed("tone", "no sound device (os error 1)"),
+                BeepAttempt::ok("simple beep"),
+            ]
+        } else {
+            vec![BeepAttempt::ok("tone")]
+        }
     }
 
     fn emit_view(&self, view: &View) {

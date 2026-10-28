@@ -3,9 +3,11 @@
 //!
 //! The copy path: build the search for the current selection; `Ok` writes
 //! the clipboard and stays silent; anything else beeps (the error tone),
-//! leaves the clipboard alone and sets an error status. Each copy writes one
-//! diagnostic line, `copied N characters: <regex>` or `copy refused:
-//! <reason>`.
+//! leaves the clipboard alone and sets an error status. Each copy writes
+//! `copy from the shortcut` or `copy from the Copy button`, then
+//! `copied N characters: <regex>` or `copy refused: <reason>` to the
+//! diagnostic log; a refusal adds one `refusal beep: <kind> ok|failed
+//! (<error>)` line per sound the shell tried.
 //!
 //! The selection and the shortcut are saved to `settings.json` by a saver
 //! thread, [`SAVE_DELAY`] after the last change (debounced), and at once on
@@ -60,6 +62,40 @@ impl HotkeyError {
     }
 }
 
+/// One sound the shell tried for the error tone, and what the system call
+/// returned. "ok" says the call ran, not that anyone heard it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BeepAttempt {
+    /// Which sound, as the diagnostic line names it.
+    pub kind: String,
+    /// The system's error when the call failed.
+    pub result: Result<(), String>,
+}
+
+impl BeepAttempt {
+    pub fn ok(kind: impl Into<String>) -> BeepAttempt {
+        BeepAttempt {
+            kind: kind.into(),
+            result: Ok(()),
+        }
+    }
+
+    pub fn failed(kind: impl Into<String>, error: impl Into<String>) -> BeepAttempt {
+        BeepAttempt {
+            kind: kind.into(),
+            result: Err(error.into()),
+        }
+    }
+
+    /// The diagnostic line: `refusal beep: <kind> ok|failed (<error>)`.
+    fn diag_line(&self) -> String {
+        match &self.result {
+            Ok(()) => format!("refusal beep: {} ok", self.kind),
+            Err(e) => format!("refusal beep: {} failed ({e})", self.kind),
+        }
+    }
+}
+
 /// What the app needs from outside: implemented by the Tauri glue, and by a
 /// recording fake in the tests.
 pub trait Shell: Send + Sync {
@@ -68,8 +104,9 @@ pub trait Shell: Send + Sync {
     fn register_hotkey(&self, hotkey: &str) -> Result<(), HotkeyError>;
     /// Puts `text` on the clipboard.
     fn write_clipboard(&self, text: &str) -> Result<(), String>;
-    /// The error tone.
-    fn beep(&self);
+    /// The error tone. Returns each sound tried, in order (a fallback
+    /// follows a failed call); empty where the platform has none.
+    fn beep(&self) -> Vec<BeepAttempt>;
     /// Sends the view to the window (`wr:view`).
     fn emit_view(&self, view: &View);
 }
@@ -290,13 +327,13 @@ impl App {
 
     /// The Copy button: the same path as the shortcut.
     pub fn copy_now(&self) -> View {
-        self.copy();
+        self.copy("the Copy button");
         self.get_view()
     }
 
     /// The global shortcut was pressed.
     pub fn hotkey_pressed(&self) {
-        self.copy();
+        self.copy("the shortcut");
     }
 
     /// Registers `hotkey` in place of the current shortcut. When it is
@@ -376,8 +413,10 @@ impl App {
         self.shell.emit_view(&view);
     }
 
-    /// The one copy path.
-    fn copy(&self) {
+    /// The one copy path; `route` names what started it (the shortcut or
+    /// the Copy button) in `diag.log`.
+    fn copy(&self, route: &str) {
+        self.diag(&format!("copy from {route}"));
         let selection = self.lock().selection.clone();
         let (line, diag) = match self.builder.build(&selection) {
             Outcome::Ok { regex, .. } => {
@@ -389,42 +428,40 @@ impl App {
                         )),
                         format!("copied {n} characters: {regex}"),
                     ),
-                    Err(e) => {
-                        self.shell.beep();
-                        (
-                            StatusLine::error(format!(
-                                "Not copied: the clipboard could not be written ({e})."
-                            )),
-                            format!("copy refused: the clipboard could not be written: {e}"),
-                        )
-                    }
+                    Err(e) => (
+                        StatusLine::error(format!(
+                            "Not copied: the clipboard could not be written ({e})."
+                        )),
+                        format!("copy refused: the clipboard could not be written: {e}"),
+                    ),
                 }
             }
-            Outcome::TooLong { length, .. } => {
-                self.shell.beep();
-                (
-                    StatusLine::error(format!(
-                        "Not copied: the search is {length} characters, over the game's {LIMIT}. Remove some selections."
-                    )),
-                    format!("copy refused: the search is {length} characters, over {LIMIT}"),
-                )
-            }
-            Outcome::Empty => {
-                self.shell.beep();
-                (
-                    StatusLine::error("Not copied: nothing is selected."),
-                    "copy refused: nothing is selected".to_string(),
-                )
-            }
-            Outcome::Unmatchable { ids } => {
-                self.shell.beep();
-                (
-                    StatusLine::error("Not copied: some mods cannot be told apart from others."),
-                    format!("copy refused: cannot be told apart: {}", ids.join(", ")),
-                )
-            }
+            Outcome::TooLong { length, .. } => (
+                StatusLine::error(format!(
+                    "Not copied: the search is {length} characters, over the game's {LIMIT}. Remove some selections."
+                )),
+                format!("copy refused: the search is {length} characters, over {LIMIT}"),
+            ),
+            Outcome::Empty => (
+                StatusLine::error("Not copied: nothing is selected."),
+                "copy refused: nothing is selected".to_string(),
+            ),
+            Outcome::Unmatchable { ids } => (
+                StatusLine::error("Not copied: some mods cannot be told apart from others."),
+                format!("copy refused: cannot be told apart: {}", ids.join(", ")),
+            ),
         };
         self.diag(&diag);
+        if line.kind == StatusKind::Error {
+            // Every refusal beeps once, and the log says which sound ran.
+            let tried = self.shell.beep();
+            if tried.is_empty() {
+                self.diag("refusal beep: none on this platform");
+            }
+            for attempt in &tried {
+                self.diag(&attempt.diag_line());
+            }
+        }
         self.lock().status = Some(Status {
             line,
             sticky: false,

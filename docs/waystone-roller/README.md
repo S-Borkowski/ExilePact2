@@ -72,8 +72,11 @@ Takes no arguments.
   names them.
 - `diag.log`: one line per event, with the UTC time: `start: ...`,
   `shortcut <hk> registered`, `shortcut <hk> could not be registered:
-  <error>`, `copied N characters: <regex>`, `copy refused: <reason>`,
-  `stop`. Rotated at 1 MB into `diag.log.1`.
+  <error>`, `copy from the shortcut` or `copy from the Copy button`, then
+  `copied N characters: <regex>` or `copy refused: <reason>` and, after a
+  refusal, `refusal beep: <sound> ok` or `refusal beep: <sound> failed
+  (<error>)` for each sound tried; `stop`. Rotated at 1 MB into
+  `diag.log.1`.
 
 ### `py -3 -m tools.waystone_roller.poe2db` (developer-only)
 
@@ -224,11 +227,24 @@ shipped-data test says if a token no longer tells a mod apart.
 - **Rare names and magic affix names.** A rare waystone has a random name
   and a magic one its affix names; poe2db lists neither for regular mods, so
   a token could match one by chance. Tokens are at least 3 characters to
-  make that unlikely; it is not ruled out.
-- **`Ctrl+Alt+W` in the game.** A shortcut Windows registers for the app is
-  not delivered to the game. Whether Path of Exile 2 binds `Ctrl+Alt+W` to
-  anything is not established; if it does, that binding stops working while
-  the app runs. Choose another shortcut in the window if so.
+  make that unlikely; it is not ruled out. The corruption term, a bare
+  `corr` (or `!corr`), has the same exposure: a rare named "Corr..." or an
+  affix name holding `corr` would be lit by `corr`, and hidden by `!corr`,
+  whatever its corruption.
+- **`Ctrl+Alt+W` in the game.** Measured in the built app on 2026-10-28:
+  with Path of Exile 2 in front, every press reached the app and copied the
+  search, and the stash search box changed only when the owner pasted.
+  Whether the game binds `Ctrl+Alt+W` to anything, or still sees the
+  keystroke while the app holds it, was not measured; if a game binding
+  stops working while the app runs, choose another shortcut in the window.
+- **The refusal beep is not yet confirmed audible in the game.** In the
+  2026-10-28 session the old beep (Windows' "Critical Stop" sound) was not
+  heard on five refused presses, cause not established. 0.1.0 now plays a
+  tone that reads no entry of the sound scheme, falling back to the simple
+  beep only if that call fails, and `diag.log` records `refusal beep:
+  <sound> ok` or `failed (<error>)` for each one tried. "ok" says Windows
+  ran the call, not that it was heard; a short live check is still to
+  confirm it.
 - **Search syntax measured on eight waystones** (2026-10-28, research note
   § "Search syntax"): Normal, Magic, Rare and corrupted Rare at tiers 1, 2
   and 15. What the game does with a lookahead such as `(?=` is not
@@ -267,3 +283,14 @@ shipped-data test says if a token no longer tells a mod apart.
   a refusal beeps and leaves the clipboard alone.
 - Mod data from poe2db.tw, fetched 2026-10-28.
 - Built from source only; no installer and no release download.
+- Measured in the built app on 2026-10-28, with Path of Exile 2 in front:
+  each `Ctrl+Alt+W` press replaced the clipboard with the search the
+  window showed (want any, avoid, tier with rarity, corrupted), and
+  pasting it lit the waystones the rules named; over 250 characters
+  nothing was copied and the window showed the refusal; the app sent
+  nothing to the game. The refusal beep was not heard in that session
+  (Known limitations).
+- The refusal beep is now a tone that does not depend on the Windows sound
+  scheme (before: the "Critical Stop" sound), and `diag.log` names the
+  sound and whether the call succeeded, and whether a copy came from the
+  shortcut or the Copy button.

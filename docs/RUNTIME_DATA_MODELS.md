@@ -541,8 +541,10 @@ or (O) the owner.
   `{ Prefix Modifier "<affix name>" (Tier: N) }` (or `Suffix`) above each
   mod's lines, the Map Device description and, last, `Corrupted`.
 - **A waystone mod's reward lines** ("15% more Waystones found in Area")
-  do not show in the item text: `"waystones found"` lit nothing (measured
-  2026-10-28).
+  do not show in the item text (measured 2026-10-28): none of the copied
+  advanced texts of the magic and rare waystones held a reward line,
+  although poe2db lists reward lines on every regular mod they carried; and
+  `"waystones found"` lit nothing.
 - Not established: whether lookahead (`(?=`, `(?!`) works
   (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
   form plain `Ctrl+C` copies; any way to count modifiers.

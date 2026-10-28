@@ -20,7 +20,7 @@ pub mod app;
 pub mod store;
 pub mod view;
 
-pub use app::{App, AppConfig, HotkeyError, Shell, DEFAULT_HOTKEY, SAVE_DELAY};
+pub use app::{App, AppConfig, BeepAttempt, HotkeyError, Shell, DEFAULT_HOTKEY, SAVE_DELAY};
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
 pub use view::{
     DataInfo, ModView, PartView, RarityView, ResultState, SearchResult, SelectionView, StatusKind,
