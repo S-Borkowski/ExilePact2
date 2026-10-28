@@ -2,13 +2,14 @@
 names the releases the release tooling makes, and checks them with the
 owner's key.
 
-Both apps take their update code from this workspace: `ep-net`, the only
-network code of either app, and `ep-update`, the check, the signature check
-and the swap of the running exe. Each app's own guard
-(`tests/test_quest_tracker_network.py`, `tests/test_waystone_roller_guard.py`)
-pins what that app reaches; this file pins what the shared crates are, by
-reading files only (no build, no network), because a mistake here reaches
-both apps at once and an install runs whatever these crates accept.
+The three apps take their update code from this workspace: `ep-net`, the
+only network code of any of them, and `ep-update`, the check, the signature
+check and the swap of the running exe. Each app's own guard
+(`tests/test_quest_tracker_network.py`, `tests/test_waystone_roller_guard.py`,
+`tests/test_crafting_helper_guard.py`) pins what that app reaches; this file
+pins what the shared crates are, by reading files only (no build, no
+network), because a mistake here reaches every app at once and an install
+runs whatever these crates accept.
 
 `OneNetworkCrate`:
 
@@ -17,16 +18,17 @@ both apps at once and an install runs whatever these crates accept.
   `URLDownloadToFile`, an HTTP client crate or a remote webview page;
 - none of it is `unsafe` (comments and strings blanked): `ep-update` has no
   reason to be, and the transport's `unsafe` stays in the transport;
-- no manifest of the shared workspace or of either app's `src-tauri`, nor
+- no manifest of the shared workspace or of any app's `src-tauri`, nor
   the quest tracker's workspace manifest, turns on a `Win32_Networking_*`
   feature but `ep-net`'s.
 
 `ReleaseContract`:
 
 - `ep-net`'s release-list path and download path prefix are those of the
-  repository both `release.py` modules name (`REPO_URL`), and its two tag
-  prefixes are their `TAG_PREFIX`es, as are those of `ep-update`'s
-  `QUEST_TRACKER` and `WAYSTONE_ROLLER` products;
+  repository the three `release.py` modules name (`REPO_URL`), and its
+  three tag prefixes are their `TAG_PREFIX`es, as are those of
+  `ep-update`'s `QUEST_TRACKER`, `WAYSTONE_ROLLER` and `CRAFTING_HELPER`
+  products;
 - the two crates agree on each product's exe name and on the signature
   suffix, `.minisig`, the asset the release workflows publish beside each
   exe;
@@ -39,7 +41,7 @@ both apps at once and an install runs whatever these crates accept.
   `Option`: there is no build without a key), holding a minisign public key
   line (base64 of `Ed`, an 8-byte key ID and a 32-byte key) that is not the
   test fixture's key, nor another line of the fixture's key ID;
-- neither app's glue (`src-tauri`) names the key source,
+- no app's glue (`src-tauri`) names the key source,
   `UpdateConfig::public_key`, outside its tests: the built-in key is the
   only one a shipped build checks against;
 - every registry package of the shared `Cargo.lock` is in the quest
@@ -48,9 +50,9 @@ both apps at once and an install runs whatever these crates accept.
   lists as local too;
 - every `[workspace.dependencies]` pin of the shared workspace is exact
   (`=`) and equals the quest tracker's, except `minisign-verify =0.2.5`,
-  the one crate neither app carried before, at the version the quest
+  the one crate no app carried before, at the version the quest
   tracker's lock holds; the members take every dependency with
-  `workspace = true` and none depends on a `qt-*` or `wr-*` crate.
+  `workspace = true` and none depends on a `qt-*`, `wr-*` or `ch-*` crate.
 
 Every matcher runs on a synthetic offender (and a clean source) first, so a
 matcher that sees nothing cannot pass, and every walk must find files. Rust
@@ -73,6 +75,7 @@ sys.path.insert(0, str(ROOT))
 from tests import test_quest_tracker_network as qtnet  # noqa: E402
 from tools.quest_tracker import release as qt_release  # noqa: E402
 from tools.waystone_roller import release as wr_release  # noqa: E402
+from tools.crafting_helper import release as ch_release  # noqa: E402
 
 SHARED = qtnet.SHARED
 NET_CRATE = qtnet.NET_CRATE
@@ -89,9 +92,12 @@ MEMBERS = {"ep-net": NET_CRATE / "Cargo.toml", "ep-update": EP_UPDATE / "Cargo.t
 
 QT = ROOT / "apps" / "quest-tracker"
 WR = ROOT / "apps" / "waystone-roller"
+CH = ROOT / "apps" / "crafting-helper"
 QT_MANIFEST = QT / "Cargo.toml"
 QT_LOCK = QT / "Cargo.lock"
-GLUES = [QT / "src-tauri", WR / "src-tauri"]
+GLUES = [QT / "src-tauri", WR / "src-tauri", CH / "src-tauri"]
+# The prefix of every app's own crates, none of which a shared crate takes.
+APP_CRATE_PREFIXES = ("qt-", "wr-", "ch-")
 
 # The local packages of the shared lock: its two members.
 SHARED_LOCAL_PACKAGES = {"ep-net", "ep-update"}
@@ -106,6 +112,7 @@ SIGNATURE_SUFFIX = ".minisig"
 PRODUCTS = [
     ("quest tracker", qt_release, "QUEST_TRACKER_TAG_PREFIX", "QUEST_TRACKER_EXE", "QUEST_TRACKER"),
     ("waystone roller", wr_release, "WAYSTONE_ROLLER_TAG_PREFIX", "WAYSTONE_ROLLER_EXE", "WAYSTONE_ROLLER"),
+    ("crafting helper", ch_release, "CRAFTING_HELPER_TAG_PREFIX", "CRAFTING_HELPER_EXE", "CRAFTING_HELPER"),
 ]
 
 UNSAFE = re.compile(r"\bunsafe\b")
@@ -126,7 +133,7 @@ def shared_rust() -> list[Path]:
 
 
 def glue_rust() -> list[Path]:
-    """Every Rust file of both apps' `src-tauri`."""
+    """Every Rust file of every app's `src-tauri`."""
     return [path for glue in GLUES for path in qtnet.walk(glue, suffixes={".rs"})]
 
 
@@ -341,12 +348,12 @@ def pin_offences(shared: dict, quest: dict, quest_lock: dict, new: tuple[str, st
 
 def member_offences(name: str, manifest: dict, members: set[str]) -> list[str]:
     """Where a member manifest names a version of its own, or depends on a
-    `qt-*` or `wr-*` crate."""
+    `qt-*`, `wr-*` or `ch-*` crate."""
     offences = []
     for label, table in qtnet.dependency_tables(manifest):
         for dep, spec in table.items():
             real = spec.get("package", dep) if isinstance(spec, dict) else dep
-            if real.startswith(("qt-", "wr-")):
+            if real.startswith(APP_CRATE_PREFIXES):
                 offences.append(f"{name}: [{label}] {real} is an app's crate")
             if isinstance(spec, dict) and "path" in spec and real in members and "version" not in spec:
                 continue
@@ -512,8 +519,8 @@ class ReleaseContract(unittest.TestCase):
             (label, module.REPO_URL, module.TAG_PREFIX, tag_const, exe_const, product_const)
             for label, module, tag_const, exe_const, product_const in PRODUCTS
         ]
-        self.assertEqual([qtnet.repo_of(p[1]) for p in real], ["S-Borkowski/ExilePact2"] * 2)
-        self.assertEqual([p[2] for p in real], ["quest-tracker-v", "waystone-roller-v"])
+        self.assertEqual([qtnet.repo_of(p[1]) for p in real], ["S-Borkowski/ExilePact2"] * 3)
+        self.assertEqual([p[2] for p in real], ["quest-tracker-v", "waystone-roller-v", "crafting-helper-v"])
         offences = contract_offences(
             rel(NET_LIB_RS), NET_LIB_RS.read_text(encoding="utf-8"),
             rel(VERSION_RS), VERSION_RS.read_text(encoding="utf-8"), real,
@@ -686,6 +693,11 @@ class KeyAndPins(unittest.TestCase):
                 members),
             ["m: [dev-dependencies] qt-app is an app's crate",
              "m: [dev-dependencies] qt-app is not taken from the workspace"],
+        )
+        self.assertEqual(
+            member_offences("m", tomllib.loads(
+                member_good + '[dependencies.item]\npackage = "ch-item"\nworkspace = true\n'), members),
+            ["m: [dependencies] ch-item is an app's crate"],
         )
 
         shared = tomllib.loads(SHARED_MANIFEST.read_text(encoding="utf-8"))
