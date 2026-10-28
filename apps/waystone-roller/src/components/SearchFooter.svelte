@@ -1,8 +1,10 @@
 <script lang="ts">
   // The footer, always in view: the search string, the meter, each part's
-  // length when the search is too long, Copy, the hint, the shell's status
-  // and the shortcut field. Copy and the shortcut run one path in the shell;
-  // the page offers Copy only when the shell has a search to copy.
+  // length when the search is too long, Copy, the hint, the shell's status,
+  // the paste checkbox and the shortcut field. Copy and the shortcut run one
+  // copy path in the shell; only the shortcut also pastes into the game, and
+  // only with the checkbox on. The page offers Copy only when the shell has a
+  // search to copy.
   import type { Send } from '../bridge';
   import type { PartKind, ResultState, View } from '../ipc';
 
@@ -51,6 +53,14 @@
     const hotkey = draft.trim();
     if (hotkey !== '') send('set_hotkey', { hotkey });
   }
+
+  // The checkbox shows the shell's `auto_paste` until the next view answers,
+  // so a refused change never stays ticked.
+  function setAutoPaste(event: Event & { currentTarget: HTMLInputElement }): void {
+    const on = event.currentTarget.checked;
+    event.currentTarget.checked = view.auto_paste;
+    send('set_auto_paste', { on });
+  }
 </script>
 
 <footer class="footer" aria-label="Search">
@@ -79,7 +89,10 @@
         <span class="over">over by {result.length - result.limit}</span>
       {/if}
     </p>
-    <p class="hint"><kbd>{view.hotkey}</kbd> copies this while you play</p>
+    <p class="hint">
+      <kbd>{view.hotkey}</kbd>
+      {#if view.auto_paste}copies this and pastes it into the game{:else}copies this while you play{/if}
+    </p>
   </div>
 
   {#if over && result.parts.length > 0}
@@ -118,14 +131,20 @@
         {view.status.text}
       {/if}
     </p>
-    <form class="shortcut" onsubmit={setHotkey}>
-      <label class="shortcut-label">
-        <span class="caps">Shortcut</span>
-        <input class="field" type="text" bind:value={draft} placeholder="e.g. Ctrl+Alt+W" aria-describedby="shortcut-help" autocomplete="off" spellcheck="false" />
+    <div class="shortcut-controls">
+      <label class="auto-paste-label">
+        <input class="auto-paste" type="checkbox" checked={view.auto_paste} onchange={setAutoPaste} />
+        <span>Paste into the game's search box</span>
       </label>
-      <button type="submit" class="btn">Set</button>
-      <span class="visually-hidden" id="shortcut-help">For example Ctrl+Alt+W. The old shortcut stays if the new one is taken.</span>
-    </form>
+      <form class="shortcut" onsubmit={setHotkey}>
+        <label class="shortcut-label">
+          <span class="caps">Shortcut</span>
+          <input class="field" type="text" bind:value={draft} placeholder="e.g. Ctrl+Alt+W" aria-describedby="shortcut-help" autocomplete="off" spellcheck="false" />
+        </label>
+        <button type="submit" class="btn">Set</button>
+        <span class="visually-hidden" id="shortcut-help">For example Ctrl+Alt+W. The old shortcut stays if the new one is taken.</span>
+      </form>
+    </div>
   </div>
 </footer>
 
@@ -322,6 +341,30 @@
   .bang {
     margin-right: 0.35em;
     font-weight: 800;
+  }
+
+  .shortcut-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--space-unit) * 2) calc(var(--space-unit) * 4);
+  }
+
+  .auto-paste-label {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--space-unit) * 1.5);
+    min-height: var(--size-button);
+    color: var(--color-text-secondary);
+    font-size: var(--size-label);
+    cursor: pointer;
+  }
+
+  .auto-paste {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-text-secondary);
   }
 
   .shortcut {

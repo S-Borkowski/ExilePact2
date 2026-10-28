@@ -65,6 +65,12 @@ describe('the TypeScript IPC types', () => {
     badStatus.status.kind = 'warn';
     expect(viewProblems(badStatus)).toEqual(['view.status.kind: "warn" is not one of info|error']);
 
+    // The fixtures hold the paste both on and off; a non-boolean is caught.
+    expect(new Set(FIXTURE_NAMES.map((n) => fixtureView(n).auto_paste))).toEqual(new Set([true, false]));
+    const badPaste = fixtureView('ok-any') as unknown as Record<string, unknown>;
+    badPaste.auto_paste = 'yes';
+    expect(viewProblems(badPaste)).toEqual(['view.auto_paste: expected a boolean']);
+
     const nullToken = fixtureView('ok-any') as unknown as { mods: Array<Record<string, unknown>> };
     nullToken.mods[0].token = 3;
     expect(viewProblems(nullToken)).toEqual(['view.mods[0].token: expected a string']);
