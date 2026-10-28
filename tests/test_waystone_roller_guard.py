@@ -1,15 +1,26 @@
-"""The waystone roller touches nothing but its windows, the clipboard and,
-through the shared `ep-net` alone, GitHub's release list and assets.
+"""The waystone roller touches nothing but its windows, the clipboard, the
+Ctrl+A and Ctrl+V of its paste and, through the shared `ep-net` alone,
+GitHub's release list and assets.
 
 Read from the files only (no build, no network), these pin the rules of
 the app (`docs/waystone-roller/README.md`, Privacy):
 
 `NoInputNoNetworkNoGame`:
 
-- no Rust source of the app (comments blanked, strings kept) names a Win32
-  call that sends input, posts or sends a window message, opens, reads or
-  writes another process, hooks, or finds another program's window, nor
-  the game's files (`PathOfExile`, `Client.txt`, `Content.ggpk`);
+- one Rust source, `src-tauri/src/paste.rs`, may send input, and only
+  keys: it alone may name `SendInput` (once), `KEYBDINPUT`,
+  `INPUT_KEYBOARD`, `GetAsyncKeyState`, `MapVirtualKey`,
+  `GetForegroundWindow`, `GetWindowText`/`GetWindowTextLength` and the
+  `KeyboardAndMouse` module, and every `VK_` name it holds is `VK_CONTROL`,
+  `VK_A` or `VK_V`; in any other Rust source each of those is an offence;
+- no Rust source of the app, `paste.rs` included (comments blanked, strings
+  kept), names mouse or hardware input, `keybd_event`, `KEYEVENTF_UNICODE`
+  (typed text), a call that moves, clips or captures the cursor, blocks
+  input or sets the keyboard state, posts or sends a window message, sets
+  the focus, activates, raises, shows, moves or enumerates a window, opens,
+  reads or writes another process, hooks, or finds another program's
+  window, nor the game's files (`PathOfExile`, `Client.txt`,
+  `Content.ggpk`); no UI source names an input call either;
 - no network but `ep-net` (the shared workspace's transport crate,
   `apps/shared/`, guarded by `tests/test_app_updates_guard.py`), reached
   only by the glue: no Rust source of the app names a socket or an HTTP
@@ -21,7 +32,8 @@ the app (`docs/waystone-roller/README.md`, Privacy):
   Tauri plugin but the global shortcut and single instance (no
   `tauri-plugin-opener`: nothing opens a browser), or on an input or
   process crate, and `package.json` on no Tauri plugin;
-- the `windows-sys` features are the pinned clipboard-and-beep set;
+- the `windows-sys` features are the pinned set: the clipboard, the beep
+  and `Win32_UI_Input_KeyboardAndMouse` for the paste;
 - the windows' CSP is the pinned string; the capabilities are the `main`
   window's with `core:event:default` and `core:window:default` only and the
   `settings` window's with `core:event:default` only, and no capability
@@ -86,6 +98,7 @@ WINDOWS_SYS_FEATURES = {
     "Win32_System_Memory",
     "Win32_System_Ole",
     "Win32_System_Diagnostics_Debug",
+    "Win32_UI_Input_KeyboardAndMouse",
 }
 ALLOWED_TAURI_PLUGINS = {"tauri-plugin-global-shortcut", "tauri-plugin-single-instance"}
 FORBIDDEN_CRATES = (
@@ -95,15 +108,56 @@ FORBIDDEN_CRATES = (
     "arboard", "clipboard-win",
 )
 
-GAME_NAMES = [
-    # Input sent to another program.
+# The one source allowed to send input: the paste, Ctrl+A then Ctrl+V to
+# the window in front once the shortcut's keys are up.
+PASTE_FILE = TAURI / "src" / "paste.rs"
+# Allowed in `paste.rs` alone (`SendInput` at most once); an offence in any
+# other Rust source.
+PASTE_ONLY_NAMES = [
     ("SendInput", re.compile(r"\bSendInput\b")),
+    ("KEYBDINPUT", re.compile(r"\bKEYBDINPUT\b")),
+    ("INPUT_KEYBOARD", re.compile(r"\bINPUT_KEYBOARD\b")),
+    ("GetAsyncKeyState", re.compile(r"\bGetAsyncKeyState\b")),
+    ("MapVirtualKey", re.compile(r"\bMapVirtualKey(Ex)?[AW]?\b")),
+    ("GetForegroundWindow", re.compile(r"\bGetForegroundWindow\b")),
+    ("GetWindowText", re.compile(r"\bGetWindowText(Length)?[AW]?\b")),
+    ("KeyboardAndMouse", re.compile(r"KeyboardAndMouse")),
+]
+# In `paste.rs`, every virtual-key name is one of the paste's three keys. No
+# word character before it, so `MAPVK_VK_TO_VSC` is not one.
+VK_NAME = re.compile(r"(?<!\w)VK_\w+")
+PASTE_KEYS = {"VK_CONTROL", "VK_A", "VK_V"}
+# Forbidden in every Rust source, `paste.rs` included.
+GAME_NAMES = [
+    # Input that is not the paste's keys, and input state set by hand.
     ("keybd_event", re.compile(r"\bkeybd_event\b")),
     ("mouse_event", re.compile(r"\bmouse_event\b")),
+    ("MOUSEINPUT", re.compile(r"\bMOUSEINPUT\b")),
+    ("INPUT_MOUSE", re.compile(r"\bINPUT_MOUSE\b")),
+    ("HARDWAREINPUT", re.compile(r"\bHARDWAREINPUT\b")),
+    ("INPUT_HARDWARE", re.compile(r"\bINPUT_HARDWARE\b")),
+    ("KEYEVENTF_UNICODE", re.compile(r"\bKEYEVENTF_UNICODE\b")),
+    ("SetCursorPos", re.compile(r"\bSetCursorPos\b")),
+    ("ClipCursor", re.compile(r"\bClipCursor\b")),
+    ("SetCapture", re.compile(r"\bSetCapture\b")),
+    ("BlockInput", re.compile(r"\bBlockInput\b")),
+    ("SetKeyboardState", re.compile(r"\bSetKeyboardState\b")),
+    # Window messages sent or posted to another program.
     ("PostMessage", re.compile(r"\bPostMessage[AW]?\b")),
     ("SendMessage", re.compile(r"\bSendMessage[AW]?\b")),
     ("PostThreadMessage", re.compile(r"\bPostThreadMessage[AW]?\b")),
-    ("KeyboardAndMouse", re.compile(r"KeyboardAndMouse")),
+    # Focus, activation, placement or enumeration of windows.
+    ("SetFocus", re.compile(r"\bSetFocus\b")),
+    ("SetActiveWindow", re.compile(r"\bSetActiveWindow\b")),
+    ("SetForegroundWindow", re.compile(r"\bSetForegroundWindow\b")),
+    ("BringWindowToTop", re.compile(r"\bBringWindowToTop\b")),
+    ("SwitchToThisWindow", re.compile(r"\bSwitchToThisWindow\b")),
+    ("AttachThreadInput", re.compile(r"\bAttachThreadInput\b")),
+    ("AllowSetForegroundWindow", re.compile(r"\bAllowSetForegroundWindow\b")),
+    ("ShowWindow", re.compile(r"\bShowWindow(Async)?\b")),
+    ("SetWindowPos", re.compile(r"\bSetWindowPos\b")),
+    ("MoveWindow", re.compile(r"\bMoveWindow\b")),
+    ("EnumWindows", re.compile(r"\bEnumWindows\b")),
     # Another process's memory, threads or hooks.
     ("OpenProcess", re.compile(r"\bOpenProcess\b")),
     ("ReadProcessMemory", re.compile(r"\bReadProcessMemory\b")),
@@ -114,8 +168,6 @@ GAME_NAMES = [
     ("DebugActiveProcess", re.compile(r"\bDebugActiveProcess\b")),
     # Another program's window.
     ("FindWindow", re.compile(r"\bFindWindow(Ex)?[AW]?\b")),
-    ("GetForegroundWindow", re.compile(r"\bGetForegroundWindow\b")),
-    ("SetForegroundWindow", re.compile(r"\bSetForegroundWindow\b")),
     # The game's files.
     ("PathOfExile", re.compile(r"PathOfExile", re.IGNORECASE)),
     ("Client.txt", re.compile(r"Client\.txt", re.IGNORECASE)),
@@ -143,6 +195,12 @@ UI_NETWORK_NAMES = [
     ("sendBeacon", re.compile(r"sendBeacon")),
 ]
 UI_SUFFIXES = {".ts", ".js", ".mjs", ".svelte", ".html"}
+# The input names the UI sources may not name (no UI source sends input).
+UI_INPUT_LABELS = (
+    "SendInput", "keybd_event", "mouse_event", "PostMessage", "SendMessage",
+    "PostThreadMessage", "KeyboardAndMouse",
+)
+UI_INPUT_NAMES = [m for m in PASTE_ONLY_NAMES + GAME_NAMES if m[0] in UI_INPUT_LABELS]
 
 
 def rel(path: Path) -> str:
@@ -216,6 +274,24 @@ def text_offences(name: str, text: str, matchers) -> list[str]:
 
 def rust_offences(name: str, text: str, matchers) -> list[str]:
     return text_offences(name, blank_rust_comments(text), matchers)
+
+
+def input_offences(name: str, text: str, paste: bool) -> list[str]:
+    """The input, window, process and game names one Rust source may not
+    name. `paste` says whether it is `paste.rs`: there the paste-only names
+    are allowed, `SendInput` once, and every `VK_` name is one of the
+    paste's three keys; anywhere else each paste-only name is an offence."""
+    code = blank_rust_comments(text)
+    offences = text_offences(name, code, GAME_NAMES)
+    if not paste:
+        return offences + text_offences(name, code, PASTE_ONLY_NAMES)
+    sends = text_offences(name, code, PASTE_ONLY_NAMES[:1])
+    offences += [f"{hit} (more than one)" for hit in sends[1:]]
+    for m in VK_NAME.finditer(code):
+        if m.group(0) not in PASTE_KEYS:
+            line = code.count("\n", 0, m.start()) + 1
+            offences.append(f"{name}:{line}: {m.group(0)}")
+    return offences
 
 
 def forbidden_crate(dep: str) -> bool:
@@ -342,18 +418,86 @@ class NoInputNoNetworkNoGame(unittest.TestCase):
             "/* ReadProcessMemory */ let h = OpenProcess(0, 0, pid);\n"
             "let p = \"C:/Games/PathOfExile.exe\";\n"
         )
-        hits = rust_offences("offender.rs", offender, GAME_NAMES)
+        hits = input_offences("offender.rs", offender, paste=False)
         self.assertEqual(
-            hits,
+            sorted(hits),
             ["offender.rs:2: SendInput", "offender.rs:3: OpenProcess", "offender.rs:4: PathOfExile"],
         )
-        self.assertEqual(rust_offences("clean.rs", "let x = \"// SendInput\"; // OpenProcess\n", GAME_NAMES[:1]), ["clean.rs:1: SendInput"])
-        self.assertEqual(rust_offences("clean.rs", "// SendInput OpenProcess\nfn f() {}\n", GAME_NAMES), [])
+        self.assertEqual(rust_offences("clean.rs", "let x = \"// SendInput\"; // OpenProcess\n", PASTE_ONLY_NAMES[:1]), ["clean.rs:1: SendInput"])
+        self.assertEqual(input_offences("clean.rs", "// SendInput OpenProcess\nfn f() {}\n", paste=False), [])
 
         offences = []
         for path in self.rust_sources():
-            offences += rust_offences(rel(path), read(path), GAME_NAMES)
+            offences += input_offences(rel(path), read(path), paste=path == PASTE_FILE)
         self.assertEqual(offences, [])
+
+    def test_every_input_matcher_sees_its_name(self):
+        matchers = PASTE_ONLY_NAMES + GAME_NAMES
+        offender = "".join(f"let x = {label}(0);\n" for label, _ in matchers)
+        self.assertEqual(
+            rust_offences("o.rs", offender, matchers),
+            [f"o.rs:{line}: {label}" for line, (label, _) in enumerate(matchers, 1)],
+        )
+        self.assertEqual(
+            sorted(rust_offences("o.rs", "GetWindowTextLengthW(h); MapVirtualKeyW(k, 0); ShowWindowAsync(h, 0);\n", matchers)),
+            ["o.rs:1: GetWindowText", "o.rs:1: MapVirtualKey", "o.rs:1: ShowWindow"],
+        )
+        # No longer `GAME_NAMES[:7]`: the UI's input names, each found.
+        self.assertEqual(sorted(label for label, _ in UI_INPUT_NAMES), sorted(UI_INPUT_LABELS))
+
+    def test_only_paste_rs_sends_the_paste_keys(self):
+        clean = (
+            "// The paste: one SendInput call, Ctrl+A then Ctrl+V.\n"
+            "use windows_sys::Win32::UI::Input::KeyboardAndMouse as kbm;\n"
+            "use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextLengthW, GetWindowTextW};\n"
+            "const KEYS: [u16; 3] = [kbm::VK_CONTROL, kbm::VK_A, kbm::VK_V];\n"
+            "fn down(vk: u16) -> bool { unsafe { kbm::GetAsyncKeyState(vk as i32) < 0 } }\n"
+            "fn key(vk: u16, up: bool) -> kbm::INPUT {\n"
+            "    let scan = unsafe { kbm::MapVirtualKeyW(vk as u32, kbm::MAPVK_VK_TO_VSC) } as u16;\n"
+            "    let flags = if up { kbm::KEYEVENTF_KEYUP } else { 0 };\n"
+            "    kbm::INPUT { r#type: kbm::INPUT_KEYBOARD, Anonymous: kbm::INPUT_0 { ki: kbm::KEYBDINPUT {\n"
+            "        wVk: vk, wScan: scan, dwFlags: flags, time: 0, dwExtraInfo: 0 } } }\n"
+            "}\n"
+            "fn send(i: &[kbm::INPUT]) -> u32 { unsafe { kbm::SendInput(i.len() as u32, i.as_ptr(), 40) } }\n"
+        )
+        self.assertEqual(input_offences("paste.rs", clean, paste=True), [])
+        # The same file anywhere else names every paste-only name.
+        self.assertEqual(
+            sorted({hit.split(": ", 1)[1] for hit in input_offences("lib.rs", clean, paste=False)}),
+            sorted(label for label, _ in PASTE_ONLY_NAMES),
+        )
+        self.assertEqual(
+            input_offences("lib.rs", "let w = GetForegroundWindow();\n", paste=False),
+            ["lib.rs:1: GetForegroundWindow"],
+        )
+        self.assertEqual(
+            input_offences("lib.rs", "unsafe { SendInput(1, p, 40) };\n", paste=False),
+            ["lib.rs:1: SendInput"],
+        )
+        # In paste.rs: a second SendInput, a fourth key, mouse input, the
+        # cursor and the foreground window are each an offence.
+        self.assertEqual(
+            input_offences("paste.rs", clean + "fn again() { unsafe { kbm::SendInput(0, p, 40) }; }\n", paste=True),
+            ["paste.rs:13: SendInput (more than one)"],
+        )
+        self.assertEqual(
+            input_offences("paste.rs", clean + "const ENTER: u16 = kbm::VK_RETURN;\n", paste=True),
+            ["paste.rs:13: VK_RETURN"],
+        )
+        self.assertEqual(
+            input_offences("paste.rs", clean + "let f = kbm::KEYEVENTF_UNICODE;\n", paste=True),
+            ["paste.rs:13: KEYEVENTF_UNICODE"],
+        )
+        offender = (
+            "unsafe { kbm::mouse_event(1, 0, 0, 0, 0) };\n"
+            "let m = kbm::MOUSEINPUT { dx: 0, dy: 0, mouseData: 0, dwFlags: 0, time: 0, dwExtraInfo: 0 };\n"
+            "unsafe { SetForegroundWindow(w) };\n"
+            "unsafe { SetCursorPos(0, 0) };\n"
+        )
+        self.assertEqual(
+            sorted(input_offences("paste.rs", offender, paste=True)),
+            ["paste.rs:1: mouse_event", "paste.rs:2: MOUSEINPUT", "paste.rs:3: SetForegroundWindow", "paste.rs:4: SetCursorPos"],
+        )
 
     def test_no_rust_source_names_the_network(self):
         self.assertEqual(
@@ -424,14 +568,14 @@ class NoInputNoNetworkNoGame(unittest.TestCase):
         self.assertGreater(len(files), 5, "the walk found no UI sources")
         offences = []
         for path in files:
-            offences += text_offences(rel(path), read(path), UI_NETWORK_NAMES + GAME_NAMES[:7])
+            offences += text_offences(rel(path), read(path), UI_NETWORK_NAMES + UI_INPUT_NAMES)
         self.assertEqual(offences, [])
 
     def test_no_manifest_depends_on_network_input_or_process_crates(self):
         offender = {
             "dependencies": {"reqwest": "0.12", "tauri-plugin-http": "2", "tauri-plugin-global-shortcut": "2"},
             "target": {"cfg(windows)": {"dependencies": {
-                "windows-sys": {"version": "0.61", "features": ["Win32_Foundation", "Win32_UI_Input_KeyboardAndMouse"]},
+                "windows-sys": {"version": "0.61", "features": ["Win32_Foundation", "Win32_System_Threading"]},
                 "enigo": "0.2",
             }}},
         }
@@ -440,7 +584,7 @@ class NoInputNoNetworkNoGame(unittest.TestCase):
             sorted([
                 "o: dependencies.reqwest",
                 "o: dependencies.tauri-plugin-http (a Tauri plugin)",
-                "o: target.cfg(windows).dependencies.windows-sys feature Win32_UI_Input_KeyboardAndMouse",
+                "o: target.cfg(windows).dependencies.windows-sys feature Win32_System_Threading",
                 "o: target.cfg(windows).dependencies.enigo",
             ]),
         )

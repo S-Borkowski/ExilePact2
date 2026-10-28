@@ -111,6 +111,8 @@ export interface View {
   result: SearchResult;
   /** The global shortcut that copies the search, e.g. `Ctrl+Alt+W`. */
   hotkey: string;
+  /** The shortcut pastes into the game after it copies (the footer's *Paste into the game's search box* checkbox). */
+  auto_paste: boolean;
   status: StatusLine | null;
   /** The newer version a check found this run, e.g. `1.3.0`, which the header's Settings button names; null while none is known. */
   update_available: string | null;
@@ -215,6 +217,7 @@ const view = record<View>({
   selection,
   result,
   hotkey: str,
+  auto_paste: bool,
   status: nullable(statusLine),
   update_available: nullable(str),
 });

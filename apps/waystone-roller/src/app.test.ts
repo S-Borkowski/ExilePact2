@@ -58,7 +58,10 @@ describe('the page', () => {
       if (view.result.state === 'ok') expect(search).toBe(view.result.regex);
       else expect(search).not.toContain('"');
       expect(text(root.querySelector('.meter'))).toContain(`${view.result.length} / 250`);
-      expect(text(root.querySelector('.hint'))).toBe(`${view.hotkey} copies this while you play`);
+      expect(text(root.querySelector('.hint'))).toBe(
+        view.auto_paste ? `${view.hotkey} copies this and pastes it into the game` : `${view.hotkey} copies this while you play`,
+      );
+      expect(root.querySelector<HTMLInputElement>('input.auto-paste')?.checked, name).toBe(view.auto_paste);
       const status = root.querySelector('.status');
       if (view.status) {
         expect(text(status)).toContain(view.status.text);
@@ -239,7 +242,42 @@ describe('the page', () => {
     next.hotkey = 'Ctrl+Alt+R';
     bridge.pushView(next);
     expect(input.value).toBe('Ctrl+Alt+R');
-    expect(text(root.querySelector('.hint'))).toBe('Ctrl+Alt+R copies this while you play');
+    expect(text(root.querySelector('.hint'))).toBe('Ctrl+Alt+R copies this and pastes it into the game');
+  });
+
+  it('auto_paste_checkbox_sends_set_auto_paste', async () => {
+    // On: the checkbox is checked, labelled, and the hint says the shortcut pastes.
+    const on = fixtureView('ok-any');
+    expect(on.auto_paste).toBe(true);
+    const { root, bridge } = await render(on);
+    const box = () => root.querySelector<HTMLInputElement>('input.auto-paste[type="checkbox"]')!;
+    expect(box().checked).toBe(true);
+    expect(text(box().closest('label'))).toBe("Paste into the game's search box");
+    expect(text(root.querySelector('.hint'))).toBe('Ctrl+Alt+W copies this and pastes it into the game');
+
+    // Unticking it sends the new value and nothing else; the box shows the
+    // shell's value until the shell's next view answers.
+    click(box());
+    expect(bridge.calls).toEqual([{ name: 'set_auto_paste', args: { on: false } }]);
+    expect(box().checked).toBe(true);
+
+    // The shell answers with the paste off: the box follows, the hint says copy only.
+    const off = fixtureView('hotkey-taken');
+    expect(off.auto_paste).toBe(false);
+    bridge.pushView(off);
+    expect(box().checked).toBe(false);
+    expect(text(root.querySelector('.hint'))).toBe('Ctrl+Alt+W copies this while you play');
+
+    // Ticking it again sends the other value.
+    bridge.calls.length = 0;
+    click(box());
+    expect(bridge.calls).toEqual([{ name: 'set_auto_paste', args: { on: true } }]);
+
+    // Negative control: a refused change (the next view still has the paste
+    // off) leaves the box unticked, not as the click left it.
+    bridge.pushView(fixtureView('hotkey-taken'));
+    expect(box().checked).toBe(false);
+    expect(text(root.querySelector('.hint'))).toBe('Ctrl+Alt+W copies this while you play');
   });
 
   it('settings_button_opens_the_settings_window', async () => {

@@ -170,6 +170,7 @@
     "unmatchable": []
   },
   "hotkey": "Ctrl+Alt+W",
+  "auto_paste": true,
   "status": null,
   "update_available": "0.2.0"
 }

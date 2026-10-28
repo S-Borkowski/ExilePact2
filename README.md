@@ -66,8 +66,11 @@ to get (any or all of them) and the mods to avoid, a tier range, the
 rarities and corrupted or not. It builds one search string from those rules
 and keeps it within the game's 250-character limit; when it cannot, it says
 so and copies nothing. `Ctrl+Alt+W` (changeable) puts the string on the
-clipboard, and you paste it into the stash or a vendor's search box. It
-never touches the game: no input, no memory read. Its *Settings* window,
+clipboard and, when Path of Exile 2 is in front, pastes it into the stash
+or vendor search box you have focused with `Ctrl+A` then `Ctrl+V`,
+replacing its text (a checkbox in the window turns the paste off; the Copy
+button only copies). Those two key presses are all it sends the game: no
+mouse input, no click, no focus change, no memory read. Its *Settings* window,
 like the quest tracker's, checks GitHub for a newer version only when you
 ask (*Check now*, or *Automatically check for updates*, off by default) and
 installs it in the app when you press its button, after checking its

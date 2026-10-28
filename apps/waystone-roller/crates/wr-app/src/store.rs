@@ -1,5 +1,6 @@
-//! The store folder and what it holds: `settings.json` (the shortcut and
-//! the selection), written atomically, and `diag.log`, the diagnostic log.
+//! The store folder and what it holds: `settings.json` (the shortcut, the
+//! selection, `auto_paste` and `check_updates`), written atomically, and
+//! `diag.log`, the diagnostic log.
 //!
 //! The folder is `WAYSTONE_ROLLER_DIR` when set and non-empty, else
 //! `%LOCALAPPDATA%\ExilePact2\waystone-roller\`. A folder inside a git
