@@ -1,9 +1,16 @@
 name: Waystone Roller Release
 
-# Builds the waystone roller from a release tag and attaches its executable
-# and SHA256SUMS.txt to a DRAFT release. Nothing is published by this
-# workflow: the owner opens the draft, checks it, publishes it and ticks
-# "Set as the latest release" by hand.
+# Builds the waystone roller from a release tag, signs its executable with
+# the release key and attaches it, SHA256SUMS.txt and
+# waystone-roller.exe.minisig to a DRAFT release. Nothing is published by
+# this workflow: the owner opens the draft, checks it, publishes it and
+# ticks "Set as the latest release" by hand.
+#
+# The signature is what the app's in-app update checks against the public
+# key built into it, so a release without one is never made: the sign step
+# fails the job, before the release step, when the repository secret
+# TAURI_SIGNING_PRIVATE_KEY is missing or empty. The secret and its password
+# (TAURI_SIGNING_PRIVATE_KEY_PASSWORD) reach that one step only.
 #
 # Cutting a release (docs/waystone-roller/README.md, "Working on the app" ›
 # "Cutting a release"):
@@ -93,9 +100,32 @@ jobs:
           (cd dist-release && sha256sum waystone-roller.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python -m tools.waystone_roller.release notes "$VERSION" --out release-notes.md
 
+      # `tauri signer sign` writes the signature base64-encoded to <exe>.sig;
+      # the release carries the decoded minisign text as <exe>.minisig. Its
+      # trusted comment names the file and the version, which the app checks
+      # against the asset's name and the release's version.
+      - name: Sign the exe
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "::error::The TAURI_SIGNING_PRIVATE_KEY secret is missing or empty; no release is made without the exe's signature."
+            exit 1
+          fi
+          npm --prefix apps/waystone-roller exec -- tauri signer sign --app-version "$VERSION" "$GITHUB_WORKSPACE/dist-release/waystone-roller.exe"
+          base64 -d dist-release/waystone-roller.exe.sig > dist-release/waystone-roller.exe.minisig
+          rm dist-release/waystone-roller.exe.sig
+          if ! grep -qF "file:waystone-roller.exe" dist-release/waystone-roller.exe.minisig \
+              || ! grep -qF "version:$VERSION" dist-release/waystone-roller.exe.minisig; then
+            echo "::error::The signature's trusted comment does not name waystone-roller.exe at $VERSION."
+            exit 1
+          fi
+          cat dist-release/waystone-roller.exe.minisig
+
       - name: Create or update the draft release
         run: |
-          assets=(dist-release/waystone-roller.exe dist-release/SHA256SUMS.txt)
+          assets=(dist-release/waystone-roller.exe dist-release/SHA256SUMS.txt dist-release/waystone-roller.exe.minisig)
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
             echo "Replaced the assets of the existing release $TAG."

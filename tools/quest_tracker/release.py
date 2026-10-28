@@ -2,8 +2,9 @@
 
 Developer-only. A release is one annotated tag, `quest-tracker-v<version>`;
 pushing it starts `.github/workflows/quest-tracker-release.yml`, which builds
-both executables and attaches them to a draft release for the owner to
-publish (and mark as latest) by hand:
+both executables, signs `quest-tracker.exe` with the release key (and fails
+without it) and attaches them to a draft release for the owner to publish
+(and mark as latest) by hand:
 
     py -3 -m tools.quest_tracker.release check [VERSION]
     py -3 -m tools.quest_tracker.release notes VERSION [--out FILE]
@@ -13,12 +14,17 @@ publish (and mark as latest) by hand:
 `package-lock.json`, `src-tauri/tauri.conf.json`, the workspace's
 `Cargo.toml` and the workspace members in `Cargo.lock`) and fails, naming
 each file, unless they all agree, and agree with VERSION when it is given.
-It also fails when the guide's "Release notes" has no section for the
-version, or an empty one.
+The members are the ones the workspace's `Cargo.toml` lists; the shared
+crates of `apps/shared/`, which the lock also lists without a source, keep
+their own workspace's version and are not read. It also fails when the
+guide's "Release notes" has no section for the version, or an empty one.
 
 `notes` prints the release body: a short header, then the version's section
 of the guide's "Release notes", with each hard-wrapped list item joined onto
-one line (a release body renders a single newline as a line break).
+one line (a release body renders a single newline as a line break). The
+header names each asset, `quest-tracker.exe.minisig` (the release key's
+signature, which the workflow makes and the app checks before it installs
+an update) among them.
 
 `cut` runs `check` on the files' own version, then refuses unless the work
 tree has no uncommitted change to a tracked file, HEAD is the tip of
@@ -64,12 +70,32 @@ def versions(root: Path = ROOT) -> dict[str, str]:
     found["src-tauri/tauri.conf.json"] = tauri["version"]
     with open(app / "Cargo.toml", "rb") as f:
         found["Cargo.toml [workspace.package]"] = tomllib.load(f)["workspace"]["package"]["version"]
-    with open(app / "Cargo.lock", "rb") as f:
-        for p in tomllib.load(f)["package"]:
-            # A workspace member is the only kind of package without a source.
-            if "source" not in p:
-                found["Cargo.lock " + p["name"]] = p["version"]
+    found.update(member_versions(app))
     return found
+
+
+def member_versions(app: Path) -> dict[str, str]:
+    """The `Cargo.lock` version of each member of the workspace at `app`.
+
+    The members are the workspace's `members` paths, each named by its own
+    `Cargo.toml`. Any other package without a source is a path dependency
+    from another workspace (the shared crates in `apps/shared/`), which
+    carries that workspace's version and is not this app's to check. A
+    member the lock does not list fails.
+    """
+    with open(app / "Cargo.toml", "rb") as f:
+        paths = tomllib.load(f)["workspace"]["members"]
+    names = []
+    for member in paths:
+        with open(app / member / "Cargo.toml", "rb") as f:
+            names.append(tomllib.load(f)["package"]["name"])
+    with open(app / "Cargo.lock", "rb") as f:
+        local = {p["name"]: p["version"] for p in tomllib.load(f)["package"] if "source" not in p}
+    missing = [name for name in names if name not in local]
+    if missing:
+        raise ReleaseError("Cargo.lock lists no workspace member %s; run cargo to update the lock"
+                           % ", ".join(missing))
+    return {"Cargo.lock " + name: local[name] for name in names}
 
 
 def changelog(version: str, root: Path = ROOT) -> str:
@@ -131,7 +157,8 @@ def notes(version: str, root: Path = ROOT) -> str:
         "Download `quest-tracker.exe` below and run it. It needs Windows 10 or 11, 64-bit, with the "
         "Microsoft Edge WebView2 runtime, and the game in windowed or borderless windowed fullscreen. "
         "`quest-tracker-replay.exe` is the command-line replay of a saved log. `SHA256SUMS.txt` lists "
-        "both files' hashes.\n\n"
+        "both files' hashes. `quest-tracker.exe.minisig` is the release key's signature of "
+        "`quest-tracker.exe`, which the app checks before it installs an update.\n\n"
         "Guide: [docs/quest-tracker/README.md](%s). Section names in parentheses below refer to it.\n\n"
         "## Changelog\n\n" % (version, guide)
     )
