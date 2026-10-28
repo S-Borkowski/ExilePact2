@@ -8,7 +8,8 @@
 //! in `G1_2` with the pack leader's line heard, her bar going ticks the
 //! fight step. The rest pin the fire rule (the area, the open step, one
 //! quest), the refusal while the area is unknown, the routing (a held event
-//! waits, the relog window is left alone), the demand, and the validator.
+//! waits, the relog window is left alone), the demand, and the validator,
+//! for the `remark` signal by key too.
 //! All character names are invented.
 
 use std::path::PathBuf;
@@ -655,4 +656,131 @@ fn validator_accepts_and_refuses_screen_signals_and_remarks() {
     v["remarks"] = json!({});
     let (_, f, _) = refused(&v);
     assert_eq!(f, "remarks");
+}
+
+const TREE_KEY: &str = "FixtureTreeComment";
+const TREE_TEXT: &str = "Fixture remark: an old tree.";
+
+/// A remark row with no boss, for [`TREE_KEY`], its text invented.
+fn key_remark() -> Value {
+    json!({
+        "class": "Witch",
+        "key": TREE_KEY,
+        "text": TREE_TEXT,
+        "source_url": "https://poe2db.tw/us/Witch",
+        "fetched": "2026-10-28"
+    })
+}
+
+/// [`screen_value`] with a kill remark row, a key's row and a `remark`
+/// signal for the key appended to the fight step.
+fn remark_value() -> Value {
+    let mut v = screen_value();
+    v["remarks"] = json!([remark(), key_remark()]);
+    v["quests"][1]["steps"][1]["signals"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({ "kind": "screen", "what": "remark", "key": TREE_KEY, "area": "G1_2" }));
+    v
+}
+
+#[test]
+fn validator_accepts_and_refuses_remark_signals() {
+    // Accepted: a `remark` signal names a key; a row with no boss is the
+    // key's, and it reads as the key's text, never a boss's.
+    let data = parse(&remark_value());
+    let fight = &data.quest(BEIRA).unwrap().steps[1].signals;
+    assert_eq!(fight[1].screen(), Some((ScreenWhat::Remark, TREE_KEY)));
+    assert_eq!(data.key_texts(TREE_KEY), [TREE_TEXT]);
+    assert_eq!(data.key_texts("FixtureKillComment"), ["Fixture remark: the pack is broken."]);
+    assert_eq!(data.remark_texts(BEIRA_BOSS), ["Fixture remark: the pack is broken."]);
+    assert_eq!(data.remarks[1].boss, None);
+    let out = serde_json::to_value(&*data).unwrap();
+    assert!(out["remarks"][1].get("boss").is_none(), "no boss is not written");
+    assert_eq!(out["remarks"][0]["boss"], BEIRA_BOSS);
+    assert_eq!(QuestData::from_value(&out).unwrap(), *data, "round trip");
+
+    // The engine fires it by the key, like any screen signal.
+    let mut engine = at_the_fight(Arc::clone(&data));
+    let demand = engine.screen_demand();
+    assert!(
+        demand.iter().any(|d| d.what == ScreenWhat::Remark && d.name == TREE_KEY),
+        "{demand:?}"
+    );
+    let got = engine.apply_screen(&ScreenEvent::remark(TREE_KEY));
+    assert_eq!(got.outcome, ticked(BEIRA, "fight"));
+
+    // Refused, naming the quest and the field.
+    let key = "steps[1].signals[1]";
+    let cases: Vec<(&str, Box<dyn Fn(&mut Value)>, String, &str)> = vec![
+        (
+            "a remark with no key",
+            Box::new(|v| {
+                v["quests"][1]["steps"][1]["signals"][1].as_object_mut().unwrap().remove("key");
+            }),
+            format!("{key}.key"),
+            "is missing",
+        ),
+        (
+            "an empty key",
+            Box::new(|v| v["quests"][1]["steps"][1]["signals"][1]["key"] = " ".into()),
+            format!("{key}.key"),
+            "must not be empty",
+        ),
+        (
+            "a key no row has",
+            Box::new(|v| v["quests"][1]["steps"][1]["signals"][1]["key"] = "NoSuchComment".into()),
+            format!("{key}.key"),
+            "has no row in remarks",
+        ),
+        (
+            "a remark naming a boss",
+            Box::new(|v| v["quests"][1]["steps"][1]["signals"][1]["boss"] = BEIRA_BOSS.into()),
+            format!("{key}.boss"),
+            "names a key and no boss",
+        ),
+        (
+            "a remark naming an npc",
+            Box::new(|v| v["quests"][1]["steps"][1]["signals"][1]["npc"] = "Renly".into()),
+            format!("{key}.npc"),
+            "names a key and no npc",
+        ),
+        (
+            "a bar naming a key",
+            Box::new(|v| v["quests"][1]["steps"][1]["signals"][0]["key"] = TREE_KEY.into()),
+            "steps[1].signals[0].key".to_string(),
+            "names a boss and no key",
+        ),
+    ];
+    for (what, edit, field, message) in cases {
+        let mut v = remark_value();
+        edit(&mut v);
+        let (quest, f, m) = refused(&v);
+        assert_eq!(quest.as_deref(), Some(BEIRA), "{what}: {m}");
+        assert_eq!(f, field, "{what}: {m}");
+        assert!(m.contains(message), "{what}: {m}");
+    }
+    // A banner naming a key, on fixture-lute.
+    let mut v = remark_value();
+    v["quests"][4]["steps"][2]["signals"][0]["key"] = TREE_KEY.into();
+    let (quest, f, m) = refused(&v);
+    assert_eq!((quest.as_deref(), f.as_str()), (Some("fixture-lute"), "steps[2].signals[0].key"), "{m}");
+
+    // The remarks table: a row with no boss that no `remark` signal names
+    // is an orphan, and a boss, when named, is not empty.
+    let mut v = screen_value();
+    v["remarks"] = json!([remark(), key_remark()]);
+    let (quest, f, m) = refused(&v);
+    assert_eq!((quest, f.as_str()), (None, "remarks[1].key"), "{m}");
+    assert!(m.contains("no remark signal names it"), "{m}");
+    let mut v = remark_value();
+    v["remarks"][1]["boss"] = "".into();
+    let (quest, f, m) = refused(&v);
+    assert_eq!((quest, f.as_str()), (None, "remarks[1].boss"), "{m}");
+    assert!(m.contains("must not be empty"), "{m}");
+    // A kill remark row still needs its boss known.
+    let mut v = remark_value();
+    v["remarks"][0]["boss"] = "Nobody".into();
+    let (_, f, m) = refused(&v);
+    assert_eq!(f, "remarks[0].boss", "{m}");
 }

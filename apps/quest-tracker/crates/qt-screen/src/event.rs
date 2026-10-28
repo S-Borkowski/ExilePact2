@@ -17,24 +17,29 @@ pub enum ScreenEvent {
     /// A new line in the list of voiced lines carried a known kill remark
     /// for the boss.
     KillRemark { boss: String, at: Millis },
+    /// A new line in the list of voiced lines carried a known remark text
+    /// of the key (a quest moment's remark, by its poe2db key).
+    Remark { key: String, at: Millis },
 }
 
 impl ScreenEvent {
-    /// `bar_gone`, `quest_complete` or `kill_remark`: the `what` of the
-    /// screen signal it can fire.
+    /// `bar_gone`, `quest_complete`, `kill_remark` or `remark`: the `what`
+    /// of the screen signal it can fire.
     pub fn kind(&self) -> &'static str {
         match self {
             ScreenEvent::BarGone { .. } => "bar_gone",
             ScreenEvent::QuestComplete { .. } => "quest_complete",
             ScreenEvent::KillRemark { .. } => "kill_remark",
+            ScreenEvent::Remark { .. } => "remark",
         }
     }
 
-    /// The boss or NPC it is about.
+    /// The boss, NPC or remark key it is about.
     pub fn target(&self) -> &str {
         match self {
             ScreenEvent::BarGone { boss, .. } | ScreenEvent::KillRemark { boss, .. } => boss,
             ScreenEvent::QuestComplete { npc, .. } => npc,
+            ScreenEvent::Remark { key, .. } => key,
         }
     }
 
@@ -43,7 +48,8 @@ impl ScreenEvent {
         match self {
             ScreenEvent::BarGone { at, .. }
             | ScreenEvent::QuestComplete { at, .. }
-            | ScreenEvent::KillRemark { at, .. } => *at,
+            | ScreenEvent::KillRemark { at, .. }
+            | ScreenEvent::Remark { at, .. } => *at,
         }
     }
 }

@@ -22,9 +22,10 @@
 //! still finishes the quest. Only Beira's step says the boss drops an item;
 //! for the others that is not established.
 //!
-//! `shipped_screen_signals_are_the_four_named` pins the `bar_gone` and
-//! `quest_complete` signals the data ships (Context "Design: quest data and
-//! the engine"; the Miller's bar joined the four on 2026-10-28), and
+//! `shipped_screen_signals_are_the_four_named` pins the `bar_gone`,
+//! `quest_complete` and `remark` signals the data ships (Context "Design:
+//! quest data and the engine"; the Miller's bar joined the four on
+//! 2026-10-28, and the Tree of Souls remark the same day), and
 //! `beira_bar_gone_ticks_the_defeat_over_the_shipped_data` feeds one through
 //! the engine. `shipped_kill_remark_signals_are_the_established_bosses` pins
 //! the `kill_remark` signals, one per boss step whose kill remark poe2db's
@@ -34,6 +35,11 @@
 //! at his death, on the level-up to 2 the game logs at the kill, on his bar
 //! going or the character's kill remark, or, when none came, on Mortimer's
 //! thanks, and never twice.
+//!
+//! The `tree_remark_*` tests pin "Search the Grelwood" (2026-10-28, the
+//! owner's Ranger at the Tree of Souls): the character's remark there is not
+//! in the log, and the screen reader's `remark` for its key ends the search
+//! in the Grelwood only, before Una's summon line, and never twice.
 //!
 //! The rest pin what launch 6 found the tests above could not catch: the
 //! town voices' own lines, which `town_talk.txt` never had
@@ -157,7 +163,7 @@ fn data_file_validates() {
         }
     }
     for r in &data.remarks {
-        used.insert(&r.boss);
+        used.extend(r.boss.as_deref());
     }
     for npc in &data.npcs {
         assert!(used.contains(npc.as_str()), "npc {npc:?} is allowlisted but no quest uses it");
@@ -1666,7 +1672,7 @@ const PLAYABLE_CLASSES: [&str; 8] =
 #[test]
 fn shipped_miller_remarks_cover_every_playable_class() {
     let data = data();
-    let rows: Vec<_> = data.remarks.iter().filter(|r| r.boss == MILLER).collect();
+    let rows: Vec<_> = data.remarks.iter().filter(|r| r.boss.as_deref() == Some(MILLER)).collect();
     let classes: Vec<&str> = rows.iter().map(|r| r.class.as_str()).collect();
     let mut sorted = classes.clone();
     sorted.sort_unstable();
@@ -1787,16 +1793,157 @@ fn una_summon_alone_leaves_ask_una_for_help() {
     assert_eq!(next_title(&data, &s), "Search for Runes of Power");
 }
 
+// -- the Tree of Souls remark (2026-10-28) -----------------------------------
+
+const SECRETS: &str = "secrets-in-the-dark";
+
+/// The poe2db key of every class's remark on finding the Tree of Souls, and
+/// the Ranger's text of it (https://poe2db.tw/us/Ranger, fetched
+/// 2026-10-28), the line the owner's Ranger said at the tree.
+const TREE_KEY: &str = "SinTreeSeenComment";
+const RANGER_TREE: &str = "Has the Tree not endured enough?";
+
+/// Up to the Grelwood: Secrets in the Dark in progress, its entry reached,
+/// "Search the Grelwood" next.
+fn at_the_tree(data: &Arc<QuestData>) -> Replay {
+    let mut r = Replay::start(data, GRELWOOD_CHARACTER);
+    for code in [TOWN_CODE, "G1_2", TOWN_CODE, "G1_4"] {
+        r.enter(code);
+    }
+    let s = r.state(SECRETS);
+    assert_eq!(s.current_step.as_deref(), Some("step-1"));
+    assert_eq!(next_title(data, &s), "Search the Grelwood");
+    r
+}
+
+/// The transitions that move Secrets in the Dark to `step`.
+fn secrets_to<'a>(moved: &'a [Transition], step: &str) -> Vec<&'a Transition> {
+    moved
+        .iter()
+        .filter(|t| t.quest_id == SECRETS && t.step_to.as_deref() == Some(step))
+        .collect()
+}
+
+/// Secrets in the Dark's screen signals demanded now, as (step, what, name,
+/// area).
+fn secrets_demand(engine: &Engine) -> Vec<(String, ScreenWhat, String, String)> {
+    engine
+        .screen_demand()
+        .into_iter()
+        .filter(|d| d.quest_id == SECRETS)
+        .map(|d| (d.step_id, d.what, d.name, d.area))
+        .collect()
+}
+
+/// Baseline (2026-10-28, the owner's Ranger at the tree): a character's
+/// remark is not in `Client.txt`, and a line carrying its text under the
+/// character's name moves no quest, the character being no listed speaker.
+/// Una's "What happened here...?" still ends the search.
+#[test]
+fn tree_remark_in_the_log_ticks_nothing() {
+    let data = Arc::new(data());
+    let mut r = at_the_tree(&data);
+    let moved = r.say(GRELWOOD_CHARACTER, RANGER_TREE);
+    assert!(moved.is_empty(), "{moved:?}");
+    assert_eq!(r.state(SECRETS).current_step.as_deref(), Some("step-1"));
+
+    let moved = r.say(TOWN_SPOKEN, UNA_ASKS);
+    assert_eq!(secrets_to(&moved, "step-2").len(), 1, "{moved:?}");
+    let s = r.state(SECRETS);
+    assert_eq!(next_title(&data, &s), "Ask Una for help");
+}
+
+/// Target: in the Grelwood at "Search the Grelwood", the reader is asked
+/// for the tree remark (every class's text of its key), and the remark
+/// ticks the search in one live transition, so "Ask Una for help" is next.
+/// Una's summon line afterwards moves nothing more, and her wait line still
+/// reaches "Find the Red Vale".
+#[test]
+fn tree_remark_ticks_search_the_grelwood_over_the_shipped_data() {
+    let data = Arc::new(data());
+    let mut r = at_the_tree(&data);
+    assert_eq!(
+        secrets_demand(&r.engine),
+        [("step-2".to_string(), ScreenWhat::Remark, TREE_KEY.to_string(), "G1_4".to_string())]
+    );
+    let texts = data.key_texts(TREE_KEY);
+    assert_eq!(texts.len(), 8, "one text per playable class: {texts:?}");
+    assert!(texts.contains(&RANGER_TREE), "{texts:?}");
+
+    let got = r.engine.apply_screen(&ScreenEvent::remark(TREE_KEY));
+    assert_eq!(
+        got.outcome,
+        ScreenOutcome::Ticked { quest_id: SECRETS.to_string(), step_id: "step-2".to_string() }
+    );
+    let moved = secrets_to(&got.transitions, "step-2");
+    assert_eq!(moved.len(), 1, "{:?}", got.transitions);
+    assert!(moved[0].live && moved[0].character == GRELWOOD_CHARACTER, "{:?}", moved[0]);
+    let s = r.state(SECRETS);
+    assert_eq!(s.current_step.as_deref(), Some("step-2"));
+    assert_eq!(next_title(&data, &s), "Ask Una for help");
+    assert!(!s.steps.iter().any(|st| st.ticked), "fired, not ticked: {:?}", s.steps);
+    assert!(secrets_demand(&r.engine).is_empty());
+
+    let moved = r.say(TOWN_SPOKEN, UNA_ASKS);
+    assert!(secrets_to(&moved, "step-2").is_empty(), "{moved:?}");
+    assert_eq!(r.state(SECRETS).current_step.as_deref(), Some("step-2"));
+
+    let moved = r.say(TOWN_SPOKEN, UNA_WAITS);
+    assert_eq!(secrets_to(&moved, "step-3").len(), 1, "{moved:?}");
+    let s = r.state(SECRETS);
+    assert_eq!(next_title(&data, &s), "Find the Red Vale");
+}
+
+/// The tree remark ticks nothing in the encampment while the search is
+/// open, nothing once Una's line ended the search, nothing a second time,
+/// and the key read as a kill remark's boss ticks nothing at all.
+#[test]
+fn tree_remark_ticks_nothing_outside_the_grelwood_or_open_step() {
+    let data = Arc::new(data());
+    let nothing = |r: &mut Replay, ev: &ScreenEvent, why: &str| {
+        let got = r.engine.apply_screen(ev);
+        assert_eq!(got.outcome, ScreenOutcome::NoOpenStep, "{why}");
+        assert!(got.transitions.is_empty(), "{why}: {:?}", got.transitions);
+    };
+    let tree = ScreenEvent::remark(TREE_KEY);
+
+    // In the encampment, the search still open.
+    let mut r = at_the_tree(&data);
+    r.enter(TOWN_CODE);
+    assert!(secrets_demand(&r.engine).is_empty());
+    nothing(&mut r, &tree, "in the encampment");
+    assert_eq!(r.state(SECRETS).current_step.as_deref(), Some("step-1"));
+
+    // In the Grelwood once Una's line ended the search.
+    let mut r = at_the_tree(&data);
+    r.say(TOWN_SPOKEN, UNA_ASKS);
+    assert!(secrets_demand(&r.engine).is_empty());
+    nothing(&mut r, &tree, "after Una's line");
+
+    // Once it ticked, a second remark adds none.
+    let mut r = at_the_tree(&data);
+    assert_eq!(secrets_to(&r.engine.apply_screen(&tree).transitions, "step-2").len(), 1);
+    nothing(&mut r, &tree, "a second remark");
+
+    // The key as a kill remark is another signal.
+    let mut r = at_the_tree(&data);
+    nothing(&mut r, &ScreenEvent::kill_remark(TREE_KEY), "as a kill remark");
+    assert_eq!(r.state(SECRETS).current_step.as_deref(), Some("step-1"));
+}
+
 // -- the screen reader's signals (Context "Design: quest data and the engine")
 
-/// The `bar_gone` and `quest_complete` signals the data ships, as (quest,
-/// step, kind, name, area), in data order: the Miller's bar (its going at
-/// the kill read in the Live 8 replay, 2026-10-28), Renly's QUEST COMPLETE
-/// banner (Live 8), Beira's bar (its text measured in Live 6), and
-/// Blackjaw's and Lythara's by analogy, their bar text not measured.
-const SHIPPED_SCREEN: [(&str, &str, ScreenWhat, &str, &str); 5] = [
+/// The `bar_gone`, `quest_complete` and `remark` signals the data ships, as
+/// (quest, step, kind, name, area), in data order: the Miller's bar (its
+/// going at the kill read in the Live 8 replay, 2026-10-28), Renly's QUEST
+/// COMPLETE banner (Live 8), the Tree of Souls remark on "Search the
+/// Grelwood" (poe2db's class pages, 2026-10-28; not measured live), Beira's
+/// bar (its text measured in Live 6), and Blackjaw's and Lythara's by
+/// analogy, their bar text not measured.
+const SHIPPED_SCREEN: [(&str, &str, ScreenWhat, &str, &str); 6] = [
     ("reaching-clearfell", "step-2", ScreenWhat::BarGone, "The Bloated Miller", "G1_1"),
     ("reaching-clearfell", "step-6", ScreenWhat::QuestComplete, "Renly", "G1_town"),
+    ("secrets-in-the-dark", "step-2", ScreenWhat::Remark, TREE_KEY, "G1_4"),
     ("beira-of-the-rotten-pack", "fight", ScreenWhat::BarGone, "Beira of the Rotten Pack", "G1_2"),
     ("blackjaw-the-remnant", "fight", ScreenWhat::BarGone, "Blackjaw", "G3_6_1"),
     ("lythara-the-wayward-spear", "fight", ScreenWhat::BarGone, "Lythara", "P3_2"),
@@ -1815,6 +1962,7 @@ fn shipped_screen_signals_are_the_four_named() {
                 if what == ScreenWhat::KillRemark {
                     // Pinned, with or without a bar beside them, by
                     // `shipped_kill_remark_signals_are_the_established_bosses`.
+                    // A `remark` signal is pinned here.
                     continue;
                 }
                 found.push((q.id.as_str(), step.id.as_str(), what, name, area.as_str()));
@@ -1837,16 +1985,24 @@ fn shipped_screen_signals_are_the_four_named() {
                 assert!(title.starts_with("Defeat ") || slays, "quest {id}: {title:?}");
                 assert!(q.zones.iter().any(|z| z == area), "quest {id}: {area} is not its zone");
             }
+            // A remark reads every class's text of its key, in a zone of the
+            // quest, and was appended after the step's other signals (saved
+            // progress names them by position).
+            ScreenWhat::Remark => {
+                assert_eq!(data.key_texts(name).len(), PLAYABLE_CLASSES.len(), "quest {id}: {name}");
+                assert!(q.zones.iter().any(|z| z == area), "quest {id}: {area} is not its zone");
+                let signals = &q.steps.iter().find(|s| s.id == step).expect("step").signals;
+                assert_eq!(signals.last().and_then(Signal::screen), Some((what, name)), "quest {id}");
+            }
             _ => assert!(title.contains(name), "quest {id}: {title:?}"),
         }
     }
     // Every kill remark text is for a boss the data knows (the validator
     // checks this; pinned here for the shipped file).
-    for r in &data.remarks {
+    for boss in data.remarks.iter().filter_map(|r| r.boss.as_ref()) {
         assert!(
-            SHIPPED_SCREEN.iter().any(|s| s.3 == r.boss) || data.npcs.contains(&r.boss),
-            "remark for {:?}",
-            r.boss
+            SHIPPED_SCREEN.iter().any(|s| s.3 == boss) || data.npcs.contains(boss),
+            "remark for {boss:?}"
         );
     }
 }

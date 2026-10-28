@@ -447,6 +447,7 @@ fn demand(args: &ScreenArgs) -> Result<Demand, Failure> {
         bars: args.bars.clone(),
         dialogues: args.dialogues.clone(),
         remarks: Vec::new(),
+        keys: Vec::new(),
     };
     if let Some(class) = &args.class {
         let data = load_data(args.data.as_deref())?;
@@ -456,7 +457,11 @@ fn demand(args: &ScreenArgs) -> Result<Demand, Failure> {
             .iter()
             .filter(|r| r.class.eq_ignore_ascii_case(class))
         {
-            by_boss.entry(&r.boss).or_default().push(r.text.clone());
+            // A row with no boss is a key's remark, which `--class` does
+            // not read.
+            if let Some(boss) = &r.boss {
+                by_boss.entry(boss).or_default().push(r.text.clone());
+            }
         }
         if by_boss.is_empty() {
             return Err(Failure::Error(format!(
@@ -640,6 +645,26 @@ mod tests {
         assert_eq!(parse_utc("2026-10-26 20:19:45Z"), None);
         assert_eq!(parse_utc("2026-13-26T20:19:45Z"), None);
         assert_eq!(parse_utc("2026-10-26T20:19:45.9x1Z"), None);
+    }
+
+    #[test]
+    fn a_remark_prints_as_a_kill_remark_does_with_its_key() {
+        let kill = ScreenEvent::KillRemark {
+            boss: "The Bloated Miller".into(),
+            at: 0,
+        };
+        let remark = ScreenEvent::Remark {
+            key: "SinTreeSeenComment".into(),
+            at: 0,
+        };
+        assert_eq!(
+            event_json(&kill),
+            json!({"event": "kill_remark", "target": "The Bloated Miller", "at": "1970-01-01T00:00:00.000Z"})
+        );
+        assert_eq!(
+            event_json(&remark),
+            json!({"event": "remark", "target": "SinTreeSeenComment", "at": "1970-01-01T00:00:00.000Z"})
+        );
     }
 
     #[test]

@@ -8,6 +8,10 @@
 //! Executioner and Lythara, which play when the fight starts, fire nothing
 //! through any shipped boss's tracker.
 //!
+//! The rows with no boss are a key's: every class's Tree of Souls remark,
+//! as a new line, fires one `remark` for its key, and the Rust King's kill
+//! remarks do not.
+//!
 //! The on-sight lines are short user-facing game text from poe2db's class
 //! pages, kept with the page and the date they were read (AGENTS.md §
 //! "Legal", the owner's decision of 2026-10-24), braces markup removed. The
@@ -62,23 +66,41 @@ const LYTHARA_SEEN: [(&str, &str, &str, &str); 8] = [
     ("Druid", "Whatever speaks to ye, it's no Spirit!", "https://poe2db.tw/us/Druid", "2026-10-28"),
 ];
 
-/// One shipped `remarks` row.
+/// One shipped kill-remark row (a `remarks` row naming a boss).
 struct Remark {
     class: String,
     boss: String,
     text: String,
 }
 
-fn shipped_remarks() -> Vec<Remark> {
+/// The shipped `remarks` rows, as JSON.
+fn shipped_rows() -> Vec<Value> {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/quests.json");
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let data: Value = serde_json::from_str(&text).expect("the quest data is JSON");
-    let field = |r: &Value, k: &str| r[k].as_str().unwrap_or_else(|| panic!("remark {r}: {k}")).to_string();
-    data["remarks"]
-        .as_array()
-        .expect("a remarks table")
+    data["remarks"].as_array().expect("a remarks table").clone()
+}
+
+fn field(r: &Value, k: &str) -> String {
+    r[k].as_str().unwrap_or_else(|| panic!("remark {r}: {k}")).to_string()
+}
+
+/// The shipped kill-remark rows; a row with no boss is a key's
+/// ([`key_remarks`]).
+fn shipped_remarks() -> Vec<Remark> {
+    shipped_rows()
         .iter()
+        .filter(|r| r.get("boss").is_some())
         .map(|r| Remark { class: field(r, "class"), boss: field(r, "boss"), text: field(r, "text") })
+        .collect()
+}
+
+/// The shipped rows of `key`, as (class, text, page, date read).
+fn key_remarks(key: &str) -> Vec<(String, String, String, String)> {
+    shipped_rows()
+        .iter()
+        .filter(|r| r["key"] == key)
+        .map(|r| (field(r, "class"), field(r, "text"), field(r, "source_url"), field(r, "fetched")))
         .collect()
 }
 
@@ -195,5 +217,49 @@ fn no_class_on_sight_line_is_read_as_a_kill_remark() {
         let mut t = tracker_for(&rows, boss);
         let text = rows.iter().find(|r| r.boss == *boss).expect("a row").text.clone();
         assert_eq!(said(&mut t, &text).len(), 1, "{boss}");
+    }
+}
+
+/// Every class's remark on finding the Tree of Souls (poe2db's
+/// `SinTreeSeenComment`, its rows in `remarks` with the page and the date
+/// read), which ends "Search the Grelwood".
+const TREE_KEY: &str = "SinTreeSeenComment";
+const RUST_KING: &str = "The Rust King";
+
+/// The tracker the reader builds for `key`: every class's texts of it.
+fn tracker_for_key(key: &str) -> RemarkTracker {
+    let texts = key_remarks(key).into_iter().map(|(_, text, _, _)| text).collect();
+    RemarkTracker::for_key(key, texts)
+}
+
+#[test]
+fn every_shipped_tree_remark_is_read_as_the_tree_remark() {
+    let tree = key_remarks(TREE_KEY);
+    let mut classes: Vec<&str> = tree.iter().map(|(class, ..)| class.as_str()).collect();
+    classes.sort_unstable();
+    let mut want = PLAYABLE_CLASSES.to_vec();
+    want.sort_unstable();
+    assert_eq!(classes, want, "one tree remark per playable class");
+    for (class, text, page, fetched) in &tree {
+        assert_eq!(*page, format!("https://poe2db.tw/us/{class}"));
+        assert!(fetched.as_str() >= "2026-10-27", "{class}: {fetched}");
+        let mut t = tracker_for_key(TREE_KEY);
+        assert_eq!(
+            said(&mut t, text),
+            [ScreenEvent::Remark { key: TREE_KEY.to_string(), at: 3_000 }],
+            "{class}: {text:?}"
+        );
+    }
+    // Negative control: the Rust King's kill remarks, the next remark of
+    // the quest, are not the tree's.
+    let rows = shipped_remarks();
+    let king: Vec<&Remark> = rows.iter().filter(|r| r.boss == RUST_KING).collect();
+    assert_eq!(king.len(), PLAYABLE_CLASSES.len(), "one Rust King remark per playable class");
+    for r in king {
+        let mut t = tracker_for_key(TREE_KEY);
+        assert!(said(&mut t, &r.text).is_empty(), "{}: {:?} read as the tree remark", r.class, r.text);
+        // Positive control through the same reads: his own tracker fires.
+        let mut t = tracker_for(&rows, RUST_KING);
+        assert_eq!(said(&mut t, &r.text).len(), 1, "{}", r.class);
     }
 }

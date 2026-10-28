@@ -15,7 +15,8 @@
 //!   identical scores (a parity fixture pins them).
 //! - The trackers, each fed reads of its region in time order:
 //!   [`BarTracker`] (`bar_gone`), [`DialogueTracker`] (`quest_complete`) and
-//!   [`RemarkTracker`] (`kill_remark`), gathered for one [`Demand`] by
+//!   [`RemarkTracker`] (`kill_remark` by boss, `remark` by key), gathered
+//!   for one [`Demand`] by
 //!   [`Trackers`]. They report [`ScreenEvent`]s.
 //! - [`DialogueGate`]: the dialogue window's heading gate. While no demanded
 //!   NPC's heading has read lately, only the window's [`HEADING_STRIP`] is
@@ -77,5 +78,5 @@ pub use region::{
     Region, BOSS_BAR_PERIOD_MS, BOSS_BAR_RECT, DIALOGUE_WINDOW_PERIOD_MS, DIALOGUE_WINDOW_RECT,
     VOICED_LINES_PERIOD_MS, VOICED_LINES_RECT,
 };
-pub use remark::{remark_body, RemarkTracker, NEW_FROM_MS, NEW_TO_MS};
-pub use trackers::{BarCounts, Demand, RemarkDemand, Trackers};
+pub use remark::{remark_body, RemarkTarget, RemarkTracker, NEW_FROM_MS, NEW_TO_MS};
+pub use trackers::{BarCounts, Demand, KeyRemarkDemand, RemarkDemand, Trackers};
