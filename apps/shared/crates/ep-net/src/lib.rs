@@ -1,7 +1,7 @@
-//! Both apps' only network code: the repository's GitHub release list and
+//! The apps' only network code: the repository's GitHub release list and
 //! a release's fixed assets, fetched over HTTPS through Windows' own WinHTTP.
 //!
-//! No other crate of either app talks to the network. The public API reaches
+//! No other crate of any app talks to the network. The public API reaches
 //! two places only, [`fetch_release_list`] and [`download_asset`]; the hosts,
 //! ports, paths and headers are this crate's constants, and no caller can
 //! pass a host, a path or a URL. A caller names its [`Product`], and for a
@@ -15,8 +15,8 @@
 //! - The release list: `GET` [`PATH`] on [`HOST`], port [`PORT`], over TLS
 //!   ([`SCHEME`]), with three headers: `Accept: `[`ACCEPT`],
 //!   `X-GitHub-Api-Version: `[`API_VERSION`] and `User-Agent: ` the
-//!   product's ([`QUEST_TRACKER_USER_AGENT`] or
-//!   [`WAYSTONE_ROLLER_USER_AGENT`]; GitHub refuses a request without one;
+//!   product's ([`QUEST_TRACKER_USER_AGENT`], [`WAYSTONE_ROLLER_USER_AGENT`]
+//!   or [`CRAFTING_HELPER_USER_AGENT`]; GitHub refuses a request without one;
 //!   it names no version and no machine detail).
 //! - A release asset: `GET https://`[`DOWNLOAD_HOST`][`DOWNLOAD_PATH_PREFIX`]
 //!   `<tag>/<asset>`, port 443, with two headers: `Accept: `
@@ -84,14 +84,20 @@ pub const TOTAL_DEADLINE: Duration = Duration::from_secs(20);
 pub const QUEST_TRACKER_USER_AGENT: &str = "ExilePact2-quest-tracker";
 /// The waystone roller's `User-Agent`, in the same form.
 pub const WAYSTONE_ROLLER_USER_AGENT: &str = "ExilePact2-waystone-roller";
+/// The crafting helper's `User-Agent`, in the same form.
+pub const CRAFTING_HELPER_USER_AGENT: &str = "ExilePact2-crafting-helper";
 /// The quest tracker's release tags: this prefix and `<major>.<minor>.<patch>`.
 pub const QUEST_TRACKER_TAG_PREFIX: &str = "quest-tracker-v";
 /// The waystone roller's release tags, in the same form.
 pub const WAYSTONE_ROLLER_TAG_PREFIX: &str = "waystone-roller-v";
+/// The crafting helper's release tags, in the same form.
+pub const CRAFTING_HELPER_TAG_PREFIX: &str = "crafting-helper-v";
 /// The quest tracker's exe, as its releases name the asset.
 pub const QUEST_TRACKER_EXE: &str = "quest-tracker.exe";
 /// The waystone roller's exe, as its releases name the asset.
 pub const WAYSTONE_ROLLER_EXE: &str = "waystone-roller.exe";
+/// The crafting helper's exe, as its releases name the asset.
+pub const CRAFTING_HELPER_EXE: &str = "crafting-helper.exe";
 /// The suffix of an exe's signature asset (minisign's signature text).
 pub const SIGNATURE_SUFFIX: &str = ".minisig";
 
@@ -123,6 +129,7 @@ pub const MAX_SIGNATURE: u64 = 4 * 1024;
 pub enum Product {
     QuestTracker,
     WaystoneRoller,
+    CraftingHelper,
 }
 
 impl Product {
@@ -131,6 +138,7 @@ impl Product {
         match self {
             Product::QuestTracker => QUEST_TRACKER_USER_AGENT,
             Product::WaystoneRoller => WAYSTONE_ROLLER_USER_AGENT,
+            Product::CraftingHelper => CRAFTING_HELPER_USER_AGENT,
         }
     }
 
@@ -139,6 +147,7 @@ impl Product {
         match self {
             Product::QuestTracker => QUEST_TRACKER_TAG_PREFIX,
             Product::WaystoneRoller => WAYSTONE_ROLLER_TAG_PREFIX,
+            Product::CraftingHelper => CRAFTING_HELPER_TAG_PREFIX,
         }
     }
 
@@ -147,6 +156,7 @@ impl Product {
         match self {
             Product::QuestTracker => QUEST_TRACKER_EXE,
             Product::WaystoneRoller => WAYSTONE_ROLLER_EXE,
+            Product::CraftingHelper => CRAFTING_HELPER_EXE,
         }
     }
 }
@@ -522,10 +532,12 @@ mod tests {
         assert_eq!(API_VERSION, "2022-11-28");
         assert_eq!(QUEST_TRACKER_USER_AGENT, "ExilePact2-quest-tracker");
         assert_eq!(WAYSTONE_ROLLER_USER_AGENT, "ExilePact2-waystone-roller");
+        assert_eq!(CRAFTING_HELPER_USER_AGENT, "ExilePact2-crafting-helper");
         assert_eq!(MAX_BODY, 2 * 1024 * 1024);
         for (product, agent) in [
             (Product::QuestTracker, QUEST_TRACKER_USER_AGENT),
             (Product::WaystoneRoller, WAYSTONE_ROLLER_USER_AGENT),
+            (Product::CraftingHelper, CRAFTING_HELPER_USER_AGENT),
         ] {
             let t = Target::release_list(product);
             assert_eq!(t.host, HOST);
@@ -571,11 +583,28 @@ mod tests {
             "/S-Borkowski/ExilePact2/releases/download/waystone-roller-v1.0.0/waystone-roller.exe.minisig"
         );
 
+        let ch = ReleaseTag::new(Product::CraftingHelper, 0, 1, 0);
+        assert_eq!(ch.tag(), "crafting-helper-v0.1.0");
+        assert_eq!(ch.asset_name(Asset::Exe), "crafting-helper.exe");
+        assert_eq!(
+            ch.asset_name(Asset::Signature),
+            "crafting-helper.exe.minisig"
+        );
+        assert_eq!(
+            ch.download_path(Asset::Exe),
+            "/S-Borkowski/ExilePact2/releases/download/crafting-helper-v0.1.0/crafting-helper.exe"
+        );
+        assert_eq!(
+            ch.download_path(Asset::Signature),
+            "/S-Borkowski/ExilePact2/releases/download/crafting-helper-v0.1.0/crafting-helper.exe.minisig"
+        );
+
         assert_eq!(Asset::Exe.cap(), 64 * 1024 * 1024);
         assert_eq!(Asset::Signature.cap(), 4 * 1024);
         for (product, agent) in [
             (Product::QuestTracker, QUEST_TRACKER_USER_AGENT),
             (Product::WaystoneRoller, WAYSTONE_ROLLER_USER_AGENT),
+            (Product::CraftingHelper, CRAFTING_HELPER_USER_AGENT),
         ] {
             let t = Target::download(product);
             assert_eq!(t.host, "github.com");
@@ -906,6 +935,7 @@ mod tests {
             for (product, agent) in [
                 (Product::QuestTracker, QUEST_TRACKER_USER_AGENT),
                 (Product::WaystoneRoller, WAYSTONE_ROLLER_USER_AGENT),
+                (Product::CraftingHelper, CRAFTING_HELPER_USER_AGENT),
             ] {
                 let (listener, port) = listen();
                 let server = thread::spawn(move || {

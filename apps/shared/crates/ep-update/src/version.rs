@@ -33,6 +33,13 @@ pub const WAYSTONE_ROLLER: Product = Product {
     exe_name: "waystone-roller.exe",
 };
 
+/// The crafting helper, as its releases name it.
+pub const CRAFTING_HELPER: Product = Product {
+    name: "Crafting Helper",
+    tag_prefix: "crafting-helper-v",
+    exe_name: "crafting-helper.exe",
+};
+
 impl Product {
     /// The file name of the exe's signature asset, `<exe>.minisig`.
     pub fn signature_name(&self) -> String {
