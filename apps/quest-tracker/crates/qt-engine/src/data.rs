@@ -260,6 +260,14 @@ pub enum Signal {
     },
     /// The character's level is at least `min` (evaluated against its state).
     Level { min: u32 },
+    /// A level-up line to exactly `level`, logged while the current area is
+    /// `area`, of the character the engine takes the level-up as (the new
+    /// character it names, an own, active or pinned character's own, or an
+    /// unknown name made active as unconfirmed; never a party member's).
+    /// Event-based, unlike `level`: kept as evidence when the line happens,
+    /// never read from the character's state, so a character already past
+    /// `level` never fires it.
+    LevelUp { level: u32, area: String },
     /// Another quest has this status (evaluated at computation time).
     Quest { id: String, status: Status },
     /// What the opt-in screen reader saw in one area: a boss's bar going or
@@ -658,13 +666,14 @@ impl Checker<'_> {
             "reward" => (&["kind"], &["text", "category", "area"]),
             "points" => (&["kind", "type"], &["area"]),
             "level" => (&["kind", "min"], &[]),
+            "level_up" => (&["kind", "level", "area"], &[]),
             "quest" => (&["kind", "id", "status"], &[]),
             "screen" => (&["kind", "what", "area"], &["boss", "npc"]),
             other => {
                 return Err(self.err(
                     &kind_field,
                     format!(
-                        "unknown signal kind {other:?} (one of area, npc, system, reward, points, level, quest, screen)"
+                        "unknown signal kind {other:?} (one of area, npc, system, reward, points, level, level_up, quest, screen)"
                     ),
                 ))
             }
@@ -718,6 +727,16 @@ impl Checker<'_> {
             "points" => self.one_of(&m["type"], &join(path, "type"), &["passive", "weapon_set"])?,
             "level" => {
                 self.positive(&m["min"], &join(path, "min"))?;
+            }
+            "level_up" => {
+                // No level-up reaches level 1; the area was checked above.
+                let f = join(path, "level");
+                if self.positive(&m["level"], &f)? < 2 {
+                    return Err(self.err(
+                        &f,
+                        format!("must be 2 or more (no level-up reaches level 1), found {}", m["level"]),
+                    ));
+                }
             }
             "quest" => {
                 let f = join(path, "id");
