@@ -1,0 +1,8 @@
+Item Class: Gloves
+Rarity: Magic
+Sirenscale Gloves of the Yeti
+--------
+Item Level: 81
+--------
+{ Suffix Modifier "of the Yeti" (Tier: 5) — Elemental, Cold, Resistance }
++23(21-25)% to Cold Resistance

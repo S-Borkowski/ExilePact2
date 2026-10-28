@@ -1,0 +1,40 @@
+# A test blueprint (engine tests only): exalt for a remaining target,
+# annul an unwanted modifier on a miss, finish by hand.
+id = "test-slam"
+name = "Test: slam, clean, finish"
+classes = ["Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt for a remaining target"
+goal = "add-wanted"
+bind = "any-remaining"
+on_miss = "goto:clean"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+
+[[step.action]]
+currency = "greater-exalted-orb"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "finish"
+say = "Divine the values"
+goal = "manual"
+on_hit = "done"
+
+[[step]]
+id = "clean"
+say = "Annul an unwanted modifier"
+goal = "remove-unwanted"
+on_hit = "goto:slam"
+
+[[step.action]]
+currency = "orb-of-annulment"

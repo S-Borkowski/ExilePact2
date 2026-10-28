@@ -1,0 +1,35 @@
+# A test blueprint (engine tests only): an essence first when one meets a
+# target's floor, then exalts.
+id = "test-essence"
+name = "Test: essence first, then exalt"
+classes = ["Gloves"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["normal", "magic"]
+essence_binds = true
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "essence"
+say = "Use the essence that adds a target"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+
+[[step.action]]
+currency = "essence-of-enhancement"
+
+[[step.action]]
+currency = "greater-essence-of-enhancement"
+
+[[step]]
+id = "slam"
+say = "Exalt for a remaining target"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "exalted-orb"
