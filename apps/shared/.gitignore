@@ -1,0 +1,3 @@
+# Build output of the shared workspace. The root .gitignore has no
+# `target/` line, so the workspace carries its own.
+target/

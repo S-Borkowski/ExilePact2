@@ -1,0 +1,26 @@
+# The shared Cargo workspace: the update code both apps use, kept once.
+# `ep-net` is the only network code of either app (the release list and the
+# release-asset download, through Windows' own WinHTTP). The quest tracker
+# and the waystone roller take its crates as path dependencies; neither app
+# lists them as members of its own workspace.
+#
+# Every external dependency is pinned here with `=`, at the quest tracker's
+# version, and taken by members with `workspace = true`; a member never
+# names a version of its own. No crate here depends on a `qt-*` or `wr-*`
+# crate.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/ep-net",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+# Windows-only, used by `ep-net` alone, which adds the WinHTTP feature. The
+# quest tracker's lock already carries this version.
+windows-sys = { version = "=0.61.2", features = ["Win32_Foundation"] }
