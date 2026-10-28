@@ -115,7 +115,9 @@ def notes(version: str, root: Path = ROOT) -> str:
     header = (
         "Waystone Roller %s, a small window for Path of Exile 2 that builds one stash or vendor search "
         "string from the waystone modifiers you want and avoid, a tier range, rarities and corruption, "
-        "and copies it with `Ctrl+Alt+W` for you to paste. It never touches the game.\n\n"
+        "and copies it with `Ctrl+Alt+W` and, with the game in front, pastes it into the search box "
+        "with `Ctrl+A` then `Ctrl+V`, the only keys it sends the game. It reads no game memory, moves "
+        "no mouse and clicks nothing.\n\n"
         "Download `waystone-roller.exe` below and run it; there is no installer. It needs Windows 10 or "
         "11, 64-bit, with the Microsoft Edge WebView2 runtime, and the game in English. "
         "`SHA256SUMS.txt` lists the file's hash. `waystone-roller.exe.minisig` is the release key's "
