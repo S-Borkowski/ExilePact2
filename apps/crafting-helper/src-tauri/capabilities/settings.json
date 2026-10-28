@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings",
+  "description": "The Settings window, opened from the main window's Settings button: listen for ch:app-settings. No window, http, shell, fs, websocket, upload, process, opener, clipboard or updater permission; an update is checked, downloaded and installed through the app's own commands, and nothing opens a browser.",
+  "windows": ["settings"],
+  "permissions": [
+    "core:event:default"
+  ]
+}

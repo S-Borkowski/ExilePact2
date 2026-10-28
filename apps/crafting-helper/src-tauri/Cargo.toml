@@ -1,0 +1,32 @@
+[package]
+name = "crafting-helper"
+description = "The crafting helper's windows: Tauri glue around ch-app."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The library carries the glue; src/main.rs only calls `run`. The `_lib`
+# suffix keeps the library's output name apart from the binary's.
+[lib]
+name = "crafting_helper_lib"
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+ch-app = { path = "../crates/ch-app" }
+# The app's only network code, shared with the quest tracker and the
+# waystone roller (apps/shared): the release list and the two fixed release
+# assets, over WinHTTP. Named by this glue alone, which implements ch-app's
+# update transport over it.
+ep-net = { path = "../../shared/crates/ep-net" }
+tauri = { workspace = true }
+tauri-plugin-global-shortcut = { workspace = true }
+tauri-plugin-single-instance = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# The clipboard reader, the error beep and the overlay's show and hide
+# without activating it.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }

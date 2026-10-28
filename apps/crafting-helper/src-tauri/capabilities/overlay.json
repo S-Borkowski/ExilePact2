@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "overlay",
+  "description": "The click-through overlay: listen for ch:view. It sends no command but get_view; no window, http, shell, fs, websocket, upload, process, opener, clipboard or updater permission.",
+  "windows": ["overlay"],
+  "permissions": [
+    "core:event:default"
+  ]
+}
