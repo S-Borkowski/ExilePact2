@@ -588,10 +588,12 @@ or (O) the owner.
   box holding exactly `corr`, and a second time still `corr` once
   (measured 2026-10-28, waystone roller Live 3). So the box treats
   `Ctrl+A` as select-all and `Ctrl+V` as a paste over the selection.
-- **With no text field focused, the same keys reach the game's key
-  bindings**, and with the chat open they paste into the chat's input line
-  (measured 2026-10-28, waystone roller Live 3, the owner's report: "buttons
-  were pressed", and the text was pasted into open chat). Which binding
+- **With no text field focused, a shortcut press that sent Ctrl+A then
+  Ctrl+V was followed by game key bindings firing (not separated: Ctrl+A,
+  Ctrl+V or the Ctrl+Alt+W press itself); with the chat open, the injected
+  Ctrl+V pasted into the chat's input line** (measured 2026-10-28,
+  waystone roller Live 3, the owner's report: "buttons were pressed", and
+  the text was pasted into open chat). Which binding
   fired, and for which of `Ctrl+A`, `Ctrl+V` or the `Ctrl+Alt+W` press
   itself, was not separated.
 - Not established: whether lookahead (`(?=`, `(?!`) works
