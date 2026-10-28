@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- Synthetic Rings page for tests/test_crafting_helper_poe2db.py: a
+     single-page class (a div.tab-pane#RingsItem base list, no attribute
+     variants, no desecrated rows, league-pool groups). Every base, modifier
+     and essence in it is invented. Never a saved page. -->
+<html lang="en"><head><meta charset="utf-8"><title>Rings - synthetic</title></head><body>
+<div class="tab-content">
+<div id="RingsUnique" class="tab-pane fade"><div class="card mb-2"><h5 class="card-header">Rings Unique /1 </h5><div class="flex-grow-1"><a class="uniqueitem" href="Invented_Unique">Invented Unique</a></div></div></div>
+<div id="RingsItem" class="tab-pane fade"><div class="card mb-2">
+<h5 class="card-header">Rings Item /3 </h5>
+<div class="row row-cols-1 g-2">
+<div class="col"><div class="d-flex border-top rounded"><div class="flex-shrink-0"><a class="whiteitem Ring" href="Lantern_Band"><img src="https://cdn.example.invalid/r1.webp" alt="Ring01" /></a></div><div class="flex-grow-1 ms-2"><a class="whiteitem Ring" href="Lantern_Band">Lantern Band</a><div><div class="requirements">Requires:  <span class="colourDefault">Level 12</span></div><div class="separator"></div><div class="implicitMod"><span class='mod-value'>+(8<span class="ndash">–</span>12)</span> to all <a data-keyword="Glimmer" href="Glimmer" class="KeywordPopups">Glimmer</a> Wards</div></div></div></div></div>
+<div class="col"><div class="d-flex border-top rounded"><div class="flex-shrink-0"><a class="whiteitem Ring" href="Moth_Loop"><img src="https://cdn.example.invalid/r2.webp" alt="Ring02" /></a></div><div class="flex-grow-1 ms-2"><a class="whiteitem Ring" href="Moth_Loop">Moth Loop</a><div><div class="implicitMod"><span class="secondary">hidden moth loop stat [3]</span></div></div></div></div></div>
+<div class="col"><div class="d-flex border-top rounded"><div class="flex-shrink-0"><a class="whiteitem Ring" href="Copper_Circle"><img src="https://cdn.example.invalid/r3.webp" alt="Ring03" /></a></div><div class="flex-grow-1 ms-2"><a class="whiteitem Ring" href="Copper_Circle">Copper Circle</a><div><div class="requirements">Requires:  <span class="colourDefault">Level 5</span></div><div class="separator"></div><div class="implicitMod">Adds <span class='mod-value'>1</span> to <span class='mod-value'>3</span> Glimmer Damage<br>Lanterns burn <span class='mod-value'>10</span>% longer</div></div></div></div></div>
+</div></div></div>
+</div>
+<script>
+$(document).ready(function () {
+    new ModsView({
+"baseitem": {"href": "Rings", "cn": "Ring", "attr": []},
+"config": {"lang": "us"},
+"gen": {"1": "Prefix", "2": "Suffix"},
+"opt": {"ModDomainsID": 1, "ids": [0, 3], "attr": [], "ItemClassesCode": "Ring", "ItemClassesID": 5, "tags": null},
+"normal": [
+{"Name": "Bright", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["LanternGlow"], "DropChance": "1000", "str": "<span class='mod-value'>(3<span class=\"ndash\">—</span>5)</span>% increased Lantern Glow"},
+{"Name": "Radiant", "Level": "44", "ModGenerationTypeID": "1", "ModFamilyList": ["LanternGlow"], "DropChance": "400", "str": "<span class='mod-value'>(11<span class=\"ndash\">—</span>14)</span>% increased Lantern Glow"},
+{"Name": "of Dusk", "Level": "18", "ModGenerationTypeID": "2", "ModFamilyList": ["DuskResistance"], "DropChance": "1000", "str": "<span class='mod-value'>+(6<span class=\"ndash\">—</span>10)</span>% to Dusk Resistance"}
+],
+"corrupted": [
+{"Name": "", "Level": "1", "ModGenerationTypeID": "5", "ModFamilyList": ["Implicit"], "str": "invented corruption outcome"}
+],
+"desecrated": [],
+"breach_caster": [
+{"Name": "Invented Pool", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["Pool"], "str": "invented league pool line"}
+],
+"essence": [
+{"type": "essence", "Code": "DuskResist2", "Level": "18", "DropChance": 0, "ModGenerationTypeID": "2", "ModFamilyList": ["DuskResistance"], "IsPerfect": 0, "IsAlloy": false, "Removes": false, "reqlvl": 14, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Essence_of_Dusk\">Essence of Dusk</a>", "str": "<span class='mod-value'>+(6<span class=\"ndash\">—</span>10)</span>% to Dusk Resistance"}
+],
+"perfect_essence": [
+{"type": "essence", "Code": "EssenceLanternGlow1", "Level": "72", "DropChance": 0, "ModGenerationTypeID": "1", "ModFamilyList": ["LanternGlowPerfect"], "IsPerfect": 1, "IsAlloy": false, "Removes": true, "reqlvl": 57, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Perfect_Essence_of_Glow\">Perfect Essence of Glow</a>", "str": "<span class='mod-value'>(20<span class=\"ndash\">—</span>25)</span>% increased Lantern Glow"}
+],
+"liquid": []
+});
+});
+</script>
+</body></html>

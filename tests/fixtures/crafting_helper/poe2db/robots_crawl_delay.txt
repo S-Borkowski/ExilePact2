@@ -1,0 +1,4 @@
+# Synthetic: a Crawl-delay longer than the default gap.
+User-agent: *
+Crawl-delay: 7
+Disallow: /*/marked

@@ -1,0 +1,5 @@
+# Synthetic robots.txt for tests/test_crafting_helper_poe2db.py: the site's
+# shape (wildcard rules under one `*` group), invented here, not a saved copy.
+User-agent: *
+Disallow: /*/marked
+Disallow: /*/markdown_history

@@ -1,0 +1,3 @@
+# Synthetic: disallows the Rings page, for the robots.txt refusal test.
+User-agent: *
+Disallow: /us/Rings

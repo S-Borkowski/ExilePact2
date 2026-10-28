@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- Synthetic jewel page for tests/test_crafting_helper_poe2db.py: the page's
+     own item is the base (baseitem.Code), a top-level `ids` list, normal
+     rows whose DropChance is all 1, desecrated rows without DropChance, and
+     liquid-emotion rows. Every modifier and liquid in it is invented. Never
+     a saved page. -->
+<html lang="en"><head><meta charset="utf-8"><title>Ruby - synthetic</title></head><body>
+<div class="tab-content">
+<div id="ModifiersCalc" class="tab-pane fade active show"><div id="ModifiersCalcRoot"></div></div>
+<div id="RubyJewelStr" class="tab-pane fade"><div class="card mb-2"><h5 class="card-header">Ruby JewelStr /1 </h5></div></div>
+</div>
+<script>
+$(document).ready(function () {
+    new ModsView({
+"baseitem": {"ItemType": "Metadata/Items/Jewels/Invented", "Code": "Ruby", "cn": "Jewel", "link_name": "<a class=\"whiteitem Jewel\" href=\"Ruby\">Ruby</a>", "attr": [], "tags": null},
+"ids": [134, 135],
+"config": {"lang": "us"},
+"gen": {"1": "Prefix", "2": "Suffix"},
+"opt": {"ModDomainsID": "11", "ItemClassesID": "42", "ItemClassesCode": "Jewel", "tags": null, "BaseItemName": "Ruby"},
+"normal": [
+{"Name": "Gleaming", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["JewelGlimmer"], "DropChance": 1, "str": "<span class='mod-value'>(2<span class=\"ndash\">—</span>3)</span>% increased Glimmer"},
+{"Name": "of Embers", "Level": "1", "ModGenerationTypeID": "2", "ModFamilyList": ["JewelEmberDuration"], "DropChance": 1, "str": "<span class='mod-value'>(5<span class=\"ndash\">—</span>10)</span>% increased Ember Duration"}
+],
+"desecrated": [
+{"Name": "Hollowed", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["JewelHollow"], "type": "Desecrated", "str": "Lanterns in Radius also grant <span class='mod-value'>0.1</span> Glimmer per Second"}
+],
+"corrupted": [],
+"essence": [],
+"perfect_essence": [],
+"liquid": [
+{"Code": "JewelGlimmerLiquid", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["JewelGlimmer"], "reqlvl": 0, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Diluted_Liquid_Wonder\"><img src=\"https://cdn.example.invalid/l1.webp\" alt=\"Wonder\" height=\"16\" />Diluted Liquid Wonder</a>", "str": "<span class='mod-value'>(2<span class=\"ndash\">—</span>3)</span>% increased Glimmer"},
+{"Code": "JewelExtraSuffix", "Level": "1", "ModGenerationTypeID": "2", "ModFamilyList": ["JewelAffixLimit"], "reqlvl": 0, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Potent_Liquid_Wistfulness\">Potent Liquid Wistfulness</a>", "str": "<span class='mod-value'>+1</span> Suffix Modifier allowed"}
+]
+});
+});
+</script>
+</body></html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!-- Synthetic Gloves (int) page for tests/test_crafting_helper_poe2db.py: the
+     second attribute variant of the synthetic Gloves class, in the same
+     shape as Gloves_str.html. Every base, modifier and essence in it is
+     invented. Never a saved page. -->
+<html lang="en"><head><meta charset="utf-8"><title>Gloves int - synthetic</title></head><body>
+<div class="tab-content">
+<div id="ModifiersCalc" class="tab-pane fade active show"><div id="ModifiersCalcRoot"></div></div>
+<div id="GlovesBaseItem" class="tab-pane fade"><div class="card mb-2">
+<h5 class="card-header">Gloves BaseItem /1 </h5>
+<div class="row row-cols-1 g-2">
+<div class="col"><div class="d-flex border-top rounded"><div class="flex-shrink-0"><a class="whiteitem Gloves" href="Mothsilk_Wraps"><img src="https://cdn.example.invalid/w1.webp" alt="Wraps01" /></a></div><div class="flex-grow-1 ms-2"><a class="whiteitem Gloves" href="Mothsilk_Wraps">Mothsilk Wraps</a><div><div class="property">Energy Shield: <span class='colourDefault'>9</span></div><div class="separator"></div><div class="requirements">Requires:  <span class="colourDefault">Level 12</span>, <span class="colourDefault">17 Int</span></div></div></div></div></div>
+</div></div></div>
+</div>
+<script>
+$(document).ready(function () {
+    new ModsView({
+"baseitem": {"href": "Gloves", "cn": "Gloves", "attr": [40], "tags": "Int", "opts": {"str": "str", "int": "int"}},
+"config": {"lang": "us"},
+"gen": {"1": "Prefix", "2": "Suffix"},
+"opt": {"ModDomainsID": 1, "ids": [0, 7], "attr": [40], "ItemClassesCode": "Gloves", "ItemClassesID": 22, "tags": "int_armour"},
+"normal": [
+{"Name": "Sturdy", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "DropChance": "1000", "str": "<span class='mod-value'>+(5<span class=\"ndash\">—</span>9)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>"},
+{"Name": "Resolute", "Level": "30", "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "DropChance": "1000", "str": "<span class='mod-value'>+(12<span class=\"ndash\">—</span>16)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>"},
+{"Name": "Glinting", "Level": "10", "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerWardPercent"], "DropChance": "500", "str": "<span class='mod-value'>(4<span class=\"ndash\">—</span>6)</span>% increased Glimmer Ward"}
+],
+"desecrated": [],
+"essence": [
+{"type": "essence", "Code": "MaximumVigour2", "Level": "20", "DropChance": 0, "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "IsPerfect": 0, "IsAlloy": false, "Removes": false, "reqlvl": 16, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Lesser_Essence_of_Vigour\"><img src=\"https://cdn.example.invalid/e1.webp\" alt=\"VigourEssenceLesser\" height=\"16\" />Lesser Essence of Vigour</a>", "str": "<span class='mod-value'>+(10<span class=\"ndash\">—</span>14)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>"}
+],
+"perfect_essence": [],
+"liquid": [],
+"bonded": [
+{"Name": "Invented Core", "Level": "1", "ModGenerationTypeID": "3", "ModFamilyList": [], "str": "invented bonded line"}
+]
+});
+});
+</script>
+</body></html>
