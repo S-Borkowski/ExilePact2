@@ -7,4 +7,4 @@ Requires: Level 10, 19 Int
 Item Level: 15
 --------
 { Implicit Modifier }
-Grants Skill: Level 5 Firebolt (implicit)
+Grants Skill: Level 5 Firebolt

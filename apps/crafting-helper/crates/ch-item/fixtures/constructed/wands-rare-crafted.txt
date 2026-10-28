@@ -8,7 +8,7 @@ Requires: Level 25, 40 Int
 Item Level: 36
 --------
 { Implicit Modifier }
-Grants Skill: Level 9 Bone Blast (implicit)
+Grants Skill: Level 9 Bone Blast
 --------
 { Prefix Modifier "Apprentice's" (Tier: 6) — Damage, Caster }
 32(25-34)% increased Spell Damage

@@ -8,15 +8,19 @@ text; the blueprint engine, M4, consumes the model).
 
 ## The two copy forms
 
-- **`Ctrl+Alt+C`, the advanced form**, is the primary input. Above each
-  modifier it puts a header, `{ Prefix Modifier "Hale" (Tier: 4) — Life }`,
-  and after each number the roll range, `+62(60-69)`. The parser takes the
-  kind, affix name, tier, family tags and roll ranges from it.
-- **`Ctrl+C`, the short form**, shows the modifier lines alone. The parser
-  reads it too, but there is no prefix/suffix, affix name, tier or range in
-  it, each line becomes its own modifier (grouping a hybrid modifier's lines
-  needs the mod data), and a magic item's base type stays unknown (its affix
-  names cannot be told from its base without the base list).
+- **The advanced form** is the primary input. Above each modifier it puts a
+  header, `{ Prefix Modifier "Hale" (Tier: 4) — Life }`, and after each
+  number the roll range, `+62(60-69)`. The parser takes the kind, affix
+  name, tier, family tags and roll ranges from it. **Both `Ctrl+Alt+C` and
+  plain `Ctrl+C` give it**: the owner copied one rare gloves both ways on
+  2026-10-28 and the two texts were identical
+  (`fixtures/real/gloves-rare-rune-desecrated-*.txt`).
+- **The short form** shows the modifier lines alone. No copy has been seen
+  to give it; the parser reads it anyway, in case one does. There is no
+  prefix/suffix, affix name, tier or range in it, each line becomes its own
+  modifier (grouping a hybrid modifier's lines needs the mod data), and a
+  magic item's base type stays unknown (its affix names cannot be told from
+  its base without the base list).
 
 `Item::form` says which one a text was: `Advanced` (a header or a roll range
 seen), `Short` (modifier lines, neither of those) or `Undetermined` (no
@@ -31,10 +35,12 @@ the first non-blank line is not `Item Class: …`. The item holds:
   `Other(text)`), rarity, the rare's name, the base type and the raw name
   lines;
 - item level, quality (with its augmented flag), requirements (level and
-  each attribute, anything else kept as text), sockets (text and count),
+  each attribute, which of them the text marks `(unmet)`, anything else kept
+  as text), sockets (text and count),
   properties in order (`name`, value text, augmented) and description lines;
 - every modifier in text order: kind (`Prefix`, `Suffix`, `Implicit`, `Rune`,
-  `Enchant`, `Unknown`), affix name, tier, family tags, the flags
+  `Enchant`, `Corruption` for a `{ Corruption Enhancement }` header,
+  `Unknown`), affix name, tier, family tags, the flags
   fractured, desecrated, unrevealed and crafted, and its lines. Each line
   keeps its text, a template with every value replaced by `#` (markers and
   ` — Unscalable Value` removed, a leading `+` kept), its values with their
@@ -66,17 +72,27 @@ same for CRLF and LF), and `Item::consumed_lines` collects them, which is how
   byte, each recorded in `fixtures/real/README.md`. Every one must parse
   with no unparsed line.
 
-Measured: the class/rarity/name block, `--------` sections, `Key: value`
-properties with ` (augmented)`, `Item Level:`, the `Prefix`/`Suffix` header
-with affix name and tier, roll ranges, ` — Unscalable Value`, the
-description and `Corrupted`. Still guesses: the equipment class strings,
-both requirement forms (`Requires: Level 45, 63 Str` and a `Requirements:`
-block), `Sockets:`, the line markers, the `Implicit`/`Rune`/`Enchant` header
-kinds, the header words `Fractured`, `Desecrated`, `Crafted` and
-`Unrevealed`, family tags after ` — `, how an unrevealed modifier is shown,
-`Mirrored` and `Unidentified`, and decimal or negative ranges. All of these
-live in one table, `src/vocab.rs`, so a correction from a real paste changes
-one place.
+Measured from copied waystones: the class/rarity/name block, `--------`
+sections, `Key: value` properties with ` (augmented)`, `Item Level:`, the
+`Prefix`/`Suffix` header with affix name and tier, roll ranges,
+` — Unscalable Value`, the description and `Corrupted`.
+
+Measured from the owner's six equipment pastes in `fixtures/real/`
+(2026-10-28): the class strings `Gloves`, `Boots`, `Rings`, `Crossbows` and
+`Jewels`; `Requires: Level 80, 101 Int` and its `108 (unmet) Dex` entry;
+`Sockets: S `; a `(rune)` line in its own section; family tags after ` — `;
+`{ Implicit Modifier }` (with or without tags) and the header word
+`Desecrated`, neither with a marker on the line under it;
+`{ Corruption Enhancement — tags }`; a hybrid two-line modifier, a two-value
+line and a decimal range; and that plain `Ctrl+C` gives the advanced form.
+Every one of the six parses with no unparsed and no partly understood line.
+
+Still guesses: the other class strings, the `Requirements:` block, the line
+markers other than `(rune)`, the `Enchant` header kind, the header words
+`Fractured`, `Crafted` and `Unrevealed`, how an unrevealed modifier is
+shown, `Mirrored` and `Unidentified`, negative ranges, and the short form
+as a whole. All of these live in one table, `src/vocab.rs`, so a correction
+from a real paste changes one place; `fixtures/README.md` lists them.
 
 ## Commands
 

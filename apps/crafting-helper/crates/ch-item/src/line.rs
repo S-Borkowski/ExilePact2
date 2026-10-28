@@ -25,9 +25,12 @@ pub(crate) fn is_header(line: &str) -> bool {
     line.starts_with('{') && line.ends_with('}')
 }
 
-/// A header that marks the advanced form: braces and the `Modifier` word.
+/// A header that marks the advanced form: braces and the `Modifier` word, or
+/// a known header phrase without it (`{ Corruption Enhancement }`).
 pub(crate) fn is_modifier_header(line: &str) -> bool {
-    is_header(line) && line.contains(vocab::MODIFIER_WORD)
+    is_header(line)
+        && (line.contains(vocab::MODIFIER_WORD)
+            || vocab::starts_with_header_phrase(line[1..line.len() - 1].trim()))
 }
 
 /// What a header says about its modifier.
@@ -44,7 +47,8 @@ pub(crate) struct Header {
     pub notes: Vec<Note>,
 }
 
-/// `{ [adjective …] Kind Modifier ["name"] [(Tier: N)] [— tag, tag] }`.
+/// `{ [adjective …] Kind Modifier ["name"] [(Tier: N)] [— tag, tag] }`, or
+/// a known phrase without `Modifier` (`{ Corruption Enhancement — tag }`).
 pub(crate) fn parse_header(line: &str) -> Header {
     let mut h = Header {
         kind: ModKind::Unknown,
@@ -91,8 +95,13 @@ pub(crate) fn parse_header(line: &str) -> Header {
     }
 
     if !saw_modifier {
-        h.notes
-            .push(Note::new(words.join(" "), "header has no `Modifier` word"));
+        let phrase = words.join(" ");
+        match vocab::header_phrase(&phrase) {
+            Some(kind) => h.kind = kind,
+            None => h
+                .notes
+                .push(Note::new(phrase, "header has no `Modifier` word")),
+        }
     } else if let Some((&kind_word, adjectives)) = words.split_last() {
         match vocab::header_kind(kind_word) {
             Some(kind) => h.kind = kind,

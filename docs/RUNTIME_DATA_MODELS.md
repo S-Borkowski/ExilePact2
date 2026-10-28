@@ -627,5 +627,67 @@ or (O) the owner.
   fired, and for which of `Ctrl+A`, `Ctrl+V` or the `Ctrl+Alt+W` press
   itself, was not separated.
 - Not established: whether lookahead (`(?=`, `(?!`) works
-  (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
-  form plain `Ctrl+C` copies; any way to count modifiers.
+  (`"way(?=stone)"` lit every waystone: accepted or ignored); any way to
+  count modifiers. Plain `Ctrl+C` copies the same advanced text as
+  `Ctrl+Alt+C` (measured 2026-10-28 on one rare gloves; § "Item text
+  (Ctrl+Alt+C and Ctrl+C)" below).
+
+## Item text (Ctrl+Alt+C and Ctrl+C)
+
+Source: the owner's six in-game copies of equipment, 2026-10-28, kept byte
+for byte in
+[`apps/crafting-helper/crates/ch-item/fixtures/real/`](../apps/crafting-helper/crates/ch-item/fixtures/real/README.md)
+(a rare gloves copied with `Ctrl+Alt+C` and again with `Ctrl+C`; a normal
+ring, a magic boots, a rare crossbow and a corrupted rare jewel, each in the
+advanced form, copy key not stated). The crafting helper's item text parser,
+`ch-item`, reads this layout; its tests assert each file. Everything below
+is measured from those texts (owner's copies, 2026-10-28) unless it says
+otherwise, and adds to the waystone text layout in § "Item search box
+(stash and vendor)" above.
+
+- **Plain `Ctrl+C` gives the advanced form**: the gloves copied with
+  `Ctrl+C` and with `Ctrl+Alt+C` gave identical text, headers and roll
+  ranges included (one item; the owner confirmed which key each copy used).
+- **Class strings**: `Item Class: Gloves`, `Boots`, `Rings`, `Crossbows`,
+  `Jewels` (the plural class name, as `Waystones`).
+- **Requirements are one line**: `Requires: Level 80, 101 Int`,
+  `Requires: Level 79, 89 Str, 89 (unmet) Dex`, or `Requires: Level 20`
+  alone, in their own section. An attribute the copying character does not
+  meet carries `(unmet)` between its number and its name. A jewel's text
+  has no requirements line.
+- **Sockets**: `Sockets: S ` (with a trailing space) for one socket holding
+  a rune, in its own section.
+- **Properties**: armour pieces show their defence (`Energy Shield: 276
+  (augmented)`, `Evasion Rating: 362 (augmented)`); a weapon shows
+  `Physical Damage: 77-304 (augmented)`, an elemental damage line ending in
+  its type, `Fire Damage: 59-104 (fire)`, `Critical Hit Chance: 8.33%
+  (augmented)`, `Attacks per Second: 1.65` and, on a crossbow, `Reload Time:
+  0.75`. `Quality: +20% (augmented)` is a property line too.
+- **A rune's line, an implicit and a corruption's enhancement each have
+  their own section**, after `Item Level` and before the explicit
+  modifiers, which share one section. No text showed two of the three, so
+  their order among themselves is not established. A rune's line ends
+  `(rune)` and has no header.
+- **`{ Implicit Modifier }`** heads an implicit, with family tags
+  (`{ Implicit Modifier — Chaos, Resistance }`) or without; it has no affix
+  name and no tier, and the line under it carries no `(implicit)` marker.
+- **`{ Corruption Enhancement — Elemental, Cold, Resistance }`** heads a
+  modifier on a corrupted jewel: a header without the word `Modifier`, in
+  its own section, with a roll range on its line (`+10(5-10)%`).
+- **Explicit headers carry family tags after an em dash**:
+  `{ Prefix Modifier "Tyrannical" (Tier: 2) — Damage, Physical, Attack }`;
+  a header may carry none (`{ Prefix Modifier "Hummingbird's" (Tier: 1) }`).
+- **A revealed desecrated modifier** has the word `Desecrated` before
+  `Prefix` or `Suffix` in its header (`{ Desecrated Suffix Modifier "of
+  Exile" (Tier: 2) — Chaos, Resistance }`), and no marker on its line.
+- **A modifier with two lines** sits under one header (`Hummingbird's`:
+  evasion and stun threshold); **a line with two values** carries a range
+  after each (`Adds 59(56-70) to 104(84-107) Fire Damage`); **a decimal
+  value** has a decimal range (`+3.33(3.11-3.8)%`).
+- **A jewel's text** ends with its description line, a separator and
+  `Corrupted` when corrupted.
+- Not established (no real text has shown it): a fractured modifier, an
+  unrevealed desecrated modifier, a crafted modifier, an enchant, `Mirrored`,
+  `Unidentified`, the class strings of the other equipment classes, a
+  requirements block, negative roll ranges, and any text form without
+  headers and roll ranges (no copy key has been seen to give one).

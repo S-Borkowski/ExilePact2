@@ -142,6 +142,27 @@ fn unrevealed_desecrated_modifier_is_flagged() {
 }
 
 #[test]
+fn corruption_enhancement_header_is_a_corruption_modifier() {
+    // Measured (owner's pastes, 2026-10-28): a header with no `Modifier`
+    // word, in its own section above the explicit modifiers.
+    let item = with_mods(
+        "{ Corruption Enhancement — Elemental, Cold, Resistance }\n+10(5-10)% to Cold Resistance\n--------\n{ Suffix Modifier \"of the Bear\" (Tier: 5) }\n+15(13-16) to Strength",
+    );
+    assert!(item.report.partial.is_empty(), "{:?}", item.report);
+    let m = &item.modifiers[0];
+    assert_eq!(m.kind, ModKind::Corruption);
+    assert_eq!((m.affix_name.as_deref(), m.tier), (None, None));
+    assert_eq!(m.tags.len(), 3);
+    assert_eq!(m.lines[0].template, "+#% to Cold Resistance");
+    assert_eq!((item.prefix_count(), item.suffix_count()), (0, 1));
+    // Negative control: any other header without `Modifier` stays Unknown
+    // and reported.
+    let other = with_mods("{ Corruption Something }\n+10 to Strength");
+    assert_eq!(other.modifiers[0].kind, ModKind::Unknown);
+    assert_eq!(other.report.partial.len(), 1);
+}
+
+#[test]
 fn unknown_header_kind_word_yields_unknown_kind_and_is_reported() {
     let item = with_mods("{ Shimmering Modifier \"Odd\" (Tier: 2) }\n+5 to Strength");
     let m = &item.modifiers[0];

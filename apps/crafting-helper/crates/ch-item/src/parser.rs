@@ -353,11 +353,14 @@ impl Parser {
             .get_or_insert_with(Requirements::default)
     }
 
-    /// `Requires: Level 45, 63 Str, 41 Int`.
+    /// `Requires: Level 45, 63 Str, 41 Int`, where an entry the character
+    /// does not meet carries `(unmet)`: `108 (unmet) Dex`.
     fn requires_line(&mut self, i: usize, s: usize, t: &str, value: &str) {
         self.requirements().lines.push(i);
         for entry in value.split(',').map(str::trim).filter(|e| !e.is_empty()) {
-            let words: Vec<&str> = entry.split_whitespace().collect();
+            let all: Vec<&str> = entry.split_whitespace().collect();
+            let words: Vec<&str> = all.iter().copied().filter(|w| *w != vocab::UNMET).collect();
+            let unmet = words.len() < all.len();
             let understood = match words.as_slice() {
                 [vocab::KEY_LEVEL, n] => match n.parse::<u32>() {
                     Ok(n) => {
@@ -386,6 +389,13 @@ impl Parser {
                         reason: "requirement entry not understood".to_string(),
                     },
                 );
+            } else if unmet {
+                let key = if words[0] == vocab::KEY_LEVEL {
+                    words[0]
+                } else {
+                    words[1]
+                };
+                self.requirements().unmet.push(key.to_string());
             }
         }
     }
@@ -411,6 +421,9 @@ impl Parser {
             },
             _ => false,
         };
+        if understood && value.split_whitespace().any(|w| w == vocab::UNMET) {
+            self.requirements().unmet.push(key.to_string());
+        }
         if !understood {
             self.requirements().other.push(t.to_string());
             self.partial(

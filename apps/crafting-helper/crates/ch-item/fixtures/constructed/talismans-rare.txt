@@ -12,7 +12,7 @@ Requires: Level 30, 25 Str, 25 Int
 Item Level: 40
 --------
 { Implicit Modifier }
-Grants Skill: Level 8 Wolf Form (implicit)
+Grants Skill: Level 8 Wolf Form
 --------
 { Prefix Modifier "Serrated" (Tier: 6) — Damage, Physical, Attack }
 Adds 4(3-5) to 8(7-9) Physical Damage

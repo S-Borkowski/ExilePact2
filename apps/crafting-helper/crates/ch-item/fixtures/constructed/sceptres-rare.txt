@@ -10,7 +10,7 @@ Requires: Level 20, 18 Str, 31 Int
 Item Level: 28
 --------
 { Implicit Modifier }
-Grants Skill: Discipline (implicit)
+Grants Skill: Discipline
 --------
 { Prefix Modifier "Spirited" (Tier: 3) — Minion }
 +25(20-25) to Spirit

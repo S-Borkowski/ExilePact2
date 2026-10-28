@@ -13,7 +13,7 @@ Sockets: S
 Item Level: 78
 --------
 { Implicit Modifier }
-+8(6-10)% to Fire Resistance (implicit)
++8(6-10)% to Fire Resistance
 --------
 +12% to Cold Resistance (rune)
 --------
@@ -23,7 +23,7 @@ Item Level: 78
 +38(35-45) to Armour
 +11(10-14) to maximum Life
 { Desecrated Suffix Modifier "of the Drowned" (Tier: 2) — Elemental, Cold, Resistance }
-+24(21-26)% to Cold Resistance (desecrated)
++24(21-26)% to Cold Resistance
 { Suffix Modifier "of the Bear" (Tier: 5) — Attribute }
 +15(13-16) to Strength
 { Unrevealed Desecrated Suffix Modifier }

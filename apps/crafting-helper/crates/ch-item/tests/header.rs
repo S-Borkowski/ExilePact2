@@ -211,6 +211,29 @@ fn unknown_requirement_entry_is_kept_as_text() {
 }
 
 #[test]
+fn unmet_requirement_is_read_and_listed() {
+    // Measured (owner's pastes, 2026-10-28): `108 (unmet) Dex`.
+    let item = parse_ok(&text(&[
+        "Item Class: Crossbows",
+        "Rarity: Normal",
+        "Siege Crossbow",
+        "--------",
+        "Requires: Level 79, 89 Str, 89 (unmet) Dex",
+    ]));
+    let r = item.requirements.as_ref().expect("requirements");
+    assert_eq!(
+        (r.level, r.strength, r.dexterity),
+        (Some(79), Some(89), Some(89))
+    );
+    assert_eq!(r.unmet, vec!["Dex".to_string()]);
+    assert!(r.other.is_empty());
+    assert!(item.report.partial.is_empty(), "{:?}", item.report);
+    // Negative control: a met requirement lists nothing.
+    let met = parse_ok(&constructed("sceptres-rare.txt"));
+    assert!(met.requirements.as_ref().unwrap().unmet.is_empty());
+}
+
+#[test]
 fn sockets_keep_their_text_and_count() {
     let item = parse_ok(&constructed("two-hand-maces-rare-mirrored.txt"));
     let s = item.sockets.as_ref().expect("sockets");

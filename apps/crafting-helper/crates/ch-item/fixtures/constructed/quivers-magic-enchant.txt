@@ -10,7 +10,7 @@ Item Level: 42
 10% increased Projectile Speed (enchant)
 --------
 { Implicit Modifier }
-Adds 1(1-2) to 3(3-4) Physical Damage to Attacks (implicit)
+Adds 1(1-2) to 3(3-4) Physical Damage to Attacks
 --------
 { Suffix Modifier "of Rending" (Tier: 4) — Damage, Critical }
 21(18-24)% increased Critical Damage Bonus

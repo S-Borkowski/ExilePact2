@@ -1,0 +1,15 @@
+Item Class: Boots
+Rarity: Magic
+Hummingbird's Drakeskin Boots of the Phantom
+--------
+Evasion Rating: 362 (augmented)
+--------
+Requires: Level 80, 108 (unmet) Dex
+--------
+Item Level: 81
+--------
+{ Prefix Modifier "Hummingbird's" (Tier: 1) }
+42(39-42)% increased Evasion Rating
++108(95-136) to Stun Threshold
+{ Suffix Modifier "of the Phantom" (Tier: 1) — Attribute }
++33(31-33) to Dexterity

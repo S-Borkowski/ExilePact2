@@ -12,7 +12,7 @@ Requires: Level 16, 26 Str, 26 Dex
 Item Level: 22
 --------
 { Implicit Modifier }
-Grants Skill: Galvanic Shards (implicit)
+Grants Skill: Galvanic Shards
 --------
 { Prefix Modifier "Heavy" (Tier: 7) — Damage, Physical, Attack }
 44(40-49)% increased Physical Damage

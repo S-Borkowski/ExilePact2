@@ -49,6 +49,7 @@ fn print_item(item: &Item) {
                 parts.push(format!("{label} {v}"));
             }
         }
+        parts.extend(r.unmet.iter().map(|k| format!("{k} unmet")));
         parts.extend(r.other.iter().cloned());
         println!("requirements: {}", parts.join(", "));
     }

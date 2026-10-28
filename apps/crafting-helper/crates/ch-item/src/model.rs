@@ -7,9 +7,11 @@ use std::fmt;
 /// Which copy the text came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Form {
-    /// `Ctrl+Alt+C`: a `{ … Modifier … }` header or a roll range was seen.
+    /// A `{ … Modifier … }` header or a roll range was seen: what both
+    /// `Ctrl+Alt+C` and plain `Ctrl+C` give (measured, one item).
     Advanced,
-    /// `Ctrl+C`: modifier lines, but neither headers nor roll ranges.
+    /// Modifier lines, but neither headers nor roll ranges (no copy has been
+    /// seen to give this form).
     Short,
     /// No modifier line at all (a plain normal item, an unidentified rare):
     /// the two forms cannot be told apart.
@@ -166,6 +168,10 @@ pub struct Requirements {
     pub strength: Option<u32>,
     pub dexterity: Option<u32>,
     pub intelligence: Option<u32>,
+    /// The key of each entry the text marks `(unmet)` (`108 (unmet) Dex`
+    /// gives `Dex`), as written: the character copying the item does not
+    /// meet it. Says nothing about the item itself.
+    pub unmet: Vec<String>,
     /// Entries the parser did not recognise, as written (also reported as
     /// partly understood).
     pub other: Vec<String>,
@@ -200,6 +206,9 @@ pub enum ModKind {
     Implicit,
     Rune,
     Enchant,
+    /// Added by corrupting the item: the header `{ Corruption Enhancement }`,
+    /// which has no `Modifier` word. Neither prefix nor suffix.
+    Corruption,
     /// The text does not say (an explicit modifier in the short form), or
     /// the header's kind word is not in the vocabulary (then reported).
     Unknown,

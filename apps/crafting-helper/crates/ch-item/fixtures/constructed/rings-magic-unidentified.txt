@@ -7,6 +7,6 @@ Requires: Level 20
 Item Level: 32
 --------
 { Implicit Modifier }
-+24(20-30)% to Fire Resistance (implicit)
++24(20-30)% to Fire Resistance
 --------
 Unidentified

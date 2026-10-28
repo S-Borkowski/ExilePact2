@@ -8,7 +8,7 @@ Requires: Level 40
 Item Level: 58
 --------
 { Implicit Modifier }
-Has 2 Charm Slots — Unscalable Value (implicit)
+Has 2 Charm Slots — Unscalable Value
 --------
 { Prefix Modifier "Robust" (Tier: 5) — Life }
 +64(60-69) to maximum Life

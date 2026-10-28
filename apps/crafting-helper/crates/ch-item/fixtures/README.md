@@ -14,8 +14,8 @@ shapes are true. Texts the owner copies in the game go to `real/` instead
 
 | File | Covers |
 |---|---|
-| `gloves-rare-fractured-desecrated.txt` | Gloves, rare, quality (augmented), single-line requirements, one rune socket, an implicit with header and marker, a rune line, a fractured prefix, a hybrid two-line prefix, a revealed desecrated suffix, an unrevealed desecrated suffix, family tags in headers |
-| `gloves-rare-short-form.txt` | the same gloves in the short (`Ctrl+C`) form: no headers, tiers or roll ranges |
+| `gloves-rare-fractured-desecrated.txt` | Gloves, rare, quality (augmented), single-line requirements, one rune socket, an implicit by header, a rune line, a fractured prefix, a hybrid two-line prefix, a revealed desecrated suffix, an unrevealed desecrated suffix, family tags in headers |
+| `gloves-rare-short-form.txt` | the same gloves in a short form: no headers, tiers or roll ranges (measured: plain `Ctrl+C` does **not** give this form, see below) |
 | `boots-magic.txt` | Boots, magic, prefix and suffix affix names around the base type |
 | `body-armours-rare-requirements-block.txt` | Body Armours, rare, the block form of requirements (`Requirements:` then `Level:` and `Str:`), two sockets, armour property |
 | `helmets-normal.txt` | Helmets, normal, no modifier at all (form undetermined) |
@@ -40,27 +40,57 @@ shapes are true. Texts the owner copies in the game go to `real/` instead
 
 ## Shapes that are guesses
 
-Measured: `Item Class:`, `Rarity:`, the name lines, `--------` separators,
-`Key: value` properties with ` (augmented)`, `Item Level:`, explicit headers
-`{ Prefix Modifier "<name>" (Tier: N) }` and `Suffix`, roll ranges written
-straight after the number (`12(10-14)%`), ` — Unscalable Value`, a line
-with no number, a description section and a final `Corrupted`.
+Measured from waystones (2026-10-28): `Item Class:`, `Rarity:`, the name
+lines, `--------` separators, `Key: value` properties with ` (augmented)`,
+`Item Level:`, explicit headers `{ Prefix Modifier "<name>" (Tier: N) }` and
+`Suffix`, roll ranges written straight after the number (`12(10-14)%`),
+` — Unscalable Value`, a line with no number, a description section and a
+final `Corrupted`.
 
-Guessed, to be confirmed against the owner's pastes in `real/`:
+Measured from the owner's equipment pastes in `real/` (2026-10-28):
 
-- the equipment class strings (`Gloves`, `Body Armours`, `Foci` and the rest);
-- both requirement forms: `Requires: Level 45, 63 Str` and the
-  `Requirements:` block;
-- `Sockets: S S` and a rune line ending `(rune)` in its own section;
-- the line markers `(implicit)`, `(rune)`, `(enchant)`, `(fractured)`,
-  `(desecrated)`, `(crafted)`;
-- the header kinds `Implicit Modifier` and `Enchant Modifier`, and the
-  header words `Fractured`, `Desecrated`, `Crafted`, `Unrevealed` before
-  `Prefix` or `Suffix`;
-- family tags after ` — ` inside a header;
+- the class strings `Gloves`, `Boots`, `Rings`, `Crossbows` and `Jewels`;
+- `Requires: Level 80, 101 Int` on one line, and an entry the character
+  does not meet written `108 (unmet) Dex`;
+- `Sockets: S ` (with a trailing space), and a rune line ending `(rune)` in
+  its own section;
+- family tags after ` — ` inside a header, and a header with none;
+- `{ Implicit Modifier }`, with or without tags, no name and no tier, in its
+  own section; the line under it carries **no** `(implicit)` marker;
+- the header word `Desecrated` before `Prefix` or `Suffix` for a revealed
+  desecrated modifier; the line under it carries **no** `(desecrated)`
+  marker;
+- `{ Corruption Enhancement — tags }`, a header with no `Modifier` word, in
+  its own section;
+- a two-line modifier under one header, a two-value `Adds … to …` line, and
+  a decimal roll range `3.33(3.11-3.8)`;
+- a property value ending in a damage-type word, `Fire Damage: 59-104 (fire)`
+  (kept in the value text);
+- plain `Ctrl+C` gives the same advanced text as `Ctrl+Alt+C` (one item).
+
+Corrected after the real pastes: every `{ Implicit Modifier }` line in the
+advanced constructed files had an `(implicit)` marker, and the revealed
+desecrated suffix in `gloves-rare-fractured-desecrated.txt` a
+`(desecrated)` marker. The real texts show neither, so both were removed;
+the kind and the flag now come from the header alone, as in the game.
+
+Still guessed, because no real text has shown them yet:
+
+- the class strings of the other classes (`Body Armours`, `Foci` and the
+  rest);
+- the `Requirements:` block form;
+- the line markers `(implicit)`, `(enchant)`, `(fractured)`,
+  `(desecrated)`, `(crafted)` anywhere (the short form uses them);
+- the header kind `Enchant Modifier`, and the header words `Fractured`,
+  `Crafted` and `Unrevealed`; whether a fractured or crafted modifier's line
+  also carries a marker (kept here, though the measured `Implicit` and
+  `Desecrated` headers carry none);
 - how an unrevealed desecrated modifier is shown (here a header
   `{ Unrevealed Desecrated Suffix Modifier }` and the line
   `Unrevealed Desecrated Modifier`);
 - the flag lines `Mirrored` and `Unidentified`;
-- decimal roll ranges, the short form as a whole (which copy gives it is not
-  established) and the order of the implicit, rune and explicit sections.
+- negative roll ranges, and the order of an implicit and a rune section on
+  one item;
+- the short form as a whole: plain `Ctrl+C` does not give it, and which
+  copy, if any, does is not established. `gloves-rare-short-form.txt` keeps
+  the parser able to read one.

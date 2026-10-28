@@ -23,6 +23,9 @@ pub(crate) const MODIFIER_WORD: &str = "Modifier";
 pub(crate) const TIER_OPEN: &str = "(Tier: ";
 /// The block form of requirements (guess).
 pub(crate) const REQUIREMENTS_BLOCK: &str = "Requirements:";
+/// A word inside a requirement entry the character does not meet
+/// (measured: `108 (unmet) Dex`).
+pub(crate) const UNMET: &str = "(unmet)";
 
 /// Property keys with their own place in the model.
 pub(crate) const KEY_ITEM_LEVEL: &str = "Item Level";
@@ -57,7 +60,27 @@ pub(crate) fn header_kind(word: &str) -> Option<ModKind> {
     }
 }
 
-/// A header word before the kind word (guesses).
+/// Whole headers with no `Modifier` word, by the words before their tags
+/// (measured: `{ Corruption Enhancement — Elemental, Cold, Resistance }`).
+const HEADER_PHRASES: &[(&str, ModKind)] = &[("Corruption Enhancement", ModKind::Corruption)];
+
+pub(crate) fn header_phrase(words: &str) -> Option<ModKind> {
+    HEADER_PHRASES
+        .iter()
+        .find(|(phrase, _)| *phrase == words)
+        .map(|&(_, kind)| kind)
+}
+
+/// Whether a header's text inside the braces starts with one of those
+/// phrases.
+pub(crate) fn starts_with_header_phrase(inner: &str) -> bool {
+    HEADER_PHRASES
+        .iter()
+        .any(|(phrase, _)| inner.starts_with(phrase))
+}
+
+/// A header word before the kind word (measured: `Desecrated`; the rest
+/// guesses).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Adjective {
     Fractured,

@@ -9,7 +9,7 @@ Requires: Level 10, 16 Dex
 Item Level: 14
 --------
 { Implicit Modifier }
-Grants Skill: Parry (implicit)
+Grants Skill: Parry
 --------
 { Prefix Modifier "Agile" (Tier: 8) — Defences, Evasion }
 +12(8-14) to Evasion Rating

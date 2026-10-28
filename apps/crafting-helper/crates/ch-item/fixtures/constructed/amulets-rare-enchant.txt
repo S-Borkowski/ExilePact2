@@ -10,7 +10,7 @@ Item Level: 65
 Allocates Heavy Buffer (enchant)
 --------
 { Implicit Modifier }
-+12(10-15) to Intelligence (implicit)
++12(10-15) to Intelligence
 --------
 { Prefix Modifier "Fecund" (Tier: 2) — Life }
 +80(70-84) to maximum Life

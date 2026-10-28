@@ -1,0 +1,22 @@
+Item Class: Jewels
+Rarity: Rare
+Glyph Breath
+Sapphire
+--------
+Item Level: 82
+--------
+{ Corruption Enhancement — Elemental, Cold, Resistance }
++10(5-10)% to Cold Resistance
+--------
+{ Prefix Modifier "Authoritative" (Tier: 1) — Damage, Minion }
+Minions deal 14(5-15)% increased Damage
+{ Prefix Modifier "Shimmering" (Tier: 1) — Energy Shield }
+16(10-20)% increased maximum Energy Shield
+{ Suffix Modifier "of Continuation" (Tier: 1) — Caster, Curse }
+21(15-25)% increased Curse Duration
+{ Suffix Modifier "of Unmaking" (Tier: 1) — Damage, Caster, Critical }
+11(10-20)% increased Critical Spell Damage Bonus
+--------
+Place into an allocated Jewel Socket on the Passive Skill Tree. Right click to remove from the Socket.
+--------
+Corrupted

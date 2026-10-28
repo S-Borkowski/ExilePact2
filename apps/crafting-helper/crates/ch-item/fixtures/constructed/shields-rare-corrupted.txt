@@ -13,7 +13,7 @@ Sockets: S
 Item Level: 44
 --------
 { Implicit Modifier }
-Grants Skill: Raise Shield (implicit)
+Grants Skill: Raise Shield
 --------
 { Prefix Modifier "Studded" (Tier: 5) — Defences, Armour }
 +28(25-33) to Armour

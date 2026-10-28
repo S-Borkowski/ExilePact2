@@ -11,7 +11,7 @@ Requires: Level 8, 14 Str, 14 Dex
 Item Level: 12
 --------
 { Implicit Modifier }
-Grants Skill: Spear Throw (implicit)
+Grants Skill: Spear Throw
 --------
 { Suffix Modifier "of Skill" (Tier: 8) — Attack, Speed }
 5(5-7)% increased Attack Speed

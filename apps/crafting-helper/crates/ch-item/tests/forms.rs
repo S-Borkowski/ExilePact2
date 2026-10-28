@@ -1,5 +1,6 @@
-//! The two copy forms: advanced (`Ctrl+Alt+C`, headers and roll ranges) and
-//! short (`Ctrl+C`), and a text that shows neither.
+//! The two text forms: advanced (headers and roll ranges; what `Ctrl+Alt+C`
+//! and plain `Ctrl+C` both give) and short (the modifier lines alone), and a
+//! text that shows neither.
 
 mod common;
 
