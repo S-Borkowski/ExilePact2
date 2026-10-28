@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window: listen for wr:view and use its own window. No http, shell, fs, opener, websocket, upload, process or updater permission.",
+  "windows": ["main"],
+  "permissions": [
+    "core:event:default",
+    "core:window:default"
+  ]
+}

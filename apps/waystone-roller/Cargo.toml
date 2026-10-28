@@ -1,5 +1,6 @@
 # The waystone-roller Cargo workspace: the search-string engine (`wr-regex`)
-# as a library crate. Every external dependency is pinned here with `=` and
+# and the app's logic (`wr-app`) as library crates, plus the Tauri shell in
+# `src-tauri/`. Every external dependency is pinned here with `=` and
 # taken by members with `workspace = true`; a member never names a version
 # of its own. The versions are the quest tracker's (apps/quest-tracker), so
 # the lock holds no package that one does not already hold.
@@ -8,6 +9,8 @@
 resolver = "2"
 members = [
     "crates/wr-regex",
+    "crates/wr-app",
+    "src-tauri",
 ]
 
 [workspace.package]
