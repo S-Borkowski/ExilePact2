@@ -70,7 +70,7 @@ never touches the game: no input, no memory read, no network.
 - Download: the latest Waystone Roller release on the
   [releases page](https://github.com/S-Borkowski/ExilePact2/releases?q=waystone-roller).
   Each release has `waystone-roller.exe` and `SHA256SUMS.txt`; there is no
-  installer. The first release is published after this change merges.
+  installer.
 - Requirements: Windows 10 or 11, 64-bit, with the WebView2 runtime; an
   English game client.
 
@@ -105,7 +105,7 @@ py -3 -m unittest discover -s tests                                             
 npm --prefix apps/quest-tracker run build                                        # needed before the workspace build
 cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked --workspace    # every crate
 npm --prefix apps/quest-tracker test                                             # the UI, in jsdom
-npm --prefix apps/waystone-roller run build                                      # the same two steps for the waystone roller
+npm --prefix apps/waystone-roller run build                                      # the same three steps for the waystone roller
 cargo test --manifest-path apps/waystone-roller/Cargo.toml --locked --workspace
 npm --prefix apps/waystone-roller test
 ```

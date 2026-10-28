@@ -34,13 +34,12 @@ touches the game: it only puts the string on the clipboard, and you paste it.
 - **`Ctrl+Alt+W` copies it** while another window, the game included, is
   in front (measured with the game in front, Known limitations); if
   another program already holds the shortcut, diag.log says `could not be
-  registered`. It is a global shortcut, so
-  it does not depend on the window being in front; whether the window was
-  minimised in that session was not recorded. The Copy button does the
-  same. On success nothing is
-  heard; a refusal (nothing selected, over 250 characters, a mod that
-  cannot be told apart) beeps and leaves the clipboard as it was. You paste
-  the string into the stash or a vendor's search box with `Ctrl+V`.
+  registered`. It is a global shortcut, so it does not depend on the window
+  being in front; whether the window was minimised in that session was not
+  recorded. The Copy button does the same. On success nothing is heard; a
+  refusal (nothing selected, over 250 characters, a mod that cannot be told
+  apart) beeps and leaves the clipboard as it was. You paste the string
+  into the stash or a vendor's search box with `Ctrl+V`.
 - **The shortcut can be changed** in the window. Windows lets one program
   hold a key combination; when another program holds `Ctrl+Alt+W`, the app
   says so and keeps running, and the old shortcut stays when a new one is
@@ -350,8 +349,7 @@ release already exists, only its assets are replaced.
 - Mod data from poe2db.tw, fetched 2026-10-28.
 - Download `waystone-roller.exe` from the repository's
   [waystone roller releases](https://github.com/S-Borkowski/ExilePact2/releases?q=waystone-roller)
-  and run it; there is no installer. The first release is published after
-  this change merges.
+  and run it; there is no installer.
 - Measured in the built app on 2026-10-28: with Path of Exile 2 in front,
   `Ctrl+Alt+W` copied the search and pasting it lit the waystones the rules
   named.
