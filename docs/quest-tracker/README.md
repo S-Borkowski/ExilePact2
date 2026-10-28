@@ -2430,7 +2430,7 @@ Revisit this feature when:
 
 ## Release notes
 
-### Unreleased
+### 0.1.2
 
 - A newer version installs in the app: the Settings window's *Install X
   and restart* downloads it, checks its signature against the key built

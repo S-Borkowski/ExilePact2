@@ -516,7 +516,7 @@ release already exists, only its assets are replaced.
 
 ## Release notes
 
-### Unreleased
+### 0.1.1
 
 - A *Settings* button in the main window opens a Settings window with
   *Automatically check for updates* (off by default; it only checks), *Check
