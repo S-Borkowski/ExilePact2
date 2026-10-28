@@ -314,12 +314,22 @@ jobs:
       # is red all the same, like the check above: a review was requested.
       # tests/test_ai_review_workflow.py checks ADMITTED against the recorded
       # last messages of those runs, and against a real review's.
+      #
+      # The time floor scales with the diff: MIN_SECONDS plus one second per
+      # LINES_PER_SECOND changed lines, capped at MAX_SECONDS. A flat 60 s
+      # failed ExilePact2 #10 twice (a 6-line diff, 7 agents, no findings,
+      # 59 s and 55 s). The recorded skips took 10.6 s and 20.3 s, under even
+      # the smallest floor, and launched no agent, which fails on its own.
+      # If the diff size cannot be read, the floor is MAX_SECONDS.
       - name: Fail if the review skipped the command's agents
         env:
+          GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number || github.event.issue.number }}
           RESULT_FILE: ${{ runner.temp }}/claude-execution-output.json
           MIN_AGENTS: "7"
-          MIN_SECONDS: "60"
+          MIN_SECONDS: "30"
+          MAX_SECONDS: "60"
+          LINES_PER_SECOND: "10"
           ADMITTED: "(did not|didn't) (run|launch|use|follow)[^.]*(multi-agent|agents|recipe|command)|not the (four|4) |single pass|(reviewed|read) the (code )?diff (myself|in a single pass)"
         run: |
           agents=$(jq '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and (.name == "Agent" or .name == "Task"))] | length' "$RESULT_FILE")
@@ -330,14 +340,24 @@ jobs:
           echo "Agents launched: $agents. Turns: $turns. Duration: $seconds s."
           jq -r '.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and (.name == "Agent" or .name == "Task")) | "- " + (.input.description // "(no description)")' "$RESULT_FILE"
 
+          changed=${CHANGED_LINES:-$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json additions,deletions --jq '.additions + .deletions' 2>/dev/null || true)}
+          if [[ "$changed" =~ ^[0-9]+$ ]]; then
+            floor=$(( MIN_SECONDS + changed / LINES_PER_SECOND ))
+            if [ "$floor" -gt "$MAX_SECONDS" ]; then floor=$MAX_SECONDS; fi
+            echo "Diff: $changed changed line(s). Time floor: $floor s."
+          else
+            floor=$MAX_SECONDS
+            echo "Diff size unknown. Time floor: $floor s."
+          fi
+
           reasons=()
           if [ "$agents" -eq 0 ]; then
             reasons+=("it launched no agent at all")
           elif [ "$agents" -lt "$MIN_AGENTS" ]; then
             reasons+=("it launched $agents agent(s), where steps 1 to 4 launch $MIN_AGENTS (an eligibility stop launches one)")
           fi
-          if [ "$seconds" -lt "$MIN_SECONDS" ]; then
-            reasons+=("it finished in $seconds s")
+          if [ "$seconds" -lt "$floor" ]; then
+            reasons+=("it finished in $seconds s, under the $floor s floor")
           fi
           admitted=$(grep -oiE -m1 "$ADMITTED" <<< "$message" | head -n1 || true)
           if [ -n "$admitted" ]; then
