@@ -1,0 +1,21 @@
+Item Class: Two Hand Maces
+Rarity: Rare
+Skull Thunder
+Felled Greatclub
+--------
+Physical Damage: 41-76 (augmented)
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.05
+--------
+Requires: Level 33, 68 Str
+--------
+Sockets: S S
+--------
+Item Level: 52
+--------
+{ Prefix Modifier "Cruel" (Tier: 4) — Damage, Physical, Attack }
+96(85-109)% increased Physical Damage
+{ Suffix Modifier "of the Brute" (Tier: 5) — Attribute }
++20(18-21) to Strength
+--------
+Mirrored

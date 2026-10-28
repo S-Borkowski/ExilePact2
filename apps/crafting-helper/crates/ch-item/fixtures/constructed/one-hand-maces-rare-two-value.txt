@@ -1,0 +1,17 @@
+Item Class: One Hand Maces
+Rarity: Rare
+Brute Knell
+Spiked Club
+--------
+Physical Damage: 19-34 (augmented)
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.45
+--------
+Requires: Level 22, 41 Str
+--------
+Item Level: 30
+--------
+{ Prefix Modifier "Glinting" (Tier: 7) — Damage, Physical, Attack }
+Adds 3(2-4) to 7(6-9) Physical Damage
+{ Suffix Modifier "of Skill" (Tier: 6) — Attack, Speed }
+7(5-7)% increased Attack Speed

@@ -1,0 +1,18 @@
+Item Class: Amulets
+Rarity: Rare
+Soul Charm
+Lapis Amulet
+--------
+Requires: Level 50
+--------
+Item Level: 65
+--------
+Allocates Heavy Buffer (enchant)
+--------
+{ Implicit Modifier }
++12(10-15) to Intelligence (implicit)
+--------
+{ Prefix Modifier "Fecund" (Tier: 2) — Life }
++80(70-84) to maximum Life
+{ Suffix Modifier "of Zeal" (Tier: 3) — Caster, Speed }
+14(13-16)% increased Cast Speed

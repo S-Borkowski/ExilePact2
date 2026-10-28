@@ -1,0 +1,20 @@
+Item Class: Crossbows
+Rarity: Magic
+Heavy Makeshift Crossbow of Reloading
+--------
+Physical Damage: 12-31 (augmented)
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.65
+Reload Time: 0.85 (augmented)
+--------
+Requires: Level 16, 26 Str, 26 Dex
+--------
+Item Level: 22
+--------
+{ Implicit Modifier }
+Grants Skill: Galvanic Shards (implicit)
+--------
+{ Prefix Modifier "Heavy" (Tier: 7) — Damage, Physical, Attack }
+44(40-49)% increased Physical Damage
+{ Suffix Modifier "of Reloading" (Tier: 3) — Attack, Speed }
+14(12-15)% increased Reload Speed

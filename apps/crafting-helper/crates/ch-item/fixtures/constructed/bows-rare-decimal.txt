@@ -1,0 +1,17 @@
+Item Class: Bows
+Rarity: Rare
+Grim Thirst
+Recurve Bow
+--------
+Physical Damage: 21-38
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.10
+--------
+Requires: Level 30, 55 Dex
+--------
+Item Level: 46
+--------
+{ Prefix Modifier "Vampiric" (Tier: 2) — Life, Physical, Attack }
+Leeches 6.5(5.5-6.9)% of Physical Damage as Life
+{ Suffix Modifier "of Acclaim" (Tier: 5) — Attack, Critical }
++1.1(0.9-1.2)% to Critical Hit Chance

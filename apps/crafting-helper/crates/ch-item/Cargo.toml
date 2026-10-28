@@ -1,0 +1,10 @@
+[package]
+name = "ch-item"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Parses Path of Exile 2 item text (Ctrl+Alt+C and Ctrl+C) into a typed item model"
+
+[lib]
+name = "ch_item"
+path = "src/lib.rs"

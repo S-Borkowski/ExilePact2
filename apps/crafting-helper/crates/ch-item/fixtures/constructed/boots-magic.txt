@@ -1,0 +1,14 @@
+Item Class: Boots
+Rarity: Magic
+Sprinter's Leather Boots of the Fox
+--------
+Evasion Rating: 41
+--------
+Requires: Level 12, 18 Dex
+--------
+Item Level: 20
+--------
+{ Prefix Modifier "Sprinter's" (Tier: 6) — Speed }
+15(15-19)% increased Movement Speed
+{ Suffix Modifier "of the Fox" (Tier: 7) — Attribute }
++9(8-12) to Dexterity

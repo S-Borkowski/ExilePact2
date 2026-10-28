@@ -1,0 +1,17 @@
+Item Class: Quarterstaves
+Rarity: Rare
+Gale Spine
+Long Quarterstaff
+--------
+Physical Damage: 14-29
+Critical Hit Chance: 10.00%
+Attacks per Second: 1.40
+--------
+Requires: Level 24, 30 Dex, 30 Int
+--------
+Item Level: 35
+--------
+{ Prefix Modifier "Flaring" (Tier: 6) — Damage, Elemental, Fire, Attack }
+Adds 5(4-6) to 10(9-12) Fire Damage
+{ Suffix Modifier "of Skill" (Tier: 6) — Attack, Speed }
+8(8-10)% increased Attack Speed

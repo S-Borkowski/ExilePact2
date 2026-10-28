@@ -1,0 +1,30 @@
+Item Class: Gloves
+Rarity: Rare
+Grim Grasp
+Plated Gauntlets
+--------
+Quality: +20% (augmented)
+Armour: 152 (augmented)
+--------
+Requires: Level 45, 63 Str
+--------
+Sockets: S
+--------
+Item Level: 78
+--------
+{ Implicit Modifier }
++8(6-10)% to Fire Resistance (implicit)
+--------
++12% to Cold Resistance (rune)
+--------
+{ Fractured Prefix Modifier "Hale" (Tier: 4) — Life }
++62(60-69) to maximum Life (fractured)
+{ Prefix Modifier "Reinforced" (Tier: 3) — Defences, Armour, Life }
++38(35-45) to Armour
++11(10-14) to maximum Life
+{ Desecrated Suffix Modifier "of the Drowned" (Tier: 2) — Elemental, Cold, Resistance }
++24(21-26)% to Cold Resistance (desecrated)
+{ Suffix Modifier "of the Bear" (Tier: 5) — Attribute }
++15(13-16) to Strength
+{ Unrevealed Desecrated Suffix Modifier }
+Unrevealed Desecrated Modifier

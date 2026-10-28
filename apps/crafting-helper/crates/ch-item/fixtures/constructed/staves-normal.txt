@@ -1,0 +1,10 @@
+Item Class: Staves
+Rarity: Normal
+Ashen Staff
+--------
+Requires: Level 10, 19 Int
+--------
+Item Level: 15
+--------
+{ Implicit Modifier }
+Grants Skill: Level 5 Firebolt (implicit)

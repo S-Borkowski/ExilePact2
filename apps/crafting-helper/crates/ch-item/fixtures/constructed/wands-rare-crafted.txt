@@ -1,0 +1,16 @@
+Item Class: Wands
+Rarity: Rare
+Blight Song
+Bone Wand
+--------
+Requires: Level 25, 40 Int
+--------
+Item Level: 36
+--------
+{ Implicit Modifier }
+Grants Skill: Level 9 Bone Blast (implicit)
+--------
+{ Prefix Modifier "Apprentice's" (Tier: 6) — Damage, Caster }
+32(25-34)% increased Spell Damage
+{ Crafted Suffix Modifier "of Craft" (Tier: 1) — Caster, Speed }
+11(10-12)% increased Cast Speed (crafted)
