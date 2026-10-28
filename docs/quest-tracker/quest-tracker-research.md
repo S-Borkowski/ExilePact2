@@ -530,6 +530,88 @@ repository, and against poe2db.
   boss and class, with a class's on-sight line as the negative control)
   and, for the Warrior's Miller remark, by a replay of Live 8's capture.
 
+### Remarks at every quest moment
+
+Why a Ranger's remark at the Tree of Souls did not move Secrets in the
+Dark, and how every campaign remark of the eight class pages was then
+accounted for (2026-10-28).
+
+- **The Ranger finding** (read 2026-10-28, read-only, from the owner's
+  `overlay.log` and `Client.txt`; no name is copied here). *Read the
+  screen* was on: the session's `overlay.log` had `screen:` lines (Renly's
+  QUEST COMPLETE banner ticked, Beira's bar read). The Grelwood (`G1_4`)
+  entry ticked Secrets in the Dark's first step; the reader then said
+  `screen: idle (no demand)` and wrote no `reading` line in the Grelwood,
+  because no step there had a screen signal. "Search the Grelwood" carried
+  only Una's first line, which comes when she is summoned at the tree,
+  after the sighting. From the Grelwood entry to the game's close, about
+  7 minutes later, `Client.txt` held chat, focus lines, one shop request
+  and the close: no remark-like line and no Una line, so she was never
+  summoned. So the cause was the data, not the matcher: nothing demanded
+  the voiced lines in the Grelwood, and no remark of that moment was
+  known.
+- **The tree remark is not in the log** (not observed, 2026-10-28), as
+  § "Character remarks" found for kill remarks: one session, no person
+  listening for it.
+- **poe2db** (static reading of the cached class pages). The key
+  `SinTreeSeenComment` is on all eight pages, each with an act-1 sound.
+  "Search the Grelwood" is followed by a step whose text opens on having
+  found the Tree of Souls, so the sighting ends the search. Three nearby
+  keys are other moments (the glowing roots, the rune spikes, Renly's
+  forge) and are not this one. That the remark plays at first sight is
+  not measured live.
+- **The rule.** Every key of the eight pages with a campaign-act sound is
+  a campaign key, sorted into five parts by its sound's tag (`act1` to
+  `act4`, `interludes`), and each is written into the remark ledger
+  (`apps/quest-tracker/data/remark-ledger/`) as attached to a step or
+  skipped with a code (guide, "Quest data" › "The remark ledger"). A key
+  is attached only when its words or a class's line name the moment that
+  ends the step (a sighting never ends a fight step, since it would tick
+  before the kill), its sound's act is the quest's, the area is the step's
+  existing signal's or one the step, key or line names, and at least one
+  class's text survives the text rules. A newly found kill key gets a
+  `remark` signal by key, never a new `kill_remark`; the 19 shipped kill
+  keys stay as they were.
+- **The counts** (`poe2db remarks --ledger ... --check`, over the pages
+  fetched 2026-10-27 and 2026-10-28):
+
+  | Part | Keys | Attached | Attachments | log-covers | no-step | no-area | not-established | too-short | Rows | Gaps |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | act1 | 110 | 12 | 14 | 16 | 67 | 3 | 10 | 2 | 95 | 1 |
+  | act2 | 120 | 4 | 4 | 11 | 81 | 12 | 12 | 0 | 31 | 1 |
+  | act3 | 168 | 9 | 9 | 20 | 121 | 15 | 2 | 1 | 66 | 6 |
+  | act4 | 171 | 13 | 14 | 18 | 107 | 14 | 19 | 0 | 92 | 12 |
+  | interludes | 71 | 7 | 7 | 6 | 47 | 6 | 5 | 0 | 54 | 2 |
+  | all | 640 | 45 | 48 | 71 | 423 | 50 | 48 | 3 | 338 | 22 |
+
+  The 45 attached keys are the 19 kill keys (21 `kill_remark` signals)
+  and 26 new keys (27 `remark` signals on 24 steps). Five texts were
+  dropped: two under 12 letters, three shared with a key attached
+  elsewhere.
+- **Class gaps** (not established; no text written by hand). Of the 22,
+  ten are the kill keys' already listed above (Blackjaw for the Warrior
+  and the Ranger, Ignagduk for the Ranger, Viper Napuatzi for the
+  Huntress, Captain Hartlin for six classes). The other twelve:
+  `CanopyKillRitualBoss` for the Druid; `BonePitsMastodonTusksHeld` and
+  `ForgottenTempleQuestComplete` for the Monk;
+  `MachinariumLowerPowerSecondGenerator` and
+  `SingingCavernsSinTakingSpearComment` for the Ranger;
+  `JourneysEndVerisiumObtainedNotKnown` for the Witch;
+  `JourneysEndUseSpikes` for the Warrior, the Ranger, the Witch and the
+  Sorceress; `QimarOlrothDefeated` and `RavineBlackjawBossDefeated` for
+  the Huntress.
+- **What changed for the bosses above.** Of the bosses the previous
+  section left not established for want of a key, nine now have one
+  attached by this rule, as a `remark` signal: The King in the Mists,
+  Mektul, Krutog, The Prisoner, Heldra and Isolde (`IceVSFireBossDefeated`),
+  Azmadi (`QimarOlrothDefeated`), Stormgore (`RavineBlackjawBossDefeated`,
+  the interlude ravine fight), Oswin (`PrisonForsakenSonBossDefeated`),
+  and Torvian besides. Azarian, Benedictus, Tavakai, Siora and Elzarah
+  stay not established.
+- **Not measured live.** No remark at a quest moment has been seen
+  ticking a step in the overlay; seeing the tree remark tick "Search the
+  Grelwood" on a fresh character is the live check still to run.
+
 ### The Bloated Miller: what ticks his step
 
 Why "Slay the Bloated Miller" ticked 10 to 20 s after his death, and the

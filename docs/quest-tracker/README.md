@@ -106,8 +106,10 @@ What it is:
   OCR, in memory. A boss's bar going ticks the defeat step of Beira of the
   Rotten Pack, The Bloated Miller, Blackjaw and Lythara; the character's
   remark at a boss's death ticks the slaying step of the Miller, Blackjaw,
-  Lythara and sixteen other bosses, for each class poe2db gives a remark;
-  and the QUEST COMPLETE banner in Renly's window ticks "Take Renly's
+  Lythara and sixteen other bosses, and its remarks at 26 other quest
+  moments tick 24 steps (first seeing the Tree of Souls ends "Search the
+  Grelwood", for one), for each class poe2db gives a remark; and the
+  QUEST COMPLETE banner in Renly's window ticks "Take Renly's
   reward". Nothing read is stored, logged or shown ("How detection works",
   "Privacy").
 - **Hide under game panels, always on.** The overlay hides itself in play
@@ -734,9 +736,12 @@ library only.
 | Command | Options | What it does |
 |---|---|---|
 | `fetch` | `--cache DIR`, `--delay S` (default 3, refused under 2), `--only SLUG ...`, `--max-age DAYS` (default 7), `--include-endgame` | Reads `robots.txt` and skips what it disallows, then fetches the quest index and the campaign quest pages one at a time, `--delay` seconds apart, with a User-Agent naming the tool and this repository. Pages cached within `--max-age` days are left alone. Act 10 and act-less MasterMission quests only with `--include-endgame`. |
-| `fetch-classes` | `CLASS ...` (e.g. `Warrior Mercenary Ranger Huntress Witch Sorceress Monk Druid`, the eight playable classes), `--cache DIR`, `--delay S`, `--max-age DAYS` | Fetches the named poe2db class pages into the cache, politely and under the same robots.txt and delay rules as `fetch`, for their kill remarks. |
+| `fetch-classes` | `CLASS ...` (e.g. `Warrior Mercenary Ranger Huntress Witch Sorceress Monk Druid`, the eight playable classes), `--cache DIR`, `--delay S`, `--max-age DAYS` | Fetches the named poe2db class pages into the cache, politely and under the same robots.txt and delay rules as `fetch`, for their remarks. |
 | `extract` | `--cache DIR`, `--out FILE` (default `<cache>\quests-draft.json`), `--with-dialogue` | Drafts one JSON entry per cached quest page (slug, URL, fetch date, name, type, act, rewards, steps; NPC dialogue only with `--with-dialogue`). A page without a steps table is drafted with zero steps and named on stderr; an index with no quest, a malformed steps table, or no steps table in any page stops with a non-zero exit naming the slug. |
 | `remarks` | `--cache DIR`, `--data FILE` (default `apps/quest-tracker/data/quests.json`), `--class CLASS ...` | Prints a draft of the cached class pages' kill-remark rows whose boss the quest data names (`remarks` table entries), never a whole table. |
+| `remarks --keys` | `--part P` (required; `act1`, `act2`, `act3`, `act4` or `interludes`), `--cache DIR`, `--data FILE` | For curating the remark ledger: one JSON line per campaign key of part P, in page order, with its sound tags, each class's texts after the text rules, the keys sharing a text, and up to five candidate `quest/step` ids. Stdout only. |
+| `remarks --ledger DIR --check` | `--part P`, `--ledger-only`, `--cache DIR`, `--data FILE` | Checks the remark ledger ("Quest data" › "The remark ledger") against the eight cached class pages and, unless `--ledger-only`, the quest data's `remarks` rows and `remark`/`kill_remark` signals. Prints each class gap (`gap: ...`) and finding (`finding: ...`), one per line, then a `summary:` line with the key, attachment, per-code skip, row, dropped-text and gap counts; exits 0 only with no finding. With `--part`, only that part's file is read. All eight classes must be cached. |
+| `remarks --ledger DIR --apply` | `--cache DIR`, `--data FILE` | Rewrites only the data file's `remarks` array with the ledger's rows (parts in order, entries in file order, classes Warrior to Druid), keeping every other byte and the file's line endings; a second run changes nothing. Writes nothing if the ledger alone has a finding. It adds no signal: a new attachment's `remark` signal is added to its step by hand. |
 | `coverage` | `--log LOG` (required, read-only), `--cache DIR` | Per cached page, how many dialogue snippets match a logged line of the same NPC exactly, by containment, or by a shared 4-word run. Counts only, never text. |
 
 The cache defaults to `%LOCALAPPDATA%\ExilePact2\quest-tracker\poe2db-cache\`;
@@ -906,7 +911,11 @@ stayed *available* from Clearfell and showed in progress only from the
 Grelwood (measured in Live 2). In the Grelwood (`G1_4`), Una's lines move
 the quest on: her first line there, "What happened here...?", comes when
 you summon her at the Tree of Souls and completes "Search the Grelwood",
-leaving "Ask Una for help" current. "I'll wait here. The old magicks will
+leaving "Ask Una for help" current. With *Read the screen* on, the
+character's remark on first seeing the tree (`SinTreeSeenComment`, every
+class's) completes it earlier, before she is summoned ("Reading the
+screen" › "The remark rule (`remark`)"); the remark is not in the log, and
+that it plays at first sight is read from poe2db, not measured. "I'll wait here. The old magicks will
 protect me.", which came a few seconds later in the sessions where the
 player talked to her, completes "Ask Una for help" and leaves "Find the
 Red Vale" current (that it follows the talk is inferred). Where that line
@@ -1136,7 +1145,7 @@ right, top to bottom), each read only while a demanded signal needs it:
 | Region | Where | Read | For |
 |---|---|---|---|
 | boss bar | x 0.25 to 0.75, y 0 to 0.14 | twice a second | `bar_gone` |
-| voiced lines | x 0 to 0.45, y 0.35 to 0.80 | twice a second | `kill_remark` |
+| voiced lines | x 0 to 0.45, y 0.35 to 0.80 | twice a second | `kill_remark`, `remark` |
 | dialogue window | x 0.22 to 0.70, y 0.20 to 0.85 | once a second | `quest_complete` |
 
 A read is a GDI copy of the region, upscaled 2 times (less when that would
@@ -1231,6 +1240,18 @@ a `kill_remark` signal sits on each of those bosses' slaying steps
 ("Quest data"); a step with a remark and no bar still demands the
 voiced-lines region, as Blackjaw's does.
 
+**The remark rule (`remark`).** The same rule, for a remark at any other
+quest moment: a `remark` signal names a poe2db key instead of a boss, and
+each demanded key gets its own voiced-lines tracker, whose texts are every
+class's rows of that key in the `remarks` table. A new `<speaker>: <text>`
+line matching one of them, by the same 1 s to 5 s look-back, is one
+`remark` event for the key. Since 0.1.3, 26 keys sit on 24 steps ("Quest
+data" › "The remark ledger"), the first being the remark on first seeing
+the Tree of Souls (`SinTreeSeenComment`), which ends Secrets in the Dark's
+"Search the Grelwood" in the Grelwood (`G1_4`) before Una is summoned
+there. Before it, nothing on the screen was demanded in the Grelwood, so
+the reader stayed idle and only Una's first line moved the quest.
+
 **What a screen event ticks.** It goes to the character an NPC line would
 go to and is live, so its row changes as for a log line. Before a
 level-up has named a character from The Riverbank, that is the unnamed
@@ -1290,8 +1311,9 @@ line (below), and nothing behind it retries in a loop:
   line says so (Status lines, above);
 - `black: <n> copies in a row`, at the black-copy status's limit;
 - `bar of <boss> gone (last seen <hh:mm:ss.mmm>Z): <outcome>`,
-  `quest complete in <npc>'s window (<hh:mm:ss.mmm>Z): <outcome>` and
-  `kill remark for <boss> (<hh:mm:ss.mmm>Z): <outcome>`, where the outcome
+  `quest complete in <npc>'s window (<hh:mm:ss.mmm>Z): <outcome>`,
+  `kill remark for <boss> (<hh:mm:ss.mmm>Z): <outcome>` and
+  `remark <key> (<hh:mm:ss.mmm>Z): <outcome>`, where the outcome
   is `ticked <quest>/<step>` or `not counted (<why>)`, `<why>` being
   `after a death`, `after an area change`, `area unknown` or `no open
   step`;
@@ -1302,7 +1324,12 @@ line (below), and nothing behind it retries in a loop:
 - `minute: dialogue window gate, <n> full reads, <n> skipped`, with it, in
   a minute the dialogue window was read: reads of the whole window, and
   reads of its heading strip alone. A read the window was hidden for is in
-  neither; frames and busy time count both kinds.
+  neither; frames and busy time count both kinds;
+- `minute: voiced lines, kill remark for <boss> in <n> of <m> reads, <k>
+  new` and `minute: voiced lines, remark <key> in <n> of <m> reads, <k>
+  new`, with it, one per tracker that read in that minute: how many of its
+  reads showed a line reading as one of its texts, and how many of those
+  were new.
 
 A region is `boss bar`, `voiced lines` or `dialogue window`; boss and NPC
 names come from the quest data, never from what was read.
@@ -1709,17 +1736,23 @@ to 2 in The Riverbank ("How detection works" › "Slay the Bloated Miller").
 **Screen signals.** A signal of kind `screen` is what *Read the screen*
 can tick ("How detection works" › "Reading the screen"). It sits on a step
 only (anywhere else fails validation), needs `what` and `area`, and names
-a `boss` or an `npc` by its `what`:
+a `boss`, an `npc` or a `key` by its `what`:
 
 - `bar_gone`, with a `boss`: the boss's name left the boss bar's band;
 - `quest_complete`, with an `npc`: the QUEST COMPLETE banner showed in the
   NPC's dialogue window;
 - `kill_remark`, with a `boss`: a new line in the list of voiced lines
   carried one of the boss's kill-remark texts from `remarks` (below); a
-  `kill_remark` whose boss has no text there fails validation.
+  `kill_remark` whose boss has no text there fails validation;
+- `remark`, with a `key` (a poe2db class page's key, never a `boss` or an
+  `npc`): a new line in the list of voiced lines carried one of the texts
+  of the `remarks` rows with that key. A `remark` with no key, an empty
+  key, a key no row has, or a boss or an npc fails validation, and the
+  other three `what`s never take a `key`.
 
 ```json
 {"kind": "screen", "what": "bar_gone", "boss": "Beira of the Rotten Pack", "area": "G1_2"}
+{"kind": "screen", "what": "remark", "key": "SinTreeSeenComment", "area": "G1_4"}
 ```
 
 The fire rule: a screen event fires a screen signal when the current area
@@ -1741,19 +1774,30 @@ whose kill remark the `remarks` table holds (below; Asinia and Draven on
 two steps each), each new one appended after the signals its step had, since
 saved progress names a step's signals by position. The Miller's step
 lists Mortimer's line, his `bar_gone`, his `kill_remark` and then his
-`level_up`, in that order.
+`level_up`, in that order. And 27 `remark` signals on 24 steps, one per
+attachment of the remark ledger (below), appended the same way: on
+Secrets in the Dark's "Search the Grelwood" (`SinTreeSeenComment`, `G1_4`)
+after Una's line; two keys each on "Retrieve Una's Lute" and "Pick up the
+Verisium Ingots"; one on each of two areas (`G4_8a`, `G4_8b`) for
+Torvian's step; and on Asinia's and Draven's step-4 and step-14 beside
+their `kill_remark`, for the remark when the other still lives.
 
 **The `remarks` table.** An optional top-level array of a class's
-kill-remark texts, each `{"class", "boss", "key", "text", "source_url",
+remark texts, each `{"class", "boss", "key", "text", "source_url",
 "fetched"}`: `key` is the poe2db class page's name for the moment that
 plays the remark, `text` the short spoken line, stored verbatim, and
 `source_url` and `fetched` are validated as a quest's are (a
-`https://poe2db.tw/us/<page>` URL and a date). An entry's `boss` must be
-the boss of a shipped `bar_gone` signal or a name in `npcs`. A remark
-reaches the reader through a `kill_remark` signal of its boss; the reader
-looks for every class's texts for that boss, so a row needs no code.
+`https://poe2db.tw/us/<page>` URL and a date). `boss` is there only on the
+rows of a `kill_remark` boss, and must then be the boss of a shipped
+`bar_gone` signal or a name in `npcs`; the other rows leave it out. A
+kill remark reaches the reader through a `kill_remark` signal of its boss,
+any other remark through a `remark` signal of its key; the reader looks
+for every class's texts for that boss or key, so a row needs no code. A
+row with no `boss` whose key no `remark` signal names fails validation.
 
-This version's table holds 142 texts, the kill remarks of nineteen bosses
+Since 0.1.3 the table holds 338 texts, written by `poe2db remarks --ledger
+... --apply` from the remark ledger (below): the 142 kill-remark texts and
+196 texts of the 26 `remark` keys. The kill rows hold the kill remarks of nineteen bosses
 for the eight playable classes (Warrior, Mercenary, Ranger, Huntress,
 Witch, Sorceress, Monk and Druid, the classes with ascendancies on
 poe2db's Ascendancy page, read 2026-10-28). The Warrior's and the
@@ -1802,11 +1846,69 @@ short to tell from other speech; a row under 12 letters is never added),
 Captain Hartlin for the other six classes (their
 `TempleSandHartlinBossDefeated` is an interlude fight), Beira of the
 Rotten Pack (no row on any page), the bosses whose step no key ties to by
-the rule above (The King in the Mists, Azarian, Mektul, Benedictus,
-Tavakai, Krutog, The Prisoner, Siora, Elzarah, Azmadi, Stormgore, Oswin,
-and Heldra and Isolde), and every boss step with no area in the data.
-The Marauder, Duelist, Shadow and Templar pages are not playable classes
-and are not used.
+the rule above (Azarian, Benedictus, Tavakai, Siora and Elzarah), and
+every boss step with no area in the data. The deaths of The King in the
+Mists, Mektul, Torvian, Krutog, The Prisoner, Heldra and Isolde, Azmadi,
+Stormgore and Oswin, not tied to a step before 0.1.3, now are, by a
+`remark` signal of their key (the ledger below). The Marauder, Duelist,
+Shadow and Templar pages are not playable classes and are not used.
+
+**The remark ledger** (`apps/quest-tracker/data/remark-ledger/`). Every
+campaign remark key of the eight class pages, one entry each, with the
+step it is attached to or the reason it is not, so none is left
+unconsidered. A campaign key is one that at least one page has a row of
+with a campaign-act sound; its part is that sound's tag: `act1` (`_a1_`),
+`act2`, `act3`, `act4`, and `interludes` (`_i1_` to `_i3_`, `_p1_` to
+`_p3_`), one `<part>.json` per part, the first part in that order when a
+key's sounds span two. Rows with no sound file (the older voice sets) and
+sounds of no campaign act (wild, endgame and league lines) are not
+campaign keys. A file is `{"schema": 1, "part": "<part>", "keys": [...]}`,
+UTF-8 and LF, one entry per line:
+
+```json
+{"key": "SinTreeSeenComment", "attach": [{"quest": "secrets-in-the-dark", "step": "step-2", "area": "G1_4"}], "why": "..."}
+{"key": "PickUpSkillGem", "skip": "no-step", "why": "..."}
+```
+
+An attached entry lists each `quest`, `step` and `area` it ends (a moment
+that ends steps in alternative orders lists each) and, for the nineteen
+kill keys only, the `boss` of its `kill_remark`; every other attachment is
+a `remark` signal of the key. A skipped entry gives its code: `log-covers`
+(a log signal on the step already marks the moment), `no-step` (no step
+of the data is that moment: side content, a bark mid-fight, a reply in a
+conversation), `no-area` (the step is known but not its area),
+`not-established` (more than one step fits, or none can be told from the
+key, the lines and the sound) or `too-short` (every class's text is under
+12 letters or `[DNT]`). `why` is one short sentence of our own; the ledger
+names keys, quests and steps, never a line. A key is attached only on
+evidence: its words or a class's line name the moment that ends the step
+(a sighting ends a find or search step, never a fight step), its sound is
+from the quest's act, and the area is an existing signal's or one the
+step, key or line names. A text is used with markup removed and
+whitespace collapsed, and dropped when under 12 letters, `[DNT]`, or the
+same as a text of a key attached elsewhere.
+
+The counts, as `poe2db remarks --ledger apps/quest-tracker/data/remark-ledger
+--check` prints them over the pages fetched 2026-10-27 and 2026-10-28:
+
+| Part | Keys | Attached | `log-covers` | `no-step` | `no-area` | `not-established` | `too-short` | Rows |
+|---|---|---|---|---|---|---|---|---|
+| `act1` | 110 | 12 | 16 | 67 | 3 | 10 | 2 | 95 |
+| `act2` | 120 | 4 | 11 | 81 | 12 | 12 | 0 | 31 |
+| `act3` | 168 | 9 | 20 | 121 | 15 | 2 | 1 | 66 |
+| `act4` | 171 | 13 | 18 | 107 | 14 | 19 | 0 | 92 |
+| `interludes` | 71 | 7 | 6 | 47 | 6 | 5 | 0 | 54 |
+| all | 640 | 45 | 71 | 423 | 50 | 48 | 3 | 338 |
+
+The 45 attached keys are the 19 kill keys and the 26 `remark` keys, 48
+attachments in all. Five texts were dropped (two short, three shared with
+another key's), and 22 class gaps are reported: an attached key with no
+usable line for a class, which is not established and never written by
+hand (Known limitations). `--check` exits 0 only when every campaign key
+is in exactly one entry of its part's file, every entry is well formed and
+its quest, step and area exist, and the data's `remarks` rows and
+`remark`/`kill_remark` signals equal what the ledger gives; `qt-engine`'s
+`shipped_data` tests pin the signals to the ledger the same way.
 
 **Find-it tips.** A step may carry a `"tip"`: a short "how to find it"
 hint, shown on its own line under the step in the row (when it is the step
@@ -1850,7 +1952,7 @@ project):
 | `crates/qt-store/` | App-data folder, atomic JSON, quarantine, diagnostic log. |
 | `crates/qt-engine/` | Quest data contract and validator (`data`), the per-character state machine with character detection, the new character from The Riverbank and the refused-signal count (`engine`), and the area read back from the log before a tailer's start (`area`: `area_from_log`, `LogArea`, seeded with `Engine::seed_area`). |
 | `crates/qt-viewmodel/` | `View` and `RowChange`: what the panel shows and what changed in a row, built in Rust. |
-| `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and kill-remark trackers behind a backend trait. *Hide under game panels*' too: the panel table type, the probe test and its counts, and the panel tracker (`panels`), and the shipped table (`panel_table`, its numbers in `fixtures/panels/shipped_panels.json`). |
+| `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and remark trackers (a boss's kill remark, or a `remark` signal's key) behind a backend trait. *Hide under game panels*' too: the panel table type, the probe test and its counts, and the panel tracker (`panels`), and the shipped table (`panel_table`, its numbers in `fixtures/panels/shipped_panels.json`). |
 | `crates/qt-capture/` | The Windows backend for `qt-screen`: GDI copy of a client-area region and `Windows.Media.Ocr` (en-US) in memory, through the `windows` crate. Also the JPEG decode of a kept capture's frames through WinRT's bitmap decoder (`decode`), and the call that makes a process DPI-aware, for `quest-tracker-replay panels`. |
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`), with `screen` (`src/screen.rs`) and `panels` (`src/panels.rs`: `measure`, `detect`, `grab`, `probe`); it depends on `qt-capture` for the decode and the grab. |
 | `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`), and the quest tracker's part of the update check and install (`updates.rs`: its product and tray menu over the shared `ep-update`, re-exported there; the commands `check_for_updates`, `install_update` and `cancel_update` in `app.rs`; tested in `tests/updates.rs` with a recording fake transport and a temporary folder). Tested with a fake window, emitter and clock. |
@@ -1859,6 +1961,7 @@ project):
 | `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, one component per section listed in `sections.ts`, `UpdatesSection.svelte`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
 | `data/quests.json` | The shipped quest data. |
+| `data/remark-ledger/` | The remark ledger: one `<part>.json` per part (`act1` to `act4`, `interludes`), naming every campaign key of poe2db's eight class pages with the step it is attached to or the reason it is not ("Quest data" › "The remark ledger"). Not compiled in: `poe2db remarks --ledger ... --check` reads it against the class pages and `quests.json`, `--apply` writes `quests.json`'s `remarks` rows from it, and `qt-engine`'s `shipped_data` tests pin the shipped `remark` and `kill_remark` signals to its attachments. |
 | `fixtures/` | Synthetic logs, sessions, minimal quest data and serialised views shared by the Rust and UI tests; every name in them is invented. |
 
 Tests:
@@ -2089,7 +2192,9 @@ release already exists, only its assets are replaced.
   of the Mercenary's or the Warrior's remark texts was found in the whole
   of one player's log, with a speaker or without, while the same search
   found Una's lines; no speaker is named after a class; and the minute
-  after a Mercenary killed The Bloated Miller held no remark. So no quest
+  after a Mercenary killed The Bloated Miller held no remark; nor did a
+  Ranger's Grelwood visit hold the remark on first seeing the Tree of
+  Souls (2026-10-28). So no quest
   moves on a remark from the log; *Read the screen* reads them instead. That is "not observed", not "never
   logged" ([`quest-tracker-research.md`](quest-tracker-research.md) §
   "Character remarks"). The remarks do show on screen, which *Read the
@@ -2183,15 +2288,44 @@ release already exists, only its assets are replaced.
   the Ranger, Ignagduk for the Ranger, Viper Napuatzi for the Huntress,
   Captain Hartlin for every class but the Huntress and the Monk, Beira of
   the Rotten Pack for every class, the bosses no poe2db key ties to their
-  step (The King in the Mists, Azarian, Mektul, Benedictus, Tavakai,
-  Krutog, The Prisoner, Siora, Elzarah, Azmadi, Stormgore, Oswin, and
-  Heldra and Isolde), and every boss step with no area in the data. Where
+  step (Azarian, Benedictus, Tavakai, Siora and Elzarah), and every boss
+  step with no area in the data. Since 0.1.3 nine more bosses' deaths
+  (The King in the Mists, Mektul, Torvian, Krutog, The Prisoner, Heldra
+  and Isolde, Azmadi, Stormgore and Oswin) tick their steps by a `remark`
+  signal instead (the next item). Where
   a boss has a bar signal (Beira, the Miller, Blackjaw, Lythara) the bar
   still ticks it. No boss's remark has been seen ticking a step live: the
   texts are proved by the matcher's tests, and by the Warrior's Miller
   remark in a replay of Live 8's capture. The Miller's remark will rarely
   tick his step live, because his level-up at the kill ticks it first and
   the reader then stops looking.
+- **Read the screen: remarks at quest moments.** Since 0.1.3 a `remark`
+  signal ticks 24 steps on 26 poe2db keys (Secrets in the Dark's "Search
+  the Grelwood" on `SinTreeSeenComment` among them), for each class the
+  `remarks` table has a text for. Of the 640 campaign keys on the eight
+  class pages, 45 are attached (the 19 kill keys included) and 595 are
+  not, each with its reason in the remark ledger ("Quest data" › "The
+  remark ledger"): 71 because a log signal already marks the moment, 423
+  because no step of the data is that moment, 50 because the step's area
+  is not in the data, 3 because every class's line is too short, and 48
+  not established (more than one step fits, or none can be told). These
+  attached keys have no usable line for some classes, so a remark does not
+  tick their step for that class (not established, nothing written by
+  hand): `CanopyKillRitualBoss` (The King in the Mists) for the Druid,
+  `BonePitsMastodonTusksHeld` and `ForgottenTempleQuestComplete` for the
+  Monk, `MachinariumLowerPowerSecondGenerator` and
+  `SingingCavernsSinTakingSpearComment` for the Ranger,
+  `JourneysEndVerisiumObtainedNotKnown` for the Witch (her
+  `JourneysEndVerisiumObtained` still ticks the step), `JourneysEndUseSpikes`
+  for the Warrior, the Ranger, the Witch and the Sorceress, and
+  `QimarOlrothDefeated` (Azmadi) and `RavineBlackjawBossDefeated`
+  (Stormgore) for the Huntress. That each remark plays at the moment its
+  key names is read from poe2db, not measured; that the Tree of Souls
+  remark plays at first sight of the tree is not measured either. The OCR
+  of the voiced lines was measured only for the Miller's remark in The
+  Riverbank, in a replay of Live 8's capture; their reading in the other
+  areas (a busier or darker lower left) is not measured. No remark at a
+  quest moment has been seen ticking a step live.
 - **Slay the Bloated Miller: a first level-up before his death.** The
   step ticks on the character's level-up to 2 in The Riverbank, which in
   one player's log came at the Miller's kill every time (17 of 17). A
@@ -2397,6 +2531,13 @@ Revisit this feature when:
   until `quest-tracker-replay panels detect` finds each window and nothing
   outside them, and then check it on the raw route: `panels grab` the game
   with each retuned panel open and closed, and `panels probe` each grab.
+- **A patch adds or changes a class's voiced remarks** (or poe2db's class
+  pages change): refetch the eight pages with `poe2db fetch-classes`, run
+  `poe2db remarks --ledger apps/quest-tracker/data/remark-ledger --check`,
+  curate each key it names in its part's ledger file ("Quest data" › "The
+  remark ledger"), append a `remark` signal for each new attachment to its
+  step by hand, then `--apply` the rows and `--check` again until it
+  reports no finding.
 - **poe2db changes its page structure**: `extract` fails loudly naming the
   slug; fix the extractor and its synthetic fixture under
   `tests/fixtures/quest_tracker/poe2db/`.
@@ -2429,6 +2570,28 @@ Revisit this feature when:
   game: record it under "Known limitations".
 
 ## Release notes
+
+### 0.1.3
+
+- With *Read the screen* on, the character's remark on first seeing the
+  Tree of Souls ticks Secrets in the Dark's "Search the Grelwood", for
+  every playable class, so the row shows "Ask Una for help" at once.
+  Before, nothing on the screen was read in the Grelwood, and the step
+  waited for Una's first line there, which only comes once you summon her
+  at the tree.
+- With *Read the screen* on, the character's remarks at other quest
+  moments tick their steps too, for each class whose remark poe2db's class
+  pages give: 26 remarks on 24 steps, the tree's among them. They include
+  picking up Una's lute, entering the Ardura Caravan, finding the
+  Ziggurat, the second of the two generators, the Mastodon Tusks
+  and the Verisium Ingots, and the deaths of nine bosses no remark ticked
+  before (The King in the Mists, Mektul, Torvian, Krutog, The Prisoner,
+  Heldra and Isolde, Azmadi, Stormgore and Oswin). Every campaign remark
+  on the eight class pages was looked at, act by act; the ones not tied to
+  a step, and the classes with no usable line, are in Known limitations.
+- The route is not yet seen live: no remark at a quest moment has ticked
+  a step in a live session yet (Known limitations, "Read the screen:
+  remarks at quest moments").
 
 ### 0.1.2
 

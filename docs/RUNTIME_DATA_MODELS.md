@@ -198,6 +198,14 @@ are the positive control), a level-up and client lines, and every voiced
 speaker in that session was an NPC or a boss. The own character's remarks
 were therefore not observed in the log (the whole log and two sessions
 with a person listening; not proof that they are never logged).
+A remark at a quest moment other than a kill is not observed either
+(2026-10-28, the research note's
+[§ "Remarks at every quest moment"](quest-tracker/quest-tracker-research.md#remarks-at-every-quest-moment)):
+in a Ranger's session that reached the Tree of Souls in the Grelwood
+(`G1_4`), where poe2db lists every class's remark on first seeing the tree
+(key `SinTreeSeenComment`), the log from the Grelwood entry to the game's
+close held only chat, window-focus lines, one shop request and the close.
+That the remark played at that moment is poe2db's reading, not measured.
 
 NPC lines and the dialogue option (measured 2026-10-26, Live 8, the
 research note's
