@@ -2327,8 +2327,9 @@ release already exists, only its assets are replaced.
   remark for the Ranger, seen live on reaching the tree (Live 15). The
   OCR of the voiced lines was measured for the Miller's remark in The
   Riverbank, in a replay of Live 8's capture, and live for the Ranger's
-  tree remark in the Grelwood (Live 15, read in 1 of its minute's 44
-  reads); their reading in the other areas (a busier or darker lower
+  tree remark in the Grelwood (Live 15, matched at the first read that
+  showed it; the reader stopped at the tick, so how many reads would have
+  caught it is not measured); their reading in the other areas (a busier or darker lower
   left) is not measured. One remark at a quest moment has been seen
   ticking a step live: the Ranger's at the Tree of Souls ticked "Search
   the Grelwood" before Una was summoned (Live 15); the other classes and
@@ -2601,8 +2602,9 @@ Revisit this feature when:
   mushrooms to the Grim Tangle, where more of them means you are closer.
 - Seen live once: on a new Ranger, the remark at the Tree of Souls ticked
   "Search the Grelwood" before Una was summoned, and her line did not
-  tick it again. The other classes and moments are checked by the
-  matcher's tests (Known limitations, "Read the screen: remarks at quest
+  tick it again. For the other classes and moments, the matching of their
+  texts is tested; that the game plays them there is read from poe2db,
+  not seen live (Known limitations, "Read the screen: remarks at quest
   moments").
 
 ### 0.1.2
