@@ -1,0 +1,85 @@
+/*
+ * The Settings window's own shared rules, over the main page's base
+ * (`../app.css`): the switch, the group label and the caption, drawn as the
+ * quest tracker's Settings window draws them, every value from the shared
+ * tokens (`theme/tokens.css`). The sections keep their layout in their own
+ * `<style>` blocks.
+ */
+
+/* The browser preview's zoom (`?scale=2`), as the webview's would be; unset in the app. */
+html[data-preview-scale] {
+  zoom: var(--preview-scale);
+}
+
+/* The page is as tall as its content; the shell sizes the window to it. */
+#app {
+  height: auto;
+}
+
+/* The switch, 36 × 24, square: on is the accent track with the thumb right. */
+.toggle {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: var(--size-control);
+  margin: 0;
+  border: var(--border-width) solid var(--color-panel-border);
+  background: var(--color-panel-sunken);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.toggle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  background: var(--color-text-secondary);
+  transform: translateY(-50%);
+  transition: left 120ms ease-out;
+}
+
+.toggle:hover {
+  border-color: var(--color-hover-outline);
+}
+
+.toggle:checked {
+  border-color: var(--color-edit-accent);
+  background: var(--color-edit-accent);
+}
+
+.toggle:checked::before {
+  left: calc(100% - 17px);
+  background: var(--color-panel-sunken);
+}
+
+/* A group label: small capitals, muted. */
+.group-label {
+  margin: 0;
+  padding: var(--space-section-gap) 0 var(--space-unit);
+  color: var(--color-text-muted);
+  font-family: var(--font-family-caps);
+  font-size: var(--size-act);
+  font-weight: var(--font-weight-title);
+  line-height: var(--line-caption);
+  letter-spacing: 0.03em;
+}
+
+.caption {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--size-caption);
+  font-weight: var(--font-weight-row);
+  line-height: var(--line-caption);
+  letter-spacing: 0.2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle,
+  .toggle::before {
+    transition: none;
+  }
+}

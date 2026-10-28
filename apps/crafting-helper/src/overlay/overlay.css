@@ -1,0 +1,16 @@
+/*
+ * The overlay's own rules, over the main page's base (`../app.css`): the
+ * page is transparent, so only the line's panel is drawn over the game, and
+ * nothing on it can be selected or clicked (the window ignores the cursor
+ * as well).
+ */
+html,
+body {
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  pointer-events: none;
+  user-select: none;
+}
