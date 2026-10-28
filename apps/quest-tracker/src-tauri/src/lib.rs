@@ -61,7 +61,7 @@
 //!   asked for, from a spawned task (Tauri's window builder deadlocks on
 //!   Windows when called in a synchronous event handler, and the tray's menu
 //!   handler is one), and shown, unminimised and focused when it is already
-//!   open. Decorated, dark, not resizable, 420 by 280 at 1x, centred, in the
+//!   open. Decorated, dark, not resizable, 420 by 328 at 1x, centred, in the
 //!   taskbar while open; closing it destroys it. Its capability
 //!   (`capabilities/settings.json`) grants `core:event:default` alone, and
 //!   `qt:app-settings` is sent to it only. Moves, DPI changes and close
@@ -135,7 +135,7 @@ const SETTINGS: &str = "settings";
 const SETTINGS_PAGE: &str = "settings.html";
 const SETTINGS_TITLE: &str = "Quest Tracker Settings";
 const SETTINGS_WIDTH: f64 = 420.0;
-const SETTINGS_HEIGHT: f64 = 280.0;
+const SETTINGS_HEIGHT: f64 = 328.0;
 
 /// The tray icon's id. Its menu and tooltip are `qt_app::tray_menu`'s.
 const TRAY: &str = "quest-tracker";

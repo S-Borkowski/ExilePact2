@@ -271,8 +271,9 @@ links to the other.
   updates", off by default, and the line "Created by ST4H". It is built to
   take more: its body is a list of sections drawn in order, so a later
   setting is a new section, not a new layout.
-- **Size.** About 420 px wide at 1×, as tall as its content (about 280 px
-  with one section), not resizable, centred on the screen. A native,
+- **Size.** About 420 px wide at 1×, as tall as its content (328 px with
+  one section, which fits its tallest state, a download in progress), not
+  resizable, centred on the screen. A native,
   dark title bar ("Quest Tracker Settings") with the system's close
   button; it is in the taskbar while open and not always on top.
 - **Layout, top to bottom.** The title "Settings" (Title style); then each
@@ -285,35 +286,62 @@ links to the other.
   size, not Caption: it is the privacy promise): it asks
   GitHub once a day whether a newer version is out and downloads nothing;
   off, Quest Tracker never connects unless you ask it to check. Then the
-  status line (Step style, with a 16 px icon), the buttons "Check now"
-  (secondary) and "Open the release page" (primary, with the external-link
-  icon, only while a newer version is known), and "Version 1.2.0"
+  check's status line (Step style, with a 16 px icon), the install's own
+  line under it (the same style, only while an install has something to
+  say), the download's progress bar while one runs, the buttons "Check
+  now" (secondary) and the install part's one button, and "Version 1.2.0"
   (Caption).
 - **Its states** are the update check's: *not checked yet* (no icon);
   *checking* ("Checking for updates…", the refresh icon, "Check now"
   disabled); *up to date* (the check icon); *available* ("Quest Tracker
   1.3.0 is available. You have 1.2.0.", the available mark in
-  `color.status-available`, the release-page button shown); *no release
-  published* (no icon); *failed* ("Could not check for updates: <reason>.",
-  the warning icon in `color.warning`; the release-page button stays while
-  a newer version found earlier is kept). The text says what happened in
-  every state; the icon and its colour only repeat it.
+  `color.status-available`); *no release published* (no icon); *failed*
+  ("Could not check for updates: <reason>.", the warning icon in
+  `color.warning`; a newer version found earlier is kept, and so is its
+  Install button). The text says what happened in every state; the icon
+  and its colour only repeat it.
+- **Install, in the window.** A newer version is installed here, never
+  handed to a browser: no state, button or link opens a release page. The
+  install part's states, each written by the app:
+  *ready*: the primary button "Install 1.3.0 and restart", disabled while
+  a check runs; *unsigned*: the line "1.3.0 is available but cannot be
+  installed: the release is not signed." (warning icon), no button and no
+  *Try again*, since it would fail the same way; *downloading*:
+  "Downloading Quest Tracker 1.3.0…" (refresh icon), a 4 px determinate
+  bar (the slider's track, `color.panel-divider`, filled in
+  `color.edit-accent`) with the amount in words beside it ("5.2 MB of
+  12.0 MB", Caption), and *Cancel* (secondary), which goes back to
+  *ready*; with no total known the bar is the bare track and the amount
+  stands alone; *verifying*: "Checking the signature of Quest Tracker
+  1.3.0…" (refresh icon); *restarting*: "Quest Tracker 1.3.0 is installed.
+  Restarting…" (check icon); *failed*: "Could not install Quest Tracker
+  1.3.0: <reason>." (warning icon in `color.warning`) and *Try again*
+  (secondary), which runs the install again. "Check now" stays in every
+  state but is disabled while a download, the signature check or the
+  restart runs. Nothing moves: the bar steps with each view, and there is
+  no animation to turn off under `prefers-reduced-motion`.
 - **Tokens and components it reuses.** The panel's tokens
   (`color.panel-bg` as the window's background, the text colours, the type
   styles, the 4 px grid) and the styled layer's Toggle, Button, group label
-  and Caption, unchanged. No new token, icon or component variant.
+  and Caption, unchanged. No new token, icon or component variant: the
+  download's progress bar is the Slider's track without its thumb.
 - **Keyboard and screen reader.** Tab moves from the toggle to "Check now"
-  to "Open the release page"; Space flips the toggle, Enter or Space presses
-  a button; focus shows as the edit accent's ring, as in the panel. The
-  toggle is a `switch` named by its label and described by its helper line;
-  each section is a region named by its heading; the status line is a polite
-  live region, so a check's result is read out when it arrives. The window
-  is closed by its title bar (or Alt+F4); Esc does nothing.
+  to the install part's button (Install, *Cancel* or *Try again*); Space
+  flips the toggle, Enter or Space presses a button; focus shows as the
+  edit accent's ring, as in the panel. The toggle is a `switch` named by
+  its label and described by its helper line; each section is a region
+  named by its heading; the check's status line and the install's line are
+  each a polite live region, the install's present (empty) in every state
+  so that its first words are read out when they arrive. The progress bar
+  is a `progressbar` named by the install's line, with the amount in words
+  as its value text. The window is closed by its title bar (or Alt+F4);
+  Esc does nothing.
 - **No remote load.** Like the overlay, the window is a page of the app's
   own bundle: fonts and icons are local, the content security policy blocks
-  every remote load, and the page itself never calls the network. The check
-  is made by the app, not the page, and only when asked; the release page
-  opens in the default browser, never inside the window.
+  every remote load, and the page itself never calls the network. The
+  check and the install are made by the app, not the page: a check only
+  when asked or by the setting, an install only when its button or *Try
+  again* is pressed.
 
 ## Icons (24×24 grid, SVG only, single colour unless noted)
 

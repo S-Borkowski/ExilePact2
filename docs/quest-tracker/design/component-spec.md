@@ -230,7 +230,8 @@ Not an overlay frame: the tray's Settings window (the brief's
   label (Act, `color.text-muted`), then SettingRows (40 high, padding
   0/16 here) and their helper lines (13 / 18, `color.text-muted`: larger
   than the panel's Caption, as the help states what the window connects
-  to). The window is as tall as its content, about 280 at 1×. A 1 px
+  to). The window is as tall as its content, 328 at 1× (its tallest
+  state, a download, fits). A 1 px
   `color.panel-divider` line between sections and above the footer.
 - Updates: SettingRow "Automatically check for updates" + Toggle; helper
   "Asks GitHub once a day whether a newer version is out. Downloads
@@ -238,9 +239,18 @@ Not an overlay frame: the tray's Settings window (the brief's
   status line (Step, `color.text-primary`, 16 icon 8 before it:
   `ui-refresh` checking, `ui-check` up to date, `status-available` in
   `color.status-available` available, `ui-warning` in `color.warning`
-  failed, none otherwise); buttons 8 apart: "Check now" (secondary,
-  disabled while checking), "Open the release page" (primary,
-  `ui-external-link` 14 after the label, only while a newer version is
-  known); "Version 1.2.0" (Caption, `color.text-muted`, tabular figures).
+  failed, none otherwise); the install line 8 under it, same style, only
+  while an install has something to say (`ui-warning` in `color.warning`
+  unsigned and failed, `ui-refresh` downloading and verifying, `ui-check`
+  restarting); while downloading, a progress row 8 under that, starting
+  at the line's text (24 in): a 4 high bar, `color.panel-divider` filled
+  with `color.edit-accent` up to the bytes received (bare track with no
+  total), and the amount 8 after it (Caption, tabular figures, "0 KB of
+  4 KB"); buttons 8 apart: "Check now" (secondary, disabled while
+  checking, downloading, verifying or restarting), then at most one of
+  "Install 1.3.0 and restart" (primary, the app's label, ready only,
+  disabled while checking), "Cancel" (secondary, downloading) and "Try
+  again" (secondary, failed). No button or link opens a release page.
+  "Version 1.2.0" (Caption, `color.text-muted`, tabular figures).
 - Footer: "Created by ST4H" (Caption, `color.text-muted`), plain text,
   padding 12/16.

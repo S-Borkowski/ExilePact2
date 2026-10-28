@@ -5,8 +5,8 @@
 // command and waits for the next one, never polling.
 //
 // The page never reaches the network itself. A check is made by the app,
-// only when a command or the setting asks for it, and the release page opens
-// in the default browser.
+// only when a command or the setting asks for it, and an install only when
+// the install button (or *Try again*) is pressed.
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -29,8 +29,6 @@ export interface SettingsCommandArgs {
   install_update: Record<string, never>;
   /** Stops a running download; the view goes back to the install button. */
   cancel_update: Record<string, never>;
-  /** Opens the newer version's release page in the default browser. */
-  open_release_page: Record<string, never>;
 }
 export type SettingsCommand = keyof SettingsCommandArgs;
 export type SettingsSend = <C extends SettingsCommand>(name: C, args: SettingsCommandArgs[C]) => void;
