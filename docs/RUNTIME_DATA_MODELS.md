@@ -577,6 +577,23 @@ or (O) the owner.
   game (Live 2)"). Not measured: other key combinations, other ways of
   catching keys (a low-level keyboard hook), and whether the game also sees
   the keystroke.
+- **The game's window is titled `Path of Exile 2`**, process name
+  `PathOfExile` (measured 2026-10-28, waystone roller Live 3, read from
+  outside with `Get-Process`; research note § "The auto-paste in the game
+  (Live 3)").
+- **The focused search box takes injected `Ctrl+A` then `Ctrl+V` and
+  replaces its text**: with `xyz` typed in the stash search box, keys sent
+  through the Windows input queue (`Ctrl` down, `A`, `Ctrl` up, then the
+  same with `V`) after another program put `corr` on the clipboard left the
+  box holding exactly `corr`, and a second time still `corr` once
+  (measured 2026-10-28, waystone roller Live 3). So the box treats
+  `Ctrl+A` as select-all and `Ctrl+V` as a paste over the selection.
+- **With no text field focused, the same keys reach the game's key
+  bindings**, and with the chat open they paste into the chat's input line
+  (measured 2026-10-28, waystone roller Live 3, the owner's report: "buttons
+  were pressed", and the text was pasted into open chat). Which binding
+  fired, and for which of `Ctrl+A`, `Ctrl+V` or the `Ctrl+Alt+W` press
+  itself, was not separated.
 - Not established: whether lookahead (`(?=`, `(?!`) works
   (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
   form plain `Ctrl+C` copies; any way to count modifiers.

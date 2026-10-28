@@ -474,20 +474,26 @@ release already exists, only its assets are replaced.
   Whether the game binds `Ctrl+Alt+W` to anything, or still sees the
   keystroke while the app holds it, was not measured; if a game binding
   stops working while the app runs, choose another shortcut in the window.
-- **The paste into the game is not yet confirmed in the game.** The
-  decisions, the order of the eight key events and their timing are proven
-  by `wr-app`'s tests through a fake shell; that the game's window is
-  titled exactly `Path of Exile 2`, and that its search box selects its
-  text on `Ctrl+A` and takes the search on `Ctrl+V`, are still to be
-  measured. Until then, if the box does not change, paste with `Ctrl+V`
-  yourself, or turn *Paste into the game's search box* off.
+- **The paste in the game, measured on one stash.** On 2026-10-28, in
+  the release build with the game in front, the game's window was titled
+  exactly `Path of Exile 2`, and the stash search box, holding `xyz`,
+  held exactly the search after a press, and still once after a second
+  press (research note § "The auto-paste in the game (Live 3)"). A vendor's
+  search box was not tried; it is expected to behave the same, not
+  measured. If the box does not change, paste with `Ctrl+V` yourself, or
+  turn *Paste into the game's search box* off.
 - **The game run as administrator does not get the keys.** Windows drops
   keys a program sends to a window of a program running with higher rights,
   and reports no error, so `diag.log` says `paste: sent Ctrl+A, Ctrl+V` and
   the box does not change. Run the game and the app the same way.
-- **With no text field focused in the game**, the game receives `Ctrl+A`
-  and `Ctrl+V` as ordinary key presses, and does whatever it binds to them.
-  The app cannot tell whether a field has focus.
+- **With no text field focused in the game, the game's key bindings
+  react.** Measured on 2026-10-28 with the stash closed: each press still
+  sent `Ctrl+A` and `Ctrl+V` (`diag.log` says `paste: sent`), and the owner
+  saw game bindings fire. Which ones, and whether for `Ctrl+A`, `Ctrl+V` or
+  `Ctrl+Alt+W` itself, was not separated. **With the chat open, the search
+  is pasted into the chat line** (not sent: the app never presses Enter).
+  The app cannot tell whether, or which, text field has focus: press the
+  shortcut only with the search box focused, or turn the paste off.
 - **A key held for more than 2 seconds after the press skips the paste**
   (the shortcut's own keys or any other; mouse buttons are not counted):
   the status line says the search was copied but not pasted, with the
@@ -586,9 +592,11 @@ release already exists, only its assets are replaced.
 - The app now sends the game keys: `Ctrl`, `A` and `V` only, only to a
   window titled `Path of Exile 2`, and only when you press the shortcut. No
   mouse input, no click, no focus change ("Privacy").
-- The paste into the game is not yet confirmed in the game: it is proven by
-  the app's tests, and its first run in Path of Exile 2 is still to be
-  measured (Known limitations).
+- Confirmed in Path of Exile 2 on 2026-10-28: the stash search box's text
+  was replaced by the search, twice in a row; with the checkbox off the box
+  kept its text; with Notepad in front Notepad kept its text. With no text
+  field focused the game's own key bindings react to the keys, and an open
+  chat line takes the paste (Known limitations).
 
 ### 0.1.1
 
