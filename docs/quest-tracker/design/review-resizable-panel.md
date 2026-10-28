@@ -58,6 +58,22 @@ move is `startDragging`).
   way back to play stays on one line (it wraps to two below about 300 px),
   and the body keeps about 165 px for rows. Play mode's header fits there
   too, the class and level shortened first.
+- **F4, fixed** (Live 1, scale away from 1): the owner saw the panel's
+  frame grow a little as the scale fell and shrink as it rose, with the
+  window's size unchanged. Measured in the built app (the edit accent's
+  ring located on a screen capture, the layout read over WebView2's
+  remote debugging) on an 818 × 808 window: the webview zoom does lay the
+  overlay out over the whole window at every scale, but its 12 px margin
+  is in CSS pixels, which the zoom draws larger, so the frame was
+  800 × 790 at 0.75, 794 × 784 at 1, 782 × 772 at 1.5 and 770 × 760 at 2.
+  The margin is now divided by the zoom the page measures (the window's
+  outer size over its viewport), so it stays 12 window pixels and the
+  frame is 794 × 784 at every scale; only the content zooms. The
+  preview's `scale` sets the same divisor for its CSS stand-in. The
+  shadow still zooms with the content: by its token (8 px blur, 2 px
+  down) it needs more than the 12 px above about 1.2, so its faint outer
+  edge is cut at the window's border there (read from the token, not
+  measured).
 
 ## Kept, with the reason
 

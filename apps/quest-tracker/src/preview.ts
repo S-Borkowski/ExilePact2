@@ -84,6 +84,8 @@ export function previewBridge(search: string, root: HTMLElement = document.docum
       if (query.scale) {
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
+        // The overlay's margin divides by the page's zoom, as in the app.
+        root.style.setProperty('--page-zoom', query.scale);
       }
       const { view } = await previewFixture(query.frame, query.mode);
       onView(view);

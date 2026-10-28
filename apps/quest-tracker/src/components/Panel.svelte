@@ -8,7 +8,9 @@
   //
   // The panel fills the window inside its shadow margin, in both directions,
   // and its body scrolls: the player sizes the window, the scale only zooms
-  // (0.1.1). In edit mode its four edges and four corners are resize
+  // its content (0.1.1). The margin stays 12 window pixels at every scale
+  // (the overlay divides it by the zoom), so the frame keeps its size on
+  // screen while the scale changes. In edit mode its four edges and four corners are resize
   // handles, bands that straddle the border with the matching cursor and
   // nothing drawn; a left press starts the window's resize from that edge
   // (`resize`, the bridge's window resize), as the header's press moves it.
@@ -119,7 +121,9 @@
 </div>
 
 <style>
-  /* The window's height and width inside the overlay's margin. */
+  /* The window's height and width inside the overlay's margin, at every
+     scale: the overlay is the viewport, which the webview zoom keeps equal
+     to the window. */
   .panel-shadow {
     position: relative;
     display: flex;
