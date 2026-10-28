@@ -1,0 +1,136 @@
+name: Crafting Helper Release
+
+# Builds the crafting helper from a release tag, signs its executable with
+# the release key and attaches it, SHA256SUMS.txt and
+# crafting-helper.exe.minisig to a DRAFT release. Nothing is published by
+# this workflow: the owner opens the draft, checks it, publishes it and
+# ticks "Set as the latest release" by hand.
+#
+# The signature is what the app's in-app update checks against the public
+# key built into it, so a release without one is never made: the sign step
+# fails the job, before the release step, when the repository secret
+# TAURI_SIGNING_PRIVATE_KEY is missing or empty. The secret and its password
+# (TAURI_SIGNING_PRIVATE_KEY_PASSWORD) reach that one step only.
+#
+# Cutting a release (docs/crafting-helper/README.md, "Working on the app" ›
+# "Cutting a release"):
+#   py -3 -m tools.crafting_helper.release cut --push
+# tags the tip of main as `crafting-helper-v<version>` and pushes the tag,
+# which starts this workflow. The version comes from the app's files, and
+# the release body from the guide's "Release notes" for that version.
+#
+# To rebuild an existing tag (a failed run, a lost asset), run this workflow
+# by hand with the tag. If a release for the tag exists, its assets are
+# replaced and its body and draft state are left alone.
+
+on:
+  push:
+    tags:
+      - "crafting-helper-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build, e.g. crafting-helper-v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crafting-helper-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'S-Borkowski/ExilePact2'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ env.TAG }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Check the tag against the app's version and notes
+        run: |
+          case "$TAG" in
+            crafting-helper-v*) ;;
+            *) echo "::error::$TAG is not a crafting-helper-v<version> tag"; exit 1 ;;
+          esac
+          version="${TAG#crafting-helper-v}"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          python -m tools.crafting_helper.release check "$version"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24.19.0"
+          cache: npm
+          cache-dependency-path: apps/crafting-helper/package-lock.json
+
+      # The toolchain the app is built with locally (docs/crafting-helper/README.md,
+      # "Platforms and prerequisites"); the MSVC target is the runner's default.
+      - name: Install Rust 1.98.1
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup default 1.98.1
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/crafting-helper
+
+      - name: Build
+        run: |
+          npm --prefix apps/crafting-helper ci
+          npm --prefix apps/crafting-helper run release
+
+      - name: Collect the assets
+        run: |
+          mkdir -p dist-release
+          cp apps/crafting-helper/target/release/crafting-helper.exe dist-release/
+          (cd dist-release && sha256sum crafting-helper.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          python -m tools.crafting_helper.release notes "$VERSION" --out release-notes.md
+
+      # `tauri signer sign` writes the signature base64-encoded to <exe>.sig;
+      # the release carries the decoded minisign text as <exe>.minisig. Its
+      # trusted comment names the file and the version, which the app checks
+      # against the asset's name and the release's version.
+      - name: Sign the exe
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "::error::The TAURI_SIGNING_PRIVATE_KEY secret is missing or empty; no release is made without the exe's signature."
+            exit 1
+          fi
+          npm --prefix apps/crafting-helper exec -- tauri signer sign --app-version "$VERSION" "$GITHUB_WORKSPACE/dist-release/crafting-helper.exe"
+          base64 -d dist-release/crafting-helper.exe.sig > dist-release/crafting-helper.exe.minisig
+          rm dist-release/crafting-helper.exe.sig
+          if ! grep -qF "file:crafting-helper.exe" dist-release/crafting-helper.exe.minisig \
+              || ! grep -qF "version:$VERSION" dist-release/crafting-helper.exe.minisig; then
+            echo "::error::The signature's trusted comment does not name crafting-helper.exe at $VERSION."
+            exit 1
+          fi
+          cat dist-release/crafting-helper.exe.minisig
+
+      - name: Create or update the draft release
+        run: |
+          assets=(dist-release/crafting-helper.exe dist-release/SHA256SUMS.txt dist-release/crafting-helper.exe.minisig)
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+            echo "Replaced the assets of the existing release $TAG."
+          else
+            gh release create "$TAG" "${assets[@]}" --draft --verify-tag \
+              --title "Crafting Helper $VERSION" --notes-file release-notes.md
+            echo "Created the draft release $TAG; publish it and set it as latest by hand."
+          fi
