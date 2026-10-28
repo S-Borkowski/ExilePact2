@@ -3,8 +3,11 @@
 A small window for Path of Exile 2 that helps you "roll" (craft) waystones.
 You pick the waystone modifiers you want and the ones you want to avoid, a
 tier range, the rarities and corrupted or not; the app builds one search
-string for the game's stash or vendor search box from those rules. It never
-touches the game: it only puts the string on the clipboard, and you paste it.
+string for the game's stash or vendor search box from those rules. Its
+shortcut puts the string on the clipboard and, when Path of Exile 2 is in
+front, pastes it into the search box you have focused with `Ctrl+A` then
+`Ctrl+V`. Those two key presses are all it ever sends the game: it reads no
+game memory, moves no mouse and clicks nothing.
 
 - UI direction, window states and accessibility:
   [`ui-design.md`](ui-design.md); its reviews: [`design/`](design/)
@@ -31,15 +34,21 @@ touches the game: it only puts the string on the clipboard, and you paste it.
   takes at most 250 characters. When the rules need more, the app says so,
   shows each part's length, and copies nothing: it never shortens the
   string or drops a rule.
-- **`Ctrl+Alt+W` copies it** while another window, the game included, is
-  in front (measured with the game in front, Known limitations); if
-  another program already holds the shortcut, diag.log says `could not be
-  registered`. It is a global shortcut, so it does not depend on the window
-  being in front; whether the window was minimised in that session was not
-  recorded. The Copy button does the same. On success nothing is heard; a
-  refusal (nothing selected, over 250 characters, a mod that cannot be told
-  apart) beeps and leaves the clipboard as it was. You paste the string
-  into the stash or a vendor's search box with `Ctrl+V`.
+- **`Ctrl+Alt+W` copies it and pastes it into the game.** The shortcut
+  copies while another window, the game included, is in front (measured
+  with the game in front, Known limitations); if another program already
+  holds the shortcut, diag.log says `could not be registered`. It is a
+  global shortcut, so it does not depend on the window being in front;
+  whether the window was minimised in that session was not recorded. After
+  the copy, with *Paste into the game's search box* on (the default), the
+  app waits until no key is held, up to 2 seconds, and then, only when the
+  window in front is titled `Path of Exile 2`, sends it `Ctrl+A` then
+  `Ctrl+V`: the stash or vendor search box you have focused gets the
+  search in place of its text. With the checkbox off or another window in
+  front it only copies, and you paste with `Ctrl+V` yourself. The Copy
+  button only copies. On success nothing is heard; a refusal (nothing
+  selected, over 250 characters, a mod that cannot be told apart) beeps,
+  leaves the clipboard as it was and pastes nothing.
 - **The shortcut can be changed** in the window. Windows lets one program
   hold a key combination; when another program holds `Ctrl+Alt+W`, the app
   says so and keeps running, and the old shortcut stays when a new one is
@@ -91,9 +100,11 @@ Takes no arguments.
 | `WAYSTONE_ROLLER_DIR` | The folder for `settings.json` and `diag.log`. Unset or empty: `%LOCALAPPDATA%\ExilePact2\waystone-roller\`. A folder inside a git checkout is refused: the app then runs without saving, and the status line says why. |
 
 - `settings.json`: `schema` (1), `hotkey` (default `Ctrl+Alt+W`),
-  `selection` (the rules above) and `check_updates` (*Automatically check
-  for updates*; a file written before it existed, or any value but `true`,
-  loads it off). Written a moment after each change, through
+  `auto_paste` (*Paste into the game's search box*, set by the main
+  window's checkbox through `set_auto_paste`; a file written before it
+  existed, or any value but `false`, loads it on), `selection` (the rules
+  above) and `check_updates` (*Automatically check for updates*; a file
+  written before it existed, or any value but `true`, loads it off). Written a moment after each change, through
   a temporary file renamed over the old one, and when the app quits. Saved
   mods the data no longer has are dropped at launch, and the status line
   names them.
@@ -109,6 +120,18 @@ Takes no arguments.
     refused (for example a mod in both Want and Avoid).
   - `copy from the shortcut` or `copy from the Copy button`, then
     `copied N characters: <regex>` or `copy refused: <reason>`.
+  - After a copy from the shortcut that succeeded, one paste line:
+    `paste: sent Ctrl+A, Ctrl+V`, `paste skipped: auto-paste is off`,
+    `paste skipped: the window in front is not Path of Exile 2`, `paste
+    skipped: keys still held after 2000 ms`, `paste skipped: a paste is
+    already running` (a press while the last paste is still being sent) or
+    `paste failed: <error>`. None after the Copy button or a refused copy.
+    The title of the window in front is never written. When the keys were
+    sent, the status line says `Copied the search (N characters) and pasted
+    it into the game's search box.`; keys still held and a failed send are
+    errors in the status line, with the refusal beep; the other skips leave
+    the copy's status.
+  - `auto-paste on` or `auto-paste off` when the checkbox changes.
   - After a refusal, `refusal beep: <sound> ok` or `refusal beep: <sound>
     failed (<error>)` for each sound tried, or `refusal beep: none on this
     platform` where the app has no beep (outside Windows).
@@ -279,12 +302,22 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 
 ## Privacy
 
-- **The app touches nothing of the game.** It reads no game memory, hooks
-  nothing, sends no input or window message to the game, and reads none of
-  the game's files. Its only effects outside its windows are the text it
-  puts on the clipboard, when you press the shortcut or the Copy button, a
-  system beep when it refuses, the update check's requests to GitHub and,
-  when you press the install button, replacing its own exe.
+- **The only thing the app sends the game is the paste, on your press.**
+  When you press the shortcut, the copy succeeded and *Paste into the
+  game's search box* is on, the app reads the title of the window in front
+  (and writes it nowhere: not in `diag.log`, not in the status line) and,
+  only when it is exactly `Path of Exile 2`, sends that window `Ctrl+A` then
+  `Ctrl+V`, eight key events (Ctrl down, A down, A up, Ctrl up, then the
+  same with V), each with the key's real scan code. To know when the
+  shortcut's keys are let go, it reads whether any key is down, mouse
+  buttons excluded. Nothing else: no mouse input or movement, no click, no
+  other key, no typed text, no window message, no focus or activation
+  change, no other process opened, no game memory read, no hook and none of
+  the game's files. The Copy button never sends a key.
+- **Its other effects outside its windows** are the text it puts on the
+  clipboard, when you press the shortcut or the Copy button, a system beep
+  when it refuses, the update check's requests to GitHub and, when you
+  press the install button, replacing its own exe.
 - **Network: only the update check and the install, only when you ask.**
   With *Automatically check for updates* off (the default) and no *Check
   now* pressed, the app sends and receives nothing. A check is one `GET
@@ -316,7 +349,7 @@ HTML, no value ranges. To refresh it, see "Working on the app".
   developer runs it.
 - **What it writes**: `settings.json` and `diag.log` in its folder
   (Command reference). The log holds the shortcut, the copied search strings,
-  refusals and the `updates:` lines; nothing about your account or
+  refusals, the paste lines and the `updates:` lines; nothing about your account or
   character, and nothing of GitHub's answers. An install also writes beside
   the exe: `waystone-roller.exe.download` while it downloads (deleted when
   the install fails or is cancelled) and `waystone-roller.exe.old`, the
@@ -327,8 +360,8 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 | Path | What it holds |
 |---|---|
 | `apps/waystone-roller/crates/wr-regex/` | The engine: the data loader, token choice, the search builder, and a model of the search box used only by the tests. |
-| `apps/waystone-roller/crates/wr-app/` | The app's logic without Tauri: the store, the selection, the view, the commands, the shortcut and copy path, and the update commands and ticker (`updates.rs`, over the shared `ep-update`; tested in `tests/updates.rs` with a recording fake transport). |
-| `apps/waystone-roller/src-tauri/` | The Tauri glue: the global shortcut, single instance, the Win32 clipboard writer and beep, the commands, the Settings window (label `settings`, its capability `capabilities/settings.json`, `core:event:default` alone), the update transport over the shared `ep-net`, and the restart into an installed update. |
+| `apps/waystone-roller/crates/wr-app/` | The app's logic without Tauri: the store, the selection, the view, the commands, the shortcut and copy path, the paste's decisions and timing (`tests/paste.rs`, through the same fake shell), and the update commands and ticker (`updates.rs`, over the shared `ep-update`; tested in `tests/updates.rs` with a recording fake transport). |
+| `apps/waystone-roller/src-tauri/` | The Tauri glue: the global shortcut, single instance, the Win32 clipboard writer and beep, the paste's key events, key-state read and window-title read (`src/paste.rs`, the app's only input code), the commands, the Settings window (label `settings`, its capability `capabilities/settings.json`, `core:event:default` alone), the update transport over the shared `ep-net`, and the restart into an installed update. |
 | `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, `UpdatesSection.svelte`, `sections.ts`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `apps/waystone-roller/data/` | The mod data file. |
 | `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, the view fixtures shared by the page's tests and `wr-app`'s, and `app-settings/`, one Settings window view per update and install state. |
@@ -346,6 +379,7 @@ npm --prefix apps/waystone-roller test                                          
 py -3 -m unittest tests.test_waystone_roller_poe2db tests.test_waystone_roller_guard  # the data tool and the guard
 py -3 -m unittest tests.test_waystone_roller_release                                  # the release cutter and workflow
 cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-app --locked --test updates  # the update commands, fake transport
+cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-app --locked --test paste    # the paste, fake shell
 cargo test --manifest-path apps/shared/Cargo.toml --locked --workspace                 # the shared update crates, 127.0.0.1 only
 py -3 -m unittest tests.test_app_updates_guard                                        # the shared crates' guard
 ```
@@ -361,8 +395,12 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   fixtures in `fixtures/app-settings/` (regenerate after a deliberate change
   with `WR_UPDATE_FIXTURES=1` before the command above, and review the
   diff); `src/settings/settings-window.test.ts` renders each one.
-- `tests.test_waystone_roller_guard` reads the files only: no input, no
-  game access and no network but the shared `ep-net`, reached only from
+- `tests.test_waystone_roller_guard` reads the files only: no input but
+  the paste's keys, in `src-tauri/src/paste.rs` alone (one key-event call
+  site, keyboard events for Ctrl, A and V only, the key-state and
+  window-title reads; no mouse or hardware input, no typed text, no other
+  key, even there), no window message, focus or window change, no game
+  access and no network but the shared `ep-net`, reached only from
   `src-tauri`, in any source or manifest; no Tauri plugin but the global
   shortcut and single instance (no opener: nothing opens a browser); the
   pinned CSP and both windows' capabilities; one version everywhere; and
@@ -429,12 +467,31 @@ release already exists, only its assets are replaced.
   `corr` (or `!corr`), has the same exposure: a rare named "Corr..." or an
   affix name holding `corr` would be lit by `corr`, and hidden by `!corr`,
   whatever its corruption.
-- **`Ctrl+Alt+W` in the game.** Measured in the built app on 2026-10-28:
-  with Path of Exile 2 in front, every press reached the app and copied the
-  search, and the stash search box changed only when the owner pasted.
+- **`Ctrl+Alt+W` in the game.** Measured in the built app on 2026-10-28,
+  before the paste existed: with Path of Exile 2 in front, every press
+  reached the app and copied the search, and the stash search box changed
+  only when the owner pasted.
   Whether the game binds `Ctrl+Alt+W` to anything, or still sees the
   keystroke while the app holds it, was not measured; if a game binding
   stops working while the app runs, choose another shortcut in the window.
+- **The paste into the game is not yet confirmed in the game.** The
+  decisions, the order of the eight key events and their timing are proven
+  by `wr-app`'s tests through a fake shell; that the game's window is
+  titled exactly `Path of Exile 2`, and that its search box selects its
+  text on `Ctrl+A` and takes the search on `Ctrl+V`, are still to be
+  measured. Until then, if the box does not change, paste with `Ctrl+V`
+  yourself, or turn *Paste into the game's search box* off.
+- **The game run as administrator does not get the keys.** Windows drops
+  keys a program sends to a window of a program running with higher rights,
+  and reports no error, so `diag.log` says `paste: sent Ctrl+A, Ctrl+V` and
+  the box does not change. Run the game and the app the same way.
+- **With no text field focused in the game**, the game receives `Ctrl+A`
+  and `Ctrl+V` as ordinary key presses, and does whatever it binds to them.
+  The app cannot tell whether a field has focus.
+- **A key held for more than 2 seconds after the press skips the paste**
+  (the shortcut's own keys or any other; mouse buttons are not counted):
+  the status line says the search was copied but not pasted, with the
+  refusal beep, and nothing is sent.
 - **The refusal tone.** Measured on 2026-10-28 with Path of Exile 2 in
   front: the first build's beep, `MessageBeep(MB_ICONHAND)` (Windows'
   "Critical Stop" sound), was not heard on five refused presses, cause not
@@ -515,6 +572,23 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.1.2
+
+- `Ctrl+Alt+W` now also pastes: with Path of Exile 2 in front and its stash
+  or vendor search box focused, the app copies the search, waits until you
+  let go of the shortcut's keys, and sends `Ctrl+A` then `Ctrl+V`, so the
+  box's text is replaced by the search. With another window in front it
+  only copies, and a refused copy pastes nothing.
+- A *Paste into the game's search box* checkbox beside the shortcut turns
+  the paste off and on. It is on by default and saved with the settings.
+- The Copy button still only copies.
+- The app now sends the game keys: `Ctrl`, `A` and `V` only, only to a
+  window titled `Path of Exile 2`, and only when you press the shortcut. No
+  mouse input, no click, no focus change ("Privacy").
+- The paste into the game is not yet confirmed in the game: it is proven by
+  the app's tests, and its first run in Path of Exile 2 is still to be
+  measured (Known limitations).
 
 ### 0.1.1
 
