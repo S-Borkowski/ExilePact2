@@ -2312,8 +2312,8 @@ Revisit this feature when:
 - "Slay the Bloated Miller" ticks at his death instead of 10 to 20 s later
   on Mortimer's line: on the character's first level-up, to 2 in The
   Riverbank, with or without *Read the screen*, and, with it on, also on
-  his boss bar going or the character's kill remark, for every playable
-  class. Mortimer's line still ticks it when none of those came. With
+  his boss bar going or the character's kill remark (not yet seen live,
+  below), for every playable class. Mortimer's line still ticks it when none of those came. With
   *Read the screen* on, walking away from the living Miller can tick it
   early, as for the other bosses with a bar.
 - With *Read the screen* on, the character's kill remark ticks the slaying
@@ -2323,6 +2323,10 @@ Revisit this feature when:
   Thane Wulfric and Zolin), for each class whose remark poe2db's class
   pages give. The bosses and classes with no established remark are in
   Known limitations.
+- The kill-remark route is not yet seen live: no boss's remark has ticked
+  a step in a live session. The texts are poe2db's, checked against the
+  screen for the Warrior's Miller remark only, in a replay of Live 8's
+  capture (Known limitations, "Read the screen: kill remarks").
 - The quest data gains a `level_up` signal kind: a level-up line to a
   given level in a given area, kept as evidence when it happens, never
   read from the character's level.
