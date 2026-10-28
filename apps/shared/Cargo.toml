@@ -13,6 +13,7 @@
 resolver = "2"
 members = [
     "crates/ep-net",
+    "crates/ep-update",
 ]
 
 [workspace.package]
@@ -24,3 +25,11 @@ publish = false
 # Windows-only, used by `ep-net` alone, which adds the WinHTTP feature. The
 # quest tracker's lock already carries this version.
 windows-sys = { version = "=0.61.2", features = ["Win32_Foundation"] }
+# `ep-update`'s view types and the release-list parse, at the quest
+# tracker's versions.
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.152"
+# `ep-update`'s signature check: minisign (Ed25519 over a BLAKE2b prehash),
+# MIT, no dependencies. The one registry crate neither app's lock carried
+# before; `tests/test_app_updates_guard.py` pins it.
+minisign-verify = "=0.2.5"
