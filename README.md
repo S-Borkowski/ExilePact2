@@ -66,9 +66,9 @@ never touches the game: no input, no memory read, no network.
 - Guide (how the search is built, the mod data, privacy, known
   limitations): [`docs/waystone-roller/README.md`](docs/waystone-roller/README.md)
 - Download: the latest Waystone Roller release on the
-  [releases page](https://github.com/S-Borkowski/ExilePact2/releases). Each
-  release has `waystone-roller.exe` and `SHA256SUMS.txt`; there is no
-  installer.
+  [releases page](https://github.com/S-Borkowski/ExilePact2/releases?q=waystone-roller).
+  Each release has `waystone-roller.exe` and `SHA256SUMS.txt`; there is no
+  installer. The first release is published after this change merges.
 - Requirements: Windows 10 or 11, 64-bit, with the WebView2 runtime; an
   English game client.
 

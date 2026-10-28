@@ -31,8 +31,10 @@ touches the game: it only puts the string on the clipboard, and you paste it.
   takes at most 250 characters. When the rules need more, the app says so,
   shows each part's length, and copies nothing: it never shortens the
   string or drops a rule.
-- **`Ctrl+Alt+W` copies it**, from anywhere, the game included (measured
-  with the game in front, Known limitations). It is a global shortcut, so
+- **`Ctrl+Alt+W` copies it** while another window, the game included, is
+  in front (measured with the game in front, Known limitations); if
+  another program already holds the shortcut, diag.log says `could not be
+  registered`. It is a global shortcut, so
   it does not depend on the window being in front; whether the window was
   minimised in that session was not recorded. The Copy button does the
   same. On success nothing is
@@ -346,8 +348,10 @@ release already exists, only its assets are replaced.
   be told apart) plays a short tone that does not depend on your Windows
   sound scheme, and leaves the clipboard as it was.
 - Mod data from poe2db.tw, fetched 2026-10-28.
-- Download `waystone-roller.exe` from the repository's releases page and
-  run it; there is no installer.
+- Download `waystone-roller.exe` from the repository's
+  [waystone roller releases](https://github.com/S-Borkowski/ExilePact2/releases?q=waystone-roller)
+  and run it; there is no installer. The first release is published after
+  this change merges.
 - Measured in the built app on 2026-10-28: with Path of Exile 2 in front,
   `Ctrl+Alt+W` copied the search and pasting it lit the waystones the rules
   named.
