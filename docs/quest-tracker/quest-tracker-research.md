@@ -541,7 +541,8 @@ level-up that ticks it at the kill since the tracker's 0.1.1. Read on
   at 08:29:51Z; *Read the screen* was turned on at 08:31:06Z and logged
   `screen: idle (no demand)`, and no `screen:` line followed until the
   encampment. The Miller's first line came at 08:32:53Z and his last at
-  08:33:39Z, and the level-up to 2 at 08:33:42Z (the kill). Mortimer's
+  08:33:39Z, and the level-up to 2 at 08:33:42Z (observed 3 s after his
+  last line, consistent with the kill). Mortimer's
   "Well done! Please come inside." came at 08:33:52Z, and the tracker
   logged the move to the next step in that same second; the encampment
   loaded at 08:33:57Z. Live 13 had seen the same: the step changed near
@@ -584,6 +585,12 @@ level-up that ticks it at the kill since the tracker's 0.1.1. Read on
   as the character's. So a class's Miller remark cannot be proved in the
   overlay live; the texts are proved by the matcher's tests and the
   Warrior's replay.
+- **In the game** (measured 2026-10-28, Live 14, one new Warrior, *Read
+  the screen* off). The level-up to 2 was logged in the same second as
+  the Miller's last line, the tracker ticked his step in that second, and
+  Mortimer's thanks came 77 s later, with no second tick on it. The kill
+  itself was not timed by a press; the person reported that the row
+  changed at his death (§ "Live 14: version 0.1.1 in the game").
 
 ## Character detection
 
@@ -1906,6 +1913,103 @@ log's whole-second times. From 16:52:06Z to 16:52:43Z, before the panel
 cases' first press and with no press among them, the log has nine
 `inventory open` and `inventory closed` pairs, each with its hide and
 show; what was open then is not recorded.
+
+### Live 14: version 0.1.1 in the game
+
+Measured 2026-10-28 with the 0.1.1 workorder's two live procedures
+(captures `.claude/workorders/quest-tracker-v0-1-1-live-1.md` and
+`-live-2.md`). `Client.txt`'s local times were UTC+1, aligned with the
+overlay's UTC through the `G1_1` entry line (0 s apart).
+
+**Live procedure 1** ran over the game (client 0.5.5e), on a new Warrior
+created for it, with the release exe of commit `820ae997` (written after
+the head commit, SHA-256 `A676E0E5…E42B`) and a store of its own whose
+`settings.json` was a 0.1.0 file with *Read the screen* on and hiding
+under game panels off. The overlay started at 11:43:37Z and logged
+`panels: on` despite that file. The character entered The Riverbank at
+11:44:48Z, and the overlay took it as a new character and set its screen
+demand on the Miller's step (his bar and the voiced lines) at 11:44:54Z;
+the first `screen: minute:` line, at 11:45:38Z, counted 174 frames. The
+person then turned *Read the screen* off (11:46:49Z), and no `screen:`
+line followed for the rest of the session. The Miller's first line came
+at 11:50:53Z and his last at 11:51:44Z; the level-up to 2 was logged in
+that same second, and the overlay named the character by it and logged
+the move from the Miller's step to the next in that second too (0 s
+after both, at the log's one-second resolution). Mortimer's "Well done!
+Please come inside." came at 11:53:01Z, the encampment loaded at
+11:53:04Z, and the tracker's next move there was to the town step, not a
+second tick of the Miller's. The resize ran in Clearfell Encampment
+(11:53:09Z to 11:54:02Z), the scale from 11:54:47Z to 12:00:47Z, a quit
+and restart at 12:00:58Z and 12:01:18Z, and the last quit at 12:03:26Z.
+Before the character was in the world, the reader twice logged that the
+game window was not 16:9 (700×400, then 2576×1479); it read normally
+once the character was in The Riverbank.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | the exe written at 11:42:02Z, after the head commit (11:38:49Z) |
+| `control` | pass | `start: quest-tracker 0.1.1` naming the session's store and `tray: icon shown` in the launch second |
+| `screen-control` | pass | `screen: minute: 174 frames` at 11:45:38Z, in The Riverbank |
+| `reading-off` | pass | `screen: off` at 11:46:49Z and no `screen:` line after it until the end |
+| `panels-default-on` | pass | `panels: on` at 11:43:37Z, from the 0.1.0 file with hiding off |
+| `miller-demand` | pass | `character: a new character (The Riverbank)` and `screen: reading boss bar and voiced lines for reaching-clearfell/step-2`, both at 11:44:54Z |
+| `settings-rows` | pass | the person read the settings top to bottom: neither *Click-through* nor *Hide under game panels* among them |
+| `play-shows-quests` | pass | after edit mode with Settings open, and again with a quest's detail open, play mode showed the quest list (the person) |
+| `panels-hide` | pass | `panels: inventory open` and the hide line at 11:48:47Z, `inventory closed` and `visibility: shown` at 11:48:49Z; the person: it hid and came back |
+| `miller-levelup-tick` | pass | the step's move at 11:51:44Z, 0 s after the level-up to 2, with no `screen:` line |
+| `miller-before-mortimer` | pass | 77 s before Mortimer's thanks; the person: "quest status changed on kill" |
+| `miller-no-double` | pass | after Mortimer's line the next move was to the town step, at the encampment entry |
+| `miller-tick-delay` | pass (research) | 0 s from the Miller's last line and 0 s from the level-up, both at one-second resolution |
+| `resize-edges` | pass | the person: the resize arrow at the left edge, the bottom edge and the bottom-left corner, and the window resized; `settings.json`'s `window` then held 818 × 808; the overlay's extent over the game went from x 0.81–0.99, y 0.30–0.68 to x 0.67–0.99, y 0.30–0.86 |
+| `scale-content-only` | fail | the window stayed 818 × 808 in `settings.json` and about 0.32 × 0.56 of the game's client through Auto, 1.5 and a lower value, but the person saw the panel's frame inside it change against the scale: "lower scale bigger window, bigger scale smaller window" |
+| `play-click-through-edge` | pass | in play mode a click just inside the panel's left edge, where the resize arrow had shown, walked the character there (the person) |
+| `size-persisted` | pass | after a quit and restart the extent read x 0.69–1.00, y 0.25–0.81, as before the quit; the person: same place, same size |
+| `old-key-dropped` | pass | `settings.json` had no `hide_under_panels` key after the restart |
+| `stop-clean` | pass | `quit: from the tray` and `stop: tailer, worker and panel watcher ended, progress saved` at 12:03:26Z |
+
+The person's first answer on the scale (the frame "changes size
+slightly") was given with the scale still on Auto; the verdict stands on
+the second, with the scale at 1.5 and back. Four `mode play` lines
+(11:54:02Z, 11:56:37Z, 11:57:27Z, 12:00:47Z) have no `shortcut:` line
+before them: edit mode was left without the hotkey, by a control the
+log does not name.
+
+**The scale fix.** Measured afterwards in the built app, on an 818 × 808
+window, outside the game (`docs/quest-tracker/design/review-resizable-panel.md`,
+F4): the webview zoom lays the page out over the whole window at every
+scale, but the panel's 12 px margin was in CSS pixels, which the zoom
+draws larger, so the frame was 800 × 790 at 0.75, 794 × 784 at 1,
+782 × 772 at 1.5 and 770 × 760 at 2. The `scale-fill` change divides the
+margin by the zoom the page measures (the window's outer width over its
+viewport's), so the margin stays 12 window pixels and the frame keeps
+one size at every scale; only the content zooms.
+
+**Live procedure 2** re-checked only that, with no game, on the release
+exe of commit `51fcd0ef` (written after it, SHA-256 `85b640de…e636`) and a
+fresh store whose `settings.json` set scale 1 and a 600 × 700 window at
+1700, 400. The overlay started at 13:05:10Z; the window's extent, read
+from outside with `GetWindowRect` at 96 DPI, was 600 × 700 at 1700, 400.
+In edit mode the person resized it, to 662 × 766 at 1638, 400, the same
+as `settings.json`'s `window`, and that size was the reference from then
+on. The scale was moved to 0.75, 1.5 and 2; the extent was read once,
+after the person's answer, not after each pause, and `settings.json` then
+held 1.25, which the person confirmed and moved to 2. The overlay was
+quit at 13:10:15Z, restarted at 13:10:31Z and quit at 13:11:34Z.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | the exe written at 13:02:27Z, after the `scale-fill` commit (12:50:45Z) |
+| `control` | pass | `start: quest-tracker 0.1.1` naming the session's store and `tray: icon shown` in the launch second; extent 600 × 700 at 1700, 400, as `settings.json` |
+| `frame-control` | pass | the person: the frame reaches the window's edges on every side, the resize arrow on its left edge; the extent was 662 × 766 after the person's own resize, not the procedure's 600 × 700 |
+| `scale-content-only` | pass | the person: "panel doesnt move anymore, its perfect"; the extent and `window` stayed 662 × 766 at 1638, 400; `scale` reached 2 only after a second ask |
+| `size-persisted` | pass | after the restart the extent was 662 × 766 at 1638, 400, as before the quit, with `scale` 2 and `window` 662 × 766 in `settings.json`; the person: same place and size, the frame filling it |
+| `stop-clean` | pass | `quit: from the tray` and the `stop:` line at 13:11:34Z, no process left |
+
+What the two leave open: the Miller's bar and kill remark did not tick
+his step in the overlay, because the level-up ticked it first and
+*Read the screen* was off by then; the Mortimer route was not run live;
+the scale's frame was judged by the person and the window's extent, not
+measured on a screen capture of the fixed build.
 
 ## Negative results
 

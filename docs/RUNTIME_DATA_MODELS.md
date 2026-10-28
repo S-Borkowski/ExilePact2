@@ -107,13 +107,23 @@ The first level-up and The Bloated Miller (read from the owner's log on
 2026-10-28, its lines from 2025-08 to 2026-10; the research note's
 [§ "The Bloated Miller: what ticks his step"](quest-tracker/quest-tracker-research.md#the-bloated-miller-what-ticks-his-step)):
 every visit to The Riverbank (`G1_1`) that held a level-up held exactly
-one, to level 2, of the character who entered, and it came after the
-Miller's first voiced line and 0 to 9 s after his last, 17 of 17. The game
-logs a new character's first level-up at his kill, in that area, before
-Mortimer's thanks and before the encampment entry. A first level-up
-before his death in The Riverbank was not observed (not proof that it
-cannot happen). The quest tracker ticks "Slay the Bloated Miller" on it
-since its 0.1.1.
+one, to level 2, of the character its level-up line names, and it came
+after the Miller's first voiced line and 0 to 9 s after his last, 17 of
+17. In all 17 it came before Mortimer's thanks ("Well done! Please come
+inside.") and before the encampment entry. Timed against the kill once,
+in Live 8's capture (a key press made as he died), it came at the kill.
+A first level-up before his death in The Riverbank was not observed (not
+proof that it cannot happen). The quest tracker ticks "Slay the Bloated
+Miller" on it since its 0.1.1.
+
+The same, in the game (measured 2026-10-28, Live 14, one new Warrior; the
+research note's
+[§ "Live 14: version 0.1.1 in the game"](quest-tracker/quest-tracker-research.md#live-14-version-011-in-the-game)):
+the character's level-up to 2 was logged in The Riverbank in the same
+second as the Miller's last voiced line (0 s after it, at the log's
+one-second resolution) and 77 s before Mortimer's thanks (the player had
+been asked to stay out of the encampment for a while after the kill); the
+encampment loaded 3 s after the thanks. The kill itself was not timed by a press in that session.
 
 A boss's reward (measured 2026-10-25, the research note's "Rewards after a
 boss kill"): a quest boss's `has received` reward line never came with the

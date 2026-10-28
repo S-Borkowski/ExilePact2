@@ -272,7 +272,9 @@ Settings (edit mode, the settings frame) and their defaults:
 - **Scale** `auto`: an *Auto scale* switch, plus a slider for a fixed
   factor from 0.75 to 2 in 0.05 steps, applied as the webview zoom (see
   below). Since 0.1.1 it zooms the panel's contents only and never resizes
-  the window, whose size is yours (below). Moving the slider turns Auto off. It too applies while dragged:
+  the window, whose size is yours (below); the panel's frame fills the
+  window at every scale (seen live at 0.75, 1.5 and 2, Live 14, after a
+  first build left its margin zooming with the content). Moving the slider turns Auto off. It too applies while dragged:
   since each step rezooms the page under the pointer, the value follows
   the pointer's travel since the press, in screen pixels, over the track's
   width at the press, so the zoom changing does not move it; the arrow
@@ -330,7 +332,11 @@ play mode each still fit on one line at zoom 1; a saved size below it
 loads as that minimum. With no saved size, as for every 0.1.0 user, the
 window opens at 344 by 408 logical pixels (the panel's 320 by 384 plus
 the margin) times the starting zoom, never below the minimum, and that
-size is not saved until you resize.
+size is not saved until you resize. Seen live (Live 14, 2026-10-28): the
+resize cursor at the left edge, the bottom edge and the bottom-left
+corner, the window resized from each, its size and place kept across a
+restart, and in play mode a click just inside the left edge reached the
+game.
 
 There is no dock side. A window with no saved position goes to the right
 side of its monitor, below the game's minimap; in edit mode you drag it by the panel's header
@@ -795,7 +801,10 @@ first:
    It fires only on the level-up line itself, for the character the
    engine takes it as (the new character it names, or yours), so a
    character already level 2 or more, or one loaded at start, never
-   counts it.
+   counts it. Seen live (Live 14, 2026-10-28, a new Warrior, *Read the
+   screen* off): the step ticked in the same second as the level-up and
+   the Miller's last line, 77 s before Mortimer's thanks, which then did
+   not tick it again.
 2. **With *Read the screen* on, his boss bar going or the character's kill
    remark** in The Riverbank, for any of the eight playable classes
    ("Reading the screen"). At the kill they come about 2 and 3 s after
