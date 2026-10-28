@@ -1,0 +1,14 @@
+{
+  "check_updates": false,
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
+  "update": {
+    "newer": null,
+    "state": "checking",
+    "text": "Checking for updates…"
+  },
+  "version": "1.2.0"
+}

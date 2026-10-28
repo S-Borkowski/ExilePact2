@@ -1,0 +1,17 @@
+{
+  "check_updates": false,
+  "install": {
+    "progress": {
+      "bytes": 0,
+      "total": 40067
+    },
+    "state": "downloading",
+    "text": "Downloading Waystone Roller 1.3.0…"
+  },
+  "update": {
+    "newer": "1.3.0",
+    "state": "available",
+    "text": "Waystone Roller 1.3.0 is available. You have 1.2.0."
+  },
+  "version": "1.2.0"
+}

@@ -71,3 +71,56 @@ taste: `lint.mjs --app`: 0 FAIL, 0 WARN. `inspect.mjs --app` (state `failed`): 1
 Whether the reviewed design is what you want (the plan's Needs human
 judgement › "The Settings window's look"; default: ship it). A restyle
 touches `src/settings/` only.
+
+## 2026-10-28: the install in the window
+
+The install part of the Updates section (the app-self-update work, owner
+2026-10-28: an update found is installed in the app, with no fallback to the
+release page). Reviewed on the browser preview, now also
+`settings.html?install=<state>` for each fixture under
+`fixtures/app-settings/install/` (`none`, `unsigned`, `ready`,
+`downloading`, `verifying`, `restarting`, `failed`), beside the six update
+states, each rendered 420 px wide (in an iframe of that width, since
+headless Edge lays a narrower window out wider than asked) at 1× and 2×.
+
+Tools: impeccable 4.7.1 (`impeccable context`, `impeccable detect`, then
+its `critique` and `audit` procedures), run as before inside the item's
+implementer, in a single context, with the brief and the component spec in
+place of the interview; screenshots read by eye and measured with a script
+(the last non-background row of each). taste-skill did not run this time:
+pending, for the next design pass.
+
+detector: `impeccable detect --json` over `src/settings/` and `settings.html` printed `[]`.
+critique: Nielsen 33/40 (single context). Visibility of status 4 (each install step is a line in words, the download a determinate bar with its amount, a polite live region reads each step out); match 3; control 4 (*Cancel* during the download, *Try again* after a failure, an install only on its own button); consistency 4 (the panel's buttons, the Slider's track, the status line's icon and type); error prevention 3 (the install button is disabled while a check runs, "Check now" while an install runs; nothing installs on its own); recognition 3; flexibility 2; minimalism 4 (one button at a time in the install part); error recovery 4 (a failure says why in one line, *Try again* and "Check now" stay; an unsigned release says so and offers nothing that would fail the same way); help 2 (nothing says where the downloaded file goes or how to roll back; that is the guide's).
+audit: accessibility 4 (the install line its own polite live region, present while empty so its first words are read; the bar a `progressbar` named by that line, with min, max, now and the amount as value text, no value at all when the total is unknown; no state relies on colour: every icon repeats words); performance 4 (no motion, no remote load; progress arrives at most about four times a second); theming 4 (tokens only, no new token or icon); responsive 3 (a fixed 420 px window; the longest failure reason wraps under its icon); integrity 4 (no state carries a release-page button, link or URL; the UI tests pin it for every fixture).
+
+### Findings and what was done
+
+- **F4, fixed** (impeccable layout): the download's line had no icon, so
+  its text started 24 px left of the check's line above it, and the bar ran
+  from the window's edge. The line now carries the refresh icon ("under
+  way", as while checking) and the bar starts where the text does.
+- **F5, fixed** (impeccable audit, measured): the window was 280 px tall at
+  1×, which the six update states fill (the page ends at about 275 px); the
+  install line takes about 26 px more and the download's bar another 24,
+  so *downloading* ends at about 325 px and was cut off below "Version".
+  `SETTINGS_HEIGHT` in `src-tauri/src/lib.rs` is now 328; spare height in
+  the shorter states falls below the credit, as F1 decided.
+- **F6, fixed** (impeccable audit): a live region that appears with its
+  text already in it is often not read out. The install line is now in the
+  page in every state, empty and taking no room until the install has
+  something to say.
+
+### Kept, with the reason
+
+- **N7** — the bar's track is `color.panel-divider`, faint on
+  `color.panel-bg` at 0 bytes. It is the Slider's track by the spec, and
+  the amount beside it ("0 KB of 4 KB") says the same in words.
+- **N8** — two polite live regions, the check's and the install's. One
+  line for both would have to choose which state to say when a check runs
+  after a failed install; two lines each say their own, and each is read
+  only when it changes.
+- **N9** — the unsigned line repeats the version the check's line names
+  ("1.3.0 is available but cannot be installed: …"). The wording is the
+  plan's, written by the app; the line is read out on its own, so it names
+  what it is about.

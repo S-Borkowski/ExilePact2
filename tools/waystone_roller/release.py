@@ -2,8 +2,10 @@
 
 Developer-only. A release is one annotated tag, `waystone-roller-v<version>`;
 pushing it starts `.github/workflows/waystone-roller-release.yml`, which
-builds `waystone-roller.exe` and attaches it, with `SHA256SUMS.txt`, to a
-draft release for the owner to publish (and mark as latest) by hand:
+builds `waystone-roller.exe`, signs it with the release key (and fails
+without it) and attaches it, with `SHA256SUMS.txt` and
+`waystone-roller.exe.minisig`, to a draft release for the owner to publish
+(and mark as latest) by hand:
 
     py -3 -m tools.waystone_roller.release check [VERSION]
     py -3 -m tools.waystone_roller.release notes VERSION [--out FILE]
@@ -13,13 +15,17 @@ draft release for the owner to publish (and mark as latest) by hand:
 carries one (`package.json`, `package-lock.json`, `src-tauri/tauri.conf.json`,
 the workspace's `Cargo.toml` and the workspace members in `Cargo.lock`) and
 fails, naming each file, unless they all agree, and agree with VERSION when it
-is given. It also fails when the guide's "Release notes"
-(`docs/waystone-roller/README.md`) has no section for the version, or an
-empty one.
+is given. The members are the ones the workspace's `Cargo.toml` lists; the
+shared crates of `apps/shared/`, which the lock also lists without a source,
+keep their own workspace's version and are not read. It also fails when the
+guide's "Release notes" (`docs/waystone-roller/README.md`) has no section for
+the version, or an empty one.
 
 `notes` prints the release body: a short header, then the version's section
 of the guide's "Release notes", with each hard-wrapped list item joined onto
-one line (a release body renders a single newline as a line break).
+one line (a release body renders a single newline as a line break). The
+header names each asset, `waystone-roller.exe.minisig` (the release key's
+signature, which the app checks before it installs an update) among them.
 
 `cut` runs `check` on the files' own version, then refuses unless the work
 tree has no uncommitted change to a tracked file, HEAD is the tip of
@@ -30,7 +36,8 @@ pushes it only with `--push`; without, it prints the push command.
 The quest tracker's tool (`tools/quest_tracker/release.py`) works the same
 way for its own app. Its functions read that app's paths and tag from module
 globals, so only the app-independent pieces are imported from it: the error
-type, the git runner and the unwrapping of release notes.
+type, the git runner, the reading of a workspace's members from its lock and
+the unwrapping of release notes.
 """
 from __future__ import annotations
 
@@ -41,7 +48,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-from tools.quest_tracker.release import ReleaseError, _git, unwrap
+from tools.quest_tracker.release import ReleaseError, _git, member_versions, unwrap
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = Path("apps") / "waystone-roller"
@@ -69,11 +76,7 @@ def versions(root: Path = ROOT) -> dict[str, str]:
     found["src-tauri/tauri.conf.json"] = tauri["version"]
     with open(app / "Cargo.toml", "rb") as f:
         found["Cargo.toml [workspace.package]"] = tomllib.load(f)["workspace"]["package"]["version"]
-    with open(app / "Cargo.lock", "rb") as f:
-        for p in tomllib.load(f)["package"]:
-            # A workspace member is the only kind of package without a source.
-            if "source" not in p:
-                found["Cargo.lock " + p["name"]] = p["version"]
+    found.update(member_versions(app))
     return found
 
 
@@ -115,7 +118,8 @@ def notes(version: str, root: Path = ROOT) -> str:
         "and copies it with `Ctrl+Alt+W` for you to paste. It never touches the game.\n\n"
         "Download `waystone-roller.exe` below and run it; there is no installer. It needs Windows 10 or "
         "11, 64-bit, with the Microsoft Edge WebView2 runtime, and the game in English. "
-        "`SHA256SUMS.txt` lists the file's hash.\n\n"
+        "`SHA256SUMS.txt` lists the file's hash. `waystone-roller.exe.minisig` is the release key's "
+        "signature of it, which the app checks before it installs an update.\n\n"
         "Guide: [docs/waystone-roller/README.md](%s).\n\n"
         "## Changelog\n\n" % (version, guide)
     )

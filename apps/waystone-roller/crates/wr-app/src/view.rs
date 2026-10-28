@@ -214,6 +214,9 @@ pub struct View {
     pub result: SearchResult,
     pub hotkey: String,
     pub status: Option<StatusLine>,
+    /// The newer version a check found this run (`1.3.0`), which the
+    /// header's *Settings* button names; `None` while none is known.
+    pub update_available: Option<String>,
 }
 
 /// The mod list of `builder`'s data, in the data's order, with each

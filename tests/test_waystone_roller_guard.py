@@ -1,4 +1,5 @@
-"""The waystone roller touches nothing but its window and the clipboard.
+"""The waystone roller touches nothing but its windows, the clipboard and,
+through the shared `ep-net` alone, GitHub's release list and assets.
 
 Read from the files only (no build, no network), these pin the rules of
 the app (`docs/waystone-roller/README.md`, Privacy):
@@ -9,26 +10,35 @@ the app (`docs/waystone-roller/README.md`, Privacy):
   call that sends input, posts or sends a window message, opens, reads or
   writes another process, hooks, or finds another program's window, nor
   the game's files (`PathOfExile`, `Client.txt`, `Content.ggpk`);
-- no Rust source names a socket or an HTTP client, and no UI source but the
-  tests calls `fetch(`, `XMLHttpRequest`, `WebSocket`, `EventSource` or
-  `sendBeacon`;
+- no network but `ep-net` (the shared workspace's transport crate,
+  `apps/shared/`, guarded by `tests/test_app_updates_guard.py`), reached
+  only by the glue: no Rust source of the app names a socket or an HTTP
+  client, only `src-tauri` names `ep_net` or depends on `ep-net`, `wr-app`
+  takes the shared `ep-update` (no network) and nothing else of it, and no
+  UI source but the tests calls `fetch(`, `XMLHttpRequest`, `WebSocket`,
+  `EventSource` or `sendBeacon`;
 - no manifest depends on an HTTP, socket, TLS or WebSocket crate, on a
-  Tauri plugin but the global shortcut and single instance, or on an input
-  or process crate, and `package.json` on no Tauri plugin;
+  Tauri plugin but the global shortcut and single instance (no
+  `tauri-plugin-opener`: nothing opens a browser), or on an input or
+  process crate, and `package.json` on no Tauri plugin;
 - the `windows-sys` features are the pinned clipboard-and-beep set;
-- the window's CSP is the pinned string, its one capability is the `main`
-  window's with `core:event:default` and `core:window:default` only, and no
-  capability grants an `http:`, `shell:`, `fs:`, `opener:`, `process:`,
-  `websocket:`, `upload:` or `updater:` permission or a `remote` URL.
+- the windows' CSP is the pinned string; the capabilities are the `main`
+  window's with `core:event:default` and `core:window:default` only and the
+  `settings` window's with `core:event:default` only, and no capability
+  grants an `http:`, `shell:`, `fs:`, `opener:`, `process:`, `websocket:`,
+  `upload:` or `updater:` permission or a `remote` URL.
 
 `Versions`: the workspace, `tauri.conf.json` and `package.json` carry one
 version, and the guide's Release notes have a heading for it; the
 executable's name and identifier are the pinned ones.
 
 `LockedToQuestTrackerPins`: every registry package in the app's
-`Cargo.lock` and every package in its `package-lock.json` is one the quest
-tracker's lock already holds, at the same version, and the npm and
-workspace versions equal the quest tracker's.
+`Cargo.lock` but `minisign-verify` (the shared update crate's signature
+check, the one registry crate this workorder adds) and every package in its
+`package-lock.json` is one the quest tracker's lock already holds, at the
+same version; the local packages are the app's three and the shared
+`ep-net` and `ep-update`; and the npm and workspace versions equal the
+quest tracker's.
 
 Every matcher runs on a synthetic offender first, so a matcher that sees
 nothing cannot pass, and every walk must find files. A failure names the
@@ -55,6 +65,17 @@ PINNED_CSP = (
 )
 CAPABILITY_WINDOWS = ["main"]
 CAPABILITY_PERMISSIONS = ["core:event:default", "core:window:default"]
+# The Settings window is built at run time (not in tauri.conf.json); its
+# capability only listens for `wr:app-settings`.
+SETTINGS_WINDOWS = ["settings"]
+SETTINGS_PERMISSIONS = ["core:event:default"]
+# The shared crates: `ep-net` is the only network code and only the glue
+# takes it; `wr-app` takes `ep-update`, which has none.
+SHARED_CRATES = {"ep-net", "ep-update"}
+NETWORK_CRATE = "ep-net"
+NETWORK_CRATE_NAME = re.compile(r"\bep[-_]net\b")
+# The registry crate the shared update code adds, pinned in apps/shared.
+NEW_REGISTRY_PACKAGES = {("minisign-verify", "0.2.5")}
 FORBIDDEN_PERMISSION_PREFIXES = (
     "http:", "shell:", "fs:", "opener:", "process:", "websocket:", "upload:", "updater:",
 )
@@ -233,6 +254,22 @@ def manifest_offences(name: str, manifest: dict) -> list[str]:
     return offences
 
 
+def shared_dependency_offences(name: str, manifest: dict, glue: bool) -> list[str]:
+    """A dependency on a shared crate that is not a path into
+    `apps/shared/crates/`, and one on `ep-net` outside the glue."""
+    offences = []
+    for label, table in dependency_tables(manifest):
+        for dep, spec in table.items():
+            if dep not in SHARED_CRATES:
+                continue
+            path = spec.get("path", "") if isinstance(spec, dict) else ""
+            if not path.replace("\\", "/").endswith(f"shared/crates/{dep}"):
+                offences.append(f"{name}: {label}.{dep} is not the shared crate's path")
+            if dep == NETWORK_CRATE and not glue:
+                offences.append(f"{name}: {label}.{dep} outside the glue")
+    return offences
+
+
 def capability_offences(name: str, capability: dict) -> list[str]:
     offences = []
     for entry in capability.get("permissions", []):
@@ -328,13 +365,62 @@ class NoInputNoNetworkNoGame(unittest.TestCase):
             offences += rust_offences(rel(path), read(path), RUST_NETWORK_NAMES)
         self.assertEqual(offences, [])
 
+    def test_only_the_glue_reaches_ep_net(self):
+        matcher = [("ep_net", NETWORK_CRATE_NAME)]
+        self.assertEqual(
+            rust_offences("o.rs", "// ep_net in a comment\nlet r = ep_net::fetch_release_list(p);\n", matcher),
+            ["o.rs:2: ep_net"],
+        )
+        offender = {
+            "dependencies": {
+                "ep-net": {"path": "../../shared/crates/ep-net"},
+                "ep-update": {"path": "../vendor/ep-update"},
+            },
+        }
+        self.assertEqual(
+            shared_dependency_offences("o", offender, glue=False),
+            [
+                "o: dependencies.ep-net outside the glue",
+                "o: dependencies.ep-update is not the shared crate's path",
+            ],
+        )
+        self.assertEqual(
+            shared_dependency_offences("o", offender, glue=True),
+            ["o: dependencies.ep-update is not the shared crate's path"],
+        )
+
+        # Rust: only the glue names it.
+        offences = []
+        named = []
+        for path in self.rust_sources():
+            hits = rust_offences(rel(path), read(path), matcher)
+            if path.is_relative_to(TAURI):
+                named += hits
+            else:
+                offences += hits
+        self.assertEqual(offences, [])
+        self.assertTrue(named, "the glue never names ep_net: the walk or the matcher is blind")
+
+        # Manifests: only the glue depends on it; both shared crates by path.
+        offences = []
+        for m in walk(APP, names={"Cargo.toml"}):
+            offences += shared_dependency_offences(rel(m), tomllib.loads(read(m)), glue=m.parent == TAURI)
+        self.assertEqual(offences, [])
+        glue = tomllib.loads(read(TAURI / "Cargo.toml"))["dependencies"]
+        self.assertIn(NETWORK_CRATE, glue)
+        app = tomllib.loads(read(APP / "crates" / "wr-app" / "Cargo.toml"))["dependencies"]
+        self.assertEqual(sorted(set(app) & SHARED_CRATES), ["ep-update"])
+
     def test_no_ui_source_calls_the_network(self):
         self.assertEqual(
             text_offences("o.ts", "await fetch('https://x');\nnew WebSocket(u);\n", UI_NETWORK_NAMES),
             ["o.ts:1: fetch(", "o.ts:2: WebSocket"],
         )
         files = [p for p in walk(APP / "src", UI_SUFFIXES) if not is_ui_test(p)]
-        files.append(APP / "index.html")
+        # Every root page: the main window's and the Settings window's.
+        pages = sorted(APP.glob("*.html"))
+        self.assertIn(APP / "index.html", pages)
+        files += pages
         self.assertGreater(len(files), 5, "the walk found no UI sources")
         offences = []
         for path in files:
@@ -396,11 +482,15 @@ class NoInputNoNetworkNoGame(unittest.TestCase):
         self.assertFalse(conf["app"].get("withGlobalTauri"), "withGlobalTauri must stay off")
         self.assertEqual([w["label"] for w in conf["app"]["windows"]], CAPABILITY_WINDOWS)
         capabilities = sorted((TAURI / "capabilities").glob("*.json"))
-        self.assertEqual([c.name for c in capabilities], ["default.json"])
-        default = json.loads(read(capabilities[0]))
+        self.assertEqual([c.name for c in capabilities], ["default.json", "settings.json"])
+        default = json.loads(read(TAURI / "capabilities" / "default.json"))
         self.assertEqual(default["windows"], CAPABILITY_WINDOWS)
         self.assertEqual(default["permissions"], CAPABILITY_PERMISSIONS)
-        self.assertEqual(capability_offences("default.json", default), [])
+        settings = json.loads(read(TAURI / "capabilities" / "settings.json"))
+        self.assertEqual(settings["windows"], SETTINGS_WINDOWS)
+        self.assertEqual(settings["permissions"], SETTINGS_PERMISSIONS)
+        for c in capabilities:
+            self.assertEqual(capability_offences(c.name, json.loads(read(c))), [])
 
 
 class Versions(unittest.TestCase):
@@ -456,10 +546,12 @@ class LockedToQuestTrackerPins(unittest.TestCase):
         ours = registry_packages(tomllib.loads(read(APP / "Cargo.lock")))
         theirs = registry_packages(tomllib.loads(read(QT / "Cargo.lock")))
         self.assertGreater(len(ours), 100, "the app's lock lists too few packages")
-        self.assertEqual(sorted(ours - theirs), [])
+        self.assertEqual(sorted(ours - theirs - NEW_REGISTRY_PACKAGES), [])
+        # The one new crate is there, at its pin (else the allowance is stale).
+        self.assertEqual(ours & NEW_REGISTRY_PACKAGES, NEW_REGISTRY_PACKAGES)
         lock = tomllib.loads(read(APP / "Cargo.lock"))
         local = {p["name"] for p in lock["package"] if "source" not in p}
-        self.assertEqual(local, {"wr-regex", "wr-app", "waystone-roller"})
+        self.assertEqual(local, {"wr-regex", "wr-app", "waystone-roller"} | SHARED_CRATES)
 
     def test_workspace_pins_equal_the_quest_trackers(self):
         ours = tomllib.loads(read(APP / "Cargo.toml"))["workspace"]["dependencies"]

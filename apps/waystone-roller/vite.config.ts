@@ -3,13 +3,21 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 // The Vite root is this folder; `vite build` writes `dist/`, which
-// `src-tauri/tauri.conf.json` embeds as `frontendDist`. One page.
+// `src-tauri/tauri.conf.json` embeds as `frontendDist`.
 export default defineConfig(({ mode }) => ({
   plugins: [svelte()],
   // Under vitest, resolve Svelte's client runtime (the `browser` export
   // condition) so components mount in jsdom; the dev server and the build
   // keep Vite's default conditions.
   resolve: mode === 'test' ? { conditions: ['browser'] } : undefined,
+  // Two pages: the main window (`index.html`) and the Settings window its
+  // header's button opens (`settings.html`). Paths are relative to the Vite
+  // root, this folder.
+  build: {
+    rolldownOptions: {
+      input: { main: 'index.html', settings: 'settings.html' },
+    },
+  },
   // Keep Rust errors visible when run under `tauri dev`.
   clearScreen: false,
   server: {

@@ -112,6 +112,8 @@ export interface View {
   /** The global shortcut that copies the search, e.g. `Ctrl+Alt+W`. */
   hotkey: string;
   status: StatusLine | null;
+  /** The newer version a check found this run, e.g. `1.3.0`, which the header's Settings button names; null while none is known. */
+  update_available: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +216,7 @@ const view = record<View>({
   result,
   hotkey: str,
   status: nullable(statusLine),
+  update_available: nullable(str),
 });
 
 /** Every way `value` differs from a `View`; empty when it is one. */

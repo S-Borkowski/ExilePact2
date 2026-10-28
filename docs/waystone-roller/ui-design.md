@@ -71,6 +71,13 @@ whole page scrolls and the footer stays pinned at the bottom.
 - Title "Waystone Roller" in small caps.
 - One line under it: "Mods from poe2db.tw, fetched <date>" (`data.source`'s
   host, `data.fetched` as written).
+- A **Settings** button at the right end of the header (secondary style),
+  which sends `open_settings`: it opens the Settings window, or brings it
+  up when it is open. When a check this run found a newer version (the
+  view's `update_available`), the button names it in words after a
+  divider, "Settings | Update 1.3.0", with a small green square beside the
+  version; its accessible name is then "Settings, update 1.3.0 available".
+  The colour only repeats what the words say.
 
 ## Filter row
 
@@ -145,6 +152,75 @@ whole `rarity` object for a rarity toggle).
 - **Shortcut**: a text field holding the current shortcut (caption "e.g.
   Ctrl+Alt+W") and a "Set" button; Enter in the field sets it too. The shell answers with a status
   when the shortcut is taken and keeps the old one.
+
+## Settings window
+
+A second, small window (`settings.html`, `src/settings/`), adapted from the
+quest tracker's Settings window and drawn from the same tokens: 420 × 364 at
+scale 1, not resizable, titled "Waystone Roller Settings", opened from the
+header's button. It renders the shell's `AppSettingsView` (pushed on
+`wr:app-settings`, fixtures under `fixtures/app-settings/`) and keeps no copy
+of its own; every control sends one command and waits for the next view.
+Its design review is [design/review-settings-window.md](design/review-settings-window.md).
+
+From the top:
+
+- **Settings** (the window's `h1`, small caps), then the **Updates** section
+  (a region named by its group label).
+- **Automatically check for updates**: a switch, off by default and saved,
+  that sends `update_settings` with `{ check_updates }` and shows what the
+  next view says. Under it, the help line: "Asks GitHub once a day whether a
+  newer version is out. Downloads nothing: an update is installed only when
+  you press its button. Off: Waystone Roller never connects unless you ask
+  it to." The automatic check only checks.
+- **The status**, one polite live region (`role="status"`): the check's
+  line (`update.text`: not checked yet, checking, up to date, available,
+  no release, or why the check failed), and under it the install's own
+  line when it has one (`install.text`: unsigned, downloading, verifying,
+  restarting, failed). A failure, of the check or of the install, starts
+  with `!` and takes the error colour; a wrapped reason hangs after the
+  mark. An available version is in the want green; its words say it.
+- **While downloading**: a flat bar, determinate (`max` the size the
+  release lists, `value` the bytes so far), and the numbers beside it in
+  lining figures ("20 KB of 39 KB"); with no known size the bar is
+  indeterminate and the text shows what came. Under reduced motion the
+  indeterminate bar does not move.
+- **The one action the install offers**, first in the button row:
+  - `ready`: the primary button, labelled by the app ("Install 1.3.0 and
+    restart"), which sends `install_update`; disabled while a check runs.
+  - `downloading`: **Cancel**, which sends `cancel_update` (the view goes
+    back to the install button).
+  - `failed`: **Try again** (primary), which sends `install_update` again.
+  - `unsigned` ("1.3.0 is available but cannot be installed: the release is
+    not signed."), `verifying`, `restarting` and `none`: no button.
+- **Check now**, which sends `check_for_updates`; there in every state,
+  disabled while a check or an install runs.
+- **Version <running version>**, a caption.
+- **Created by ST4H**, the window's footer, outside `main`, plain text.
+
+No button, link or state opens a release page or a browser: a failed
+install is its reason line and **Try again**, and the running app is
+untouched.
+
+| Fixture (`fixtures/app-settings/`) | Check | Install |
+|---|---|---|
+| `idle` | Not checked yet | none |
+| `checking` | Checking…, Check now disabled | none |
+| `up-to-date` | the latest version | none |
+| `available` | 1.3.0 is available | ready: the install button |
+| `no-release` | no release published yet | none |
+| `failed` | `!` why the check failed (the newer version is kept) | ready |
+| `install-unsigned` | available | the not-signed line, no button |
+| `install-downloading` | available | the bar, its numbers, Cancel |
+| `install-verifying` | available | checking the signature |
+| `install-restarting` | available | installed, restarting |
+| `install-failed` | available | `!` the reason, Try again |
+
+**Browser preview**: outside Tauri (`npm run dev`, port 1421) the window
+renders a fixture chosen by the query,
+`http://127.0.0.1:1421/settings.html?state=install-downloading&scale=2`
+(`state` a fixture's name, default `idle`; `scale` 1, 1.33 or 2 zooms the
+page as the webview's scale would). Commands are logged, not acted on.
 
 ## States (one view fixture each, `fixtures/views/`)
 

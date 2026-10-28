@@ -6,7 +6,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use wr_app::{App, AppConfig, BeepAttempt, HotkeyError, Shell, Store, View};
+use wr_app::{App, AppConfig, AppSettingsView, BeepAttempt, HotkeyError, Shell, Store, View};
 use wr_regex::ModData;
 
 /// What the fake shell saw and holds.
@@ -27,6 +27,12 @@ pub struct Recorded {
     /// back to a second sound (as the Tauri shell does).
     pub tone_fails: bool,
     pub views: Vec<View>,
+    /// Every Settings window view sent, in order.
+    pub app_settings: Vec<AppSettingsView>,
+    /// How often the Settings window was asked to open.
+    pub settings_opened: usize,
+    /// How often the app asked to quit and start again.
+    pub restarts: usize,
 }
 
 /// A shell whose hotkey registration behaves as Windows' does (a taken
@@ -95,6 +101,19 @@ impl Shell for FakeShell {
 
     fn emit_view(&self, view: &View) {
         self.rec.lock().unwrap().views.push(view.clone());
+    }
+
+    fn emit_app_settings(&self, view: &AppSettingsView) {
+        self.rec.lock().unwrap().app_settings.push(view.clone());
+    }
+
+    fn open_settings(&self) -> Result<(), String> {
+        self.rec.lock().unwrap().settings_opened += 1;
+        Ok(())
+    }
+
+    fn restart(&self) {
+        self.rec.lock().unwrap().restarts += 1;
     }
 }
 

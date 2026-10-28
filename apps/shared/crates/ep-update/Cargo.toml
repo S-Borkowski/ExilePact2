@@ -1,0 +1,11 @@
+[package]
+name = "ep-update"
+description = "Both apps' update logic: the check, the in-app install of a signed release, the swap of the running exe and the start-up cleanup. No network and no unsafe code; the request is the app's transport."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+minisign-verify = { workspace = true }

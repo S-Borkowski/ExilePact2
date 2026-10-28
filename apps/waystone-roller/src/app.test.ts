@@ -241,4 +241,39 @@ describe('the page', () => {
     expect(input.value).toBe('Ctrl+Alt+R');
     expect(text(root.querySelector('.hint'))).toBe('Ctrl+Alt+R copies this while you play');
   });
+
+  it('settings_button_opens_the_settings_window', async () => {
+    for (const name of FIXTURE_NAMES) {
+      const { root, bridge } = await render(fixtureView(name));
+      // In the header, beside the title, in every state.
+      const settings = root.querySelector<HTMLButtonElement>('header button.settings');
+      expect(settings, name).not.toBeNull();
+      expect(settings!.disabled).toBe(false);
+      click(settings);
+      expect(bridge.calls, name).toEqual([{ name: 'open_settings', args: {} }]);
+    }
+  });
+
+  it('settings_button_marks_an_available_update', async () => {
+    // Negative control: no newer version known, the button says "Settings" and nothing else.
+    const plain = fixtureView('ok-any');
+    expect(plain.update_available).toBeNull();
+    const { root, bridge } = await render(plain);
+    const settings = () => root.querySelector<HTMLButtonElement>('header button.settings')!;
+    expect(text(settings())).toBe('Settings');
+    expect(settings().getAttribute('aria-label')).toBeNull();
+    expect(settings().querySelector('.update-mark')).toBeNull();
+
+    // A check found 1.3.0: the button names it in words, not by a colour alone.
+    bridge.pushView({ ...plain, update_available: '1.3.0' });
+    expect(text(settings())).toBe('Settings Update 1.3.0');
+    expect(text(settings().querySelector('.update-mark'))).toBe('Update 1.3.0');
+    expect(settings().getAttribute('aria-label')).toBe('Settings, update 1.3.0 available');
+    click(settings());
+    expect(bridge.calls).toEqual([{ name: 'open_settings', args: {} }]);
+
+    // Once no newer version is known, the mark goes.
+    bridge.pushView(plain);
+    expect(text(settings())).toBe('Settings');
+  });
 });

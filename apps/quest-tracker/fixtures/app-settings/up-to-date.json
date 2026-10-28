@@ -1,5 +1,10 @@
 {
   "check_updates": true,
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
   "update": {
     "newer": null,
     "state": "up-to-date",

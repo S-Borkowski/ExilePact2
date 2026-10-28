@@ -1,8 +1,10 @@
-// The Settings window's view, mirrored from `qt-app`'s `AppSettingsView`
-// (`crates/qt-app/src/updates.rs`), field names snake_case exactly as serde
-// writes them in `qt:app-settings` and the answer to `get_app_settings`. The
-// window renders these values; whether a check runs, what it found and which
-// version is newer are the app's to say.
+// The Settings window's view, mirrored from the `AppSettingsView` the quest
+// tracker sends (`ep-update`'s, `apps/shared/crates/ep-update/src/view.rs`,
+// re-exported by `crates/qt-app/src/updates.rs`), field names snake_case
+// exactly as serde writes them in `qt:app-settings` and the answer to
+// `get_app_settings`. The window renders these values; whether a check runs,
+// what it found, which version is newer and where an install stands are the
+// app's to say.
 //
 // The checker below walks the same field lists the types declare, so the
 // window's tests can hold every fixture under `fixtures/app-settings/`
@@ -17,8 +19,33 @@ export interface UpdateView {
   state: UpdateState;
   /** The status line, written by the app. */
   text: string;
-  /** The newer version known, if any: what *Open the release page* opens. Kept by a failed check. */
+  /** The newer version known, if any: what the install button installs. Kept by a failed check. */
   newer: string | null;
+}
+
+export const INSTALL_STATES = ['none', 'unsigned', 'ready', 'downloading', 'verifying', 'restarting', 'failed'] as const;
+export type InstallState = (typeof INSTALL_STATES)[number];
+
+/** How far a download is. */
+export interface InstallProgress {
+  bytes: number;
+  /** The size the release lists, which the download must match exactly. */
+  total: number | null;
+}
+
+/**
+ * Where an install of the newer version stands. `none`: no newer version;
+ * `unsigned`: its release cannot be installed (no button); `ready`: the
+ * install button, labelled `text`; `downloading` (with `progress`, and
+ * *Cancel*), `verifying`, `restarting`: the status line; `failed`: its
+ * reason, and *Try again*.
+ */
+export interface InstallView {
+  state: InstallState;
+  /** `ready`: the button's label; `none`: empty; otherwise the status line, written by the app. */
+  text: string;
+  /** Only while `downloading`. */
+  progress: InstallProgress | null;
 }
 
 /** What the Settings window renders. */
@@ -28,6 +55,7 @@ export interface AppSettingsView {
   /** "Automatically check for updates" (off by default). */
   check_updates: boolean;
   update: UpdateView;
+  install: InstallView;
 }
 
 // One field spec per type: `Spec<T>` makes the compiler refuse a spec that
@@ -41,6 +69,9 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 
 const str: Check = (v, p, out) => {
   if (typeof v !== 'string') out.push(`${p}: expected a string`);
+};
+const count: Check = (v, p, out) => {
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) out.push(`${p}: expected a whole number`);
 };
 const bool: Check = (v, p, out) => {
   if (typeof v !== 'boolean') out.push(`${p}: expected a boolean`);
@@ -73,7 +104,9 @@ function record<T>(spec: Spec<T>): Check {
 }
 
 const update = record<UpdateView>({ state: oneOf(UPDATE_STATES), text: str, newer: nullable(str) });
-const appSettings = record<AppSettingsView>({ version: str, check_updates: bool, update });
+const progress = record<InstallProgress>({ bytes: count, total: nullable(count) });
+const install = record<InstallView>({ state: oneOf(INSTALL_STATES), text: str, progress: nullable(progress) });
+const appSettings = record<AppSettingsView>({ version: str, check_updates: bool, update, install });
 
 /** Every way `value` differs from an `AppSettingsView`; empty when it is one. */
 export function appSettingsProblems(value: unknown): string[] {

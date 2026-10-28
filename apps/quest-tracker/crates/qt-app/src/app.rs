@@ -40,15 +40,20 @@
 //! the overlay for it ([`PANEL_LINE`]); with no backend nothing of it runs
 //! and the visibility rule is as it was.
 //!
-//! The update check (`crate::updates`) keeps its state behind a lock of its
-//! own, never taken with the state lock held. It starts from the
-//! `check_for_updates` command or, with the `check_updates` setting on, from
-//! the worker's tick when a check is due; either only starts it, and its one
-//! request runs on a thread of its own that holds no lock, so neither the
-//! commands nor the worker ever wait for the network. One check runs at a
-//! time. The Settings window's view is sent with no lock held, and
-//! [`App::shutdown`] does not wait for a check: one ending after it began
-//! changes, logs and sends nothing.
+//! The update check and the in-app install (`crate::updates`, `ep-update`'s
+//! updater) keep their state behind a lock of their own, never taken with
+//! the state lock held. A check starts from the `check_for_updates` command
+//! or, with the `check_updates` setting on, from the worker's tick when one
+//! is due; an install only from the `install_update` command. Either only
+//! starts: its requests (and an install's disk work) run on a thread of its
+//! own that holds no lock, so neither the commands nor the worker ever wait
+//! for the network. One check or install runs at a time. The Settings
+//! window's view is sent with no lock held, and [`App::shutdown`] waits for
+//! neither: a check ending after it began changes, logs and sends nothing,
+//! and a running install is cancelled and removes its partial download. An
+//! install that put the new exe in place asks to restart through the quit
+//! path ([`QuitFrom::Update`], [`Window::restart`]); the shell's exit then
+//! relaunches the exe ([`App::restart_requested`]).
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -77,7 +82,8 @@ use crate::panels::{
 };
 use crate::screen::{self, DemandSnapshot, NotCounted, ReaderHandle, ScreenMsg, SharedBackend};
 use crate::seed;
-use crate::updates::{self, AppSettingsView, Begin, Checker, TransportError, UpdateConfig};
+use crate::updates::{self, AppSettingsView, TransportError, UpdateConfig};
+use ep_update::{Begin, InstallEvents, Updater};
 
 /// The shortest time between two saves.
 pub const SAVE_INTERVAL_MS: u64 = 2_000;
@@ -100,10 +106,11 @@ const STOP_POLL: Duration = Duration::from_millis(5);
 pub trait Emitter: Send + Sync + 'static {
     fn view(&self, view: &View);
     fn row_change(&self, change: &RowChange);
-    /// The Settings window's view changed (an update check's progress, the
-    /// `check_updates` setting). Called with no lock of the app held, on the
-    /// caller's thread: a check's own thread, the worker, or whichever thread
-    /// runs the `check_for_updates` or `update_settings` command, which may be
+    /// The Settings window's view changed (an update check's or an install's
+    /// progress, the `check_updates` setting). Called with no lock of the app
+    /// held, on the caller's thread: a check's or an install's own thread,
+    /// the worker, or whichever thread runs the `check_for_updates`,
+    /// `install_update` or `update_settings` command, which may be
     /// the main thread (a tray click handled in place). So an implementation
     /// must not block on the main thread: whatever has to run there (the
     /// tray's menu follows the view) is posted to it and not waited for. An
@@ -174,6 +181,14 @@ pub trait Window: Send + Sync + 'static {
     /// Shows the window without activating it (`true`), so the game keeps
     /// focus, or hides it (`false`).
     fn set_visible(&self, shown: bool) -> Result<(), String>;
+    /// An installed update asks the app to restart: exit through the
+    /// shell's quit path, as a quit from the tray does (the app has already
+    /// made its quit request, [`QuitFrom::Update`]). The shell's exit runs
+    /// [`App::shutdown`], then relaunches the exe it captured at start when
+    /// [`App::restart_requested`]. Called from the install's thread with no
+    /// lock of the app held. A shell that cannot restart keeps this default,
+    /// and the new exe runs at the next start.
+    fn restart(&self) {}
 }
 
 /// Whether the overlay is shown (Context "Live 2 fixes (owner scope)"):
@@ -638,14 +653,42 @@ pub struct App {
     /// takes it with `try_lock` and never waits.
     panel_snapshot: Mutex<Arc<PanelSnapshot>>,
     watcher: Mutex<Option<WatcherHandle>>,
-    /// The update check ([`crate::updates`]), behind its own lock.
-    updates: Checker,
+    /// The update check and the install ([`crate::updates`]), behind their
+    /// own lock.
+    updates: Updater,
     worker: Mutex<Option<JoinHandle<()>>>,
     worker_stop: Arc<AtomicBool>,
     stopped: AtomicBool,
     /// A quit was requested ([`App::request_quit`]).
     quitting: AtomicBool,
+    /// The quit is an installed update's: the shell relaunches the exe once
+    /// it has shut down ([`App::restart_requested`]).
+    restarting: AtomicBool,
     saves: AtomicU64,
+}
+
+/// What a running install tells the app ([`App::install_update`]), from
+/// the install's own thread.
+struct InstallTo(Weak<App>);
+
+impl InstallEvents for InstallTo {
+    fn changed(&self) {
+        if let Some(app) = self.0.upgrade() {
+            app.emit_app_settings();
+        }
+    }
+
+    fn diag(&self, line: &str) {
+        if let Some(app) = self.0.upgrade() {
+            app.diag(line);
+        }
+    }
+
+    fn restart(&self) {
+        if let Some(app) = self.0.upgrade() {
+            app.restart_into_update();
+        }
+    }
 }
 
 /// Where a request to quit the overlay came from.
@@ -656,6 +699,9 @@ pub enum QuitFrom {
     /// A close request to the overlay's own window (`WM_CLOSE`), shown or
     /// hidden.
     WindowClosed,
+    /// An installed update: the new exe is in place, and the app restarts
+    /// into it ([`App::install_update`]).
+    Update,
 }
 
 impl QuitFrom {
@@ -664,6 +710,7 @@ impl QuitFrom {
         match self {
             QuitFrom::Tray => "quit: from the tray",
             QuitFrom::WindowClosed => "quit: the window was closed",
+            QuitFrom::Update => "quit: restarting into the update",
         }
     }
 }
@@ -685,9 +732,10 @@ impl App {
         App::with_updates(config, panels, UpdateConfig::default())
     }
 
-    /// [`App::with_panels`], with what the update check needs: the
-    /// transport that makes its one request, and the running version
-    /// releases are compared with ([`UpdateConfig`]).
+    /// [`App::with_panels`], with what the update check and the install
+    /// need: the transport that makes their requests, the running version
+    /// releases are compared with and the exe an install replaces
+    /// ([`UpdateConfig`]).
     pub fn with_updates(
         config: AppConfig,
         panels: PanelConfig,
@@ -957,11 +1005,12 @@ impl App {
             panel_table: Arc::new(panel_table.unwrap_or_else(qt_screen::shipped_panels)),
             panel_snapshot: Mutex::new(Arc::default()),
             watcher: Mutex::new(None),
-            updates: Checker::new(updates),
+            updates: Updater::new(updates::PRODUCT, updates::running_version(), updates),
             worker: Mutex::new(None),
             worker_stop: Arc::new(AtomicBool::new(false)),
             stopped: AtomicBool::new(false),
             quitting: AtomicBool::new(false),
+            restarting: AtomicBool::new(false),
             saves: AtomicU64::new(0),
         });
         if let Some(e) = &options_error {
@@ -1093,9 +1142,10 @@ impl App {
     /// unsaved. True when every thread ended in time. An OCR call or a copy
     /// in flight is not interrupted: a thread inside one past the deadline
     /// is logged as not ended, like the others. The stop line names the
-    /// reader and the watcher only when they ran. An update check is not
-    /// waited for: its request ends on its own thread, and an end after this
-    /// began writes and announces nothing.
+    /// reader and the watcher only when they ran. An update check or install
+    /// is not waited for: its request ends on its own thread, and an end
+    /// after this began writes and announces nothing. A running install is
+    /// cancelled, and removes its partial download.
     pub fn shutdown(&self, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
         self.updates.stop();
@@ -1156,6 +1206,24 @@ impl App {
         }
         self.diag(from.line());
         true
+    }
+
+    /// True once an installed update asked to restart: the shell's exit,
+    /// after [`App::shutdown`], relaunches the exe it captured at start.
+    pub fn restart_requested(&self) -> bool {
+        self.restarting.load(Ordering::Acquire)
+    }
+
+    /// The new exe is in place: quit through the shell's quit path, which
+    /// relaunches it. A quit requested before (the tray's, a closed window)
+    /// wins: the app quits without a relaunch, and the next start runs the
+    /// new exe.
+    fn restart_into_update(&self) {
+        if !self.request_quit(QuitFrom::Update) {
+            return;
+        }
+        self.restarting.store(true, Ordering::Release);
+        self.window.restart();
     }
 
     /// True while the worker thread runs.
@@ -2092,26 +2160,32 @@ impl App {
         self.get_app_settings()
     }
 
-    /// `open_release_page`: opens the newer version's release page in the
-    /// default browser, built from its tag. Refused when no newer version is
-    /// known.
-    pub fn open_release_page(&self) -> Result<(), String> {
-        let Some(newer) = self.updates.newer() else {
-            let e = "no newer version is known".to_string();
-            self.diag(&format!("command open_release_page refused: {e}"));
-            return Err(e);
-        };
-        self.window.open_url(&newer.release_page()).map_err(|e| {
-            self.diag(&format!("error: opening the release page of {newer}: {e}"));
-            format!("could not open the release page: {e}")
-        })?;
-        self.diag(&updates::opened_line(newer));
-        Ok(())
+    /// `install_update`: the window's install button, and the one way an
+    /// install starts. Starts installing the newer version and returns the
+    /// view at once, never waiting for the download. Refused, with an
+    /// `updates: install refused:` line and the view as it is, while a check
+    /// or an install runs, while restarting, with no newer version known,
+    /// and for a release that is not signed. The install downloads, checks
+    /// the signature and swaps the exe on a thread of its own; a failure is
+    /// the view's failed state with its reason (pressing the button again
+    /// is *Try again*), and success restarts through the quit path.
+    pub fn install_update(&self) -> AppSettingsView {
+        // A refusal is logged by the updater; the view shows the state.
+        let _ = self.updates.install(Arc::new(InstallTo(self.me.clone())));
+        self.get_app_settings()
     }
 
-    /// Carries out what [`Checker::begin_manual`] or [`Checker::begin_auto`]
+    /// `cancel_update`: stops a running download; the install then removes
+    /// its partial file and the view is back to the install button. Nothing
+    /// when no install runs.
+    pub fn cancel_update(&self) -> AppSettingsView {
+        self.updates.cancel_install();
+        self.get_app_settings()
+    }
+
+    /// Carries out what [`Updater::begin_manual`] or [`Updater::begin_auto`]
     /// decided: a started check is logged and announced, and its request
-    /// runs on a thread of its own ([`Checker::spawn`]). Without a transport
+    /// runs on a thread of its own ([`Updater::spawn`]). Without a transport
     /// it ends failed at once, with no request. Called with no lock held.
     fn run_check(&self, manual: bool, begin: Begin) {
         let Begin::Run(transport) = begin else {
@@ -2124,7 +2198,7 @@ impl App {
             return;
         };
         let app = self.me.clone();
-        let spawned = Checker::spawn(transport, move |answer| {
+        let spawned = Updater::spawn(transport, move |answer| {
             if let Some(app) = app.upgrade() {
                 app.finish_check(manual, answer);
             }

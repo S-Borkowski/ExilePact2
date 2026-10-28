@@ -164,5 +164,6 @@
   "status": {
     "kind": "error",
     "text": "Shortcut Ctrl+Alt+W is taken by another program. Choose another one below."
-  }
+  },
+  "update_available": null
 }

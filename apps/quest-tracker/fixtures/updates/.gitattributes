@@ -1,0 +1,5 @@
+# A signature covers bytes, so no signing fixture may be converted on
+# checkout or commit: with `core.autocrlf` on, a converted payload or
+# signature would fail every install the tests expect to succeed.
+signing/** -text
+signing/*.bin binary

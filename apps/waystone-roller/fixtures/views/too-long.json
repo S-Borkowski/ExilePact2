@@ -514,5 +514,6 @@
   "status": {
     "kind": "error",
     "text": "Not copied: the search is 264 characters, over the game's 250. Remove some selections."
-  }
+  },
+  "update_available": null
 }

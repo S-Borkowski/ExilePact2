@@ -133,6 +133,8 @@ pub fn synth_item(
 }
 
 /// The fixture items under `fixtures/items/`, read through `items.json`.
+/// The text is committed with LF; a Windows checkout with `core.autocrlf`
+/// writes it with CRLF, so it is read back as LF either way.
 pub fn fixture_items() -> Vec<Item> {
     let dir = fixtures_dir().join("items");
     let index: Value =
@@ -145,7 +147,9 @@ pub fn fixture_items() -> Vec<Item> {
             let file = e["file"].as_str().unwrap();
             Item {
                 name: file.to_string(),
-                text: std::fs::read_to_string(dir.join(file)).unwrap(),
+                text: std::fs::read_to_string(dir.join(file))
+                    .unwrap()
+                    .replace("\r\n", "\n"),
                 rarity: e["rarity"].as_str().unwrap().to_string(),
                 tier: e["tier"].as_u64().unwrap() as u8,
                 corrupted: e["corrupted"].as_bool().unwrap(),

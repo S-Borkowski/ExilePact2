@@ -1,9 +1,16 @@
 name: Quest Tracker Release
 
-# Builds the quest tracker from a release tag and attaches both executables
-# to a DRAFT release. Nothing is published by this workflow: the owner opens
-# the draft, checks it, publishes it and ticks "Set as the latest release" by
-# hand.
+# Builds the quest tracker from a release tag, signs quest-tracker.exe with
+# the release key and attaches both executables, SHA256SUMS.txt and
+# quest-tracker.exe.minisig to a DRAFT release. Nothing is published by this
+# workflow: the owner opens the draft, checks it, publishes it and ticks "Set
+# as the latest release" by hand.
+#
+# The signature is what the app's in-app update checks against the public
+# key built into it, so a release without one is never made: the sign step
+# fails the job, before the release step, when the repository secret
+# TAURI_SIGNING_PRIVATE_KEY is missing or empty. The secret and its password
+# (TAURI_SIGNING_PRIVATE_KEY_PASSWORD) reach that one step only.
 #
 # Cutting a release (docs/quest-tracker/README.md, "Working on the app" ›
 # "Cutting a release"):
@@ -94,9 +101,32 @@ jobs:
           (cd dist-release && sha256sum quest-tracker.exe quest-tracker-replay.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python -m tools.quest_tracker.release notes "$VERSION" --out release-notes.md
 
+      # `tauri signer sign` writes the signature base64-encoded to <exe>.sig;
+      # the release carries the decoded minisign text as <exe>.minisig. Its
+      # trusted comment names the file and the version, which the app checks
+      # against the asset's name and the release's version.
+      - name: Sign the exe
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "::error::The TAURI_SIGNING_PRIVATE_KEY secret is missing or empty; no release is made without the exe's signature."
+            exit 1
+          fi
+          npm --prefix apps/quest-tracker exec -- tauri signer sign --app-version "$VERSION" "$GITHUB_WORKSPACE/dist-release/quest-tracker.exe"
+          base64 -d dist-release/quest-tracker.exe.sig > dist-release/quest-tracker.exe.minisig
+          rm dist-release/quest-tracker.exe.sig
+          if ! grep -qF "file:quest-tracker.exe" dist-release/quest-tracker.exe.minisig \
+              || ! grep -qF "version:$VERSION" dist-release/quest-tracker.exe.minisig; then
+            echo "::error::The signature's trusted comment does not name quest-tracker.exe at $VERSION."
+            exit 1
+          fi
+          cat dist-release/quest-tracker.exe.minisig
+
       - name: Create or update the draft release
         run: |
-          assets=(dist-release/quest-tracker.exe dist-release/quest-tracker-replay.exe dist-release/SHA256SUMS.txt)
+          assets=(dist-release/quest-tracker.exe dist-release/quest-tracker-replay.exe dist-release/SHA256SUMS.txt dist-release/quest-tracker.exe.minisig)
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
             echo "Replaced the assets of the existing release $TAG."

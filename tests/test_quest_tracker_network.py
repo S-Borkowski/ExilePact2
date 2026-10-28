@@ -1,10 +1,14 @@
 """The quest tracker makes no network request the user did not order.
 
-The update check is the app's only network code, and it runs only when the
-user presses *Check for updates* or turns on *Automatically check for
-updates*. The behaviour is proven by `crates/qt-app/tests/updates.rs` with a
-recording fake transport; this file pins, by reading files only, that there
-is no other door through which the app could reach the internet.
+The update check and the in-app install are the app's only network code:
+a check runs only when the user presses *Check for updates* or turns on
+*Automatically check for updates*, and an install only when the user presses
+the Settings window's install button. The behaviour is proven by
+`crates/qt-app/tests/updates.rs` with a recording fake transport; this file
+pins, by reading files only, that there is no other door through which the
+app could reach the internet. The update code is the shared workspace's,
+`apps/shared/` (`ep-update`, and `ep-net`, the transport), so every walk
+below reads it beside the app.
 
 `NoNetworkByDefault` (the baseline) holds before the update check exists and
 must keep holding after it:
@@ -15,14 +19,15 @@ must keep holding after it:
   capability file grants an `http:`, `updater:`,
   `websocket:`, `upload:`, `shell:`, `fs:`, `process:` or `opener:`
   permission or a `remote` URL;
-- no `Cargo.toml` under the app depends on an HTTP client, a socket, TLS or
-  WebSocket crate, or a Tauri network plugin, and `package.json` on no
-  Tauri network plugin;
+- no `Cargo.toml` under the app or `apps/shared/` depends on an HTTP
+  client, a socket, TLS or WebSocket crate, or a Tauri network plugin, and
+  `package.json` on no Tauri network plugin;
 - the binary's compiled graph (`cargo tree -i`, skipped when cargo is not on
   PATH) holds none of those crates but `socket2` through tokio, Tauri's
   runtime: `Cargo.lock` lists optional ones that are not compiled, and a
   feature turned on in a manifest could link them;
-- no Rust source outside `crates/qt-net/` (the transport crate) names a
+- no Rust source of the app or `apps/shared/` outside
+  `apps/shared/crates/ep-net/` (the transport crate) names a
   socket (std's, tokio's, or Winsock through the `windows` crates),
   WinHTTP, WinINet, urlmon's `URLDownloadToFile`, an HTTP client crate, or a
   webview on a remote page (`WebviewUrl::External`);
@@ -35,22 +40,30 @@ matcher that sees nothing cannot pass, and every walk must find files. A
 failure names the file and the offending entry.
 
 `UpdateEndpoint` (the target, added with the update check) is layer 2,
-reachability, and pins what the one request names:
+reachability, and pins what the requests name:
 
-- the transport's one method, `fetch_releases`, is named at exactly one
-  place in non-test code, inside `crates/qt-app/src/updates.rs`, and
-  `qt-net`'s `fetch_release_list` only by the glue in `src-tauri/src/lib.rs`;
-- `qt_net` is named in Rust code only by `src-tauri/src/lib.rs` and the
-  crate itself, a manifest depends on it only in `src-tauri/Cargo.toml`
-  (the workspace manifest lists it as a member), and in `Cargo.lock` only
-  the `src-tauri` package depends on it;
+- the transport's two methods are called in one place, `ep-update`'s
+  updater (`apps/shared/crates/ep-update/src/updater.rs`), in non-test code:
+  `fetch_releases` once (the check's thread) and `download` twice (the
+  install's signature, then its exe); `ep-net`'s `fetch_release_list` and
+  `download_asset` are each named once, by the glue in
+  `src-tauri/src/lib.rs`, and nowhere else;
+- `ep_net` is named in Rust code only by `src-tauri/src/lib.rs` and the
+  crate itself; of the app's and the shared workspace's manifests only
+  `src-tauri/Cargo.toml` depends on it (the shared workspace lists it as a
+  member; the app's no longer has `qt-net`), and in the app's `Cargo.lock`
+  only the `src-tauri` package depends on it;
 - the Settings window's capability, `capabilities/settings.json`, is the
   `settings` window's alone, with `core:event:default` (and at most
   `core:window:default`), no other permission and no `remote`;
-- `qt-net`'s host, port, scheme and path are `api.github.com`, 443, HTTPS
-  and the release list of `release.REPO_URL`'s owner and repository, and
-  `updates.rs`'s tag prefix and release-page prefix are
-  `release.TAG_PREFIX` and `release.REPO_URL + "/releases/tag/"`.
+- `ep-net`'s host, port, scheme and path are `api.github.com`, 443, HTTPS
+  and the release list of `release.REPO_URL`'s owner and repository, its
+  download host and path prefix `github.com` and that repository's
+  `/releases/download/`, and both the quest tracker's tag prefix in
+  `ep-net` and `ep-update`'s `QUEST_TRACKER` product's are
+  `release.TAG_PREFIX`;
+- no update source (`apps/shared/crates/`, `crates/qt-app/src/updates.rs`)
+  names a release page (`/releases/tag/`): there is no fallback to one.
 
 Rust is read with its comments (and, for names, its strings) blanked and
 its `#[cfg(test)]` items removed, so a doc comment or a test fake neither
@@ -79,10 +92,16 @@ TAURI = APP / "src-tauri"
 CAPABILITIES = TAURI / "capabilities"
 UI_SRC = APP / "src"
 
+# The shared update workspace the app takes its update code from.
+SHARED = ROOT / "apps" / "shared"
+
 # Directories a walk never enters: build output, dependencies, generated
 # schemas. The transport crate is the one place allowed to name sockets.
 SKIP_DIRS = {"target", "node_modules", "gen", "dist", ".svelte-kit"}
-NET_CRATE = APP / "crates" / "qt-net"
+NET_CRATE = SHARED / "crates" / "ep-net"
+EP_UPDATE = SHARED / "crates" / "ep-update"
+# The transport crate the shared one replaced; it must be gone.
+OLD_NET_CRATE = APP / "crates" / "qt-net"
 
 PINNED_CSP = (
     "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
@@ -285,14 +304,21 @@ def cargo_tree_dependents(spec: str) -> subprocess.CompletedProcess:
 QT_APP = APP / "crates" / "qt-app"
 UPDATES_RS = QT_APP / "src" / "updates.rs"
 NET_LIB_RS = NET_CRATE / "src" / "lib.rs"
+UPDATER_RS = EP_UPDATE / "src" / "updater.rs"
+VERSION_RS = EP_UPDATE / "src" / "version.rs"
 GLUE_RS = TAURI / "src" / "lib.rs"
 SETTINGS_CAPABILITY = CAPABILITIES / "settings.json"
 SETTINGS_REQUIRED_PERMISSIONS = {"core:event:default"}
 SETTINGS_ALLOWED_PERMISSIONS = {"core:event:default", "core:window:default"}
+# The transport's methods, and how many calls of each the updater makes:
+# one release list per check; per install the signature, then the exe.
 TRANSPORT_METHOD = "fetch_releases"
-NET_FUNCTION = "fetch_release_list"
-NET_CRATE_NAME = "qt-net"
-NET_IDENT = re.compile(r"\bqt_net\b")
+TRANSPORT_CALLS = {"fetch_releases": 1, "download": 2}
+# `ep-net`'s two public requests, each named once, by the glue.
+NET_FUNCTIONS = ("fetch_release_list", "download_asset")
+NET_CRATE_NAME = "ep-net"
+NET_IDENT = re.compile(r"\bep_net\b")
+RELEASE_PAGE = "/releases/tag/"
 
 _RAW_STRING = re.compile(r'b?r(#*)"')
 _CHAR = re.compile(r"b?'(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F]{1,6}\}|.)|[^\\'\n])'")
@@ -423,7 +449,17 @@ def name_uses(name: str, code: str, ident: str) -> list[str]:
 
 def is_test_source(path: Path) -> bool:
     """A Rust file of a crate's `tests/` (integration tests)."""
-    return "tests" in path.relative_to(APP).parts[:-1]
+    return "tests" in path.relative_to(ROOT / "apps").parts[:-1]
+
+
+def rust_sources() -> list[Path]:
+    """Every Rust file of the app and of the shared update workspace."""
+    return walk(APP, suffixes={".rs"}) + walk(SHARED, suffixes={".rs"})
+
+
+def manifests() -> list[Path]:
+    """Every `Cargo.toml` of the app and of the shared update workspace."""
+    return walk(APP, names={"Cargo.toml"}) + walk(SHARED, names={"Cargo.toml"})
 
 
 def rust_const(text: str, const: str, ty: str) -> list[str]:
@@ -448,14 +484,25 @@ def repo_of(url: str) -> str:
     return "/".join(parts)
 
 
-def endpoint_offences(net_name: str, net_text: str, updates_name: str, updates_text: str,
+def product_tag_prefixes(text: str, const: str) -> list[str]:
+    """Each `tag_prefix` a `const <const>: Product = Product { ... }`
+    defines in comment-blanked non-test `text`."""
+    pattern = (
+        r"\bconst\s+" + re.escape(const) + r"\s*:\s*Product\s*=\s*Product\s*\{[^}]*?"
+        r"\btag_prefix\s*:\s*\"((?:[^\"\\]|\\.)*)\""
+    )
+    return [m.group(1) for m in re.finditer(pattern, text)]
+
+
+def endpoint_offences(net_name: str, net_text: str, product_name: str, product_text: str,
                       repo_url: str, tag_prefix: str) -> list[str]:
-    """Where `qt-net`'s endpoint constants or `updates.rs`'s release
-    constants disagree with the release contract (`repo_url`, `tag_prefix`).
-    Each constant must be defined exactly once in non-test code."""
+    """Where `ep-net`'s endpoint constants, or the tag prefix of
+    `ep-update`'s `QUEST_TRACKER` product, disagree with the release contract
+    (`repo_url`, `tag_prefix`). Each must be defined exactly once in non-test
+    code."""
     offences = []
     _, net = non_test_rust(net_text)
-    _, updates = non_test_rust(updates_text)
+    _, product = non_test_rust(product_text)
 
     def one(name: str, text: str, const: str, ty: str):
         values = rust_const(text, const, ty)
@@ -478,15 +525,35 @@ def endpoint_offences(net_name: str, net_text: str, updates_name: str, updates_t
     releases = f"/repos/{repo}/releases"
     if path is not None and not (path == releases or path.startswith(releases + "?")):
         offences.append(f"{net_name}: PATH {path!r} is not {releases!r} (of {repo_url})")
-    prefix = one(updates_name, updates, "TAG_PREFIX", "str")
-    if prefix is not None and prefix != tag_prefix:
-        offences.append(f"{updates_name}: TAG_PREFIX {prefix!r}, not release.TAG_PREFIX {tag_prefix!r}")
-    page = one(updates_name, updates, "RELEASE_PAGE_PREFIX", "str")
-    if page is not None and page != repo_url + "/releases/tag/":
+    download_host = one(net_name, net, "DOWNLOAD_HOST", "str")
+    if download_host is not None and download_host != "github.com":
+        offences.append(f"{net_name}: DOWNLOAD_HOST {download_host!r}, not 'github.com'")
+    download_prefix = one(net_name, net, "DOWNLOAD_PATH_PREFIX", "str")
+    downloads = f"/{repo}/releases/download/"
+    if download_prefix is not None and download_prefix != downloads:
         offences.append(
-            f"{updates_name}: RELEASE_PAGE_PREFIX {page!r}, not release.REPO_URL + '/releases/tag/'"
+            f"{net_name}: DOWNLOAD_PATH_PREFIX {download_prefix!r} is not {downloads!r} (of {repo_url})"
+        )
+    prefix = one(net_name, net, "QUEST_TRACKER_TAG_PREFIX", "str")
+    if prefix is not None and prefix != tag_prefix:
+        offences.append(
+            f"{net_name}: QUEST_TRACKER_TAG_PREFIX {prefix!r}, not release.TAG_PREFIX {tag_prefix!r}"
+        )
+    products = product_tag_prefixes(product, "QUEST_TRACKER")
+    if len(products) != 1:
+        offences.append(f"{product_name}: const QUEST_TRACKER defined {len(products)} times outside tests")
+    elif products[0] != tag_prefix:
+        offences.append(
+            f"{product_name}: QUEST_TRACKER.tag_prefix {products[0]!r}, not release.TAG_PREFIX {tag_prefix!r}"
         )
     return offences
+
+
+def release_page_offences(name: str, text: str) -> list[str]:
+    """Each `name:line` where non-test `text`, strings included, names a
+    release page (`/releases/tag/`)."""
+    _, code = non_test_rust(text)
+    return [f"{name}:{line_of(code, m.start())}" for m in re.finditer(re.escape(RELEASE_PAGE), code)]
 
 
 def settings_capability_offences(name: str, capability: dict) -> list[str]:
@@ -508,8 +575,8 @@ def settings_capability_offences(name: str, capability: dict) -> list[str]:
 
 
 def depends_on_net(manifest: dict) -> list[str]:
-    """The dependency tables of a Cargo manifest that take `qt-net`, by
-    name, by `package` or by a path ending in `qt-net`."""
+    """The dependency tables of a Cargo manifest that take `ep-net`, by
+    name, by `package` or by a path ending in `ep-net`."""
     tables = []
     for label, table in dependency_tables(manifest):
         for key, spec in table.items():
@@ -532,7 +599,7 @@ def lock_dependents(lock: dict, crate: str) -> list[str]:
 
 
 class NoNetworkByDefault(unittest.TestCase):
-    """Layer 3 of the privacy invariant: no door to the internet but qt-net."""
+    """Layer 3 of the privacy invariant: no door to the internet but ep-net."""
 
     def test_csp_is_pinned(self):
         conf = json.loads((TAURI / "tauri.conf.json").read_text(encoding="utf-8"))
@@ -615,12 +682,15 @@ hyper-util = "0.1"
              for dep in ("socket2", "tungstenite", "tokio-tungstenite", "native-tls")],
         )
 
-        manifests = walk(APP, names={"Cargo.toml"})
-        self.assertIn(APP / "Cargo.toml", manifests)
-        self.assertIn(TAURI / "Cargo.toml", manifests)
-        self.assertGreaterEqual(len(manifests), 11, [rel(p) for p in manifests])
+        found = manifests()
+        self.assertIn(APP / "Cargo.toml", found)
+        self.assertIn(TAURI / "Cargo.toml", found)
+        self.assertIn(SHARED / "Cargo.toml", found)
+        self.assertIn(NET_CRATE / "Cargo.toml", found)
+        self.assertIn(EP_UPDATE / "Cargo.toml", found)
+        self.assertGreaterEqual(len(found), 14, [rel(p) for p in found])
         offences = []
-        for path in manifests:
+        for path in found:
             offences += manifest_offences(rel(path), path.read_text(encoding="utf-8"))
         self.assertEqual(offences, [], "Cargo manifests depend on network crates:\n" + "\n".join(offences))
 
@@ -681,7 +751,7 @@ hyper-util = "0.1"
         offences = package_offences(rel(path), json.loads(path.read_text(encoding="utf-8")))
         self.assertEqual(offences, [], "package.json depends on network plugins:\n" + "\n".join(offences))
 
-    def test_no_rust_source_outside_qt_net_names_a_socket(self):
+    def test_no_rust_source_outside_ep_net_names_a_socket(self):
         synthetic = "use std::net::TcpStream;\nfn f() { let _ = reqwest::get(\"x\"); }\n"
         self.assertEqual(
             text_offences("synthetic.rs", synthetic, RUST_NETWORK_NAMES),
@@ -707,19 +777,21 @@ hyper-util = "0.1"
             [],
         )
 
-        sources = [
-            path for path in walk(APP, suffixes={".rs"})
-            if NET_CRATE not in path.parents
-        ]
+        sources = [path for path in rust_sources() if NET_CRATE not in path.parents]
         self.assertIn(TAURI / "src" / "lib.rs", sources)
+        self.assertIn(UPDATER_RS, sources)
+        self.assertNotIn(NET_LIB_RS, sources)
         self.assertGreaterEqual(len(sources), 40, [rel(p) for p in sources])
         offences = []
         for path in sources:
             offences += text_offences(rel(path), path.read_text(encoding="utf-8"), RUST_NETWORK_NAMES)
         self.assertEqual(
             offences, [],
-            "Rust sources outside crates/qt-net name network code:\n" + "\n".join(offences),
+            "Rust sources outside apps/shared/crates/ep-net name network code:\n" + "\n".join(offences),
         )
+        # Positive control: the walk reaches the transport, which does.
+        net = text_offences(rel(NET_LIB_RS), NET_LIB_RS.read_text(encoding="utf-8"), RUST_NETWORK_NAMES)
+        self.assertTrue(net, "the matchers see no network code in ep-net itself")
 
     def test_no_ui_source_calls_the_network(self):
         synthetic = "const r = await fetch('https://x');\nnew WebSocket(u);\nnavigator.sendBeacon(u);\n"
@@ -787,46 +859,55 @@ class UpdateEndpoint(unittest.TestCase):
         )
 
     def test_the_transport_is_called_in_one_place(self):
-        sources = [p for p in walk(APP, suffixes={".rs"}) if not is_test_source(p)]
+        sources = [p for p in rust_sources() if not is_test_source(p)]
         self.assertIn(UPDATES_RS, sources)
+        self.assertIn(UPDATER_RS, sources)
         self.assertIn(GLUE_RS, sources)
         self.assertNotIn(QT_APP / "tests" / "updates.rs", sources)
         self.assertTrue(is_test_source(QT_APP / "tests" / "updates.rs"))
+        self.assertTrue(is_test_source(EP_UPDATE / "tests" / "install.rs"))
         self.assertFalse(is_test_source(UPDATES_RS))
-        method_uses, net_uses = [], []
+        self.assertFalse(is_test_source(UPDATER_RS))
+        method_uses = {method: [] for method in TRANSPORT_CALLS}
+        net_uses = {function: [] for function in NET_FUNCTIONS}
         for path in sources:
+            if NET_CRATE in path.parents:
+                continue
             code, _ = non_test_rust(path.read_text(encoding="utf-8"))
-            method_uses += name_uses(rel(path), code, TRANSPORT_METHOD)
-            if NET_CRATE not in path.parents:
-                net_uses += name_uses(rel(path), code, NET_FUNCTION)
-        self.assertEqual(
-            [use.rsplit(":", 1)[0] for use in method_uses], [rel(UPDATES_RS)],
-            "the transport's method is called outside updates.rs, or more than once:\n"
-            + "\n".join(method_uses),
-        )
-        self.assertEqual(
-            [use.rsplit(":", 1)[0] for use in net_uses], [rel(GLUE_RS)],
-            f"qt-net's {NET_FUNCTION} is called outside the glue, or more than once:\n"
-            + "\n".join(net_uses),
-        )
+            for method in TRANSPORT_CALLS:
+                method_uses[method] += name_uses(rel(path), code, method)
+            for function in NET_FUNCTIONS:
+                net_uses[function] += name_uses(rel(path), code, function)
+        for method, calls in TRANSPORT_CALLS.items():
+            self.assertEqual(
+                [use.rsplit(":", 1)[0] for use in method_uses[method]], [rel(UPDATER_RS)] * calls,
+                f"the transport's {method} is called outside ep-update's updater, or not {calls} "
+                "time(s):\n" + "\n".join(method_uses[method]),
+            )
+        for function in NET_FUNCTIONS:
+            self.assertEqual(
+                [use.rsplit(":", 1)[0] for use in net_uses[function]], [rel(GLUE_RS)],
+                f"ep-net's {function} is called outside the glue, or more than once:\n"
+                + "\n".join(net_uses[function]),
+            )
 
-    def test_qt_net_is_reached_only_by_the_glue(self):
+    def test_ep_net_is_reached_only_by_the_glue(self):
         # Negative controls: each reader sees a synthetic offender.
         self.assertEqual(
-            name_uses("s.rs", blank_rust("use qt_net::fetch_release_list; // qt_net\nlet s = \"qt_net\";\n"),
-                      "qt_net"),
+            name_uses("s.rs", blank_rust("use ep_net::fetch_release_list; // ep_net\nlet s = \"ep_net\";\n"),
+                      "ep_net"),
             ["s.rs:1"],
         )
         synthetic = """
 [dependencies]
 serde = "1"
-web = { path = "../crates/qt-net" }
+web = { path = "../../shared/crates/ep-net" }
 
 [dev-dependencies]
-net = { package = "qt-net", path = "../x" }
+net = { package = "ep-net", path = "../x" }
 
 [target.'cfg(windows)'.dependencies]
-qt-net = { path = "../qt-net" }
+ep-net = { path = "../ep-net" }
 """
         self.assertEqual(
             depends_on_net(tomllib.loads(synthetic)),
@@ -834,44 +915,51 @@ qt-net = { path = "../qt-net" }
         )
         self.assertEqual(depends_on_net(tomllib.loads('[dependencies]\nqt-app = { path = "../qt-app" }\n')), [])
         lock = tomllib.loads(
-            '[[package]]\nname = "a"\ndependencies = ["qt-net 0.1.0", "serde"]\n'
-            '[[package]]\nname = "b"\ndependencies = ["qt-net"]\n'
-            '[[package]]\nname = "qt-netx"\n'
-            '[[package]]\nname = "c"\ndependencies = ["qt-netx"]\n'
+            '[[package]]\nname = "a"\ndependencies = ["ep-net 0.1.0", "serde"]\n'
+            '[[package]]\nname = "b"\ndependencies = ["ep-net"]\n'
+            '[[package]]\nname = "ep-netx"\n'
+            '[[package]]\nname = "c"\ndependencies = ["ep-netx"]\n'
         )
         self.assertEqual(lock_dependents(lock, NET_CRATE_NAME), ["a", "b"])
 
         # Rust code, tests included: only the glue and the crate itself.
-        sources = walk(APP, suffixes={".rs"})
+        sources = rust_sources()
         self.assertIn(NET_LIB_RS, sources)
+        self.assertIn(UPDATER_RS, sources)
         naming = sorted({
             rel(path) for path in sources
             if NET_CRATE not in path.parents
             and NET_IDENT.search(blank_rust(path.read_text(encoding="utf-8")))
         })
-        self.assertEqual(naming, [rel(GLUE_RS)], f"Rust code naming qt_net: {naming}")
+        self.assertEqual(naming, [rel(GLUE_RS)], f"Rust code naming ep_net: {naming}")
 
-        # Manifests: only src-tauri depends on it; the workspace lists it.
-        manifests = walk(APP, names={"Cargo.toml"})
-        self.assertIn(NET_CRATE / "Cargo.toml", manifests)
+        # Manifests: only src-tauri depends on it; the shared workspace lists
+        # it, and the app's own transport crate is gone.
+        found = manifests()
+        self.assertIn(NET_CRATE / "Cargo.toml", found)
         dependents = sorted(
-            rel(path) for path in manifests
+            rel(path) for path in found
             if depends_on_net(tomllib.loads(path.read_text(encoding="utf-8")))
         )
-        self.assertEqual(dependents, [rel(TAURI / "Cargo.toml")], f"manifests taking qt-net: {dependents}")
+        self.assertEqual(dependents, [rel(TAURI / "Cargo.toml")], f"manifests taking ep-net: {dependents}")
+        shared = tomllib.loads((SHARED / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]
+        self.assertIn("crates/ep-net", shared.get("members", []))
         workspace = tomllib.loads((APP / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]
-        self.assertIn("crates/qt-net", workspace.get("members", []))
+        self.assertNotIn("crates/qt-net", workspace.get("members", []))
+        self.assertFalse(OLD_NET_CRATE.exists(), f"{rel(OLD_NET_CRATE)} is still there")
         net_manifest = tomllib.loads((NET_CRATE / "Cargo.toml").read_text(encoding="utf-8"))
         net_deps = [key for _, table in dependency_tables(net_manifest) for key in table]
         self.assertEqual(
-            [dep for dep in net_deps if dep.startswith("qt-")], [],
-            f"qt-net depends on another qt-* crate: {net_deps}",
+            [dep for dep in net_deps if dep.startswith(("qt-", "wr-", "ep-"))], [],
+            f"ep-net depends on an app's or another shared crate: {net_deps}",
         )
 
         # The lock: the src-tauri package is the one dependent.
         glue_package = tomllib.loads((TAURI / "Cargo.toml").read_text(encoding="utf-8"))["package"]["name"]
         cargo_lock = tomllib.loads((APP / "Cargo.lock").read_text(encoding="utf-8"))
-        self.assertIn(NET_CRATE_NAME, [p["name"] for p in cargo_lock.get("package", [])])
+        packages = [p["name"] for p in cargo_lock.get("package", [])]
+        self.assertIn(NET_CRATE_NAME, packages)
+        self.assertNotIn("qt-net", packages)
         self.assertEqual(lock_dependents(cargo_lock, NET_CRATE_NAME), [glue_package])
 
     def test_settings_window_capability(self):
@@ -936,43 +1024,77 @@ qt-net = { path = "../qt-net" }
             "pub const PORT: u16 = 443;\n"
             'pub const SCHEME: &str = "https";\n'
             'pub const PATH: &str = "/repos/owner/repo/releases?per_page=30";\n'
+            'pub const DOWNLOAD_HOST: &str = "github.com";\n'
+            'pub const DOWNLOAD_PATH_PREFIX: &str = "/owner/repo/releases/download/";\n'
+            'pub const QUEST_TRACKER_TAG_PREFIX: &str = "tool-v";\n'
             "#[cfg(test)]\nmod tests { const HOST: &str = \"127.0.0.1\"; }\n"
         )
-        updates = (
-            'pub const TAG_PREFIX: &str = "tool-v";\n'
-            'pub const RELEASE_PAGE_PREFIX: &str = "https://github.com/owner/repo/releases/tag/";\n'
+        product = (
+            '/// pub const QUEST_TRACKER: Product = Product { tag_prefix: "doc-v" };\n'
+            "pub const QUEST_TRACKER: Product = Product {\n"
+            '    name: "Tool",\n    tag_prefix: "tool-v",\n    exe_name: "tool.exe",\n};\n'
+            'pub const OTHER: Product = Product { name: "Other", tag_prefix: "other-v", exe_name: "o.exe" };\n'
         )
-        self.assertEqual(endpoint_offences("net.rs", net, "updates.rs", updates, repo_url, prefix), [])
+        self.assertEqual(product_tag_prefixes(non_test_rust(product)[1], "QUEST_TRACKER"), ["tool-v"])
+        self.assertEqual(endpoint_offences("net.rs", net, "version.rs", product, repo_url, prefix), [])
         wrong = {
             "net.rs: HOST 'evil.example', not 'api.github.com'":
-                (net.replace('"api.github.com"', '"evil.example"'), updates),
-            "net.rs: PORT 80, not 443": (net.replace("443", "80"), updates),
-            "net.rs: SCHEME 'http', not 'https'": (net.replace('"https"', '"http"'), updates),
+                (net.replace('"api.github.com"', '"evil.example"'), product),
+            "net.rs: PORT 80, not 443": (net.replace("443", "80"), product),
+            "net.rs: SCHEME 'http', not 'https'": (net.replace('"https"', '"http"'), product),
             "net.rs: PATH '/repos/other/repo/releases?per_page=30' is not '/repos/owner/repo/releases' "
             "(of https://github.com/owner/repo)":
-                (net.replace("/repos/owner/", "/repos/other/"), updates),
+                (net.replace("/repos/owner/", "/repos/other/"), product),
             "net.rs: const HOST defined 0 times outside tests":
-                (net.replace('pub const HOST: &str = "api.github.com";\n', ""), updates),
+                (net.replace('pub const HOST: &str = "api.github.com";\n', ""), product),
             "net.rs: const PORT defined 2 times outside tests":
-                (net + "const PORT: u16 = 443;\n", updates),
-            "updates.rs: TAG_PREFIX 'other-v', not release.TAG_PREFIX 'tool-v'":
-                (net, updates.replace('"tool-v"', '"other-v"')),
-            "updates.rs: RELEASE_PAGE_PREFIX 'https://github.com/owner/fork/releases/tag/', "
-            "not release.REPO_URL + '/releases/tag/'":
-                (net, updates.replace("owner/repo/", "owner/fork/")),
+                (net + "const PORT: u16 = 443;\n", product),
+            "net.rs: DOWNLOAD_HOST 'objects.example', not 'github.com'":
+                (net.replace('"github.com"', '"objects.example"'), product),
+            "net.rs: DOWNLOAD_PATH_PREFIX '/owner/fork/releases/download/' is not "
+            "'/owner/repo/releases/download/' (of https://github.com/owner/repo)":
+                (net.replace("/owner/repo/releases/download/", "/owner/fork/releases/download/"), product),
+            "net.rs: QUEST_TRACKER_TAG_PREFIX 'other-v', not release.TAG_PREFIX 'tool-v'":
+                (net.replace('TAG_PREFIX: &str = "tool-v"', 'TAG_PREFIX: &str = "other-v"'), product),
+            "version.rs: QUEST_TRACKER.tag_prefix 'other-v', not release.TAG_PREFIX 'tool-v'":
+                (net, product.replace('    tag_prefix: "tool-v"', '    tag_prefix: "other-v"')),
+            "version.rs: const QUEST_TRACKER defined 0 times outside tests":
+                (net, product.replace("pub const QUEST_TRACKER: Product", "pub const QT: Product")),
         }
-        for expected, (net_text, updates_text) in wrong.items():
+        for expected, (net_text, product_text) in wrong.items():
             self.assertEqual(
-                endpoint_offences("net.rs", net_text, "updates.rs", updates_text, repo_url, prefix),
+                endpoint_offences("net.rs", net_text, "version.rs", product_text, repo_url, prefix),
                 [expected],
             )
 
         offences = endpoint_offences(
             rel(NET_LIB_RS), NET_LIB_RS.read_text(encoding="utf-8"),
-            rel(UPDATES_RS), UPDATES_RS.read_text(encoding="utf-8"),
+            rel(VERSION_RS), VERSION_RS.read_text(encoding="utf-8"),
             release.REPO_URL, release.TAG_PREFIX,
         )
         self.assertEqual(offences, [], "the endpoint disagrees with the release contract:\n" + "\n".join(offences))
+
+    def test_no_update_source_names_a_release_page(self):
+        # Negative control: a release page in code or a string is seen; one
+        # in a comment or a test item is not.
+        synthetic = (
+            "// https://github.com/o/r/releases/tag/x in a comment\n"
+            'const PAGE: &str = "https://github.com/o/r/releases/tag/";\n'
+            "#[cfg(test)]\nmod tests { const T: &str = \"/releases/tag/\"; }\n"
+            'fn page(tag: &str) -> String { format!("/releases/tag/{tag}") }\n'
+        )
+        self.assertEqual(release_page_offences("s.rs", synthetic), ["s.rs:2", "s.rs:5"])
+        self.assertEqual(release_page_offences("c.rs", 'const D: &str = "/releases/download/";\n'), [])
+
+        sources = [
+            path for path in walk(SHARED / "crates", suffixes={".rs"}) if not is_test_source(path)
+        ] + [UPDATES_RS]
+        self.assertIn(UPDATER_RS, sources)
+        self.assertIn(NET_LIB_RS, sources)
+        offences = []
+        for path in sources:
+            offences += release_page_offences(rel(path), path.read_text(encoding="utf-8"))
+        self.assertEqual(offences, [], "update sources name a release page:\n" + "\n".join(offences))
 
 
 if __name__ == "__main__":
