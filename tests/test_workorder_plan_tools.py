@@ -718,6 +718,21 @@ class RunCriteriaTests(TempDirMixin, unittest.TestCase):
         self.assertIsNone(run_criteria.gates_set(RUNNER_PLAN.replace("gates: `build: complete`\n", "")))
         self.assertEqual(run_criteria.gates_set(RUNNER_PLAN), {"build: complete"})
 
+    def test_backticked_and_bare_space_separated_gates_lines_set_every_token(self):
+        # waystone-roller's final gate, 2026-10-28: `gates: live1: complete live2: complete`
+        # was read as one token, so the criteria gated on either were skipped.
+        both = {"live1: complete", "live2: complete"}
+        for line in ("gates: `live1: complete`; `live2: complete`",
+                     "gates: live1: complete live2: complete",
+                     "gates: live1: complete, live2: complete"):
+            text = RUNNER_PLAN.replace("gates: `build: complete`", line)
+            self.assertEqual(run_criteria.gates_set(text), both, line)
+        for template in ("gates: live1: complete | live2: complete",
+                         "gates: live1: complete or live2: complete",
+                         "gates: live1: <value> live2: complete"):
+            text = RUNNER_PLAN.replace("gates: `build: complete`", template)
+            self.assertEqual(run_criteria.gates_set(text), set(), template)
+
     def test_start_resumes_and_list_runs_nothing(self):
         rc, out = self.runner("--list")
         self.assertEqual(rc, 0)

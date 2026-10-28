@@ -734,10 +734,18 @@ test('failures gated only on a template gates: line route as PASS-PENDING-HUMAN,
 })
 
 test('control: the same failure with its gate literally set on gates: is a defect', async () => {
-  for (const line of ['gates: `build: complete`; `live1: complete`', 'gates: build: complete, live1: complete']) {
+  for (const line of ['gates: `build: complete`; `live1: complete`', 'gates: build: complete, live1: complete',
+    'gates: build: complete live1: complete']) {
     const { result } = await run({ ...BASE, state: gatedState(line) }, standard({ verifier: failing(LIVE) }))
     assert.equal(result.outcome, 'CAP', line)
     assert.equal(result.rounds[0].failed.length, 1, line)
+  }
+})
+
+test('a bare gates: line with an "or" or a <placeholder> is a template too', async () => {
+  for (const line of ['gates: build: complete or live1: complete', 'gates: build: complete live1: <value>']) {
+    const { result } = await run({ ...BASE, state: gatedState(line) }, standard({ verifier: failing(LIVE) }))
+    assert.equal(result.outcome, 'PASS-PENDING-HUMAN', line)
   }
 })
 

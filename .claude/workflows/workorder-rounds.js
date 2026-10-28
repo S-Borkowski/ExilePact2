@@ -664,7 +664,9 @@ let knownState = stateEntries(A.state)
 const normGate = t => String(t).replace(/`/g, '').replace(/\s+/g, ' ').trim().toLowerCase()
 const gateTokens = text => {
   const ticked = [...String(text || '').matchAll(/`([^`]+)`/g)].map(m => m[1])
-  const toks = ticked.length ? ticked : String(text || '').split(/[;,]|\band\b/i)
+  // Bare tokens split on `;`, `,`, "and", or the space before the next `<name>:`
+  // (`live1: complete live2: complete` is two gates), as run_criteria.py does.
+  const toks = ticked.length ? ticked : String(text || '').split(/[;,]|\band\b|\s+(?=[\w.-]+:)/i)
   return toks.map(t => normGate(t.replace(/\([^)]*\)/g, ''))).filter(t => t && t !== 'none')
 }
 const gatesSet = entries => {
