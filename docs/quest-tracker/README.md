@@ -2589,6 +2589,9 @@ Revisit this feature when:
   Heldra and Isolde, Azmadi, Stormgore and Oswin). Every campaign remark
   on the eight class pages was looked at, act by act; the ones not tied to
   a step, and the classes with no usable line, are in Known limitations.
+- Two new find-it tips in Secrets in the Dark: "Find the Red Vale" says to
+  follow the river up, and "Return to the Grelwood" says to follow the
+  mushrooms to the Grim Tangle, where more of them means you are closer.
 - The route is not yet seen live: no remark at a quest moment has ticked
   a step in a live session yet (Known limitations, "Read the screen:
   remarks at quest moments").

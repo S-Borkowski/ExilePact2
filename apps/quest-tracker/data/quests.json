@@ -298,6 +298,7 @@
           "id": "step-4",
           "title": "Find the Red Vale",
           "text": "To release the Hooded One, you must find the 3 runes in the Red Vale. Look for the Red Vale in the Grelwood.",
+          "tip": "Follow up river.",
           "signals": [{"kind": "area", "code": "G1_5"}]
         },
         {
@@ -367,6 +368,7 @@
           "id": "step-22",
           "title": "Return to the Grelwood",
           "text": "You have taken the forged Rune Spikes from Renly. Return to the Grelwood with them.",
+          "tip": "Follow the mushrooms; more means closer.",
           "signals": []
         },
         {
