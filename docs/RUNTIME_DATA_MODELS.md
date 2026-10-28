@@ -539,16 +539,22 @@ or (O) the owner.
   Rarity`, `Monster Effectiveness`, `Waystone Drop Chance`, each ending in
   `(augmented)` when a mod raised it), `Item Level`, a header
   `{ Prefix Modifier "<affix name>" (Tier: N) }` (or `Suffix`) above each
-  mod's lines, the Map Device description and, last, `Corrupted`.
+  mod's lines, each number followed by its roll range, a mod line that
+  cannot roll ending in `— Unscalable Value`, the Map Device description
+  and, last, `Corrupted`.
 - **A waystone mod's reward lines** ("15% more Waystones found in Area")
-  do not show in the item text (measured 2026-10-28): none of the copied
-  advanced texts of the magic and rare waystones held a reward line,
-  although poe2db lists reward lines on every regular mod they carried; and
-  `"waystones found"` lit nothing.
-- **A global hotkey registered by another program reaches that program
-  while the game is in front** (measured 2026-10-28, waystone roller Live
-  2: `Ctrl+Alt+W`, research note § "The built app in the game (Live 2)").
-  Whether the game also sees the keystroke was not measured.
+  were not observed in the item text of the measured waystones (measured
+  2026-10-28): none of the copied advanced texts of the magic and rare
+  waystones held a reward line, although poe2db lists reward lines on every
+  regular mod they carried, and the search `"waystones found"` matched none
+  of them. Other waystones, and other text forms, were not checked.
+- **`Ctrl+Alt+W`, registered by another program through `RegisterHotKey`,
+  reaches that program while the game is in front** (measured 2026-10-28,
+  waystone roller Live 2, which registers it with
+  `tauri_plugin_global_shortcut`; research note § "The built app in the
+  game (Live 2)"). Not measured: other key combinations, other ways of
+  catching keys (a low-level keyboard hook), and whether the game also sees
+  the keystroke.
 - Not established: whether lookahead (`(?=`, `(?!`) works
   (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
   form plain `Ctrl+C` copies; any way to count modifiers.

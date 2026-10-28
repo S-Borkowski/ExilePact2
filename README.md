@@ -65,10 +65,14 @@ never touches the game: no input, no memory read, no network.
 
 - Guide (how the search is built, the mod data, privacy, known
   limitations): [`docs/waystone-roller/README.md`](docs/waystone-roller/README.md)
+- Download: the latest Waystone Roller release on the
+  [releases page](https://github.com/S-Borkowski/ExilePact2/releases). Each
+  release has `waystone-roller.exe` and `SHA256SUMS.txt`; there is no
+  installer.
 - Requirements: Windows 10 or 11, 64-bit, with the WebView2 runtime; an
   English game client.
 
-Version 0.1.0 is built from source, with the same toolchain as the quest
+To build it from source instead, with the same toolchain as the quest
 tracker:
 
 ```sh
@@ -84,8 +88,8 @@ npm --prefix apps/waystone-roller run release
 | `apps/quest-tracker/` | The overlay: Rust crates for the log tailer, parser, quest engine, view-model and store, and the Svelte UI. |
 | `tools/quest_tracker/` | Developer-only tools: the release cutter, the poe2db quest data harvester and the outside instruments used for research. |
 | `apps/waystone-roller/` | The waystone roller: the search-string engine and app logic as Rust crates, the Tauri glue, the Svelte UI and the mod data. |
-| `tools/waystone_roller/` | Developer-only: the poe2db Waystones data tool. |
-| `.github/workflows/` | The release build, and the opt-in AI review. |
+| `tools/waystone_roller/` | Developer-only: the release cutter and the poe2db Waystones data tool. |
+| `.github/workflows/` | The two release builds (the quest tracker's and the waystone roller's), and the opt-in AI review. |
 | `docs/quest-tracker/` | The quest tracker's guide, research note and design. |
 | `docs/waystone-roller/` | The waystone roller's guide, research note and UI design. |
 | `docs/RUNTIME_DATA_MODELS.md` | Facts about the game that every mod can use, each labelled measured or read. |
@@ -108,18 +112,23 @@ No test opens a window or reads a real `Client.txt`.
 
 ## Releases
 
-A release is cut from the tip of `main` by tagging it:
+Each app is released on its own, from the tip of `main`, by tagging it:
 
 ```sh
-py -3 -m tools.quest_tracker.release cut --push
+py -3 -m tools.quest_tracker.release cut --push      # the quest tracker
+py -3 -m tools.waystone_roller.release cut --push    # the waystone roller
 ```
 
 The tag `quest-tracker-v<version>` starts
-[`.github/workflows/quest-tracker-release.yml`](.github/workflows/quest-tracker-release.yml).
-It builds both executables on a Windows runner and attaches them to a
-**draft** release, with the version's changelog from the guide as its body.
-The owner publishes the draft and sets it as the latest release by hand. The
-guide's "Working on the app" › "Cutting a release" has the whole procedure.
+[`.github/workflows/quest-tracker-release.yml`](.github/workflows/quest-tracker-release.yml),
+which builds both of the quest tracker's executables;
+`waystone-roller-v<version>` starts
+[`.github/workflows/waystone-roller-release.yml`](.github/workflows/waystone-roller-release.yml),
+which builds `waystone-roller.exe`. Each builds on a Windows runner and
+attaches its files and `SHA256SUMS.txt` to a **draft** release, with the
+version's changelog from the app's guide as its body. The owner publishes
+the draft and sets it as the latest release by hand. Each guide's "Working
+on the app" › "Cutting a release" has the whole procedure.
 
 ## Working on this repository
 

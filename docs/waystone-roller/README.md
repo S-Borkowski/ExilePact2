@@ -31,8 +31,11 @@ touches the game: it only puts the string on the clipboard, and you paste it.
   takes at most 250 characters. When the rules need more, the app says so,
   shows each part's length, and copies nothing: it never shortens the
   string or drops a rule.
-- **`Ctrl+Alt+W` copies it**, from anywhere, the game included: the window
-  can be minimised. The Copy button does the same. On success nothing is
+- **`Ctrl+Alt+W` copies it**, from anywhere, the game included (measured
+  with the game in front, Known limitations). It is a global shortcut, so
+  it does not depend on the window being in front; whether the window was
+  minimised in that session was not recorded. The Copy button does the
+  same. On success nothing is
   heard; a refusal (nothing selected, over 250 characters, a mod that
   cannot be told apart) beeps and leaves the clipboard as it was. You paste
   the string into the stash or a vendor's search box with `Ctrl+V`.
@@ -70,13 +73,26 @@ Takes no arguments.
   a temporary file renamed over the old one, and when the app quits. Saved
   mods the data no longer has are dropped at launch, and the status line
   names them.
-- `diag.log`: one line per event, with the UTC time: `start: ...`,
-  `shortcut <hk> registered`, `shortcut <hk> could not be registered:
-  <error>`, `copy from the shortcut` or `copy from the Copy button`, then
-  `copied N characters: <regex>` or `copy refused: <reason>` and, after a
-  refusal, `refusal beep: <sound> ok` or `refusal beep: <sound> failed
-  (<error>)` for each sound tried; `stop`. Rotated at 1 MB into
-  `diag.log.1`.
+- `diag.log`: one line per event, with the UTC time. Every line the app
+  writes:
+  - `settings: <n>` at launch, for each note about the store or the saved
+    settings that the status line also shows: the folder refused, the
+    settings or the saved selection unreadable, saved mods dropped.
+  - `start: ...` (the version, the mod data and the store folder).
+  - `shortcut <hk> registered` or `shortcut <hk> could not be registered:
+    <error>`, at launch and when the shortcut is changed.
+  - `selection refused: <reason>` when a change to the selection is
+    refused (for example a mod in both Want and Avoid).
+  - `copy from the shortcut` or `copy from the Copy button`, then
+    `copied N characters: <regex>` or `copy refused: <reason>`.
+  - After a refusal, `refusal beep: <sound> ok` or `refusal beep: <sound>
+    failed (<error>)` for each sound tried, or `refusal beep: none on this
+    platform` where the app has no beep (outside Windows).
+  - `error: <e>`: the embedded mod data could not be read (a broken build;
+    the app then stops), or `error: settings could not be saved: <e>`.
+  - `stop` when the app quits.
+
+  Rotated at 1 MB into `diag.log.1`.
 
 ### `py -3 -m tools.waystone_roller.poe2db` (developer-only)
 
@@ -195,7 +211,8 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 | `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. |
 | `apps/waystone-roller/data/` | The mod data file. |
 | `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, and the view fixtures shared by the page's tests and `wr-app`'s. |
-| `tools/waystone_roller/` | The poe2db data tool. |
+| `tools/waystone_roller/` | The poe2db data tool (`poe2db.py`) and the release cutter (`release.py`). |
+| `.github/workflows/waystone-roller-release.yml` | The release build: from a pushed tag to a draft release. |
 
 Tests (none opens a window or reaches the network):
 
@@ -205,6 +222,7 @@ cargo test --manifest-path apps/waystone-roller/Cargo.toml --workspace --locked 
 cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-regex --locked       # the engine alone, no build of the page needed
 npm --prefix apps/waystone-roller test                                                # the page, in jsdom
 py -3 -m unittest tests.test_waystone_roller_poe2db tests.test_waystone_roller_guard  # the data tool and the guard
+py -3 -m unittest tests.test_waystone_roller_release                                  # the release cutter and workflow
 ```
 
 - `wr-regex`'s `_baseline` tests pin the model of the game's search on
@@ -230,6 +248,39 @@ delete what it writes beyond the files `src-tauri/tauri.conf.json`'s
 `cargo clean --manifest-path apps/waystone-roller/Cargo.toml --release -p waystone-roller`
 before `npm --prefix apps/waystone-roller run release`: an incremental
 build kept the old `icon.ico` in the exe (seen 2026-10-28).
+
+**Cutting a release.** A release is the annotated tag
+`waystone-roller-v<version>` on the tip of `main`. The version is the one in
+`apps/waystone-roller/`'s `package.json`, `package-lock.json`,
+`src-tauri/tauri.conf.json`, the workspace's `Cargo.toml` and `Cargo.lock`
+(the members `wr-regex`, `wr-app` and `waystone-roller`). These must agree,
+and "Release notes" below needs a `### <version>` section for it:
+
+1. Bump the version in those files (build once so `Cargo.lock` follows),
+   and write the version's release notes. Land both on `main` through a
+   pull request.
+2. On an up-to-date `main`:
+
+   ```sh
+   py -3 -m tools.waystone_roller.release check            # every version agrees; the notes exist
+   py -3 -m tools.waystone_roller.release notes 0.1.0      # the release body, as it will read
+   py -3 -m tools.waystone_roller.release cut --push       # tag HEAD and push the tag
+   ```
+
+   `cut` refuses uncommitted changes to tracked files, a HEAD that is not
+   the tip of `origin/main`, and a tag that already exists here or on the
+   remote. Without `--push` it only creates the tag and prints the push
+   command.
+3. The pushed tag starts `.github/workflows/waystone-roller-release.yml`. It
+   checks the tag against the files, builds with Rust 1.98.1 and Node
+   24.19.0 on a Windows runner, and creates a **draft** release. The draft
+   holds `waystone-roller.exe`, `SHA256SUMS.txt` and the body from step 2.
+4. Open the draft on GitHub, check it, publish it, and tick "Set as the
+   latest release". The workflow never publishes.
+
+To rebuild a tag, for a failed run or a lost asset, run the workflow by
+hand (Actions › Waystone Roller Release › Run workflow) with the tag. If the
+release already exists, only its assets are replaced.
 
 ## Known limitations
 
@@ -295,7 +346,8 @@ build kept the old `icon.ico` in the exe (seen 2026-10-28).
   be told apart) plays a short tone that does not depend on your Windows
   sound scheme, and leaves the clipboard as it was.
 - Mod data from poe2db.tw, fetched 2026-10-28.
-- Built from source only; no installer and no release download.
+- Download `waystone-roller.exe` from the repository's releases page and
+  run it; there is no installer.
 - Measured in the built app on 2026-10-28: with Path of Exile 2 in front,
   `Ctrl+Alt+W` copied the search and pasting it lit the waystones the rules
   named.

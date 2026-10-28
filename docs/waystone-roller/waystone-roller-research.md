@@ -43,7 +43,7 @@ and said which lit. "M" below means measured in that session.
 | Corrupted items carry `Corrupted` (terms `corr`, `!corr`) | M; P | yes |
 | The name line carries `(Tier N)` (`"r 2\)"` lit exactly the tier-2 waystones) | M; poedb base type `Waystone (Tier 15)`; P | yes |
 | Summary properties (item rarity, waystone drop chance, pack size, monster rarity, monster effectiveness, revives) show as lines of the item text | M (item texts); not probed as search terms | no (out of scope) |
-| Per-mod reward lines ("15% more Waystones found in Area") do not show on the item: `"waystones found"` lit none, and no copied text had one | M | no: tokens avoid them anyway |
+| Per-mod reward lines ("15% more Waystones found in Area") were not observed on the measured waystones: no copied advanced text of the magic and rare ones had one, and `"waystones found"` lit none | M (these waystones only) | no: tokens avoid them anyway |
 | Lookahead `(?=`, `(?!` | `"way(?=stone)"` lit all eight: accepted or ignored, not established which; P never emits one | no |
 | Counting mods | not established; no counting syntax in P | no |
 
