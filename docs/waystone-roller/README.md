@@ -44,6 +44,27 @@ touches the game: it only puts the string on the clipboard, and you paste it.
   hold a key combination; when another program holds `Ctrl+Alt+W`, the app
   says so and keeps running, and the old shortcut stays when a new one is
   refused.
+- **A Settings window**, opened from the *Settings* button at the right of
+  the main window's header. It holds one setting, *Automatically check for
+  updates*, off by default and saved, a *Check now* button with what the
+  last check said, the running version and the line "Created by ST4H".
+  While a check has found a newer version, the *Settings* button says so
+  in words (`Update <version>`, beside a green dot).
+- **An update check, only when you ask.** *Check now* asks GitHub once
+  whether a newer Waystone Roller release is published; with *Automatically
+  check for updates* on, the app also asks at launch and then once a day.
+  The setting only checks: nothing is downloaded until you press the
+  install button.
+- **The update installs in the app.** When a check finds a newer release,
+  the Settings window's *Install <version> and restart* button downloads
+  its `waystone-roller.exe`, checks its signature against the key built
+  into the app, puts it in place of the running exe and restarts into it.
+  The window shows the download's progress, with *Cancel*. When a step
+  fails, the window says why in one line, with *Try again*, and the running
+  app is untouched; a newer release that is not signed says it cannot be
+  installed and offers no button. Nothing opens a release page or a
+  browser. How it works and why the signature is the check:
+  [`docs/app-updates.md`](../app-updates.md).
 
 ## Platforms and prerequisites
 
@@ -69,8 +90,10 @@ Takes no arguments.
 |---|---|
 | `WAYSTONE_ROLLER_DIR` | The folder for `settings.json` and `diag.log`. Unset or empty: `%LOCALAPPDATA%\ExilePact2\waystone-roller\`. A folder inside a git checkout is refused: the app then runs without saving, and the status line says why. |
 
-- `settings.json`: `schema` (1), `hotkey` (default `Ctrl+Alt+W`) and
-  `selection` (the rules above). Written a moment after each change, through
+- `settings.json`: `schema` (1), `hotkey` (default `Ctrl+Alt+W`),
+  `selection` (the rules above) and `check_updates` (*Automatically check
+  for updates*; a file written before it existed, or any value but `true`,
+  loads it off). Written a moment after each change, through
   a temporary file renamed over the old one, and when the app quits. Saved
   mods the data no longer has are dropped at launch, and the status line
   names them.
@@ -91,9 +114,75 @@ Takes no arguments.
     platform` where the app has no beep (outside Windows).
   - `error: <e>`: the embedded mod data could not be read (a broken build;
     the app then stops), or `error: settings could not be saved: <e>`.
+  - `settings refused: <reason>` when the Settings window sends a change
+    other than `check_updates` set to true or false; `error: settings
+    window: <reason>` when that window could not be opened.
+  - `updates: ...` lines, the same as the quest tracker's:
+    `updates: automatic checks turned on` and `updates: automatic checks
+    turned off` when the setting changes; `updates: check started
+    (manual)` or `updates: check started (automatic)`, then one of
+    `updates: up to date (running <cur>, latest <new>)`, `updates: <new>
+    available (running <cur>)`, `updates: no release published` and
+    `updates: check failed: <reason>`. For an install: `updates: install of
+    <new> started`, `updates: signature of <new> checked`, `updates:
+    replaced the running exe with <new>, restarting`, then `stop` and
+    `updates: started the new version`; or `updates: install failed:
+    <reason>`, `updates: install cancelled`, `updates: install refused:
+    <reason>` (a check or an install running, no newer version known, the
+    release not signed, the app closing or restarting) and `updates: the
+    partial download could not be removed (<error>)`. At every start, one
+    `updates: cleanup: nothing to remove`, or `updates: cleanup: removed
+    waystone-roller.exe.old` (and `could not remove <file> (<error>)` for a
+    file still held after about 30 s). On those failures: `updates: restart
+    failed: the new version did not start (<error>)`, `updates: restart
+    failed: the exe's path is not known`, `updates: the exe's path is not
+    known (<error>); updates cannot be installed`, `updates: cleanup did
+    not start (<error>)`, `error: the update check thread did not start:
+    <error>` and `error: the update ticker did not start: <error>`. No line
+    holds a URL or anything of GitHub's answer.
   - `stop` when the app quits.
 
   Rotated at 1 MB into `diag.log.1`.
+
+**The Settings window**, titled "Waystone Roller Settings", opens from the
+main window's *Settings* button (shown and focused when it is already
+open). It is decorated, dark and not resizable, 420 by 364 at 1x, centred;
+closing the main window quits the app with it. It holds one section,
+*Updates*, and "Created by ST4H" at the bottom. *Updates* has:
+
+- **Automatically check for updates** (off), with the helper text "Asks
+  GitHub once a day whether a newer version is out. Downloads nothing: an
+  update is installed only when you press its button. Off: Waystone Roller
+  never connects unless you ask it to." With it on, a check runs at
+  launch, again when it is turned on, and then, from a tick every minute,
+  a day after the last check started and an hour after an automatic check
+  failed. When checks happen is not stored.
+- What the last check said: `Not checked yet.`, `Checking for updates…`,
+  `You have the latest version (<running>).`, `Waystone Roller <new> is
+  available. You have <running>.`, `No Waystone Roller release is
+  published yet.` or `Could not check for updates: <reason>.`, with the
+  quest tracker's reasons (its guide's Command reference).
+- The install's line and its one button: *Install <new> and restart* while
+  a newer, signed version is known; `Downloading Waystone Roller <new>…`
+  with a progress bar, the amount received and *Cancel*; `Checking the
+  signature of Waystone Roller <new>…`; `Waystone Roller <new> is
+  installed. Restarting…`; `Could not install Waystone Roller <new>:
+  <reason>.` with *Try again*; or `<new> is available but cannot be
+  installed: the release is not signed.` with no button. The reasons are
+  the quest tracker's (its guide's Command reference).
+- **Check now**, disabled while a check or an install runs; under it, the
+  running version.
+
+The window's commands are `get_app_settings`, `update_settings` (exactly
+`{"check_updates": <bool>}`), `check_for_updates` (starts a check and
+answers at once), `install_update` (starts the install and answers at once;
+the only way one starts) and `cancel_update`; the main window's button
+calls `open_settings`. The window is sent `wr:app-settings` with the view
+(the running version, `check_updates`, the check's state and text and the
+newer version, and the install's state, text and progress), and the main
+window's `wr:view` carries `update_available`. The newest release is the
+highest published, non-prerelease release tagged
+`waystone-roller-v<major>.<minor>.<patch>`.
 
 ### `py -3 -m tools.waystone_roller.poe2db` (developer-only)
 
@@ -190,28 +279,60 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 
 ## Privacy
 
-- **The app touches nothing but its window and the clipboard.** It reads no
-  game memory, hooks nothing, sends no input or window message to the game,
-  and reads none of the game's files. Its only effects outside its window are
-  the text it puts on the clipboard, when you press the shortcut or the Copy
-  button, and a system beep when it refuses.
-- **No network.** The app makes no request. (WebView2, Microsoft's runtime
-  that draws the window, may connect on its own, as for the quest tracker.)
-  The data tool asks poe2db.tw for one page, only when a developer runs it.
+- **The app touches nothing of the game.** It reads no game memory, hooks
+  nothing, sends no input or window message to the game, and reads none of
+  the game's files. Its only effects outside its windows are the text it
+  puts on the clipboard, when you press the shortcut or the Copy button, a
+  system beep when it refuses, the update check's requests to GitHub and,
+  when you press the install button, replacing its own exe.
+- **Network: only the update check and the install, only when you ask.**
+  With *Automatically check for updates* off (the default) and no *Check
+  now* pressed, the app sends and receives nothing. A check is one `GET
+  https://api.github.com/repos/S-Borkowski/ExilePact2/releases?per_page=30`,
+  port 443 only, from Rust through Windows' own WinHTTP, with three
+  headers: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version:
+  2022-11-28` and `User-Agent: ExilePact2-waystone-roller` (no version, no
+  machine detail). The answer is read up to 2 MiB within 20 s, used only to
+  find the newest release, and never stored or logged.
+- **An install** (the button only) makes two downloads, the signature, then
+  the exe: `GET
+  https://github.com/S-Borkowski/ExilePact2/releases/download/waystone-roller-v<version>/waystone-roller.exe.minisig`
+  and the same path ending `waystone-roller.exe`, each with two headers,
+  `Accept: application/octet-stream` and the same `User-Agent`. GitHub
+  answers each with a redirect to a signed address on
+  `release-assets.githubusercontent.com`; the app follows that one redirect,
+  only over HTTPS on port 443 and only to that host or
+  `objects.githubusercontent.com`, with the same two headers, and never logs
+  or keeps the address. Each download stops at the size the release lists
+  (at most 64 MiB for the exe, 4 KiB for the signature), after 30 s without
+  a byte, or after 15 minutes in all.
+- For every request: no cookie and no credential is sent, the proxy is the
+  system's, and TLS and its certificate checks are Windows'. GitHub sees
+  your IP address and those headers; nothing else leaves. The app's code
+  outside the shared `ep-net` crate has no network code
+  (`tests.test_waystone_roller_guard`). (WebView2, Microsoft's runtime
+  that draws the windows, may connect on its own, as for the quest
+  tracker.) The data tool asks poe2db.tw for one page, only when a
+  developer runs it.
 - **What it writes**: `settings.json` and `diag.log` in its folder
-  (Command reference). The log holds the shortcut, the copied search strings
-  and refusals; nothing about your account or character.
+  (Command reference). The log holds the shortcut, the copied search strings,
+  refusals and the `updates:` lines; nothing about your account or
+  character, and nothing of GitHub's answers. An install also writes beside
+  the exe: `waystone-roller.exe.download` while it downloads (deleted when
+  the install fails or is cancelled) and `waystone-roller.exe.old`, the
+  replaced exe, which the next start removes.
 
 ## Working on the app
 
 | Path | What it holds |
 |---|---|
 | `apps/waystone-roller/crates/wr-regex/` | The engine: the data loader, token choice, the search builder, and a model of the search box used only by the tests. |
-| `apps/waystone-roller/crates/wr-app/` | The app's logic without Tauri: the store, the selection, the view, the commands, the shortcut and copy path. |
-| `apps/waystone-roller/src-tauri/` | The Tauri glue: the global shortcut, single instance, the Win32 clipboard writer and beep, the commands. |
-| `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. |
+| `apps/waystone-roller/crates/wr-app/` | The app's logic without Tauri: the store, the selection, the view, the commands, the shortcut and copy path, and the update commands and ticker (`updates.rs`, over the shared `ep-update`; tested in `tests/updates.rs` with a recording fake transport). |
+| `apps/waystone-roller/src-tauri/` | The Tauri glue: the global shortcut, single instance, the Win32 clipboard writer and beep, the commands, the Settings window (label `settings`, its capability `capabilities/settings.json`, `core:event:default` alone), the update transport over the shared `ep-net`, and the restart into an installed update. |
+| `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, `UpdatesSection.svelte`, `sections.ts`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `apps/waystone-roller/data/` | The mod data file. |
-| `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, and the view fixtures shared by the page's tests and `wr-app`'s. |
+| `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, the view fixtures shared by the page's tests and `wr-app`'s, and `app-settings/`, one Settings window view per update and install state. |
+| `apps/shared/` | The update code both apps share, its own Cargo workspace: `ep-net` (the only network code) and `ep-update` (the check, the install, the signature check, the swap): [`docs/app-updates.md`](../app-updates.md). |
 | `tools/waystone_roller/` | The poe2db data tool (`poe2db.py`) and the release cutter (`release.py`). |
 | `.github/workflows/waystone-roller-release.yml` | The release build: from a pushed tag to a draft release. |
 
@@ -224,6 +345,9 @@ cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-regex --locked 
 npm --prefix apps/waystone-roller test                                                # the page, in jsdom
 py -3 -m unittest tests.test_waystone_roller_poe2db tests.test_waystone_roller_guard  # the data tool and the guard
 py -3 -m unittest tests.test_waystone_roller_release                                  # the release cutter and workflow
+cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-app --locked --test updates  # the update commands, fake transport
+cargo test --manifest-path apps/shared/Cargo.toml --locked --workspace                 # the shared update crates, 127.0.0.1 only
+py -3 -m unittest tests.test_app_updates_guard                                        # the shared crates' guard
 ```
 
 - `wr-regex`'s `_baseline` tests pin the model of the game's search on
@@ -232,10 +356,19 @@ py -3 -m unittest tests.test_waystone_roller_release                            
 - `wr-app`'s tests drive the app through a recording fake shell and a
   temporary store; `shipped_data_every_family_token_matches_only_its_own_item`
   checks the shipped data file the same way.
+- `wr-app`'s `tests/updates.rs` drives the check and the install through a
+  fake transport and a temporary folder, and writes the Settings window's
+  fixtures in `fixtures/app-settings/` (regenerate after a deliberate change
+  with `WR_UPDATE_FIXTURES=1` before the command above, and review the
+  diff); `src/settings/settings-window.test.ts` renders each one.
 - `tests.test_waystone_roller_guard` reads the files only: no input, no
-  network and no game access in any source or manifest, the pinned CSP and
-  capability, one version everywhere, and every package already in the
-  quest tracker's locks.
+  game access and no network but the shared `ep-net`, reached only from
+  `src-tauri`, in any source or manifest; no Tauri plugin but the global
+  shortcut and single instance (no opener: nothing opens a browser); the
+  pinned CSP and both windows' capabilities; one version everywhere; and
+  every package already in the quest tracker's locks but
+  `minisign-verify`. `tests.test_app_updates_guard` pins the shared crates
+  themselves ([`docs/app-updates.md`](../app-updates.md)).
 
 **Refreshing the mod data**: run `fetch`, then `extract`, then the tests
 above. A new or renamed modifier changes the file; check its diff, and the
@@ -274,8 +407,12 @@ and "Release notes" below needs a `### <version>` section for it:
    command.
 3. The pushed tag starts `.github/workflows/waystone-roller-release.yml`. It
    checks the tag against the files, builds with Rust 1.98.1 and Node
-   24.19.0 on a Windows runner, and creates a **draft** release. The draft
-   holds `waystone-roller.exe`, `SHA256SUMS.txt` and the body from step 2.
+   24.19.0 on a Windows runner, signs the exe with the release key, and
+   creates a **draft** release. The draft holds `waystone-roller.exe`,
+   `SHA256SUMS.txt`, `waystone-roller.exe.minisig` (the signature the app
+   checks before it installs an update) and the body from step 2. Without
+   the `TAURI_SIGNING_PRIVATE_KEY` secret the sign step fails the run and
+   no release is made ([`docs/app-updates.md`](../app-updates.md)).
 4. Open the draft on GitHub, check it, publish it, and tick "Set as the
    latest release". The workflow never publishes.
 
@@ -320,6 +457,39 @@ release already exists, only its assets are replaced.
 - **No count of modifiers**, and no value thresholds: 0.1.0 has no control
   for either.
 - **English client only.**
+- **The update check reads the 30 most recent releases** of the
+  repository, both apps' together; a Waystone Roller release older than the
+  30 newest is not seen. A network that needs a proxy Windows is not set up
+  for, or that blocks `api.github.com`, `github.com` or GitHub's asset host,
+  makes a check or an install fail with a one-line reason. GitHub answers
+  at most 60 unauthenticated requests an hour from one IP address (GitHub's
+  documentation, not measured here). Windows only.
+- **The install needs a folder it can write.** It downloads into
+  `waystone-roller.exe.download` beside the exe and renames the running exe
+  to `waystone-roller.exe.old`; in a folder the app cannot write (under
+  `Program Files`, for example) the install fails at once with "the app's
+  folder cannot be written", before any download.
+- **The `.old` file stays until the next start.** Windows does not let a
+  running exe be deleted, so the replaced exe is left as
+  `waystone-roller.exe.old` and removed by the next start, which retries
+  for about 30 s while the old process ends. Until then, to roll back by
+  hand: quit the app, rename `waystone-roller.exe` away and
+  `waystone-roller.exe.old` back to `waystone-roller.exe`. After that, an
+  older version is the earlier release's `waystone-roller.exe`, downloaded
+  by hand.
+- **An unsigned release cannot be installed.** A newer release without
+  `waystone-roller.exe` and `waystone-roller.exe.minisig` shows "<version>
+  is available but cannot be installed: the release is not signed." with no
+  button; the release workflow refuses to make such a release. Releases
+  made before the in-app update (0.1.0) are older than every build that
+  has it, so they are never offered.
+- **Antivirus and SmartScreen behaviour is not established.** The exe has
+  no Authenticode signature, and how an antivirus treats an exe that
+  downloads and renames its own file was not measured.
+- **The install has not yet run from a real release.** It is proven by
+  `ep-update`'s tests (the swap on a running copy of a test binary
+  included) and by fakes and loopback servers; the first in-app install
+  from a signed, published release is still to be measured.
 
 ## Maintenance triggers
 
@@ -333,8 +503,33 @@ release already exists, only its assets are replaced.
   `wr-regex`'s model and terms.
 - **A dependency bump**: keep the versions equal to the quest tracker's
   (`LockedToQuestTrackerPins`); bump both together.
+- **GitHub changes its API or its release flow**: the release list's
+  endpoint or fields, the `/releases/download/` redirect, or its asset host
+  (`release-assets.githubusercontent.com` today); or the repository, the
+  `waystone-roller-v` tag prefix or the asset names change. Update the
+  shared `ep-net` and `ep-update` with `tests/test_app_updates_guard.py`
+  and `tools/waystone_roller/release.py` together
+  ([`docs/app-updates.md`](../app-updates.md)).
+- **The signing key changes** (rotated or lost): follow
+  [`docs/app-updates.md`](../app-updates.md) § "Rotating the key"; copies
+  built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### Unreleased
+
+- A *Settings* button in the main window opens a Settings window with
+  *Automatically check for updates* (off by default; it only checks), *Check
+  now*, the version and "Created by ST4H". The button says when a newer
+  version is out.
+- A newer version installs in the app: *Install <version> and restart*
+  downloads it, checks its signature against the key built into the app,
+  replaces the running exe and restarts. A failure says why, with *Try
+  again*, and leaves the app as it was.
+- Each release now carries `waystone-roller.exe.minisig`, the exe's
+  signature.
+- The app now makes network requests, to GitHub only, and only when you
+  check for updates or install one ("Privacy").
 
 ### 0.1.0 (first version)
 

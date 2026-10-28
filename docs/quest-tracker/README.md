@@ -69,18 +69,29 @@ What it is:
   *Settings* and, under a separator, *Quit Quest Tracker*, the way to
   close the overlay even while play mode has it hidden. Closing its window
   quits too. While a newer version is known, a fourth entry, *Update
-  available: X*, sits at the top and opens that release's page in your
-  browser.
+  available: X*, sits at the top and opens the Settings window, where the
+  install button is.
 - **A Settings window of its own**, opened from the tray, separate from
   the panel's settings frame. For now it holds one setting, *Automatically
   check for updates*, off by default, a *Check now* button with what the
-  last check said, and the line "Created by ST4H".
+  last check said, the install of a newer version, and the line "Created
+  by ST4H".
 - **An update check, only when you ask.** *Check for updates* in the tray,
   or *Check now* in the Settings window, asks GitHub once whether a newer
   Quest Tracker release is published; with *Automatically check for
-  updates* on, it also asks once at launch and then once a day. A newer
-  version is announced in the window and the tray, with a way to open its
-  release page in your browser. Nothing is downloaded or installed.
+  updates* on, it also asks once at launch and then once a day. The
+  setting only checks: a newer version is announced in the window and the
+  tray, and nothing is downloaded until you press the install button.
+- **Install a newer version in the app.** The Settings window's *Install
+  X and restart* button downloads the release's `quest-tracker.exe`,
+  checks its signature against the key built into the app, puts it in
+  place of the running exe and restarts into it, with the download's
+  progress and *Cancel* meanwhile. When a step
+  fails, the window says why in one line, with *Try again*, and the running
+  app is untouched; a newer release that is not signed says it cannot be
+  installed and offers no button. No update opens a release page or a
+  browser. How it works and why the signature is the check:
+  [`docs/app-updates.md`](../app-updates.md).
 - **The row itself changes** when a quest becomes available, is started,
   has a step done or is done, while you play: the row is highlighted in its
   new status colour for about 2.5 s, the completed step fades out and the
@@ -129,15 +140,15 @@ What it is not:
   that window in play mode and compares their colour, reading no text.
 - It does not track party members, endgame or Atlas quests, or a client in a
   language other than English.
-- It is not an installer: there is no setup, auto-update, code signing or
-  bundled WebView2 runtime. The update check only tells you a newer
-  version is out; it downloads nothing and replaces nothing.
+- It is not an installer: there is no setup, Authenticode code signing or
+  bundled WebView2 runtime. It never updates on its own: a newer version
+  is installed only when you press the Settings window's install button,
+  and then it replaces only its own `quest-tracker.exe`.
 - It makes no network request unless you ask it to check for updates (the
   tray's *Check for updates*, the Settings window's *Check now*, or
-  *Automatically check for updates* turned on), and then only the one
-  request to GitHub's API that "Privacy" › Network describes. The links it
-  opens, a quest's poe2db page and a release page, open in your default
-  browser.
+  *Automatically check for updates* turned on) or to install one, and then
+  only the requests to GitHub that "Privacy" › Network describes. The one
+  link it opens, a quest's poe2db page, opens in your default browser.
 
 ## Platforms and prerequisites
 
@@ -208,15 +219,15 @@ line to the diagnostic log and then stops the tracker as on any exit,
 saving progress first (`stop: ...`).
 
 The tray icon's menu, top to bottom: *Update available: X* (only while a
-newer version X is known: opens its release page in your default
-browser), *Check for updates* (opens or focuses the Settings window and
+newer version X is known: opens or focuses the Settings window, where the
+install button is; no tray entry installs), *Check for updates* (opens or focuses the Settings window and
 starts a check), *Settings* (opens or focuses the Settings window), a
 separator, and *Quit Quest Tracker*. Its tooltip is `Quest Tracker`, or
 `Quest Tracker (X available)` while a newer version is known. A left click
 opens the menu too.
 
 **The Settings window**, titled "Quest Tracker Settings", is an ordinary
-window, decorated, dark and not resizable (420 by 280 at 1x, centred,
+window, decorated, dark and not resizable (420 by 328 at 1x, centred,
 in the taskbar while open), separate from the panel's settings frame and
 reached only from the tray. It is made the first time it is asked for and
 destroyed when closed; asked for again while open, it is shown and
@@ -242,20 +253,63 @@ at the bottom; later settings are new sections. *Updates* has:
   be read`, `the request stopped unexpectedly` (the request's own thread
   ended without an answer), `the request failed (error <code>)` or `this
   build cannot check for updates`.
-- **Check now**, disabled while a check runs, and **Open the release
-  page** while a newer version is known; under them, the running version.
+- The install's line, under the check's, and its one button: **Install
+  <new> and restart** while a newer, signed version is known;
+  `Downloading Quest Tracker <new>…` with a progress bar, the amount
+  received (`<n> KB of <total> MB`) and **Cancel**, which goes back to the
+  install button; `Checking the signature of Quest Tracker <new>…`;
+  `Quest Tracker <new> is installed. Restarting…`; `Could not install
+  Quest Tracker <new>: <reason>.` with **Try again**, which runs the
+  install again; or `<new> is available but cannot be installed: the
+  release is not signed.` with no button (the release has no
+  `quest-tracker.exe` or no `quest-tracker.exe.minisig`). The install's
+  reasons: `the app's folder cannot be written (<error>)`, `the
+  signature: <download reason>`, `the release's signature could not be
+  read`, `the release's signature has an unsupported format`, `the update
+  is signed with another key`, `the signature is for another file`, `the
+  signature is for another version`, `the downloaded file does not match
+  its signature`, `the downloaded file could not be read back (<error>)`,
+  `the release's exe has an unexpected size (<n> bytes)`, `the download's
+  size does not match the release (<n> of <total> bytes)`, `the running
+  app could not be moved aside (<error>)`, `the new version could not be
+  put in place (<error>)` (the running exe is moved back), `the new version
+  could not be put in place, and the running app was left as .old
+  (<error>)` (not expected: both renames are in one folder; said so it is
+  never silent), `the app's update key could not be read`, `the release
+  is not signed`, `this build
+  cannot install updates` or `the install could not start (<error>)`, or a
+  download's: `GitHub answered <status>`, `the download was redirected to
+  an unexpected place`, `the download was redirected twice`, `the
+  download ended early`, `the download was larger than the release
+  lists`, `the download could not be saved (<error>)`, `this build cannot
+  download updates` and the check's network reasons above.
+- **Check now**, disabled while a check or an install runs; under the
+  buttons, the running version.
 
 A check never holds up the panel, the commands or the tracker's worker:
-its one request runs on a thread of its own, and one check runs at a
-time (a second request while one runs starts nothing). The newest release
-is the highest published, non-prerelease release tagged
+its one request runs on a thread of its own, and one check or install runs
+at a time (a second request while one runs starts nothing). The newest
+release is the highest published, non-prerelease release tagged
 `quest-tracker-v<major>.<minor>.<patch>`; drafts, prereleases and other
 tags are skipped. It is compared with the running build's version: newer
-is announced, equal or older is up to date. The release page opened is
-`https://github.com/S-Borkowski/ExilePact2/releases/tag/quest-tracker-v<version>`,
-built from the version, never taken from GitHub's answer. In play mode,
-with the Settings window in front, the overlay hides as it does for any
-other window that is not the game's.
+is announced, equal or older is up to date. In play mode, with the
+Settings window in front, the overlay hides as it does for any other
+window that is not the game's.
+
+An install starts only from the install button (the command
+`install_update`), never from the tray, the setting or a tick. It runs on
+a thread of its own: it creates `quest-tracker.exe.download` beside the
+exe, downloads the release's `quest-tracker.exe.minisig` and then its
+`quest-tracker.exe` into that file (exactly the size the release lists),
+checks the signature against the key built into the app, renames the
+running exe to `quest-tracker.exe.old` and the download to
+`quest-tracker.exe`, and then quits as the tray's *Quit* does (writing
+`quit: restarting into the update` and saving progress) and starts the new
+exe with the same arguments. A failure or a *Cancel* deletes the download
+and leaves the running exe in place. At every start, a background thread
+removes `quest-tracker.exe.old` and a stale `quest-tracker.exe.download`.
+The whole flow, and the release key it checks against:
+[`docs/app-updates.md`](../app-updates.md).
 
 Which log it follows: `--log`, else the Settings log path, else the first of
 the standalone and Steam paths above whose file exists. With none, the panel
@@ -473,11 +527,25 @@ named, or `none`. The lines to look for when a quest did not advance:
   (automatic)`; then one of `updates: up to date (running <cur>, latest
   <new>)`, `updates: <new> available (running <cur>)`, `updates: no
   release published` and `updates: check failed: <reason>` (the reasons of
-  the Settings window above); and `updates: opened the release page of
-  <new>`. `command open_release_page refused: no newer version is known`
-  when there is no page to open, and `error: opening the release page of
-  <new>: <reason>` or `error: the update check thread did not start:
-  <reason>` on those failures. Nothing of GitHub's answer is ever logged.
+  the Settings window above); `error: the update check thread did not
+  start: <reason>` on that failure. For an install: `updates: install of
+  <new> started`, `updates: signature of <new> checked`, `updates:
+  replaced the running exe with <new>, restarting`, then `quit: restarting
+  into the update`, the `stop: ...` line and `updates: restarted into the
+  new exe`; or `updates: install failed: <reason>` (the install's reasons
+  above), `updates: install cancelled`, `updates: install refused:
+  <reason>` (`a check is running`, `an install is running`, `the app is
+  restarting`, `the app is closing`, `no newer version is known` or `the
+  release is not signed`) and `updates: the partial download could not be
+  removed (<error>)`. At every start one `updates: cleanup: nothing to
+  remove`, or `updates: cleanup: removed quest-tracker.exe.old` (each file
+  removed, and `could not remove <file> (<error>)` for one still held
+  after about 30 s). On the restart's and the cleanup's failures: `error:
+  freeing the shortcut before the restart: <reason>`, `error: restart:
+  the new exe did not start (<error>)`, `error: restart: the app's own path
+  is unknown`, `error: the app's own path is unknown (<error>); updates
+  cannot be installed` and `error: the update cleanup thread did not start:
+  <reason>`. Nothing of GitHub's answer, and no URL, is ever logged.
 - `quit: from the tray` or `quit: the window was closed`: the first quit
   request (a second writes nothing), followed by the `stop: ...` line of
   the shutdown. With the screen reader running, that line names it too
@@ -659,7 +727,8 @@ how a table tuned on JPEG frames is checked against raw copies.
 
 ### `py -3 -m tools.quest_tracker.poe2db` (developer-only)
 
-The only network code in this feature, and it only asks poe2db.tw. Standard
+The only network code in this feature besides the app's update check and
+install ("Privacy" › Network), and it only asks poe2db.tw. Standard
 library only.
 
 | Command | Options | What it does |
@@ -1491,12 +1560,13 @@ What is stored, and where:
 
 Network:
 
-- The app makes one kind of network request, the update check, and only
-  when you order it: the tray's *Check for updates*, the Settings window's
-  *Check now*, or *Automatically check for updates* turned on (off by
-  default; then a check at launch, once a day, and an hour after a failed
-  automatic check). A default install, with the setting off and no check
-  clicked, sends and receives nothing.
+- The app makes two kinds of network request, the update check and the
+  install, and only when you order them. A check: the tray's *Check for
+  updates*, the Settings window's *Check now*, or *Automatically check for
+  updates* turned on (off by default; then a check at launch, once a day,
+  and an hour after a failed automatic check). An install: the Settings
+  window's install button, and nothing else. A default install, with the
+  setting off and no check clicked, sends and receives nothing.
 - Measured in the built app on 2026-10-27: version 0.1.0 ran with a store
   folder of its own while a sampler listed, every 200 ms, the TCP
   connections of `quest-tracker.exe` and of every process it started.
@@ -1522,9 +1592,29 @@ Network:
   redirect is followed, and the proxy is the system's. GitHub sees your
   IP address and those headers; nothing else leaves. The answer is read
   up to 2 MiB within 20 s, used only to find the newest release, and
-  never stored or logged. Nothing is downloaded or installed: a newer
-  version is only announced, and its release page opens in your default
-  browser when you choose it.
+  never stored or logged. A check downloads nothing.
+- An install, the install button only, makes two downloads, the
+  signature, then the exe: `GET
+  https://github.com/S-Borkowski/ExilePact2/releases/download/quest-tracker-v<version>/quest-tracker.exe.minisig`
+  and the same path ending `quest-tracker.exe`, port 443 only, through the
+  same WinHTTP code, each with two headers, `Accept:
+  application/octet-stream` and `User-Agent: ExilePact2-quest-tracker`.
+  GitHub answers each with a redirect to a signed address on its asset
+  host, `release-assets.githubusercontent.com`; the app follows exactly
+  that one redirect, only over HTTPS on port 443 and only to that host or
+  `objects.githubusercontent.com` (GitHub's earlier asset host), with the
+  same two headers, and never logs, stores or shows the address. Cookies,
+  credentials and the proxy are as for a check. Each download stops at the
+  size the release lists (at most 64 MiB for the exe, 4 KiB for the
+  signature), after 30 s without a byte, or after 15 minutes in all.
+  GitHub sees your IP address, those headers and which release you
+  download; nothing else leaves. The download was not part of the
+  measured session above; its requests are pinned by the tests and the
+  network guard.
+- An install writes beside `quest-tracker.exe`, in its own folder:
+  `quest-tracker.exe.download` while it downloads (deleted when the install
+  fails or is cancelled), and `quest-tracker.exe.old`, the replaced exe,
+  which the next start removes. Nothing else outside the store folder.
 - The rest of the app stays offline. Its content security policy allows
   only the bundled page and Tauri's own IPC (`default-src 'self'`, no
   remote script, style, font, image or connection source), its
@@ -1533,8 +1623,10 @@ Network:
   `core:window:default`, `core:window:allow-start-dragging` and, since
   0.1.1, `core:window:allow-start-resize-dragging`, for the edit-mode
   resize handles; the Settings window's `capabilities/settings.json`
-  grants `core:event:default` alone), and no Rust source outside `qt-net`, the transport crate, uses
-  HTTP or socket code; `tests.test_quest_tracker_network` checks all of
+  grants `core:event:default` alone), and no Rust source of the app or of
+  the shared update workspace (`apps/shared/`) outside `ep-net`, the
+  transport crate, uses HTTP or socket code; no update source names a
+  release page; `tests.test_quest_tracker_network` checks all of
   that from the files. Its name checks cover std's and tokio's sockets,
   Winsock through the `windows` crates, WinHTTP, WinINet, urlmon's
   `URLDownloadToFile`, the HTTP client crates and a webview on a remote
@@ -1544,14 +1636,14 @@ Network:
   cargo is not installed), because `Cargo.lock` already lists HTTP crates
   Tauri can link but does not compile today: no HTTP client, socket, TLS
   or WebSocket crate is compiled into the app, except `socket2` through
-  tokio, Tauri's async runtime. Fonts and icons are bundled. The poe2db link and
-  the release page open in your default browser, through the opener
-  plugin, from Rust. The screen reader's OCR is Windows' own, run on this
+  tokio, Tauri's async runtime. Fonts and icons are bundled. The poe2db link
+  opens in your default browser, through the opener plugin, from Rust; no
+  update opens a page. The screen reader's OCR is Windows' own, run on this
   machine.
 - The global shortcut is a system hotkey registration: no keyboard hook, and
   nothing is sent to the game.
-- Apart from the update check, the only network code in this feature is
-  the developer-only poe2db tool, which you run yourself.
+- Apart from the update check and the install, the only network code in
+  this feature is the developer-only poe2db tool, which you run yourself.
 
 ## Quest data
 
@@ -1761,9 +1853,9 @@ project):
 | `crates/qt-screen/` | *Read the screen*'s pure logic: the regions and geometry, the fuzzy match (parity with the research instruments, `fixtures/screen/fuzzy_parity.json`), the dialogue window's heading gate, and the bar, QUEST COMPLETE and kill-remark trackers behind a backend trait. *Hide under game panels*' too: the panel table type, the probe test and its counts, and the panel tracker (`panels`), and the shipped table (`panel_table`, its numbers in `fixtures/panels/shipped_panels.json`). |
 | `crates/qt-capture/` | The Windows backend for `qt-screen`: GDI copy of a client-area region and `Windows.Media.Ocr` (en-US) in memory, through the `windows` crate. Also the JPEG decode of a kept capture's frames through WinRT's bitmap decoder (`decode`), and the call that makes a process DPI-aware, for `quest-tracker-replay panels`. |
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`), with `screen` (`src/screen.rs`) and `panels` (`src/panels.rs`: `measure`, `detect`, `grab`, `probe`); it depends on `qt-capture` for the decode and the grab. |
-| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`), and the update check (`updates.rs`: when a check is due, the newest release in GitHub's answer, the Settings window's view and the tray menu, behind an `UpdateTransport` trait; tested in `tests/updates.rs` with a recording fake transport). Tested with a fake window, emitter and clock. |
-| `crates/qt-net/` | The app's only network code: one fixed HTTPS `GET` of the repository's GitHub release list (`api.github.com`, port 443) through Windows' WinHTTP, with its bounds and no caller-given URL. Elsewhere than Windows every fetch is refused as unsupported. Its tests talk only to a server they run on `127.0.0.1`. |
-| `src-tauri/` | Tauri glue: the `overlay` window (its capability `capabilities/default.json`: core events, core window, `allow-start-dragging` and `allow-start-resize-dragging`), `WS_EX_NOACTIVATE`, click-through, edit mode's resizing and the window's minimum size, the shortcut, single instance, the tray icon and its menu, the Settings window (label `settings`, its capability `capabilities/settings.json`), the update transport over `qt-net`, the close request, the command wrappers. |
+| `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`), and the quest tracker's part of the update check and install (`updates.rs`: its product and tray menu over the shared `ep-update`, re-exported there; the commands `check_for_updates`, `install_update` and `cancel_update` in `app.rs`; tested in `tests/updates.rs` with a recording fake transport and a temporary folder). Tested with a fake window, emitter and clock. |
+| `src-tauri/` | Tauri glue: the `overlay` window (its capability `capabilities/default.json`: core events, core window, `allow-start-dragging` and `allow-start-resize-dragging`), `WS_EX_NOACTIVATE`, click-through, edit mode's resizing and the window's minimum size, the shortcut, single instance, the tray icon and its menu, the Settings window (label `settings`, its capability `capabilities/settings.json`), the update transport over the shared `ep-net`, the restart into an installed update and the start-up cleanup, the close request, the command wrappers. |
+| `../shared/` (`apps/shared/`) | Not part of this workspace: the update code both apps share, a Cargo workspace of its own that `qt-app` and `src-tauri` take as path dependencies. `ep-net` is the app's only network code (the release list and a release's two fixed assets over HTTPS through Windows' WinHTTP, no caller-given URL, unsupported elsewhere than Windows; its tests talk only to a server on `127.0.0.1`); `ep-update` is the check, the install, the signature check, the swap and the Settings window's view and texts. See [`docs/app-updates.md`](../app-updates.md). |
 | `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, one component per section listed in `sections.ts`, `UpdatesSection.svelte`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
 | `data/quests.json` | The shipped quest data. |
@@ -1773,13 +1865,14 @@ Tests:
 
 ```sh
 cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-engine   # one crate
-cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-net      # the transport, against 127.0.0.1 only
-cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-app --test updates  # the update check, fake transport
+cargo test --manifest-path apps/shared/Cargo.toml --locked --workspace           # ep-net against 127.0.0.1 only, ep-update with a fake transport
+cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked -p qt-app --test updates  # the update check and install, fake transport
 npm --prefix apps/quest-tracker run build                                        # needed before the workspace build
 cargo test --manifest-path apps/quest-tracker/Cargo.toml --locked --workspace    # every crate
 npm --prefix apps/quest-tracker test                                             # the UI, in jsdom
 py -3 -m unittest tests.test_quest_tracker_poe2db                                # the poe2db tool, no network
-py -3 -m unittest tests.test_quest_tracker_network                               # no network door but the update check
+py -3 -m unittest tests.test_quest_tracker_network                               # no network door but the update check and install
+py -3 -m unittest tests.test_app_updates_guard                                   # the shared update crates, from the files
 ```
 
 `src-tauri` embeds the built UI at compile time, so anything that builds the
@@ -1819,10 +1912,12 @@ Commands, UI to Rust: `get_view`, `set_mode`, `set_view_kind`,
 `select_character`, `pin_character`, `confirm_character`, `update_settings`,
 `open_source`. The Settings window has its own: it is sent
 `qt:app-settings` with an `AppSettingsView` (the running version, the
-`check_updates` setting and the update state, text and newer version;
-serialised in `fixtures/app-settings/`), and calls `get_app_settings`,
+`check_updates` setting, the update state, text and newer version, and the
+install's state, text and progress; `ep-update`'s type, serialised in
+`fixtures/app-settings/`), and calls `get_app_settings`,
 `check_for_updates` (starts a check and answers at once),
-`open_release_page` and `update_settings` (for `check_updates`). Field names in events are snake_case exactly as `serde`
+`install_update` (starts the install and answers at once; the only way one
+starts), `cancel_update` and `update_settings` (for `check_updates`). Field names in events are snake_case exactly as `serde`
 writes them; command argument keys are camelCase on the JavaScript side
 (`questId`, `stepId`), Tauri's default. `src/ipc.ts` mirrors the Rust types,
 and `src/ipc.test.ts` holds every file in `fixtures/viewmodels/` against
@@ -1836,7 +1931,8 @@ QT_UPDATE_FIXTURES=1 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p
 ```
 
 The Settings window's fixtures, one `AppSettingsView` per update state in
-`fixtures/app-settings/`, are written the same way by `qt-app`'s `updates`
+`fixtures/app-settings/` and one per install state in
+`fixtures/app-settings/install/`, are written the same way by `qt-app`'s `updates`
 test, and `src/settings/settings-window.test.ts` renders each one:
 
 ```sh
@@ -1866,10 +1962,10 @@ fetched (its `README.md` says which entry takes which path).
 `package.json`; build with `--locked` and `npm ci`. A new crate or npm
 package is a decision, not a side effect of a change. A Windows API
 feature is a dependency too: the `Win32_Networking_WinHttp` feature of
-`windows-sys` is turned on in `crates/qt-net/Cargo.toml` alone, never in
-the workspace's list, so no other member compiles WinHTTP. The network
-guard (`tests/test_quest_tracker_network.py`) depends on that: it allows
-WinHTTP names only in `qt-net`'s sources, and a network crate in a
+`windows-sys` is turned on in the shared `apps/shared/crates/ep-net/Cargo.toml`
+alone, never in a workspace's list, so no other crate compiles WinHTTP. The
+network guard (`tests/test_quest_tracker_network.py`) depends on that: it
+allows WinHTTP names only in `ep-net`'s sources, and a network crate in a
 manifest or in the compiled graph fails it, so turning on a network
 feature (Tauri's HTTP client, Winsock) is a decision for the guard too.
 
@@ -1938,9 +2034,13 @@ notes" below needs a `### <version>` section for it:
    command.
 3. The pushed tag starts `.github/workflows/quest-tracker-release.yml`. It
    checks the tag against the files, builds with Rust 1.98.1 and Node
-   24.19.0 on a Windows runner, and creates a **draft** release. The draft
-   holds `quest-tracker.exe`, `quest-tracker-replay.exe`, `SHA256SUMS.txt`
-   and the body from step 2.
+   24.19.0 on a Windows runner, signs `quest-tracker.exe` with the release
+   key, and creates a **draft** release. The draft holds
+   `quest-tracker.exe`, `quest-tracker-replay.exe`, `SHA256SUMS.txt`,
+   `quest-tracker.exe.minisig` (the signature the app checks before it
+   installs an update) and the body from step 2. Without the
+   `TAURI_SIGNING_PRIVATE_KEY` secret the sign step fails the run and no
+   release is made ([`docs/app-updates.md`](../app-updates.md)).
 4. Open the draft on GitHub, check it, publish it, and tick "Set as the
    latest release". The workflow never publishes.
 
@@ -2240,9 +2340,40 @@ release already exists, only its assets are replaced.
   send, was not established. The app sets no WebView2 arguments today; a
   later change could, while the content security policy already keeps the
   page itself from reaching any remote source.
+- **The install needs a folder it can write.** It downloads into
+  `quest-tracker.exe.download` beside the exe and renames the running exe
+  to `quest-tracker.exe.old`; in a folder the app cannot write (under
+  `Program Files`, for example) it fails at once with "the app's folder
+  cannot be written", before any download. A network that blocks
+  `github.com` or GitHub's asset host makes the install fail with a
+  one-line reason, as for the check.
+- **The `.old` file stays until the next start.** Windows does not let a
+  running exe be deleted, so the replaced exe is left as
+  `quest-tracker.exe.old` and removed by the next start (the restart
+  itself, normally), which retries for about 30 s while the old process
+  ends. While it is there, to roll back by hand: quit the app, rename
+  `quest-tracker.exe` away and `quest-tracker.exe.old` back to
+  `quest-tracker.exe`. After that, an older version is the earlier
+  release's `quest-tracker.exe`, downloaded by hand.
+- **An unsigned release cannot be installed.** A newer release without
+  `quest-tracker.exe` and `quest-tracker.exe.minisig` shows "<version> is
+  available but cannot be installed: the release is not signed." with no
+  button; the release workflow refuses to make such a release (its sign
+  step fails without the key). The 0.1.x releases carry no signature, but
+  they are older than every build with the in-app install, so they are
+  never offered.
+- **Antivirus and SmartScreen behaviour is not established.** The exe has
+  no Authenticode signature, and how an antivirus treats an exe that
+  downloads and renames its own file was not measured.
+- **The install has not yet run from a real release.** It is proven by
+  `ep-update`'s tests (the swap on a running copy of a test binary
+  included), by fakes and by loopback servers; the first in-app install
+  from a signed, published release is still to be measured, and so is
+  whether the new process always gets the global shortcut back (the old
+  one frees it before starting it).
 - **Not covered:** endgame and Atlas quests, non-English clients, an
-  installer, auto-update (the update check announces a newer version and
-  downloads nothing).
+  installer, updating `quest-tracker-replay.exe` (download it by hand), and
+  installing an update without the button.
 
 ## Maintenance triggers
 
@@ -2278,19 +2409,39 @@ Revisit this feature when:
   and `@tauri-apps/cli` on the same minor line, refresh both lock files, and
   re-check the CSP and capabilities.
 - **GitHub changes its API** (the "List releases" endpoint, its fields
-  `tag_name`, `draft` and `prerelease`, its headers or `api.github.com`
-  itself), **or the repository, the `quest-tracker-v` tag prefix or the
-  release flow changes**: update `qt-net` (its host, path and headers),
-  `crates/qt-app/src/updates.rs` (the tag prefix, the release page and
-  what counts as a release) and `tests/test_quest_tracker_network.py`
-  together, and keep them in step with `tools/quest_tracker/release.py`'s
-  `TAG_PREFIX` and `REPO_URL`.
+  `tag_name`, `draft`, `prerelease` and `assets`, its headers or
+  `api.github.com` itself), **its release-asset download** (the
+  `/releases/download/` redirect, or its asset host,
+  `release-assets.githubusercontent.com` today), **or the repository, the
+  `quest-tracker-v` tag prefix, the asset names or the release flow
+  changes**: update the shared `ep-net` (its hosts, paths, headers and
+  redirect allowlist) and `ep-update` (the products and what counts as a
+  release), `tests/test_quest_tracker_network.py` and
+  `tests/test_app_updates_guard.py` together, and keep them in step with
+  `tools/quest_tracker/release.py`'s `TAG_PREFIX` and `REPO_URL`
+  ([`docs/app-updates.md`](../app-updates.md)).
+- **The signing key changes** (rotated or lost): follow
+  [`docs/app-updates.md`](../app-updates.md) § "Rotating the key"; copies
+  built with the old key cannot install a release signed with the new one.
 - **Someone verifies the Steam path**: update `crates/qt-app/src/discover.rs`
   and this guide.
 - **A new display mode or Windows version** behaves differently over the
   game: record it under "Known limitations".
 
 ## Release notes
+
+### Unreleased
+
+- A newer version installs in the app: the Settings window's *Install X
+  and restart* downloads it, checks its signature against the key built
+  into the app, replaces the running exe and restarts, with the download's
+  progress and *Cancel*. A failure says why, with *Try again*, and leaves
+  the app as it was. The *Open the release page* button is gone, and the
+  tray's *Update available: X* now opens the Settings window.
+- *Automatically check for updates* stays off by default, and only
+  checks: nothing is downloaded until you press the button.
+- Each release now carries `quest-tracker.exe.minisig`, the exe's
+  signature.
 
 ### 0.1.1
 
