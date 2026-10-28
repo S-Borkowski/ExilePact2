@@ -60,12 +60,15 @@ const MAIN: &str = "main";
 /// The event that carries a fresh view to the page.
 const VIEW_EVENT: &str = "wr:view";
 
-/// The Settings window: its label, page, title and size at scale 1.
+/// The Settings window: its label, page, title and size at scale 1. The
+/// height holds its tallest state, a download with its bar and *Cancel*
+/// (about 350 px on the preview), and a failed install's reason over three
+/// lines; spare height falls below the credit.
 const SETTINGS: &str = "settings";
 const SETTINGS_PAGE: &str = "settings.html";
 const SETTINGS_TITLE: &str = "Waystone Roller Settings";
 const SETTINGS_WIDTH: f64 = 420.0;
-const SETTINGS_HEIGHT: f64 = 300.0;
+const SETTINGS_HEIGHT: f64 = 364.0;
 /// The event that carries the Settings window's view to it.
 const APP_SETTINGS_EVENT: &str = "wr:app-settings";
 
