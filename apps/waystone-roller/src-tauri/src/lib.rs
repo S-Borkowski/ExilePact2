@@ -116,7 +116,9 @@ mod clipboard {
     /// The refusal tone: `Beep` plays a sine tone through the default audio
     /// device and reads no entry of the sound scheme, so a muted or empty
     /// "Critical Stop" cannot silence it (Live 2 heard nothing from
-    /// `MessageBeep(MB_ICONHAND)`). It blocks for its duration.
+    /// `MessageBeep(MB_ICONHAND)`, and heard this tone; see
+    /// docs/waystone-roller/waystone-roller-research.md § "The built app in
+    /// the game (Live 2)"). It blocks for its duration.
     const TONE_HZ: u32 = 880;
     const TONE_MS: u32 = 250;
     /// `MessageBeep`'s "simple beep", the fallback when `Beep` fails.

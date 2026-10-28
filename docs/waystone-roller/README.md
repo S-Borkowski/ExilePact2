@@ -237,14 +237,16 @@ shipped-data test says if a token no longer tells a mod apart.
   Whether the game binds `Ctrl+Alt+W` to anything, or still sees the
   keystroke while the app holds it, was not measured; if a game binding
   stops working while the app runs, choose another shortcut in the window.
-- **The refusal beep is not yet confirmed audible in the game.** In the
-  2026-10-28 session the old beep (Windows' "Critical Stop" sound) was not
-  heard on five refused presses, cause not established. 0.1.0 now plays a
-  tone that reads no entry of the sound scheme, falling back to the simple
-  beep only if that call fails, and `diag.log` records `refusal beep:
-  <sound> ok` or `failed (<error>)` for each one tried. "ok" says Windows
-  ran the call, not that it was heard; a short live check is still to
-  confirm it.
+- **The refusal tone.** Measured on 2026-10-28 with Path of Exile 2 in
+  front: the first build's beep, `MessageBeep(MB_ICONHAND)` (Windows'
+  "Critical Stop" sound), was not heard on five refused presses, cause not
+  established; the owner then heard the 880 Hz `Beep` tone that 0.1.0
+  plays instead, which reads no entry of the sound scheme (research note
+  § "The built app in the game (Live 2)"). The simple beep is the fallback
+  only if that call fails, and `diag.log` records `refusal beep: <sound> ok`
+  or `failed (<error>)` for each sound tried; "ok" says Windows ran the
+  call, not that it was heard. A muted "System Sounds" level or another
+  output device could still silence the tone; neither was checked.
 - **Search syntax measured on eight waystones** (2026-10-28, research note
   § "Search syntax"): Normal, Magic, Rare and corrupted Rare at tiers 1, 2
   and 15. What the game does with a lookahead such as `(?=` is not
@@ -279,18 +281,12 @@ shipped-data test says if a token no longer tells a mod apart.
   want (any or all) or avoid, a tier range, rarities and corruption, and get
   one search string for the stash or vendor search box, at most 250
   characters or refused whole.
-- `Ctrl+Alt+W` (changeable) or the Copy button puts it on the clipboard;
-  a refusal beeps and leaves the clipboard alone.
+- `Ctrl+Alt+W` (changeable) or the Copy button puts it on the clipboard.
+- A refused copy (nothing selected, over 250 characters, a mod that cannot
+  be told apart) plays a short tone that does not depend on your Windows
+  sound scheme, and leaves the clipboard as it was.
 - Mod data from poe2db.tw, fetched 2026-10-28.
 - Built from source only; no installer and no release download.
-- Measured in the built app on 2026-10-28, with Path of Exile 2 in front:
-  each `Ctrl+Alt+W` press replaced the clipboard with the search the
-  window showed (want any, avoid, tier with rarity, corrupted), and
-  pasting it lit the waystones the rules named; over 250 characters
-  nothing was copied and the window showed the refusal; the app sent
-  nothing to the game. The refusal beep was not heard in that session
-  (Known limitations).
-- The refusal beep is now a tone that does not depend on the Windows sound
-  scheme (before: the "Critical Stop" sound), and `diag.log` names the
-  sound and whether the call succeeded, and whether a copy came from the
-  shortcut or the Copy button.
+- Measured in the built app on 2026-10-28: with Path of Exile 2 in front,
+  `Ctrl+Alt+W` copied the search and pasting it lit the waystones the rules
+  named.

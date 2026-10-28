@@ -545,6 +545,10 @@ or (O) the owner.
   advanced texts of the magic and rare waystones held a reward line,
   although poe2db lists reward lines on every regular mod they carried; and
   `"waystones found"` lit nothing.
+- **A global hotkey registered by another program reaches that program
+  while the game is in front** (measured 2026-10-28, waystone roller Live
+  2: `Ctrl+Alt+W`, research note § "The built app in the game (Live 2)").
+  Whether the game also sees the keystroke was not measured.
 - Not established: whether lookahead (`(?=`, `(?!`) works
   (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
   form plain `Ctrl+C` copies; any way to count modifiers.

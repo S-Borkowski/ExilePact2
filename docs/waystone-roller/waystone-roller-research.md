@@ -14,6 +14,8 @@ sources are:
   search strings: its shipped JavaScript, read 2026-10-28. A public tool's
   practice; this project measured it in Live 1 (§ "Search syntax").
 - **Live 1**, this project's own measurement in the game, 2026-10-28.
+- **Live 2**, the built app in the game, 2026-10-28 (§ "The built app in
+  the game (Live 2)").
 - **(O)** the owner's knowledge of the game.
 - poe2db.tw's pages, read 2026-10-28.
 
@@ -147,6 +149,33 @@ disallows only `/*/marked` and `/*/markdown_history`.
   through `+14(11-15)%`). The `r ` also keeps `(Tier 1)` from matching a
   `1)` elsewhere; a mod header's `(Tier: 1)` has a colon, so it never
   matches.
+
+## The built app in the game (Live 2)
+
+**Live 2**, 2026-10-28: the release build of 0.1.0, Path of Exile 2 in
+front, the same stash tab as Live 1. A watcher put a sentinel on the
+clipboard before each press and read it after; the app's `diag.log` was
+read beside it.
+
+- **Each `Ctrl+Alt+W` press reached the app** with the game in front and
+  replaced the sentinel with the search the `copied` diag line names: want
+  any `"esh|d c"`, avoid `!col`, tier with rarity `"y: r" "r 2\)"`,
+  corrupted `corr`. Pasted into the stash search box, each lit the
+  waystones Live 1's item texts said it would.
+- **The search box changed only when the owner pasted**: the app sent the
+  game no input (the owner, asked directly: "no").
+- **Over 250 characters copied nothing**: `copy refused: the search is 255
+  characters, over 250` in `diag.log`, the sentinel still on the clipboard,
+  and the window showing the refusal.
+- **`MessageBeep(MB_ICONHAND)`, the first build's refusal sound, was not
+  heard** on five refused presses. Cause not established: the build logged
+  no result for the call, so "not run" and "not heard" could not be told
+  apart.
+- **The `Beep` tone was heard** in a follow-up check the same day: the
+  rebuilt app plays an 880 Hz `Beep`, which reads no entry of the sound
+  scheme, and logs `refusal beep: <sound> ok|failed (<error>)`. The owner,
+  over-limit selection, game in front: "heard the tone". The System Sounds
+  level, the output device and the diag line were not recorded.
 
 ## Negatives and choices
 
