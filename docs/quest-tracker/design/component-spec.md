@@ -187,10 +187,9 @@ There is no dock-side row: the panel is dragged by its header in edit mode.
 "Read the screen" (owner, 2026-10-26) is a Toggle, off by default, right
 after "Only worth-it quests", whose helper says it reads the game's window
 for boss bars and quest dialogue and saves nothing.
-"Hide under game panels" (owner, 2026-10-27) is a Toggle, off by default,
-right after "Read the screen" and its helper, whose helper says it hides
-the tracker while a game panel is open under it, reads a few pixels of the
-game's window and saves nothing; play mode lists it as On or Off after "Read the screen".
+"Hide under game panels" (owner, 2026-10-27) was a Toggle after "Read the
+screen" in 0.1.0; since 0.1.1 (owner, 2026-10-28) the row is gone, and
+hiding under game panels is always on in play mode.
 
 ### Hotkeys block (Settings)
 Heading "Hotkeys · click a key to rebind" (Label); rows label (Label,

@@ -2327,9 +2327,6 @@ Revisit this feature when:
   a step in a live session. The texts are poe2db's, checked against the
   screen for the Warrior's Miller remark only, in a replay of Live 8's
   capture (Known limitations, "Read the screen: kill remarks").
-- The quest data gains a `level_up` signal kind: a level-up line to a
-  given level in a given area, kept as evidence when it happens, never
-  read from the character's level.
 
 ### 0.1.0 (first version)
 

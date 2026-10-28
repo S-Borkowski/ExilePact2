@@ -1917,8 +1917,8 @@ show; what was open then is not recorded.
 ### Live 14: version 0.1.1 in the game
 
 Measured 2026-10-28 with the 0.1.1 workorder's two live procedures
-(captures `.claude/workorders/quest-tracker-v0-1-1-live-1.md` and
-`-live-2.md`). `Client.txt`'s local times were UTC+1, aligned with the
+(the workorder's live captures, kept on the owner's machine).
+`Client.txt`'s local times were UTC+1, aligned with the
 overlay's UTC through the `G1_1` entry line (0 s apart).
 
 **Live procedure 1** ran over the game (client 0.5.5e), on a new Warrior
