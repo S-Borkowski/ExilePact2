@@ -22,7 +22,7 @@ use qt_app::cli::{self, Options};
 use qt_app::discover::{self, LogSource};
 use qt_app::{
     App, AppConfig, Clock, Emitter, MonitorMetrics, Placement, QuitFrom, Window, HIDDEN_LINE,
-    NO_AREA_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
+    MIN_WINDOW_SIZE, NO_AREA_LINE, SHOWN_LINE, SHUTDOWN_TIMEOUT,
 };
 use qt_engine::{QuestAction, QuestData, Status};
 use qt_store::Store;
@@ -167,6 +167,16 @@ impl Window for FakeWindow {
 
     fn set_scale(&self, factor: f64) -> Result<(), String> {
         self.0.calls.lock().unwrap().push(format!("scale {factor}"));
+        Ok(())
+    }
+
+    fn set_resizable(&self, on: bool) -> Result<(), String> {
+        self.0.calls.lock().unwrap().push(format!("resizable {on}"));
+        Ok(())
+    }
+
+    fn set_size(&self, width: f64, height: f64) -> Result<(), String> {
+        self.0.calls.lock().unwrap().push(format!("size {width} {height}"));
         Ok(())
     }
 
@@ -407,6 +417,144 @@ fn click_through_follows_mode() {
     h.app.set_view_kind(ViewKind::Campaign).unwrap();
     assert_eq!(h.window.click_through().len(), before);
     assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+/// What can be open over the quest list: the two frames and a quest's
+/// detail.
+#[derive(Debug, Clone, Copy)]
+enum Opened {
+    Settings,
+    Picker,
+    Detail,
+}
+
+impl Opened {
+    const ALL: [Opened; 3] = [Opened::Settings, Opened::Picker, Opened::Detail];
+
+    fn open(self, app: &App) -> View {
+        match self {
+            Opened::Settings => app.open_frame(Some(Frame::Settings)),
+            Opened::Picker => app.open_frame(Some(Frame::CharacterPicker)),
+            Opened::Detail => app.open_detail(Some("fixture-riverbank".to_string())),
+        }
+        .unwrap()
+    }
+
+    fn frame(self) -> Frame {
+        match self {
+            Opened::Settings => Frame::Settings,
+            Opened::Picker => Frame::CharacterPicker,
+            Opened::Detail => Frame::QuestDetail,
+        }
+    }
+}
+
+/// The quest list's frame for a view kind (the fixture's act is not done).
+fn list_frame(kind: ViewKind) -> Frame {
+    match kind {
+        ViewKind::NextUp => Frame::PanelNextUp,
+        ViewKind::Campaign => Frame::PanelCampaign,
+    }
+}
+
+#[test]
+fn entering_edit_mode_keeps_the_open_frame_baseline() {
+    // Baseline, true before and after the change: going from play to edit
+    // changes no frame, view kind or collapse, by either route.
+    for opened in Opened::ALL {
+        for shortcut in [false, true] {
+            let h = harness(Setup::default());
+            h.app.handle_tail_events(events(&own_character_lines(), false));
+            h.app.set_view_kind(ViewKind::Campaign).unwrap();
+            assert_eq!(opened.open(&h.app).frame, opened.frame());
+
+            let v = if shortcut {
+                h.app.toggle_mode().unwrap()
+            } else {
+                h.app.set_mode(Mode::Edit).unwrap()
+            };
+            assert_eq!(v.mode, Mode::Edit);
+            assert_eq!(v.frame, opened.frame(), "{opened:?}, shortcut {shortcut}");
+            assert_eq!(v.view_kind, ViewKind::Campaign);
+        }
+    }
+
+    // The collapsed badge stays collapsed, and what was open under it stays
+    // open once it is unfolded.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), false));
+    h.app.open_frame(Some(Frame::Settings)).unwrap();
+    assert_eq!(h.app.set_collapsed(true).unwrap().frame, Frame::Settings);
+    h.app.open_frame(None).unwrap();
+    h.app.open_detail(Some("fixture-riverbank".to_string())).unwrap();
+    assert_eq!(h.views.last().frame, Frame::Collapsed);
+    let v = h.app.set_mode(Mode::Edit).unwrap();
+    assert_eq!(v.frame, Frame::Collapsed);
+    assert_eq!(h.app.set_collapsed(false).unwrap().frame, Frame::QuestDetail);
+}
+
+#[test]
+fn leaving_edit_mode_shows_the_quest_list() {
+    // Target: with Settings, the character picker or a quest's detail open
+    // in edit mode, every switch to play (the command, the shortcut, the
+    // footer's "back to play", which sends the same `set_mode`) shows the
+    // quest list of the view kind in force.
+    #[derive(Debug, Clone, Copy)]
+    enum Leave {
+        SetMode,
+        Shortcut,
+        Footer,
+    }
+    for kind in [ViewKind::NextUp, ViewKind::Campaign] {
+        for opened in Opened::ALL {
+            for leave in [Leave::SetMode, Leave::Shortcut, Leave::Footer] {
+                let h = harness(Setup::default());
+                h.app.handle_tail_events(events(&own_character_lines(), false));
+                h.app.set_view_kind(kind).unwrap();
+                let act = h.views.last().acts[0].act;
+                h.app.toggle_act(act).unwrap();
+                h.app.set_mode(Mode::Edit).unwrap();
+                assert_eq!(opened.open(&h.app).frame, opened.frame());
+
+                let v = match leave {
+                    Leave::SetMode | Leave::Footer => h.app.set_mode(Mode::Play).unwrap(),
+                    Leave::Shortcut => h.app.toggle_mode().unwrap(),
+                };
+                let what = format!("{kind:?}, {opened:?}, {leave:?}");
+                assert_eq!(v.mode, Mode::Play, "{what}");
+                assert_eq!(v.frame, list_frame(kind), "{what}");
+                assert!(v.detail.is_none(), "{what}: the detail closed");
+                assert_eq!(v.view_kind, kind, "{what}: the view kind is kept");
+                assert!(!v.acts[0].expanded, "{what}: the folded act stays folded");
+                assert_eq!(h.views.last(), v, "{what}: the returned view is the one announced");
+            }
+        }
+    }
+
+    // The collapsed badge stays collapsed; what edit mode had open under it
+    // is closed once it is unfolded.
+    for opened in Opened::ALL {
+        let h = harness(Setup::default());
+        h.app.handle_tail_events(events(&own_character_lines(), false));
+        h.app.set_mode(Mode::Edit).unwrap();
+        opened.open(&h.app);
+        h.app.set_collapsed(true).unwrap();
+        let v = h.app.set_mode(Mode::Play).unwrap();
+        assert_eq!(v.frame, Frame::Collapsed, "{opened:?}: the badge is kept");
+        let v = h.app.set_collapsed(false).unwrap();
+        assert_eq!(v.frame, Frame::PanelNextUp, "{opened:?}");
+    }
+
+    // Negative control: in edit mode, commands that are not a switch to play
+    // leave the open frame and the detail alone.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), false));
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.app.open_detail(Some("fixture-riverbank".to_string())).unwrap();
+    h.app.open_frame(Some(Frame::Settings)).unwrap();
+    assert_eq!(h.app.set_view_kind(ViewKind::Campaign).unwrap().frame, Frame::Settings);
+    assert_eq!(h.app.set_mode(Mode::Edit).unwrap().frame, Frame::Settings);
+    assert_eq!(h.app.open_frame(None).unwrap().frame, Frame::QuestDetail);
 }
 
 #[test]
@@ -1066,6 +1214,282 @@ fn auto_scale_follows_window_to_other_monitor() {
     h.app.follow_monitor();
     assert_eq!(h.window.calls().len(), before);
     assert_eq!(scales(&h).last().map(String::as_str), Some("scale 1"));
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+// ---------------------------------------------------------------------------
+// 0.1.1: the scale zooms the content and never sizes the window; the
+// window's size is the player's, set by its edges in edit mode, kept like a
+// move and applied at the next start.
+
+fn sizes(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("size"))
+        .collect()
+}
+
+fn resizable(h: &Harness) -> Vec<String> {
+    h.window
+        .calls()
+        .into_iter()
+        .filter(|c| c.starts_with("resizable"))
+        .collect()
+}
+
+#[test]
+fn window_is_resizable_in_edit_mode_only() {
+    // Baseline: the app starts in play mode, where the window is not
+    // resizable (it is click-through there).
+    let h = harness(Setup::default());
+    h.app.start();
+    assert_eq!(resizable(&h), vec!["resizable false"]);
+
+    // Target: each switch of mode turns resizing with it, by `set_mode` and
+    // by the shortcut.
+    h.app.set_mode(Mode::Edit).unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable true");
+    h.app.set_mode(Mode::Play).unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable false");
+    h.app.toggle_mode().unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable true");
+    h.app.toggle_mode().unwrap();
+    assert_eq!(resizable(&h).last().unwrap(), "resizable false");
+    assert_eq!(resizable(&h).len(), 5);
+
+    // Negative control: a command that is not about the mode leaves it.
+    h.app.set_view_kind(ViewKind::Campaign).unwrap();
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    assert_eq!(resizable(&h).len(), 5);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A start in edit mode (no shortcut to leave play mode) is resizable.
+    let h = harness(Setup {
+        hotkey_fails: true,
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(h.views.last().mode, Mode::Edit);
+    assert_eq!(resizable(&h), vec!["resizable true"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn window_size_from_edit_mode_is_kept_and_restored() {
+    let h = harness(Setup::default());
+    h.app.start();
+    // Baseline: a resize in play mode (the shell's own sizing) is not kept.
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(500.0, 700.0);
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    assert!(h.stored("settings.json").unwrap().get("window").is_none());
+
+    // Target: a resize in edit mode is saved as `width` and `height`, in
+    // whole logical pixels.
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(420.4, 759.6);
+    assert_eq!(
+        h.stored("settings.json").unwrap().get("window"),
+        Some(&json!({ "width": 420, "height": 760 }))
+    );
+
+    // Applied at the next start, before the window is placed, and the zoom
+    // does not change it.
+    let h = h.rerun(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 420 760"]);
+    let calls = h.window.calls();
+    let at = |what: &str| calls.iter().position(|c| c.starts_with(what)).unwrap();
+    assert!(at("size") < at("place"), "{calls:?}");
+
+    // A drag keeps the position beside the size.
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_moved(10, 20);
+    assert_eq!(
+        h.stored("settings.json").unwrap().get("window"),
+        Some(&json!({ "x": 10, "y": 20, "width": 420, "height": 760 }))
+    );
+    // The same size again (a DPI change keeps the logical size) saves
+    // nothing new, and a size of nothing (a minimised window) is ignored.
+    let saves = h.app.save_count();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(420.0, 760.0);
+    h.app.window_resized(0.0, 0.0);
+    assert_eq!(h.app.save_count(), saves);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A saved size under the minimum (a hand-edited file) opens at the
+    // minimum.
+    let h = harness_in(
+        store_with_settings(json!({ "window": { "width": 10, "height": 10 } })),
+        Setup::default(),
+    );
+    h.app.start();
+    let (w, hh) = MIN_WINDOW_SIZE;
+    assert_eq!(sizes(&h), vec![format!("size {w} {hh}")]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn scale_changes_zoom_only() {
+    let h = harness(Setup {
+        monitor: monitor_at(1080, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    // Baseline: the first start sizes the window once (below).
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+
+    // Target: a fixed scale zooms and never sizes.
+    for scale in [json!(1.5), json!(0.75), json!(2.0)] {
+        h.app.update_settings(&json!({ "scale": scale })).unwrap();
+    }
+    assert_eq!(scales(&h), vec!["scale 1", "scale 1.5", "scale 0.75", "scale 2"]);
+    // Auto too, from the monitor.
+    h.app.update_settings(&json!({ "scale": "auto" })).unwrap();
+    assert_eq!(scales(&h).last().unwrap(), "scale 1");
+    // And Auto following the window to another monitor, in play mode and in
+    // edit mode, and a DPI change.
+    *h.window.monitor.lock().unwrap() = monitor_at(1440, 1.0);
+    h.app.window_moved(3000, 300);
+    assert_eq!(scales(&h).last().unwrap(), "scale 1.33");
+    h.app.set_mode(Mode::Edit).unwrap();
+    *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.0);
+    h.app.window_moved(4000, 200);
+    assert_eq!(scales(&h).last().unwrap(), "scale 2");
+    *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.5);
+    h.app.follow_monitor();
+    assert_eq!(scales(&h).last().unwrap(), "scale 1.33");
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn first_start_sizes_the_window_from_the_zoom() {
+    // No saved size, as for every 0.1.0 user: the panel's 320 x 384 plus the
+    // 12 px margin on each side, times the starting zoom, rounded; applied
+    // after the zoom and before the window is placed at its default again,
+    // so the right margin holds for the size it now has.
+    let h = harness(Setup {
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    let calls = h.window.calls();
+    let docked = format!("place {:?}", Placement::Default);
+    let scale = calls.iter().position(|c| c == "scale 1.33").unwrap();
+    let size = calls.iter().position(|c| c == "size 458 543").unwrap_or_else(|| panic!("{calls:?}"));
+    let last_place = calls.iter().rposition(|c| *c == docked).unwrap();
+    assert!(scale < size && size < last_place, "{calls:?}");
+    assert_eq!(sizes(&h), vec!["size 458 543"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A fixed scale: that zoom's size.
+    let h = harness_in(store_with_settings(json!({ "scale": 2.0 })), Setup::default());
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 688 816"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // A saved position with no size (a 0.1.0 file): the default size, and
+    // the window goes to the saved position once.
+    let h = harness_in(
+        store_with_settings(json!({ "window": { "x": 10, "y": 20 } })),
+        Setup::default(),
+    );
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert_eq!(places(&h), vec![format!("place {:?}", Placement::At { x: 10, y: 20 })]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+
+    // Negative control: a saved size is the window's, whatever the zoom.
+    let h = harness_in(
+        store_with_settings(json!({ "scale": 2.0, "window": { "width": 400, "height": 500 } })),
+        Setup::default(),
+    );
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 400 500"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+/// Each `size w h` call the fake window recorded, as the logical size the
+/// shell would report back from it.
+fn size_calls(h: &Harness) -> Vec<(f64, f64)> {
+    sizes(h)
+        .iter()
+        .map(|c| {
+            let mut parts = c.split(' ').skip(1).map(|v| v.parse::<f64>().unwrap());
+            (parts.next().unwrap(), parts.next().unwrap())
+        })
+        .collect()
+}
+
+#[test]
+fn edge_resize_after_a_forced_edit_start_is_kept() {
+    // Baseline: a first start forced into edit mode (no shortcut), with its
+    // own default size reported back as Tauri reports every resize, still
+    // keeps a later resize by the panel's edges as the window's size.
+    let h = harness(Setup {
+        hotkey_fails: true,
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(h.views.last().mode, Mode::Edit);
+    for (width, height) in size_calls(&h) {
+        h.app.window_resized(width, height);
+    }
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(500.0, 620.0);
+    let window = h.stored("settings.json").unwrap().get("window").cloned();
+    assert_eq!(window, Some(json!({ "width": 500, "height": 620 })));
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn start_forced_into_edit_mode_saves_no_size_of_its_own() {
+    // A first start forced into edit mode (no shortcut) sizes the window
+    // from the zoom; Tauri reports that resize back while the mode is edit.
+    let h = harness(Setup {
+        hotkey_fails: true,
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(h.views.last().mode, Mode::Edit);
+    let applied = size_calls(&h);
+    assert_eq!(applied, vec![(458.0, 543.0)]);
+    // Target: the echo, a duplicate of it, and the same size 1 px off in
+    // each dimension (a round trip through physical pixels at a fractional
+    // DPI) are the app's own sizing, not the player's.
+    for (width, height) in applied {
+        for (w, hh) in [(width, height), (width, height), (width + 1.0, height - 1.0)] {
+            h.clock.fetch_add(5_000, Ordering::SeqCst);
+            h.app.window_resized(w, hh);
+        }
+    }
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    let h = h.rerun(Setup {
+        monitor: monitor_at(1080, 1.0),
+        ..Setup::default()
+    });
+    let settings = h.stored("settings.json").unwrap();
+    assert_eq!(settings["opacity"], json!(0.5), "{settings}");
+    let window = settings.get("window");
+    assert!(
+        window.map_or(true, |w| w.get("width").is_none() && w.get("height").is_none()),
+        "{settings}"
+    );
+
+    // So the next start, at another `auto` zoom, sizes from that zoom.
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 

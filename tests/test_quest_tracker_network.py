@@ -10,8 +10,9 @@ is no other door through which the app could reach the internet.
 must keep holding after it:
 
 - the overlay's CSP is the pinned string;
-- `capabilities/default.json` keeps its one window, `overlay`, and its three
-  permissions, and no capability file grants an `http:`, `updater:`,
+- `capabilities/default.json` keeps its one window, `overlay`, and its four
+  permissions (the fourth, the edit-mode resize, since 0.1.1), and no
+  capability file grants an `http:`, `updater:`,
   `websocket:`, `upload:`, `shell:`, `fs:`, `process:` or `opener:`
   permission or a `remote` URL;
 - no `Cargo.toml` under the app depends on an HTTP client, a socket, TLS or
@@ -92,6 +93,7 @@ DEFAULT_CAPABILITY_PERMISSIONS = [
     "core:event:default",
     "core:window:default",
     "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
 ]
 
 FORBIDDEN_PERMISSION_PREFIXES = (

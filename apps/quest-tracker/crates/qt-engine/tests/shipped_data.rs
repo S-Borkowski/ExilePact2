@@ -22,10 +22,18 @@
 //! still finishes the quest. Only Beira's step says the boss drops an item;
 //! for the others that is not established.
 //!
-//! `shipped_screen_signals_are_the_four_named` pins the screen signals the
-//! data ships (Context "Design: quest data and the engine"), and
+//! `shipped_screen_signals_are_the_four_named` pins the `bar_gone` and
+//! `quest_complete` signals the data ships (Context "Design: quest data and
+//! the engine"; the Miller's bar joined the four on 2026-10-28), and
 //! `beira_bar_gone_ticks_the_defeat_over_the_shipped_data` feeds one through
-//! the engine.
+//! the engine. `shipped_kill_remark_signals_are_the_established_bosses` pins
+//! the `kill_remark` signals, one per boss step whose kill remark poe2db's
+//! class pages establish, and the `boss_kill_remark_*` tests feed two.
+//!
+//! The `miller_*` tests pin "Slay the Bloated Miller" (2026-10-28): it ticks
+//! at his death, on the level-up to 2 the game logs at the kill, on his bar
+//! going or the character's kill remark, or, when none came, on Mortimer's
+//! thanks, and never twice.
 //!
 //! The rest pin what launch 6 found the tests above could not catch: the
 //! town voices' own lines, which `town_talk.txt` never had
@@ -52,7 +60,7 @@ use std::sync::Arc;
 
 use qt_engine::{
     Detection, Engine, Evidence, Quest, QuestData, QuestState, RewardCategory, ScreenEvent,
-    ScreenOutcome, ScreenWhat, Signal, Status, Transition, Worth,
+    ScreenOutcome, ScreenWhat, Signal, Status, Timestamp, Transition, Worth,
 };
 
 /// The campaign acts as poe2db numbers them (its Act 6 is the interludes).
@@ -90,7 +98,7 @@ fn area_codes(signal: &Signal) -> Vec<&str> {
         | Signal::System { area, .. }
         | Signal::Reward { area, .. }
         | Signal::Points { area, .. } => area.iter().map(String::as_str).collect(),
-        Signal::Screen { area, .. } => vec![area.as_str()],
+        Signal::Screen { area, .. } | Signal::LevelUp { area, .. } => vec![area.as_str()],
         Signal::Level { .. } | Signal::Quest { .. } => Vec::new(),
     }
 }
@@ -881,15 +889,16 @@ struct Replay {
     engine: Engine,
     clock: u32,
     name: &'static str,
+    /// The tailer's flag for every line fed: false for catch-up.
+    live: bool,
 }
 
 impl Replay {
     /// The log opening, The Riverbank at level 1 and, 200 s later, the
-    /// level-up that names the character.
+    /// level-up that names the character. That level-up is the one the game
+    /// logs at the Miller's kill, so it ticks "Slay the Bloated Miller".
     fn start(data: &Arc<QuestData>, name: &'static str) -> Replay {
-        let mut r = Replay { engine: Engine::new(Arc::clone(data)), clock: 0, name };
-        let open = format!("{} ***** LOG FILE OPENING *****", &stamp(0)[..19]);
-        r.engine.feed_line(&open, false);
+        let mut r = Replay::opening(data, name, false);
         r.enter("G1_1");
         r.clock += 200;
         let up = format!("{} [INFO Client 6200] : {name} (Ranger) is now level 2", stamp(r.clock));
@@ -898,8 +907,40 @@ impl Replay {
         r
     }
 
+    /// The log opening and The Riverbank at level 1, fed live, with the
+    /// entry decided: the new character from The Riverbank is open and
+    /// unnamed until the test's own level-up ([`Replay::level_up`]).
+    fn from_the_riverbank(data: &Arc<QuestData>, name: &'static str) -> Replay {
+        let mut r = Replay::opening(data, name, true);
+        r.enter("G1_1");
+        r.clock += 10;
+        r.engine.expire_relog_window(Timestamp::parse(&stamp(r.clock)[..19]).expect("a log time"));
+        assert!(r.engine.new_character_open());
+        assert_eq!(r.engine.current(), None);
+        r
+    }
+
+    fn opening(data: &Arc<QuestData>, name: &'static str, live: bool) -> Replay {
+        let mut r = Replay { engine: Engine::new(Arc::clone(data)), clock: 0, name, live };
+        let open = format!("{} ***** LOG FILE OPENING *****", &stamp(0)[..19]);
+        r.engine.feed_line(&open, live);
+        r
+    }
+
     fn feed(&mut self, lines: &[String]) -> Vec<Transition> {
-        lines.iter().flat_map(|l| self.engine.feed_line(l, false)).collect()
+        lines.iter().flat_map(|l| self.engine.feed_line(l, self.live)).collect()
+    }
+
+    /// A level-up line of `who` to `level`, a few seconds after the last line.
+    fn level_up_of(&mut self, who: &str, level: u32) -> Vec<Transition> {
+        self.clock += 3;
+        let l = format!("{} [INFO Client 6200] : {who} (Ranger) is now level {level}", stamp(self.clock));
+        self.feed(&[l])
+    }
+
+    /// The character's own level-up.
+    fn level_up(&mut self, level: u32) -> Vec<Transition> {
+        self.level_up_of(self.name, level)
     }
 
     /// Enters an Act 1 area, with the level, seed and scene name the
@@ -935,10 +976,18 @@ impl Replay {
         self.feed(&[l])
     }
 
+    /// The quest's state for the character, or for the new character from
+    /// The Riverbank while no level-up has named it.
     fn state(&self, quest: &str) -> QuestState {
-        self.engine
-            .quest_state(self.name, quest)
-            .unwrap_or_else(|| panic!("no state for quest {quest}"))
+        let named = self.engine.character(self.name).is_some();
+        let state = if named {
+            self.engine.quest_state(self.name, quest)
+        } else {
+            self.engine
+                .new_character_states()
+                .and_then(|s| s.into_iter().find(|q| q.quest_id == quest))
+        };
+        state.unwrap_or_else(|| panic!("no state for quest {quest}"))
     }
 
     /// Secrets in the Dark up to the Grim Tangle, in the order the owner's
@@ -1238,9 +1287,12 @@ fn owner_tips_are_on_their_steps() {
             .map(|t| t.3)
             .expect("an owner tip")
     };
-    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    // The Miller's step is open before the level-up at his kill, which
+    // names the character (moved off `Replay::start` on 2026-10-28).
+    let mut r = Replay::from_the_riverbank(&data, GRELWOOD_CHARACTER);
     let s = r.state("reaching-clearfell");
     assert_eq!(next_tip(&data, &s), Some(tip("reaching-clearfell", "step-2")));
+    r.level_up(2);
     r.enter("G1_town");
     r.enter("G1_2");
     let s = r.state("treacherous-ground");
@@ -1305,11 +1357,14 @@ const MORTIMER_THANKS: &str = "Well done! Please come inside.";
 
 /// 2026-10-27, two live sessions: "Slay the Bloated Miller" ticked on his
 /// first line, at the fight's start, and the row showed "Enter town" while he
-/// was alive. The step waits for Mortimer's line after the kill.
+/// was alive. The step waits for his death: Mortimer's line after the kill
+/// is the route when no level-up to 2 came in The Riverbank, so the new
+/// character here stays unnamed (moved off [`Replay::start`], whose naming
+/// level-up now ticks the step, on 2026-10-28).
 #[test]
 fn miller_step_waits_for_his_death() {
     let data = Arc::new(data());
-    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    let mut r = Replay::from_the_riverbank(&data, GRELWOOD_CHARACTER);
 
     // Baseline: in The Riverbank the row shows the Miller's step.
     let s = r.state("reaching-clearfell");
@@ -1336,11 +1391,295 @@ fn miller_step_waits_for_his_death() {
 
     // Negative control: the same line in the encampment, where Mortimer is a
     // gambling vendor, ticks nothing.
-    let mut town = Replay::start(&data, GRELWOOD_CHARACTER);
+    let mut town = Replay::from_the_riverbank(&data, GRELWOOD_CHARACTER);
     town.enter(TOWN_CODE);
     let before = town.state("reaching-clearfell");
     assert!(town.say(MORTIMER, MORTIMER_THANKS).is_empty());
     assert_eq!(town.state("reaching-clearfell"), before);
+}
+
+/// The invented stored character of the level-up baselines.
+const STORED_CHARACTER: &str = "Ottilie_Varn";
+const STORED_SEED: u64 = 2_718_281_828;
+
+/// Whether any `step-2` signal of Reaching Clearfell is in `name`'s evidence.
+fn slay_evidence(engine: &Engine, name: &str) -> bool {
+    engine.character(name).is_some_and(|c| {
+        c.evidence
+            .get("reaching-clearfell")
+            .is_some_and(|e| e.iter().any(|id| id.starts_with("step/step-2/")))
+    })
+}
+
+/// A stored own character of `level` loaded and in The Riverbank, active:
+/// relogging by its instance's seed, or, with `by_build_line`, by the
+/// character build line the client writes within 2 s of a relog into an
+/// instance of no stored character. "Slay the Bloated Miller" is open.
+fn stored_in_the_riverbank(data: &Arc<QuestData>, level: u32, by_build_line: bool) -> Replay {
+    let mut r = Replay::opening(data, STORED_CHARACTER, true);
+    let mut record = serde_json::json!({
+        "name": STORED_CHARACTER, "class": "Ranger", "level": level, "ownership": "own"
+    });
+    if !by_build_line {
+        record["riverbank_seed"] = STORED_SEED.into();
+    }
+    r.engine.load_character(&record).expect("a stored character");
+    let seed = if by_build_line { STORED_SEED + 1 } else { STORED_SEED };
+    let mut lines = entry_lines(&mut r.clock, "G1_1", 1, seed, "The Riverbank");
+    if by_build_line {
+        lines.push(format!(
+            "{} [WARN Client 6200] Character {STORED_CHARACTER} has unknown build of path: None",
+            stamp(r.clock + 1)
+        ));
+    }
+    r.feed(&lines);
+    assert_eq!(r.engine.current(), Some(STORED_CHARACTER));
+    assert!(!r.engine.new_character_open());
+    let s = r.state("reaching-clearfell");
+    assert_eq!(s.current_step.as_deref(), Some("step-1"));
+    assert_eq!(next_title(&data, &s), "Slay the Bloated Miller");
+    r
+}
+
+/// Baseline (2026-10-28): the level-up ticks "Slay the Bloated Miller" only
+/// as the character's first, to 2 in The Riverbank. A character already
+/// level 2 or more, loaded and relogging there either way, has the step
+/// open, and neither its level-up to 3 there, a level-up to 2 in another
+/// area, a party member's level-up nor, while pinned, another name's
+/// level-up ticks it.
+#[test]
+fn miller_level_up_ticks_nothing_for_a_character_already_level_2() {
+    let data = Arc::new(data());
+    for by_build_line in [false, true] {
+        // The character's own level-up to 3 in The Riverbank.
+        let mut r = stored_in_the_riverbank(&data, 2, by_build_line);
+        let moved = r.level_up(3);
+        assert!(moved.iter().all(|t| t.quest_id != "reaching-clearfell"), "{moved:?}");
+        assert!(!slay_evidence(&r.engine, STORED_CHARACTER));
+        assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-1"));
+    }
+
+    // A level-up to 2 in another area (The Mud Burrow, which Reaching
+    // Clearfell does not name).
+    let mut r = stored_in_the_riverbank(&data, 1, false);
+    r.enter("G1_3");
+    let moved = r.level_up(2);
+    assert!(moved.iter().all(|t| t.quest_id != "reaching-clearfell"), "{moved:?}");
+    assert!(!slay_evidence(&r.engine, STORED_CHARACTER));
+    assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-1"));
+
+    // A party member's level-up to 2 in The Riverbank.
+    let mut r = stored_in_the_riverbank(&data, 2, false);
+    r.clock += 1;
+    r.feed(&[format!("{} [INFO Client 6200] : Bram_Holloway has joined the area.", stamp(r.clock))]);
+    let moved = r.level_up_of("Bram_Holloway", 2);
+    assert!(moved.is_empty(), "{moved:?}");
+    assert!(!slay_evidence(&r.engine, STORED_CHARACTER));
+    assert!(r.engine.character("Bram_Holloway").is_none());
+
+    // While pinned, another name's level-up to 2 in The Riverbank.
+    let mut r = stored_in_the_riverbank(&data, 2, false);
+    r.engine.pin(Some(STORED_CHARACTER)).expect("pin");
+    let moved = r.level_up_of("Wren_Ashdown", 2);
+    assert!(moved.is_empty(), "{moved:?}");
+    assert!(!slay_evidence(&r.engine, STORED_CHARACTER));
+    assert!(r.engine.character("Wren_Ashdown").is_none());
+    assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-1"));
+}
+
+/// The Miller's screen signals in the screen demand: (what, name) of every
+/// demanded signal of Reaching Clearfell.
+fn miller_demand(engine: &Engine) -> Vec<(ScreenWhat, String)> {
+    engine
+        .screen_demand()
+        .into_iter()
+        .filter(|d| d.quest_id == "reaching-clearfell")
+        .map(|d| (d.what, d.name))
+        .collect()
+}
+
+/// The transitions that move Reaching Clearfell to `step-2`.
+fn to_step_2(moved: &[Transition]) -> Vec<&Transition> {
+    moved
+        .iter()
+        .filter(|t| t.quest_id == "reaching-clearfell" && t.step_to.as_deref() == Some("step-2"))
+        .collect()
+}
+
+/// Up to the Miller's kill: the new character from The Riverbank, unnamed,
+/// with Mortimer's call and the Miller's lines heard, which move nothing.
+fn at_the_miller(data: &Arc<QuestData>) -> Replay {
+    let mut r = Replay::from_the_riverbank(data, GRELWOOD_CHARACTER);
+    let mut moved = r.say(MORTIMER, MORTIMER_CALLS);
+    for line in MILLER_LINES {
+        moved.extend(r.say(MILLER, line));
+    }
+    assert!(moved.is_empty(), "{moved:?}");
+    let s = r.state("reaching-clearfell");
+    assert_eq!(s.current_step.as_deref(), Some("step-1"));
+    r
+}
+
+/// Target (2026-10-28, the owner: "first level up can come only from the
+/// miller"): the level-up to 2 in The Riverbank, logged at his kill, names
+/// the new character and ticks "Slay the Bloated Miller" for it, in one
+/// live transition; Mortimer's thanks after it adds none.
+#[test]
+fn miller_level_up_to_2_ticks_the_slay_step_over_the_shipped_data() {
+    let data = Arc::new(data());
+    let mut r = at_the_miller(&data);
+
+    let moved = r.level_up(2);
+    assert_eq!(r.engine.current(), Some(GRELWOOD_CHARACTER));
+    let s = r.state("reaching-clearfell");
+    assert_eq!(s.current_step.as_deref(), Some("step-2"));
+    assert_eq!(next_title(&data, &s), "Enter town");
+    let ticked = to_step_2(&moved);
+    assert_eq!(ticked.len(), 1, "{moved:?}");
+    assert_eq!(ticked[0].character, GRELWOOD_CHARACTER);
+    assert!(ticked[0].live);
+    assert!(slay_evidence(&r.engine, GRELWOOD_CHARACTER));
+
+    let moved = r.say(MORTIMER, MORTIMER_THANKS);
+    assert!(moved.is_empty(), "{moved:?}");
+    assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-2"));
+}
+
+/// After the level-up ticked the step, the Miller's bar going and the
+/// character's kill remark find no open step and add no transition, and the
+/// screen demand no longer names him.
+#[test]
+fn miller_level_up_then_screen_events_tick_once() {
+    let data = Arc::new(data());
+    let mut r = at_the_miller(&data);
+    assert_eq!(to_step_2(&r.level_up(2)).len(), 1);
+    assert!(miller_demand(&r.engine).is_empty(), "{:?}", r.engine.screen_demand());
+
+    for ev in [ScreenEvent::bar_gone(MILLER), ScreenEvent::kill_remark(MILLER)] {
+        let got = r.engine.apply_screen(&ev);
+        assert_eq!(got.outcome, ScreenOutcome::NoOpenStep, "{ev:?}");
+        assert!(got.transitions.is_empty(), "{:?}", got.transitions);
+    }
+    assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-2"));
+}
+
+/// The other order: the bar goes while the character is still the unnamed
+/// new character from The Riverbank. The screen event reaches it and ticks
+/// the step; the level-up that follows names it, the named character keeps
+/// the step, and the whole run moves to `step-2` exactly once.
+#[test]
+fn miller_screen_tick_reaches_the_new_character_before_its_name() {
+    let data = Arc::new(data());
+    let mut r = Replay::from_the_riverbank(&data, GRELWOOD_CHARACTER);
+    let mut moved = r.say(MORTIMER, MORTIMER_CALLS);
+    for line in MILLER_LINES {
+        moved.extend(r.say(MILLER, line));
+    }
+
+    let got = r.engine.apply_screen(&ScreenEvent::bar_gone(MILLER));
+    assert_eq!(
+        got.outcome,
+        ScreenOutcome::Ticked { quest_id: "reaching-clearfell".into(), step_id: "step-2".into() }
+    );
+    let ticked = to_step_2(&got.transitions);
+    assert_eq!(ticked.len(), 1, "{:?}", got.transitions);
+    assert_eq!(ticked[0].character, "", "the unnamed new character");
+    assert!(ticked[0].live);
+    moved.extend(got.transitions);
+
+    moved.extend(r.level_up(2));
+    assert_eq!(r.engine.current(), Some(GRELWOOD_CHARACTER));
+    assert_eq!(
+        r.engine.status(GRELWOOD_CHARACTER, "reaching-clearfell"),
+        Some(Status::InProgress)
+    );
+    assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-2"));
+    assert_eq!(to_step_2(&moved).len(), 1, "{moved:?}");
+}
+
+/// Before the level-up has come, either screen event of the Miller's ticks
+/// "Slay the Bloated Miller" in one live transition; the demand in The
+/// Riverbank names his two screen signals. `kill_remark` is the second.
+fn miller_screen_event_ticks(ev: ScreenEvent) {
+    let data = Arc::new(data());
+    let mut r = at_the_miller(&data);
+    assert_eq!(
+        miller_demand(&r.engine),
+        [(ScreenWhat::BarGone, MILLER.to_string()), (ScreenWhat::KillRemark, MILLER.to_string())]
+    );
+    let got = r.engine.apply_screen(&ev);
+    assert_eq!(
+        got.outcome,
+        ScreenOutcome::Ticked { quest_id: "reaching-clearfell".into(), step_id: "step-2".into() },
+        "{ev:?}"
+    );
+    let ticked = to_step_2(&got.transitions);
+    assert_eq!(ticked.len(), 1, "{:?}", got.transitions);
+    assert!(ticked[0].live);
+    assert_eq!(next_title(&data, &r.state("reaching-clearfell")), "Enter town");
+    assert!(miller_demand(&r.engine).is_empty());
+}
+
+#[test]
+fn miller_bar_gone_ticks_the_slay_step_over_the_shipped_data() {
+    miller_screen_event_ticks(ScreenEvent::bar_gone(MILLER));
+}
+
+#[test]
+fn miller_kill_remark_ticks_the_slay_step_over_the_shipped_data() {
+    miller_screen_event_ticks(ScreenEvent::kill_remark(MILLER));
+}
+
+/// The fire rule over the Miller's signals: nothing outside The Riverbank,
+/// nothing once "Slay the Bloated Miller" is reached.
+#[test]
+fn miller_screen_events_tick_nothing_outside_the_open_step() {
+    let data = Arc::new(data());
+    let events = [ScreenEvent::bar_gone(MILLER), ScreenEvent::kill_remark(MILLER)];
+
+    // In The Mud Burrow, with the step still open.
+    let mut r = at_the_miller(&data);
+    r.enter("G1_3");
+    for ev in &events {
+        let got = r.engine.apply_screen(ev);
+        assert_eq!(got.outcome, ScreenOutcome::NoOpenStep, "{ev:?}");
+        assert!(got.transitions.is_empty(), "{:?}", got.transitions);
+    }
+    assert_eq!(r.state("reaching-clearfell").current_step.as_deref(), Some("step-1"));
+
+    // Back in The Riverbank once Mortimer's thanks reached the step.
+    let mut r = at_the_miller(&data);
+    assert_eq!(to_step_2(&r.say(MORTIMER, MORTIMER_THANKS)).len(), 1);
+    for ev in &events {
+        let got = r.engine.apply_screen(ev);
+        assert_eq!(got.outcome, ScreenOutcome::NoOpenStep, "{ev:?}");
+        assert!(got.transitions.is_empty(), "{:?}", got.transitions);
+    }
+}
+
+/// The eight playable classes (poe2db's Ascendancy page, 2026-10-28).
+const PLAYABLE_CLASSES: [&str; 8] =
+    ["Warrior", "Mercenary", "Ranger", "Huntress", "Witch", "Sorceress", "Monk", "Druid"];
+
+/// The Miller's kill remark texts are the eight classes' `MillerKillComment`
+/// rows, one each, from each class's poe2db page.
+#[test]
+fn shipped_miller_remarks_cover_every_playable_class() {
+    let data = data();
+    let rows: Vec<_> = data.remarks.iter().filter(|r| r.boss == MILLER).collect();
+    let classes: Vec<&str> = rows.iter().map(|r| r.class.as_str()).collect();
+    let mut sorted = classes.clone();
+    sorted.sort_unstable();
+    let mut want = PLAYABLE_CLASSES.to_vec();
+    want.sort_unstable();
+    assert_eq!(sorted, want, "one row per playable class");
+    for r in &rows {
+        assert_eq!(r.key, "MillerKillComment", "{}", r.class);
+        assert_eq!(r.source_url, format!("https://poe2db.tw/us/{}", r.class));
+        assert_eq!(r.text, r.text.trim(), "{}", r.class);
+    }
+    let texts = data.remark_texts(MILLER);
+    assert_eq!(texts.len(), 8, "{texts:?}");
 }
 
 const BEIRA: &str = "beira-of-the-rotten-pack";
@@ -1451,10 +1790,12 @@ fn una_summon_alone_leaves_ask_una_for_help() {
 // -- the screen reader's signals (Context "Design: quest data and the engine")
 
 /// The `bar_gone` and `quest_complete` signals the data ships, as (quest,
-/// step, kind, name, area), in data order: Renly's QUEST COMPLETE banner
-/// (Live 8), Beira's bar (its text measured in Live 6), and Blackjaw's and
-/// Lythara's by analogy, their bar text not measured.
-const SHIPPED_SCREEN: [(&str, &str, ScreenWhat, &str, &str); 4] = [
+/// step, kind, name, area), in data order: the Miller's bar (its going at
+/// the kill read in the Live 8 replay, 2026-10-28), Renly's QUEST COMPLETE
+/// banner (Live 8), Beira's bar (its text measured in Live 6), and
+/// Blackjaw's and Lythara's by analogy, their bar text not measured.
+const SHIPPED_SCREEN: [(&str, &str, ScreenWhat, &str, &str); 5] = [
+    ("reaching-clearfell", "step-2", ScreenWhat::BarGone, "The Bloated Miller", "G1_1"),
     ("reaching-clearfell", "step-6", ScreenWhat::QuestComplete, "Renly", "G1_town"),
     ("beira-of-the-rotten-pack", "fight", ScreenWhat::BarGone, "Beira of the Rotten Pack", "G1_2"),
     ("blackjaw-the-remnant", "fight", ScreenWhat::BarGone, "Blackjaw", "G3_6_1"),
@@ -1467,14 +1808,13 @@ fn shipped_screen_signals_are_the_four_named() {
     let mut found = Vec::new();
     for q in &data.quests {
         for step in &q.steps {
-            let bar_gone = step.signals.iter().any(|s| matches!(s.screen(), Some((ScreenWhat::BarGone, _))));
             for s in &step.signals {
                 let (Some((what, name)), Signal::Screen { area, .. }) = (s.screen(), s) else {
                     continue;
                 };
                 if what == ScreenWhat::KillRemark {
-                    // The `remarks` item adds these beside a bar's going only.
-                    assert!(bar_gone, "quest {}: step {} has a kill remark and no bar", q.id, step.id);
+                    // Pinned, with or without a bar beside them, by
+                    // `shipped_kill_remark_signals_are_the_established_bosses`.
                     continue;
                 }
                 found.push((q.id.as_str(), step.id.as_str(), what, name, area.as_str()));
@@ -1486,10 +1826,15 @@ fn shipped_screen_signals_are_the_four_named() {
         let q = data.quest(id).expect("quest");
         let title = &q.steps.iter().find(|s| s.id == step).expect("step").title;
         match what {
-            // The short name is in the full bar title, and the quest's own.
+            // The short name is in the full bar title, and in the quest's
+            // own name under a "Defeat ..." step; the Miller's step, in a
+            // quest named for the encampment, names him in its own title
+            // ("Slay the Bloated Miller").
             ScreenWhat::BarGone => {
-                assert!(q.name.to_lowercase().contains(&name.to_lowercase()), "quest {id}: {name:?}");
-                assert!(title.starts_with("Defeat "), "quest {id}: {title:?}");
+                let boss = name.to_lowercase();
+                let slays = title.to_lowercase().contains(&boss);
+                assert!(q.name.to_lowercase().contains(&boss) || slays, "quest {id}: {name:?}");
+                assert!(title.starts_with("Defeat ") || slays, "quest {id}: {title:?}");
                 assert!(q.zones.iter().any(|z| z == area), "quest {id}: {area} is not its zone");
             }
             _ => assert!(title.contains(name), "quest {id}: {title:?}"),
@@ -1546,4 +1891,186 @@ fn beira_bar_gone_ticks_the_defeat_over_the_shipped_data() {
     assert_eq!(next_title(&data, &s), "Use the item it dropped");
     assert!(!s.steps.iter().any(|st| st.ticked), "fired, not ticked: {:?}", s.steps);
     assert!(r.engine.screen_demand().is_empty());
+}
+
+// -- every boss's kill remark (Context "Kill remarks of every boss") ---------
+
+/// The `kill_remark` signals the data ships, as (quest, step, boss, area), in
+/// data order: the Miller's and Blackjaw's beside their bars, and one on
+/// each boss step whose kill remark poe2db's class pages establish (read
+/// 2026-10-28; owner, 2026-10-28: "blackjaw and any other boss").
+const SHIPPED_KILL_REMARKS: [(&str, &str, &str, &str); 21] = [
+    ("reaching-clearfell", "step-2", "The Bloated Miller", "G1_1"),
+    ("secrets-in-the-dark", "step-19", "The Rust King", "G1_5"),
+    ("sorrow-among-stones", "step-4", "Asinia, the Praetor's Consort", "G1_9"),
+    ("sorrow-among-stones", "step-9", "Draven, the Eternal Praetor", "G1_8"),
+    ("sorrow-among-stones", "step-14", "Draven, the Eternal Praetor", "G1_8"),
+    ("sorrow-among-stones", "step-19", "Asinia, the Praetor's Consort", "G1_9"),
+    ("the-trail-of-corruption", "step-5", "The Executioner", "G1_13_2"),
+    ("the-mad-wolf-of-ogham", "step-5", "Geonor, the Putrid Wolf", "G1_15"),
+    ("a-theft-of-ivory", "step-4", "Iktab, the Deathlord", "G2_5_2"),
+    ("kabala-constrictor-queen", "fight", "Kabala, Constrictor Queen", "G2_4_1"),
+    ("legacy-of-the-vaal", "step-36", "Queen of Filth", "G3_11"),
+    ("legacy-of-the-vaal", "step-42", "Ketzuli, High Priest of the Sun", "G3_12"),
+    ("legacy-of-the-vaal", "step-50", "Viper Napuatzi", "G3_14"),
+    ("tribal-vengeance", "step-3", "Ignagduk, the Bog Witch", "G3_7"),
+    ("blackjaw-the-remnant", "fight", "Blackjaw", "G3_6_1"),
+    ("whakapanu-island", "step-4", "Diamora, the Song of Death", "G4_3_2"),
+    ("dark-mists", "step-8", "Captain Hartlin", "G4_2_2"),
+    ("trial-of-the-ancestors", "step-12", "Yama The White", "G4_4_2"),
+    ("recruit-the-ezomytes", "step-25", "Thane Wulfric", "P1_6"),
+    ("recruit-the-vaal", "step-18", "Zolin, Blood Priest", "P3_7"),
+    ("lythara-the-wayward-spear", "fight", "Lythara", "P3_2"),
+];
+
+/// The kill remark signals are exactly the table's. Each was appended after
+/// every signal its step had, because saved progress names a step's signals
+/// by position, so it is the step's last, except the Miller's (his
+/// level-up follows it) and Blackjaw's (shipped beside his bar before). Every
+/// boss they name has remark texts.
+#[test]
+fn shipped_kill_remark_signals_are_the_established_bosses() {
+    let data = data();
+    let mut found = Vec::new();
+    for q in &data.quests {
+        for step in &q.steps {
+            for (i, s) in step.signals.iter().enumerate() {
+                let (Some((ScreenWhat::KillRemark, boss)), Signal::Screen { area, .. }) = (s.screen(), s) else {
+                    continue;
+                };
+                found.push((q.id.as_str(), step.id.as_str(), boss, area.as_str()));
+                if boss != MILLER && boss != "Blackjaw" {
+                    assert_eq!(i + 1, step.signals.len(), "quest {}: step {} not last", q.id, step.id);
+                }
+            }
+        }
+    }
+    assert_eq!(found, SHIPPED_KILL_REMARKS.to_vec());
+    for (quest, step, boss, _) in SHIPPED_KILL_REMARKS {
+        assert!(!data.remark_texts(boss).is_empty(), "quest {quest}: step {step}: no text for {boss:?}");
+    }
+}
+
+/// An own character of level 20, stored and made active by its level-up,
+/// then through `areas` (code, scene name) in that order.
+fn stored_through(data: &Arc<QuestData>, areas: &[(&str, &str)]) -> Replay {
+    let mut r = Replay::opening(data, STORED_CHARACTER, true);
+    let record = serde_json::json!({
+        "name": STORED_CHARACTER, "class": "Ranger", "level": 20, "ownership": "own"
+    });
+    r.engine.load_character(&record).expect("a stored character");
+    r.level_up(21);
+    assert_eq!(r.engine.current(), Some(STORED_CHARACTER));
+    for (k, (code, name)) in areas.iter().enumerate() {
+        let lines = entry_lines(&mut r.clock, code, 20, 1_000 + k as u64, name);
+        r.feed(&lines);
+    }
+    r
+}
+
+const EXECUTIONER: &str = "The Executioner";
+const TRAIL: &str = "the-trail-of-corruption";
+/// Up to Ogham Village, whose entry reaches "Search for the Seed of
+/// Corruption", the step before the Executioner's.
+const TO_OGHAM_VILLAGE: [(&str, &str); 3] =
+    [("G1_11", "Hunting Grounds"), ("G1_13_1", "Ogham Farmlands"), ("G1_13_2", "Ogham Village")];
+const LYTHARA: &str = "Lythara";
+const KRIAR: &str = "lythara-the-wayward-spear";
+
+/// The kill remark demanded in the current area for `quest`, by name.
+fn remark_demand(engine: &Engine, quest: &str) -> Vec<String> {
+    engine
+        .screen_demand()
+        .into_iter()
+        .filter(|d| d.quest_id == quest && d.what == ScreenWhat::KillRemark)
+        .map(|d| d.name)
+        .collect()
+}
+
+/// One ordinary case, the Executioner's step (his line beside it, no bar),
+/// and one outlier, Lythara's (her bar beside the remark): with the step
+/// open in its area, the character's kill remark for the boss ticks it in
+/// one live transition, the demand there names the boss's remark (whose
+/// texts are every class's row), and a second remark adds none.
+#[test]
+fn boss_kill_remark_ticks_its_step_over_the_shipped_data() {
+    let data = Arc::new(data());
+    let cases: [(&str, &str, &str, &[(&str, &str)]); 2] = [
+        (TRAIL, "step-5", EXECUTIONER, &TO_OGHAM_VILLAGE),
+        (KRIAR, "fight", LYTHARA, &[("P3_2", "Kriar Village")]),
+    ];
+    for (quest, step, boss, areas) in cases {
+        let mut r = stored_through(&data, areas);
+        assert!(r.state(quest).steps.iter().all(|s| s.id != step || !s.fired), "{quest}");
+        assert_eq!(remark_demand(&r.engine, quest), [boss.to_string()], "{quest}");
+        assert_eq!(data.remark_texts(boss).len(), 8, "{boss}: one text per playable class");
+
+        let got = r.engine.apply_screen(&ScreenEvent::kill_remark(boss));
+        assert_eq!(
+            got.outcome,
+            ScreenOutcome::Ticked { quest_id: quest.to_string(), step_id: step.to_string() },
+            "{quest}"
+        );
+        let moved: Vec<&Transition> = got
+            .transitions
+            .iter()
+            .filter(|t| t.quest_id == quest && t.step_to.as_deref() == Some(step))
+            .collect();
+        assert_eq!(moved.len(), 1, "{:?}", got.transitions);
+        assert!(moved[0].live && moved[0].character == STORED_CHARACTER);
+        assert_eq!(r.state(quest).current_step.as_deref(), Some(step));
+        assert!(remark_demand(&r.engine, quest).is_empty(), "{quest}");
+
+        let again = r.engine.apply_screen(&ScreenEvent::kill_remark(boss));
+        assert_eq!(again.outcome, ScreenOutcome::NoOpenStep, "{quest}");
+        assert!(again.transitions.is_empty(), "{:?}", again.transitions);
+    }
+}
+
+/// The same remarks tick nothing in another area while the step is open,
+/// before the step is open (the quest still locked; every way into the
+/// boss's area opens it), or once a step at or after it is reached: by the
+/// boss's own line, by the player's tick on a later step, or by the bar.
+#[test]
+fn boss_kill_remark_ticks_nothing_outside_its_area_or_open_step() {
+    let data = Arc::new(data());
+    let nothing = |r: &mut Replay, boss: &str, why: &str| {
+        let got = r.engine.apply_screen(&ScreenEvent::kill_remark(boss));
+        assert_eq!(got.outcome, ScreenOutcome::NoOpenStep, "{boss}: {why}");
+        assert!(got.transitions.is_empty(), "{boss}: {why}: {:?}", got.transitions);
+    };
+
+    // Before the step is open: the quests still locked, in the encampment.
+    let mut r = stored_through(&data, &[("G1_town", "Clearfell Encampment")]);
+    assert_eq!(r.state(TRAIL).status, Status::Locked);
+    assert_eq!(r.state(KRIAR).status, Status::Locked);
+    nothing(&mut r, EXECUTIONER, "locked");
+    nothing(&mut r, LYTHARA, "locked");
+
+    // In another area with the step open: the Executioner's from Ogham
+    // Farmlands, Lythara's from the Ashen Forest after Kriar Village.
+    let mut r = stored_through(&data, &TO_OGHAM_VILLAGE[..2]);
+    assert_eq!(r.state(TRAIL).current_step.as_deref(), Some("step-3"));
+    nothing(&mut r, EXECUTIONER, "Ogham Farmlands");
+    let mut r = stored_through(&data, &[("P3_2", "Kriar Village"), ("P3_1", "Ashen Forest")]);
+    assert_eq!(r.state(KRIAR).current_step.as_deref(), Some("enter"));
+    nothing(&mut r, LYTHARA, "Ashen Forest");
+
+    // In the area, once the step is reached by the boss's line.
+    let mut r = stored_through(&data, &TO_OGHAM_VILLAGE);
+    r.say(EXECUTIONER, "Fixture line: the rope awaits.");
+    assert_eq!(r.state(TRAIL).current_step.as_deref(), Some("step-5"));
+    nothing(&mut r, EXECUTIONER, "his line reached it");
+
+    // In the area, once the player ticked a later step by hand.
+    let mut r = stored_through(&data, &TO_OGHAM_VILLAGE);
+    r.engine.tick_step(STORED_CHARACTER, TRAIL, "step-6", true).expect("tick");
+    assert_eq!(r.state(TRAIL).current_step.as_deref(), Some("step-6"));
+    nothing(&mut r, EXECUTIONER, "a later step ticked");
+
+    // In the area, once her bar's going reached her step.
+    let mut r = stored_through(&data, &[("P3_2", "Kriar Village")]);
+    let got = r.engine.apply_screen(&ScreenEvent::bar_gone(LYTHARA));
+    assert_eq!(got.outcome, ScreenOutcome::Ticked { quest_id: KRIAR.into(), step_id: "fight".into() });
+    nothing(&mut r, LYTHARA, "her bar reached it");
 }

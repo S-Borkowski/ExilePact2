@@ -1,11 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The overlay window: listen for qt:view and qt:row-change, read and drag its own window. No http, shell, fs, websocket, upload, process or updater permission.",
+  "description": "The overlay window: listen for qt:view and qt:row-change, read, drag and resize its own window. No http, shell, fs, websocket, upload, process or updater permission.",
   "windows": ["overlay"],
   "permissions": [
     "core:event:default",
     "core:window:default",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging"
   ]
 }

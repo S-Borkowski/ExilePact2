@@ -5,10 +5,10 @@ quests, says which ones are worth doing and why, and keeps each character's
 progress. It learns that progress from the game's `Client.txt` log and from
 nothing else, unless you turn on the opt-in *Read the screen* setting, which
 also lets it read three regions of the game's window with Windows' own OCR
-("How detection works" › "Reading the screen"). The opt-in
-*Hide under game panels* setting copies small patches of the game's window
-too, to hide the overlay while a game panel is open under it, and reads no
-text ("How detection works" › "Hiding under game panels").
+("How detection works" › "Reading the screen"). In play mode over the game
+it also copies small patches of the game's window, to hide the overlay
+while a game panel is open under it, and reads no text ("How detection
+works" › "Hiding under game panels"); that is always on since 0.1.1.
 
 - Design brief (what the overlay shows, frames, icons, tokens, the export
   contract): [`ui-design-brief.md`](ui-design-brief.md)
@@ -45,9 +45,15 @@ What it is:
   panel shows no controls, and the window never takes focus from the game.
   *Edit* takes clicks and keyboard focus (so the Settings fields can be
   typed in): tick steps, mark quests done or skipped, switch or pin a
-  character, open settings, and move the window by dragging the panel's
-  header (outside its buttons). The global shortcut (default
-  `Ctrl+Alt+Q`) switches between them.
+  character, open settings, move the window by dragging the panel's
+  header (outside its buttons), and resize it by dragging the panel's
+  edges and corners, as any Windows window. The global shortcut (default
+  `Ctrl+Alt+Q`) switches between them. Back in play mode the panel shows
+  the quest list: Settings, the character picker and a quest's detail
+  close (since 0.1.1).
+- **A window you size, a scale that zooms.** The window keeps the size you
+  gave it by its edges in edit mode, across restarts; the *Scale* setting
+  zooms the panel's contents and never resizes the window (since 0.1.1).
 - **Two views.** *Next up* lists only what is available or in progress now,
   grouped by worth; *All* lists every act's quests under the act's header.
 - **Skip sets a quest aside without losing it.** Any quest can be skipped
@@ -87,11 +93,14 @@ What it is:
   three regions of the window (the boss bar's band, the lower-left list of
   voiced lines and the dialogue window) and reads them with Windows' own
   OCR, in memory. A boss's bar going ticks the defeat step of Beira of the
-  Rotten Pack, Blackjaw and Lythara, and the QUEST COMPLETE banner in
-  Renly's window ticks "Take Renly's reward". Nothing read is stored,
-  logged or shown ("How detection works", "Privacy").
-- **Hide under game panels, off by default.** With this setting on, the
-  overlay hides itself in play mode while one of seven game panels is open
+  Rotten Pack, The Bloated Miller, Blackjaw and Lythara; the character's
+  remark at a boss's death ticks the slaying step of the Miller, Blackjaw,
+  Lythara and sixteen other bosses, for each class poe2db gives a remark;
+  and the QUEST COMPLETE banner in Renly's window ticks "Take Renly's
+  reward". Nothing read is stored, logged or shown ("How detection works",
+  "Privacy").
+- **Hide under game panels, always on.** The overlay hides itself in play
+  mode while one of seven game panels is open
   under its window (the inventory, the passive tree, the shop on M, the
   options on O, the world map on U, the stash and a merchant's trade
   window), and shows again once the panel closes. The Escape menu does not
@@ -100,7 +109,9 @@ What it is:
   stays in view. It
   tells a panel is open by the colour of a few small patches of the game's
   window where that panel draws its frame, measured in a live session, and
-  stores, logs and shows no pixel. With it off, nothing of it runs.
+  stores, logs and shows no pixel. Since 0.1.1 it has no setting: its
+  toggle is gone, and a 0.1.0 settings file that turned it off no longer
+  does.
 - **A replay CLI**, `quest-tracker-replay`, that runs the same engine over a
   saved log without the game, the screen reader's trackers over a kept
   research capture (`screen`), and the panel check over one (`panels`).
@@ -114,8 +125,8 @@ What it is not:
   to Grinding Gear Games. It reads one log file and draws its own window;
   only with *Read the screen* on does it also copy regions of the game's
   window from the screen, as a screenshot would, and read them with
-  Windows' OCR, and only with *Hide under game panels* on does it copy
-  small patches of that window and compare their colour, reading no text.
+  Windows' OCR; and, to hide under game panels, it copies small patches of
+  that window in play mode and compares their colour, reading no text.
 - It does not track party members, endgame or Atlas quests, or a client in a
   language other than English.
 - It is not an installer: there is no setup, auto-update, code signing or
@@ -151,8 +162,8 @@ What it is not:
   window, English client, at the in-game UI scale used then. A window that
   is not 16:9 is refused while it lasts; other 16:9 sizes and other UI
   scales are untested (Known limitations).
-- **For *Hide under game panels* only: a 16:9 window,** as for *Read the
-  screen*. The patches it copies are fractions of the game's client area,
+- **For hiding under game panels: a 16:9 window,** as for *Read the
+  screen*, though hiding is always on and needs no setting. The patches it copies are fractions of the game's client area,
   measured on the same setup (2560×1440 borderless, English client). While
   the window is not 16:9 it pauses, with the status line "Hiding under game
   panels is paused while the game's window is not 16:9 (<w>x<h>).", and the
@@ -260,7 +271,10 @@ Settings (edit mode, the settings frame) and their defaults:
   sent), not only on release.
 - **Scale** `auto`: an *Auto scale* switch, plus a slider for a fixed
   factor from 0.75 to 2 in 0.05 steps, applied as the webview zoom (see
-  below). Moving the slider turns Auto off. It too applies while dragged:
+  below). Since 0.1.1 it zooms the panel's contents only and never resizes
+  the window, whose size is yours (below); the panel's frame fills the
+  window at every scale (seen live at 0.75, 1.5 and 2, Live 14, after a
+  first build left its margin zooming with the content). Moving the slider turns Auto off. It too applies while dragged:
   since each step rezooms the page under the pointer, the value follows
   the pointer's travel since the press, in screen pixels, over the track's
   width at the press, so the zoom changing does not move it; the arrow
@@ -286,18 +300,43 @@ Settings (edit mode, the settings frame) and their defaults:
   turning it off stops it (`screen: off` in the diagnostic log); an
   overlay started with it on starts the reader too. On a Windows without
   English OCR it refuses (Platforms and prerequisites).
-- **Hide under game panels** (off), the toggle under *Read the screen*,
-  with the helper text "Hides the tracker while a game panel is open under
-  it. Reads a few pixels of the game's window and saves nothing." With it
-  on, play mode also hides the overlay while one of the game panels in
-  "How detection works" › "Hiding under game panels" is open under the
-  overlay's window, and shows it again once the panel closes. It works on
-  a 16:9 game window only (Platforms and prerequisites). `settings.json`
-  stores it as `"hide_under_panels"`. Turning it on starts the panel
-  watcher at once (`panels: on`), and turning it off stops it (`panels:
-  off`) and shows an overlay a panel had hidden; an overlay started with
-  it on starts the watcher too. With it off, nothing of it runs and the
-  overlay is shown and hidden exactly as without it.
+
+Two switches of 0.1.0 are gone from the settings frame in 0.1.1, in both
+modes. *Click-through (play mode)*: play mode is click-through and edit
+mode takes clicks, as before, and the shortcut or the edit footer's way
+back switches between them. *Hide under game panels*: play mode always
+hides the overlay while one of the game panels in "How detection works" ›
+"Hiding under game panels" is open under the overlay's window, and shows
+it again once the panel closes, on a 16:9 game window (Platforms and
+prerequisites). The panel watcher starts with the overlay on Windows
+(`panels: on` at every start) and runs until it exits. A
+`"hide_under_panels"` key in a 0.1.0 `settings.json`, on or off, is
+ignored on load and gone after the next save, and a settings change that
+names it is refused as unknown.
+
+**The window's size is yours.** In edit mode the window is resizable:
+each of the panel's four edges and four corners is a resize handle, a
+band a few pixels wide straddling its border that shows the matching
+resize cursor and draws nothing, and a left-button press on it resizes
+the window from that edge or corner, as any Windows window. The panel
+fills the window, minus the 12 px transparent margin that holds its
+shadow, and its body scrolls. In play mode the window is not resizable
+and no handle is there, so the whole window stays click-through; the
+collapsed badge has none. A resize made in edit mode is kept like a move,
+in `settings.json`'s `"window"` object beside `"x"` and `"y"`, as
+`"width"` and `"height"` in whole logical pixels, so a DPI change keeps
+the panel's apparent size; it is applied at the next start. A resize in
+play mode is not kept. The smallest window is 320 by 240 logical pixels,
+whatever the zoom, at which the edit-mode header and the way back to
+play mode each still fit on one line at zoom 1; a saved size below it
+loads as that minimum. With no saved size, as for every 0.1.0 user, the
+window opens at 344 by 408 logical pixels (the panel's 320 by 384 plus
+the margin) times the starting zoom, never below the minimum, and that
+size is not saved until you resize. Seen live (Live 14, 2026-10-28): the
+resize cursor at the left edge, the bottom edge and the bottom-left
+corner, the window resized from each, its size and place kept across a
+restart, and in play mode a click just inside the left edge reached the
+game.
 
 There is no dock side. A window with no saved position goes to the right
 side of its monitor, below the game's minimap; in edit mode you drag it by the panel's header
@@ -310,7 +349,8 @@ mode, since without a shortcut play mode could not be left: the status line
 says so, and the diagnostic log names the `settings.json` whose `"hotkey"`
 you can change.
 
-Scale `auto` sizes the panel by the monitor the window is on: 1x below
+Scale `auto` picks the zoom by the monitor the window is on (the zoom only;
+the window keeps its size): 1x below
 1440 px of monitor height, 1.33x from 1440 and 2x from 2160 (physical
 pixels), divided by Windows' DPI scale for that monitor (which the webview
 already applies), and never below 1. So a 1440p screen at 100% gets 1.33x,
@@ -406,10 +446,9 @@ named, or `none`. The lines to look for when a quest did not advance:
   The hide holds only while the game pid from the log is trusted: once
   that pid is not used to hide the overlay (below), it shows as before.
   Edit mode is always shown, so the hotkey still reaches the settings.
-- `visibility: hidden (a game panel is open under the overlay)`, with
-  *Hide under game panels* on, when play mode hides the overlay because
-  the panel watcher reads a game panel open under it, and `visibility:
-  shown` once the panel closes (or the setting is turned off, or the
+- `visibility: hidden (a game panel is open under the overlay)` when play
+  mode hides the overlay because the panel watcher reads a game panel
+  open under it, and `visibility: shown` once the panel closes (or the
   watcher pauses or stops). The other two hides come first: with no
   character in an area yet, or another program's window in front, the
   line names that reason and the watcher does not read.
@@ -449,8 +488,9 @@ named, or `none`. The lines to look for when a quest did not advance:
 - `screen: ...` lines, with *Read the screen* on: when the reader starts,
   idles, reads, is refused or covered, sees a bar go or a banner, and once
   a minute. Every form is in "How detection works" › "Reading the screen".
-- `panels: ...` lines, with *Hide under game panels* on: `panels: on` and
-  `panels: off`; `panels: idle (<reason>)` and `panels: paused (<reason>)`,
+- `panels: ...` lines, on Windows from every start: `panels: on` (since
+  0.1.1 there is no `panels: off`: the watcher stops only with the
+  overlay, on the `stop: ...` line); `panels: idle (<reason>)` and `panels: paused (<reason>)`,
   `panels: resumed` and `panels: stopped after an error`; `panels: overlay
   at x <a> to <b>, y <c> to <d>`, the overlay's place over the game's
   window; `panels: <entry> open`, `panels: <entry> closed` and `panels:
@@ -499,7 +539,7 @@ Usage: quest-tracker-replay <command> <log> [--data PATH] [--json] [--speakers N
 | `import` | `state`, then written to the store (`QUEST_TRACKER_DIR`, else `%LOCALAPPDATA%\ExilePact2\quest-tracker`) with the position at the end of the log, so the overlay resumes from there. Running it twice leaves the same files. |
 | `scan` | Per area code: display name, entries, reward lines, points lines, allowlisted speakers and system lines, as counts (no chat, no character names). The input for building the quest data. |
 | `screen` | The screen reader's trackers over a kept research capture instead of a log (below). |
-| `panels` | *Hide under game panels* over a kept research capture: `measure` (the panels' footprints and probe candidates) and `detect` (the shipped panel table's test per frame); and two research commands for the raw copies the app reads, `grab` and `probe` (below). |
+| `panels` | Hiding under game panels over a kept research capture: `measure` (the panels' footprints and probe candidates) and `detect` (the shipped panel table's test per frame); and two research commands for the raw copies the app reads, `grab` and `probe` (below). |
 
 | Option | What it does |
 |---|---|
@@ -548,7 +588,7 @@ text and writes nothing. Exit codes: `0` done, `1` a missing or unreadable
 index, `64` usage error. The kept captures of Lives 6 and 8 are what the trackers'
 numbers were settled against; they stay outside the repository.
 
-**`quest-tracker-replay panels`** runs *Hide under game panels*' probe test
+**`quest-tracker-replay panels`** runs the probe test of hiding under game panels
 over a kept capture, measures where each panel draws, and, for a
 developer checking the table, copies the game's window once and reports
 each probe on that copy:
@@ -625,7 +665,7 @@ library only.
 | Command | Options | What it does |
 |---|---|---|
 | `fetch` | `--cache DIR`, `--delay S` (default 3, refused under 2), `--only SLUG ...`, `--max-age DAYS` (default 7), `--include-endgame` | Reads `robots.txt` and skips what it disallows, then fetches the quest index and the campaign quest pages one at a time, `--delay` seconds apart, with a User-Agent naming the tool and this repository. Pages cached within `--max-age` days are left alone. Act 10 and act-less MasterMission quests only with `--include-endgame`. |
-| `fetch-classes` | `CLASS ...` (e.g. `Warrior Mercenary`), `--cache DIR`, `--delay S`, `--max-age DAYS` | Fetches the named poe2db class pages into the cache, politely and under the same robots.txt and delay rules as `fetch`, for their kill remarks. |
+| `fetch-classes` | `CLASS ...` (e.g. `Warrior Mercenary Ranger Huntress Witch Sorceress Monk Druid`, the eight playable classes), `--cache DIR`, `--delay S`, `--max-age DAYS` | Fetches the named poe2db class pages into the cache, politely and under the same robots.txt and delay rules as `fetch`, for their kill remarks. |
 | `extract` | `--cache DIR`, `--out FILE` (default `<cache>\quests-draft.json`), `--with-dialogue` | Drafts one JSON entry per cached quest page (slug, URL, fetch date, name, type, act, rewards, steps; NPC dialogue only with `--with-dialogue`). A page without a steps table is drafted with zero steps and named on stderr; an index with no quest, a malformed steps table, or no steps table in any page stops with a non-zero exit naming the slug. |
 | `remarks` | `--cache DIR`, `--data FILE` (default `apps/quest-tracker/data/quests.json`), `--class CLASS ...` | Prints a draft of the cached class pages' kill-remark rows whose boss the quest data names (`remarks` table entries), never a whole table. |
 | `coverage` | `--log LOG` (required, read-only), `--cache DIR` | Per cached page, how many dialogue snippets match a logged line of the same NPC exactly, by containment, or by a shared 4-word run. Counts only, never text. |
@@ -749,19 +789,44 @@ restart of the overlay, and pass to the character it becomes when a
 level-up names it or a pin takes its progress. A quest command is refused
 (`no character yet`) only when there is no character at all.
 
-**Slay the Bloated Miller.** Reaching Clearfell's "Slay the Bloated
-Miller" ticks on Mortimer's "Well done! Please come inside." in The
-Riverbank (`G1_1`), which the log records after the kill, before you enter
-the encampment (confirmed live, Live 13: the row kept the step through
-the fight and moved on 15 s after his death). The Miller's own lines do not tick it: they start with the
-fight ("Saw you in half!"), and when they were the signal the row showed
-"Enter town" while he was still alive (two live sessions, 2026-10-27).
-Mortimer's line came after the Miller's last line in all 13 of its
-occurrences in one player's log, 14 to 20 s after it in the three
-2026-10-27 sessions. Where it does not come, entering Clearfell Encampment
-still completes the step. Mortimer is on the speaker allowlist for that
-line alone: his signal names The Riverbank and the exact line, so his
-gambling and farewell lines in the encampment move nothing.
+**Slay the Bloated Miller.** Since 0.1.1 Reaching Clearfell's "Slay the
+Bloated Miller" ticks at his death, by whichever of three routes comes
+first:
+
+1. **The level-up to 2 in The Riverbank** (`G1_1`), with or without *Read
+   the screen*: a `level_up` signal ("Quest data"). The game logs a new
+   character's first level-up at the kill: in one player's log every
+   Riverbank visit with a level-up had one, to level 2, after the Miller's
+   first line and 0 to 9 s after his last (17 of 17, read on 2026-10-28).
+   It fires only on the level-up line itself, for the character the
+   engine takes it as (the new character it names, or yours), so a
+   character already level 2 or more, or one loaded at start, never
+   counts it. Seen live (Live 14, 2026-10-28, a new Warrior, *Read the
+   screen* off): the step ticked in the same second as the level-up and
+   the Miller's last line, 77 s before Mortimer's thanks, which then did
+   not tick it again.
+2. **With *Read the screen* on, his boss bar going or the character's kill
+   remark** in The Riverbank, for any of the eight playable classes
+   ("Reading the screen"). At the kill they come about 2 and 3 s after
+   the level-up (a replay of Live 8's capture), so in practice the
+   level-up has already ticked the step and the reader has stopped looking
+   for him; they are the route for a level-up the engine did not take as
+   the character's.
+3. **Mortimer's "Well done! Please come inside."** there, when neither of
+   those came: still the step's first signal. The log records it after the
+   kill, before you enter the encampment (Live 13: the row moved on 15 s
+   after his death); it came after the Miller's last line in all 13 of its
+   occurrences in one player's log, 14 to 20 s after it in the three
+   2026-10-27 sessions. Where it does not come either, entering Clearfell
+   Encampment still completes the step.
+
+The Miller's own lines do not tick it: they start with the fight ("Saw
+you in half!"), and when they were the signal the row showed "Enter town"
+while he was still alive (two live sessions, 2026-10-27). Mortimer is on
+the speaker allowlist for that line alone: his signal names The Riverbank
+and the exact line, so his gambling and farewell lines in the encampment
+move nothing. Walking away from the living Miller with *Read the screen*
+on can tick the step early (Known limitations).
 
 **Secrets in the Dark, The Mysterious Shade and Una's Grelwood lines.**
 Renly gives Secrets in the Dark in a talk the log does not record, so the
@@ -1091,9 +1156,19 @@ shouts. A line counts only when it is new: the read shows more lines
 reading as the remark than any read 1 s to 5 s before it did, and a read
 with no read in that span is not judged, so a remark already on screen
 when reading starts never counts. A boss with no text demands nothing.
+Since 0.1.1 the table holds the remarks of nineteen bosses for each
+playable class poe2db gives one (the Miller's for all eight classes), and
+a `kill_remark` signal sits on each of those bosses' slaying steps
+("Quest data"); a step with a remark and no bar still demands the
+voiced-lines region, as Blackjaw's does.
 
 **What a screen event ticks.** It goes to the character an NPC line would
-go to and is live, so its row changes as for a log line. It fires a
+go to and is live, so its row changes as for a log line. Before a
+level-up has named a character from The Riverbank, that is the unnamed
+new character, which keeps the step once the level-up names it (the
+Miller's bar or remark coming before his level-up). Once a step is
+reached, by whatever route, the reader stops looking for its signals, as
+for the Miller's once his level-up ticked it. It fires a
 `screen` signal when the current area is known and is the signal's, the
 signal sits on an open step (any step after the furthest one reached),
 and the quest's tracked status is available or in progress; at most one
@@ -1169,13 +1244,16 @@ deadline is logged as not ended, like the others.
 
 ### Hiding under game panels
 
-*Hide under game panels* (off by default, Command reference) adds a panel
-watcher, a thread of its own (`qt-panels`) beside the screen reader. It
+Hiding under game panels is always on since 0.1.1 (in 0.1.0 it was the
+*Hide under game panels* setting, off by default; Command reference). A
+panel watcher, a thread of its own (`qt-panels`) beside the screen
+reader, runs from the overlay's start to its shutdown on Windows. It
 copies a few small patches of the game's window where a game panel draws
 its frame, compares their colour with the colour measured for that panel,
 and tells the worker when a panel is open under the overlay; the worker
-then hides the overlay. It reads no text and uses no OCR. With the setting
-off there is no thread, no copy and no `panels:` line. The measurements
+then hides the overlay. It reads no text and uses no OCR. It copies only
+in play mode, with the overlay over the game's window and shown or hidden
+by a panel alone (its `panels: idle` lines below). The measurements
 behind the table are in [`quest-tracker-research.md`](quest-tracker-research.md)
 § "Live 12: the game panels' footprints".
 
@@ -1363,15 +1441,16 @@ What is read:
   leaves the reader is the kind of event, a boss or NPC name from the quest
   data, times, counts and region names. With the setting off, nothing is
   copied.
-- With *Hide under game panels* on, and only then: small patches of the
+- Whenever the overlay is in play mode over the game (hiding under game
+  panels is always on since 0.1.1, with no setting): small patches of the
   game's window (16 px squares at 2560 wide, at most 34 per read),
-  copied the same way, only in play mode while the overlay is shown or
-  hidden by a panel ("How detection works" › "Hiding under game panels").
-  A copy lives only for the read that took it, and its colour reaches
-  nothing but the probe test: only counts, entry ids, reasons and the
-  overlay's place as fractions are logged, and no pixel or colour is
-  written, shown or put in an error. With the setting off, nothing is
-  copied.
+  copied the same way, only while the overlay is shown or hidden by a
+  panel ("How detection works" › "Hiding under game panels"). In edit
+  mode, or while the overlay is hidden for another reason, nothing is
+  copied. A copy lives only for the read that took it, and its colour
+  reaches nothing but the probe test: only counts, entry ids, reasons and
+  the overlay's place as fractions are logged, and no pixel or colour is
+  written, shown or put in an error.
 - `quest-tracker-replay panels grab` is a developer's research command,
   not part of the overlay: it copies the game's window once and writes
   that frame only outside every git checkout, refusing any folder inside
@@ -1449,9 +1528,12 @@ Network:
 - The rest of the app stays offline. Its content security policy allows
   only the bundled page and Tauri's own IPC (`default-src 'self'`, no
   remote script, style, font, image or connection source), its
-  capabilities grant only core event and window permissions (the Settings
-  window's `capabilities/settings.json` grants `core:event:default`
-  alone), and no Rust source outside `qt-net`, the transport crate, uses
+  capabilities grant only core event and window permissions (the
+  overlay's `capabilities/default.json` grants four: `core:event:default`,
+  `core:window:default`, `core:window:allow-start-dragging` and, since
+  0.1.1, `core:window:allow-start-resize-dragging`, for the edit-mode
+  resize handles; the Settings window's `capabilities/settings.json`
+  grants `core:event:default` alone), and no Rust source outside `qt-net`, the transport crate, uses
   HTTP or socket code; `tests.test_quest_tracker_network` checks all of
   that from the files. Its name checks cover std's and tokio's sockets,
   Winsock through the `windows` crates, WinHTTP, WinINet, urlmon's
@@ -1509,6 +1591,29 @@ a patch:
    --locked`, which validates the shipped file), and `quest-tracker-replay
    state` over the log to see that quests still advance.
 
+**The level-up signal (`level_up`, since 0.1.1).** A log signal that fires
+on a level-up line, not on the character's level:
+
+```json
+{"kind": "level_up", "level": 2, "area": "G1_1"}
+```
+
+Both fields are required: `level`, the new level the line reports, at
+least 2 (no level-up reaches level 1), and `area`, a known area code. It
+fires when a level-up line to exactly `level` comes while the current
+area is `area`, and is kept as evidence of the character the engine takes
+the level-up as: the new character from The Riverbank it names, the
+pinned character's own level-up, an own or active character's, or an
+unknown name made active as unconfirmed (which loses it with the rest of
+its state if a join or leave line revokes it). A party member's level-up,
+or another name's while a character is pinned, fires nothing. With the
+area unknown it does not fire and is refused and counted, as every
+area-tied log signal is. Unlike `level` (`{"kind": "level", "min": n}`,
+read from the character's level whenever a status is computed, in any
+area), it is never read from state, so a character already past `level`
+never fires it. One step uses it: "Slay the Bloated Miller", the level-up
+to 2 in The Riverbank ("How detection works" › "Slay the Bloated Miller").
+
 **Screen signals.** A signal of kind `screen` is what *Read the screen*
 can tick ("How detection works" › "Reading the screen"). It sits on a step
 only (anywhere else fails validation), needs `what` and `area`, and names
@@ -1531,13 +1636,20 @@ is known and equals the signal's `area`, the signal sits on an open step
 is available or in progress; at most one quest fires per event, the first
 in data order. An unknown area refuses the event and counts it. A log line
 never fires a screen signal, and a screen event fires nothing else. This
-version ships four: `bar_gone` on the "Defeat …" step of Beira of the
-Rotten Pack (`G1_2`, the bar text measured in Live 6), Blackjaw (`G3_6_1`)
-and Lythara (`P3_2`), whose bar text is not measured and whose short name
-matches the full title by containment; and `quest_complete` for Renly in
-`G1_town` on Reaching Clearfell's "Take Renly's reward" (the banner seen in
-Live 8). One `kill_remark` signal ships, beside Blackjaw's `bar_gone` on
-the same step, for the Mercenary's remark after killing him (below).
+version ships five `bar_gone` and `quest_complete` signals: `bar_gone` on
+Reaching Clearfell's "Slay the Bloated Miller" (`G1_1`, his bar's going at
+the kill read in a replay of Live 8's capture) and on the "Defeat …" step
+of Beira of the Rotten Pack (`G1_2`, the bar text measured in Live 6),
+Blackjaw (`G3_6_1`) and Lythara (`P3_2`), whose bar text is not measured
+and whose short name matches the full title by containment; and
+`quest_complete` for Renly in `G1_town` on Reaching Clearfell's "Take
+Renly's reward" (the banner seen in Live 8). Beside them, 21
+`kill_remark` signals, one on each slaying step of the nineteen bosses
+whose kill remark the `remarks` table holds (below; Asinia and Draven on
+two steps each), each new one appended after the signals its step had, since
+saved progress names a step's signals by position. The Miller's step
+lists Mortimer's line, his `bar_gone`, his `kill_remark` and then his
+`level_up`, in that order.
 
 **The `remarks` table.** An optional top-level array of a class's
 kill-remark texts, each `{"class", "boss", "key", "text", "source_url",
@@ -1545,25 +1657,64 @@ kill-remark texts, each `{"class", "boss", "key", "text", "source_url",
 plays the remark, `text` the short spoken line, stored verbatim, and
 `source_url` and `fetched` are validated as a quest's are (a
 `https://poe2db.tw/us/<page>` URL and a date). An entry's `boss` must be
-the boss of a shipped `bar_gone` signal or a name in `npcs`. This
-version's table holds three texts, read from poe2db's Warrior and
-Mercenary class pages on 2026-10-27 with `poe2db fetch-classes Warrior
-Mercenary` and then `poe2db remarks`, which prints a draft of the class
-pages' kill rows whose boss the data names, never a whole table:
+the boss of a shipped `bar_gone` signal or a name in `npcs`. A remark
+reaches the reader through a `kill_remark` signal of its boss; the reader
+looks for every class's texts for that boss, so a row needs no code.
 
-- each class's remark after The Bloated Miller (`MillerKillComment`), kept
-  as the replay's control (`quest-tracker-replay screen --class Warrior`
-  over Live 8's captures) and used by no step, since the Miller's step has
-  no bar;
-- the Mercenary's remark after Blackjaw (`BlackjawKilled`, Act 3).
+This version's table holds 142 texts, the kill remarks of nineteen bosses
+for the eight playable classes (Warrior, Mercenary, Ranger, Huntress,
+Witch, Sorceress, Monk and Druid, the classes with ascendancies on
+poe2db's Ascendancy page, read 2026-10-28). The Warrior's and the
+Mercenary's pages were fetched on 2026-10-27 and the other six on
+2026-10-28, with `poe2db fetch-classes <class ...>`; `poe2db remarks`
+prints a draft of the class pages' kill rows whose boss the data names,
+never a whole table. Texts are stored as plain text: markup removed,
+whitespace collapsed, trimmed. A page's row was mapped to a step of the
+data only on evidence: the row's key names the boss or the step's area,
+or a class's line names one, *and* the line's audio file is from the
+step's act (`_a<n>_` for act n, `_i<n>_` or `_p<n>_` for the interlude
+areas `P<n>_*`). Only a step whose signals already carry an area
+qualifies, since a signal needs one. Two bosses on one step (Ekbab and
+Iktab, Zolin and Zelina) take one label, the step's own npc.
 
-Left out of the draft by hand: both pages' lines after a Blackjaw in a
-ravine (`RavineBlackjawBossDefeated`), which are Interlude 3 lines, another
-fight than the data's Act 3 one; and the draft's rows for bosses that are
-only `npcs` names, which no step reads. The Warrior's page has no line for
-the Act 3 Blackjaw, and neither page names Beira or Lythara in a kill key
-(an Interlude 3 line after a "Kriar viper", in Lythara's village, does not
-name her and is not used), so their steps have no remark.
+| Boss | Quest › step | Area | Key | Classes |
+|---|---|---|---|---|
+| The Bloated Miller | reaching-clearfell › step-2 | `G1_1` | `MillerKillComment` | all eight |
+| Blackjaw | blackjaw-the-remnant › fight | `G3_6_1` | `BlackjawKilled` | all but Warrior and Ranger |
+| Lythara | lythara-the-wayward-spear › fight | `P3_2` | `KriarViperDefeated` | all eight |
+| The Rust King | secrets-in-the-dark › step-19 | `G1_5` | `RedValeBossSlainComment` | all eight |
+| Asinia, the Praetor's Consort | sorrow-among-stones › step-4, step-19 | `G1_9` | `WifeSlainComment` | all eight |
+| Draven, the Eternal Praetor | sorrow-among-stones › step-9, step-14 | `G1_8` | `HusbandSlainComment` | all eight |
+| The Executioner | the-trail-of-corruption › step-5 | `G1_13_2` | `ExecutionerSlainComment` | all eight |
+| Geonor, the Putrid Wolf | the-mad-wolf-of-ogham › step-5 | `G1_15` | `IronCountKilledComment` | all eight |
+| Kabala, Constrictor Queen | kabala-constrictor-queen › fight | `G2_4_1` | `KethKabalaBossSlain` | all eight |
+| Iktab, the Deathlord | a-theft-of-ivory › step-4 | `G2_5_2` | `BonePitsBothBossesSlain` | all eight |
+| Ignagduk, the Bog Witch | tribal-vengeance › step-3 | `G3_7` | `IgnagdukKilled` | all but Ranger |
+| Queen of Filth | legacy-of-the-vaal › step-36 | `G3_11` | `AggoratOvergrownQueenOfFilthKilled` | all eight |
+| Ketzuli, High Priest of the Sun | legacy-of-the-vaal › step-42 | `G3_12` | `SunWorshipperKilled` | all eight |
+| Viper Napuatzi | legacy-of-the-vaal › step-50 | `G3_14` | `ViperNapuatziKilled` | all but Huntress |
+| Diamora, the Song of Death | whakapanu-island › step-4 | `G4_3_2` | `SingingCavernsSirenKilled` | all eight |
+| Yama The White | trial-of-the-ancestors › step-12 | `G4_4_2` | `HallsOfDeadYamaDefeated` | all eight |
+| Captain Hartlin | dark-mists › step-8 | `G4_2_2` | `CaptainHartlinKilled` | Huntress and Monk |
+| Thane Wulfric | recruit-the-ezomytes › step-25 | `P1_6` | `EstateTwinBossDefeated` | all eight |
+| Zolin, Blood Priest | recruit-the-vaal › step-18 | `P3_7` | `BloodTwinsBossDefeated` | all eight |
+
+The Miller's rows were the replay's control before 0.1.1
+(`quest-tracker-replay screen --class Warrior` over Live 8's captures);
+since 0.1.1 his step reads them. Not established, so nothing is added
+(Known limitations): Blackjaw for the Warrior and the Ranger (their
+`RavineBlackjawBossDefeated` lines are the Interlude 3 Etched Ravine
+fight, another fight than the data's Act 3 one), Ignagduk for the Ranger
+(no row), Viper Napuatzi for the Huntress (her line is three letters, too
+short to tell from other speech; a row under 12 letters is never added),
+Captain Hartlin for the other six classes (their
+`TempleSandHartlinBossDefeated` is an interlude fight), Beira of the
+Rotten Pack (no row on any page), the bosses whose step no key ties to by
+the rule above (The King in the Mists, Azarian, Mektul, Benedictus,
+Tavakai, Krutog, The Prisoner, Siora, Elzarah, Azmadi, Stormgore, Oswin,
+and Heldra and Isolde), and every boss step with no area in the data.
+The Marauder, Duelist, Shadow and Templar pages are not playable classes
+and are not used.
 
 **Find-it tips.** A step may carry a `"tip"`: a short "how to find it"
 hint, shown on its own line under the step in the row (when it is the step
@@ -1612,7 +1763,7 @@ project):
 | `crates/qt-replay/` | The `quest-tracker-replay` CLI (`src/main.rs`), with `screen` (`src/screen.rs`) and `panels` (`src/panels.rs`: `measure`, `detect`, `grab`, `probe`); it depends on `qt-capture` for the decode and the grab. |
 | `crates/qt-app/` | Shell logic without Tauri: state lock, worker thread, commands, modes, debounced saves, command line, log discovery, the screen reader thread and its demand (`screen`), and the panel watcher thread (`panels`), and the update check (`updates.rs`: when a check is due, the newest release in GitHub's answer, the Settings window's view and the tray menu, behind an `UpdateTransport` trait; tested in `tests/updates.rs` with a recording fake transport). Tested with a fake window, emitter and clock. |
 | `crates/qt-net/` | The app's only network code: one fixed HTTPS `GET` of the repository's GitHub release list (`api.github.com`, port 443) through Windows' WinHTTP, with its bounds and no caller-given URL. Elsewhere than Windows every fetch is refused as unsupported. Its tests talk only to a server they run on `127.0.0.1`. |
-| `src-tauri/` | Tauri glue: the `overlay` window, `WS_EX_NOACTIVATE`, click-through, the shortcut, single instance, the tray icon and its menu, the Settings window (label `settings`, its capability `capabilities/settings.json`), the update transport over `qt-net`, the close request, the command wrappers. |
+| `src-tauri/` | Tauri glue: the `overlay` window (its capability `capabilities/default.json`: core events, core window, `allow-start-dragging` and `allow-start-resize-dragging`), `WS_EX_NOACTIVATE`, click-through, edit mode's resizing and the window's minimum size, the shortcut, single instance, the tray icon and its menu, the Settings window (label `settings`, its capability `capabilities/settings.json`), the update transport over `qt-net`, the close request, the command wrappers. |
 | `src/` | The Svelte 5 + TypeScript UI and its `*.test.ts`. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, one component per section listed in `sections.ts`, `UpdatesSection.svelte`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `theme/` | The harvested design: `theme.json`, `tokens.css`, `icons/<id>.svg`, `fonts/`. |
 | `data/quests.json` | The shipped quest data. |
@@ -1832,14 +1983,14 @@ release already exists, only its assets are replaced.
   "probably done" mark was finished by a later signal, not its own, so a player who
   skipped that step is shown it done too early. Secrets in the Dark's
   start on entering Clearfell is an inference of the same kind.
-- **Character remarks are not used.** Your character's own voiced
+- **Character remarks are not read from the log.** Your character's own voiced
   remarks (poe2db lists each class's, keyed by the moment that plays them,
   such as killing a quest boss) were not observed in `Client.txt`: none
   of the Mercenary's or the Warrior's remark texts was found in the whole
   of one player's log, with a speaker or without, while the same search
   found Una's lines; no speaker is named after a class; and the minute
   after a Mercenary killed The Bloated Miller held no remark. So no quest
-  moves on a remark from the log. That is "not observed", not "never
+  moves on a remark from the log; *Read the screen* reads them instead. That is "not observed", not "never
   logged" ([`quest-tracker-research.md`](quest-tracker-research.md) §
   "Character remarks"). The remarks do show on screen, which *Read the
   screen*'s remark rule reads (its limit is below).
@@ -1890,13 +2041,18 @@ release already exists, only its assets are replaced.
   Her "Defeat Beira of the Rotten Pack", and Blackjaw's and Lythara's
   "Defeat …" steps, have no log signal: tick them when the boss falls, let
   the reward line finish the quest, or turn on *Read the screen*, whose
-  bar rule ticks them (with the limits below). Without either the row
+  bar rule ticks them, and since 0.1.1 the remark rule for most classes
+  (with the limits below). Without either the row
   keeps showing the defeat step after the boss's lines.
 - **Read the screen: walking away ticks early.** The boss bar also goes
   when you walk out of a living boss's range. The reader cannot tell that
   from a kill, so staying out of range for 3 s ticks the defeat step and
   the row shows the next step early; only an area entry or your death
-  cancels it (the owner's choice, 2026-10-26). An area entry cancels a
+  cancels it (the owner's choice, 2026-10-26). Since 0.1.1 this holds for
+  The Bloated Miller too (the owner's choice, 2026-10-28): with *Read the
+  screen* on, walking away from him while he lives can tick "Slay the
+  Bloated Miller" early, as a replay of Live 8's capture showed twice for
+  a first run in which the player walked away. An area entry cancels a
   going whose bar was last seen before it. A death cancels the next going
   of each bar that was up at the death, and the bar must show again
   before a going counts. Whether the bar stays up through the
@@ -1920,12 +2076,27 @@ release already exists, only its assets are replaced.
   signals use their short names, matched by containment against the full
   bar title, by analogy with hers.
 - **Read the screen: kill remarks.** The remark rule ticks a step only for
-  a boss and class the quest data's `remarks` table has a text for. This
-  version's table has the Warrior's and the Mercenary's texts only: both
-  for The Bloated Miller, which no step uses, and the Mercenary's for
-  Blackjaw. So a remark ticks only a Mercenary's "Defeat Blackjaw, the
-  Remnant"; Beira, Lythara and every other class rely on the bar. The
-  Mercenary's Blackjaw remark has not been seen on screen.
+  a boss and class the quest data's `remarks` table has a text for. Since
+  0.1.1 that is nineteen bosses' slaying steps for the eight playable
+  classes ("Quest data" › "The `remarks` table"), with these not
+  established and so not ticked by a remark: Blackjaw for the Warrior and
+  the Ranger, Ignagduk for the Ranger, Viper Napuatzi for the Huntress,
+  Captain Hartlin for every class but the Huntress and the Monk, Beira of
+  the Rotten Pack for every class, the bosses no poe2db key ties to their
+  step (The King in the Mists, Azarian, Mektul, Benedictus, Tavakai,
+  Krutog, The Prisoner, Siora, Elzarah, Azmadi, Stormgore, Oswin, and
+  Heldra and Isolde), and every boss step with no area in the data. Where
+  a boss has a bar signal (Beira, the Miller, Blackjaw, Lythara) the bar
+  still ticks it. No boss's remark has been seen ticking a step live: the
+  texts are proved by the matcher's tests, and by the Warrior's Miller
+  remark in a replay of Live 8's capture. The Miller's remark will rarely
+  tick his step live, because his level-up at the kill ticks it first and
+  the reader then stops looking.
+- **Slay the Bloated Miller: a first level-up before his death.** The
+  step ticks on the character's level-up to 2 in The Riverbank, which in
+  one player's log came at the Miller's kill every time (17 of 17). A
+  character whose first level-up comes in The Riverbank before he dies
+  would tick the step early; not observed in that log.
 - **Read the screen: one measured setup.** The regions were measured on a
   2560×1440 borderless window, English client, at one in-game UI scale.
   A window that is not 16:9 is refused; other 16:9 resolutions, other UI
@@ -2120,6 +2291,42 @@ Revisit this feature when:
   game: record it under "Known limitations".
 
 ## Release notes
+
+### 0.1.1
+
+- Hiding under game panels is always on: in play mode the overlay hides
+  while the inventory, the passive tree, the stash or another of the seven
+  game panels is open under it, and shows again once it closes. Its
+  *Hide under game panels* toggle is gone from Settings, and a 0.1.0
+  settings file that turned it off no longer does.
+- Scale zooms the panel's contents and never resizes the window. In edit
+  mode the window resizes by dragging the panel's edges and corners, like
+  any Windows window, down to 320 by 240; the size you give it is kept
+  across restarts (`"width"` and `"height"` in `settings.json`'s
+  `"window"`). In play mode the window cannot be resized and stays
+  click-through.
+- The click-through toggle is gone from Settings. Play mode is still
+  click-through, and edit mode still takes clicks.
+- Leaving edit mode shows the quest list: Settings, the character picker
+  and a quest's detail close on the way back to play mode.
+- "Slay the Bloated Miller" ticks at his death instead of 10 to 20 s later
+  on Mortimer's line: on the character's first level-up, to 2 in The
+  Riverbank, with or without *Read the screen*, and, with it on, also on
+  his boss bar going or the character's kill remark (not yet seen live,
+  below), for every playable class. Mortimer's line still ticks it when none of those came. With
+  *Read the screen* on, walking away from the living Miller can tick it
+  early, as for the other bosses with a bar.
+- With *Read the screen* on, the character's kill remark ticks the slaying
+  step of Blackjaw, Lythara and sixteen more bosses (The Rust King,
+  Asinia, Draven, the Executioner, Geonor, Kabala, Iktab, Ignagduk, the
+  Queen of Filth, Ketzuli, Viper Napuatzi, Diamora, Yama, Captain Hartlin,
+  Thane Wulfric and Zolin), for each class whose remark poe2db's class
+  pages give. The bosses and classes with no established remark are in
+  Known limitations.
+- The kill-remark route is not yet seen live: no boss's remark has ticked
+  a step in a live session. The texts are poe2db's, checked against the
+  screen for the Warrior's Miller remark only, in a replay of Live 8's
+  capture (Known limitations, "Read the screen: kill remarks").
 
 ### 0.1.0 (first version)
 

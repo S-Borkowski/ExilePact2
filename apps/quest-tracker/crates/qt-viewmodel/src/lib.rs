@@ -363,7 +363,9 @@ impl<'de> Deserialize<'de> for Scale {
 /// The user's settings, as `settings.json` stores them and the settings
 /// frame shows them. A missing field takes its default; a key this struct
 /// does not have, such as the `dock` side files written before Live 2
-/// carry, is ignored on load (and refused in a patch).
+/// carry or the hide-under-panels switch of 0.1.0 (hiding under game panels
+/// is always on since 0.1.1), is ignored on load, gone after the next save,
+/// and refused in a patch.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -382,12 +384,6 @@ pub struct Settings {
     /// while a step it can finish is open, and stores nothing it reads.
     /// Off by default; a file written before it existed loads it off.
     pub screen_reading: bool,
-    /// "Hide under game panels": in play mode, the overlay hides while one
-    /// of the game's panels (the inventory, the passive tree, the stash...)
-    /// is open under its window, told from the colour of a few small copies
-    /// of the panel's frame, and shows again once it closes. Off by
-    /// default; a file written before it existed loads it off.
-    pub hide_under_panels: bool,
     /// "Automatically check for updates": with it on, the app asks GitHub
     /// for the repository's release list at launch and then once a day. Off
     /// by default, and with it off the app makes no request unless the user
@@ -405,7 +401,6 @@ impl Default for Settings {
             log_path: None,
             hotkey: Settings::DEFAULT_HOTKEY.to_string(),
             screen_reading: false,
-            hide_under_panels: false,
             check_updates: false,
         }
     }

@@ -6,12 +6,14 @@ roller.
 ## Quest tracker
 
 `quest-tracker.exe` is a small always-on-top overlay that lists the Path of
-Exile 2 campaign quests (Acts 1 to 6, 87 quests in 0.1.0). It says which ones
+Exile 2 campaign quests (Acts 1 to 6, 87 quests in 0.1.1). It says which ones
 are worth doing and why, and keeps each character's progress. It learns that
-progress from the game's `Client.txt` log. Two settings are opt-in: *Read the
-screen* also reads three regions of the game's window with Windows' own OCR,
-and *Hide under game panels* hides the overlay while a game panel such as the
-inventory is open under it. It sends no input to the game and never reads the
+progress from the game's `Client.txt` log. One setting is opt-in: *Read the
+screen* also reads three regions of the game's window with Windows' own OCR.
+Hiding under game panels is always on: in play mode the overlay hides while a
+game panel such as the inventory is open under it, told from the colour of a
+few small patches of the game's window. In edit mode the window resizes by its
+edges, and the scale setting zooms its contents. It sends no input to the game and never reads the
 game's memory. It makes no network request unless you ask it to check for
 updates (the tray icon's *Check for updates*, or *Automatically check for
 updates* in its *Settings*, off by default); a check only asks GitHub whether
