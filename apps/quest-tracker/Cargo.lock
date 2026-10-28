@@ -933,6 +933,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ep-net"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "ep-update"
+version = "0.1.0"
+dependencies = [
+ "minisign-verify",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2098,6 +2114,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
+name = "minisign-verify"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22f9645cb765ea72b8111f36c522475d2daa0d22c957a9826437e97534bc4e9e"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2729,6 +2751,7 @@ dependencies = [
 name = "qt-app"
 version = "0.1.1"
 dependencies = [
+ "ep-update",
  "qt-engine",
  "qt-logline",
  "qt-screen",
@@ -2767,13 +2790,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
-]
-
-[[package]]
-name = "qt-net"
-version = "0.1.1"
-dependencies = [
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2831,9 +2847,9 @@ dependencies = [
 name = "quest-tracker"
 version = "0.1.1"
 dependencies = [
+ "ep-net",
  "qt-app",
  "qt-capture",
- "qt-net",
  "serde",
  "serde_json",
  "tauri",

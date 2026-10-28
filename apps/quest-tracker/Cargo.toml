@@ -1,9 +1,10 @@
 # The quest-tracker Cargo workspace: the log tailer, parser, quest engine,
-# view-model, store, replay CLI, app logic and the update check's transport
-# (`qt-net`, the only crate that talks to the network) as library crates,
-# plus the Tauri shell in `src-tauri/`. Every external dependency is pinned here with
-# `=` and taken by members with `workspace = true`; a member never names a
-# version of its own.
+# view-model, store, replay CLI and app logic as library crates, plus the
+# Tauri shell in `src-tauri/`. The update code is the shared workspace's
+# (`apps/shared`: `ep-update`, and `ep-net`, the only crate that talks to the
+# network), taken as path dependencies, not members. Every external
+# dependency is pinned here with `=` and taken by members with
+# `workspace = true`; a member never names a version of its own.
 
 [workspace]
 resolver = "2"
@@ -17,7 +18,6 @@ members = [
     "crates/qt-capture",
     "crates/qt-replay",
     "crates/qt-app",
-    "crates/qt-net",
     "src-tauri",
 ]
 

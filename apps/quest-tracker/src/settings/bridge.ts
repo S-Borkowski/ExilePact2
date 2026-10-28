@@ -21,6 +21,14 @@ export interface SettingsCommandArgs {
   update_settings: { patch: Pick<SettingsPatch, 'check_updates'> };
   /** Starts a manual check; the views it causes arrive on `qt:app-settings`. */
   check_for_updates: Record<string, never>;
+  /**
+   * Installs the newer version: downloads it, checks its signature, puts it in
+   * place and restarts. The install button and *Try again*; the views it causes
+   * arrive on `qt:app-settings`.
+   */
+  install_update: Record<string, never>;
+  /** Stops a running download; the view goes back to the install button. */
+  cancel_update: Record<string, never>;
   /** Opens the newer version's release page in the default browser. */
   open_release_page: Record<string, never>;
 }

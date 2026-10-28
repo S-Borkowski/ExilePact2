@@ -7,8 +7,9 @@
 //! `qt:view` and `qt:row-change` events, and `qt:app-settings` for the
 //! Settings window with the tray's menu and tooltip) and [`Window`]
 //! (click-through, zoom, placement, the global shortcut, opening a link, the monitor's metrics
-//! for the `auto` scale, the pid of the window in front and showing or
-//! hiding the overlay for it), forwards each IPC
+//! for the `auto` scale, the pid of the window in front, showing or
+//! hiding the overlay for it, and the exit an installed update restarts
+//! through), forwards each IPC
 //! command to the [`App`] method of the same name, and makes a quit request
 //! ([`App::request_quit`]) from the tray's Quit or a close of the overlay's
 //! window before it exits. Keeping the logic here
@@ -31,13 +32,17 @@
 //!   the panel watcher").
 //! - [`updates`]: the update check, asked only when the user orders it (the
 //!   tray's *Check for updates*, the Settings window's *Check now*, or the
-//!   opt-in `check_updates` setting, at launch and then daily): when a check
-//!   is due, its one request on a thread of its own through an
-//!   [`UpdateTransport`] the glue hands [`App::with_updates`] in an
-//!   [`UpdateConfig`] (`qt-net` on Windows), what the release list means,
-//!   the Settings window's view ([`AppSettingsView`], `qt:app-settings`) and
-//!   the tray menu's entries ([`tray_menu`]). This crate makes no request
-//!   itself and does not depend on `qt-net`.
+//!   opt-in `check_updates` setting, at launch and then daily), and the
+//!   in-app install, only from the Settings window's install button
+//!   ([`App::install_update`]): the quest tracker's product and tray menu
+//!   ([`tray_menu`]), over the update logic both apps share (`ep-update`,
+//!   re-exported there: when a check is due, the requests on a thread of
+//!   their own through an [`UpdateTransport`] the glue hands
+//!   [`App::with_updates`] in an [`UpdateConfig`] (`ep-net` on Windows),
+//!   what the release list means, the signature check and the swap of the
+//!   exe, and the Settings window's view, [`AppSettingsView`],
+//!   `qt:app-settings`). This crate makes no request itself and does not
+//!   depend on `ep-net`.
 
 pub mod app;
 pub mod cli;
@@ -63,8 +68,8 @@ pub use app::{
 pub use cli::Options;
 pub use panels::PanelConfig;
 pub use updates::{
-    tray_menu, AppSettingsView, TrayAction, TrayItem, TrayMenu, UpdateConfig, UpdateState,
-    UpdateTransport, Version,
+    tray_menu, AppSettingsView, InstallState, TrayAction, TrayItem, TrayMenu, UpdateConfig,
+    UpdateState, UpdateTransport, Version,
 };
 // What the glue names without depending on the library crates itself.
 pub use qt_engine::QuestAction;

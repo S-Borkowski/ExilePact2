@@ -15,9 +15,10 @@ tauri-build = { workspace = true }
 
 [dependencies]
 qt-app = { path = "../crates/qt-app" }
-# The update check's transport: the app's only network code, one fixed
-# request for the release list, made only when a check runs.
-qt-net = { path = "../crates/qt-net" }
+# The update check's and the install's transport, shared with the waystone
+# roller (apps/shared): the app's only network code, the release list and a
+# release's two fixed assets, requested only when a check or an install runs.
+ep-net = { path = "../../shared/crates/ep-net" }
 tauri = { workspace = true }
 tauri-plugin-global-shortcut = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }

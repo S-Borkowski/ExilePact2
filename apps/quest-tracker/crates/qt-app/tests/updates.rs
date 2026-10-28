@@ -1,8 +1,10 @@
-//! The update check in the shell (Context "The update checker in qt-app",
-//! "The privacy invariant and its proof"), driven by a fake transport that
-//! records every call and can be held on a gate, a fake clock, a fake
-//! emitter that records the Settings window's views and a fake window that
-//! records the URLs it opens. Nothing here touches the network.
+//! The update check and the in-app install in the shell (Context "The
+//! update checker in qt-app", "The privacy invariant and its proof", "The
+//! install flow, threads and failure states"), driven by a fake transport
+//! that records every call (the release list and each download) and can be
+//! held on a gate, a fake clock, a fake emitter that records the Settings
+//! window's views and a fake window that records the URLs it opens and the
+//! restarts it is asked for. Nothing here touches the network.
 //!
 //! Baseline: with the defaults, an old `settings.json` without the key, a
 //! corrupt one or no store at all, the transport is never called across
@@ -12,23 +14,31 @@
 //! `check_updates` on, one at launch and then one a day, one an hour after a
 //! failed automatic check, none once it is turned off; a check never blocks
 //! a command or the worker, runs one at a time, and is not waited for at
-//! shutdown.
+//! shutdown. An install happens only from the `install_update` command, even
+//! with the automatic check on for 48 simulated hours; a verified one swaps
+//! the exe and restarts through the quit path; a failed one shows its reason
+//! and *Try again*, with the running exe untouched.
+//!
+//! The install's signature fixtures are `fixtures/updates/signing/`, made
+//! with a throwaway key for the file name `quest-tracker.exe` and version
+//! 1.3.0, so the real product's name check passes.
 
 use std::collections::VecDeque;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use qt_app::updates::{
-    newest_release, Answer, TransportError, Unreadable, RELEASE_PAGE_PREFIX, TAG_PREFIX,
-    TRAY_CHECK_UPDATES, TRAY_QUIT, TRAY_SETTINGS, TRAY_UPDATE_AVAILABLE,
+    newest_release, running_version, Answer, AssetKind, DownloadError, InstallState,
+    TransportError, Unreadable, PRODUCT, TAG_PREFIX, TRAY_CHECK_UPDATES, TRAY_QUIT, TRAY_SETTINGS,
+    TRAY_UPDATE_AVAILABLE,
 };
 use qt_app::{
     tray_menu, App, AppConfig, AppSettingsView, Clock, Emitter, Mode, MonitorMetrics, PanelConfig,
-    Placement, TrayAction, TrayItem, UpdateConfig, UpdateState, UpdateTransport, Version, Window,
-    SHUTDOWN_TIMEOUT,
+    Placement, QuitFrom, TrayAction, TrayItem, UpdateConfig, UpdateState, UpdateTransport, Version,
+    Window, SHUTDOWN_TIMEOUT,
 };
 use qt_store::Store;
 use qt_viewmodel::{RowChange, View};
@@ -40,15 +50,19 @@ const MINUTE: u64 = 60 * 1_000;
 /// crate's, so a release bump changes nothing here.
 const RUNNING: Version = Version::new(1, 2, 0);
 const NEWER: Version = Version::new(1, 3, 0);
+/// The bytes of the exe the harness's app runs from, which a failed install
+/// must never touch.
+const RUNNING_BYTES: &[u8] = b"the running quest-tracker.exe of the test";
 
 // ---------------------------------------------------------------------------
 // The fakes.
 
 type Reply = Result<Answer, TransportError>;
 
-/// The transport's shared record: how many calls began and returned, the
-/// replies queued (else `fallback`), and the gate a call waits on while it is
-/// closed.
+/// The transport's shared record: how many release-list calls began and
+/// returned, the replies queued (else `fallback`), and the gate a call waits
+/// on while it is closed; every download asked for, what it serves, and the
+/// gate the exe's download waits on before its first byte.
 struct Wire {
     calls: AtomicUsize,
     returned: AtomicUsize,
@@ -56,6 +70,13 @@ struct Wire {
     fallback: Mutex<Reply>,
     open: Mutex<bool>,
     opened: Condvar,
+    downloads: Mutex<Vec<(Version, AssetKind)>>,
+    exe: Mutex<Vec<u8>>,
+    sig: Mutex<Vec<u8>>,
+    exe_error: Mutex<Option<DownloadError>>,
+    exe_open: Mutex<bool>,
+    /// The exe's download is waiting on its closed gate.
+    exe_waiting: AtomicBool,
 }
 
 struct FakeTransport(Arc<Wire>);
@@ -78,12 +99,61 @@ impl UpdateTransport for FakeTransport {
         w.returned.fetch_add(1, Ordering::SeqCst);
         reply
     }
+
+    /// Serves the asset in 1 KiB reads, as `ep-net` streams one: the limit,
+    /// the cancel flag between reads and a progress call after each.
+    fn download(
+        &self,
+        version: Version,
+        asset: AssetKind,
+        limit: u64,
+        sink: &mut dyn std::io::Write,
+        progress: &mut dyn FnMut(u64, Option<u64>),
+        cancel: &AtomicBool,
+    ) -> Result<u64, DownloadError> {
+        let w = &self.0;
+        w.downloads.lock().unwrap().push((version, asset));
+        let data = match asset {
+            AssetKind::Signature => w.sig.lock().unwrap().clone(),
+            AssetKind::Exe => {
+                if let Some(e) = *w.exe_error.lock().unwrap() {
+                    return Err(e);
+                }
+                while !*w.exe_open.lock().unwrap() {
+                    w.exe_waiting.store(true, Ordering::SeqCst);
+                    if cancel.load(Ordering::Acquire) {
+                        w.exe_waiting.store(false, Ordering::SeqCst);
+                        return Err(DownloadError::Cancelled);
+                    }
+                    std::thread::sleep(Duration::from_millis(2));
+                }
+                w.exe_waiting.store(false, Ordering::SeqCst);
+                w.exe.lock().unwrap().clone()
+            }
+        };
+        if data.len() as u64 > limit {
+            return Err(DownloadError::Transport(TransportError::TooLarge));
+        }
+        let total = Some(data.len() as u64);
+        let mut written = 0u64;
+        for chunk in data.chunks(1024) {
+            if cancel.load(Ordering::Acquire) {
+                return Err(DownloadError::Cancelled);
+            }
+            sink.write_all(chunk)
+                .map_err(|e| DownloadError::Write(e.kind()))?;
+            written += chunk.len() as u64;
+            progress(written, total);
+        }
+        Ok(written)
+    }
 }
 
 #[derive(Default)]
 struct Recorded {
     app_settings: Mutex<Vec<AppSettingsView>>,
     opened: Mutex<Vec<String>>,
+    restarts: AtomicUsize,
 }
 
 struct FakeEmitter(Arc<Recorded>);
@@ -130,6 +200,9 @@ impl Window for FakeWindow {
     fn set_visible(&self, _: bool) -> Result<(), String> {
         Ok(())
     }
+    fn restart(&self) {
+        self.0.restarts.fetch_add(1, Ordering::SeqCst);
+    }
 }
 
 /// The fake clock, which counts its reads: the worker reads it on every
@@ -147,18 +220,66 @@ impl Clock for FakeClock {
 }
 
 // ---------------------------------------------------------------------------
-// Answers.
+// Answers and fixtures.
 
-/// A 200 answer listing published Quest Tracker releases of `versions`.
-fn releases(versions: &[&str]) -> Reply {
-    let list: Vec<Value> = versions
-        .iter()
-        .map(|v| json!({ "tag_name": format!("{TAG_PREFIX}{v}"), "draft": false, "prerelease": false }))
-        .collect();
+fn root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+fn signing(name: &str) -> Vec<u8> {
+    let p = root().join("fixtures/updates/signing").join(name);
+    fs::read(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display()))
+}
+
+/// The exe a signed release of 1.3.0 serves.
+fn payload() -> Vec<u8> {
+    signing("payload.bin")
+}
+
+/// Its good signature: `file:quest-tracker.exe`, `version:1.3.0`.
+fn good_signature() -> Vec<u8> {
+    signing("payload.bin.minisig")
+}
+
+/// The test public key's `RW...` line, injected through `UpdateConfig`.
+fn test_key() -> String {
+    String::from_utf8(signing("test-key.pub"))
+        .unwrap()
+        .lines()
+        .nth(1)
+        .unwrap()
+        .to_string()
+}
+
+/// One published Quest Tracker release; a signed one lists the exe and its
+/// `.minisig` as GitHub does.
+fn entry(version: &str, signed: bool) -> Value {
+    let mut e = json!({ "tag_name": format!("{TAG_PREFIX}{version}"), "draft": false, "prerelease": false });
+    if signed {
+        e["assets"] = json!([
+            { "name": "quest-tracker.exe", "size": payload().len(), "state": "uploaded" },
+            { "name": "quest-tracker.exe.minisig", "size": good_signature().len(), "state": "uploaded" },
+        ]);
+    }
+    e
+}
+
+fn list(versions: &[&str], signed: bool) -> Reply {
+    let list: Vec<Value> = versions.iter().map(|v| entry(v, signed)).collect();
     Ok(Answer {
         status: 200,
         body: serde_json::to_vec(&list).unwrap(),
     })
+}
+
+/// A 200 answer listing signed Quest Tracker releases of `versions`.
+fn releases(versions: &[&str]) -> Reply {
+    list(versions, true)
+}
+
+/// The same, with no exe or signature asset listed.
+fn unsigned_releases(versions: &[&str]) -> Reply {
+    list(versions, false)
 }
 
 fn status(code: u16) -> Reply {
@@ -168,12 +289,13 @@ fn status(code: u16) -> Reply {
     })
 }
 
-fn root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
-}
-
 fn releases_fixture() -> Vec<u8> {
     fs::read(root().join("fixtures/updates/releases.json")).expect("fixtures/updates/releases.json")
+}
+
+/// The newest version of a release list, as the quest tracker reads it.
+fn newest(body: &[u8]) -> Result<Option<Version>, Unreadable> {
+    newest_release(&PRODUCT, body).map(|r| r.map(|r| r.version))
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +334,8 @@ impl Default for Setup {
 struct Harness {
     _dir: tempfile::TempDir,
     root: PathBuf,
+    /// The exe the app runs from, in a folder of its own.
+    exe: PathBuf,
     app: Arc<App>,
     wire: Arc<Wire>,
     rec: Arc<Recorded>,
@@ -239,6 +363,9 @@ fn harness(setup: Setup) -> Harness {
             Store::open(&store_dir).map_err(|e| e.to_string())
         }
     };
+    let exe = root.join("app").join("quest-tracker.exe");
+    fs::create_dir_all(exe.parent().unwrap()).expect("app folder");
+    fs::write(&exe, RUNNING_BYTES).expect("running exe written");
     let wire = Arc::new(Wire {
         calls: AtomicUsize::new(0),
         returned: AtomicUsize::new(0),
@@ -246,6 +373,12 @@ fn harness(setup: Setup) -> Harness {
         fallback: Mutex::new(releases(&["1.3.0"])),
         open: Mutex::new(setup.open),
         opened: Condvar::new(),
+        downloads: Mutex::new(Vec::new()),
+        exe: Mutex::new(payload()),
+        sig: Mutex::new(good_signature()),
+        exe_error: Mutex::new(None),
+        exe_open: Mutex::new(true),
+        exe_waiting: AtomicBool::new(false),
     });
     let rec = Arc::new(Recorded::default());
     let now = Arc::new(AtomicU64::new(100_000));
@@ -276,11 +409,14 @@ fn harness(setup: Setup) -> Harness {
         UpdateConfig {
             transport,
             running: Some(RUNNING),
+            exe_path: Some(exe.clone()),
+            public_key: Some(test_key()),
         },
     );
     Harness {
         _dir: dir,
         root,
+        exe,
         app,
         wire,
         rec,
@@ -327,6 +463,19 @@ impl Harness {
         self.wire.opened.notify_all();
     }
 
+    fn downloads(&self) -> Vec<(Version, AssetKind)> {
+        self.wire.downloads.lock().unwrap().clone()
+    }
+
+    /// Closes or opens the gate the exe's download waits on.
+    fn exe_gate(&self, open: bool) {
+        *self.wire.exe_open.lock().unwrap() = open;
+    }
+
+    fn restarts(&self) -> usize {
+        self.rec.restarts.load(Ordering::SeqCst)
+    }
+
     /// What `settings.json` holds now.
     fn saved_settings(&self) -> Value {
         Store::open(self.root.join("store"))
@@ -340,11 +489,28 @@ impl Harness {
         fs::read_to_string(self.root.join("store").join("overlay.log")).unwrap_or_default()
     }
 
-    /// The `updates:` lines, without the log's own prefix.
-    fn update_lines(&self) -> Vec<String> {
+    /// The lines from `marker` on, without the log's own prefix.
+    fn lines_from(&self, marker: &str) -> Vec<String> {
         self.diag_text()
             .lines()
-            .filter_map(|l| l.find("updates: ").map(|i| l[i..].to_string()))
+            .filter_map(|l| l.find(marker).map(|i| l[i..].to_string()))
+            .collect()
+    }
+
+    /// The `updates:` lines.
+    fn update_lines(&self) -> Vec<String> {
+        self.lines_from("updates: ")
+    }
+
+    /// The `updates:` lines of installs.
+    fn install_lines(&self) -> Vec<String> {
+        self.update_lines()
+            .into_iter()
+            .filter(|l| {
+                l.starts_with("updates: install")
+                    || l.starts_with("updates: signature")
+                    || l.starts_with("updates: replaced")
+            })
             .collect()
     }
 
@@ -358,6 +524,16 @@ impl Harness {
         wait_until("the check ends and is announced", || {
             let view = self.app.get_app_settings();
             view.update.state != UpdateState::Checking && self.emitted().last() == Some(&view)
+        });
+        self.app.get_app_settings()
+    }
+
+    /// Waits for the install to reach `state` and its view to be sent; that
+    /// view.
+    fn wait_install(&self, state: InstallState) -> AppSettingsView {
+        wait_until(&format!("the install reaches {state:?} and is announced"), || {
+            let view = self.app.get_app_settings();
+            view.install.state == state && self.emitted().last() == Some(&view)
         });
         self.app.get_app_settings()
     }
@@ -398,6 +574,24 @@ impl Harness {
         self.wait_calls(before + 1);
         self.wait_ended()
     }
+
+    /// The files of the exe's folder.
+    fn app_folder(&self) -> Vec<String> {
+        let mut names: Vec<String> = fs::read_dir(self.exe.parent().unwrap())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
+    /// The running exe is as it was, alone in its folder.
+    fn assert_untouched(&self) {
+        assert_eq!(fs::read(&self.exe).unwrap(), RUNNING_BYTES, "the running exe changed");
+        assert_eq!(self.app_folder(), lines(&["quest-tracker.exe"]));
+        assert_eq!(self.restarts(), 0, "a restart was asked for");
+        assert!(!self.app.restart_requested());
+    }
 }
 
 fn lines(v: &[&str]) -> Vec<String> {
@@ -418,10 +612,11 @@ fn assert_no_request_unless_asked(h: &Harness, readable_log: bool) {
     assert_eq!(view.update.state, UpdateState::Idle);
     assert_eq!(view.update.text, "Not checked yet.");
     assert_eq!(view.update.newer, None);
-    assert!(h.app.open_release_page().is_err(), "no newer version is known");
+    assert_eq!(view.install.state, InstallState::None);
     h.ticks(0, 48 * HOUR);
     let_the_worker_tick();
     assert_eq!(h.calls(), 0, "a request nobody asked for");
+    assert!(h.downloads().is_empty(), "a download nobody asked for");
     assert!(h.update_lines().is_empty(), "{:?}", h.update_lines());
     assert!(h.emitted().is_empty(), "{:?}", h.emitted());
     assert!(h.opened().is_empty(), "{:?}", h.opened());
@@ -507,6 +702,7 @@ fn updates_manual_check_makes_one_request_target() {
     let_the_worker_tick();
     assert_eq!(h.calls(), 1);
     assert_eq!(h.update_lines().len(), 2);
+    assert!(h.downloads().is_empty());
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }
 
@@ -709,6 +905,10 @@ fn updates_check_never_blocks_commands_or_the_worker() {
     quick("check_for_updates", &|| {
         assert_eq!(h.app.check_for_updates().update.state, UpdateState::Checking);
     });
+    quick("install_update", &|| {
+        // Refused while a check runs.
+        assert_eq!(h.app.install_update().update.state, UpdateState::Checking);
+    });
     quick("tick", &|| h.app.tick());
     // The worker keeps ticking: it reads the clock on every tick.
     let before = h.reads.load(Ordering::SeqCst);
@@ -719,6 +919,7 @@ fn updates_check_never_blocks_commands_or_the_worker() {
     h.release();
     assert_eq!(h.wait_ended().update.state, UpdateState::Available);
     assert_eq!(h.calls(), 1);
+    assert!(h.downloads().is_empty());
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }
 
@@ -777,48 +978,13 @@ fn updates_shutdown_does_not_wait_for_a_check() {
     assert_eq!(h.emitted().len(), sent);
     assert_eq!(h.update_lines(), lines_then);
     assert_eq!(lines_then, lines(&["updates: check started (manual)"]));
-    // And none starts any more.
+    // And none starts any more, nor an install.
     h.app.check_for_updates();
+    h.app.install_update();
     h.app.tick();
     std::thread::sleep(Duration::from_millis(100));
     assert_eq!(h.calls(), 1);
-}
-
-#[test]
-fn updates_release_page_comes_from_the_tag() {
-    let h = harness(Setup::default());
-    // Nothing known: refused, nothing opened.
-    let err = h.app.open_release_page().unwrap_err();
-    assert!(err.contains("no newer version"), "{err}");
-    // The fixture's newest release points its `html_url` elsewhere.
-    let view = h.manual(Ok(Answer {
-        status: 200,
-        body: releases_fixture(),
-    }));
-    assert_eq!(view.update.newer.as_deref(), Some("1.10.0"));
-    h.app.open_release_page().expect("opened");
-    let page = format!("{RELEASE_PAGE_PREFIX}{TAG_PREFIX}1.10.0");
-    assert_eq!(page, "https://github.com/S-Borkowski/ExilePact2/releases/tag/quest-tracker-v1.10.0");
-    assert_eq!(h.opened(), vec![page.clone()]);
-    // A failed check keeps the newer version, and its page.
-    h.manual(status(500));
-    h.app.open_release_page().expect("still known");
-    assert_eq!(h.opened(), vec![page.clone(), page.clone()]);
-    // A later success replaces it: no release, nothing to open.
-    h.manual(releases(&[]));
-    assert!(h.app.open_release_page().is_err());
-    assert_eq!(h.opened().len(), 2);
-    assert!(h.opened().iter().all(|u| !u.contains("example.invalid")));
-    assert_eq!(
-        h.update_lines()
-            .into_iter()
-            .filter(|l| l.contains("release page"))
-            .collect::<Vec<_>>(),
-        lines(&[
-            "updates: opened the release page of 1.10.0",
-            "updates: opened the release page of 1.10.0",
-        ])
-    );
+    assert!(h.downloads().is_empty());
 }
 
 /// The entry ids of a tray menu, `-` for the separator.
@@ -869,7 +1035,7 @@ fn updates_tray_menu_follows_the_outcome() {
     assert_eq!(ids(&current), plain);
     assert_eq!(tray_menu(&current).tooltip, "Quest Tracker");
     // Every id maps to its action, and nothing else does.
-    assert_eq!(TrayAction::from_id(TRAY_UPDATE_AVAILABLE), Some(TrayAction::OpenReleasePage));
+    assert_eq!(TrayAction::from_id(TRAY_UPDATE_AVAILABLE), Some(TrayAction::OpenSettings));
     assert_eq!(TrayAction::from_id(TRAY_CHECK_UPDATES), Some(TrayAction::CheckForUpdates));
     assert_eq!(TrayAction::from_id(TRAY_SETTINGS), Some(TrayAction::OpenSettings));
     assert_eq!(TrayAction::from_id(TRAY_QUIT), Some(TrayAction::Quit));
@@ -927,13 +1093,232 @@ fn updates_without_a_transport_fail_without_a_request() {
 }
 
 // ---------------------------------------------------------------------------
+// The install.
+
+#[test]
+fn updates_install_is_reached_only_from_the_command_target() {
+    let h = harness(auto_on());
+    h.app.start();
+    // The automatic check at launch finds a signed newer release.
+    h.wait_calls(1);
+    let view = h.wait_ended();
+    assert_eq!(view.update.state, UpdateState::Available);
+    assert_eq!(view.install.state, InstallState::Ready);
+    assert_eq!(view.install.text, "Install 1.3.0 and restart");
+    // 48 simulated hours with the setting on: a check a day, never a download.
+    h.ticks(30 * MINUTE, 24 * HOUR);
+    h.wait_calls(2);
+    h.wait_ended();
+    h.ticks(24 * HOUR + 30 * MINUTE, 48 * HOUR);
+    h.wait_calls(3);
+    h.wait_ended();
+    let_the_worker_tick();
+    // Nor from any other command, or the tray's update entry (it opens the
+    // Settings window).
+    h.manual(releases(&["1.3.0"]));
+    let _ = h.app.get_app_settings();
+    let _ = h.app.cancel_update();
+    h.app.update_settings(&json!({ "opacity": 0.6 })).unwrap();
+    assert_eq!(TrayAction::from_id(TRAY_UPDATE_AVAILABLE), Some(TrayAction::OpenSettings));
+    assert!(h.downloads().is_empty(), "{:?}", h.downloads());
+    assert!(h.install_lines().is_empty(), "{:?}", h.install_lines());
+    assert_eq!(h.app.get_app_settings().install.state, InstallState::Ready);
+    h.assert_untouched();
+
+    // Positive control: the command installs, through the same fake.
+    let view = h.app.install_update();
+    assert_ne!(view.install.state, InstallState::Ready, "the command started nothing");
+    h.wait_install(InstallState::Restarting);
+    assert_eq!(
+        h.downloads(),
+        vec![(NEWER, AssetKind::Signature), (NEWER, AssetKind::Exe)]
+    );
+    wait_until("the restart is asked for", || h.restarts() == 1);
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
+fn updates_install_restarts_through_the_quit_path_target() {
+    let h = harness(Setup::default());
+    h.app.start();
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    let ready = h.manual(releases(&["1.3.0"]));
+    assert_eq!(ready.install.state, InstallState::Ready);
+    let started = h.app.install_update();
+    assert!(
+        matches!(
+            started.install.state,
+            InstallState::Downloading | InstallState::Verifying | InstallState::Restarting
+        ),
+        "{started:?}"
+    );
+    let view = h.wait_install(InstallState::Restarting);
+    assert_eq!(view.install.text, "Quest Tracker 1.3.0 is installed. Restarting\u{2026}");
+    assert_eq!(view.install.progress, None);
+    // The window saw it download and check the signature on the way.
+    let states: Vec<InstallState> = h.emitted().iter().map(|v| v.install.state).collect();
+    assert!(states.contains(&InstallState::Downloading), "{states:?}");
+    assert!(states.contains(&InstallState::Verifying), "{states:?}");
+    // The new exe is in place and the running one beside it; nothing staged.
+    assert_eq!(fs::read(&h.exe).unwrap(), payload());
+    assert_eq!(
+        fs::read(h.exe.with_file_name("quest-tracker.exe.old")).unwrap(),
+        RUNNING_BYTES
+    );
+    assert_eq!(h.app_folder(), lines(&["quest-tracker.exe", "quest-tracker.exe.old"]));
+    // Through the quit path: one quit line, one restart asked of the shell,
+    // and the relaunch recorded for its exit.
+    wait_until("the restart is asked for", || h.restarts() == 1);
+    assert!(h.app.restart_requested());
+    assert_eq!(h.lines_from("quit: "), lines(&["quit: restarting into the update"]));
+    assert_eq!(
+        h.update_lines(),
+        lines(&[
+            "updates: check started (manual)",
+            "updates: 1.3.0 available (running 1.2.0)",
+            "updates: install of 1.3.0 started",
+            "updates: signature of 1.3.0 checked",
+            "updates: replaced the running exe with 1.3.0, restarting",
+        ])
+    );
+    // The first quit request wins; nothing starts while it restarts.
+    assert!(!h.app.request_quit(QuitFrom::Tray));
+    h.app.install_update();
+    h.app.check_for_updates();
+    assert_eq!(h.calls(), 1);
+    assert_eq!(h.downloads().len(), 2);
+    assert_eq!(
+        h.update_lines().last().map(String::as_str),
+        Some("updates: install refused: the app is restarting")
+    );
+    // The shutdown the shell's exit runs saves, as any quit's does.
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+    assert_eq!(h.saved_settings()["opacity"], 0.5);
+    assert_eq!(h.restarts(), 1);
+    assert_eq!(h.lines_from("quit: ").len(), 1);
+}
+
+#[test]
+fn updates_install_failure_shows_the_reason_and_try_again() {
+    let h = harness(Setup::default());
+    h.app.start();
+    // No newer version known: refused, nothing downloaded.
+    let view = h.app.install_update();
+    assert_eq!(view.install.state, InstallState::None);
+    assert_eq!(view.install.text, "");
+    // A newer release that is not signed: its one line, no install.
+    let view = h.manual(unsigned_releases(&["1.3.0"]));
+    assert_eq!(view.install.state, InstallState::Unsigned);
+    assert_eq!(
+        view.install.text,
+        "1.3.0 is available but cannot be installed: the release is not signed."
+    );
+    assert_eq!(h.app.install_update().install.state, InstallState::Unsigned);
+    assert!(h.downloads().is_empty());
+    h.assert_untouched();
+
+    // A failed download: its reason and Try again; the running exe untouched.
+    assert_eq!(h.manual(releases(&["1.3.0"])).install.state, InstallState::Ready);
+    *h.wire.exe_error.lock().unwrap() = Some(DownloadError::Status(404));
+    h.app.install_update();
+    let view = h.wait_install(InstallState::Failed);
+    assert_eq!(view.install.text, "Could not install Quest Tracker 1.3.0: GitHub answered 404.");
+    assert!(!view.install.text.contains('\n'));
+    assert_eq!(view.update.state, UpdateState::Available, "the check part stays");
+    h.assert_untouched();
+
+    // Try again: the file does not match its signature.
+    *h.wire.exe_error.lock().unwrap() = None;
+    let mut tampered = payload();
+    tampered[100] ^= 0x01;
+    *h.wire.exe.lock().unwrap() = tampered;
+    h.app.install_update();
+    let view = h.wait_install(InstallState::Failed);
+    assert_eq!(
+        view.install.text,
+        "Could not install Quest Tracker 1.3.0: the downloaded file does not match its signature."
+    );
+    h.assert_untouched();
+
+    // A cancel goes back to the button and leaves nothing behind.
+    *h.wire.exe.lock().unwrap() = payload();
+    h.exe_gate(false);
+    h.app.install_update();
+    wait_until("the exe's download waits", || h.wire.exe_waiting.load(Ordering::SeqCst));
+    let view = h.app.get_app_settings();
+    assert_eq!(view.install.state, InstallState::Downloading);
+    assert_eq!(view.install.text, "Downloading Quest Tracker 1.3.0\u{2026}");
+    let progress = view.install.progress.expect("progress while downloading");
+    assert_eq!((progress.bytes, progress.total), (0, Some(payload().len() as u64)));
+    h.app.cancel_update();
+    let view = h.wait_install(InstallState::Ready);
+    assert_eq!(view.install.text, "Install 1.3.0 and restart");
+    h.assert_untouched();
+    h.exe_gate(true);
+
+    // Try again, now with the release as it is: installed.
+    h.app.install_update();
+    h.wait_install(InstallState::Restarting);
+    assert_eq!(fs::read(&h.exe).unwrap(), payload());
+    wait_until("the restart is asked for", || h.restarts() == 1);
+    assert_eq!(
+        h.install_lines(),
+        lines(&[
+            "updates: install refused: no newer version is known",
+            "updates: install refused: the release is not signed",
+            "updates: install of 1.3.0 started",
+            "updates: install failed: GitHub answered 404",
+            "updates: install of 1.3.0 started",
+            "updates: install failed: the downloaded file does not match its signature",
+            "updates: install of 1.3.0 started",
+            "updates: install cancelled",
+            "updates: install of 1.3.0 started",
+            "updates: signature of 1.3.0 checked",
+            "updates: replaced the running exe with 1.3.0, restarting",
+        ])
+    );
+    // No line names a URL, and nothing was opened.
+    assert!(h.update_lines().iter().all(|l| !l.contains("://")), "{:?}", h.update_lines());
+    assert!(h.opened().is_empty());
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+#[test]
+fn updates_tray_update_entry_opens_settings() {
+    let h = harness(Setup::default());
+    let view = h.manual(releases(&["1.3.0"]));
+    let menu = tray_menu(&view);
+    assert_eq!(
+        menu.items[0],
+        TrayItem::Entry { id: "update-available", text: "Update available: 1.3.0".into() }
+    );
+    // The update entry opens the Settings window, where the install button is.
+    assert_eq!(TrayAction::from_id(TRAY_UPDATE_AVAILABLE), Some(TrayAction::OpenSettings));
+    // An unsigned release keeps the entry, and it opens the window too.
+    let unsigned = h.manual(unsigned_releases(&["1.3.0"]));
+    assert_eq!(ids(&unsigned)[0], TRAY_UPDATE_AVAILABLE);
+    // No tray entry installs or opens a page.
+    for item in tray_menu(&view).items.iter().chain(tray_menu(&unsigned).items.iter()) {
+        if let TrayItem::Entry { id, .. } = item {
+            match TrayAction::from_id(id) {
+                Some(TrayAction::CheckForUpdates | TrayAction::OpenSettings | TrayAction::Quit) => {}
+                None => panic!("tray entry {id:?} maps to nothing"),
+            }
+        }
+    }
+    assert!(h.downloads().is_empty());
+    assert!(h.opened().is_empty());
+    h.assert_untouched();
+}
+
+// ---------------------------------------------------------------------------
 // The app-settings fixtures.
 
 fn update_fixtures() -> bool {
     std::env::var("QT_UPDATE_FIXTURES").is_ok_and(|v| v == "1")
 }
 
-/// One view per state, from one run of the app through the fake.
+/// One view per update state, from one run of the app through the fake.
 fn app_settings_views() -> Vec<(&'static str, AppSettingsView)> {
     let h = harness(Setup::default());
     let mut out = vec![("idle", h.app.get_app_settings())];
@@ -952,6 +1337,37 @@ fn app_settings_views() -> Vec<(&'static str, AppSettingsView)> {
     out
 }
 
+/// One view per install state, from another run.
+fn install_views() -> Vec<(&'static str, AppSettingsView)> {
+    let h = harness(Setup::default());
+    let mut out = vec![("none", h.app.get_app_settings())];
+    out.push(("unsigned", h.manual(unsigned_releases(&["1.3.0"]))));
+    out.push(("ready", h.manual(releases(&["1.3.0"]))));
+    // Held before the exe's first byte, so the progress is exact.
+    h.exe_gate(false);
+    h.app.install_update();
+    wait_until("the exe's download waits", || h.wire.exe_waiting.load(Ordering::SeqCst));
+    out.push(("downloading", h.app.get_app_settings()));
+    h.app.cancel_update();
+    h.wait_install(InstallState::Ready);
+    h.exe_gate(true);
+    *h.wire.exe_error.lock().unwrap() = Some(DownloadError::Status(404));
+    h.app.install_update();
+    out.push(("failed", h.wait_install(InstallState::Failed)));
+    *h.wire.exe_error.lock().unwrap() = None;
+    h.app.install_update();
+    let restarting = h.wait_install(InstallState::Restarting);
+    // The view sent between the download and the signature check.
+    let verifying = h
+        .emitted()
+        .into_iter()
+        .find(|v| v.install.state == InstallState::Verifying)
+        .expect("a verifying view was sent");
+    out.push(("verifying", verifying));
+    out.push(("restarting", restarting));
+    out
+}
+
 fn fixture_dir() -> PathBuf {
     root().join("fixtures/app-settings")
 }
@@ -960,6 +1376,7 @@ fn json_files(dir: &Path) -> Vec<String> {
     let mut names: Vec<String> = fs::read_dir(dir)
         .map(|rd| {
             rd.filter_map(|e| e.ok())
+                .filter(|e| e.file_type().is_ok_and(|t| t.is_file()))
                 .map(|e| e.file_name().to_string_lossy().into_owned())
                 .filter(|n| n.ends_with(".json"))
                 .collect()
@@ -969,10 +1386,36 @@ fn json_files(dir: &Path) -> Vec<String> {
     names
 }
 
+/// Writes (with `QT_UPDATE_FIXTURES=1`) and compares one folder of fixtures;
+/// the names of the stale ones.
+fn check_fixtures(dir: &Path, views: &[(&'static str, AppSettingsView)]) -> Vec<String> {
+    if update_fixtures() {
+        fs::create_dir_all(dir).unwrap();
+        for (name, view) in views {
+            let text = serde_json::to_string_pretty(&serde_json::to_value(view).unwrap()).unwrap();
+            fs::write(dir.join(format!("{name}.json")), text + "\n").unwrap();
+        }
+    }
+    let mut want: Vec<String> = views.iter().map(|(n, _)| format!("{n}.json")).collect();
+    want.sort();
+    assert_eq!(json_files(dir), want, "{} holds exactly one file per state", dir.display());
+    let mut stale = Vec::new();
+    for (name, view) in views {
+        let path = dir.join(format!("{name}.json"));
+        let text = fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("{}: {e} (run with QT_UPDATE_FIXTURES=1)", path.display()));
+        let on_disk: Value = serde_json::from_str(&text).unwrap();
+        if on_disk != serde_json::to_value(view).unwrap() {
+            stale.push(format!("{}/{name}", dir.file_name().unwrap().to_string_lossy()));
+        }
+    }
+    stale
+}
+
 #[test]
 fn app_settings_fixtures_are_current() {
     let views = app_settings_views();
-    // One per state, each the state it is named for, built from the
+    // One per update state, each the state it is named for, built from the
     // synthetic version.
     for (name, view) in &views {
         let state = serde_json::to_value(view.update.state).unwrap();
@@ -983,28 +1426,21 @@ fn app_settings_fixtures_are_current() {
     assert_eq!(by("available").update.newer.as_deref(), Some(NEWER.to_string().as_str()));
     assert_eq!(by("failed").update.newer.as_deref(), Some("1.3.0"), "failed keeps the newer");
     assert_eq!(by("up-to-date").update.newer, None);
+    assert_eq!(by("available").install.state, InstallState::Ready);
+    assert_eq!(by("up-to-date").install.state, InstallState::None);
 
-    let dir = fixture_dir();
-    if update_fixtures() {
-        fs::create_dir_all(&dir).unwrap();
-        for (name, view) in &views {
-            let text = serde_json::to_string_pretty(&serde_json::to_value(view).unwrap()).unwrap();
-            fs::write(dir.join(format!("{name}.json")), text + "\n").unwrap();
-        }
+    // One per install state, in `install/`, each the state it is named for.
+    let installs = install_views();
+    for (name, view) in &installs {
+        let state = serde_json::to_value(view.install.state).unwrap();
+        assert_eq!(state, json!(name), "install/{name}");
+        assert_eq!(view.version, RUNNING.to_string());
+        assert_eq!(view.install.progress.is_some(), *name == "downloading", "install/{name}");
     }
-    let mut want: Vec<String> = views.iter().map(|(n, _)| format!("{n}.json")).collect();
-    want.sort();
-    assert_eq!(json_files(&dir), want, "fixtures/app-settings holds exactly one file per state");
-    let mut stale = Vec::new();
-    for (name, view) in &views {
-        let path = dir.join(format!("{name}.json"));
-        let text = fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("{}: {e} (run with QT_UPDATE_FIXTURES=1)", path.display()));
-        let on_disk: Value = serde_json::from_str(&text).unwrap();
-        if on_disk != serde_json::to_value(view).unwrap() {
-            stale.push(*name);
-        }
-    }
+    assert_eq!(installs.len(), 7);
+
+    let mut stale = check_fixtures(&fixture_dir(), &views);
+    stale.extend(check_fixtures(&fixture_dir().join("install"), &installs));
     assert!(
         stale.is_empty(),
         "stale app-settings fixtures {stale:?}: run with QT_UPDATE_FIXTURES=1 and review the diff"
@@ -1018,29 +1454,30 @@ fn app_settings_fixtures_are_current() {
 fn releases_pick_the_newest_published_quest_tracker_tag() {
     // 1.10.0 is newer than 1.9.3 as numbers (not as text), and its
     // `html_url` points elsewhere, which nothing reads.
-    assert_eq!(newest_release(&releases_fixture()), Ok(Some(Version::new(1, 10, 0))));
+    assert_eq!(newest(&releases_fixture()), Ok(Some(Version::new(1, 10, 0))));
     // The order of the list does not matter.
     let mut list: Vec<Value> = serde_json::from_slice(&releases_fixture()).unwrap();
     list.reverse();
     assert_eq!(
-        newest_release(&serde_json::to_vec(&list).unwrap()),
+        newest(&serde_json::to_vec(&list).unwrap()),
         Ok(Some(Version::new(1, 10, 0)))
     );
     // Against the running version: newer is available, equal or older is
     // up to date.
     assert!(Version::new(1, 10, 0) > Version::new(1, 9, 3));
     assert!(Version::new(2, 0, 0) > Version::new(1, 99, 99));
-    assert_eq!(Version::new(1, 10, 0).tag(), "quest-tracker-v1.10.0");
-    assert_eq!(Version::from_tag("quest-tracker-v0.1.0"), Some(Version::new(0, 1, 0)));
+    assert_eq!(PRODUCT.tag(Version::new(1, 10, 0)), "quest-tracker-v1.10.0");
+    assert_eq!(PRODUCT.version_of_tag("quest-tracker-v0.1.0"), Some(Version::new(0, 1, 0)));
+    assert_eq!(PRODUCT.exe_name, "quest-tracker.exe");
     // An empty list (the repository today) has none.
-    assert_eq!(newest_release(b"[]"), Ok(None));
+    assert_eq!(newest(b"[]"), Ok(None));
     // The running build's own version parses.
-    assert_eq!(Version::running().to_string(), env!("CARGO_PKG_VERSION").split('-').next().unwrap());
+    assert_eq!(running_version().to_string(), env!("CARGO_PKG_VERSION").split('-').next().unwrap());
 }
 
 #[test]
 fn releases_ignore_drafts_prereleases_other_tools_and_bad_tags() {
-    let one = |entry: Value| newest_release(&serde_json::to_vec(&json!([entry])).unwrap());
+    let one = |entry: Value| newest(&serde_json::to_vec(&json!([entry])).unwrap());
     let published = |tag: &str| json!({ "tag_name": tag, "draft": false, "prerelease": false });
     // Positive control: a plain published tag is found.
     assert_eq!(one(published("quest-tracker-v2.0.0")), Ok(Some(Version::new(2, 0, 0))));
@@ -1051,6 +1488,7 @@ fn releases_ignore_drafts_prereleases_other_tools_and_bad_tags() {
         json!({ "tag_name": "quest-tracker-v2.0.0", "prerelease": false }),
         json!({ "tag_name": "quest-tracker-v2.0.0", "draft": "false", "prerelease": false }),
         published("log-reader-v2.0.0"),
+        published("waystone-roller-v2.0.0"),
         published("v2.0.0"),
         published("Quest-Tracker-v2.0.0"),
         published("quest-tracker-v2.0"),
@@ -1071,7 +1509,7 @@ fn releases_ignore_drafts_prereleases_other_tools_and_bad_tags() {
     }
     // The fixture's draft (1.12.0) and prerelease (1.11.0) are newer than
     // what it picks, and are not picked.
-    assert_eq!(newest_release(&releases_fixture()), Ok(Some(Version::new(1, 10, 0))));
+    assert_eq!(newest(&releases_fixture()), Ok(Some(Version::new(1, 10, 0))));
 }
 
 #[test]
@@ -1085,7 +1523,7 @@ fn releases_refuse_an_unreadable_answer() {
         b"null",
         b"\xff\xfe[]",
     ] {
-        assert_eq!(newest_release(body), Err(Unreadable), "{}", String::from_utf8_lossy(body));
+        assert_eq!(newest(body), Err(Unreadable), "{}", String::from_utf8_lossy(body));
     }
     // Through the app: a failed check, with one line saying so.
     let h = harness(Setup::default());

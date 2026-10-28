@@ -12,6 +12,9 @@ qt-store = { path = "../qt-store" }
 qt-engine = { path = "../qt-engine" }
 qt-viewmodel = { path = "../qt-viewmodel" }
 qt-screen = { path = "../qt-screen" }
+# The update logic both apps share (apps/shared, a workspace of its own):
+# no network and no unsafe code; the glue hands it the transport.
+ep-update = { path = "../../../shared/crates/ep-update" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

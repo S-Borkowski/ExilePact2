@@ -1,8 +1,8 @@
 //! Tauri glue for the quest-tracker overlay: the `overlay` window, the tray's
 //! Settings window, the commands as thin wrappers over `qt-app`, the emitter
-//! that sends `qt:view`, `qt:row-change` and `qt:app-settings`, and the
-//! update check's transport. Every decision is `qt-app`'s; this file only
-//! connects it to Tauri.
+//! that sends `qt:view`, `qt:row-change` and `qt:app-settings`, the update
+//! check's and the install's transport, and the restart into an installed
+//! update. Every decision is `qt-app`'s; this file only connects it to Tauri.
 //!
 //! - **Window**: the `overlay` window of `tauri.conf.json` (transparent,
 //!   undecorated, always on top, off the taskbar, not focusable). At
@@ -37,8 +37,9 @@
 //!   { questId, action })`, `invoke("tick_step", { questId, stepId,
 //!   ticked })`, `invoke("update_settings", { patch })`. The Settings
 //!   window's own are `get_app_settings` (sync, like `get_view`),
-//!   `check_for_updates` (starts a check and answers at once) and
-//!   `open_release_page`.
+//!   `check_for_updates` (starts a check and answers at once),
+//!   `install_update` (starts the install and answers at once; the only way
+//!   one starts) and `cancel_update`.
 //! - **Auto scale**: every window move and every DPI scale change of the
 //!   window has `qt-app` re-read the monitor, which re-applies the zoom only
 //!   when it differs from the one applied.
@@ -49,7 +50,9 @@
 //!   separator and *Quit Quest Tracker*; the tooltip `Quest Tracker`, or
 //!   `Quest Tracker (X available)`. Built in Rust at setup, before the
 //!   worker starts, and rebuilt whenever the app-settings view changes the
-//!   menu (the emitter's `app_settings`, called with no app lock held). Each
+//!   menu (the emitter's `app_settings`, called with no app lock held).
+//!   *Update available: X* opens the Settings window, where the install
+//!   button is; no entry installs or opens a page. Each
 //!   entry's action runs on a blocking task, never on the main thread. No
 //!   capability, CSP or JavaScript is involved. It logs `tray: icon shown`,
 //!   or `error: tray icon: <reason>` and the overlay runs on without it.
@@ -64,14 +67,26 @@
 //!   `qt:app-settings` is sent to it only. Moves, DPI changes and close
 //!   requests of this window are not the overlay's and are left alone. In
 //!   play mode, with it in front, the overlay hides as for any other window.
-//! - **Update transport**: `qt-net`'s one request for the release list,
-//!   passed to `qt-app`, which alone decides when it runs (a manual check, or
-//!   the `check_updates` setting on). Its errors map one to one.
+//! - **Update transport**: `ep-net`'s release list and release-asset
+//!   download for the quest tracker, passed to `qt-app`, which alone decides
+//!   when they run (a manual check, the `check_updates` setting on, or the
+//!   install button). Their errors map one to one. The glue never sets the
+//!   update key: `ep-update`'s built-in release key is the only one.
 //! - **Quit**: the tray's Quit and a close request to the overlay's window
 //!   (`WM_CLOSE`), shown or hidden, both make `qt-app`'s quit request (which
 //!   writes the `quit:` line; the first request wins) and then exit the app.
 //!   The close itself is held back, so the window stays until the exit;
 //!   `RunEvent::Exit` then runs `shutdown` as before.
+//! - **Restart into an update**: the exe's path is captured at start
+//!   (`std::env::current_exe()`) and handed to `qt-app`, never read again.
+//!   An install that put the new exe in place makes `qt-app`'s quit request
+//!   and exits like the tray's Quit (`Window::restart`); `RunEvent::Exit`
+//!   runs `shutdown`, then frees every global shortcut and starts the
+//!   captured exe with this launch's arguments (`relaunch`). Not Tauri's
+//!   `AppHandle::restart`.
+//! - **Start-up cleanup**: a background thread removes `<exe>.old` and a
+//!   stale `<exe>.download` an earlier install left, retrying for about
+//!   30 s, and logs one `updates: cleanup:` line.
 //! - **Screen reading**: on Windows the shell gets `qt-capture`'s backend,
 //!   built with the overlay's window handle (read where the no-activate
 //!   style reads it), so the reader thread checks the overlay's rect and
@@ -90,9 +105,11 @@
 //!   the app's lock while a command holding it waits for the main thread.
 //!   The tray's rebuild waits for the main thread with no app lock held.
 
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use qt_app::updates::{Answer, TransportError};
+use qt_app::updates::{Answer, AssetKind, DownloadError, TransportError, Version};
 use qt_app::{
     App, AppConfig, AppSettingsView, Frame, Mode, MonitorMetrics, Options, PanelConfig, Placement,
     QuestAction, QuitFrom, RowChange, ScreenBackend, Store, SystemClock, TrayAction, TrayItem,
@@ -181,28 +198,66 @@ impl qt_app::Emitter for TauriEmitter {
     }
 }
 
-/// The update check's transport: `qt-net`'s one request for the release
-/// list, its answer and errors carried over one to one. `qt-app` calls it,
-/// on a check's own thread, only when a check runs.
+/// The update check's and the install's transport: `ep-net`'s release list
+/// and release-asset download for the quest tracker, the answers and errors
+/// carried over one to one. `qt-app`'s updater calls it, on a check's or an
+/// install's own thread, only when one runs.
 struct NetTransport;
+
+/// `ep-net`'s request errors as the updater names them.
+fn transport_error(e: ep_net::FetchError) -> TransportError {
+    match e {
+        ep_net::FetchError::Unsupported => TransportError::Unsupported,
+        ep_net::FetchError::Timeout => TransportError::Timeout,
+        ep_net::FetchError::Unreachable => TransportError::Unreachable,
+        ep_net::FetchError::NotSecure => TransportError::NotSecure,
+        ep_net::FetchError::TooLarge => TransportError::TooLarge,
+        ep_net::FetchError::Panicked => TransportError::Panicked,
+        ep_net::FetchError::Other(code) => TransportError::Other(code),
+    }
+}
 
 impl UpdateTransport for NetTransport {
     fn fetch_releases(&self) -> Result<Answer, TransportError> {
-        match qt_net::fetch_release_list() {
-            Ok(r) => Ok(Answer {
+        ep_net::fetch_release_list(ep_net::Product::QuestTracker)
+            .map(|r| Answer {
                 status: r.status,
                 body: r.body,
-            }),
-            Err(e) => Err(match e {
-                qt_net::FetchError::Unsupported => TransportError::Unsupported,
-                qt_net::FetchError::Timeout => TransportError::Timeout,
-                qt_net::FetchError::Unreachable => TransportError::Unreachable,
-                qt_net::FetchError::NotSecure => TransportError::NotSecure,
-                qt_net::FetchError::TooLarge => TransportError::TooLarge,
-                qt_net::FetchError::Panicked => TransportError::Panicked,
-                qt_net::FetchError::Other(code) => TransportError::Other(code),
-            }),
-        }
+            })
+            .map_err(transport_error)
+    }
+
+    fn download(
+        &self,
+        version: Version,
+        asset: AssetKind,
+        limit: u64,
+        sink: &mut dyn std::io::Write,
+        progress: &mut dyn FnMut(u64, Option<u64>),
+        cancel: &AtomicBool,
+    ) -> Result<u64, DownloadError> {
+        // A tag's numbers are `u32` in `ep-net`; a version past them names
+        // no release this build can fetch.
+        let part = |n: u64| u32::try_from(n).ok();
+        let (Some(major), Some(minor), Some(patch)) =
+            (part(version.major), part(version.minor), part(version.patch))
+        else {
+            return Err(DownloadError::Transport(TransportError::Unsupported));
+        };
+        let release = ep_net::ReleaseTag::new(ep_net::Product::QuestTracker, major, minor, patch);
+        let asset = match asset {
+            AssetKind::Exe => ep_net::Asset::Exe,
+            AssetKind::Signature => ep_net::Asset::Signature,
+        };
+        ep_net::download_asset(release, asset, limit, sink, progress, cancel).map_err(|e| match e {
+            ep_net::DownloadError::Fetch(f) => DownloadError::Transport(transport_error(f)),
+            ep_net::DownloadError::Status(code) => DownloadError::Status(code),
+            ep_net::DownloadError::RedirectRefused => DownloadError::RedirectRefused,
+            ep_net::DownloadError::TooManyRedirects => DownloadError::TooManyRedirects,
+            ep_net::DownloadError::Incomplete => DownloadError::Incomplete,
+            ep_net::DownloadError::Cancelled => DownloadError::Cancelled,
+            ep_net::DownloadError::Write(kind) => DownloadError::Write(kind),
+        })
     }
 }
 
@@ -332,6 +387,13 @@ impl qt_app::Window for TauriWindow {
     fn set_visible(&self, shown: bool) -> Result<(), String> {
         let w = self.window()?;
         show_without_activating(&self.app, &w, shown)
+    }
+
+    /// An installed update: exit as the tray's Quit does (`qt-app` has made
+    /// its quit request); `RunEvent::Exit` runs the shutdown and then
+    /// relaunches the exe ([`relaunch`]).
+    fn restart(&self) {
+        self.app.exit(0);
     }
 }
 
@@ -584,10 +646,6 @@ fn tray_menu(app: &AppHandle, model: &TrayMenu) -> Result<Menu<tauri::Wry>, Stri
 /// task, the window to a spawned one.
 fn tray_action(app: &AppHandle, id: &str) {
     match TrayAction::from_id(id) {
-        Some(TrayAction::OpenReleasePage) => later(app, |shell| {
-            // A refusal or a failure is logged by `qt-app`.
-            let _ = shell.open_release_page();
-        }),
         Some(TrayAction::CheckForUpdates) => {
             open_settings(app);
             later(app, |shell| {
@@ -730,8 +788,52 @@ fn check_for_updates(shell: Shell<'_>) -> AppSettingsView {
 }
 
 #[tauri::command(async)]
-fn open_release_page(shell: Shell<'_>) -> Result<(), String> {
-    shell.open_release_page()
+fn install_update(shell: Shell<'_>) -> AppSettingsView {
+    shell.install_update()
+}
+
+#[tauri::command(async)]
+fn cancel_update(shell: Shell<'_>) -> AppSettingsView {
+    shell.cancel_update()
+}
+
+// ---------------------------------------------------------------------------
+// The restart into an installed update, and the start-up cleanup.
+
+/// After the shutdown of an exit an installed update asked for
+/// (`App::restart_requested`): frees every global shortcut, so the new
+/// process can register its own (a shortcut still taken would start it in
+/// edit mode with an error), then starts `exe`, the path captured at start
+/// and never read again, with this launch's arguments. The single-instance
+/// plugin has released its lock by now: plugins hear `RunEvent::Exit`
+/// before this callback. A failed start is logged; the new exe is in place
+/// either way and runs at the next start.
+fn relaunch(app: &AppHandle, shell: &App, exe: Option<&PathBuf>) {
+    if let Err(e) = app.global_shortcut().unregister_all() {
+        shell.diag(&format!("error: freeing the shortcut before the restart: {e}"));
+    }
+    let Some(exe) = exe else {
+        shell.diag("error: restart: the app's own path is unknown");
+        return;
+    };
+    match std::process::Command::new(exe)
+        .args(std::env::args_os().skip(1))
+        .spawn()
+    {
+        Ok(_) => shell.diag("updates: restarted into the new exe"),
+        Err(e) => shell.diag(&format!("error: restart: the new exe did not start ({})", e.kind())),
+    }
+}
+
+/// At start, a background thread removes what an earlier install left
+/// beside `exe` (`<exe>.old`, a stale `<exe>.download`), retrying for up to
+/// about 30 s while the old process may still be ending, and logs one
+/// `updates: cleanup:` line. Not waited for.
+fn start_cleanup(shell: &Arc<App>, exe: &PathBuf) {
+    let log = Arc::clone(shell);
+    if let Err(e) = qt_app::updates::spawn_cleanup(exe.clone(), move |line| log.diag(&line)) {
+        shell.diag(&format!("error: the update cleanup thread did not start: {e}"));
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -742,6 +844,11 @@ pub fn run() {
         Ok(o) => (o, None),
         Err(e) => (Options::default(), Some(e)),
     };
+    // The exe an install replaces and the restart relaunches, captured once,
+    // before any swap could rename it. Without it no install can run.
+    let exe = std::env::current_exe();
+    let exe_path = exe.as_ref().ok().cloned();
+    let relaunch_exe = exe_path.clone();
 
     let app = tauri::Builder::default()
         // First, so a second launch exits before it sets anything up.
@@ -773,9 +880,12 @@ pub fn run() {
                 backend: panel_backend(&window),
                 table: None,
             };
+            // The key is `ep-update`'s built-in release key: the glue never
+            // sets one.
             let updates = UpdateConfig {
                 transport: Some(Box::new(NetTransport)),
-                running: None,
+                exe_path: exe_path.clone(),
+                ..UpdateConfig::default()
             };
             let tray = Arc::new(TrayShown::default());
             let shell = App::with_updates(
@@ -812,6 +922,13 @@ pub fn run() {
             match tray_built {
                 Ok(()) => shell.diag("tray: icon shown"),
                 Err(e) => shell.diag(&format!("error: tray icon: {e}")),
+            }
+            match &exe {
+                Ok(path) => start_cleanup(&shell, path),
+                Err(e) => shell.diag(&format!(
+                    "error: the app's own path is unknown ({}); updates cannot be installed",
+                    e.kind()
+                )),
             }
             Ok(())
         })
@@ -863,15 +980,19 @@ pub fn run() {
             open_source,
             get_app_settings,
             check_for_updates,
-            open_release_page,
+            install_update,
+            cancel_update,
         ])
         .build(tauri::generate_context!())
         .expect("quest-tracker: the Tauri application failed to start");
 
-    app.run(|app, event| {
+    app.run(move |app, event| {
         if let RunEvent::Exit = event {
             if let Some(shell) = app.try_state::<Arc<App>>() {
                 shell.shutdown(SHUTDOWN_TIMEOUT);
+                if shell.restart_requested() {
+                    relaunch(app, &shell, relaunch_exe.as_ref());
+                }
             }
         }
     });
