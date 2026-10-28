@@ -30,6 +30,8 @@ reading`).
     `## State` `gates:` line is not run: `SKIPPED (gate <token> not set)`.
     A `gates:` value with `|`, `<placeholder>` or "or" alternatives is a
     template and sets nothing -- the same reading as `workorder-rounds.js`.
+    Unbackticked tokens may be separated by a space alone:
+    `gates: live1: complete live2: complete` sets both.
 
 `--jobs N` (or `--jobs auto`, min(8, CPUs)) runs independent commands at the
 same time. The report is unchanged: criteria print in plan order, each once
@@ -329,6 +331,11 @@ def _norm_gate(token: str) -> str:
     return " ".join(token.replace("`", "").split()).lower()
 
 
+# Bare `gates:` tokens split on `;`, `,`, "and", or the space before the next
+# `<name>:` (`live1: complete live2: complete` is two gates).
+GATE_SPLIT_RE = re.compile(r"[;,]|\band\b|\s+(?=[\w.-]+:)", re.I)
+
+
 def gates_set(text: str) -> set | None:
     """The gate tokens `## State`'s `gates:` line sets; None when there is no
     such line (then nothing is skipped: an unknown gate set must not hide a
@@ -342,7 +349,7 @@ def gates_set(text: str) -> set | None:
         return set()
     value = re.split(r"\bnot yet\b", value, flags=re.I)[0]
     ticked = re.findall(r"`([^`]+)`", value)
-    tokens = ticked if ticked else re.split(r"[;,]|\band\b", value, flags=re.I)
+    tokens = ticked if ticked else GATE_SPLIT_RE.split(value)
     return {_norm_gate(t) for t in tokens if _norm_gate(t) and _norm_gate(t) != "none"}
 
 
