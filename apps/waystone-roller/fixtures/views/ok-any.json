@@ -175,5 +175,6 @@
   "status": {
     "kind": "info",
     "text": "Copied the search (34 characters). Paste it into the stash or a vendor's search box."
-  }
+  },
+  "update_available": null
 }

@@ -9,19 +9,37 @@
 //! diagnostic log; a refusal adds one `refusal beep: <kind> ok|failed
 //! (<error>)` line per sound the shell tried.
 //!
-//! The selection and the shortcut are saved to `settings.json` by a saver
-//! thread, [`SAVE_DELAY`] after the last change (debounced), and at once on
-//! [`App::flush`] and [`App::shutdown`].
+//! The selection, the shortcut and `check_updates` are saved to
+//! `settings.json` by a saver thread, [`SAVE_DELAY`] after the last change
+//! (debounced), and at once on [`App::flush`] and [`App::shutdown`].
+//!
+//! The update check and install (`ep-update`'s [`Updater`], behind a lock of
+//! its own that is never held with the app's): a check from the
+//! `check_for_updates` command or, with `check_updates` on, from
+//! [`App::tick_updates`] (see [`crate::updates`]); an install only from the
+//! `install_update` command. A check or an install runs on a thread of its
+//! own and is never waited for; the Settings window hears every change as
+//! `wr:app-settings` ([`Shell::emit_app_settings`]), and the main window's
+//! view names a newer version found ([`View::update_available`]). A
+//! finished install asks the shell to quit ([`Shell::restart`]) through the
+//! app's own quit path, whose shutdown saves; the glue then starts the new
+//! exe ([`App::restart_requested`]).
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+use ep_update::{
+    outcome_line, started_line, turned_line, Answer, AppSettingsView, Begin, InstallEvents,
+    TransportError, Updater, Version,
+};
 use serde_json::{json, Map, Value};
 use wr_regex::{Builder, ModData, Outcome, Selection, LIMIT, TIER_MAX, TIER_MIN};
 
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
+use crate::updates::{check_updates_patch, Clock, UpdateSetup, CHECK_UPDATES_KEY};
 use crate::view::{
     mod_views, DataInfo, ModView, SearchResult, SelectionView, StatusKind, StatusLine, View,
 };
@@ -109,6 +127,17 @@ pub trait Shell: Send + Sync {
     fn beep(&self) -> Vec<BeepAttempt>;
     /// Sends the view to the window (`wr:view`).
     fn emit_view(&self, view: &View);
+    /// Sends the Settings window's view to it (`wr:app-settings`), from
+    /// whichever thread made the change, with no lock of the app held.
+    fn emit_app_settings(&self, _view: &AppSettingsView) {}
+    /// Opens the Settings window, or brings it up when it is open.
+    fn open_settings(&self) -> Result<(), String> {
+        Err("this shell has no Settings window".to_string())
+    }
+    /// A new exe is in place: quit through the app's own quit path (whose
+    /// shutdown calls [`App::shutdown`]); the shell starts the new exe once
+    /// the app has shut down, because [`App::restart_requested`] says so.
+    fn restart(&self) {}
 }
 
 /// What [`App::new`] is built from.
@@ -131,6 +160,9 @@ struct State {
     selection: Selection,
     hotkey: String,
     status: Option<Status>,
+    /// "Automatically check for updates"; off unless the saved settings say
+    /// `true`.
+    check_updates: bool,
 }
 
 enum SaveMsg {
@@ -146,6 +178,8 @@ struct Saver {
 
 /// The app: built once, shared by the glue as `Arc<App>`.
 pub struct App {
+    /// The app itself, for the threads it starts (which never keep it alive).
+    me: Weak<App>,
     builder: Builder,
     data_info: DataInfo,
     mods: Vec<ModView>,
@@ -153,14 +187,40 @@ pub struct App {
     store: Option<Arc<Store>>,
     state: Mutex<State>,
     saver: Mutex<Option<Saver>>,
+    /// The update check and install, behind a lock of their own.
+    updater: Updater,
+    clock: Box<dyn Clock>,
+    tick_every: Option<Duration>,
+    /// The way to the ticker thread; dropping it stops the thread.
+    ticker: Mutex<Option<Sender<()>>>,
+    /// A finished install asked the shell to quit and start the new exe.
+    restart_requested: AtomicBool,
 }
 
 impl App {
-    /// Builds the app: picks the tokens, reads the saved settings (dropping
-    /// saved mod ids the data no longer has) and starts the saver. Registers
-    /// nothing and emits nothing until [`App::start`].
+    /// [`App::with_updates`] with the default [`UpdateSetup`]: no transport,
+    /// so a check ends failed without a request and an install is refused.
     pub fn new(config: AppConfig) -> Arc<App> {
+        App::with_updates(config, UpdateSetup::default())
+    }
+
+    /// Builds the app: picks the tokens, reads the saved settings (dropping
+    /// saved mod ids the data no longer has), makes the updater and starts
+    /// the saver. Registers nothing, emits nothing and checks nothing until
+    /// [`App::start`].
+    pub fn with_updates(config: AppConfig, updates: UpdateSetup) -> Arc<App> {
         let AppConfig { data, store, shell } = config;
+        let UpdateSetup {
+            config: update_config,
+            product,
+            clock,
+            tick_every,
+        } = updates;
+        let updater = Updater::new(
+            product,
+            Version::of_package(env!("CARGO_PKG_VERSION")),
+            update_config,
+        );
         let data_info = DataInfo {
             source: data.source.clone(),
             fetched: data.fetched.clone(),
@@ -182,6 +242,7 @@ impl App {
         };
         let mut selection = Selection::default();
         let mut hotkey = DEFAULT_HOTKEY.to_string();
+        let mut check_updates = false;
         let store = match store {
             Ok(s) => Some(Arc::new(s)),
             Err(e) => {
@@ -200,6 +261,10 @@ impl App {
             match store.load_settings() {
                 Ok(None) => {}
                 Ok(Some(saved)) => {
+                    // A file written before the setting existed, or any
+                    // value but `true`, leaves it off.
+                    check_updates = saved.get(CHECK_UPDATES_KEY).and_then(Value::as_bool)
+                        == Some(true);
                     if let Some(h) = saved.get("hotkey").and_then(Value::as_str) {
                         if !h.trim().is_empty() {
                             hotkey = h.trim().to_string();
@@ -244,7 +309,8 @@ impl App {
         }
 
         let saver = store.as_ref().map(|s| start_saver(Arc::clone(s)));
-        let app = Arc::new(App {
+        let app = Arc::new_cyclic(|me| App {
+            me: me.clone(),
             builder,
             data_info,
             mods,
@@ -254,8 +320,14 @@ impl App {
                 selection,
                 hotkey,
                 status,
+                check_updates,
             }),
             saver: Mutex::new(saver),
+            updater,
+            clock,
+            tick_every,
+            ticker: Mutex::new(None),
+            restart_requested: AtomicBool::new(false),
         });
         for n in notes {
             app.diag(&format!("settings: {n}"));
@@ -263,8 +335,9 @@ impl App {
         app
     }
 
-    /// Writes the start lines, registers the shortcut and sends the first
-    /// view.
+    /// Writes the start lines, registers the shortcut, sends the first view,
+    /// starts the update ticker and, with `check_updates` on, the first
+    /// automatic check.
     pub fn start(&self) {
         let families = self.mods.len();
         let tokened = self.mods.iter().filter(|m| m.token.is_some()).count();
@@ -285,6 +358,8 @@ impl App {
             self.diag(&format!("shortcut {hotkey} registered"));
         }
         self.emit();
+        self.start_ticker();
+        self.tick_updates(self.clock.now_ms());
     }
 
     /// The view now.
@@ -363,6 +438,185 @@ impl App {
         self.get_view()
     }
 
+    // -- the update check and install (ep-update) ------------------------------
+
+    /// `get_app_settings`: what the Settings window shows.
+    pub fn get_app_settings(&self) -> AppSettingsView {
+        let on = self.lock().check_updates;
+        self.updater.view(on)
+    }
+
+    /// `update_settings`: the Settings window's one setting, exactly
+    /// `{"check_updates": <bool>}`. Anything else is refused whole, with the
+    /// setting unchanged. Turning it on ticks at once, so a first check
+    /// starts now when one is due.
+    pub fn update_settings(&self, patch: &Value) -> Result<AppSettingsView, String> {
+        let on = match check_updates_patch(patch) {
+            Ok(on) => on,
+            Err(reason) => {
+                self.diag(&format!("settings refused: {reason}"));
+                return Err(reason);
+            }
+        };
+        let changed = {
+            let mut st = self.lock();
+            let changed = st.check_updates != on;
+            if changed {
+                st.check_updates = on;
+                self.save(&st);
+            }
+            changed
+        };
+        if changed {
+            self.diag(turned_line(on));
+            self.updater.changed();
+            self.emit_app_settings();
+            if on {
+                self.tick_updates(self.clock.now_ms());
+            }
+        }
+        Ok(self.get_app_settings())
+    }
+
+    /// `check_for_updates`: starts a manual check and returns the view at
+    /// once, never waiting for the request. While a check or an install
+    /// runs, it starts nothing and returns the view as it is.
+    pub fn check_for_updates(&self) -> AppSettingsView {
+        let now = self.clock.now_ms();
+        self.run_check(true, self.updater.begin_manual(now));
+        self.get_app_settings()
+    }
+
+    /// The ticker's tick at `now_ms` (the app's clock): with `check_updates`
+    /// on, starts an automatic check when one is due. Never installs.
+    pub fn tick_updates(&self, now_ms: u64) {
+        // With the setting off this reads one bool and does nothing else.
+        if self.lock().check_updates {
+            self.run_check(false, self.updater.begin_auto(now_ms, true));
+        }
+    }
+
+    /// `install_update`: starts installing the newer, signed release and
+    /// returns the view at once, downloading. Refused, with the reason and
+    /// the view unchanged, while a check or an install runs, while
+    /// restarting, with no newer version known or for a release that is not
+    /// signed. The only way an install starts.
+    pub fn install_update(&self) -> Result<AppSettingsView, String> {
+        let events: Arc<dyn InstallEvents> = Arc::new(AppEvents(self.me.clone()));
+        self.updater.install(events).map_err(|r| r.reason)?;
+        Ok(self.get_app_settings())
+    }
+
+    /// `cancel_update`: asks a running install to stop (it then deletes its
+    /// partial download and goes back to ready) and returns the view.
+    pub fn cancel_update(&self) -> AppSettingsView {
+        self.updater.cancel_install();
+        self.get_app_settings()
+    }
+
+    /// `open_settings`: the main window's *Settings* button.
+    pub fn open_settings(&self) -> Result<(), String> {
+        self.shell.open_settings().map_err(|e| {
+            self.diag(&format!("error: settings window: {e}"));
+            e
+        })
+    }
+
+    /// A finished install asked to quit and start the new exe: the glue's
+    /// exit, after [`App::shutdown`], starts it.
+    pub fn restart_requested(&self) -> bool {
+        self.restart_requested.load(Ordering::Acquire)
+    }
+
+    /// Carries out what [`Updater::begin_manual`] or [`Updater::begin_auto`]
+    /// decided: a started check is logged and announced, and its request
+    /// runs on a thread of its own ([`Updater::spawn`]). Without a transport
+    /// it ends failed at once, with no request. Called with no lock held.
+    fn run_check(&self, manual: bool, begin: Begin) {
+        let Begin::Run(transport) = begin else {
+            return;
+        };
+        self.diag(started_line(manual));
+        self.emit_app_settings();
+        let Some(transport) = transport else {
+            self.finish_check(manual, Err(TransportError::Unsupported));
+            return;
+        };
+        let app = self.me.clone();
+        let spawned = Updater::spawn(transport, move |answer| {
+            if let Some(app) = app.upgrade() {
+                app.finish_check(manual, answer);
+            }
+        });
+        if let Err(e) = spawned {
+            self.diag(&format!("error: the update check thread did not start: {e}"));
+            let code = e.raw_os_error().map_or(0, |c| c as u32);
+            self.finish_check(manual, Err(TransportError::Other(code)));
+        }
+    }
+
+    /// A check's request ended: its outcome is kept, logged and announced,
+    /// unless the app began shutting down first. The main window hears it
+    /// when the newer version it names changed.
+    fn finish_check(&self, manual: bool, answer: Result<Answer, TransportError>) {
+        let before = self.updater.newer();
+        let Some(outcome) = self.updater.finish(self.clock.now_ms(), manual, answer) else {
+            return;
+        };
+        self.diag(&outcome_line(&outcome, self.updater.running()));
+        self.emit_app_settings();
+        if self.updater.newer() != before {
+            self.emit();
+        }
+    }
+
+    /// Sends the Settings window's view, with no lock held while it is sent.
+    /// When something changed the view meanwhile (another thread may have
+    /// sent the newer one first), the newest is sent again, so the last view
+    /// sent is always the current one. The number is read first: a change
+    /// raises it after it is made, so one that raised it later was not seen.
+    fn emit_app_settings(&self) {
+        loop {
+            if self.updater.is_stopped() {
+                return;
+            }
+            let seq = self.updater.seq();
+            let view = self.get_app_settings();
+            self.shell.emit_app_settings(&view);
+            if self.updater.seq() == seq {
+                return;
+            }
+        }
+    }
+
+    /// The ticker thread: [`App::tick_updates`] every `tick_every` until the
+    /// app shuts down or is dropped. None when `tick_every` is `None`.
+    fn start_ticker(&self) {
+        let Some(every) = self.tick_every else {
+            return;
+        };
+        let (tx, rx) = mpsc::channel::<()>();
+        let me = self.me.clone();
+        let spawned = std::thread::Builder::new()
+            .name("wr-update-ticker".to_string())
+            .spawn(move || loop {
+                match rx.recv_timeout(every) {
+                    Err(RecvTimeoutError::Timeout) => {
+                        let Some(app) = me.upgrade() else {
+                            return;
+                        };
+                        app.tick_updates(app.clock.now_ms());
+                    }
+                    // Closed by the shutdown (nothing is ever sent).
+                    _ => return,
+                }
+            });
+        match spawned {
+            Ok(_) => *self.ticker.lock().unwrap_or_else(|p| p.into_inner()) = Some(tx),
+            Err(e) => self.diag(&format!("error: the update ticker did not start: {e}")),
+        }
+    }
+
     /// Writes any pending settings now.
     pub fn flush(&self) {
         let guard = self.saver.lock().unwrap_or_else(|p| p.into_inner());
@@ -374,8 +628,13 @@ impl App {
         }
     }
 
-    /// Writes any pending settings and stops the saver. Safe to call twice.
+    /// Stops the updater (a running check or install ends without changing
+    /// anything; neither is waited for) and the ticker, writes any pending
+    /// settings and stops the saver. Safe to call twice.
     pub fn shutdown(&self) {
+        self.updater.stop();
+        // The ticker ends when its channel closes; it is not waited for.
+        drop(self.ticker.lock().unwrap_or_else(|p| p.into_inner()).take());
         let saver = self.saver.lock().unwrap_or_else(|p| p.into_inner()).take();
         if let Some(Saver { tx, thread }) = saver {
             drop(tx);
@@ -405,6 +664,7 @@ impl App {
             result: SearchResult::from_outcome(&self.builder.build(&st.selection)),
             hotkey: st.hotkey.clone(),
             status: st.status.as_ref().map(|s| s.line.clone()),
+            update_available: self.updater.newer().map(|v| v.to_string()),
         }
     }
 
@@ -536,6 +796,7 @@ impl App {
             "schema": SETTINGS_SCHEMA,
             "hotkey": st.hotkey,
             "selection": SelectionView::from(&st.selection),
+            "check_updates": st.check_updates,
         });
         let guard = self.saver.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(saver) = guard.as_ref() {
@@ -547,6 +808,31 @@ impl App {
 impl Drop for App {
     fn drop(&mut self) {
         self.shutdown();
+    }
+}
+
+/// What a running install tells the app, on the install's thread. It holds
+/// the app weakly: an install never keeps a closed app alive.
+struct AppEvents(Weak<App>);
+
+impl InstallEvents for AppEvents {
+    fn changed(&self) {
+        if let Some(app) = self.0.upgrade() {
+            app.emit_app_settings();
+        }
+    }
+
+    fn diag(&self, line: &str) {
+        if let Some(app) = self.0.upgrade() {
+            app.diag(line);
+        }
+    }
+
+    fn restart(&self) {
+        if let Some(app) = self.0.upgrade() {
+            app.restart_requested.store(true, Ordering::Release);
+            app.shell.restart();
+        }
     }
 }
 

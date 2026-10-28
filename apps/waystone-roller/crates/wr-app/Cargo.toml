@@ -1,12 +1,15 @@
 [package]
 name = "wr-app"
-description = "The waystone roller's logic with no Tauri dependency: the embedded data, the store, the selection, the view, the commands and the copy path, tested with a fake shell."
+description = "The waystone roller's logic with no Tauri dependency: the embedded data, the store, the selection, the view, the commands, the copy path and the update check and install, tested with a fake shell and a fake transport."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
 [dependencies]
 wr-regex = { path = "../wr-regex" }
+# The update logic both apps share (apps/shared, a workspace of its own):
+# no network and no unsafe code; the glue hands it the transport.
+ep-update = { path = "../../../shared/crates/ep-update" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

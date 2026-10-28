@@ -28,7 +28,30 @@ export interface CommandArgs {
   update_selection: { patch: SelectionPatch };
   copy_now: Record<string, never>;
   set_hotkey: { hotkey: string };
+  /** The header's Settings button: opens the Settings window, or brings it up. */
+  open_settings: Record<string, never>;
 }
+
+/**
+ * The Settings window's commands, with their arguments; each answers with
+ * the window's view (`ep-update`'s `AppSettingsView`, fixtures under
+ * `fixtures/app-settings/`), and the shell also pushes it on
+ * `wr:app-settings` after every change. `update_settings` takes exactly
+ * `{ check_updates }`; it and `install_update` reject with a one-line reason
+ * when refused. `install_update` is the only way an install starts; no
+ * command opens a release page or a browser.
+ */
+export interface SettingsCommandArgs {
+  get_app_settings: Record<string, never>;
+  update_settings: { patch: { check_updates: boolean } };
+  check_for_updates: Record<string, never>;
+  install_update: Record<string, never>;
+  cancel_update: Record<string, never>;
+}
+export type SettingsCommand = keyof SettingsCommandArgs;
+
+/** The event that carries the Settings window's view. */
+export const APP_SETTINGS_EVENT = 'wr:app-settings';
 export type Command = keyof CommandArgs;
 /** How a component sends a command: fire and forget, the next view answers. */
 export type Send = <C extends Command>(name: C, args: CommandArgs[C]) => void;

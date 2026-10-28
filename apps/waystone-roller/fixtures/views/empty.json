@@ -146,5 +146,6 @@
     "unmatchable": []
   },
   "hotkey": "Ctrl+Alt+W",
-  "status": null
+  "status": null,
+  "update_available": null
 }

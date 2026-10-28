@@ -15,6 +15,10 @@ tauri-build = { workspace = true }
 
 [dependencies]
 wr-app = { path = "../crates/wr-app" }
+# The app's only network code, shared with the quest tracker (apps/shared):
+# the release list and the two fixed release assets, over WinHTTP. Named by
+# this glue alone, which implements wr-app's update transport over it.
+ep-net = { path = "../../shared/crates/ep-net" }
 tauri = { workspace = true }
 tauri-plugin-global-shortcut = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }

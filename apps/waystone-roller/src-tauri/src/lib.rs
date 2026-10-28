@@ -6,29 +6,68 @@
 //!   `RegisterHotKey`, system-wide and exclusive; a combination another
 //!   program holds is refused and the old one stays registered), the
 //!   clipboard written through Win32 with the window's handle, the error
-//!   beep, and the `wr:view` event.
-//! - **Commands**: `get_view` (sync) and the async `update_selection`,
-//!   `copy_now` and `set_hotkey`, each forwarded to the `App` method of the
-//!   same name.
+//!   beep, the `wr:view` event to the main window and `wr:app-settings` to
+//!   the Settings window, opening the Settings window, and the restart an
+//!   installed update asks for (an exit through the quit path below).
+//! - **Update transport**: [`NetTransport`] implements
+//!   `wr_app::UpdateTransport` over `ep-net`, the app's only network code
+//!   (the release list and the two fixed assets of a waystone roller
+//!   release; no caller names a host or a URL). `wr-app` calls it only on a
+//!   check's or an install's own thread. Nothing here opens a URL.
+//! - **Commands**: `get_view` and `get_app_settings` (sync) and the async
+//!   `update_selection`, `copy_now`, `set_hotkey`, `open_settings`,
+//!   `update_settings`, `check_for_updates`, `install_update` and
+//!   `cancel_update`, each forwarded to the `App` method of the same name.
 //! - **Single instance**: a second launch exits and brings this window up.
-//! - **Window**: ordinary, titled "Waystone Roller", resizable, in the
-//!   taskbar; closing it quits, after the settings are written.
+//! - **Windows**: `main`, ordinary, titled "Waystone Roller", resizable, in
+//!   the taskbar; closing it quits the app (even with the Settings window
+//!   open), after the settings are written. `settings`, the page
+//!   `settings.html`, built when first opened on a blocking task, decorated,
+//!   not resizable, centred; its capability (`capabilities/settings.json`)
+//!   grants `core:event:default` alone.
+//! - **Restart**: the exe's path is captured at start, before any swap
+//!   could rename it. On `RunEvent::Exit` (plugins have run their own exit
+//!   first, so the single-instance mutex is released) the app shuts down,
+//!   every global shortcut is unregistered, and, when a finished install
+//!   asked for it, the new exe at that path starts with this process's
+//!   arguments. At start a background thread removes what an install leaves
+//!   (`<exe>.old`, a stale `<exe>.download`).
 //!
 //! The app sends nothing to the game: no input, no window message, no
-//! memory read. Its only effect outside its window is the clipboard and the
-//! beep.
+//! memory read. Its only effects outside its windows are the clipboard, the
+//! beep, the update check's requests to GitHub and, when the user presses
+//! the install button, replacing its own exe.
 
+use std::ffi::OsString;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
-use tauri::{AppHandle, Emitter as _, Manager, RunEvent};
+use tauri::{
+    AppHandle, Emitter as _, Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder,
+    WindowEvent,
+};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
-use wr_app::{App, AppConfig, BeepAttempt, HotkeyError, Store, View};
+use wr_app::ep_update::spawn_cleanup;
+use wr_app::{
+    Answer, App, AppConfig, AppSettingsView, AssetKind, BeepAttempt, DownloadError, HotkeyError,
+    Store, TransportError, UpdateConfig, UpdateSetup, UpdateTransport, Version, View,
+};
 
-/// The window's label (`tauri.conf.json`).
+/// The main window's label (`tauri.conf.json`).
 const MAIN: &str = "main";
 /// The event that carries a fresh view to the page.
 const VIEW_EVENT: &str = "wr:view";
+
+/// The Settings window: its label, page, title and size at scale 1.
+const SETTINGS: &str = "settings";
+const SETTINGS_PAGE: &str = "settings.html";
+const SETTINGS_TITLE: &str = "Waystone Roller Settings";
+const SETTINGS_WIDTH: f64 = 420.0;
+const SETTINGS_HEIGHT: f64 = 300.0;
+/// The event that carries the Settings window's view to it.
+const APP_SETTINGS_EVENT: &str = "wr:app-settings";
 
 type Shared<'a> = tauri::State<'a, Arc<App>>;
 
@@ -94,6 +133,154 @@ impl wr_app::Shell for TauriShell {
 
     fn emit_view(&self, view: &View) {
         let _ = self.app.emit_to(MAIN, VIEW_EVENT, view);
+    }
+
+    /// To the Settings window only; nothing when it is not open.
+    fn emit_app_settings(&self, view: &AppSettingsView) {
+        let _ = self.app.emit_to(SETTINGS, APP_SETTINGS_EVENT, view);
+    }
+
+    fn open_settings(&self) -> Result<(), String> {
+        open_settings_window(&self.app);
+        Ok(())
+    }
+
+    /// The quit path: `RunEvent::Exit` runs the shutdown, then starts the
+    /// new exe because `App::restart_requested` says so.
+    fn restart(&self) {
+        self.app.exit(0);
+    }
+}
+
+/// Opens the Settings window, or shows, unminimises and focuses it when it
+/// is open already, on a blocking task (Tauri's window builder deadlocks on
+/// Windows when it runs in a synchronous handler on the main thread). The
+/// lock keeps two quick clicks from building it twice. A failure is logged.
+fn open_settings_window(app: &AppHandle) {
+    static OPENING: Mutex<()> = Mutex::new(());
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _one = OPENING.lock().unwrap_or_else(|p| p.into_inner());
+        let result = match app.get_webview_window(SETTINGS) {
+            Some(w) => w
+                .show()
+                .and_then(|()| w.unminimize())
+                .and_then(|()| w.set_focus())
+                .map_err(|e| e.to_string()),
+            None => WebviewWindowBuilder::new(&app, SETTINGS, WebviewUrl::App(SETTINGS_PAGE.into()))
+                .title(SETTINGS_TITLE)
+                .inner_size(SETTINGS_WIDTH, SETTINGS_HEIGHT)
+                .resizable(false)
+                .maximizable(false)
+                .decorations(true)
+                .theme(Some(Theme::Dark))
+                .center()
+                .focused(true)
+                .build()
+                .map(|_| ())
+                .map_err(|e| e.to_string()),
+        };
+        if let Err(e) = result {
+            if let Some(shell) = app.try_state::<Arc<App>>() {
+                shell.diag(&format!("error: settings window: {e}"));
+            }
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// The update transport, over ep-net.
+
+/// `ep-net`'s two requests for the waystone roller, their answers and
+/// errors carried over one to one. `wr-app` calls them only on a check's or
+/// an install's own thread.
+struct NetTransport;
+
+const PRODUCT: ep_net::Product = ep_net::Product::WaystoneRoller;
+
+fn transport_error(e: ep_net::FetchError) -> TransportError {
+    match e {
+        ep_net::FetchError::Unsupported => TransportError::Unsupported,
+        ep_net::FetchError::Timeout => TransportError::Timeout,
+        ep_net::FetchError::Unreachable => TransportError::Unreachable,
+        ep_net::FetchError::NotSecure => TransportError::NotSecure,
+        ep_net::FetchError::TooLarge => TransportError::TooLarge,
+        ep_net::FetchError::Panicked => TransportError::Panicked,
+        ep_net::FetchError::Other(code) => TransportError::Other(code),
+    }
+}
+
+impl UpdateTransport for NetTransport {
+    fn fetch_releases(&self) -> Result<Answer, TransportError> {
+        ep_net::fetch_release_list(PRODUCT)
+            .map(|r| Answer {
+                status: r.status,
+                body: r.body,
+            })
+            .map_err(transport_error)
+    }
+
+    fn download(
+        &self,
+        version: Version,
+        asset: AssetKind,
+        limit: u64,
+        sink: &mut dyn std::io::Write,
+        progress: &mut dyn FnMut(u64, Option<u64>),
+        cancel: &AtomicBool,
+    ) -> Result<u64, DownloadError> {
+        let part = |n: u64| u32::try_from(n).ok();
+        // A version past u32 is no tag `ep-net` can name: refused unsent.
+        let (Some(major), Some(minor), Some(patch)) =
+            (part(version.major), part(version.minor), part(version.patch))
+        else {
+            return Err(DownloadError::Transport(TransportError::Unsupported));
+        };
+        let release = ep_net::ReleaseTag::new(PRODUCT, major, minor, patch);
+        let asset = match asset {
+            AssetKind::Exe => ep_net::Asset::Exe,
+            AssetKind::Signature => ep_net::Asset::Signature,
+        };
+        ep_net::download_asset(release, asset, limit, sink, progress, cancel).map_err(|e| match e {
+            ep_net::DownloadError::Fetch(f) => DownloadError::Transport(transport_error(f)),
+            ep_net::DownloadError::Status(code) => DownloadError::Status(code),
+            ep_net::DownloadError::RedirectRefused => DownloadError::RedirectRefused,
+            ep_net::DownloadError::TooManyRedirects => DownloadError::TooManyRedirects,
+            ep_net::DownloadError::Incomplete => DownloadError::Incomplete,
+            ep_net::DownloadError::Cancelled => DownloadError::Cancelled,
+            ep_net::DownloadError::Write(kind) => DownloadError::Write(kind),
+        })
+    }
+}
+
+/// What the exit needs to start the new exe: the exe's path as captured at
+/// start and this process's arguments.
+struct Relaunch {
+    exe: Option<PathBuf>,
+    args: Vec<OsString>,
+}
+
+/// Starts the new exe after the shutdown, when a finished install asked for
+/// it. The global shortcuts are released first, so the new process can
+/// register its own. A failure is logged; the old process ends either way.
+fn relaunch(app: &AppHandle, shell: &App) {
+    let _ = app.global_shortcut().unregister_all();
+    if !shell.restart_requested() {
+        return;
+    }
+    let Some(relaunch) = app.try_state::<Relaunch>() else {
+        return;
+    };
+    let Some(exe) = &relaunch.exe else {
+        shell.diag("updates: restart failed: the exe's path is not known");
+        return;
+    };
+    match std::process::Command::new(exe).args(&relaunch.args).spawn() {
+        Ok(_) => shell.diag("updates: started the new version"),
+        Err(e) => shell.diag(&format!(
+            "updates: restart failed: the new version did not start ({})",
+            e.kind()
+        )),
     }
 }
 
@@ -275,6 +462,38 @@ fn set_hotkey(app: Shared<'_>, hotkey: String) -> View {
     app.set_hotkey(&hotkey)
 }
 
+#[tauri::command(async)]
+fn open_settings(app: Shared<'_>) -> Result<(), String> {
+    app.open_settings()
+}
+
+// The Settings window's commands.
+
+#[tauri::command]
+fn get_app_settings(app: Shared<'_>) -> AppSettingsView {
+    app.get_app_settings()
+}
+
+#[tauri::command(async)]
+fn update_settings(app: Shared<'_>, patch: Value) -> Result<AppSettingsView, String> {
+    app.update_settings(&patch)
+}
+
+#[tauri::command(async)]
+fn check_for_updates(app: Shared<'_>) -> AppSettingsView {
+    app.check_for_updates()
+}
+
+#[tauri::command(async)]
+fn install_update(app: Shared<'_>) -> Result<AppSettingsView, String> {
+    app.install_update()
+}
+
+#[tauri::command(async)]
+fn cancel_update(app: Shared<'_>) -> AppSettingsView {
+    app.cancel_update()
+}
+
 // ---------------------------------------------------------------------------
 
 /// Builds and runs the Tauri application.
@@ -305,23 +524,75 @@ pub fn run() {
                     return Err(e.into());
                 }
             };
-            let shell = App::new(AppConfig {
-                data,
-                store,
-                shell: Box::new(TauriShell {
-                    app: app.handle().clone(),
-                    hotkey: Mutex::new(None),
-                }),
-            });
+            // Captured now and never read again: a swap renames the file.
+            let (exe, exe_error) = match std::env::current_exe() {
+                Ok(p) => (Some(p), None),
+                Err(e) => (None, Some(e)),
+            };
+            let shell = App::with_updates(
+                AppConfig {
+                    data,
+                    store,
+                    shell: Box::new(TauriShell {
+                        app: app.handle().clone(),
+                        hotkey: Mutex::new(None),
+                    }),
+                },
+                UpdateSetup {
+                    config: UpdateConfig {
+                        transport: Some(Box::new(NetTransport)),
+                        exe_path: exe.clone(),
+                        ..UpdateConfig::default()
+                    },
+                    ..UpdateSetup::default()
+                },
+            );
             app.manage(Arc::clone(&shell));
+            app.manage(Relaunch {
+                exe: exe.clone(),
+                args: std::env::args_os().skip(1).collect(),
+            });
             shell.start();
+            match exe {
+                Some(exe) => {
+                    let weak = Arc::downgrade(&shell);
+                    let spawned = spawn_cleanup(exe, move |line| {
+                        if let Some(shell) = weak.upgrade() {
+                            shell.diag(&line);
+                        }
+                    });
+                    if let Err(e) = spawned {
+                        shell.diag(&format!("updates: cleanup did not start ({})", e.kind()));
+                    }
+                }
+                None => shell.diag(&format!(
+                    "updates: the exe's path is not known ({}); updates cannot be installed",
+                    exe_error.map_or_else(String::new, |e| e.kind().to_string())
+                )),
+            }
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            // Closing the main window quits the app, even with the Settings
+            // window still open.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == MAIN {
+                    api.prevent_close();
+                    window.app_handle().exit(0);
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_view,
             update_selection,
             copy_now,
             set_hotkey,
+            open_settings,
+            get_app_settings,
+            update_settings,
+            check_for_updates,
+            install_update,
+            cancel_update,
         ])
         .build(tauri::generate_context!())
         .expect("waystone-roller: the Tauri application failed to start");
@@ -330,6 +601,7 @@ pub fn run() {
         if let RunEvent::Exit = event {
             if let Some(shell) = app.try_state::<Arc<App>>() {
                 shell.shutdown();
+                relaunch(app, &shell);
             }
         }
     });

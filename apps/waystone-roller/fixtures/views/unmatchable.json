@@ -154,5 +154,6 @@
   "status": {
     "kind": "error",
     "text": "Not copied: some mods cannot be told apart from others."
-  }
+  },
+  "update_available": null
 }
