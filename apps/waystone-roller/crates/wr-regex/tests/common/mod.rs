@@ -38,13 +38,18 @@ pub struct Item {
     pub mods: Vec<String>,
 }
 
-/// Replaces every `#` of a template line with a number.
+/// Replaces every `#` of a template line with a number and its roll range,
+/// as the advanced item text shows it (`14(10-14)`; Live 1). The ranges end
+/// in 10 to 16, so a tier term that a range can satisfy lights the wrong
+/// tier in these items.
 pub fn fill(line: &str, seed: usize) -> String {
     let mut out = String::new();
     let mut n = seed;
     for ch in line.chars() {
         if ch == '#' {
-            out.push_str(&(7 + n % 40).to_string());
+            let hi = 10 + n % 7;
+            let lo = hi - 4;
+            out.push_str(&format!("{}({lo}-{hi})", lo + n % 5));
             n += 3;
         } else {
             out.push(ch);
@@ -53,8 +58,23 @@ pub fn fill(line: &str, seed: usize) -> String {
     out
 }
 
-/// An item in the assumed layout (wr-regex `ITEM_FRAME_LINES`) carrying
-/// `families`' lines, reward lines included when `with_bonus`.
+/// The affix header the advanced item text puts above a mod's lines. A
+/// regular mod's affix name is not in the data, so an invented one stands in.
+pub fn header(f: &Family) -> String {
+    let kind = match f.kind {
+        wr_regex::Kind::Prefix => "Prefix",
+        wr_regex::Kind::Suffix => "Suffix",
+    };
+    let name = f.name.as_deref().unwrap_or(match f.kind {
+        wr_regex::Kind::Prefix => "Qorvex",
+        wr_regex::Kind::Suffix => "of Qorvex",
+    });
+    format!("{{ {kind} Modifier \"{name}\" (Tier: 1) }}")
+}
+
+/// An item in the measured layout (wr-regex `ITEM_FRAME_LINES`, Live 1)
+/// carrying `families`' lines under their headers, reward lines included
+/// when `with_bonus` (the game showed none; kept as the conservative case).
 pub fn synth_item(
     families: &[&Family],
     rarity: &str,
@@ -73,13 +93,15 @@ pub fn synth_item(
         text.push_str("Dusk Hollow\n");
     }
     text.push_str(&format!(
-        "Waystone (Tier {tier})\n--------\nWaystone Tier: {tier}\nItem Rarity: +20%\nPack Size: +5%\n--------\nItem Level: {}\n",
+        "Waystone (Tier {tier})\n--------\nRevives Available: 2 (augmented)\nItem Rarity: +20% (augmented)\nPack Size: +5% (augmented)\nMonster Rarity: +18% (augmented)\n--------\nItem Level: {}\n",
         64 + tier as usize
     ));
     if !families.is_empty() {
         text.push_str("--------\n");
     }
     for (i, f) in families.iter().enumerate() {
+        text.push_str(&header(f));
+        text.push('\n');
         for (j, line) in f.lines.iter().enumerate() {
             if f.bonus[j] && !with_bonus {
                 continue;

@@ -3,21 +3,21 @@ Rarity: Rare
 Ashen Vault
 Waystone (Tier 10)
 --------
-Waystone Tier: 10
-Revives Available: 0
-Monster Effectiveness: +12%
-Item Rarity: +38%
-Pack Size: +9%
-Waystone Drop Chance: +120%
+Revives Available: 2 (augmented)
+Item Rarity: +31% (augmented)
+Pack Size: +9% (augmented)
+Monster Effectiveness: +12% (augmented)
+Waystone Drop Chance: +80% (augmented)
 --------
 Item Level: 74
 --------
-Area contains 2 additional Murk Pools
-20% increased Waystones found in Area
+{ Prefix Modifier "Swampy" (Tier: 1) }
+Area contains 2(2-4) additional Murk Pools
+{ Suffix Modifier "of Sparks" (Tier: 1) }
 Area has patches of Sparkling Ground
-Monsters have 8% more Effectiveness
-Monster have 9% chance to Bleat
-6% more Pack size
-Monsters deal 21% of Damage as Extra Glimmer
+{ Prefix Modifier "Bleating" (Tier: 1) }
+Monster have 9(8-16)% chance to Bleat
+{ Prefix Modifier "Glinting" (Tier: 1) }
+Monsters deal 21(20-25)% of Damage as Extra Glimmer
 --------
 Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

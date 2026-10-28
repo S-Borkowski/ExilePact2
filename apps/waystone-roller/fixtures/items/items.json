@@ -1,5 +1,5 @@
 {
-  "note": "Invented waystones in the assumed item-text layout (wr-regex ITEM_FRAME_LINES; Live procedure 1 replaces the assumption). Mods are the fixture mods of ../mods_min.json; rare names are invented. The test oracle reads what each item is from here, never from its text.",
+  "note": "Invented waystones in the item-text layout measured in Live 1 (2026-10-28; wr-regex ITEM_FRAME_LINES): affix headers above each mod and roll ranges after each number, as in +14(11-15)%. Mods are the fixture mods of ../mods_min.json; rare names and regular affix names are invented. The test oracle reads what each item is from here, never from its text.",
   "items": [
     {
       "file": "rare-t15-corrupted.txt",

@@ -502,29 +502,47 @@ rect.
 Source: [`docs/waystone-roller/waystone-roller-research.md`](waystone-roller/waystone-roller-research.md)
 § "Search syntax" and § "poe2db Waystones page". The search box of the
 stash and of a vendor highlights the items whose text matches what is typed.
-Nothing here is measured yet: each fact is labelled with its source, (P)
-the public tool poe2.re's practice (its shipped JavaScript, read
-2026-10-28) or (O) the owner, and Live procedure 1 of the waystone roller
-checks each one.
+Each fact is labelled with its source: measured in the waystone roller's
+Live procedure 1 on 2026-10-28 (eight waystones in a stash tab: Normal,
+Magic, Rare and corrupted Rare at a low tier and at tier 15), (P) the
+public tool poe2.re's practice (its shipped JavaScript, read 2026-10-28),
+or (O) the owner.
 
-- **The box takes at most 250 characters** (not measured; O, P).
-- **Matching ignores case** (not measured; P writes lower-case terms).
-- **A space separates terms, and an item must match every term** (not
-  measured; P).
-- **`"..."` makes one term of text that holds spaces** (not measured; P).
+- **The box takes at most 250 characters**: a 250-character paste is
+  accepted whole, a 251-character paste is refused whole (the box stays
+  empty), not truncated (measured 2026-10-28; O, P).
+- **Matching ignores case** (measured 2026-10-28; P).
+- **A space separates terms, and an item must match every term**
+  (measured 2026-10-28; P).
+- **`"..."` makes one term of text that holds spaces** (measured
+  2026-10-28; P).
 - **`|` inside a term means or, and a leading `!` negates the term**:
-  `"!a|b"` hides the items that match a or b (not measured; P).
+  `"!a|b"` hides the items that match a or b (measured 2026-10-28; P).
 - **A term is a regular expression**: character classes `[..]` and escapes
-  such as `\)` work (not measured; P builds tier terms like `"1[4-6]\)"`).
+  such as `\)` work (measured 2026-10-28: `"r 2\)"` and `"y: [nr]"`; P).
+- **The box searches the advanced item text, roll ranges included**: a
+  mod's number shows with its range, as in `+14(11-15)%`, and `"15\)"` lit a
+  tier-2 waystone through it (measured 2026-10-28). A term meant for the
+  name line's `(Tier 15)` therefore needs the letters before the number
+  (`"r 15\)"`).
 - **The item text has a rarity line `Rarity: Magic`** (and Normal, Rare),
-  so `"y: m"` finds magic items (not measured; P).
+  so `"y: m"` finds magic items (measured 2026-10-28; P).
 - **A corrupted item's text carries `Corrupted`**, so `corr` and `!corr`
-  split corrupted from uncorrupted items (not measured; P).
-- **A waystone's name line carries `(Tier N)`** (static reading: poe2db's
-  base type `Waystone (Tier 15)`; P).
-- **A waystone's summary properties** (item rarity, waystone drop chance,
-  pack size, monster effectiveness, revives) are searchable lines (not
-  measured; P).
-- Not established: whether a waystone mod's reward lines ("15% more
-  Waystones found in Area") show in the item text; whether lookahead
-  (`(?=`, `(?!`) works; any way to count modifiers.
+  split corrupted from uncorrupted items (measured 2026-10-28; P).
+- **A waystone's name line carries `(Tier N)`**: `"r 2\)"` lit exactly the
+  tier-2 waystones (measured 2026-10-28; poe2db's base type `Waystone
+  (Tier 15)`).
+- **A waystone's item text** (measured 2026-10-28, copied in the advanced
+  form): `Item Class: Waystones`, the rarity line, a rare's random name, the
+  name line (a magic waystone's affix names around `Waystone (Tier N)`),
+  summary lines (`Revives Available`, `Item Rarity`, `Pack Size`, `Monster
+  Rarity`, `Monster Effectiveness`, `Waystone Drop Chance`, each ending in
+  `(augmented)` when a mod raised it), `Item Level`, a header
+  `{ Prefix Modifier "<affix name>" (Tier: N) }` (or `Suffix`) above each
+  mod's lines, the Map Device description and, last, `Corrupted`.
+- **A waystone mod's reward lines** ("15% more Waystones found in Area")
+  do not show in the item text: `"waystones found"` lit nothing (measured
+  2026-10-28).
+- Not established: whether lookahead (`(?=`, `(?!`) works
+  (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
+  form plain `Ctrl+C` copies; any way to count modifiers.

@@ -117,8 +117,10 @@ The app writes one string of terms separated by spaces, in this order:
 1. **Rarity**: none or all three ticked adds nothing; one adds `"y: m"`
    (the end of `Rarity: Magic`); two add `"y: [mr]"`.
 2. **Tier**: 1 to 16 adds nothing. Otherwise a term that matches the
-   `(Tier N)` of the item's name line, such as `"r [5-9]\)|1[0-2]\)"` for
-   tiers 5 to 12.
+   `(Tier N)` of the item's name line, such as `"r [5-9]\)|r 1[0-2]\)"` for
+   tiers 5 to 12 or `"r 1[4-6]\)"` for 14 to 16. Every alternative keeps
+   the `r ` of "Tier": the box also searches the mods' roll ranges, and a
+   bare `15\)` lights a tier-2 waystone through `+14(11-15)%`.
 3. **Want**: each mod is found by its own **token**, the shortest piece of
    its text (at least 3 letters) that no other mod's text and no other line
    of a waystone holds. Want any: one term `"t1|t2"`. Want all: one term per
@@ -144,10 +146,11 @@ The result is one of:
   Abyssal"). Want any or avoid may still reach it when the mod that contains
   it is chosen too.
 
-The search-box facts this relies on are a public tool's practice and the
-owner's knowledge, not yet measured by this project
-([`waystone-roller-research.md`](waystone-roller-research.md) § "Search
-syntax").
+Every search-box fact this relies on was checked in the game on
+2026-10-28 ([`waystone-roller-research.md`](waystone-roller-research.md)
+§ "Search syntax", Live 1): the quoting, `|`, `!`, case, the rarity, tier
+and corruption terms, and the limit (250 characters is accepted, 251 is
+refused whole).
 
 ## Mod data
 
@@ -226,9 +229,13 @@ shipped-data test says if a token no longer tells a mod apart.
   not delivered to the game. Whether Path of Exile 2 binds `Ctrl+Alt+W` to
   anything is not established; if it does, that binding stops working while
   the app runs. Choose another shortcut in the window if so.
-- **The search syntax is not measured yet** by this project: the quoting,
-  `|`, `!`, the rarity and tier terms and the 250 limit come from a public
-  tool's practice and the owner (research note § "Search syntax").
+- **Search syntax measured on eight waystones** (2026-10-28, research note
+  § "Search syntax"): Normal, Magic, Rare and corrupted Rare at tiers 1, 2
+  and 15. What the game does with a lookahead such as `(?=` is not
+  established (the app never writes one). The captured item texts were the
+  advanced form (affix headers and roll ranges, as `Ctrl+Alt+C` copies);
+  that the box searches the roll ranges is measured, while which form plain
+  `Ctrl+C` gives was not separated.
 - **One mod cannot be wanted alone**: "Area contains # additional Abysses"
   (How the search is built).
 - **No count of modifiers**, and no value thresholds: 0.1.0 has no control

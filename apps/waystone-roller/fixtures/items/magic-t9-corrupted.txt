@@ -1,18 +1,17 @@
 Item Class: Waystones
 Rarity: Magic
-Waystone (Tier 9)
+Ghostly Waystone (Tier 9)
 --------
-Waystone Tier: 9
-Revives Available: 0
-Monster Effectiveness: +12%
-Item Rarity: +38%
-Pack Size: +9%
-Waystone Drop Chance: +120%
+Revives Available: 5
+Item Rarity: +12% (augmented)
+Waystone Drop Chance: +15% (augmented)
 --------
 Item Level: 73
 --------
-+22% Monster Spectral Resistances
-Monster have 12% chance to Bleat
+{ Prefix Modifier "Ghostly" (Tier: 1) }
++22(20-25)% Monster Spectral Resistances
+{ Prefix Modifier "Bleating" (Tier: 1) }
+Monster have 12(10-12)% chance to Bleat
 --------
 Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
 --------

@@ -5,8 +5,8 @@
 //!
 //! - [`data`]: the data contract (`data/waystone-mods.json`) and its
 //!   validator, whose every refusal names the family and the field.
-//! - [`frame`]: the text every waystone carries besides its mods (assumed
-//!   until Live procedure 1 measures it).
+//! - [`frame`]: the text every waystone carries besides its mods (measured
+//!   in Live procedure 1, 2026-10-28).
 //! - [`tokens`]: each family's own token and the set cover for "any of".
 //! - [`build`]: the rarity, tier, want, avoid and corruption terms and the
 //!   assembler with its outcomes.

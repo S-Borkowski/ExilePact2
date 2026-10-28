@@ -146,6 +146,9 @@ fn tier_bounds(min: u8, max: u8) -> (u8, u8) {
 }
 
 /// The tier term, matching the `(Tier N)` of the name line: none for 1–16.
+/// Every alternative keeps the `r ` of "Tier": the search box also reads the
+/// roll ranges, and a bare `15\)` matches `+14(11-15)%` on a tier-2 waystone
+/// (measured 2026-10-28, Live 1).
 pub fn tier_term(min: u8, max: u8) -> Option<String> {
     let (lo, hi) = tier_bounds(min, max);
     if (lo, hi) == (TIER_MIN, TIER_MAX) {
@@ -164,9 +167,9 @@ pub fn tier_term(min: u8, max: u8) -> Option<String> {
         let a = lo.max(10) - 10;
         let b = hi - 10;
         alts.push(if a == b {
-            format!("1{a}\\)")
+            format!("r 1{a}\\)")
         } else {
-            format!("1[{a}-{b}]\\)")
+            format!("r 1[{a}-{b}]\\)")
         });
     }
     Some(quote(&alts.join("|")))

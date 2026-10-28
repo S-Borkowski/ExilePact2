@@ -164,7 +164,7 @@ describe('the page', () => {
     click(copy);
     expect(bridge.calls).toEqual([]);
     expect(text(root)).not.toContain('Copied the search');
-    expect(text(root.querySelector('.status'))).toContain('Not copied: the search is 262 characters');
+    expect(text(root.querySelector('.status'))).toContain('Not copied: the search is 264 characters');
 
     // Negative control: the parts list is not shown for a search that fits.
     bridge.pushView(fixtureView('ok-any'));

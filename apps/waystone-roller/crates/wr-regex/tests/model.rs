@@ -1,6 +1,8 @@
 //! Baseline: the search model on hand-written strings, i.e. how the game's
-//! search box is assumed to behave without the app (context "PoE 2 search
-//! syntax: what is known"; not measured until Live procedure 1).
+//! search box behaves without the app. The rules the generator relies on
+//! were checked in the game on 2026-10-28 (Live 1; research note `## Search
+//! syntax`); `.` not crossing a line and refusing lookaround are the
+//! model's own choices, not measured.
 
 use wr_regex::model::{highlights, ModelError, Search};
 
@@ -87,12 +89,19 @@ fn search_model_is_case_insensitive_baseline() {
 
 #[test]
 fn search_model_escaped_paren_baseline() {
-    assert!(hl("\"1[4-6]\\)\"", RARE_T15));
-    assert!(!hl("\"1[4-6]\\)\"", MAGIC_T5));
-    assert!(hl("\"r [5-9]\\)|1[0-2]\\)\"", MAGIC_T5));
-    assert!(!hl("\"r [5-9]\\)|1[0-2]\\)\"", RARE_T15));
+    assert!(hl("\"r 1[4-6]\\)\"", RARE_T15));
+    assert!(!hl("\"r 1[4-6]\\)\"", MAGIC_T5));
+    assert!(hl("\"r [5-9]\\)|r 1[0-2]\\)\"", MAGIC_T5));
+    assert!(!hl("\"r [5-9]\\)|r 1[0-2]\\)\"", RARE_T15));
     // "r 1\)" must not take tier 15 for tier 1.
     assert!(!hl("\"r 1\\)\"", RARE_T15));
+    // Measured in Live 1: the box searches roll ranges, so a bare "15\)"
+    // lights a tier-2 waystone through "+14(11-15)%"; the "r " form does not.
+    let ranged_t2 = "Item Class: Waystones\nRarity: Rare\nWaystone (Tier 2)\n--------\n\
+                     Monsters have +14(11-15)% Critical Damage Bonus\n";
+    assert!(hl("\"15\\)\"", ranged_t2));
+    assert!(!hl("\"r 15\\)\"", ranged_t2));
+    assert!(hl("\"r 2\\)\"", ranged_t2));
     // An unescaped ")" is not a valid pattern.
     assert!(matches!(
         Search::parse("1[4-6])"),

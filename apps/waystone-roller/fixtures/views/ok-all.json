@@ -142,8 +142,8 @@
   },
   "result": {
     "state": "ok",
-    "regex": "\"y: [mr]\" \"r [5-9]\\)|1[0-2]\\)\" \"glo ash\" !corr",
-    "length": 46,
+    "regex": "\"y: [mr]\" \"r [5-9]\\)|r 1[0-2]\\)\" \"glo ash\" !corr",
+    "length": 48,
     "limit": 250,
     "parts": [
       {
@@ -153,8 +153,8 @@
       },
       {
         "what": "tier",
-        "text": "\"r [5-9]\\)|1[0-2]\\)\"",
-        "length": 20
+        "text": "\"r [5-9]\\)|r 1[0-2]\\)\"",
+        "length": 22
       },
       {
         "what": "want",

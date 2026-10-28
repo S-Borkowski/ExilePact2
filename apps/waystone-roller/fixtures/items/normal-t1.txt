@@ -2,7 +2,7 @@ Item Class: Waystones
 Rarity: Normal
 Waystone (Tier 1)
 --------
-Waystone Tier: 1
+Revives Available: 5
 --------
 Item Level: 65
 --------

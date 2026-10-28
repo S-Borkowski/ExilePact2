@@ -3,21 +3,22 @@ Rarity: Rare
 Dusk Hollow
 Waystone (Tier 15)
 --------
-Waystone Tier: 15
-Revives Available: 0
-Monster Effectiveness: +12%
-Item Rarity: +38%
-Pack Size: +9%
-Waystone Drop Chance: +120%
+Revives Available: 0 (augmented)
+Item Rarity: +30% (augmented)
+Pack Size: +17% (augmented)
+Monster Rarity: +61% (augmented)
+Waystone Drop Chance: +130% (augmented)
 --------
 Item Level: 79
 --------
-Monsters deal 25% of Damage as Extra Glimmer
-15% more Waystones found in Area
-Monsters have 30% increased Hopping Speed
-10% more Rarity of Items found in this Area
+{ Prefix Modifier "Glinting" (Tier: 1) }
+Monsters deal 12(10-14)% of Damage as Extra Glimmer
+{ Suffix Modifier "of Hopping" (Tier: 1) }
+Monsters have 30(26-30)% increased Hopping Speed
+{ Suffix Modifier "of Slumber" (Tier: 1) }
 Players are cursed with Drowsiness
-Monsters have 40% increased Shadow Damage
+{ Prefix Modifier "Gloaming" (Tier: 1) }
+Monsters have 40(31-40)% increased Shadow Damage
 --------
 Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
 --------

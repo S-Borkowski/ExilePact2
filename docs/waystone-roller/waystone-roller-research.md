@@ -12,33 +12,43 @@ sources are:
 
 - **(P)** the public community tool poe2.re, whose waystone page builds such
   search strings: its shipped JavaScript, read 2026-10-28. A public tool's
-  practice, **not measured** by this project.
+  practice; this project measured it in Live 1 (§ "Search syntax").
+- **Live 1**, this project's own measurement in the game, 2026-10-28.
 - **(O)** the owner's knowledge of the game.
 - poe2db.tw's pages, read 2026-10-28.
 
 ## Search syntax
 
 The search box of the stash and of a vendor highlights the items whose text
-matches. Every row is a check of Live procedure 1 (the written live session
-of the workorder that built the app); until it is measured, each keeps the
-label below.
+matches. Every row was a check of Live procedure 1 (the written live
+session of the workorder that built the app). **Live 1**, 2026-10-28:
+eight waystones in one stash tab, Normal, Magic, Rare and corrupted Rare,
+each at tier 2 or 1 and at tier 15 (no non-waystone item: the owner ruled
+that not matching one is not a requirement); the owner pasted each probe
+and said which lit. "M" below means measured in that session.
 
 | Fact | Source | Generator uses it |
 |---|---|---|
-| Limit 250 characters | O, P | yes |
-| Case-insensitive | P (lower-case tokens) | yes |
-| Space separates terms; every term must match (AND) | P | yes |
-| `"..."` makes one term of text with spaces | P | yes |
-| `\|` inside a term is OR | P | yes |
-| `"!a\|b"` hides items matching a or b | P | yes |
-| A term is a regular expression: `[..]` classes, `\)` escapes | P (`er 1[4-6]\)` tier terms) | yes |
-| Rarity line reads `Rarity: Magic` (term `"y: m"`) | P | yes |
-| Corrupted items carry `Corrupted` (terms `corr`, `!corr`) | P | yes |
-| The name line carries `(Tier N)` | poedb base type `Waystone (Tier 15)`; P | yes |
-| Summary properties (item rarity, waystone drop chance, pack size, monster effectiveness, revives) are searchable lines | P | no (out of scope) |
-| Whether each mod's reward lines ("15% more Waystones found in Area") show on the item | not established | no: tokens avoid them |
-| Lookahead `(?=`, `(?!` | not established; P never emits one | no |
+| Limit 250 characters: a 250-character string is accepted whole; a 251-character one is refused whole (the box stays empty), not truncated | M; O, P | yes |
+| Case-insensitive (`WAYSTONE` lit all eight) | M; P | yes |
+| Space separates terms; every term must match (AND) | M; P | yes |
+| `"..."` makes one term of text with spaces | M; P | yes |
+| `\|` inside a term is OR | M; P | yes |
+| `"!a\|b"` hides items matching a or b | M; P | yes |
+| A term is a regular expression: `[..]` classes, `\)` escapes | M (`"r 2\)"`, `"y: [nr]"`); P | yes |
+| The box searches the advanced item text, roll ranges included: `"15\)"` lit a tier-2 waystone through `+14(11-15)%` | M | yes: every tier alternative carries `r ` |
+| Rarity line reads `Rarity: Magic` (terms `"y: m"`, `"y: [nr]"`) | M; P | yes |
+| Corrupted items carry `Corrupted` (terms `corr`, `!corr`) | M; P | yes |
+| The name line carries `(Tier N)` (`"r 2\)"` lit exactly the tier-2 waystones) | M; poedb base type `Waystone (Tier 15)`; P | yes |
+| Summary properties (item rarity, waystone drop chance, pack size, monster rarity, monster effectiveness, revives) show as lines of the item text | M (item texts); not probed as search terms | no (out of scope) |
+| Per-mod reward lines ("15% more Waystones found in Area") do not show on the item: `"waystones found"` lit none, and no copied text had one | M | no: tokens avoid them anyway |
+| Lookahead `(?=`, `(?!` | `"way(?=stone)"` lit all eight: accepted or ignored, not established which; P never emits one | no |
 | Counting mods | not established; no counting syntax in P | no |
+
+The item texts were copied in the advanced form (affix headers and roll
+ranges), which the owner says `Ctrl+Alt+C` gives; which form plain `Ctrl+C`
+gives was not separated in the session. Either way the box matched a roll
+range, so it searches the advanced text.
 
 `wr-regex`'s search model (`src/model.rs`) is this table written as code,
 for the tests only: split on spaces outside double quotes, quotes removed, a
@@ -46,21 +56,33 @@ leading `!` negates, the rest a case-insensitive regular expression searched
 anywhere in the item's text; an item is highlighted when every positive term
 matches and no negated one does. A pattern with lookaround is refused,
 because the game's handling of it is not established. The model is not a
-measurement; the `_baseline` tests pin it and Live procedure 1 checks it.
+measurement; the `_baseline` tests pin it, and one of them pins the roll
+range Live 1 measured.
 
 ### The text a waystone carries besides its mods
 
-A token must never match the text every waystone shows. Assumed from the
-sources above until Live procedure 1's item texts replace it (`wr-regex`
-`ITEM_FRAME_LINES`, labelled assumed): `Item Class: Waystones`, the rarity
-line, `Waystone (Tier #)`, `Waystone Tier: #`, `Item Level: #`, the summary
-properties (`Item Rarity`, `Waystone Drop Chance`, `Pack Size`, `Monster
-Effectiveness`, `Rare Monsters`, `Magic Monsters`, `Revives Available`),
-`Corrupted`, `Unidentified`, the Map Device description ("Can be used in a
-Map Device, allowing you to enter a Map. Waystones can only be used
-once.") and the desecrated affix names, which show in a magic waystone's
-name. Random rare names and the magic affix names of regular mods are not
-known (poe2db lists none).
+A token must never match the text every waystone shows. Measured in Live 1
+from the eight item texts (`wr-regex` `ITEM_FRAME_LINES`): `Item Class:
+Waystones`, the rarity line, the name line (a rare's random name above
+`Waystone (Tier #)`; a magic waystone's affix names around it, as in
+`Waystone (Tier 2) of Sleet`), the summary lines `Revives Available`,
+`Item Rarity`, `Pack Size`, `Monster Rarity`, `Monster Effectiveness` and
+`Waystone Drop Chance` (each ending in `(augmented)` when a mod raised it),
+`Item Level: #`, a header above each mod (`{ Prefix Modifier "<affix
+name>" (Tier: #) }`, or `Suffix`), each number followed by its roll range
+(`36(30-39)%`), a mod line that cannot roll ending in `— Unscalable Value`,
+the Map Device description ("Can be used in a Map Device, allowing you to
+enter a Map. Waystones can only be used once.") and, last, `Corrupted`.
+`ITEM_FRAME_LINES` also keeps lines the session did not show (`Rarity:
+Unique`, `Waystone Tier: #`, `Rare Monsters`, `Magic Monsters`,
+`Unidentified`) as guards: a frame line only keeps a token away from more
+text. The desecrated affix names are frame text too. Random rare names and
+the affix names of regular mods are not known (poe2db lists none).
+
+Adding `Monster Rarity` mattered: before it, the token of the fixture mod
+"Players have #% less Whisper Resistance" was `r r`, which `Monster Rarity`
+holds, so it would have lit every waystone showing that line; the fixture
+tests caught it once the item fixtures took the measured layout.
 
 ## poe2db Waystones page
 
@@ -117,13 +139,23 @@ disallows only `/*/marked` and `/*/markdown_history`.
   contains # additional Abysses` has none, since every piece of its text is
   also part of `Area is overrun by the Abyssal`.
 - **The tier term** matches the name line's `(Tier N)`: `r d\)` or
-  `r [a-b]\)` for single digits (the `r ` keeps `(Tier 1)` from matching a
-  `1)` elsewhere), `1d\)` or `1[a-b]\)` for 10 to 16, joined by `|`.
+  `r [a-b]\)` for single digits, `r 1d\)` or `r 1[a-b]\)` for 10 to 16,
+  joined by `|`; 14 to 16 gives `"r 1[4-6]\)"` and 5 to 12 gives
+  `"r [5-9]\)|r 1[0-2]\)"`. The `r ` of "Tier" is on every alternative
+  because the box also searches roll ranges: the first design wrote `1d\)`
+  for 10 to 16, and Live 1 refuted it (`"15\)"` lit a tier-2 waystone
+  through `+14(11-15)%`). The `r ` also keeps `(Tier 1)` from matching a
+  `1)` elsewhere; a mod header's `(Tier: 1)` has a colon, so it never
+  matches.
 
 ## Negatives and choices
 
 - **No lookahead.** `!` and `|` express want and avoid; a lookahead form
-  would be a guess until the box's handling of `(?=` is measured.
+  would be a guess: in Live 1 `"way(?=stone)"` lit every waystone, which
+  an accepted lookahead and an ignored one would both do.
+- **Bare two-digit tier terms were refuted** in Live 1: `1d\)` matched a
+  roll range on a waystone of another tier, so every tier alternative now
+  starts with `r ` (§ "Token design").
 - **Over 250 characters fails loudly**, rather than dropping selections
   (the owner's choice, 2026-10-28): the window shows each part's length.
 - **No count of modifiers.** P has no counting syntax and none is

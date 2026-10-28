@@ -3,21 +3,26 @@ Rarity: Rare
 Cold Passage
 Waystone (Tier 14)
 --------
-Waystone Tier: 14
-Revives Available: 0
-Monster Effectiveness: +12%
-Item Rarity: +38%
-Pack Size: +9%
-Waystone Drop Chance: +120%
+Revives Available: 1 (augmented)
+Item Rarity: +38% (augmented)
+Pack Size: +9% (augmented)
+Monster Effectiveness: +12% (augmented)
+Waystone Drop Chance: +120% (augmented)
 --------
 Item Level: 78
 --------
+{ Prefix Modifier "Swampy" (Tier: 1) }
 Area is overrun by the Murkfolk
-Area contains 4 additional Murk Pools
-Players have 25% less Recovery Rate of Life, Mana and Glimmer
-Monsters have 35% increased Hopping Speed
-+19% Monster Spectral Resistances
-Monsters have 50% increased Shadow Damage
-Players have 18% less Whisper Resistance
+Area contains 4(2-4) additional Murk Pools
+{ Suffix Modifier "of Fatigue" (Tier: 1) }
+Players have 25(21-25)% less Recovery Rate of Life, Mana and Glimmer
+{ Suffix Modifier "of Hopping" (Tier: 1) }
+Monsters have 35(30-40)% increased Hopping Speed
+{ Prefix Modifier "Ghostly" (Tier: 1) }
++19(16-20)% Monster Spectral Resistances
+{ Prefix Modifier "Gloaming" (Tier: 1) }
+Monsters have 50(41-50)% increased Shadow Damage
+{ Suffix Modifier "of Whispers" (Tier: 1) }
+Players have 16(12-16)% less Whisper Resistance
 --------
 Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

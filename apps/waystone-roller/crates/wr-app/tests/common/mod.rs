@@ -131,13 +131,16 @@ pub fn tokened_ids(app: &App) -> Vec<String> {
         .collect()
 }
 
-/// Fills every `#` of a template line with a number.
+/// Fills every `#` of a template line with a number and its roll range, as
+/// the advanced item text shows it (`14(10-14)`; Live 1).
 pub fn fill(line: &str, seed: usize) -> String {
     let mut out = String::new();
     let mut n = seed;
     for ch in line.chars() {
         if ch == '#' {
-            out.push_str(&(7 + n % 40).to_string());
+            let hi = 10 + n % 7;
+            let lo = hi - 4;
+            out.push_str(&format!("{}({lo}-{hi})", lo + n % 5));
             n += 3;
         } else {
             out.push(ch);
@@ -146,17 +149,21 @@ pub fn fill(line: &str, seed: usize) -> String {
     out
 }
 
-/// A rare waystone of tier 15 carrying `lines` (templates), in the assumed
-/// item layout of `wr_regex::ITEM_FRAME_LINES`.
+/// A waystone carrying `lines` (templates) under one affix header (its name
+/// invented), in the item layout measured in Live 1
+/// (`wr_regex::ITEM_FRAME_LINES`).
 pub fn waystone(lines: &[String], rarity: &str, tier: u8, corrupted: bool) -> String {
     let mut text = format!("Item Class: Waystones\nRarity: {rarity}\n");
     if rarity == "Rare" {
         text.push_str("Dusk Hollow\n");
     }
     text.push_str(&format!(
-        "Waystone (Tier {tier})\n--------\nWaystone Tier: {tier}\nItem Rarity: +20%\nPack Size: +5%\n--------\nItem Level: {}\n--------\n",
+        "Waystone (Tier {tier})\n--------\nRevives Available: 2 (augmented)\nItem Rarity: +20% (augmented)\nPack Size: +5% (augmented)\nMonster Rarity: +18% (augmented)\n--------\nItem Level: {}\n--------\n",
         64 + tier as usize
     ));
+    if !lines.is_empty() {
+        text.push_str("{ Prefix Modifier \"Qorvex\" (Tier: 1) }\n");
+    }
     for (i, line) in lines.iter().enumerate() {
         text.push_str(&fill(line, i));
         text.push('\n');

@@ -479,7 +479,7 @@
   "result": {
     "state": "too_long",
     "regex": "",
-    "length": 262,
+    "length": 264,
     "limit": 250,
     "parts": [
       {
@@ -489,8 +489,8 @@
       },
       {
         "what": "tier",
-        "text": "\"1[0-6]\\)\"",
-        "length": 10
+        "text": "\"r 1[0-6]\\)\"",
+        "length": 12
       },
       {
         "what": "want",
@@ -513,6 +513,6 @@
   "hotkey": "Ctrl+Alt+W",
   "status": {
     "kind": "error",
-    "text": "Not copied: the search is 262 characters, over the game's 250. Remove some selections."
+    "text": "Not copied: the search is 264 characters, over the game's 250. Remove some selections."
   }
 }

@@ -3,17 +3,18 @@ Rarity: Rare
 Brine Steps
 Waystone (Tier 5)
 --------
-Waystone Tier: 5
-Revives Available: 0
-Monster Effectiveness: +12%
-Item Rarity: +38%
-Pack Size: +9%
-Waystone Drop Chance: +120%
+Revives Available: 3 (augmented)
+Item Rarity: +24% (augmented)
+Pack Size: +6% (augmented)
+Waystone Drop Chance: +45% (augmented)
 --------
 Item Level: 69
 --------
-Monsters deal 18% of Damage as Extra Murk
-Monsters' Skills Chain 2 additional times
-Players have 20% less Recovery Rate of Life, Mana and Glimmer
+{ Prefix Modifier "Murky" (Tier: 1) }
+Monsters deal 14(10-14)% of Damage as Extra Murk
+{ Suffix Modifier "of Linking" (Tier: 1) }
+Monsters' Skills Chain 2(1-2) additional times
+{ Suffix Modifier "of Fatigue" (Tier: 1) }
+Players have 13(11-13)% less Recovery Rate of Life, Mana and Glimmer
 --------
 Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

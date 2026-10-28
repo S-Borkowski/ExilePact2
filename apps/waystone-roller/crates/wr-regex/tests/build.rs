@@ -47,8 +47,12 @@ fn fixture_items_match_their_index() {
                 .family(id)
                 .unwrap_or_else(|| panic!("{}: unknown mod {id}", item.name));
             for line in f.own_lines() {
-                // `regex::escape` escapes `#` too.
-                let pattern = format!("(?m)^{}$", regex::escape(line).replace(r"\#", r"\d+"));
+                // `regex::escape` escapes `#` too. A number may carry its
+                // roll range, as in `+14(11-15)%` or `-4(-4--3)%`.
+                let pattern = format!(
+                    "(?m)^{}$",
+                    regex::escape(line).replace(r"\#", r"-?\d+(?:\(-?\d+--?\d+\))?")
+                );
                 assert!(
                     regex::Regex::new(&pattern).unwrap().is_match(&item.text),
                     "{}: {line:?} missing",
@@ -220,13 +224,26 @@ fn build_tier_ranges_exhaustive_target() {
         }
     }
     assert_eq!(ranges, 135);
-    assert_eq!(tier_term(14, 16).as_deref(), Some("\"1[4-6]\\)\""));
+    // Negative control: the items carry roll ranges, so the bare two-digit
+    // form refuted in Live 1 lights an item of another tier here too.
+    let lights_another_tier = |s: &str, lo: u8, hi: u8| {
+        items
+            .iter()
+            .any(|i| !(lo..=hi).contains(&i.tier) && highlights(s, &i.text).unwrap())
+    };
+    assert!(lights_another_tier("\"15\\)\"", 15, 15));
+    assert!(lights_another_tier("\"1[4-6]\\)\"", 14, 16));
+    assert!(lights_another_tier("\"1[0-2]\\)\"", 10, 12));
+    assert!(!lights_another_tier("\"r 15\\)\"", 15, 15));
+    // Every alternative carries the `r ` of "Tier": the box searches roll
+    // ranges too, so a bare `15\)` also matches `+14(11-15)%` (Live 1).
+    assert_eq!(tier_term(14, 16).as_deref(), Some("\"r 1[4-6]\\)\""));
     assert_eq!(
         tier_term(5, 12).as_deref(),
-        Some("\"r [5-9]\\)|1[0-2]\\)\"")
+        Some("\"r [5-9]\\)|r 1[0-2]\\)\"")
     );
     assert_eq!(tier_term(7, 7).as_deref(), Some("\"r 7\\)\""));
-    assert_eq!(tier_term(16, 16).as_deref(), Some("\"16\\)\""));
+    assert_eq!(tier_term(16, 16).as_deref(), Some("\"r 16\\)\""));
     // Out-of-range and reversed bounds are clamped and ordered.
     assert_eq!(tier_term(16, 14), tier_term(14, 16));
     assert_eq!(tier_term(0, 40), None);
@@ -322,7 +339,7 @@ fn build_combined_selection_target() {
             PartWhat::Corruption
         ]
     );
-    assert!(s.starts_with("\"y: [mr]\" \"1[0-6]\\)\" "), "{s:?}");
+    assert!(s.starts_with("\"y: [mr]\" \"r 1[0-6]\\)\" "), "{s:?}");
     assert!(s.ends_with(" !corr"), "{s:?}");
     // Some fixture item is highlighted and some is not (both outcomes seen).
     let hits = items

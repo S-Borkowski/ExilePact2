@@ -1,9 +1,10 @@
 //! A model of the game's stash and vendor search box, for tests only.
 //!
-//! It is written from the context's "PoE 2 search syntax: what is known"
-//! (a public tool's practice and the owner's word, **not measured**) and is
+//! It was written from a public tool's practice and the owner's word, and is
 //! the oracle the generator's tests run their strings through. Live
-//! procedure 1 checks it against the game.
+//! procedure 1 checked the rules the generator relies on against the game
+//! on 2026-10-28 (research note `## Search syntax`); `.` not crossing a line
+//! and refusing lookaround remain the model's own choices.
 //!
 //! The rules it applies:
 //!
