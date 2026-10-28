@@ -1,0 +1,3160 @@
+{
+  "schema": 1,
+  "class": "Sceptres",
+  "code": "Sceptre",
+  "source_note": "Item class modifier data from poe2db (poe2db.tw; its wiki content is CC BY-NC-SA 3.0); modifier lines, affix names, base names and essence names are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Values are replaced by # and kept beside each line; hidden stats are left out.",
+  "pages": [
+    {
+      "variant": "all",
+      "url": "https://poe2db.tw/us/Sceptres",
+      "fetched": "2026-10-28",
+      "weights": {
+        "normal": "spawn",
+        "desecrated": "none"
+      },
+      "ignored": {
+        "bonded": 46,
+        "corrupted": 6,
+        "corruption_upgrade": 13,
+        "destruction": 9,
+        "socketable": 76
+      }
+    }
+  ],
+  "bases": [
+    {
+      "name": "Aromatic Sceptre",
+      "variant": "all",
+      "req_level": 52,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Clasped Sceptre",
+      "variant": "all",
+      "req_level": 36,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Heart of Ice"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Devotional Sceptre",
+      "variant": "all",
+      "req_level": 45,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Devouring Sceptre",
+      "variant": "all",
+      "req_level": 33,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Hallowed Sceptre",
+      "variant": "all",
+      "req_level": 65,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Lupine Sceptre",
+      "variant": "all",
+      "req_level": 12,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Ochre Sceptre",
+      "variant": "all",
+      "req_level": 21,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Omen Sceptre",
+      "variant": "all",
+      "req_level": 16,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Malice"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Pious Sceptre",
+      "variant": "all",
+      "req_level": 58,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Rattling Sceptre",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Skeletal Warrior"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Shrine Sceptre",
+      "variant": "all",
+      "req_level": 26,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Impurity"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Shrine Sceptre",
+      "variant": "all",
+      "req_level": 26,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Purity of Fire"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Shrine Sceptre",
+      "variant": "all",
+      "req_level": 26,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Purity of Ice"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Shrine Sceptre",
+      "variant": "all",
+      "req_level": 26,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Purity of Lightning"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Stoic Sceptre",
+      "variant": "all",
+      "req_level": 6,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Discipline"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Wrath Sceptre",
+      "variant": "all",
+      "req_level": 49,
+      "implicits": [
+        {
+          "lines": [
+            "Grants Skill: Fulmination"
+          ],
+          "values": []
+        }
+      ]
+    }
+  ],
+  "mods": [
+    {
+      "id": "prefix-increased-spirit",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "LocalIncreasedSpiritPercent"
+      ],
+      "lines": [
+        "#% increased Spirit"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "King's",
+            "ilvl": 82,
+            "weight": 50,
+            "values": [
+              [
+                61,
+                65
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Prince's",
+            "ilvl": 75,
+            "weight": 100,
+            "values": [
+              [
+                56,
+                60
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Duke's",
+            "ilvl": 60,
+            "weight": 200,
+            "values": [
+              [
+                51,
+                55
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Count's",
+            "ilvl": 46,
+            "weight": 400,
+            "values": [
+              [
+                45,
+                50
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Marquess'",
+            "ilvl": 33,
+            "weight": 600,
+            "values": [
+              [
+                39,
+                44
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Viscount's",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                33,
+                38
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Baron's",
+            "ilvl": 8,
+            "weight": 1000,
+            "values": [
+              [
+                27,
+                32
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Lord's",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                26
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-increased-spirit-2",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "LocalIncreasedSpiritAndMana"
+      ],
+      "lines": [
+        "#% increased Spirit",
+        "+# to maximum Mana"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Chancellor's",
+            "ilvl": 70,
+            "weight": 100,
+            "values": [
+              [
+                35,
+                38
+              ],
+              [
+                42,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Diplomat's",
+            "ilvl": 58,
+            "weight": 200,
+            "values": [
+              [
+                31,
+                34
+              ],
+              [
+                38,
+                41
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Envoy's",
+            "ilvl": 48,
+            "weight": 400,
+            "values": [
+              [
+                27,
+                30
+              ],
+              [
+                34,
+                37
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Minister's",
+            "ilvl": 36,
+            "weight": 600,
+            "values": [
+              [
+                23,
+                26
+              ],
+              [
+                29,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Emissary's",
+            "ilvl": 26,
+            "weight": 1000,
+            "values": [
+              [
+                19,
+                22
+              ],
+              [
+                25,
+                28
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Counselor's",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                18
+              ],
+              [
+                21,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Advisor's",
+            "ilvl": 2,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                14
+              ],
+              [
+                17,
+                20
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-to-maximum-mana",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "IncreasedMana"
+      ],
+      "lines": [
+        "+# to maximum Mana"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Blue",
+            "ilvl": 70,
+            "weight": 1000,
+            "values": [
+              [
+                150,
+                164
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Mazarine",
+            "ilvl": 65,
+            "weight": 1000,
+            "values": [
+              [
+                125,
+                149
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Chalybeous",
+            "ilvl": 60,
+            "weight": 1000,
+            "values": [
+              [
+                105,
+                124
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Gentian",
+            "ilvl": 54,
+            "weight": 1000,
+            "values": [
+              [
+                90,
+                104
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Opalescent",
+            "ilvl": 46,
+            "weight": 1000,
+            "values": [
+              [
+                80,
+                89
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Aqua",
+            "ilvl": 38,
+            "weight": 1000,
+            "values": [
+              [
+                65,
+                79
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Cerulean",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                55,
+                64
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Teal",
+            "ilvl": 25,
+            "weight": 1000,
+            "values": [
+              [
+                35,
+                54
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Azure",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                34
+              ]
+            ]
+          },
+          {
+            "tier": 10,
+            "name": "Cobalt",
+            "ilvl": 6,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 11,
+            "name": "Beryl",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                14
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-allies-in-your-presence-deal-to-added-attack-cold-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "ColdDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal # to # added Attack Cold Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Entombing",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                21,
+                24
+              ],
+              [
+                32,
+                37
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Polar",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                16,
+                20
+              ],
+              [
+                25,
+                31
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Glaciated",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                14,
+                15
+              ],
+              [
+                22,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Frozen",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                11,
+                13
+              ],
+              [
+                18,
+                21
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Freezing",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                9,
+                10
+              ],
+              [
+                15,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Frigid",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                7,
+                8
+              ],
+              [
+                12,
+                14
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Icy",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                5,
+                6
+              ],
+              [
+                9,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Chilled",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                4
+              ],
+              [
+                5,
+                8
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Frosted",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                3,
+                4
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-allies-in-your-presence-deal-to-added-attack-fire-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "FireDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal # to # added Attack Fire Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Cremating",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                25,
+                29
+              ],
+              [
+                39,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Blasting",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                20,
+                24
+              ],
+              [
+                31,
+                38
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Incinerating",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                17,
+                19
+              ],
+              [
+                27,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Scorching",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                14,
+                16
+              ],
+              [
+                21,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Flaming",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                12,
+                13
+              ],
+              [
+                18,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Burning",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                9,
+                11
+              ],
+              [
+                14,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Smoking",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                6,
+                8
+              ],
+              [
+                10,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Smouldering",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                5
+              ],
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Heated",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                3,
+                4
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-allies-in-your-presence-deal-to-added-attack-lightning-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "LightningDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal # to # added Attack Lightning Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Electrocuting",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                1,
+                4
+              ],
+              [
+                60,
+                71
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Discharging",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                1,
+                3
+              ],
+              [
+                48,
+                59
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Shocking",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                41,
+                47
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Arcing",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                33,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Sparking",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                28,
+                32
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Crackling",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                23,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Snapping",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                16,
+                22
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Buzzing",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                10,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Humming",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                5,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-allies-in-your-presence-deal-to-added-attack-physical-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "PhysicalDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal # to # added Attack Physical Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Flaring",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                12,
+                19
+              ],
+              [
+                22,
+                32
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Tempered",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                10,
+                15
+              ],
+              [
+                18,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Razor-sharp",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                7,
+                11
+              ],
+              [
+                14,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Annealed",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                6,
+                10
+              ],
+              [
+                12,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Gleaming",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                5,
+                7
+              ],
+              [
+                9,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Honed",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                4,
+                6
+              ],
+              [
+                8,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Polished",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                2,
+                4
+              ],
+              [
+                5,
+                8
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Burnished",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                2,
+                3
+              ],
+              [
+                4,
+                6
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Glinting",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                3,
+                4
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-allies-in-your-presence-deal-increased-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "AllDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal #% increased Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Empowering",
+            "ilvl": 82,
+            "weight": 50,
+            "values": [
+              [
+                105,
+                119
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Inspirational",
+            "ilvl": 70,
+            "weight": 100,
+            "values": [
+              [
+                90,
+                104
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Motivating",
+            "ilvl": 60,
+            "weight": 200,
+            "values": [
+              [
+                75,
+                89
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Persuasive",
+            "ilvl": 46,
+            "weight": 400,
+            "values": [
+              [
+                65,
+                74
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Provocative",
+            "ilvl": 33,
+            "weight": 600,
+            "values": [
+              [
+                55,
+                64
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Instigative",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                45,
+                54
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Agitative",
+            "ilvl": 8,
+            "weight": 1000,
+            "values": [
+              [
+                35,
+                44
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Coercive",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                34
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-mana-regeneration-rate",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ManaRegeneration"
+      ],
+      "lines": [
+        "#% increased Mana Regeneration Rate"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Nirvana",
+            "ilvl": 79,
+            "weight": 1000,
+            "values": [
+              [
+                60,
+                69
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Euphoria",
+            "ilvl": 55,
+            "weight": 1000,
+            "values": [
+              [
+                50,
+                59
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Bliss",
+            "ilvl": 42,
+            "weight": 1000,
+            "values": [
+              [
+                40,
+                49
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Elation",
+            "ilvl": 29,
+            "weight": 1000,
+            "values": [
+              [
+                30,
+                39
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Joy",
+            "ilvl": 18,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                29
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Excitement",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                19
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-mana-regeneration-rate-2",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LightRadiusAndManaRegeneration"
+      ],
+      "lines": [
+        "#% increased Mana Regeneration Rate",
+        "#% increased Light Radius"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Hearth",
+            "ilvl": 30,
+            "weight": 1000,
+            "values": [
+              [
+                18,
+                22
+              ],
+              [
+                15,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Kindling",
+            "ilvl": 15,
+            "weight": 1000,
+            "values": [
+              [
+                13,
+                17
+              ],
+              [
+                10,
+                10
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Warmth",
+            "ilvl": 8,
+            "weight": 1000,
+            "values": [
+              [
+                8,
+                12
+              ],
+              [
+                5,
+                5
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-presence-area-of-effect",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "PresenceRadius"
+      ],
+      "lines": [
+        "#% increased Presence Area of Effect"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Influence",
+            "ilvl": 72,
+            "weight": 500,
+            "values": [
+              [
+                66,
+                80
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Guidance",
+            "ilvl": 56,
+            "weight": 500,
+            "values": [
+              [
+                56,
+                65
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Outreach",
+            "ilvl": 40,
+            "weight": 500,
+            "values": [
+              [
+                46,
+                55
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Direction",
+            "ilvl": 23,
+            "weight": 500,
+            "values": [
+              [
+                36,
+                45
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-reduced-attribute-requirements",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LocalAttributeRequirements"
+      ],
+      "lines": [
+        "#% reduced Attribute Requirements"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Proficient",
+            "ilvl": 60,
+            "weight": 1000,
+            "values": [
+              [
+                35,
+                35
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Skilled",
+            "ilvl": 52,
+            "weight": 1000,
+            "values": [
+              [
+                30,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Talented",
+            "ilvl": 40,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                25
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Apt",
+            "ilvl": 32,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Worthy",
+            "ilvl": 24,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                15
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-intelligence",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Intelligence"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Virtuoso",
+            "ilvl": 74,
+            "weight": 750,
+            "values": [
+              [
+                31,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Savant",
+            "ilvl": 66,
+            "weight": 750,
+            "values": [
+              [
+                28,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Sage",
+            "ilvl": 55,
+            "weight": 750,
+            "values": [
+              [
+                25,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Philosopher",
+            "ilvl": 44,
+            "weight": 750,
+            "values": [
+              [
+                21,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Augur",
+            "ilvl": 33,
+            "weight": 750,
+            "values": [
+              [
+                17,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Prodigy",
+            "ilvl": 22,
+            "weight": 750,
+            "values": [
+              [
+                13,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Student",
+            "ilvl": 11,
+            "weight": 750,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Pupil",
+            "ilvl": 1,
+            "weight": 750,
+            "values": [
+              [
+                5,
+                8
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-level-of-all-minion-skills",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "IncreaseSocketedGemLevel"
+      ],
+      "lines": [
+        "+# to Level of all Minion Skills"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Slavedriver",
+            "ilvl": 78,
+            "weight": 100,
+            "values": [
+              [
+                4,
+                4
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Overseer",
+            "ilvl": 55,
+            "weight": 250,
+            "values": [
+              [
+                3,
+                3
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Despot",
+            "ilvl": 25,
+            "weight": 500,
+            "values": [
+              [
+                2,
+                2
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Taskmaster",
+            "ilvl": 2,
+            "weight": 750,
+            "values": [
+              [
+                1,
+                1
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-strength",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Titan",
+            "ilvl": 74,
+            "weight": 250,
+            "values": [
+              [
+                31,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Leviathan",
+            "ilvl": 66,
+            "weight": 250,
+            "values": [
+              [
+                28,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Goliath",
+            "ilvl": 55,
+            "weight": 250,
+            "values": [
+              [
+                25,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Gorilla",
+            "ilvl": 44,
+            "weight": 250,
+            "values": [
+              [
+                21,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Lion",
+            "ilvl": 33,
+            "weight": 250,
+            "values": [
+              [
+                17,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Bear",
+            "ilvl": 22,
+            "weight": 250,
+            "values": [
+              [
+                13,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Wrestler",
+            "ilvl": 11,
+            "weight": 250,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Brute",
+            "ilvl": 1,
+            "weight": 250,
+            "values": [
+              [
+                5,
+                8
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-allies-in-your-presence-have-increased-attack-speed",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "IncreasedAttackSpeed"
+      ],
+      "lines": [
+        "Allies in your Presence have #% increased Attack Speed"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Renown",
+            "ilvl": 55,
+            "weight": 1000,
+            "values": [
+              [
+                14,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Mastery",
+            "ilvl": 35,
+            "weight": 1000,
+            "values": [
+              [
+                11,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Ease",
+            "ilvl": 20,
+            "weight": 1000,
+            "values": [
+              [
+                8,
+                10
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Skill",
+            "ilvl": 5,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-allies-in-your-presence-have-increased-cast-speed",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "IncreasedCastSpeed"
+      ],
+      "lines": [
+        "Allies in your Presence have #% increased Cast Speed"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Sortilege",
+            "ilvl": 56,
+            "weight": 1000,
+            "values": [
+              [
+                17,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Expertise",
+            "ilvl": 36,
+            "weight": 1000,
+            "values": [
+              [
+                13,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Nimbleness",
+            "ilvl": 21,
+            "weight": 1000,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Talent",
+            "ilvl": 6,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                8
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-allies-in-your-presence-have-increased-critical-damage-bonus",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "CriticalStrikeMultiplier"
+      ],
+      "lines": [
+        "Allies in your Presence have #% increased Critical Damage Bonus"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Destruction",
+            "ilvl": 73,
+            "weight": 125,
+            "values": [
+              [
+                35,
+                39
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Ferocity",
+            "ilvl": 59,
+            "weight": 250,
+            "values": [
+              [
+                30,
+                34
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Fury",
+            "ilvl": 44,
+            "weight": 500,
+            "values": [
+              [
+                25,
+                29
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Rage",
+            "ilvl": 30,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Anger",
+            "ilvl": 21,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                19
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Ire",
+            "ilvl": 8,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                14
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-allies-in-your-presence-have-increased-critical-hit-chance",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "CriticalStrikeChanceIncrease"
+      ],
+      "lines": [
+        "Allies in your Presence have #% increased Critical Hit Chance"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Unmaking",
+            "ilvl": 76,
+            "weight": 125,
+            "values": [
+              [
+                35,
+                38
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Ruin",
+            "ilvl": 59,
+            "weight": 250,
+            "values": [
+              [
+                30,
+                34
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Calamity",
+            "ilvl": 41,
+            "weight": 500,
+            "values": [
+              [
+                25,
+                29
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Disaster",
+            "ilvl": 28,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Havoc",
+            "ilvl": 21,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                19
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Menace",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                14
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-allies-in-your-presence-have-to-all-elemental-resistances",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "AllResistances"
+      ],
+      "lines": [
+        "Allies in your Presence have +#% to all Elemental Resistances"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Metamorphosis",
+            "ilvl": 80,
+            "weight": 800,
+            "values": [
+              [
+                17,
+                18
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Progression",
+            "ilvl": 68,
+            "weight": 800,
+            "values": [
+              [
+                15,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Evolution",
+            "ilvl": 54,
+            "weight": 800,
+            "values": [
+              [
+                12,
+                14
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Adaptation",
+            "ilvl": 40,
+            "weight": 800,
+            "values": [
+              [
+                9,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Acclimatisation",
+            "ilvl": 26,
+            "weight": 800,
+            "values": [
+              [
+                6,
+                8
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Adjustment",
+            "ilvl": 12,
+            "weight": 800,
+            "values": [
+              [
+                3,
+                5
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-allies-in-your-presence-regenerate-life-per-second",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LifeRegeneration"
+      ],
+      "lines": [
+        "Allies in your Presence Regenerate # Life per second"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Immortality",
+            "ilvl": 75,
+            "weight": 1000,
+            "values": [
+              [
+                29.1,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Resurgence",
+            "ilvl": 68,
+            "weight": 1000,
+            "values": [
+              [
+                23.1,
+                29
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Recuperation",
+            "ilvl": 58,
+            "weight": 1000,
+            "values": [
+              [
+                18.1,
+                23
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Convalescence",
+            "ilvl": 47,
+            "weight": 1000,
+            "values": [
+              [
+                13.1,
+                18
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Troll",
+            "ilvl": 35,
+            "weight": 1000,
+            "values": [
+              [
+                9.1,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Hydra",
+            "ilvl": 26,
+            "weight": 1000,
+            "values": [
+              [
+                6.1,
+                9
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Starfish",
+            "ilvl": 17,
+            "weight": 1000,
+            "values": [
+              [
+                4.1,
+                6
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Flatworm",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                3.1,
+                4
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "of the Lizard",
+            "ilvl": 5,
+            "weight": 1000,
+            "values": [
+              [
+                2.1,
+                3
+              ]
+            ]
+          },
+          {
+            "tier": 10,
+            "name": "of the Newt",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                1,
+                2
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-minions-have-increased-maximum-life",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "MinionLife"
+      ],
+      "lines": [
+        "Minions have #% increased maximum Life"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Rector",
+            "ilvl": 80,
+            "weight": 1000,
+            "values": [
+              [
+                46,
+                50
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Administrator",
+            "ilvl": 64,
+            "weight": 1000,
+            "values": [
+              [
+                41,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Headmaster",
+            "ilvl": 48,
+            "weight": 1000,
+            "values": [
+              [
+                36,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Director",
+            "ilvl": 32,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                35
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Tutor",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                26,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Mentor",
+            "ilvl": 2,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                25
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "essences": [
+    {
+      "name": "Adaptive Alloy",
+      "slug": "Adaptive_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 25,
+      "family": [
+        "MinionGainPuppetMasterOnCommand"
+      ],
+      "lines": [
+        "#% Surpassing Chance to gain a Puppet Master stack whenever you use a Command Skill"
+      ],
+      "values": [
+        [
+          30,
+          50
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of Command",
+      "slug": "Essence_of_Command",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 33,
+      "family": [
+        "AllDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal #% increased Damage"
+      ],
+      "values": [
+        [
+          55,
+          64
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-allies-in-your-presence-deal-increased-damage",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of the Abyss",
+      "slug": "Essence_of_the_Abyss",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 1,
+      "family": [
+        "EssenceAbyss"
+      ],
+      "lines": [
+        "Mark of the Abyssal Lord"
+      ],
+      "values": [],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of the Abyss",
+      "slug": "Essence_of_the_Abyss",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 1,
+      "family": [
+        "EssenceAbyss"
+      ],
+      "lines": [
+        "Mark of the Abyssal Lord"
+      ],
+      "values": [],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of the Infinite",
+      "slug": "Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 33,
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          17,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of the Infinite",
+      "slug": "Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 33,
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          17,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-intelligence",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of the Infinite",
+      "slug": "Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 33,
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          17,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-strength",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of Command",
+      "slug": "Greater_Essence_of_Command",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 60,
+      "family": [
+        "AllDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal #% increased Damage"
+      ],
+      "values": [
+        [
+          75,
+          89
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-allies-in-your-presence-deal-increased-damage",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of the Infinite",
+      "slug": "Greater_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          25,
+          27
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Greater Essence of the Infinite",
+      "slug": "Greater_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          25,
+          27
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-intelligence",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of the Infinite",
+      "slug": "Greater_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          25,
+          27
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-strength",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of Command",
+      "slug": "Lesser_Essence_of_Command",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 8,
+      "family": [
+        "AllDamage"
+      ],
+      "lines": [
+        "Allies in your Presence deal #% increased Damage"
+      ],
+      "values": [
+        [
+          35,
+          44
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-allies-in-your-presence-deal-increased-damage",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Infinite",
+      "slug": "Lesser_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 11,
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          9,
+          12
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Lesser Essence of the Infinite",
+      "slug": "Lesser_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 11,
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          9,
+          12
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-intelligence",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Infinite",
+      "slug": "Lesser_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 11,
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          9,
+          12
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-strength",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Mystic Alloy",
+      "slug": "Mystic_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 45,
+      "family": [
+        "ElementalInfusion"
+      ],
+      "lines": [
+        "+# to maximum number of Elemental Infusions"
+      ],
+      "values": [
+        [
+          1,
+          1
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Perfect Essence of Command",
+      "slug": "Perfect_Essence_of_Command",
+      "group": "perfect_essence",
+      "perfect": true,
+      "alloy": false,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 72,
+      "family": [
+        "AuraEffect"
+      ],
+      "lines": [
+        "Aura Skills have #% increased Magnitudes"
+      ],
+      "values": [
+        [
+          15,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Prismatic Alloy",
+      "slug": "Prismatic_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 45,
+      "family": [
+        "MinionDamagingAilments"
+      ],
+      "lines": [
+        "Minions have #% increased Magnitude of Damaging Ailments"
+      ],
+      "values": [
+        [
+          40,
+          49
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Protective Alloy",
+      "slug": "Protective_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 25,
+      "family": [
+        "BaseRunicWard"
+      ],
+      "lines": [
+        "+# to maximum Runic Ward"
+      ],
+      "values": [
+        [
+          51,
+          74
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Sovereign Alloy",
+      "slug": "Sovereign_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 65,
+      "family": [
+        "SoulCore"
+      ],
+      "lines": [
+        "#% increased effect of Socketed Augment Items"
+      ],
+      "values": [
+        [
+          20,
+          30
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "The Runebinder's Alloy",
+      "slug": "The_Runebinders_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 65,
+      "family": [
+        "MaximumPuppeteerStacks"
+      ],
+      "lines": [
+        "+# maximum stacks of Puppet Master"
+      ],
+      "values": [
+        [
+          4,
+          5
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    }
+  ],
+  "liquid": []
+}

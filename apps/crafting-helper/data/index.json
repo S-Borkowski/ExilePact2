@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "source_note": "Item class modifier data from poe2db (poe2db.tw; its wiki content is CC BY-NC-SA 3.0); modifier lines, affix names, base names and essence names are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Values are replaced by # and kept beside each line; hidden stats are left out.",
+  "classes": [
+    {
+      "class": "Gloves",
+      "file": "classes/gloves.json",
+      "variants": [
+        "str",
+        "dex",
+        "int",
+        "str_dex",
+        "str_int",
+        "dex_int"
+      ]
+    },
+    {
+      "class": "Boots",
+      "file": "classes/boots.json",
+      "variants": [
+        "str",
+        "dex",
+        "int",
+        "str_dex",
+        "str_int",
+        "dex_int"
+      ]
+    },
+    {
+      "class": "Helmets",
+      "file": "classes/helmets.json",
+      "variants": [
+        "str",
+        "dex",
+        "int",
+        "str_dex",
+        "str_int",
+        "dex_int"
+      ]
+    },
+    {
+      "class": "Body Armours",
+      "file": "classes/body-armours.json",
+      "variants": [
+        "str",
+        "dex",
+        "int",
+        "str_dex",
+        "str_int",
+        "dex_int",
+        "str_dex_int"
+      ]
+    },
+    {
+      "class": "Shields",
+      "file": "classes/shields.json",
+      "variants": [
+        "str",
+        "str_dex",
+        "str_int"
+      ]
+    },
+    {
+      "class": "Quivers",
+      "file": "classes/quivers.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Bucklers",
+      "file": "classes/bucklers.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Foci",
+      "file": "classes/foci.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Wands",
+      "file": "classes/wands.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "One Hand Maces",
+      "file": "classes/one-hand-maces.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Sceptres",
+      "file": "classes/sceptres.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Spears",
+      "file": "classes/spears.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Bows",
+      "file": "classes/bows.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Staves",
+      "file": "classes/staves.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Two Hand Maces",
+      "file": "classes/two-hand-maces.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Quarterstaves",
+      "file": "classes/quarterstaves.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Crossbows",
+      "file": "classes/crossbows.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Talismans",
+      "file": "classes/talismans.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Belts",
+      "file": "classes/belts.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Amulets",
+      "file": "classes/amulets.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Rings",
+      "file": "classes/rings.json",
+      "variants": [
+        "all"
+      ]
+    },
+    {
+      "class": "Jewels",
+      "file": "classes/jewels.json",
+      "variants": [
+        "ruby",
+        "emerald",
+        "sapphire",
+        "diamond",
+        "time-lost-ruby",
+        "time-lost-emerald",
+        "time-lost-sapphire",
+        "time-lost-diamond"
+      ]
+    }
+  ]
+}
