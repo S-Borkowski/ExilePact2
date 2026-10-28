@@ -1417,6 +1417,82 @@ fn first_start_sizes_the_window_from_the_zoom() {
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 
+/// Each `size w h` call the fake window recorded, as the logical size the
+/// shell would report back from it.
+fn size_calls(h: &Harness) -> Vec<(f64, f64)> {
+    sizes(h)
+        .iter()
+        .map(|c| {
+            let mut parts = c.split(' ').skip(1).map(|v| v.parse::<f64>().unwrap());
+            (parts.next().unwrap(), parts.next().unwrap())
+        })
+        .collect()
+}
+
+#[test]
+fn edge_resize_after_a_forced_edit_start_is_kept() {
+    // Baseline: a first start forced into edit mode (no shortcut), with its
+    // own default size reported back as Tauri reports every resize, still
+    // keeps a later resize by the panel's edges as the window's size.
+    let h = harness(Setup {
+        hotkey_fails: true,
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(h.views.last().mode, Mode::Edit);
+    for (width, height) in size_calls(&h) {
+        h.app.window_resized(width, height);
+    }
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(500.0, 620.0);
+    let window = h.stored("settings.json").unwrap().get("window").cloned();
+    assert_eq!(window, Some(json!({ "width": 500, "height": 620 })));
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn start_forced_into_edit_mode_saves_no_size_of_its_own() {
+    // A first start forced into edit mode (no shortcut) sizes the window
+    // from the zoom; Tauri reports that resize back while the mode is edit.
+    let h = harness(Setup {
+        hotkey_fails: true,
+        monitor: monitor_at(1440, 1.0),
+        ..Setup::default()
+    });
+    h.app.start();
+    assert_eq!(h.views.last().mode, Mode::Edit);
+    let applied = size_calls(&h);
+    assert_eq!(applied, vec![(458.0, 543.0)]);
+    // Target: the echo, a duplicate of it, and the same size 1 px off in
+    // each dimension (a round trip through physical pixels at a fractional
+    // DPI) are the app's own sizing, not the player's.
+    for (width, height) in applied {
+        for (w, hh) in [(width, height), (width, height), (width + 1.0, height - 1.0)] {
+            h.clock.fetch_add(5_000, Ordering::SeqCst);
+            h.app.window_resized(w, hh);
+        }
+    }
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.update_settings(&json!({ "opacity": 0.5 })).unwrap();
+    let h = h.rerun(Setup {
+        monitor: monitor_at(1080, 1.0),
+        ..Setup::default()
+    });
+    let settings = h.stored("settings.json").unwrap();
+    assert_eq!(settings["opacity"], json!(0.5), "{settings}");
+    let window = settings.get("window");
+    assert!(
+        window.map_or(true, |w| w.get("width").is_none() && w.get("height").is_none()),
+        "{settings}"
+    );
+
+    // So the next start, at another `auto` zoom, sizes from that zoom.
+    h.app.start();
+    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
 // ---------------------------------------------------------------------------
 // The area after a restart: read back from the log before the tailer's start
 // position, and a refusal while it is unknown leaves a trace.

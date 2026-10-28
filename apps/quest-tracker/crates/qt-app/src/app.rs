@@ -426,6 +426,11 @@ struct State {
     /// The size the user gave the window by its edges in edit mode, in
     /// whole logical pixels, saved with the settings.
     window_size: Option<(u32, u32)>,
+    /// The last size the app itself gave the window ([`App::set_window_size`]),
+    /// in whole logical pixels, until a resize that does not match it is
+    /// reported: the shell reports the app's own sizing back as a resize,
+    /// which is not the player's ([`App::window_resized`]).
+    applied_size: Option<(u32, u32)>,
     ui: qt_viewmodel::UiState,
     row_changes: RowChanges,
     /// Which tailer's events count: raised each time a tailer is started or
@@ -878,6 +883,7 @@ impl App {
             settings,
             window_pos,
             window_size,
+            applied_size: None,
             ui,
             row_changes: RowChanges::new(),
             tail_gen: 0,
@@ -1031,9 +1037,7 @@ impl App {
         // A saved size is the window's whatever the zoom, so it is applied
         // before the window is placed.
         if let Some((width, height)) = size {
-            if let Err(e) = self.window.set_size(f64::from(width), f64::from(height)) {
-                self.window_error("size", &e);
-            }
+            self.set_window_size(f64::from(width), f64::from(height));
         }
         // Placed first, so `auto` reads the monitor the window was placed
         // on; a window at its default place is placed again once the first
@@ -1056,16 +1060,16 @@ impl App {
             }
             // No saved size (a first start, or a 0.1.0 settings file): the
             // default size at the starting zoom (never under the minimum, at
-            // a zoom below 1), which is not saved.
+            // a zoom below 1). It is the app's own, so it is not saved, even
+            // when the shell reports it back while the start is forced into
+            // edit mode ([`App::window_resized`]): the next start sizes from
+            // its own zoom again.
             if size.is_none() {
                 let ((width, height), (min_w, min_h)) = (DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE);
-                let sized = self.window.set_size(
+                self.set_window_size(
                     (width * zoom).round().max(min_w),
                     (height * zoom).round().max(min_h),
                 );
-                if let Err(e) = sized {
-                    self.window_error("size", &e);
-                }
             }
         }
         if placement == Placement::Default {
@@ -2181,17 +2185,40 @@ impl App {
         self.follow_monitor();
     }
 
+    /// Sizes the window through [`Window::set_size`], remembering the size
+    /// as the app's own first, so the resize the shell reports back for it
+    /// (which may arrive before the call returns) is not taken for the
+    /// player's ([`App::window_resized`]).
+    fn set_window_size(&self, width: f64, height: f64) {
+        self.lock().applied_size = saved_size(width, height);
+        if let Err(e) = self.window.set_size(width, height) {
+            self.window_error("size", &e);
+        }
+    }
+
     /// The window was resized to `width` × `height` logical pixels, in any
-    /// mode. Only a resize in edit mode (by the panel's edges) is kept as the
-    /// window's size, like a move; one in play mode (the shell's own sizing)
-    /// is not, and a size of nothing (a minimised window) is ignored. The
-    /// zoom does not follow the size.
+    /// mode. A size within 1 px in each dimension of the last one the app
+    /// applied itself ([`App::set_window_size`]; a size taken through
+    /// physical pixels at a fractional DPI may not come back exact) is the
+    /// app's own sizing reported back, and is ignored however often it
+    /// comes; the first size that does not match ends that, and is judged
+    /// as any other. Only a resize in edit mode (by the panel's edges) is
+    /// kept as the window's size, like a move; one in play mode is not, and
+    /// a size of nothing (a minimised window) is ignored. The zoom does not
+    /// follow the size. An edge resize that ends on the app's own size is
+    /// not kept, which changes nothing the player sees.
     pub fn window_resized(&self, width: f64, height: f64) {
         let Some(size) = saved_size(width, height) else {
             return;
         };
         let keep = {
             let mut st = self.lock();
+            if let Some((w, h)) = st.applied_size {
+                if size.0.abs_diff(w) <= 1 && size.1.abs_diff(h) <= 1 {
+                    return;
+                }
+                st.applied_size = None;
+            }
             let keep = st.ui.mode == Mode::Edit && st.window_size != Some(size);
             if keep {
                 st.window_size = Some(size);
