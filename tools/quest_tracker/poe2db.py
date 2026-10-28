@@ -1544,7 +1544,7 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--include-endgame", action="store_true",
                    help="also fetch Act 10 and act-less MasterMission quests")
 
-    fc = sub.add_parser("fetch-classes", help="fetch class pages (for their kill remarks) into the cache, politely")
+    fc = sub.add_parser("fetch-classes", help="fetch class pages (for their remarks) into the cache, politely")
     fc.add_argument("classes", nargs="+", metavar="CLASS", help="class page names, e.g. Warrior Mercenary")
     fc.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
     fc.add_argument("--delay", type=float, default=DEFAULT_DELAY,
@@ -1558,7 +1558,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="draft file, outside any git checkout (default <cache>\\%s)" % DRAFT_NAME)
     e.add_argument("--with-dialogue", action="store_true", help="include each step's NPC dialogue")
 
-    r = sub.add_parser("remarks", help="print a draft of the cached class pages' kill remarks for the data's bosses")
+    r = sub.add_parser("remarks", help="print a kill-remark draft, or with --keys/--ledger curate and check the remark ledger")
     r.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
     r.add_argument("--data", type=Path, default=DEFAULT_DATA,
                    help="the quest data whose bosses to keep (default apps/quest-tracker/data/quests.json)")
