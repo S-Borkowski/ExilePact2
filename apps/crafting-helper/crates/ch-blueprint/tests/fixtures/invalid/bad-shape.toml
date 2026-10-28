@@ -1,0 +1,16 @@
+id = "bad-shape"
+classes = "Rings"
+source = "roadmap"
+
+[[start]]
+rarity = ["rare", "unique"]
+free_prefixes_at_least = 1
+
+[[step]]
+id = "slam"
+goal = "slam"
+on_hit = "onward"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = [1]

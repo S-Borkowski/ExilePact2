@@ -1,0 +1,31 @@
+id = "not-the-stem"
+name = "Many errors"
+classes = ["Rings", "Ringz"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Annul to add?"
+goal = "add-wanted"
+side = "prefix"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-sinistral-annulment", "omen-of-dextral-annulment"]
+
+[[step]]
+id = "slam"
+say = "Duplicate id, side-omen on a currency without side omens"
+goal = "manual"
+
+[[step.action]]
+currency = "divine-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "empty"
+say = "No alternatives"
+goal = "fill"

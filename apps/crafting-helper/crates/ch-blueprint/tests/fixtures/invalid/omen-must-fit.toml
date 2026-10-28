@@ -1,0 +1,21 @@
+id = "omen-must-fit"
+name = "Omen must fit"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt, whittling"
+goal = "add-wanted"
+bind = "hardest"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]

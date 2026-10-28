@@ -1,0 +1,26 @@
+id = "goto-missing"
+name = "Go-to to a missing step"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Use an Exalted Orb"
+goal = "fill"
+on_miss = "goto:whittel"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "whittle"
+say = "Chaos with whittling"
+goal = "remove-unwanted"
+on_hit = "goto:slam"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]

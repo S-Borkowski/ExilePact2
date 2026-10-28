@@ -1,0 +1,8 @@
+id = "syntax"
+name = "Syntax"
+classes = ["Rings"]
+source = "roadmap"
+notes = "the next line has no closing quote
+
+[[start]]
+rarity = ["rare"]

@@ -1,0 +1,17 @@
+# The smallest blueprint the validator takes: one start, one step, one
+# action.
+id = "minimal"
+name = "Minimal"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Use an Exalted Orb"
+goal = "fill"
+
+[[step.action]]
+currency = "exalted-orb"
