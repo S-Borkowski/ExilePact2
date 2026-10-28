@@ -1,0 +1,14 @@
+Item Class: Waystones
+Rarity: Magic
+Waystone (Tier 3) of Linking
+--------
+Revives Available: 5
+Item Rarity: +11% (augmented)
+Waystone Drop Chance: +14% (augmented)
+--------
+Item Level: 67
+--------
+{ Suffix Modifier "of Linking" (Tier: 1) }
+Monsters' Skills Chain 2(1-2) additional times
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

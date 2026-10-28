@@ -1,0 +1,25 @@
+Item Class: Waystones
+Rarity: Rare
+Dusk Hollow
+Waystone (Tier 15)
+--------
+Revives Available: 0 (augmented)
+Item Rarity: +30% (augmented)
+Pack Size: +17% (augmented)
+Monster Rarity: +61% (augmented)
+Waystone Drop Chance: +130% (augmented)
+--------
+Item Level: 79
+--------
+{ Prefix Modifier "Glinting" (Tier: 1) }
+Monsters deal 12(10-14)% of Damage as Extra Glimmer
+{ Suffix Modifier "of Hopping" (Tier: 1) }
+Monsters have 30(26-30)% increased Hopping Speed
+{ Suffix Modifier "of Slumber" (Tier: 1) }
+Players are cursed with Drowsiness
+{ Prefix Modifier "Gloaming" (Tier: 1) }
+Monsters have 40(31-40)% increased Shadow Damage
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
+--------
+Corrupted

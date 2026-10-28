@@ -1,0 +1,5 @@
+# Synthetic robots.txt for tests/test_waystone_roller_poe2db.py: the same
+# shape as robots.txt, plus an invented rule that disallows the Waystones page.
+User-agent: *
+Disallow: /*/marked
+Disallow: /*/Waystones

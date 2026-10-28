@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "source": "https://poe2db.tw/us/Waystones",
+  "sections": [
+    "WaystonesMods",
+    "DesecratedWaystoneMods"
+  ],
+  "fetched": "2026-10-28",
+  "source_note": "Synthetic fixture for wr-regex's tests: every mod below is invented, in the shape of data/waystone-mods.json. Only the reward lines copy the shape of the real page's reward templates.",
+  "families": [
+    {
+      "id": "monsters-deal-of-damage-as-extra-glimmer",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters deal #% of Damage as Extra Glimmer",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-deal-of-damage-as-extra-murk",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters deal #% of Damage as Extra Murk",
+        "#% increased Waystones found in Area"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "monster-spectral-resistances",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "+#% Monster Spectral Resistances",
+        "Monsters have #% more Effectiveness"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "monster-have-chance-to-bleat",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monster have #% chance to Bleat",
+        "#% more Pack size"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "area-is-overrun-by-the-murkfolk",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Area is overrun by the Murkfolk",
+        "Area contains # additional Murk Pools",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [false, false, true],
+      "tiers": 1
+    },
+    {
+      "id": "area-contains-additional-murk-pools",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Area contains # additional Murk Pools",
+        "#% increased Waystones found in Area"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-have-increased-hopping-speed",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Hopping Speed",
+        "#% more Rarity of Items found in this Area"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-skills-chain-additional-times",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters' Skills Chain # additional times",
+        "#% more Magic and Rare Monsters"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "players-have-less-recovery-rate-of-life-mana-and-glimmer",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players have #% less Recovery Rate of Life, Mana and Glimmer",
+        "Rare Monsters have #% more chance of Monster Modifiers"
+      ],
+      "bonus": [false, true],
+      "tiers": 1
+    },
+    {
+      "id": "area-has-patches-of-sparkling-ground",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Area has patches of Sparkling Ground",
+        "Monsters have #% more Effectiveness"
+      ],
+      "bonus": [false, true],
+      "tiers": 4
+    },
+    {
+      "id": "players-are-cursed-with-drowsiness",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players are cursed with Drowsiness"
+      ],
+      "bonus": [false],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-have-increased-shadow-damage",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Gloaming",
+      "lines": [
+        "Monsters have #% increased Shadow Damage"
+      ],
+      "bonus": [false],
+      "tiers": 1
+    },
+    {
+      "id": "players-have-less-whisper-resistance",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Whispers",
+      "lines": [
+        "Players have #% less Whisper Resistance"
+      ],
+      "bonus": [false],
+      "tiers": 1
+    }
+  ],
+  "skipped": [
+    {
+      "section": "WaystonesMods",
+      "row": 7,
+      "reason": "empty description"
+    },
+    {
+      "section": "DesecratedWaystoneMods",
+      "row": 3,
+      "reason": "only hidden stats"
+    }
+  ]
+}

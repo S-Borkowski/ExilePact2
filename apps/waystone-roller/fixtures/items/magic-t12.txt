@@ -1,0 +1,17 @@
+Item Class: Waystones
+Rarity: Magic
+Swampy Waystone (Tier 12) of Whispers
+--------
+Revives Available: 5
+Item Rarity: +14% (augmented)
+Waystone Drop Chance: +18% (augmented)
+--------
+Item Level: 76
+--------
+{ Prefix Modifier "Swampy" (Tier: 1) }
+Area is overrun by the Murkfolk
+Area contains 3(2-4) additional Murk Pools
+{ Suffix Modifier "of Whispers" (Tier: 1) }
+Players have 15(11-15)% less Whisper Resistance
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

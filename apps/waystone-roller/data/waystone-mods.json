@@ -1,0 +1,867 @@
+{
+  "schema": 1,
+  "source": "https://poe2db.tw/us/Waystones",
+  "sections": [
+    "WaystonesMods",
+    "DesecratedWaystoneMods"
+  ],
+  "fetched": "2026-10-28",
+  "source_note": "Waystone modifier data from poe2db (poe2db.tw; its wiki content is CC BY-NC-SA 3.0); modifier lines and desecrated affix names are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Values are replaced by #; hidden stats are left out.",
+  "families": [
+    {
+      "id": "increased-monster-damage",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "#% increased Monster Damage",
+        "#% more Magic and Rare Monsters",
+        "Rare Monsters have #% more chance of Monster Modifiers",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "less-effect-of-curses-on-monsters",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "#% less effect of Curses on Monsters",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 3
+    },
+    {
+      "id": "maximum-player-resistances",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "#% maximum Player Resistances",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "more-monster-life",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "#% more Monster Life",
+        "#% more Magic and Rare Monsters",
+        "Rare Monsters have #% more chance of Monster Modifiers",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monster-elemental-resistances",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "+#% Monster Elemental Resistances",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "area-has-patches-of-chilled-ground",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Area has patches of Chilled Ground",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "area-has-patches-of-ignited-ground",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Area has patches of Ignited Ground",
+        "Monsters have #% more Effectiveness",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "area-has-patches-of-shocked-ground",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Area has patches of Shocked Ground",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monster-damage-penetrates-elemental-resistances",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monster Damage Penetrates #% Elemental Resistances",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monster-have-increased-elemental-ailment-application",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monster have #% increased Elemental Ailment Application",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-are-armoured",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters are Armoured",
+        "#% more Magic and Rare Monsters",
+        "Rare Monsters have #% more chance of Monster Modifiers",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-are-evasive",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters are Evasive",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-break-armour-equal-to-of-physical-damage-dealt",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters Break Armour equal to #% of Physical Damage dealt",
+        "#% more Magic and Rare Monsters",
+        "Rare Monsters have #% more chance of Monster Modifiers",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-deal-of-damage-as-extra-chaos",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters deal #% of Damage as Extra Chaos",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-deal-of-damage-as-extra-cold",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters deal #% of Damage as Extra Cold",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-deal-of-damage-as-extra-fire",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters deal #% of Damage as Extra Fire",
+        "Monsters have #% more Effectiveness",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-deal-of-damage-as-extra-lightning",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters deal #% of Damage as Extra Lightning",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-fire-additional-projectiles",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters fire # additional Projectiles",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 2
+    },
+    {
+      "id": "monsters-gain-of-maximum-life-as-extra-maximum-energy-shield",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters gain #% of maximum Life as Extra maximum Energy Shield",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-have-chance-to-inflict-bleeding-on-hit",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters have #% chance to inflict Bleeding on Hit",
+        "Monsters have #% more Effectiveness",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-have-chance-to-poison-on-hit",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters have #% chance to Poison on Hit",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-have-increased-accuracy-rating",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Accuracy Rating",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-have-increased-ailment-threshold",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Ailment Threshold",
+        "Monsters have #% increased Stun Threshold",
+        "Monsters have #% more Effectiveness",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-have-increased-area-of-effect",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Area of Effect",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-have-increased-attack-cast-and-movement-speed",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Attack, Cast and Movement Speed",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-have-increased-critical-hit-chance",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Critical Hit Chance",
+        "Monsters have +#% Critical Damage Bonus",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-have-increased-stun-buildup",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "lines": [
+        "Monsters have #% increased Stun Buildup",
+        "Monsters have #% more Effectiveness",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 4
+    },
+    {
+      "id": "monsters-take-reduced-extra-damage-from-critical-hits",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Monsters take #% reduced Extra Damage from Critical Hits",
+        "#% more Magic and Rare Monsters",
+        "Rare Monsters have #% more chance of Monster Modifiers",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true,
+        true
+      ],
+      "tiers": 3
+    },
+    {
+      "id": "players-are-periodically-cursed-with-elemental-weakness",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players are periodically Cursed with Elemental Weakness",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "players-are-periodically-cursed-with-enfeeble",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players are periodically Cursed with Enfeeble",
+        "Monsters have #% more Effectiveness",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "players-are-periodically-cursed-with-temporal-chains",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players are periodically Cursed with Temporal Chains",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "players-gain-reduced-flask-charges",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players gain #% reduced Flask Charges",
+        "#% more Pack size",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 3
+    },
+    {
+      "id": "players-have-less-cooldown-recovery-rate",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players have #% less Cooldown Recovery Rate",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 3
+    },
+    {
+      "id": "players-have-less-recovery-rate-of-life-and-energy-shield",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Players have #% less Recovery Rate of Life and Energy Shield",
+        "#% more Rarity of Items found in this Area",
+        "#% more Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        true,
+        true
+      ],
+      "tiers": 3
+    },
+    {
+      "id": "rare-monsters-have-additional-modifiers",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "lines": [
+        "Rare Monsters have # additional Modifiers",
+        "#% increased number of Rare Monsters",
+        "#% increased Waystones found in Area"
+      ],
+      "bonus": [
+        false,
+        false,
+        true
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abyss-pits-have-chance-to-spawn-all-monsters-as-at-least-magic",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abyss Pits have #% chance to spawn all Monsters as at least Magic",
+        "Abyss Cracks have #% chance to spawn all Monsters as at least Magic"
+      ],
+      "bonus": [
+        false,
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abyss-pits-in-area-always-have-rewards",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abyss Pits in Area always have Rewards"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abyssal-monsters-grant-increased-experience",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abyssal Monsters grant #% increased Experience"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abyssal-monsters-have-increased-difficulty-and-reward-for-each-closed-pit",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abyssal Monsters have increased Difficulty and Reward for each closed Pit"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abysses-lead-to-an-abyssal-boss",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abysses lead to an Abyssal Boss"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abysses-lead-to-an-abyssal-depths",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abysses lead to an Abyssal Depths"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "abysses-spawn-increased-monsters",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Abysses spawn #% increased Monsters"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "area-contains-additional-abysses",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Area contains # additional Abysses"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "area-contains-additional-incubator-queens",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Area contains # additional Incubator Queens"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "area-has-patches-of-mana-siphoning-ground",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Siphoning",
+      "lines": [
+        "Area has patches of Mana Siphoning Ground"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "area-is-overrun-by-the-abyssal",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Area is overrun by the Abyssal",
+        "# additional Rare Monsters are spawned from Abysses",
+        "Area contains # additional Abysses"
+      ],
+      "bonus": [
+        false,
+        false,
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "monsters-inflict-grasping-vines-on-hit",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Grasping",
+      "lines": [
+        "Monsters inflict # Grasping Vines on Hit"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "natural-rare-monsters-in-area-eat-the-souls-of-slain-monsters-in-their-presence",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Consumption",
+      "lines": [
+        "Natural Rare Monsters in Area Eat the Souls of slain Monsters in their Presence",
+        "Players steal the Eaten Souls of Slain Rare Monsters in Area"
+      ],
+      "bonus": [
+        false,
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "natural-rare-monsters-in-area-have-extra-abyssal-modifiers",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Abyssal",
+      "lines": [
+        "Natural Rare Monsters in Area have # extra Abyssal Modifiers"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "players-and-their-minions-deal-no-damage-for-out-of-every-seconds",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Cycling",
+      "lines": [
+        "Players and their Minions deal no damage for # out of every # seconds"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "players-are-marked-for-death-for-seconds",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Retribution",
+      "lines": [
+        "Players are Marked for Death for # seconds",
+        "after killing a Rare or Unique monster"
+      ],
+      "bonus": [
+        false,
+        false
+      ],
+      "tiers": 1
+    },
+    {
+      "id": "players-have-less-movement-and-skill-speed-for-each-time-they-ve-used-a-skill-recently",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Deceleration",
+      "lines": [
+        "Players have #% less Movement and Skill Speed for each time they've used a Skill Recently"
+      ],
+      "bonus": [
+        false
+      ],
+      "tiers": 1
+    }
+  ],
+  "skipped": [
+    {
+      "section": "WaystonesMods",
+      "row": 1,
+      "reason": "empty description"
+    },
+    {
+      "section": "DesecratedWaystoneMods",
+      "row": 18,
+      "reason": "only hidden stats"
+    },
+    {
+      "section": "DesecratedWaystoneMods",
+      "row": 19,
+      "reason": "only hidden stats"
+    }
+  ]
+}

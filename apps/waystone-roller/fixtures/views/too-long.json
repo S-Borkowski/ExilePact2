@@ -1,0 +1,518 @@
+{
+  "data": {
+    "source": "https://poe2db.tw/us/Waystones",
+    "fetched": "2026-10-28"
+  },
+  "mods": [
+    {
+      "id": "monsters-deal-extra-ember",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "label": "Monsters deal #% of Damage as Extra Ember",
+      "lines": [
+        "Monsters deal #% of Damage as Extra Ember"
+      ],
+      "tiers": 4,
+      "token": "emb",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-glimmer-shields",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "label": "Monsters have #% increased Glimmer Shields",
+      "lines": [
+        "Monsters have #% increased Glimmer Shields"
+      ],
+      "tiers": 3,
+      "token": "gli",
+      "why_not": null
+    },
+    {
+      "id": "monster-packs-are-hasted",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "label": "Monster Packs are Hasted",
+      "lines": [
+        "Monster Packs are Hasted",
+        "Hasted Monsters have #% increased Movement Speed"
+      ],
+      "tiers": 2,
+      "token": "hast",
+      "why_not": null
+    },
+    {
+      "id": "players-have-reduced-glow-recovery",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Players have #% reduced Glow Recovery",
+      "lines": [
+        "Players have #% reduced Glow Recovery"
+      ],
+      "tiers": 3,
+      "token": "glo",
+      "why_not": null
+    },
+    {
+      "id": "monsters-are-gilded",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters are Gilded",
+      "lines": [
+        "Monsters are Gilded"
+      ],
+      "tiers": 2,
+      "token": null,
+      "why_not": "Every part of it also appears in \"Monsters are Gilded and Gleaming\"."
+    },
+    {
+      "id": "monsters-are-gilded-and-gleaming",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters are Gilded and Gleaming",
+      "lines": [
+        "Monsters are Gilded and Gleaming"
+      ],
+      "tiers": 2,
+      "token": "gle",
+      "why_not": null
+    },
+    {
+      "id": "area-has-patches-of-cinder-ground",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Area has patches of Cinder Ground",
+      "lines": [
+        "Area has patches of Cinder Ground"
+      ],
+      "tiers": 3,
+      "token": "cin",
+      "why_not": null
+    },
+    {
+      "id": "area-contains-ashen-shrines",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Hollowed",
+      "label": "Area contains # additional Ashen Shrines",
+      "lines": [
+        "Area contains # additional Ashen Shrines"
+      ],
+      "tiers": 1,
+      "token": "ash",
+      "why_not": null
+    },
+    {
+      "id": "players-are-withered-on-hit",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Withering",
+      "label": "Players are Withered on Hit",
+      "lines": [
+        "Players are Withered on Hit",
+        "Withered lasts #% longer"
+      ],
+      "tiers": 1,
+      "token": "wit",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-amberine-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Amberine Ward",
+      "lines": [
+        "Monsters have #% increased Amberine Ward"
+      ],
+      "tiers": 2,
+      "token": "amberine",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-basaltic-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Basaltic Ward",
+      "lines": [
+        "Monsters have #% increased Basaltic Ward"
+      ],
+      "tiers": 2,
+      "token": "basaltic",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-cobaltine-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Cobaltine Ward",
+      "lines": [
+        "Monsters have #% increased Cobaltine Ward"
+      ],
+      "tiers": 2,
+      "token": "cobaltine",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-dunewind-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Dunewind Ward",
+      "lines": [
+        "Monsters have #% increased Dunewind Ward"
+      ],
+      "tiers": 2,
+      "token": "dunewind",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-fernshade-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Fernshade Ward",
+      "lines": [
+        "Monsters have #% increased Fernshade Ward"
+      ],
+      "tiers": 2,
+      "token": "fernshade",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-grimfrost-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Grimfrost Ward",
+      "lines": [
+        "Monsters have #% increased Grimfrost Ward"
+      ],
+      "tiers": 2,
+      "token": "grimfrost",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-hollowed-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Hollowed Ward",
+      "lines": [
+        "Monsters have #% increased Hollowed Ward"
+      ],
+      "tiers": 2,
+      "token": "hollowed",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-ironbark-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Ironbark Ward",
+      "lines": [
+        "Monsters have #% increased Ironbark Ward"
+      ],
+      "tiers": 2,
+      "token": "ironbark",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-jadeworm-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Jadeworm Ward",
+      "lines": [
+        "Monsters have #% increased Jadeworm Ward"
+      ],
+      "tiers": 2,
+      "token": "jadeworm",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-kelpdrift-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Kelpdrift Ward",
+      "lines": [
+        "Monsters have #% increased Kelpdrift Ward"
+      ],
+      "tiers": 2,
+      "token": "kelpdrift",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-lanternly-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Lanternly Ward",
+      "lines": [
+        "Monsters have #% increased Lanternly Ward"
+      ],
+      "tiers": 2,
+      "token": "lanternly",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-mirewood-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Mirewood Ward",
+      "lines": [
+        "Monsters have #% increased Mirewood Ward"
+      ],
+      "tiers": 2,
+      "token": "mirewood",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-nettlevein-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Nettlevein Ward",
+      "lines": [
+        "Monsters have #% increased Nettlevein Ward"
+      ],
+      "tiers": 2,
+      "token": "nettlevein",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-onyxbloom-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Onyxbloom Ward",
+      "lines": [
+        "Monsters have #% increased Onyxbloom Ward"
+      ],
+      "tiers": 2,
+      "token": "onyxbloom",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-pallidus-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Pallidus Ward",
+      "lines": [
+        "Monsters have #% increased Pallidus Ward"
+      ],
+      "tiers": 2,
+      "token": "pallidus",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-quillfang-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Quillfang Ward",
+      "lines": [
+        "Monsters have #% increased Quillfang Ward"
+      ],
+      "tiers": 2,
+      "token": "quillfang",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-rimecrest-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Rimecrest Ward",
+      "lines": [
+        "Monsters have #% increased Rimecrest Ward"
+      ],
+      "tiers": 2,
+      "token": "rimecrest",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-saltmarsh-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Saltmarsh Ward",
+      "lines": [
+        "Monsters have #% increased Saltmarsh Ward"
+      ],
+      "tiers": 2,
+      "token": "saltmarsh",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-thornwake-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Thornwake Ward",
+      "lines": [
+        "Monsters have #% increased Thornwake Ward"
+      ],
+      "tiers": 2,
+      "token": "thornwake",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-umberline-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Umberline Ward",
+      "lines": [
+        "Monsters have #% increased Umberline Ward"
+      ],
+      "tiers": 2,
+      "token": "umberline",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-vesperal-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Vesperal Ward",
+      "lines": [
+        "Monsters have #% increased Vesperal Ward"
+      ],
+      "tiers": 2,
+      "token": "vesperal",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-wraithly-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Wraithly Ward",
+      "lines": [
+        "Monsters have #% increased Wraithly Ward"
+      ],
+      "tiers": 2,
+      "token": "wraithly",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-yewgrove-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Yewgrove Ward",
+      "lines": [
+        "Monsters have #% increased Yewgrove Ward"
+      ],
+      "tiers": 2,
+      "token": "yewgrove",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-zephyrine-ward",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters have #% increased Zephyrine Ward",
+      "lines": [
+        "Monsters have #% increased Zephyrine Ward"
+      ],
+      "tiers": 2,
+      "token": "zephyrine",
+      "why_not": null
+    }
+  ],
+  "selection": {
+    "want": [
+      "monsters-deal-extra-ember"
+    ],
+    "want_mode": "any",
+    "avoid": [
+      "monsters-have-amberine-ward",
+      "monsters-have-basaltic-ward",
+      "monsters-have-cobaltine-ward",
+      "monsters-have-dunewind-ward",
+      "monsters-have-fernshade-ward",
+      "monsters-have-grimfrost-ward",
+      "monsters-have-hollowed-ward",
+      "monsters-have-ironbark-ward",
+      "monsters-have-jadeworm-ward",
+      "monsters-have-kelpdrift-ward",
+      "monsters-have-lanternly-ward",
+      "monsters-have-mirewood-ward",
+      "monsters-have-nettlevein-ward",
+      "monsters-have-onyxbloom-ward",
+      "monsters-have-pallidus-ward",
+      "monsters-have-quillfang-ward",
+      "monsters-have-rimecrest-ward",
+      "monsters-have-saltmarsh-ward",
+      "monsters-have-thornwake-ward",
+      "monsters-have-umberline-ward",
+      "monsters-have-vesperal-ward",
+      "monsters-have-wraithly-ward",
+      "monsters-have-yewgrove-ward",
+      "monsters-have-zephyrine-ward"
+    ],
+    "tier_min": 10,
+    "tier_max": 16,
+    "rarity": {
+      "normal": false,
+      "magic": true,
+      "rare": true
+    },
+    "corruption": "corrupted"
+  },
+  "result": {
+    "state": "too_long",
+    "regex": "",
+    "length": 264,
+    "limit": 250,
+    "parts": [
+      {
+        "what": "rarity",
+        "text": "\"y: [mr]\"",
+        "length": 9
+      },
+      {
+        "what": "tier",
+        "text": "\"r 1[0-6]\\)\"",
+        "length": 12
+      },
+      {
+        "what": "want",
+        "text": "emb",
+        "length": 3
+      },
+      {
+        "what": "avoid",
+        "text": "\"!amberine|basaltic|cobaltine|dunewind|fernshade|grimfrost|hollowed|ironbark|jadeworm|kelpdrift|lanternly|mirewood|nettlevein|onyxbloom|pallidus|quillfang|rimecrest|saltmarsh|thornwake|umberline|vesperal|wraithly|yewgrove|zephyrine\"",
+        "length": 232
+      },
+      {
+        "what": "corruption",
+        "text": "corr",
+        "length": 4
+      }
+    ],
+    "unmatchable": []
+  },
+  "hotkey": "Ctrl+Alt+W",
+  "status": {
+    "kind": "error",
+    "text": "Not copied: the search is 264 characters, over the game's 250. Remove some selections."
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "data": {
+    "source": "https://poe2db.tw/us/Waystones",
+    "fetched": "2026-10-28"
+  },
+  "mods": [
+    {
+      "id": "monsters-deal-extra-ember",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "label": "Monsters deal #% of Damage as Extra Ember",
+      "lines": [
+        "Monsters deal #% of Damage as Extra Ember"
+      ],
+      "tiers": 4,
+      "token": "emb",
+      "why_not": null
+    },
+    {
+      "id": "monsters-have-glimmer-shields",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "label": "Monsters have #% increased Glimmer Shields",
+      "lines": [
+        "Monsters have #% increased Glimmer Shields"
+      ],
+      "tiers": 3,
+      "token": "gli",
+      "why_not": null
+    },
+    {
+      "id": "monster-packs-are-hasted",
+      "group": "waystone",
+      "kind": "prefix",
+      "name": null,
+      "label": "Monster Packs are Hasted",
+      "lines": [
+        "Monster Packs are Hasted",
+        "Hasted Monsters have #% increased Movement Speed"
+      ],
+      "tiers": 2,
+      "token": "hast",
+      "why_not": null
+    },
+    {
+      "id": "players-have-reduced-glow-recovery",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Players have #% reduced Glow Recovery",
+      "lines": [
+        "Players have #% reduced Glow Recovery"
+      ],
+      "tiers": 3,
+      "token": "glo",
+      "why_not": null
+    },
+    {
+      "id": "monsters-are-gilded",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters are Gilded",
+      "lines": [
+        "Monsters are Gilded"
+      ],
+      "tiers": 2,
+      "token": null,
+      "why_not": "Every part of it also appears in \"Monsters are Gilded and Gleaming\"."
+    },
+    {
+      "id": "monsters-are-gilded-and-gleaming",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Monsters are Gilded and Gleaming",
+      "lines": [
+        "Monsters are Gilded and Gleaming"
+      ],
+      "tiers": 2,
+      "token": "gle",
+      "why_not": null
+    },
+    {
+      "id": "area-has-patches-of-cinder-ground",
+      "group": "waystone",
+      "kind": "suffix",
+      "name": null,
+      "label": "Area has patches of Cinder Ground",
+      "lines": [
+        "Area has patches of Cinder Ground"
+      ],
+      "tiers": 3,
+      "token": "cin",
+      "why_not": null
+    },
+    {
+      "id": "area-contains-ashen-shrines",
+      "group": "desecrated",
+      "kind": "prefix",
+      "name": "Hollowed",
+      "label": "Area contains # additional Ashen Shrines",
+      "lines": [
+        "Area contains # additional Ashen Shrines"
+      ],
+      "tiers": 1,
+      "token": "ash",
+      "why_not": null
+    },
+    {
+      "id": "players-are-withered-on-hit",
+      "group": "desecrated",
+      "kind": "suffix",
+      "name": "of Withering",
+      "label": "Players are Withered on Hit",
+      "lines": [
+        "Players are Withered on Hit",
+        "Withered lasts #% longer"
+      ],
+      "tiers": 1,
+      "token": "wit",
+      "why_not": null
+    }
+  ],
+  "selection": {
+    "want": [
+      "players-have-reduced-glow-recovery",
+      "area-contains-ashen-shrines"
+    ],
+    "want_mode": "all",
+    "avoid": [],
+    "tier_min": 5,
+    "tier_max": 12,
+    "rarity": {
+      "normal": false,
+      "magic": true,
+      "rare": true
+    },
+    "corruption": "uncorrupted"
+  },
+  "result": {
+    "state": "ok",
+    "regex": "\"y: [mr]\" \"r [5-9]\\)|r 1[0-2]\\)\" \"glo ash\" !corr",
+    "length": 48,
+    "limit": 250,
+    "parts": [
+      {
+        "what": "rarity",
+        "text": "\"y: [mr]\"",
+        "length": 9
+      },
+      {
+        "what": "tier",
+        "text": "\"r [5-9]\\)|r 1[0-2]\\)\"",
+        "length": 22
+      },
+      {
+        "what": "want",
+        "text": "\"glo ash\"",
+        "length": 9
+      },
+      {
+        "what": "corruption",
+        "text": "!corr",
+        "length": 5
+      }
+    ],
+    "unmatchable": []
+  },
+  "hotkey": "Ctrl+Alt+W",
+  "status": null
+}
