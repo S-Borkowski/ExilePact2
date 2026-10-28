@@ -2272,8 +2272,17 @@ impl App {
         Ok(view)
     }
 
+    /// Every switch of mode lands here (`set_mode`, the shortcut, the
+    /// footer's "back to play"). Going to play closes what only edit mode
+    /// can close, the open frame and the quest detail, so play shows the
+    /// quest list; the view kind, folded acts and the collapsed badge stay.
+    /// Going to edit changes no frame.
     fn apply_mode(&self, st: &mut State, mode: Mode) {
         st.ui.mode = mode;
+        if mode == Mode::Play {
+            st.ui.open_frame = None;
+            st.ui.detail = None;
+        }
         match self.window.set_click_through(mode == Mode::Play) {
             Ok(()) => st.set_status(Source::Window, None),
             Err(e) => {

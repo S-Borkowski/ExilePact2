@@ -409,6 +409,144 @@ fn click_through_follows_mode() {
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 
+/// What can be open over the quest list: the two frames and a quest's
+/// detail.
+#[derive(Debug, Clone, Copy)]
+enum Opened {
+    Settings,
+    Picker,
+    Detail,
+}
+
+impl Opened {
+    const ALL: [Opened; 3] = [Opened::Settings, Opened::Picker, Opened::Detail];
+
+    fn open(self, app: &App) -> View {
+        match self {
+            Opened::Settings => app.open_frame(Some(Frame::Settings)),
+            Opened::Picker => app.open_frame(Some(Frame::CharacterPicker)),
+            Opened::Detail => app.open_detail(Some("fixture-riverbank".to_string())),
+        }
+        .unwrap()
+    }
+
+    fn frame(self) -> Frame {
+        match self {
+            Opened::Settings => Frame::Settings,
+            Opened::Picker => Frame::CharacterPicker,
+            Opened::Detail => Frame::QuestDetail,
+        }
+    }
+}
+
+/// The quest list's frame for a view kind (the fixture's act is not done).
+fn list_frame(kind: ViewKind) -> Frame {
+    match kind {
+        ViewKind::NextUp => Frame::PanelNextUp,
+        ViewKind::Campaign => Frame::PanelCampaign,
+    }
+}
+
+#[test]
+fn entering_edit_mode_keeps_the_open_frame_baseline() {
+    // Baseline, true before and after the change: going from play to edit
+    // changes no frame, view kind or collapse, by either route.
+    for opened in Opened::ALL {
+        for shortcut in [false, true] {
+            let h = harness(Setup::default());
+            h.app.handle_tail_events(events(&own_character_lines(), false));
+            h.app.set_view_kind(ViewKind::Campaign).unwrap();
+            assert_eq!(opened.open(&h.app).frame, opened.frame());
+
+            let v = if shortcut {
+                h.app.toggle_mode().unwrap()
+            } else {
+                h.app.set_mode(Mode::Edit).unwrap()
+            };
+            assert_eq!(v.mode, Mode::Edit);
+            assert_eq!(v.frame, opened.frame(), "{opened:?}, shortcut {shortcut}");
+            assert_eq!(v.view_kind, ViewKind::Campaign);
+        }
+    }
+
+    // The collapsed badge stays collapsed, and what was open under it stays
+    // open once it is unfolded.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), false));
+    h.app.open_frame(Some(Frame::Settings)).unwrap();
+    assert_eq!(h.app.set_collapsed(true).unwrap().frame, Frame::Settings);
+    h.app.open_frame(None).unwrap();
+    h.app.open_detail(Some("fixture-riverbank".to_string())).unwrap();
+    assert_eq!(h.views.last().frame, Frame::Collapsed);
+    let v = h.app.set_mode(Mode::Edit).unwrap();
+    assert_eq!(v.frame, Frame::Collapsed);
+    assert_eq!(h.app.set_collapsed(false).unwrap().frame, Frame::QuestDetail);
+}
+
+#[test]
+fn leaving_edit_mode_shows_the_quest_list() {
+    // Target: with Settings, the character picker or a quest's detail open
+    // in edit mode, every switch to play (the command, the shortcut, the
+    // footer's "back to play", which sends the same `set_mode`) shows the
+    // quest list of the view kind in force.
+    #[derive(Debug, Clone, Copy)]
+    enum Leave {
+        SetMode,
+        Shortcut,
+        Footer,
+    }
+    for kind in [ViewKind::NextUp, ViewKind::Campaign] {
+        for opened in Opened::ALL {
+            for leave in [Leave::SetMode, Leave::Shortcut, Leave::Footer] {
+                let h = harness(Setup::default());
+                h.app.handle_tail_events(events(&own_character_lines(), false));
+                h.app.set_view_kind(kind).unwrap();
+                let act = h.views.last().acts[0].act;
+                h.app.toggle_act(act).unwrap();
+                h.app.set_mode(Mode::Edit).unwrap();
+                assert_eq!(opened.open(&h.app).frame, opened.frame());
+
+                let v = match leave {
+                    Leave::SetMode | Leave::Footer => h.app.set_mode(Mode::Play).unwrap(),
+                    Leave::Shortcut => h.app.toggle_mode().unwrap(),
+                };
+                let what = format!("{kind:?}, {opened:?}, {leave:?}");
+                assert_eq!(v.mode, Mode::Play, "{what}");
+                assert_eq!(v.frame, list_frame(kind), "{what}");
+                assert!(v.detail.is_none(), "{what}: the detail closed");
+                assert_eq!(v.view_kind, kind, "{what}: the view kind is kept");
+                assert!(!v.acts[0].expanded, "{what}: the folded act stays folded");
+                assert_eq!(h.views.last(), v, "{what}: the returned view is the one announced");
+            }
+        }
+    }
+
+    // The collapsed badge stays collapsed; what edit mode had open under it
+    // is closed once it is unfolded.
+    for opened in Opened::ALL {
+        let h = harness(Setup::default());
+        h.app.handle_tail_events(events(&own_character_lines(), false));
+        h.app.set_mode(Mode::Edit).unwrap();
+        opened.open(&h.app);
+        h.app.set_collapsed(true).unwrap();
+        let v = h.app.set_mode(Mode::Play).unwrap();
+        assert_eq!(v.frame, Frame::Collapsed, "{opened:?}: the badge is kept");
+        let v = h.app.set_collapsed(false).unwrap();
+        assert_eq!(v.frame, Frame::PanelNextUp, "{opened:?}");
+    }
+
+    // Negative control: in edit mode, commands that are not a switch to play
+    // leave the open frame and the detail alone.
+    let h = harness(Setup::default());
+    h.app.handle_tail_events(events(&own_character_lines(), false));
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.app.open_detail(Some("fixture-riverbank".to_string())).unwrap();
+    h.app.open_frame(Some(Frame::Settings)).unwrap();
+    assert_eq!(h.app.set_view_kind(ViewKind::Campaign).unwrap().frame, Frame::Settings);
+    assert_eq!(h.app.set_mode(Mode::Edit).unwrap().frame, Frame::Settings);
+    assert_eq!(h.app.open_frame(None).unwrap().frame, Frame::QuestDetail);
+}
+
 #[test]
 fn worker_emits_view_after_new_lines() {
     let h = harness(Setup {
