@@ -1,7 +1,7 @@
 # In-app updates: the release contract, the key and the shared crates
 
-The quest tracker and the waystone roller update themselves the same way,
-with one copy of the code. Each app's Settings window can check GitHub for a
+The quest tracker, the waystone roller and the crafting helper update
+themselves the same way, with one copy of the code. Each app's Settings window can check GitHub for a
 newer release of that app (*Check now*, or *Automatically check for
 updates*, off by default, which only checks). When a check finds one, the
 window's install button downloads the new exe, checks its signature against
@@ -13,9 +13,10 @@ untouched; a newer release that is not signed is shown as such, with no
 button.
 
 What each app shows and logs is in its own guide:
-[`quest-tracker/README.md`](quest-tracker/README.md) and
-[`waystone-roller/README.md`](waystone-roller/README.md) (Overview, Command
-reference, Privacy, Known limitations). This page is what both share: what
+[`quest-tracker/README.md`](quest-tracker/README.md),
+[`waystone-roller/README.md`](waystone-roller/README.md) and
+[`crafting-helper/README.md`](crafting-helper/README.md) (Overview, Command
+reference, Privacy, Known limitations). This page is what all three share: what
 a release must carry, why the signature is the check, the owner's key, and
 the code.
 
@@ -23,13 +24,14 @@ the code.
 
 A release the apps can install is a published (not draft, not prerelease)
 GitHub release of `S-Borkowski/ExilePact2` tagged
-`quest-tracker-v<major>.<minor>.<patch>` or
-`waystone-roller-v<major>.<minor>.<patch>`, carrying two assets:
+`quest-tracker-v<major>.<minor>.<patch>`,
+`waystone-roller-v<major>.<minor>.<patch>` or
+`crafting-helper-v<major>.<minor>.<patch>`, carrying two assets:
 
 | Asset | What it is |
 |---|---|
-| `quest-tracker.exe` / `waystone-roller.exe` | The app itself, as the release workflow built it. |
-| `quest-tracker.exe.minisig` / `waystone-roller.exe.minisig` | The exe's minisign signature, as plain text: four lines, algorithm `ED` (Ed25519 over the file's BLAKE2b-512 hash), with the trusted comment `timestamp:<t>`, `file:<exe name>` and `version:<version>`, tab-separated. |
+| `quest-tracker.exe` / `waystone-roller.exe` / `crafting-helper.exe` | The app itself, as the release workflow built it. |
+| `quest-tracker.exe.minisig` / `waystone-roller.exe.minisig` / `crafting-helper.exe.minisig` | The exe's minisign signature, as plain text: four lines, algorithm `ED` (Ed25519 over the file's BLAKE2b-512 hash), with the trusted comment `timestamp:<t>`, `file:<exe name>` and `version:<version>`, tab-separated. |
 
 The other assets (`SHA256SUMS.txt`, the quest tracker's
 `quest-tracker-replay.exe`, which is not updated in the app) stay as they
@@ -37,8 +39,9 @@ were. A release with no exe or no `.minisig` is shown as "<version> is
 available but cannot be installed: the release is not signed." and cannot be
 installed.
 
-The two release workflows (`.github/workflows/quest-tracker-release.yml`,
-`.github/workflows/waystone-roller-release.yml`) make the signature: their
+The three release workflows (`.github/workflows/quest-tracker-release.yml`,
+`.github/workflows/waystone-roller-release.yml`,
+`.github/workflows/crafting-helper-release.yml`) make the signature: their
 "Sign the exe" step runs `tauri signer sign --app-version "$VERSION"` on
 the built exe, with the repository secrets `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in that one step's environment,
@@ -93,7 +96,7 @@ URL, a query or anything of GitHub's answer.
 **The release key is the trust anchor.** The app installs a file only when
 its signature verifies against `RELEASE_PUBLIC_KEY` in
 `apps/shared/crates/ep-update/src/release_key.rs`, a plain constant compiled
-into both apps (never an `Option`: there is no build without a key). Whoever
+into all three apps (never an `Option`: there is no build without a key). Whoever
 holds the private half can make an exe every installed copy will accept, so
 it lives in one file on the owner's machine and in the repository secret,
 and nowhere else.
@@ -143,7 +146,7 @@ release. Done once, on 2026-10-28 (key ID `663D6EC6E2F9813A`):
 2. On GitHub, repository S-Borkowski/ExilePact2 › Settings › Secrets and
    variables › Actions, add `TAURI_SIGNING_PRIVATE_KEY` (the private key
    file's whole content) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (its
-   password). One key signs both apps.
+   password). One key signs all three apps.
 3. Put the public key in `release_key.rs`: the `.pub` file is base64; its
    decoded text is an untrusted comment and the `RW...` key line, and the
    constant holds that key line. Never paste the private key anywhere.
@@ -169,17 +172,17 @@ next version is downloaded by hand, from a build that carries a new key.
 
 ## The shared crates
 
-The update code is a third Cargo workspace, `apps/shared/`, that both apps
-take as path dependencies (neither lists it among its own members):
+The update code is a Cargo workspace of its own, `apps/shared/`, that the
+three apps take as path dependencies (none lists it among its own members):
 
 | Crate | What it is |
 |---|---|
-| `crates/ep-net/` | Both apps' only network code: the release list and a release's two fixed assets, over HTTPS through Windows' own WinHTTP, with the bounds and headers each guide's Privacy section lists. No caller can pass a host, a path or a URL; elsewhere than Windows every request is refused as unsupported. |
-| `crates/ep-update/` | The update logic, with no network and no `unsafe`: the release-list parse, the check's state machine, the install (single-flight with the check, on a thread of its own), the signature check (`minisign-verify =0.2.5`, the one registry crate this added), the swap and the start-up cleanup, the Settings window's view and its texts, and the `updates:` lines. The product (name, tag prefix, exe name) is data: `QUEST_TRACKER`, `WAYSTONE_ROLLER`. |
+| `crates/ep-net/` | The three apps' only network code: the release list and a release's two fixed assets, over HTTPS through Windows' own WinHTTP, with the bounds and headers each guide's Privacy section lists. No caller can pass a host, a path or a URL; elsewhere than Windows every request is refused as unsupported. |
+| `crates/ep-update/` | The update logic, with no network and no `unsafe`: the release-list parse, the check's state machine, the install (single-flight with the check, on a thread of its own), the signature check (`minisign-verify =0.2.5`, the one registry crate this added), the swap and the start-up cleanup, the Settings window's view and its texts, and the `updates:` lines. The product (name, tag prefix, exe name) is data: `QUEST_TRACKER`, `WAYSTONE_ROLLER`, `CRAFTING_HELPER` (with `ep-net`'s matching `CRAFTING_HELPER_USER_AGENT`, `CRAFTING_HELPER_TAG_PREFIX` and `CRAFTING_HELPER_EXE`). |
 | `fixtures/` | The signature fixtures, made once with `tauri signer` and a throwaway key that was discarded (`fixtures/README.md` says how). |
 
 Each app keeps its own glue (the transport over `ep-net`, the restart) and
-its own Settings window UI; neither depends on the other.
+its own Settings window UI; none depends on another.
 
 Tests (none reaches the internet):
 
@@ -194,15 +197,16 @@ the repository, tag prefixes and asset names the release tooling uses, that
 a download's redirect may reach only the two asset hosts, that the key is
 real and only the built-in one is used, and that every dependency is the
 quest tracker's pin except `minisign-verify`. Each app's own guard
-(`tests.test_quest_tracker_network`, `tests.test_waystone_roller_guard`)
-reads the shared workspace beside the app.
+(`tests.test_quest_tracker_network`, `tests.test_waystone_roller_guard`,
+`tests.test_crafting_helper_guard`) reads the shared workspace beside the
+app.
 
-A change here reaches both apps at once: run both apps' test suites too
+A change here reaches the three apps at once: run every app's test suite too
 (each guide's "Working on the app").
 
 **Maintenance triggers.** GitHub changing its release flow or asset host
 (the `/releases/download/` redirect, the asset hosts, the release list's
 fields), the repository or a tag prefix changing, or the signing key
 changing: update `ep-net`'s constants, `ep-update`'s products and this
-page together, with `tests/test_app_updates_guard.py` and both apps'
+page together, with `tests/test_app_updates_guard.py` and every app's
 `release.py`.
