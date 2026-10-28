@@ -10,13 +10,17 @@
 //!
 //! The rows with no boss are a key's: every class's Tree of Souls remark,
 //! as a new line, fires one `remark` for its key, and the Rust King's kill
-//! remarks do not.
+//! remarks do not. Every key the data ships a `remark` signal for (the
+//! remark ledger's attachments) is read the same way, area by area: each
+//! of its texts fires its own key and no other key or boss asked for in the
+//! same area.
 //!
 //! The on-sight lines are short user-facing game text from poe2db's class
 //! pages, kept with the page and the date they were read (AGENTS.md §
 //! "Legal", the owner's decision of 2026-10-24), braces markup removed. The
 //! character name is invented.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use qt_screen::{Line, Observation, Rect, Region, RemarkTracker, ScreenEvent};
@@ -262,4 +266,99 @@ fn every_shipped_tree_remark_is_read_as_the_tree_remark() {
         let mut t = tracker_for(&rows, RUST_KING);
         assert_eq!(said(&mut t, &r.text).len(), 1, "{}", r.class);
     }
+}
+
+/// What the shipped steps ask the reader for in each area: the keys of
+/// their `remark` signals and the bosses of their `kill_remark` signals,
+/// each once, in data order.
+#[derive(Default)]
+struct AreaDemand {
+    keys: Vec<String>,
+    bosses: Vec<String>,
+}
+
+/// A key's attachment: the (quest, step) pairs its `remark` signals sit on.
+type Attachment = BTreeSet<(String, String)>;
+
+/// The shipped demand per area, and each remark key's attachment.
+fn shipped_demand_by_area() -> (BTreeMap<String, AreaDemand>, BTreeMap<String, Attachment>) {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/quests.json");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let data: Value = serde_json::from_str(&text).expect("the quest data is JSON");
+    let mut out: BTreeMap<String, AreaDemand> = BTreeMap::new();
+    let mut attached: BTreeMap<String, Attachment> = BTreeMap::new();
+    for q in data["quests"].as_array().expect("quests") {
+        for step in q["steps"].as_array().expect("steps") {
+            for s in step["signals"].as_array().expect("signals") {
+                if s["kind"] != "screen" {
+                    continue;
+                }
+                let (list, name) = match s["what"].as_str() {
+                    Some("remark") => (true, field(s, "key")),
+                    Some("kill_remark") => (false, field(s, "boss")),
+                    _ => continue,
+                };
+                if list {
+                    attached.entry(name.clone()).or_default().insert((field(q, "id"), field(step, "id")));
+                }
+                let demand = out.entry(field(s, "area")).or_default();
+                let names = if list { &mut demand.keys } else { &mut demand.bosses };
+                if !names.contains(&name) {
+                    names.push(name);
+                }
+            }
+        }
+    }
+    (out, attached)
+}
+
+/// Every remark key the data ships (the remark ledger's attachments), per
+/// area: each class's text of the key, as a new line, fires one `remark`
+/// for that key through the tracker the reader builds for it, and nothing
+/// through the tracker of any other key, or of any boss's kill remark,
+/// demanded in the same area. The one exception is a key attached to the
+/// very same steps (the ledger's text rule keeps a text two such keys
+/// share, as both end the same step): its tracker may fire too, and ticks
+/// nothing more. The rows are poe2db's class pages' (each row's
+/// `source_url` and `fetched`, 2026-10-27 and 2026-10-28).
+#[test]
+fn every_shipped_remark_is_read_for_its_key_only() {
+    let rows = shipped_remarks();
+    let (by_area, attached) = shipped_demand_by_area();
+    let mut keys_read = 0;
+    let mut shared = 0;
+    for (area, demand) in &by_area {
+        for key in &demand.keys {
+            let texts = key_remarks(key);
+            assert!(!texts.is_empty(), "{area}: {key}: no text");
+            keys_read += 1;
+            for (class, text, page, fetched) in &texts {
+                assert_eq!(*page, format!("https://poe2db.tw/us/{class}"), "{key}");
+                assert!(fetched.as_str() >= "2026-10-27", "{key}: {class}: {fetched}");
+                let mut t = tracker_for_key(key);
+                assert_eq!(
+                    said(&mut t, text),
+                    [ScreenEvent::Remark { key: key.clone(), at: 3_000 }],
+                    "{area}: {key} / {class}: {text:?}"
+                );
+                for other in demand.keys.iter().filter(|k| *k != key) {
+                    let mut t = tracker_for_key(other);
+                    if attached[other] == attached[key] {
+                        shared += said(&mut t, text).len();
+                        continue;
+                    }
+                    assert!(said(&mut t, text).is_empty(), "{area}: {key} / {class}: {text:?} read as {other}");
+                }
+                for boss in &demand.bosses {
+                    let mut t = tracker_for(&rows, boss);
+                    assert!(said(&mut t, text).is_empty(), "{area}: {key} / {class}: {text:?} read as {boss}'s kill remark");
+                }
+            }
+        }
+    }
+    // The tree's key is among them, in the Grelwood.
+    assert!(by_area.get("G1_4").is_some_and(|d| d.keys.iter().any(|k| k == TREE_KEY)));
+    assert!(keys_read > 1, "{keys_read} keys read");
+    // Counted, not asserted: the shared texts of same-step keys.
+    println!("{keys_read} keys read; {shared} reads by a same-step key");
 }
