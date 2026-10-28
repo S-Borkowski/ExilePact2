@@ -749,30 +749,41 @@ fn screen_reading_is_off_by_default_and_patched_as_a_bool() {
 }
 
 #[test]
-fn hide_under_panels_is_off_by_default_and_patched_as_a_bool() {
-    // Baseline: off by default, and a file written before the setting
-    // existed (with or without "Read the screen") loads with it off.
-    assert!(!Settings::default().hide_under_panels);
-    for old in [
-        serde_json::json!({ "opacity": 0.5, "hotkey": "F8" }),
-        serde_json::json!({ "opacity": 0.5, "screen_reading": true }),
-    ] {
-        let s: Settings = serde_json::from_value(old).expect("an old file loads");
-        assert!(!s.hide_under_panels);
+fn hide_under_panels_is_no_longer_a_setting() {
+    // Hiding under game panels is always on since 0.1.1. A 0.1.0 file's
+    // key, `false` (it turned the watcher off) as well as `true`, is ignored
+    // on load and is not written back; the rest of the file still loads.
+    for stored in [true, false] {
+        let old = serde_json::json!({
+            "opacity": 0.4,
+            "hotkey": "F8",
+            "screen_reading": true,
+            "hide_under_panels": stored,
+        });
+        let s: Settings = serde_json::from_value(old).expect("a 0.1.0 file loads");
+        let s = s.normalised();
+        assert_eq!((s.opacity, s.hotkey.as_str(), s.screen_reading), (0.4, "F8", true));
+        let v = serde_json::to_value(&s).unwrap();
+        assert!(v.get("hide_under_panels").is_none(), "{v}");
     }
-    // Target: a patch turns it on, on its own, and it is written back by its
-    // name.
+    // The defaults carry no such key either.
+    let v = serde_json::to_value(Settings::default()).unwrap();
+    assert!(v.get("hide_under_panels").is_none(), "{v}");
+    // A patch that names it is refused as an unknown setting, alone or
+    // beside a known key, whatever its value.
+    for patch in [
+        serde_json::json!({ "hide_under_panels": false }),
+        serde_json::json!({ "hide_under_panels": true }),
+        serde_json::json!({ "hide_under_panels": false, "opacity": 0.5 }),
+    ] {
+        let err = Settings::default().patched(&patch).unwrap_err();
+        assert!(err.contains("unknown setting") && err.contains("hide_under_panels"), "{err}");
+    }
+    // Control: a known bool key is still patched.
     let on = Settings::default()
-        .patched(&serde_json::json!({ "hide_under_panels": true }))
+        .patched(&serde_json::json!({ "screen_reading": true }))
         .expect("a bool patch");
-    assert!(on.hide_under_panels);
-    assert!(!on.screen_reading);
-    assert_eq!(serde_json::to_value(&on).unwrap()["hide_under_panels"], true);
-    // Negative control: a value that is not a bool is refused.
-    let err = Settings::default()
-        .patched(&serde_json::json!({ "hide_under_panels": 1 }))
-        .unwrap_err();
-    assert!(err.contains("bad settings patch"), "{err}");
+    assert!(on.screen_reading);
 }
 
 #[test]
@@ -792,7 +803,7 @@ fn check_updates_is_off_by_default_and_patched_as_a_bool() {
         .patched(&serde_json::json!({ "check_updates": true }))
         .expect("a bool patch");
     assert!(on.check_updates);
-    assert!(!on.screen_reading && !on.hide_under_panels);
+    assert!(!on.screen_reading);
     let written = serde_json::to_value(&on).unwrap();
     assert_eq!(written["check_updates"], true);
     let back: Settings = serde_json::from_value(written).expect("it loads back");

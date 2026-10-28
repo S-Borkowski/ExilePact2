@@ -47,6 +47,11 @@
 //! screen signals that would fire now, for the reader to look for (Context
 //! "Design: quest data and the engine").
 //!
+//! A level-up line is not routed: it names or levels a character by the
+//! rules above, and only where the engine takes it as that character's own
+//! does it fire the `level_up` signals of its level in the current area for
+//! that character (refused and counted while the area is unknown).
+//!
 //! What persists ([`Engine::to_json`]) is the characters, the pin and the
 //! active name. The unnamed new character is a separate record
 //! ([`Engine::new_character_json`]), never among the characters; the user's
@@ -621,9 +626,10 @@ impl Engine {
             | EventKind::SystemLine { .. }
             | EventKind::Points { .. } => self.route(ev, live, &mut out),
             EventKind::LevelUp { name, class, level } => {
-                // A level-up decides the entry, then names or levels as usual.
+                // A level-up decides the entry, then names or levels as usual,
+                // and fires its `level_up` signals there.
                 self.close_relog_window(&mut out);
-                self.level_up(name, class, *level, live, &mut out)
+                self.level_up(&ev.kind, name, class, *level, live, &mut out)
             }
             // Rule 7: a death never changes the active character.
             EventKind::Slain { .. } => {}
@@ -958,8 +964,15 @@ impl Engine {
         });
     }
 
+    /// A level-up line (`ev`): names the new character, levels a known one
+    /// or makes an unknown name active as unconfirmed, by the rules below;
+    /// then, only where it was taken as that character's own, fires the
+    /// level-up's `level_up` signals for it ([`Engine::fire_level_up`]),
+    /// after the branch's own naming and levelling, so a revoked
+    /// unconfirmed character loses that evidence with the rest of its state.
     fn level_up(
         &mut self,
+        ev: &EventKind,
         name: &str,
         class: &str,
         level: u32,
@@ -970,6 +983,7 @@ impl Engine {
             // Rule 6: while pinned, detection only updates its level.
             if pinned == name {
                 self.set_level(name, class, level, live, out);
+                self.fire_level_up(ev, name, live, out);
             }
             return;
         }
@@ -978,6 +992,7 @@ impl Engine {
             // name not seen joining or leaving this session names it.
             if !self.excluded.contains(name) {
                 self.close_new_character(name, Close::LevelUp(class, level), live, out);
+                self.fire_level_up(ev, name, live, out);
             }
             return;
         }
@@ -986,10 +1001,12 @@ impl Engine {
             // Rule 3.
             self.set_level(name, class, level, live, out);
             self.activate(name, out);
+            self.fire_level_up(ev, name, live, out);
         } else if self.excluded.contains(name) {
             // Rule 2: a party member this session.
         } else if self.active.as_deref() == Some(name) {
             self.set_level(name, class, level, live, out);
+            self.fire_level_up(ev, name, live, out);
         } else {
             // Rule 4: active as unconfirmed, revocable by a join/leave line.
             self.pending = None;
@@ -1010,7 +1027,22 @@ impl Engine {
                 since: Vec::new(),
             });
             self.release_to(name, &released, out);
+            self.fire_level_up(ev, name, live, out);
         }
+    }
+
+    /// Fires the `level_up` signals a level-up line fires for `name`, the
+    /// character the engine took it as: in the current area, kept as
+    /// evidence like a log signal's. The line is not routed like other
+    /// lines, so this is where it fires. With the area unknown nothing fires
+    /// and every signal it would have fired is refused and counted, as for
+    /// any area-tied log signal.
+    fn fire_level_up(&mut self, ev: &EventKind, name: &str, live: bool, out: &mut Vec<Transition>) {
+        let area = self.area.clone();
+        if area.is_none() {
+            self.count_refusals(ev, Target::Named(name));
+        }
+        self.apply_to(Target::Named(name), ev, area.as_deref(), live, out);
     }
 
     /// Whether a level-1 Riverbank entry is still undecided: a character
@@ -1947,7 +1979,7 @@ fn signal_area(signal: &Signal) -> Option<&str> {
         | Signal::System { area, .. }
         | Signal::Reward { area, .. }
         | Signal::Points { area, .. } => area.as_deref(),
-        Signal::Screen { area, .. } => Some(area),
+        Signal::Screen { area, .. } | Signal::LevelUp { area, .. } => Some(area),
         Signal::Area { .. } | Signal::Level { .. } | Signal::Quest { .. } => None,
     }
 }
@@ -1985,6 +2017,11 @@ fn fires_on(signal: &Signal, ev: &EventKind, area: Option<&str>) -> bool {
         }
         (Signal::Points { pool, area: a }, EventKind::Points { pool: p, .. }) => {
             pool == p && in_area(a)
+        }
+        // Only [`Engine::fire_level_up`] passes a level-up here: the line is
+        // not routed like the others.
+        (Signal::LevelUp { level, area: a }, EventKind::LevelUp { level: l, .. }) => {
+            level == l && Some(a.as_str()) == area
         }
         _ => false,
     }

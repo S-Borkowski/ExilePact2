@@ -452,7 +452,145 @@ repository, and against poe2db.
   established.
 - **Consequence for the data.** None: this is research only and the tracker
   is unchanged (the owner, 2026-10-25: "if not we can skip it"). A remark
-  cannot be a step signal while it is not observed in the log.
+  cannot be a step signal while it is not observed in the log. (Since
+  0.1.1 the remarks tick steps from the screen instead, below.)
+- **Every playable class's page, and every boss** (2026-10-28, read-only;
+  the owner, 2026-10-28: "we have info in poedb about other kill remarks.
+  we should support all classes", then "blackjaw and any other boss"). The
+  playable classes are the eight with ascendancies on poe2db's Ascendancy
+  page (https://poe2db.tw/us/Ascendancy_class, read 2026-10-28): Warrior,
+  Mercenary, Ranger, Huntress, Witch, Sorceress, Monk and Druid. Marauder,
+  Duelist, Shadow and Templar are listed there without ascendancies; the
+  Marauder page's table is an older character's (its audio is not under
+  the current characters' folder), so none of the four is used. The six
+  pages not fetched before (Ranger, Huntress, Witch, Sorceress, Monk,
+  Druid) were fetched on 2026-10-28 with `poe2db fetch-classes`, under the
+  tool's delay and robots.txt rules, into a cache outside the repository;
+  the Warrior's and the Mercenary's rows keep their 2026-10-27 fetch. Each
+  row's text is stored plain: page markup removed (the Warrior's Viper
+  line, the Sorceress's Kabala line), whitespace collapsed, trimmed (the
+  Monk's and the Druid's Miller lines carry a trailing space on the page).
+- **How a page key was tied to a step** (2026-10-28). A key was mapped to a
+  step of `data/quests.json` only on evidence: the key names the boss or
+  the step's area, or a class's line names one, *and* the line's audio
+  file is from the step's act (`_a<n>_` for act n; `_i<n>_` or `_p<n>_`
+  for the interlude areas `P<n>_*`). Only steps whose signals already
+  carry an area qualify, since a screen signal needs one. Evidence beyond
+  the key's own words: Geonor (the Monk's line names him), Ketzuli (the
+  Witch's names Kopec, the step's Temple of Kopec), Lythara (the key names
+  Kriar Village; the on-sight lines call her Azmeri) and Zolin (the key's
+  "blood" is in both twins' names; the lines are said to the defeated
+  pair). Two bosses on one step (Zolin and Zelina, Ekbab and Iktab) take
+  one label, the step's own npc. The result, nineteen bosses:
+
+  | Boss | Quest › step | Area | Key | Classes |
+  |---|---|---|---|---|
+  | The Bloated Miller | reaching-clearfell › step-2 | G1_1 | MillerKillComment | all |
+  | Blackjaw | blackjaw-the-remnant › fight | G3_6_1 | BlackjawKilled | Me Hu Wi So Mo Dr |
+  | Lythara | lythara-the-wayward-spear › fight | P3_2 | KriarViperDefeated | all |
+  | The Rust King | secrets-in-the-dark › step-19 | G1_5 | RedValeBossSlainComment | all |
+  | Asinia, the Praetor's Consort | sorrow-among-stones › step-4, step-19 | G1_9 | WifeSlainComment | all |
+  | Draven, the Eternal Praetor | sorrow-among-stones › step-9, step-14 | G1_8 | HusbandSlainComment | all |
+  | The Executioner | the-trail-of-corruption › step-5 | G1_13_2 | ExecutionerSlainComment | all |
+  | Geonor, the Putrid Wolf | the-mad-wolf-of-ogham › step-5 | G1_15 | IronCountKilledComment | all |
+  | Kabala, Constrictor Queen | kabala-constrictor-queen › fight | G2_4_1 | KethKabalaBossSlain | all |
+  | Iktab, the Deathlord | a-theft-of-ivory › step-4 | G2_5_2 | BonePitsBothBossesSlain | all |
+  | Ignagduk, the Bog Witch | tribal-vengeance › step-3 | G3_7 | IgnagdukKilled | all but Ra |
+  | Queen of Filth | legacy-of-the-vaal › step-36 | G3_11 | AggoratOvergrownQueenOfFilthKilled | all |
+  | Ketzuli, High Priest of the Sun | legacy-of-the-vaal › step-42 | G3_12 | SunWorshipperKilled | all |
+  | Viper Napuatzi | legacy-of-the-vaal › step-50 | G3_14 | ViperNapuatziKilled | all but Hu |
+  | Diamora, the Song of Death | whakapanu-island › step-4 | G4_3_2 | SingingCavernsSirenKilled | all |
+  | Yama The White | trial-of-the-ancestors › step-12 | G4_4_2 | HallsOfDeadYamaDefeated | all |
+  | Captain Hartlin | dark-mists › step-8 | G4_2_2 | CaptainHartlinKilled | Hu Mo |
+  | Thane Wulfric | recruit-the-ezomytes › step-25 | P1_6 | EstateTwinBossDefeated | all |
+  | Zolin, Blood Priest | recruit-the-vaal › step-18 | P3_7 | BloodTwinsBossDefeated | all |
+
+  Classes: Wa Warrior, Me Mercenary, Ra Ranger, Hu Huntress, Wi Witch, So
+  Sorceress, Mo Monk, Dr Druid.
+- **Not established** (2026-10-28; nothing added, no text guessed).
+  Blackjaw for the Warrior and the Ranger (no `BlackjawKilled` row; their
+  `RavineBlackjawBossDefeated` is the Interlude 3 Etched Ravine fight, not
+  the data's Act 3 one); Ignagduk for the Ranger (no row); Viper Napuatzi
+  for the Huntress (her line is three letters, too short to tell from other
+  speech; a row under 12 letters is never added); Captain Hartlin for the
+  six classes without the row (their `TempleSandHartlinBossDefeated` is an
+  interlude fight); Beira of the Rotten Pack (no row on any page); The
+  King in the Mists, Azarian, Mektul, Benedictus, Tavakai, Krutog, The
+  Prisoner, Siora, Elzarah, Azmadi, Stormgore, Oswin, and Heldra and
+  Isolde (no key the evidence rule ties to their step;
+  `IceVSFireBossDefeated`, `PrisonForsakenSonBossDefeated`,
+  `LowerPrisonBossKilled` and `QimarOlrothDefeated` are plausible but name
+  neither boss nor area); and every boss step with no area in the data
+  (the Devourer, Rathbreaker, Zalmarath, Rattlecage, the Machinarium
+  beast, the Scourge of the Skies, the Great White One and the rest),
+  whose rows exist but whose signal would need an area the data does not
+  have. The Monk's `RatKingBossDefeated` is a `[DNT]` placeholder.
+- **Not measured live.** No boss's remark has been seen ticking a step in
+  the overlay. The texts are checked by the screen matcher's tests (each
+  boss and class, with a class's on-sight line as the negative control)
+  and, for the Warrior's Miller remark, by a replay of Live 8's capture.
+
+### The Bloated Miller: what ticks his step
+
+Why "Slay the Bloated Miller" ticked 10 to 20 s after his death, and the
+level-up that ticks it at the kill since the tracker's 0.1.1. Read on
+2026-10-28 from the owner's store (the overlay's `overlay.log`) and
+`Client.txt`, read-only, by scripts kept outside the repository.
+
+- **The last playthrough** (measured). A new Warrior entered The Riverbank
+  at 08:29:51Z; *Read the screen* was turned on at 08:31:06Z and logged
+  `screen: idle (no demand)`, and no `screen:` line followed until the
+  encampment. The Miller's first line came at 08:32:53Z and his last at
+  08:33:39Z, and the level-up to 2 at 08:33:42Z (observed 3 s after his
+  last line, consistent with the kill). Mortimer's
+  "Well done! Please come inside." came at 08:33:52Z, and the tracker
+  logged the move to the next step in that same second; the encampment
+  loaded at 08:33:57Z. Live 13 had seen the same: the step changed near
+  the town, not on the kill.
+- **Cause** (measured). The engine did tick the step, but only on
+  Mortimer's line, 10 to 13 s after the kill, as the player neared the
+  encampment. No step of Reaching Clearfell carried a screen signal for
+  the Miller, so with *Read the screen* on the reader had no demand in The
+  Riverbank and never looked at his bar.
+- **The screen at his kill** (measured, a replay of Live 8's kept capture
+  with `quest-tracker-replay screen --bar "The Bloated Miller" --class
+  Warrior`, 2026-10-28). One `bar_gone` at the kill (his bar last seen at
+  20:19:44.847Z, the kill press at 20:19:45.913Z) and the Warrior's
+  `kill_remark` at 20:19:48.864Z. Also two `bar_gone` at 20:11:47Z and
+  20:13:04Z while he lived: Live 8's first run, in which the person walked
+  away from him.
+- **The level-up at the kill** (measured over the owner's whole log, its
+  lines from 2025-08 to 2026-10). Every visit to The Riverbank that held a
+  level-up held one, to level 2, after the Miller's first line and 0 to 9
+  s after his last: 17 of 17. The level-up is logged at the kill, before
+  Mortimer's thanks and the encampment entry; the bar goes about 2 s after
+  it and the remark about 3 s after it (the Live 8 replay). A first
+  level-up in The Riverbank before his death was not observed.
+- **Why a new signal kind** (static reading of the tracker's engine). The
+  existing `level` signal is read from the character's level whenever a
+  status is computed, in any area, so every character already at level 2,
+  and every stored one loaded at start, would count the step as reached.
+  The `level_up` signal is kept as evidence when the level-up line comes,
+  for the character the engine takes it as, in the named area, and is
+  never read from state.
+- **Decisions** (the owner, 2026-10-28). The level-up is the Miller's
+  signal: "use this. first level up can come only from the miller". His
+  bar and every class's kill remark ship too, with the walk-away early
+  tick (with *Read the screen* on) kept as a known limitation, as for
+  Beira, Blackjaw and Lythara. Mortimer's line stays the step's first
+  signal and ticks it when none of the others came.
+- **Consequence.** In practice the level-up ticks the step first, the
+  reader's demand for the Miller then ends, and the overlay never reads his
+  bar or remark; they are the route for a level-up the engine does not take
+  as the character's. So a class's Miller remark cannot be proved in the
+  overlay live; the texts are proved by the matcher's tests and the
+  Warrior's replay.
+- **In the game** (measured 2026-10-28, Live 14, one new Warrior, *Read
+  the screen* off). The level-up to 2 was logged in the same second as
+  the Miller's last line, the tracker ticked his step in that second, and
+  Mortimer's thanks came 77 s later, with no second tick on it. The kill
+  itself was not timed by a press; the person reported that the row
+  changed at his death (§ "Live 14: version 0.1.1 in the game").
 
 ## Character detection
 
@@ -1775,6 +1913,103 @@ log's whole-second times. From 16:52:06Z to 16:52:43Z, before the panel
 cases' first press and with no press among them, the log has nine
 `inventory open` and `inventory closed` pairs, each with its hide and
 show; what was open then is not recorded.
+
+### Live 14: version 0.1.1 in the game
+
+Measured 2026-10-28 with the 0.1.1 workorder's two live procedures
+(the workorder's live captures, kept on the owner's machine).
+`Client.txt`'s local times were UTC+1, aligned with the
+overlay's UTC through the `G1_1` entry line (0 s apart).
+
+**Live procedure 1** ran over the game (client 0.5.5e), on a new Warrior
+created for it, with the release exe of commit `820ae997` (written after
+the head commit, SHA-256 `A676E0E5…E42B`) and a store of its own whose
+`settings.json` was a 0.1.0 file with *Read the screen* on and hiding
+under game panels off. The overlay started at 11:43:37Z and logged
+`panels: on` despite that file. The character entered The Riverbank at
+11:44:48Z, and the overlay took it as a new character and set its screen
+demand on the Miller's step (his bar and the voiced lines) at 11:44:54Z;
+the first `screen: minute:` line, at 11:45:38Z, counted 174 frames. The
+person then turned *Read the screen* off (11:46:49Z), and no `screen:`
+line followed for the rest of the session. The Miller's first line came
+at 11:50:53Z and his last at 11:51:44Z; the level-up to 2 was logged in
+that same second, and the overlay named the character by it and logged
+the move from the Miller's step to the next in that second too (0 s
+after both, at the log's one-second resolution). Mortimer's "Well done!
+Please come inside." came at 11:53:01Z, the encampment loaded at
+11:53:04Z, and the tracker's next move there was to the town step, not a
+second tick of the Miller's. The resize ran in Clearfell Encampment
+(11:53:09Z to 11:54:02Z), the scale from 11:54:47Z to 12:00:47Z, a quit
+and restart at 12:00:58Z and 12:01:18Z, and the last quit at 12:03:26Z.
+Before the character was in the world, the reader twice logged that the
+game window was not 16:9 (700×400, then 2576×1479); it read normally
+once the character was in The Riverbank.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | the exe written at 11:42:02Z, after the head commit (11:38:49Z) |
+| `control` | pass | `start: quest-tracker 0.1.1` naming the session's store and `tray: icon shown` in the launch second |
+| `screen-control` | pass | `screen: minute: 174 frames` at 11:45:38Z, in The Riverbank |
+| `reading-off` | pass | `screen: off` at 11:46:49Z and no `screen:` line after it until the end |
+| `panels-default-on` | pass | `panels: on` at 11:43:37Z, from the 0.1.0 file with hiding off |
+| `miller-demand` | pass | `character: a new character (The Riverbank)` and `screen: reading boss bar and voiced lines for reaching-clearfell/step-2`, both at 11:44:54Z |
+| `settings-rows` | pass | the person read the settings top to bottom: neither *Click-through* nor *Hide under game panels* among them |
+| `play-shows-quests` | pass | after edit mode with Settings open, and again with a quest's detail open, play mode showed the quest list (the person) |
+| `panels-hide` | pass | `panels: inventory open` and the hide line at 11:48:47Z, `inventory closed` and `visibility: shown` at 11:48:49Z; the person: it hid and came back |
+| `miller-levelup-tick` | pass | the step's move at 11:51:44Z, 0 s after the level-up to 2, with no `screen:` line |
+| `miller-before-mortimer` | pass | 77 s before Mortimer's thanks; the person: "quest status changed on kill" |
+| `miller-no-double` | pass | after Mortimer's line the next move was to the town step, at the encampment entry |
+| `miller-tick-delay` | pass (research) | 0 s from the Miller's last line and 0 s from the level-up, both at one-second resolution |
+| `resize-edges` | pass | the person: the resize arrow at the left edge, the bottom edge and the bottom-left corner, and the window resized; `settings.json`'s `window` then held 818 × 808; the overlay's extent over the game went from x 0.81–0.99, y 0.30–0.68 to x 0.67–0.99, y 0.30–0.86 |
+| `scale-content-only` | fail | the window stayed 818 × 808 in `settings.json` and about 0.32 × 0.56 of the game's client through Auto, 1.5 and a lower value, but the person saw the panel's frame inside it change against the scale: "lower scale bigger window, bigger scale smaller window" |
+| `play-click-through-edge` | pass | in play mode a click just inside the panel's left edge, where the resize arrow had shown, walked the character there (the person) |
+| `size-persisted` | pass | after a quit and restart the extent read x 0.69–1.00, y 0.25–0.81, as before the quit; the person: same place, same size |
+| `old-key-dropped` | pass | `settings.json` had no `hide_under_panels` key after the restart |
+| `stop-clean` | pass | `quit: from the tray` and `stop: tailer, worker and panel watcher ended, progress saved` at 12:03:26Z |
+
+The person's first answer on the scale (the frame "changes size
+slightly") was given with the scale still on Auto; the verdict stands on
+the second, with the scale at 1.5 and back. Four `mode play` lines
+(11:54:02Z, 11:56:37Z, 11:57:27Z, 12:00:47Z) have no `shortcut:` line
+before them: edit mode was left without the hotkey, by a control the
+log does not name.
+
+**The scale fix.** Measured afterwards in the built app, on an 818 × 808
+window, outside the game (`docs/quest-tracker/design/review-resizable-panel.md`,
+F4): the webview zoom lays the page out over the whole window at every
+scale, but the panel's 12 px margin was in CSS pixels, which the zoom
+draws larger, so the frame was 800 × 790 at 0.75, 794 × 784 at 1,
+782 × 772 at 1.5 and 770 × 760 at 2. The `scale-fill` change divides the
+margin by the zoom the page measures (the window's outer width over its
+viewport's), so the margin stays 12 window pixels and the frame keeps
+one size at every scale; only the content zooms.
+
+**Live procedure 2** re-checked only that, with no game, on the release
+exe of commit `51fcd0ef` (written after it, SHA-256 `85b640de…e636`) and a
+fresh store whose `settings.json` set scale 1 and a 600 × 700 window at
+1700, 400. The overlay started at 13:05:10Z; the window's extent, read
+from outside with `GetWindowRect` at 96 DPI, was 600 × 700 at 1700, 400.
+In edit mode the person resized it, to 662 × 766 at 1638, 400, the same
+as `settings.json`'s `window`, and that size was the reference from then
+on. The scale was moved to 0.75, 1.5 and 2; the extent was read once,
+after the person's answer, not after each pause, and `settings.json` then
+held 1.25, which the person confirmed and moved to 2. The overlay was
+quit at 13:10:15Z, restarted at 13:10:31Z and quit at 13:11:34Z.
+
+| Check | Verdict | Observed |
+|---|---|---|
+| `build` | pass | the exe written at 13:02:27Z, after the `scale-fill` commit (12:50:45Z) |
+| `control` | pass | `start: quest-tracker 0.1.1` naming the session's store and `tray: icon shown` in the launch second; extent 600 × 700 at 1700, 400, as `settings.json` |
+| `frame-control` | pass | the person: the frame reaches the window's edges on every side, the resize arrow on its left edge; the extent was 662 × 766 after the person's own resize, not the procedure's 600 × 700 |
+| `scale-content-only` | pass | the person: "panel doesnt move anymore, its perfect"; the extent and `window` stayed 662 × 766 at 1638, 400; `scale` reached 2 only after a second ask |
+| `size-persisted` | pass | after the restart the extent was 662 × 766 at 1638, 400, as before the quit, with `scale` 2 and `window` 662 × 766 in `settings.json`; the person: same place and size, the frame filling it |
+| `stop-clean` | pass | `quit: from the tray` and the `stop:` line at 13:11:34Z, no process left |
+
+What the two leave open: the Miller's bar and kill remark did not tick
+his step in the overlay, because the level-up ticked it first and
+*Read the screen* was off by then; the Mortimer route was not run live;
+the scale's frame was judged by the person and the window's extent, not
+measured on a screen capture of the fixed build.
 
 ## Negative results
 

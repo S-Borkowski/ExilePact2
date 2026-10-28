@@ -1,5 +1,7 @@
-//! The panel watcher's thread (Context "Design: the panel watcher"): with
-//! the `hide_under_panels` setting on, it copies a few small patches of the
+//! The panel watcher's thread (Context "Design: the panel watcher"): from
+//! the app's start to its shutdown, whenever the shell gave it a backend
+//! (hiding under game panels is always on since 0.1.1, with no setting to
+//! turn it off), it copies a few small patches of the
 //! game's window where the panels under the overlay draw their frames, tells
 //! from their colour whether one is open (`qt-screen`'s [`PanelTable`] and
 //! [`PanelTracker`]), and tells the worker, on the worker's own channel,
@@ -80,7 +82,7 @@ pub const STOPPED_STATUS: &str =
 pub struct PanelConfig {
     /// The watcher's own backend (`qt-capture` on Windows, built from the
     /// overlay's window handle), never the screen reader's; `None` where
-    /// there is none, and then the setting starts nothing.
+    /// there is none, and then no watcher starts.
     pub backend: Option<Box<dyn ScreenBackend>>,
     /// The panels it watches; `None` is [`qt_screen::shipped_panels`]. Tests pass a
     /// synthetic table.
@@ -272,7 +274,7 @@ pub(crate) fn run_watcher(
     };
     let ended = panic::catch_unwind(AssertUnwindSafe(|| watcher.run(&backend)));
     // The part minute's lines come first, so a session's last panels reach
-    // the log before `panels: off` (or the error's lines).
+    // the log before the shutdown's stop line (or the error's lines).
     watcher.write_minute();
     match ended {
         Ok(Ok(())) => {}

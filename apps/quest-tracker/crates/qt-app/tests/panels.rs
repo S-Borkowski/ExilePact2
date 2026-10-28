@@ -9,10 +9,13 @@
 //! here captures the screen or opens a window. Character names are
 //! invented.
 //!
-//! Baseline: with `hide_under_panels` off no watcher starts, the backend is
-//! never called, and the visibility lines are exactly those of an app with
-//! no panel backend at all, with a panel showing in the fake's copies.
-//! Target: with it on, a panel open under the overlay hides it, with its
+//! Hiding under game panels is always on since 0.1.1: the watcher starts at
+//! every start the shell gives a backend, whatever a 0.1.0 `settings.json`
+//! said, and no setting stops it.
+//!
+//! Baseline: with no panel backend no watcher starts and the overlay never
+//! hides for a panel, with a panel showing in the fake's copies.
+//! Target: with a backend, a panel open under the overlay hides it, with its
 //! line, and the overlay shows again once the panel closes.
 
 use std::collections::BTreeMap;
@@ -217,6 +220,12 @@ impl Window for FakeWindow {
     fn set_scale(&self, _: f64) -> Result<(), String> {
         Ok(())
     }
+    fn set_resizable(&self, _: bool) -> Result<(), String> {
+        Ok(())
+    }
+    fn set_size(&self, _: f64, _: f64) -> Result<(), String> {
+        Ok(())
+    }
     fn place(&self, _: Placement) -> Result<(), String> {
         Ok(())
     }
@@ -394,8 +403,9 @@ struct Harness {
 }
 
 struct Setup {
-    /// `hide_under_panels` in the saved settings.
-    on: bool,
+    /// The `hide_under_panels` key of a 0.1.0 `settings.json` in the store,
+    /// or no settings file at all (`None`).
+    old_key: Option<bool>,
     /// Whether the app gets a panel backend at all.
     backend: bool,
     /// The app's own table (`shipped_panels`) instead of the synthetic one.
@@ -405,7 +415,7 @@ struct Setup {
 impl Default for Setup {
     fn default() -> Setup {
         Setup {
-            on: true,
+            old_key: None,
             backend: true,
             shipped: false,
         }
@@ -415,10 +425,12 @@ impl Default for Setup {
 fn harness(setup: Setup) -> Harness {
     let dir = tempfile::tempdir().expect("temp dir");
     let root = dir.path().to_path_buf();
-    Store::open(root.join("store"))
-        .expect("store")
-        .save_settings(&json!({ "hide_under_panels": setup.on }))
-        .expect("settings written");
+    let store = Store::open(root.join("store")).expect("store");
+    if let Some(on) = setup.old_key {
+        store
+            .save_settings(&json!({ "opacity": 0.5, "hide_under_panels": on }))
+            .expect("settings written");
+    }
     let scene = Arc::new(Scene::new());
     let clock = Arc::new(AtomicU64::new(100_000));
     let config = AppConfig {
@@ -556,7 +568,7 @@ fn pinned(line: &str) -> bool {
     let Some(rest) = line.strip_prefix("panels: ") else {
         return false;
     };
-    if ["on", "off", "resumed", "stopped after an error"].contains(&rest) {
+    if ["on", "resumed", "stopped after an error"].contains(&rest) {
         return true;
     }
     if let Some(r) = rest.strip_prefix("idle (").and_then(|r| r.strip_suffix(')')) {
@@ -684,13 +696,14 @@ fn assert_pinned(h: &Harness) {
 // Tests.
 
 #[test]
-fn panels_setting_off_starts_no_watcher_and_never_hides_baseline() {
-    // The same session, on an app with the setting off and a panel showing
-    // in the fake's copies, and on one with no panel backend at all.
-    let run = |backend: bool| {
+fn panels_no_backend_starts_no_watcher_and_never_hides_baseline() {
+    // The same session, with a panel showing in the fake's copies, on apps
+    // with no panel backend: with no settings file, and with a 0.1.0 file
+    // that turned the setting on.
+    let run = |old_key: Option<bool>| {
         let h = harness(Setup {
-            on: false,
-            backend,
+            old_key,
+            backend: false,
             ..Setup::default()
         });
         h.scene.show("right");
@@ -705,23 +718,23 @@ fn panels_setting_off_starts_no_watcher_and_never_hides_baseline() {
         h.wait_diag(&[SHOWN_LINE]);
         std::thread::sleep(Duration::from_millis(300));
         assert!(!h.app.panel_watcher_running());
-        assert!(!h.app.get_view().settings.hide_under_panels);
         h
     };
-    let h = run(true);
+    let h = run(None);
     assert!(h.scene.calls().is_empty(), "{:?}", h.scene.calls());
     assert!(h.panel_lines().is_empty(), "{:?}", h.panel_lines());
     assert_eq!(h.visibility_lines(), vec![HIDDEN_LINE, SHOWN_LINE]);
     assert_eq!(h.scene.window_calls(), vec!["visible false", "visible true"]);
 
-    let bare = run(false);
-    assert_eq!(bare.visibility_lines(), h.visibility_lines());
-    assert_eq!(bare.scene.window_calls(), h.scene.window_calls());
-    assert_eq!(bare.app.get_view(), h.app.get_view());
+    let old = run(Some(true));
+    assert!(old.scene.calls().is_empty(), "{:?}", old.scene.calls());
+    assert!(old.panel_lines().is_empty(), "{:?}", old.panel_lines());
+    assert_eq!(old.visibility_lines(), h.visibility_lines());
+    assert_eq!(old.scene.window_calls(), h.scene.window_calls());
 
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
-    assert!(bare.app.shutdown(SHUTDOWN_TIMEOUT));
-    for x in [&h, &bare] {
+    assert!(old.app.shutdown(SHUTDOWN_TIMEOUT));
+    for x in [&h, &old] {
         assert!(
             x.diag_text()
                 .contains("stop: tailer and worker ended, progress saved"),
@@ -732,12 +745,83 @@ fn panels_setting_off_starts_no_watcher_and_never_hides_baseline() {
     assert_pinned(&h);
 }
 
+/// The settings the store's `settings.json` holds, as JSON.
+fn saved_settings(h: &Harness) -> serde_json::Value {
+    let saved = Store::open(h.root.join("store"))
+        .expect("store")
+        .load_settings()
+        .expect("settings.json read")
+        .value
+        .expect("settings.json saved");
+    assert!(saved.is_object(), "{saved}");
+    saved
+}
+
+#[test]
+fn panels_watcher_starts_with_default_settings() {
+    // No settings file: a first run, on the defaults.
+    let h = harness(Setup::default());
+    h.app.start();
+    h.wait_diag(&["panels: on"]);
+    assert!(h.app.panel_watcher_running());
+    assert_eq!(h.app.get_view().settings, qt_viewmodel::Settings::default());
+    // It hides the overlay for a panel under it, with nothing turned on.
+    h.scene.show("right");
+    h.feed(&in_the_riverbank());
+    h.in_front(Some(GAME));
+    h.wait_diag(&[PANEL_LINE]);
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+    assert!(h
+        .diag_text()
+        .contains("stop: tailer, worker and panel watcher ended, progress saved"));
+    // What it saved holds the settings, and no such setting among them.
+    let saved = saved_settings(&h);
+    assert!(saved.get("opacity").is_some(), "{saved}");
+    assert!(saved.get("hide_under_panels").is_none(), "{saved}");
+    assert_pinned(&h);
+}
+
+#[test]
+fn panels_watcher_starts_when_an_old_file_turned_it_off() {
+    // A 0.1.0 settings.json that turned the setting off, and, as a control,
+    // one that turned it on: the watcher starts at start either way, and the
+    // next save drops the key while keeping the rest of the file.
+    for old_key in [false, true] {
+        let h = harness(Setup {
+            old_key: Some(old_key),
+            ..Setup::default()
+        });
+        assert_eq!(saved_settings(&h)["hide_under_panels"], old_key);
+        h.app.start();
+        h.wait_diag(&["panels: on"]);
+        assert!(h.app.panel_watcher_running(), "{old_key}");
+        assert_eq!(h.app.get_view().settings.opacity, 0.5);
+        h.scene.show("right");
+        h.feed(&in_the_riverbank());
+        h.in_front(Some(GAME));
+        h.wait_diag(&[PANEL_LINE]);
+        wait_until("the overlay hidden", || {
+            h.scene.window_calls() == vec!["visible false"]
+        });
+        // A change of another setting saves the file.
+        h.app
+            .update_settings(&json!({ "show_skipped": true }))
+            .expect("a known setting");
+        assert!(h.app.panel_watcher_running(), "{old_key}");
+        assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+        let saved = saved_settings(&h);
+        assert!(saved.get("hide_under_panels").is_none(), "{old_key}: {saved}");
+        assert_eq!(saved["opacity"].as_f64(), Some(0.5), "{saved}");
+        assert_eq!(saved["show_skipped"].as_bool(), Some(true), "{saved}");
+        assert_pinned(&h);
+    }
+}
+
 #[test]
 fn panels_panel_under_the_overlay_hides_it_target() {
     let h = harness(Setup::default());
     h.scene.show("right");
     h.app.start();
-    assert!(h.app.get_view().settings.hide_under_panels);
     h.wait_diag(&["panels: on"]);
     h.feed(&in_the_riverbank());
     h.in_front(Some(GAME));
@@ -919,7 +1003,7 @@ fn panels_without_an_overlay_window_pause_with_a_status_line() {
 }
 
 #[test]
-fn panels_turned_off_while_hidden_shows_the_overlay() {
+fn panels_patch_naming_the_old_setting_keeps_the_overlay_hidden() {
     let h = playing(Setup::default());
     h.scene.show("right");
     h.wait_diag(&[PANEL_LINE]);
@@ -927,26 +1011,23 @@ fn panels_turned_off_while_hidden_shows_the_overlay() {
         h.scene.window_calls() == vec!["visible false"]
     });
 
-    let view = h
+    // The 0.1.0 switch is refused as an unknown setting and stops nothing.
+    let err = h
         .app
         .update_settings(&json!({ "hide_under_panels": false }))
-        .expect("the setting off");
-    assert!(!view.settings.hide_under_panels);
-    // Shown by the time the command returns, without waiting for a tick.
-    assert_eq!(h.scene.window_calls(), vec!["visible false", "visible true"]);
-    assert_eq!(h.visibility_lines(), vec![PANEL_LINE, SHOWN_LINE]);
-    assert_eq!(h.panel_lines().last().map(String::as_str), Some("panels: off"));
-    assert!(!h.app.panel_watcher_running());
+        .unwrap_err();
+    assert!(err.contains("unknown setting"), "{err}");
+    assert!(h.app.panel_watcher_running());
     let copied = h.scene.copies().len();
     std::thread::sleep(Duration::from_millis(600));
-    assert_eq!(h.scene.copies().len(), copied);
-    assert_eq!(h.scene.window_calls(), vec!["visible false", "visible true"]);
+    assert!(h.scene.copies().len() > copied);
+    assert_eq!(h.scene.window_calls(), vec!["visible false"]);
+    assert_eq!(h.visibility_lines(), vec![PANEL_LINE]);
 
-    // A watcher that ran and was stopped leaves the stop line as it was.
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
     assert!(h
         .diag_text()
-        .contains("stop: tailer and worker ended, progress saved"));
+        .contains("stop: tailer, worker and panel watcher ended, progress saved"));
     assert_pinned(&h);
 }
 
@@ -1060,20 +1141,19 @@ fn panels_stop_writes_the_pending_minute() {
         .iter()
         .all(|l| !l.starts_with("panels: minute: ")));
 
-    h.app
-        .update_settings(&json!({ "hide_under_panels": false }))
-        .expect("the setting off");
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
     // The part minute's lines, then the stop line.
     let minute = after_minute(&h, 0);
     assert_eq!(
         minute,
-        vec![
-            minute[0].clone(),
-            best_read("right", [2, 3, 0, 2, 0, 2]),
-            "panels: off".to_string(),
-        ]
+        vec![minute[0].clone(), best_read("right", [2, 3, 0, 2, 0, 2])]
     );
-    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+    let text = h.diag_text();
+    let best = text.find(&minute[1]).expect("the best-read line");
+    let stop = text
+        .find("stop: tailer, worker and panel watcher ended")
+        .expect("the stop line");
+    assert!(best < stop, "{text}");
     assert_eq!(
         h.panel_lines()
             .iter()
@@ -1088,7 +1168,7 @@ fn panels_stop_writes_the_pending_minute() {
 fn panels_lines_use_only_the_pinned_shapes() {
     // One run through every line the watcher writes: on, the overlay's
     // place, open, closed, idle for each reason, resumed, each pause,
-    // unseen, the minute, stopped after an error and off.
+    // unseen, the minute and stopped after an error.
     let h = harness(Setup::default());
     h.app.start();
     h.wait_diag(&["panels: idle (pid unconfirmed)"]);
@@ -1171,14 +1251,10 @@ fn panels_lines_use_only_the_pinned_shapes() {
     assert!(!h.app.panel_watcher_running());
     assert_pinned(&h);
 
-    h.app
-        .update_settings(&json!({ "hide_under_panels": false }))
-        .expect("the setting off");
-    assert!(h.status().is_none());
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 
     let lines = h.panel_lines();
-    for shape in ["panels: on", "panels: off", "panels: resumed"] {
+    for shape in ["panels: on", "panels: resumed"] {
         assert!(lines.iter().any(|l| l == shape), "{shape}: {lines:#?}");
     }
     assert_pinned(&h);

@@ -30,13 +30,15 @@
 //! producer's generation so a stopped reader's events are dropped like a
 //! stopped tailer's.
 //!
-//! The panel watcher (`crate::panels`), with the `hide_under_panels` setting
-//! on, is another, built the same way: the worker publishes whether the
-//! overlay may be read (play mode, shown or hidden by a panel alone) with
-//! the confirmed game pid, and the watcher sends which game panel is open
-//! under the overlay on the same channel, under its own generation. The
-//! worker hides the overlay for it ([`PANEL_LINE`]); with the setting off
-//! nothing of it runs and the visibility rule is as it was.
+//! The panel watcher (`crate::panels`) is another, built the same way, and
+//! runs from start to shutdown whenever the shell gave the app a panel
+//! backend (hiding under game panels is always on since 0.1.1; no setting
+//! starts or stops it): the worker publishes whether the overlay may be
+//! read (play mode, shown or hidden by a panel alone) with the confirmed
+//! game pid, and the watcher sends which game panel is open under the
+//! overlay on the same channel, under its own generation. The worker hides
+//! the overlay for it ([`PANEL_LINE`]); with no backend nothing of it runs
+//! and the visibility rule is as it was.
 //!
 //! The update check (`crate::updates`) keeps its state behind a lock of its
 //! own, never taken with the state lock held. It starts from the
@@ -119,6 +121,29 @@ pub enum Placement {
     At { x: i32, y: i32 },
 }
 
+/// The window's size at zoom 1 when none was saved, in logical pixels: the
+/// panel's 320 × 384 CSS px (0.1.0's width and its old `60vh` cap) plus the
+/// 12 px transparent margin on each side that holds its shadow. A first
+/// start multiplies it by the starting zoom.
+pub const DEFAULT_WINDOW_SIZE: (f64, f64) = (344.0, 408.0);
+
+/// The smallest window, in logical pixels, whatever the zoom: at zoom 1 the
+/// edit-mode header (the EDIT chip, the name shortened to about five
+/// letters, the view switch and both buttons) and the way back to play mode
+/// each still fit on one line, measured in the browser preview, and the
+/// body between them keeps about 165 px for rows.
+pub const MIN_WINDOW_SIZE: (f64, f64) = (320.0, 240.0);
+
+/// A window size to keep, in whole logical pixels and never under
+/// [`MIN_WINDOW_SIZE`]; `None` for a size of nothing (a minimised window)
+/// or one that is not a number.
+fn saved_size(width: f64, height: f64) -> Option<(u32, u32)> {
+    let whole = |v: f64, min: f64| {
+        (v.is_finite() && v >= 1.0).then(|| v.round().clamp(min, f64::from(u32::MAX)) as u32)
+    };
+    Some((whole(width, MIN_WINDOW_SIZE.0)?, whole(height, MIN_WINDOW_SIZE.1)?))
+}
+
 /// What the shell does to its window and the desktop. Tauri implements it
 /// in `src-tauri`; tests use a fake that records the calls.
 pub trait Window: Send + Sync + 'static {
@@ -127,8 +152,13 @@ pub trait Window: Send + Sync + 'static {
     /// keyboard focus, so the Settings fields (log path, shortcut) can be
     /// typed in; a window that cannot be activated never receives keys.
     fn set_click_through(&self, on: bool) -> Result<(), String>;
-    /// The `scale` setting as a webview zoom factor (and window size).
+    /// The `scale` setting as a webview zoom factor. It zooms the content
+    /// only: the window's size is the player's ([`Window::set_size`]).
     fn set_scale(&self, factor: f64) -> Result<(), String>;
+    /// Whether the window can be resized by its edges: in edit mode only.
+    fn set_resizable(&self, on: bool) -> Result<(), String>;
+    /// Sizes the window, in logical pixels.
+    fn set_size(&self, width: f64, height: f64) -> Result<(), String>;
     fn place(&self, placement: Placement) -> Result<(), String>;
     /// Registers `hotkey` as the one global shortcut, replacing any other.
     fn register_hotkey(&self, hotkey: &str) -> Result<(), String>;
@@ -195,7 +225,7 @@ pub const SHOWN_LINE: &str = "visibility: shown";
 /// the session has no area line yet ([`waiting_for_area`]).
 pub const NO_AREA_LINE: &str = "visibility: hidden (no character in an area yet this session)";
 /// What the diagnostic log says when play mode hides the overlay because
-/// the panel watcher reads a game panel open under it (`hide_under_panels`).
+/// the panel watcher reads a game panel open under it (`crate::panels`).
 pub const PANEL_LINE: &str = "visibility: hidden (a game panel is open under the overlay)";
 
 /// Whether play mode hides the overlay because no character is in an area
@@ -393,6 +423,14 @@ struct State {
     settings: Settings,
     /// Where the user dragged the window, saved with the settings.
     window_pos: Option<(i32, i32)>,
+    /// The size the user gave the window by its edges in edit mode, in
+    /// whole logical pixels, saved with the settings.
+    window_size: Option<(u32, u32)>,
+    /// The last size the app itself gave the window ([`App::set_window_size`]),
+    /// in whole logical pixels, until a resize that does not match it is
+    /// reported: the shell reports the app's own sizing back as a resize,
+    /// which is not the player's ([`App::window_resized`]).
+    applied_size: Option<(u32, u32)>,
     ui: qt_viewmodel::UiState,
     row_changes: RowChanges,
     /// Which tailer's events count: raised each time a tailer is started or
@@ -483,8 +521,17 @@ impl LogClock {
 impl State {
     fn settings_json(&self) -> Value {
         let mut v = serde_json::to_value(&self.settings).expect("settings serialise");
-        if let (Some((x, y)), Some(obj)) = (self.window_pos, v.as_object_mut()) {
-            obj.insert("window".to_string(), json!({ "x": x, "y": y }));
+        let mut window = Map::new();
+        if let Some((x, y)) = self.window_pos {
+            window.insert("x".to_string(), json!(x));
+            window.insert("y".to_string(), json!(y));
+        }
+        if let Some((width, height)) = self.window_size {
+            window.insert("width".to_string(), json!(width));
+            window.insert("height".to_string(), json!(height));
+        }
+        if let (false, Some(obj)) = (window.is_empty(), v.as_object_mut()) {
+            obj.insert("window".to_string(), Value::Object(window));
         }
         v
     }
@@ -545,8 +592,6 @@ struct After {
     retail: bool,
     /// The screen reader is to start (`true`) or stop (`false`).
     screen: Option<bool>,
-    /// The panel watcher is to start (`true`) or stop (`false`).
-    panels: Option<bool>,
     /// Automatic update checks were turned on (`true`) or off (`false`).
     updates: Option<bool>,
 }
@@ -626,8 +671,8 @@ impl QuitFrom {
 impl App {
     /// Loads the settings, the characters and the saved position, and
     /// decides which log to follow. Starts nothing: see [`App::start`].
-    /// There is no panel watcher backend: the `hide_under_panels` setting
-    /// starts nothing ([`App::with_panels`]).
+    /// There is no panel watcher backend, so no panel watcher starts
+    /// ([`App::with_panels`]).
     pub fn new(config: AppConfig) -> Arc<App> {
         App::with_panels(config, PanelConfig::default())
     }
@@ -707,6 +752,7 @@ impl App {
 
         let mut settings = Settings::default();
         let mut window_pos = None;
+        let mut window_size = None;
         let mut engine = Engine::new(data);
         let mut position = None;
         // Which files exist, so a first run writes its settings and roster.
@@ -730,6 +776,11 @@ impl App {
                     let x = w.get("x")?.as_i64()?;
                     let y = w.get("y")?.as_i64()?;
                     Some((i32::try_from(x).ok()?, i32::try_from(y).ok()?))
+                });
+                window_size = v.get("window").and_then(|w| {
+                    let width = w.get("width")?.as_f64()?;
+                    let height = w.get("height")?.as_f64()?;
+                    saved_size(width, height)
                 });
             }
             if let Some(Value::Object(roster)) =
@@ -831,6 +882,8 @@ impl App {
             engine,
             settings,
             window_pos,
+            window_size,
+            applied_size: None,
             ui,
             row_changes: RowChanges::new(),
             tail_gen: 0,
@@ -926,12 +979,13 @@ impl App {
     /// Applies the window state, registers the shortcut, starts the tailer
     /// and the worker, and announces the first view.
     pub fn start(self: &Arc<Self>) {
-        let (mode, scale, placement, hotkey, log) = {
+        let (mode, scale, placement, size, hotkey, log) = {
             let st = self.lock();
             (
                 st.ui.mode,
                 st.settings.scale,
                 st.placement(),
+                st.window_size,
                 st.settings.hotkey.clone(),
                 st.log_path.clone(),
             )
@@ -977,9 +1031,18 @@ impl App {
         if let Err(e) = self.window.set_click_through(mode == Mode::Play) {
             self.window_error("click-through", &e);
         }
+        if let Err(e) = self.window.set_resizable(mode == Mode::Edit) {
+            self.window_error("resizing", &e);
+        }
+        // A saved size is the window's whatever the zoom, so it is applied
+        // before the window is placed.
+        if let Some((width, height)) = size {
+            self.set_window_size(f64::from(width), f64::from(height));
+        }
         // Placed first, so `auto` reads the monitor the window was placed
-        // on; a window at its default place is placed again once the zoom
-        // has resized it, so its edge keeps the margin to the monitor's side.
+        // on; a window at its default place is placed again once the first
+        // start has sized it from the zoom, so its edge keeps the margin to
+        // the monitor's side.
         if let Err(e) = self.window.place(placement) {
             self.window_error("placement", &e);
         }
@@ -991,8 +1054,22 @@ impl App {
                 None
             };
             self.lock().scale_monitor = monitor;
-            if let Err(e) = self.window.set_scale(self.zoom(scale, monitor)) {
+            let zoom = self.zoom(scale, monitor);
+            if let Err(e) = self.window.set_scale(zoom) {
                 self.window_error("scale", &e);
+            }
+            // No saved size (a first start, or a 0.1.0 settings file): the
+            // default size at the starting zoom (never under the minimum, at
+            // a zoom below 1). It is the app's own, so it is not saved, even
+            // when the shell reports it back while the start is forced into
+            // edit mode ([`App::window_resized`]): the next start sizes from
+            // its own zoom again.
+            if size.is_none() {
+                let ((width, height), (min_w, min_h)) = (DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE);
+                self.set_window_size(
+                    (width * zoom).round().max(min_w),
+                    (height * zoom).round().max(min_h),
+                );
             }
         }
         if placement == Placement::Default {
@@ -1005,9 +1082,8 @@ impl App {
         if self.lock().settings.screen_reading {
             self.start_reader();
         }
-        if self.lock().settings.hide_under_panels {
-            self.start_watcher();
-        }
+        // Always on: it starts whenever there is a backend (Windows).
+        self.start_watcher();
         let mut st = self.lock();
         self.announce(&mut st);
     }
@@ -1570,17 +1646,13 @@ impl App {
 
     /// Publishes what the panel watcher needs to know: whether the overlay
     /// is in play mode, whether it is hidden for a reason other than a
-    /// panel, and the game pid once confirmed. Nothing while the setting is
-    /// off. Replaced only when it changed.
+    /// panel, and the game pid once confirmed. Replaced only when it
+    /// changed.
     fn publish_panels(&self, st: &State) {
-        let snapshot = if st.settings.hide_under_panels {
-            PanelSnapshot {
-                play: st.ui.mode == Mode::Play,
-                overlay_hidden: matches!(st.visibility, Visibility::Hidden | Visibility::NoArea),
-                pid: st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed),
-            }
-        } else {
-            PanelSnapshot::default()
+        let snapshot = PanelSnapshot {
+            play: st.ui.mode == Mode::Play,
+            overlay_hidden: matches!(st.visibility, Visibility::Hidden | Visibility::NoArea),
+            pid: st.game_pid.filter(|_| st.pid_trust == PidTrust::Confirmed),
         };
         let mut slot = self.panel_slot().lock().unwrap_or_else(|p| p.into_inner());
         if **slot != snapshot {
@@ -1630,35 +1702,6 @@ impl App {
         }
     }
 
-    /// Stops the panel watcher: first drops any panel hide (the overlay
-    /// shows at once, unless something else hides it), then waits for the
-    /// thread up to [`SHUTDOWN_TIMEOUT`]; what it queued is dropped and its
-    /// status line cleared.
-    fn stop_watcher(&self) {
-        let watcher = self.lock_watcher().take();
-        if let Some(w) = &watcher {
-            w.stop.store(true, Ordering::Release);
-        }
-        {
-            let mut st = self.lock();
-            st.panel_gen += 1;
-            st.panel_open = None;
-            st.set_status(Source::Panels, None);
-            if st.visibility == Visibility::Panel {
-                self.apply_visibility(&mut st, Visibility::Shown, None);
-            }
-            self.publish_panels(&st);
-        }
-        let ended = watcher.map(|w| join_by(w.handle, Instant::now() + SHUTDOWN_TIMEOUT));
-        if ended == Some(false) {
-            self.diag(&format!(
-                "error: panel watcher: did not end within {} ms",
-                SHUTDOWN_TIMEOUT.as_millis()
-            ));
-        }
-        self.diag("panels: off");
-    }
-
     fn lock_watcher(&self) -> MutexGuard<'_, Option<WatcherHandle>> {
         self.watcher.lock().unwrap_or_else(|p| p.into_inner())
     }
@@ -1695,9 +1738,8 @@ impl App {
     /// the pid of the window in front, and hides the overlay unless that is
     /// the game or the overlay itself, and before that it hides the overlay
     /// while the session has no character in an area ([`waiting_for_area`]).
-    /// With `hide_under_panels` on, it also hides the overlay in play mode
-    /// while the panel watcher reads a game panel open under it, when
-    /// nothing before that hides it. Each change is applied and logged once
+    /// It also hides the overlay in play mode while the panel watcher reads
+    /// a game panel open under it, when nothing before that hides it. Each change is applied and logged once
     /// ([`HIDDEN_LINE`], [`NO_AREA_LINE`], [`PANEL_LINE`], [`SHOWN_LINE`]);
     /// showing never activates the window, so the game keeps focus. A game
     /// pid read only from catch-up
@@ -1763,8 +1805,7 @@ impl App {
             Visibility::NoArea
         } else if !overlay_shown(mode, used, front, std::process::id()) {
             Visibility::Hidden
-        } else if mode == Mode::Play && st.settings.hide_under_panels && st.panel_open.is_some()
-        {
+        } else if mode == Mode::Play && st.panel_open.is_some() {
             Visibility::Panel
         } else {
             Visibility::Shown
@@ -1981,7 +2022,9 @@ impl App {
     /// to the window at once; a new shortcut or log path is applied after
     /// the lock is released. A patch that names the scale has the monitor
     /// read first, before the lock, for `auto`. A key the settings do not
-    /// have (the old `dock` side among them) refuses the whole patch.
+    /// have (the old `dock` side and `hide_under_panels` switch among them)
+    /// refuses the whole patch. No setting starts or stops the panel
+    /// watcher.
     pub fn update_settings(&self, patch: &Value) -> Result<View, String> {
         let names_scale = patch.get("scale").is_some();
         let _scale = names_scale.then(|| self.scale_lock.lock().unwrap_or_else(|p| p.into_inner()));
@@ -2005,9 +2048,6 @@ impl App {
             }
             if new.screen_reading != old.screen_reading {
                 after.screen = Some(new.screen_reading);
-            }
-            if new.hide_under_panels != old.hide_under_panels {
-                after.panels = Some(new.hide_under_panels);
             }
             if new.check_updates != old.check_updates {
                 after.updates = Some(new.check_updates);
@@ -2145,10 +2185,57 @@ impl App {
         self.follow_monitor();
     }
 
+    /// Sizes the window through [`Window::set_size`], remembering the size
+    /// as the app's own first, so the resize the shell reports back for it
+    /// (which may arrive before the call returns) is not taken for the
+    /// player's ([`App::window_resized`]).
+    fn set_window_size(&self, width: f64, height: f64) {
+        self.lock().applied_size = saved_size(width, height);
+        if let Err(e) = self.window.set_size(width, height) {
+            self.window_error("size", &e);
+        }
+    }
+
+    /// The window was resized to `width` × `height` logical pixels, in any
+    /// mode. A size within 1 px in each dimension of the last one the app
+    /// applied itself ([`App::set_window_size`]; a size taken through
+    /// physical pixels at a fractional DPI may not come back exact) is the
+    /// app's own sizing reported back, and is ignored however often it
+    /// comes; the first size that does not match ends that, and is judged
+    /// as any other. Only a resize in edit mode (by the panel's edges) is
+    /// kept as the window's size, like a move; one in play mode is not, and
+    /// a size of nothing (a minimised window) is ignored. The zoom does not
+    /// follow the size. An edge resize that ends on the app's own size is
+    /// not kept, which changes nothing the player sees.
+    pub fn window_resized(&self, width: f64, height: f64) {
+        let Some(size) = saved_size(width, height) else {
+            return;
+        };
+        let keep = {
+            let mut st = self.lock();
+            if let Some((w, h)) = st.applied_size {
+                if size.0.abs_diff(w) <= 1 && size.1.abs_diff(h) <= 1 {
+                    return;
+                }
+                st.applied_size = None;
+            }
+            let keep = st.ui.mode == Mode::Edit && st.window_size != Some(size);
+            if keep {
+                st.window_size = Some(size);
+                st.dirty = true;
+            }
+            keep
+        };
+        if keep {
+            self.save_if_due(false);
+        }
+    }
+
     /// Re-evaluates the `auto` scale on the window's monitor, after a move or
     /// a DPI scale change, and applies the zoom only when it differs from
-    /// the one applied. A fixed scale never reads the monitor. A window at
-    /// its default place is placed again after a new zoom has resized it.
+    /// the one applied. A fixed scale never reads the monitor. The zoom
+    /// never sizes the window (0.1.1); a window at its default place is
+    /// placed again after a new zoom, on the monitor it is now on.
     pub fn follow_monitor(&self) {
         let _scale = self.scale_lock.lock().unwrap_or_else(|p| p.into_inner());
         if self.lock().settings.scale != Scale::Auto {
@@ -2238,10 +2325,7 @@ impl App {
             }
         };
         self.save_if_due(false);
-        let again = after.hotkey.is_some()
-            || after.retail
-            || after.screen.is_some()
-            || after.panels.is_some();
+        let again = after.hotkey.is_some() || after.retail || after.screen.is_some();
         if let Some(h) = after.hotkey {
             self.register_hotkey(&h, "change it in Settings");
         }
@@ -2251,11 +2335,6 @@ impl App {
         match after.screen {
             Some(true) => self.start_reader(),
             Some(false) => self.stop_reader(),
-            None => {}
-        }
-        match after.panels {
-            Some(true) => self.start_watcher(),
-            Some(false) => self.stop_watcher(),
             None => {}
         }
         // Turned on, the worker's next tick starts a check when one is due;
@@ -2272,8 +2351,17 @@ impl App {
         Ok(view)
     }
 
+    /// Every switch of mode lands here (`set_mode`, the shortcut, the
+    /// footer's "back to play"). Going to play closes what only edit mode
+    /// can close, the open frame and the quest detail, so play shows the
+    /// quest list; the view kind, folded acts and the collapsed badge stay.
+    /// Going to edit changes no frame.
     fn apply_mode(&self, st: &mut State, mode: Mode) {
         st.ui.mode = mode;
+        if mode == Mode::Play {
+            st.ui.open_frame = None;
+            st.ui.detail = None;
+        }
         match self.window.set_click_through(mode == Mode::Play) {
             Ok(()) => st.set_status(Source::Window, None),
             Err(e) => {
@@ -2283,6 +2371,11 @@ impl App {
                     Some(StatusLine::error(format!("Click-through could not be set: {e}"))),
                 );
             }
+        }
+        // The window is resized by its edges in edit mode only. A failure is
+        // logged: the window keeps the size it has, and the mode still works.
+        if let Err(e) = self.window.set_resizable(mode == Mode::Edit) {
+            self.diag(&format!("error: window resizing: {e}"));
         }
         self.diag(&format!("mode {}", mode_str(mode)));
     }
@@ -2798,6 +2891,12 @@ mod tests {
             Ok(())
         }
         fn set_scale(&self, _: f64) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_resizable(&self, _: bool) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_size(&self, _: f64, _: f64) -> Result<(), String> {
             Ok(())
         }
         fn place(&self, _: Placement) -> Result<(), String> {

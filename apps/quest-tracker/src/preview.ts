@@ -12,7 +12,7 @@
 // The fixtures are reached only behind `import.meta.env.DEV`, which is false
 // in `vite build`, so the release bundle carries none of them.
 
-import type { Bridge, Command, CommandArgs } from './bridge';
+import type { Bridge, Command, CommandArgs, ResizeDirection } from './bridge';
 import { type Mode, type View, MODES } from './ipc';
 
 type Loader = () => Promise<unknown>;
@@ -70,16 +70,22 @@ export async function previewFixture(frame: string, mode: Mode | null): Promise<
 /** The bridge in a browser: a fixture view from the URL query, commands logged. */
 export function previewBridge(search: string, root: HTMLElement = document.documentElement): Bridge & {
   readonly calls: Array<{ name: Command; args: unknown }>;
+  /** The resize drags the panel's edge handles asked for, in order. */
+  readonly resizes: ResizeDirection[];
 } {
   const query = parsePreviewQuery(search);
   const calls: Array<{ name: Command; args: unknown }> = [];
+  const resizes: ResizeDirection[] = [];
   return {
     kind: 'preview',
     calls,
+    resizes,
     async start(onView) {
       if (query.scale) {
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
+        // The overlay's margin divides by the page's zoom, as in the app.
+        root.style.setProperty('--page-zoom', query.scale);
       }
       const { view } = await previewFixture(query.frame, query.mode);
       onView(view);
@@ -91,5 +97,11 @@ export function previewBridge(search: string, root: HTMLElement = document.docum
     },
     // A browser tab has no overlay window to move.
     startDrag() {},
+    // Nor one to resize: the press is recorded and logged, so the handles
+    // can be checked in the preview.
+    startResize(direction) {
+      resizes.push(direction);
+      console.info(`quest-tracker preview: resize from ${direction}`);
+    },
   };
 }

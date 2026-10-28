@@ -3330,3 +3330,121 @@ fn new_character_never_inherits_lines_held_before_its_entry() {
         Status::InProgress
     );
 }
+
+// -- the level-up signal (Context "The level-up signal") ---------------------
+
+/// The fixture with a `level_up` signal: fixture-beira's step gains, after
+/// its own signal, a level-up to 2 in `G1_2` (`step/meet-beira/1`).
+fn level_up_value() -> Value {
+    let mut v: Value = serde_json::from_str(&data_text()).unwrap();
+    v["quests"][1]["steps"][0]["signals"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({ "kind": "level_up", "level": 2, "area": "G1_2" }));
+    v
+}
+
+#[test]
+fn validator_accepts_and_refuses_level_up_signals() {
+    // Accepted, and written back in the same shape.
+    let v = level_up_value();
+    let data = QuestData::from_value(&v).unwrap_or_else(|e| panic!("{e}"));
+    let out = serde_json::to_value(&data).unwrap();
+    assert_eq!(
+        out["quests"][1]["steps"][0]["signals"][1],
+        serde_json::json!({ "kind": "level_up", "level": 2, "area": "G1_2" })
+    );
+    assert_eq!(QuestData::from_value(&out).unwrap(), data, "round trip");
+
+    // Refused, naming the quest and the field.
+    let sig = "steps[0].signals[1]";
+    type Mutate = fn(&mut Value);
+    let cases: Vec<(&str, &str, &str, Mutate)> = vec![
+        ("no level", "level", "is missing", |s| {
+            s.as_object_mut().unwrap().remove("level");
+        }),
+        ("no area", "area", "is missing", |s| {
+            s.as_object_mut().unwrap().remove("area");
+        }),
+        ("a level-up to 1", "level", "2 or more", |s| s["level"] = 1.into()),
+        ("a level of 0", "level", "1 or more", |s| s["level"] = 0.into()),
+        ("an unknown key", "min", "not a field", |s| s["min"] = 2.into()),
+        ("an unknown area", "area", "is not in areas", |s| s["area"] = "G9_9".into()),
+    ];
+    for (what, field, message, mutate) in cases {
+        let mut v = level_up_value();
+        mutate(&mut v["quests"][1]["steps"][0]["signals"][1]);
+        let err = QuestData::from_value(&v).expect_err(what);
+        assert_eq!(err.quest.as_deref(), Some("fixture-beira"), "{what}: {err}");
+        assert_eq!(err.field, format!("{sig}.{field}"), "{what}: {err}");
+        assert!(err.message.contains(message), "{what}: {err}");
+    }
+    // The unknown-kind message lists it.
+    let mut v = level_up_value();
+    v["quests"][2]["unlock"][0]["kind"] = "telepathy".into();
+    let err = QuestData::from_value(&v).expect_err("unknown kind");
+    assert!(err.message.contains("level_up"), "{err}");
+}
+
+/// The `level_up` signal over the fixture: refused and counted while the
+/// area is unknown, kept by the unconfirmed character a level-up makes
+/// active and lost with it when a join line revokes it, never fired by a
+/// party member's level-up, and only for its own level in its own area.
+#[test]
+fn level_up_signal_fires_only_for_the_character_it_is_taken_as() {
+    let data = Arc::new(QuestData::from_value(&level_up_value()).unwrap());
+    let fired = |engine: &Engine, name: &str| {
+        engine.character(name).is_some_and(|c| {
+            c.evidence
+                .get("fixture-beira")
+                .is_some_and(|e| e.contains("step/meet-beira/1"))
+        })
+    };
+    let up = |name: &str, level: u32| line(&format!(": {name} (Witch) is now level {level}"));
+
+    // The area unknown: an unknown name's level-up makes it active as
+    // unconfirmed, and the signal is refused and counted, once.
+    let mut engine = Engine::new(Arc::clone(&data));
+    feed(&mut engine, &[MARKER.to_string(), up(ODILE, 2)], true);
+    assert_eq!(engine.current(), Some(ODILE));
+    assert!(!fired(&engine, ODILE));
+    assert_eq!(engine.refused_count(), 1);
+    assert_eq!(engine.refused_quests(), ["fixture-beira"]);
+
+    // In another area, or to another level, nothing fires and nothing is
+    // refused.
+    feed(&mut engine, &[area_line("G1_town"), up(ODILE, 2), area_line("G1_2"), up(ODILE, 3)], true);
+    assert!(!fired(&engine, ODILE));
+    assert_eq!(engine.refused_count(), 1);
+
+    // Target: in its area, a level-up to its level fires it for the active
+    // unconfirmed character, live.
+    let got = feed(&mut engine, &[up(ODILE, 2)], true);
+    assert!(fired(&engine, ODILE));
+    assert!(
+        got.iter().any(|t| t.character == ODILE
+            && t.quest_id == "fixture-beira"
+            && t.step_to.as_deref() == Some("meet-beira")
+            && t.live),
+        "{got:?}"
+    );
+    // A join line revokes the unconfirmed character, and its evidence with it.
+    feed(&mut engine, &[line(&format!(": {ODILE} has joined the area."))], true);
+    assert!(engine.character(ODILE).is_none());
+
+    // A party member's level-up there fires nothing for anyone.
+    let mut engine = Engine::new(Arc::clone(&data));
+    let got = feed(
+        &mut engine,
+        &[
+            MARKER.to_string(),
+            area_line("G1_2"),
+            line(": Bram_Holloway has joined the area."),
+            up("Bram_Holloway", 2),
+        ],
+        true,
+    );
+    assert!(engine.characters().is_empty(), "{:?}", engine.characters());
+    assert!(got.is_empty(), "{got:?}");
+    assert_eq!(engine.refused_count(), 0);
+}

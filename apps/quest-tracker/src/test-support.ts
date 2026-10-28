@@ -4,7 +4,7 @@
 
 import { flushSync, mount, unmount } from 'svelte';
 import App from './App.svelte';
-import type { Bridge, Command, CommandArgs } from './bridge';
+import type { Bridge, Command, CommandArgs, ResizeDirection } from './bridge';
 import type { Mode, QuestRow, RowChange, View } from './ipc';
 
 const RAW = import.meta.glob('../fixtures/viewmodels/*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
@@ -38,6 +38,8 @@ export interface FakeBridge extends Bridge {
   calls: Array<{ name: Command; args: unknown }>;
   /** How many times the UI asked to start a window drag. */
   readonly drags: number;
+  /** The resize drags the UI asked for, by edge or corner, in order. */
+  readonly resizes: ResizeDirection[];
   pushView(view: View): void;
   pushRowChange(change: RowChange): void;
 }
@@ -47,14 +49,19 @@ export function fakeBridge(initial: View | null): FakeBridge {
   let onRowChange: ((change: RowChange) => void) | null = null;
   const calls: Array<{ name: Command; args: unknown }> = [];
   let drags = 0;
+  const resizes: ResizeDirection[] = [];
   return {
     kind: 'tauri',
     calls,
     get drags() {
       return drags;
     },
+    resizes,
     startDrag() {
       drags += 1;
+    },
+    startResize(direction) {
+      resizes.push(direction);
     },
     async start(v, c) {
       onView = v;
