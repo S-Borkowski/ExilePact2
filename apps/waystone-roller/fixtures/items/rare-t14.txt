@@ -1,0 +1,23 @@
+Item Class: Waystones
+Rarity: Rare
+Cold Passage
+Waystone (Tier 14)
+--------
+Waystone Tier: 14
+Revives Available: 0
+Monster Effectiveness: +12%
+Item Rarity: +38%
+Pack Size: +9%
+Waystone Drop Chance: +120%
+--------
+Item Level: 78
+--------
+Area is overrun by the Murkfolk
+Area contains 4 additional Murk Pools
+Players have 25% less Recovery Rate of Life, Mana and Glimmer
+Monsters have 35% increased Hopping Speed
++19% Monster Spectral Resistances
+Monsters have 50% increased Shadow Damage
+Players have 18% less Whisper Resistance
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

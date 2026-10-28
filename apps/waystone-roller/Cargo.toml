@@ -1,0 +1,42 @@
+# The waystone-roller Cargo workspace: the search-string engine (`wr-regex`)
+# as a library crate. Every external dependency is pinned here with `=` and
+# taken by members with `workspace = true`; a member never names a version
+# of its own. The versions are the quest tracker's (apps/quest-tracker), so
+# the lock holds no package that one does not already hold.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/wr-regex",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+tauri = { version = "=2.12.3", features = [] }
+tauri-build = { version = "=2.7.2", features = [] }
+tauri-plugin-global-shortcut = "=2.4.1"
+tauri-plugin-single-instance = "=2.5.3"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.152"
+regex = "=1.13.1"
+# Windows-only: the clipboard (CF_UNICODETEXT through OpenClipboard and a
+# moveable GlobalAlloc block) and MessageBeep.
+windows-sys = { version = "=0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Diagnostics_Debug",
+] }
+# Dev-only: temporary directories for tests.
+tempfile = "=3.27.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

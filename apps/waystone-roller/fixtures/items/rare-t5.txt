@@ -1,0 +1,19 @@
+Item Class: Waystones
+Rarity: Rare
+Brine Steps
+Waystone (Tier 5)
+--------
+Waystone Tier: 5
+Revives Available: 0
+Monster Effectiveness: +12%
+Item Rarity: +38%
+Pack Size: +9%
+Waystone Drop Chance: +120%
+--------
+Item Level: 69
+--------
+Monsters deal 18% of Damage as Extra Murk
+Monsters' Skills Chain 2 additional times
+Players have 20% less Recovery Rate of Life, Mana and Glimmer
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.

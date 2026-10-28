@@ -1,0 +1,24 @@
+Item Class: Waystones
+Rarity: Rare
+Dusk Hollow
+Waystone (Tier 15)
+--------
+Waystone Tier: 15
+Revives Available: 0
+Monster Effectiveness: +12%
+Item Rarity: +38%
+Pack Size: +9%
+Waystone Drop Chance: +120%
+--------
+Item Level: 79
+--------
+Monsters deal 25% of Damage as Extra Glimmer
+15% more Waystones found in Area
+Monsters have 30% increased Hopping Speed
+10% more Rarity of Items found in this Area
+Players are cursed with Drowsiness
+Monsters have 40% increased Shadow Damage
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
+--------
+Corrupted

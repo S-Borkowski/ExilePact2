@@ -1,0 +1,97 @@
+{
+  "note": "Invented waystones in the assumed item-text layout (wr-regex ITEM_FRAME_LINES; Live procedure 1 replaces the assumption). Mods are the fixture mods of ../mods_min.json; rare names are invented. The test oracle reads what each item is from here, never from its text.",
+  "items": [
+    {
+      "file": "rare-t15-corrupted.txt",
+      "rarity": "rare",
+      "tier": 15,
+      "corrupted": true,
+      "mods": [
+        "monsters-deal-of-damage-as-extra-glimmer",
+        "monsters-have-increased-hopping-speed",
+        "players-are-cursed-with-drowsiness",
+        "monsters-have-increased-shadow-damage"
+      ]
+    },
+    {
+      "file": "rare-t5.txt",
+      "rarity": "rare",
+      "tier": 5,
+      "corrupted": false,
+      "mods": [
+        "monsters-deal-of-damage-as-extra-murk",
+        "monsters-skills-chain-additional-times",
+        "players-have-less-recovery-rate-of-life-mana-and-glimmer"
+      ]
+    },
+    {
+      "file": "magic-t12.txt",
+      "rarity": "magic",
+      "tier": 12,
+      "corrupted": false,
+      "mods": [
+        "area-is-overrun-by-the-murkfolk",
+        "players-have-less-whisper-resistance"
+      ]
+    },
+    {
+      "file": "magic-t9-corrupted.txt",
+      "rarity": "magic",
+      "tier": 9,
+      "corrupted": true,
+      "mods": [
+        "monster-spectral-resistances",
+        "monster-have-chance-to-bleat"
+      ]
+    },
+    {
+      "file": "normal-t1.txt",
+      "rarity": "normal",
+      "tier": 1,
+      "corrupted": false,
+      "mods": []
+    },
+    {
+      "file": "normal-t16-corrupted.txt",
+      "rarity": "normal",
+      "tier": 16,
+      "corrupted": true,
+      "mods": []
+    },
+    {
+      "file": "rare-t10.txt",
+      "rarity": "rare",
+      "tier": 10,
+      "corrupted": false,
+      "mods": [
+        "area-contains-additional-murk-pools",
+        "area-has-patches-of-sparkling-ground",
+        "monster-have-chance-to-bleat",
+        "monsters-deal-of-damage-as-extra-glimmer"
+      ]
+    },
+    {
+      "file": "rare-t14.txt",
+      "rarity": "rare",
+      "tier": 14,
+      "corrupted": false,
+      "mods": [
+        "area-is-overrun-by-the-murkfolk",
+        "players-have-less-recovery-rate-of-life-mana-and-glimmer",
+        "monsters-have-increased-hopping-speed",
+        "monster-spectral-resistances",
+        "monsters-have-increased-shadow-damage",
+        "players-have-less-whisper-resistance"
+      ]
+    },
+    {
+      "file": "magic-t3.txt",
+      "rarity": "magic",
+      "tier": 3,
+      "corrupted": false,
+      "mods": [
+        "monsters-skills-chain-additional-times"
+      ]
+    }
+  ]
+}

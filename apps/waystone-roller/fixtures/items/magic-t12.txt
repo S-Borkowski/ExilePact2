@@ -1,0 +1,18 @@
+Item Class: Waystones
+Rarity: Magic
+Waystone (Tier 12) of Whispers
+--------
+Waystone Tier: 12
+Revives Available: 0
+Monster Effectiveness: +12%
+Item Rarity: +38%
+Pack Size: +9%
+Waystone Drop Chance: +120%
+--------
+Item Level: 76
+--------
+Area is overrun by the Murkfolk
+Area contains 3 additional Murk Pools
+Players have 15% less Whisper Resistance
+--------
+Can be used in a Map Device, allowing you to enter a Map. Waystones can only be used once.
