@@ -1,0 +1,17 @@
+{
+  "blocked_currencies": [],
+  "check_updates": true,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": null,
+  "install": {
+    "progress": null,
+    "state": "unsigned",
+    "text": "1.3.0 is available but cannot be installed: the release is not signed."
+  },
+  "update": {
+    "newer": "1.3.0",
+    "state": "available",
+    "text": "Crafting Helper 1.3.0 is available. You have 1.2.0."
+  },
+  "version": "1.2.0"
+}

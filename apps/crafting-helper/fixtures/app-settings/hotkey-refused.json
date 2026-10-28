@@ -1,0 +1,20 @@
+{
+  "blocked_currencies": [],
+  "check_updates": false,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": {
+    "kind": "error",
+    "text": "Ctrl+Alt+C is the game's own item copy, so it cannot be the hotkey. The hotkey is still Ctrl+Alt+X."
+  },
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
+  "update": {
+    "newer": null,
+    "state": "idle",
+    "text": "Not checked yet."
+  },
+  "version": "1.2.0"
+}

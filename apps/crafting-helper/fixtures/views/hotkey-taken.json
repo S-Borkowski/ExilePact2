@@ -1,0 +1,13 @@
+{
+  "grab": null,
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": false
+  },
+  "status": {
+    "kind": "error",
+    "text": "Hotkey Ctrl+Alt+X is taken by another program. Choose another one in Settings."
+  },
+  "update_available": null
+}

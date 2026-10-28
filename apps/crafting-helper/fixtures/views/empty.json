@@ -1,0 +1,10 @@
+{
+  "grab": null,
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": false
+  },
+  "status": null,
+  "update_available": null
+}

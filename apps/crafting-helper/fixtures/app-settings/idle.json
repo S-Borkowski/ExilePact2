@@ -1,0 +1,17 @@
+{
+  "blocked_currencies": [],
+  "check_updates": false,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": null,
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
+  "update": {
+    "newer": null,
+    "state": "idle",
+    "text": "Not checked yet."
+  },
+  "version": "1.2.0"
+}

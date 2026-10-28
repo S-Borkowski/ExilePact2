@@ -1,0 +1,18 @@
+{
+  "grab": {
+    "line_count": 10,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Gloves\nRarity: Rare\nGale Grip\nRiveted Mitts\n--------\nArmour: 52\n--------\nItem Level: 74\n--------\n+31 to maximum Life"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": true
+  },
+  "status": {
+    "kind": "info",
+    "text": "Grabbed an item: 10 lines."
+  },
+  "update_available": null
+}
