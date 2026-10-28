@@ -20,6 +20,24 @@
         ],
         "createdAt": "2026-10-27T07:44:38.808Z",
         "reason": "Claude: synthetic parser fixture mirroring poe2db.tw class-page markup for tests/test_quest_tracker_poe2db.py; not a rendered UI"
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "tests/fixtures/quest_tracker/poe2db/Ranger.html"
+        ],
+        "createdAt": "2026-10-28T19:01:31.943Z",
+        "reason": "Claude: test fixture mimicking a poe2db class page for the poe2db tool's parser tests, not shipped UI"
+      },
+      {
+        "rule": "skipped-heading",
+        "value": "*",
+        "files": [
+          "tests/fixtures/quest_tracker/poe2db/Ranger.html"
+        ],
+        "createdAt": "2026-10-28T19:01:32.180Z",
+        "reason": "Claude: test fixture mimicking a poe2db class page for the poe2db tool's parser tests, not shipped UI"
       }
     ]
   }

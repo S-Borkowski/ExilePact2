@@ -6,18 +6,23 @@
 //!   `RegisterHotKey`, system-wide and exclusive; a combination another
 //!   program holds is refused and the old one stays registered), the
 //!   clipboard written through Win32 with the window's handle, the error
-//!   beep, the `wr:view` event to the main window and `wr:app-settings` to
-//!   the Settings window, opening the Settings window, and the restart an
-//!   installed update asks for (an exit through the quit path below).
+//!   beep, the paste's four primitives from [`paste`] (one key event, any
+//!   key down, the title of the window in front, a pause), the `wr:view`
+//!   event to the main window and `wr:app-settings` to the Settings window,
+//!   opening the Settings window, and the restart an installed update asks
+//!   for (an exit through the quit path below). The shortcut's handler runs
+//!   `App::hotkey_pressed` on a blocking task, so the paste's pauses never
+//!   block the main thread.
 //! - **Update transport**: [`NetTransport`] implements
 //!   `wr_app::UpdateTransport` over `ep-net`, the app's only network code
 //!   (the release list and the two fixed assets of a waystone roller
 //!   release; no caller names a host or a URL). `wr-app` calls it only on a
 //!   check's or an install's own thread. Nothing here opens a URL.
 //! - **Commands**: `get_view` and `get_app_settings` (sync) and the async
-//!   `update_selection`, `copy_now`, `set_hotkey`, `open_settings`,
-//!   `update_settings`, `check_for_updates`, `install_update` and
-//!   `cancel_update`, each forwarded to the `App` method of the same name.
+//!   `update_selection`, `copy_now`, `set_hotkey`, `set_auto_paste`,
+//!   `open_settings`, `update_settings`, `check_for_updates`,
+//!   `install_update` and `cancel_update`, each forwarded to the `App`
+//!   method of the same name.
 //! - **Single instance**: a second launch exits and brings this window up.
 //! - **Windows**: `main`, ordinary, titled "Waystone Roller", resizable, in
 //!   the taskbar; closing it quits the app (even with the Settings window
@@ -33,15 +38,23 @@
 //!   arguments. At start a background thread removes what an install leaves
 //!   (`<exe>.old`, a stale `<exe>.download`).
 //!
-//! The app sends nothing to the game: no input, no window message, no
-//! memory read. Its only effects outside its windows are the clipboard, the
-//! beep, the update check's requests to GitHub and, when the user presses
-//! the install button, replacing its own exe.
+//! The app sends the game one thing: on the global shortcut, with
+//! auto-paste on and the window in front titled `Path of Exile 2`, Ctrl+A
+//! then Ctrl+V to that window, so its focused search box is replaced by the
+//! search just copied ([`paste`], the only input the app sends). Nothing
+//! else: no mouse input, no typed text, no window message, no focus change,
+//! no other process opened, no memory read. Its other effects outside its
+//! windows are the clipboard, the beep, the update check's requests to
+//! GitHub and, when the user presses the install button, replacing its own
+//! exe.
+
+mod paste;
 
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::Value;
 use tauri::{
@@ -52,7 +65,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use wr_app::ep_update::spawn_cleanup;
 use wr_app::{
     Answer, App, AppConfig, AppSettingsView, AssetKind, BeepAttempt, DownloadError, HotkeyError,
-    Store, TransportError, UpdateConfig, UpdateSetup, UpdateTransport, Version, View,
+    Key, Store, TransportError, UpdateConfig, UpdateSetup, UpdateTransport, Version, View,
 };
 
 /// The main window's label (`tauri.conf.json`).
@@ -132,6 +145,23 @@ impl wr_app::Shell for TauriShell {
 
     fn beep(&self) -> Vec<BeepAttempt> {
         clipboard::beep()
+    }
+
+    fn foreground_title(&self) -> Option<String> {
+        paste::foreground_title()
+    }
+
+    fn any_key_down(&self) -> bool {
+        paste::any_key_down()
+    }
+
+    fn send_key(&self, key: Key, down: bool) -> Result<(), String> {
+        paste::send_key(key, down)
+    }
+
+    /// On the blocking task `later()` runs the shortcut on.
+    fn pause(&self, duration: Duration) {
+        paste::pause(duration);
     }
 
     fn emit_view(&self, view: &View) {
@@ -466,6 +496,11 @@ fn set_hotkey(app: Shared<'_>, hotkey: String) -> View {
 }
 
 #[tauri::command(async)]
+fn set_auto_paste(app: Shared<'_>, on: bool) -> View {
+    app.set_auto_paste(on)
+}
+
+#[tauri::command(async)]
 fn open_settings(app: Shared<'_>) -> Result<(), String> {
     app.open_settings()
 }
@@ -590,6 +625,7 @@ pub fn run() {
             update_selection,
             copy_now,
             set_hotkey,
+            set_auto_paste,
             open_settings,
             get_app_settings,
             update_settings,

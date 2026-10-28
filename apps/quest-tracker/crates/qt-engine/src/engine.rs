@@ -274,7 +274,7 @@ impl Held {
 /// What the screen reader saw, as the engine takes it
 /// ([`Engine::apply_screen`]): a `screen` signal's kind and the name it
 /// reads, the boss for `bar_gone` and `kill_remark`, the NPC for
-/// `quest_complete`. Names come from the shipped screen signals
+/// `quest_complete`, the key for `remark`. Names come from the shipped screen signals
 /// ([`Engine::screen_demand`]), never from what was read.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScreenEvent {
@@ -301,6 +301,13 @@ impl ScreenEvent {
         ScreenEvent {
             what: ScreenWhat::QuestComplete,
             name: npc.to_string(),
+        }
+    }
+
+    pub fn remark(key: &str) -> ScreenEvent {
+        ScreenEvent {
+            what: ScreenWhat::Remark,
+            name: key.to_string(),
         }
     }
 }
@@ -339,7 +346,7 @@ pub struct ScreenDemand {
     /// The signal's id, `step/<step id>/<i>`, as evidence stores it.
     pub signal_id: String,
     pub what: ScreenWhat,
-    /// The boss or NPC the signal names.
+    /// The boss, NPC or remark key the signal names.
     pub name: String,
     /// The area code it is tied to (the current area).
     pub area: String,

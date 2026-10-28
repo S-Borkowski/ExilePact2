@@ -2749,7 +2749,7 @@ dependencies = [
 
 [[package]]
 name = "qt-app"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ep-update",
  "qt-engine",
@@ -2765,7 +2765,7 @@ dependencies = [
 
 [[package]]
 name = "qt-capture"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "qt-screen",
  "windows",
@@ -2773,7 +2773,7 @@ dependencies = [
 
 [[package]]
 name = "qt-engine"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "qt-logline",
  "regex",
@@ -2784,7 +2784,7 @@ dependencies = [
 
 [[package]]
 name = "qt-logline"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "regex",
  "serde",
@@ -2794,7 +2794,7 @@ dependencies = [
 
 [[package]]
 name = "qt-replay"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "qt-capture",
  "qt-engine",
@@ -2809,14 +2809,14 @@ dependencies = [
 
 [[package]]
 name = "qt-screen"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde_json",
 ]
 
 [[package]]
 name = "qt-store"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "qt-tailer"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "serde",
  "serde_json",
@@ -2835,7 +2835,7 @@ dependencies = [
 
 [[package]]
 name = "qt-viewmodel"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "qt-engine",
  "serde",
@@ -2845,7 +2845,7 @@ dependencies = [
 
 [[package]]
 name = "quest-tracker"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ep-net",
  "qt-app",

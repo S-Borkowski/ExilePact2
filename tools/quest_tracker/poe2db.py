@@ -952,6 +952,499 @@ def remarks(cache: Path, data_path: Path, classes: list[str] | None = None,
 
 
 # --------------------------------------------------------------------------
+# The remark ledger: every campaign remark key of the class pages, accounted for
+#
+# `apps/quest-tracker/data/remark-ledger/<part>.json` names each key whose
+# sound belongs to a campaign act, with the quest steps it is attached to or
+# the reason it is not. The ledger holds keys, ids and our own words; the
+# classes' lines reach the data only as the draft rows `--apply` writes.
+
+# The playable classes, in the order the draft writes their rows.
+CLASSES = ("Warrior", "Mercenary", "Ranger", "Huntress", "Witch", "Sorceress", "Monk", "Druid")
+# A part and the sound tags (`warrior_gameplay_a1_06.ogg` -> a1) that put a key in it.
+PARTS = (("act1", ("a1",)), ("act2", ("a2",)), ("act3", ("a3",)), ("act4", ("a4",)),
+         ("interludes", ("i1", "i2", "i3", "p1", "p2", "p3")))
+PART_NAMES = tuple(name for name, _ in PARTS)
+# The quest act a part's steps belong to; the interludes are the data's act 6.
+PART_ACTS = {"act1": 1, "act2": 2, "act3": 3, "act4": 4, "interludes": 6}
+SKIP_CODES = ("log-covers", "no-step", "no-area", "not-established", "too-short")
+SOUND_TAG_RE = re.compile(r"(?<=_)([aip]\d+)(?=_)")
+MIN_LETTERS = 12
+DNT = "[DNT]"
+MAX_WHY = 200
+MAX_CANDIDATES = 5
+
+
+def sound_tags(audio: str) -> list[str]:
+    """`ranger_gameplay_a1_11.ogg` -> ['a1']; a wild or endgame sound has none."""
+    return SOUND_TAG_RE.findall(audio)
+
+
+def part_of_tags(tags) -> str | None:
+    """The first part, in PARTS order, that one of `tags` falls in."""
+    for name, part_tags in PARTS:
+        if any(tag in part_tags for tag in tags):
+            return name
+    return None
+
+
+def clean_text(text: str) -> str:
+    """The text rules' first half: `{` and `}` removed, whitespace collapsed."""
+    return " ".join(text.replace("{", "").replace("}", "").split())
+
+
+def _letters(text: str) -> str:
+    return "".join(ch for ch in text.lower() if ch.isalpha())
+
+
+def _too_short(text: str) -> bool:
+    return DNT in text.upper() or len(_letters(text)) < MIN_LETTERS
+
+
+class RemarkPages:
+    """The eight class pages' Text Audio rows, by key.
+
+    `keys` holds the campaign keys in page order (classes in CLASSES order,
+    rows in page order) with their sound tags and part; `texts[key][class]`
+    every distinct cleaned text that class's page gives the key, whatever the
+    row's own sound; `by_letters` every key, campaign or not, a text's letters
+    belong to, for the rule that drops a text two keys share; `voiced` every
+    key with a sound file on at least one page, the only keys that rule counts
+    (a key whose rows all lack one, an older voice set, is never heard).
+    """
+
+    def __init__(self, pages: dict):
+        self.pages = pages
+        self.keys: dict[str, dict] = {}
+        self.texts: dict[str, dict[str, list[str]]] = {}
+        self.by_letters: dict[str, set[str]] = {}
+        self.voiced: set[str] = set()
+        tags_of: dict[str, set[str]] = {}
+        for name in CLASSES:
+            for row in pages[name]["rows"]:
+                key, text = row["key"], row["text"]
+                if row["voiced"]:
+                    self.voiced.add(key)
+                tags_of.setdefault(key, set()).update(row["tags"])
+                texts = self.texts.setdefault(key, {}).setdefault(name, [])
+                if text not in texts:
+                    texts.append(text)
+                if _letters(text):
+                    self.by_letters.setdefault(_letters(text), set()).add(key)
+        for key, tags in tags_of.items():
+            part = part_of_tags(tags)
+            if part is not None:
+                self.keys[key] = {"tags": sorted(tags), "part": part}
+
+    def part_keys(self, part: str) -> list[str]:
+        return [key for key, info in self.keys.items() if info["part"] == part]
+
+    def class_texts(self, key: str, name: str) -> list[str]:
+        return self.texts.get(key, {}).get(name, [])
+
+    def all_texts(self, key: str) -> list[str]:
+        return [t for name in CLASSES for t in self.class_texts(key, name)]
+
+    def shared_with(self, key: str, text: str) -> set[str]:
+        """The other voiced keys any page gives this text (letters only, lower case)."""
+        return (self.by_letters.get(_letters(text), set()) & self.voiced) - {key}
+
+
+def load_class_pages(cache: Path) -> RemarkPages:
+    """The eight playable classes' pages from the cache; every one must be there."""
+    cache = Path(cache)
+    index = _require_cache_index(cache)
+    cached = {n: r for n, r in index.get("classes", {}).items() if r.get("status") == 200 and r.get("file")}
+    missing = [name for name in CLASSES if name not in cached]
+    if missing:
+        raise ToolError("the remark ledger reads all eight class pages; not in the cache: %s; "
+                        "run `fetch-classes %s` first" % (", ".join(missing), " ".join(missing)))
+    pages = {}
+    for name in CLASSES:
+        rows = [{"key": row["key"], "text": clean_text(row["text"]), "tags": sound_tags(row["audio"]),
+                 "voiced": bool(row["audio"])}
+                for row in parse_text_audio(name, _read_cached(cache, cached[name]))]
+        pages[name] = {"record": cached[name], "rows": rows}
+    return RemarkPages(pages)
+
+
+def _load_data(data_path: Path) -> dict:
+    with open(data_path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _words4(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z]+", text.lower()) if len(w) >= 4}
+
+
+def remark_keys(cache: Path, data_path: Path, part: str, stdout=None) -> list[dict]:
+    """Print one JSON line per campaign key of `part`, in page order.
+
+    Each line: the key, its sound tags, each class's texts after the text rules
+    a ledger is not needed for (braces, whitespace, under 12 letters, [DNT]),
+    the other voiced keys any of those texts is also a text of (the rule that needs a
+    ledger), and up to five candidate `quest/step` ids: steps of the part's act
+    whose title or text shares a word of four or more letters with the key's.
+    """
+    stdout = stdout or sys.stdout
+    pages = load_class_pages(cache)
+    data = _load_data(data_path)
+    steps = [(q["id"], s["id"], _words4(s.get("title", "") + " " + s.get("text", "")))
+             for q in data.get("quests", []) if q.get("act") == PART_ACTS[part] for s in q.get("steps", [])]
+    lines = []
+    for key in pages.part_keys(part):
+        words = {w for w in _key_words(key) if len(w) >= 4}
+        ranked = sorted(((-len(words & step_words), n, "%s/%s" % (quest, step))
+                         for n, (quest, step, step_words) in enumerate(steps) if words & step_words))
+        texts = {name: [t for t in pages.class_texts(key, name) if not _too_short(t)] for name in CLASSES}
+        shared = sorted({other for name in CLASSES for t in texts[name] for other in pages.shared_with(key, t)})
+        line = {"key": key, "tags": pages.keys[key]["tags"], "texts": texts, "shared": shared,
+                "candidates": [c for _, _, c in ranked[:MAX_CANDIDATES]]}
+        lines.append(line)
+        stdout.write(json.dumps(line) + "\n")
+    return lines
+
+
+def _signal_area(signal: dict):
+    return signal.get("code") if signal.get("kind") == "area" else signal.get("area")
+
+
+def _act_fits(tags: list[str], quest: dict) -> bool:
+    """Rule 2: `a<n>` is act n; `i<n>`/`p<n>` an act-6 quest in `P<n>_*` zones."""
+    for tag in tags:
+        kind, n = tag[0], int(tag[1:])
+        if kind == "a" and quest.get("act") == n:
+            return True
+        if kind in "ip" and quest.get("act") == 6 and \
+                any(str(z).startswith("P%d_" % n) for z in quest.get("zones") or []):
+            return True
+    return False
+
+
+def _area_fits(area: str, quest: dict, step: dict, key: str, boss, texts: list[str], areas: dict) -> bool:
+    """Rule 3: the area of a signal the step already has (not this key's own),
+    else an area of the data, inside the quest's zones when it has any, whose
+    name the step's title or text, the key or a class's line names."""
+    for signal in step.get("signals", []):
+        if signal.get("what") == "remark" and signal.get("key") == key:
+            continue
+        if signal.get("what") == "kill_remark" and boss is not None and signal.get("boss") == boss:
+            continue
+        if _signal_area(signal) == area:
+            return True
+    if area not in areas:
+        return False
+    zones = quest.get("zones") or []
+    if zones and area not in zones:
+        return False
+    name = re.sub(r"^the\s+", "", str(areas[area].get("name", "")).strip().lower())
+    if not name:
+        return False
+    said = " ".join([step.get("title", ""), step.get("text", "")] + texts).lower()
+    return bool(re.search(r"\b%s\b" % re.escape(name), said)) or _letters(name) in key.lower()
+
+
+class LedgerReport:
+    def __init__(self, parts: tuple):
+        self.parts = parts
+        self.findings: list[str] = []
+        self.gaps: list[str] = []
+        self.entries: dict[str, list[dict]] = {part: [] for part in parts}
+        self.rows: list[dict] = []
+        self.counts = {"keys": 0, "entries": 0, "attached": 0, "attachments": 0,
+                       "rows": 0, "dropped-short": 0, "dropped-shared": 0}
+        self.counts.update({code: 0 for code in SKIP_CODES})
+
+    def find(self, where: str, problem: str) -> None:
+        self.findings.append("finding: %s: %s" % (where, problem))
+
+    def summary(self) -> str:
+        c = self.counts
+        return ("summary: parts=%s keys=%d entries=%d attached=%d attachments=%d %s rows=%d dropped=%d "
+                "dropped-short=%d dropped-shared=%d gaps=%d findings=%d"
+                % (",".join(self.parts), c["keys"], c["entries"], c["attached"], c["attachments"],
+                   " ".join("%s=%d" % (code, c[code]) for code in SKIP_CODES), c["rows"],
+                   c["dropped-short"] + c["dropped-shared"], c["dropped-short"], c["dropped-shared"],
+                   len(self.gaps), len(self.findings)))
+
+    def write(self, stdout) -> None:
+        for line in self.gaps + self.findings + [self.summary()]:
+            print(line, file=stdout)
+
+
+def _entry_problems(entry) -> list[str]:
+    """What makes an entry malformed, in the ledger's own terms."""
+    if not isinstance(entry, dict):
+        return ["an entry is an object"]
+    problems = []
+    if not isinstance(entry.get("key"), str) or not entry.get("key"):
+        problems.append("an entry names a key")
+    if not isinstance(entry.get("why"), str) or not entry["why"].strip():
+        problems.append("an entry says why, in one short sentence")
+    elif len(entry["why"]) > MAX_WHY:
+        problems.append("`why` is over %d characters" % MAX_WHY)
+    if ("attach" in entry) == ("skip" in entry):
+        problems.append("an entry is either attached or skipped")
+    elif "skip" in entry:
+        if entry["skip"] not in SKIP_CODES:
+            problems.append("unknown skip code %r" % entry["skip"])
+        if "boss" in entry:
+            problems.append("only an attached entry names a boss")
+    else:
+        attach = entry["attach"]
+        if not isinstance(attach, list) or not attach:
+            problems.append("`attach` is a non-empty list")
+        else:
+            for item in attach:
+                if not isinstance(item, dict) or set(item) != {"quest", "step", "area"} or \
+                        not all(isinstance(v, str) and v for v in item.values()):
+                    problems.append("an attachment is {quest, step, area}")
+                    break
+        if "boss" in entry and (not isinstance(entry["boss"], str) or not entry["boss"]):
+            problems.append("`boss` names a boss")
+    extra = set(entry) - {"key", "attach", "skip", "boss", "why"}
+    if extra:
+        problems.append("unknown field(s) %s" % ", ".join(sorted(extra)))
+    return problems
+
+
+def _read_ledger_file(folder: Path, part: str, report: LedgerReport) -> list:
+    path = Path(folder) / (part + ".json")
+    if not path.is_file():
+        report.find(part, "no ledger file %s" % path)
+        return []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            ledger = json.load(fh)
+    except (OSError, ValueError) as err:
+        report.find(part, "%s is not readable JSON (%s)" % (path.name, err))
+        return []
+    if not isinstance(ledger, dict) or ledger.get("schema") != 1 or ledger.get("part") != part or \
+            not isinstance(ledger.get("keys"), list):
+        report.find(part, '%s is not {"schema": 1, "part": "%s", "keys": [...]}' % (path.name, part))
+        return []
+    return ledger["keys"]
+
+
+def ledger_report(pages: RemarkPages, data: dict, folder: Path, parts: tuple, with_data: bool) -> LedgerReport:
+    """Check the ledger files of `parts` against the pages (and the data), and
+    build the draft rows of their attached keys."""
+    report = LedgerReport(parts)
+    quests = {q.get("id"): q for q in data.get("quests", [])}
+    areas = data.get("areas", {})
+    bosses = set(data_bosses(data))
+    seen: dict[str, str] = {}
+    valid: dict[str, dict] = {}  # key -> its well-formed entry in the right part
+    for part in parts:
+        for entry in _read_ledger_file(folder, part, report):
+            report.counts["entries"] += 1
+            key = entry.get("key") if isinstance(entry, dict) else None
+            where = "%s %s" % (part, key) if isinstance(key, str) and key else part
+            problems = _entry_problems(entry)
+            for problem in problems:
+                report.find(where, problem)
+            if not isinstance(key, str) or not key:
+                continue
+            if key in seen:
+                report.find(where, "in more than one entry (also in %s)" % seen[key])
+                continue
+            seen[key] = part
+            if key not in pages.texts:
+                report.find(where, "not on any class page")
+                continue
+            if key not in pages.keys:
+                report.find(where, "no campaign sound on any class page; not a ledger key")
+                continue
+            if pages.keys[key]["part"] != part:
+                report.find(where, "belongs to %s, not %s" % (pages.keys[key]["part"], part))
+                continue
+            if problems:
+                continue
+            valid[key] = entry
+            report.entries[part].append(entry)
+    for part in parts:
+        for key in pages.part_keys(part):
+            report.counts["keys"] += 1
+            if key not in seen:
+                report.find("%s %s" % (part, key), "no entry")
+
+    attached = {key: frozenset((a["quest"], a["step"]) for a in e["attach"])
+                for key, e in valid.items() if "attach" in e}
+    expected_signals = set()
+    for part in parts:
+        for entry in report.entries[part]:
+            key, where = entry["key"], "%s %s" % (part, entry["key"])
+            texts = pages.all_texts(key)
+            why = _letters(entry["why"])
+            if any(len(_letters(t)) >= MIN_LETTERS and _letters(t) in why for t in texts):
+                report.find(where, "`why` quotes a class's line; say it in our own words")
+            if "skip" in entry:
+                report.counts[entry["skip"]] += 1
+                if entry["skip"] == "too-short":
+                    usable = [name for name in CLASSES
+                              if any(not _too_short(t) for t in pages.class_texts(key, name))]
+                    if usable:
+                        report.find(where, "skipped as too-short, but %s has a usable text" % ", ".join(usable))
+                continue
+            report.counts["attached"] += 1
+            boss = entry.get("boss")
+            if boss is not None and boss not in bosses:
+                report.find(where, "boss %r is not a boss the data names" % boss)
+            for item in entry["attach"]:
+                report.counts["attachments"] += 1
+                quest = quests.get(item["quest"])
+                step = next((s for s in (quest or {}).get("steps", []) if s.get("id") == item["step"]), None)
+                if step is None:
+                    report.find(where, "no step %s/%s" % (item["quest"], item["step"]))
+                    continue
+                if not _act_fits(pages.keys[key]["tags"], quest):
+                    report.find(where, "%s is act %s, not the sound's act (rule 2)" % (item["quest"], quest.get("act")))
+                if not _area_fits(item["area"], quest, step, key, boss, texts, areas):
+                    report.find(where, "area %s is not %s/%s's (rule 3)" % (item["area"], item["quest"], item["step"]))
+                expected_signals.add((item["quest"], item["step"], "kill_remark" if boss else "remark",
+                                      boss or key, item["area"]))
+            # The draft: each class's texts that survive the text rules.
+            kept_any = False
+            for name in CLASSES:
+                kept = []
+                for text in pages.class_texts(key, name):
+                    if _too_short(text):
+                        report.counts["dropped-short"] += 1
+                    elif any(seen.get(other) != part or attached.get(other) != attached[key]
+                             for other in pages.shared_with(key, text)):
+                        report.counts["dropped-shared"] += 1
+                    else:
+                        kept.append(text)
+                record = pages.pages[name]["record"]
+                for text in kept:
+                    row = {"class": name}
+                    if boss is not None:
+                        row["boss"] = boss
+                    row.update({"key": key, "text": text, "source_url": record["url"], "fetched": record["fetched"]})
+                    report.rows.append(row)
+                if kept:
+                    kept_any = True
+                else:
+                    report.gaps.append("gap: %s %s: no usable text" % (where, name))
+            if not kept_any:
+                report.find(where, "no class has a usable text (rule 4)")
+    report.counts["rows"] = len(report.rows)
+    if with_data:
+        _compare_data(report, pages, data, parts, expected_signals)
+    return report
+
+
+def _compare_data(report: LedgerReport, pages: RemarkPages, data: dict, parts: tuple, expected: set) -> None:
+    """The data's `remarks` rows against the draft, and its remark and
+    kill_remark signals against the attachments, within `parts`."""
+    every = tuple(parts) == PART_NAMES
+    in_parts = lambda key: every or pages.keys.get(key, {}).get("part") in parts  # noqa: E731
+    rows = [row for row in data.get("remarks", []) if in_parts(row.get("key"))]
+    if rows != report.rows:
+        draft = [json.dumps(r, sort_keys=True) for r in report.rows]
+        have = [json.dumps(r, sort_keys=True) for r in rows]
+        for row, text in zip(report.rows, draft):
+            if text not in have:
+                report.find("data", "row missing: %s %s" % (row["class"], row["key"]))
+        for row, text in zip(rows, have):
+            if text not in draft:
+                report.find("data", "row not in the draft: %s %s" % (row.get("class"), row.get("key")))
+        if sorted(draft) == sorted(have):
+            report.find("data", "the remarks rows are not in the draft's order; run --apply")
+    entry_bosses = {e["boss"] for part in parts for e in report.entries[part] if e.get("boss")}
+    acts = {PART_ACTS[part] for part in parts}
+    actual = set()
+    for quest in data.get("quests", []):
+        for step in quest.get("steps", []):
+            for signal in step.get("signals", []):
+                what = signal.get("what")
+                if what == "remark" and in_parts(signal.get("key")):
+                    actual.add((quest.get("id"), step.get("id"), what, signal.get("key"), signal.get("area")))
+                elif what == "kill_remark" and (every or signal.get("boss") in entry_bosses or quest.get("act") in acts):
+                    actual.add((quest.get("id"), step.get("id"), what, signal.get("boss"), signal.get("area")))
+    for quest, step, what, name, area in sorted(expected - actual, key=str):
+        report.find("data", "signal missing: %s/%s %s %s %s" % (quest, step, what, name, area))
+    for quest, step, what, name, area in sorted(actual - expected, key=str):
+        report.find("data", "signal not in the ledger: %s/%s %s %s %s" % (quest, step, what, name, area))
+
+
+def ledger_check(cache: Path, data_path: Path, folder: Path, part: str | None = None,
+                 ledger_only: bool = False, stdout=None) -> LedgerReport:
+    """`remarks --ledger DIR --check`: findings one per line, then a summary line."""
+    stdout = stdout or sys.stdout
+    pages = load_class_pages(cache)
+    parts = (part,) if part else PART_NAMES
+    report = ledger_report(pages, _load_data(data_path), folder, parts, with_data=not ledger_only)
+    report.write(stdout)
+    return report
+
+
+def _remarks_span(text: str) -> tuple[int, int, int]:
+    """Where the top-level `remarks` array sits in a JSON text: the offset of
+    its key, of its `[` and just past its `]`. A nested `remarks` is never it."""
+    depth, i, key_at, start = 0, 0, None, None
+    colon = re.compile(r"\s*:\s*")
+    while i < len(text):
+        ch = text[i]
+        if ch == '"':
+            j = i + 1
+            while text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            if start is None and depth == 1 and text[i + 1:j] == "remarks":
+                m = colon.match(text, j + 1)
+                if m and text.startswith("[", m.end()):
+                    key_at, start, i = i, m.end(), m.end()
+                    continue
+            i = j + 1
+            continue
+        if ch in "[{":
+            depth += 1
+        elif ch in "]}":
+            depth -= 1
+            if start is not None and depth == 1:
+                return key_at, start, i + 1
+        i += 1
+    raise ToolError("the data has no top-level `remarks` array")
+
+
+def render_remarks(text: str, rows: list[dict]) -> str:
+    """`text` with its top-level `remarks` array replaced by `rows`, one per
+    line, indented one step past the key, in the file's own line endings."""
+    key_at, start, end = _remarks_span(text)
+    eol = "\r\n" if "\r\n" in text else "\n"
+    indent = text[text.rfind("\n", 0, key_at) + 1:key_at]
+    if indent.strip():
+        indent = ""
+    if not rows:
+        block = "[]"
+    else:
+        block = "[" + eol + ("," + eol).join(indent + "  " + json.dumps(row) for row in rows) + eol + indent + "]"
+    return text[:start] + block + text[end:]
+
+
+def ledger_apply(cache: Path, data_path: Path, folder: Path, stdout=None) -> LedgerReport:
+    """`remarks --ledger DIR --apply`: rewrite only the data's `remarks` array
+    with the draft rows, if the whole ledger passes its `--ledger-only` check."""
+    stdout = stdout or sys.stdout
+    pages = load_class_pages(cache)
+    data_path = Path(data_path)
+    raw = data_path.read_bytes()
+    text = raw.decode("utf-8")
+    report = ledger_report(pages, json.loads(text), folder, PART_NAMES, with_data=False)
+    report.write(stdout)
+    if report.findings:
+        print("apply: the ledger has findings; %s is not written" % data_path, file=stdout)
+        return report
+    new = render_remarks(text, report.rows)
+    if new == text:
+        print("apply: %d rows; %s unchanged" % (len(report.rows), data_path), file=stdout)
+    else:
+        data_path.write_bytes(new.encode("utf-8"))
+        print("apply: %d rows written to %s" % (len(report.rows), data_path), file=stdout)
+    return report
+
+
+# --------------------------------------------------------------------------
 # Coverage: does a page's dialogue reach the log?
 
 def _norm(text: str) -> str:
@@ -1051,7 +1544,7 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--include-endgame", action="store_true",
                    help="also fetch Act 10 and act-less MasterMission quests")
 
-    fc = sub.add_parser("fetch-classes", help="fetch class pages (for their kill remarks) into the cache, politely")
+    fc = sub.add_parser("fetch-classes", help="fetch class pages (for their remarks) into the cache, politely")
     fc.add_argument("classes", nargs="+", metavar="CLASS", help="class page names, e.g. Warrior Mercenary")
     fc.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
     fc.add_argument("--delay", type=float, default=DEFAULT_DELAY,
@@ -1065,12 +1558,25 @@ def build_parser() -> argparse.ArgumentParser:
                    help="draft file, outside any git checkout (default <cache>\\%s)" % DRAFT_NAME)
     e.add_argument("--with-dialogue", action="store_true", help="include each step's NPC dialogue")
 
-    r = sub.add_parser("remarks", help="print a draft of the cached class pages' kill remarks for the data's bosses")
+    r = sub.add_parser("remarks", help="print a kill-remark draft, or with --keys/--ledger curate and check the remark ledger")
     r.add_argument("--cache", type=Path, default=None, help="cache folder (default as for fetch)")
     r.add_argument("--data", type=Path, default=DEFAULT_DATA,
                    help="the quest data whose bosses to keep (default apps/quest-tracker/data/quests.json)")
     r.add_argument("--class", dest="classes", nargs="+", metavar="CLASS", default=None,
                    help="only these cached class pages (default every one)")
+    r.add_argument("--keys", action="store_true",
+                   help="print one JSON line per campaign key of --part: its sound tags, each class's usable "
+                        "texts, the keys sharing a text, up to five candidate steps")
+    r.add_argument("--part", choices=PART_NAMES, default=None,
+                   help="the part --keys lists, or the one ledger file --check reads")
+    r.add_argument("--ledger", type=Path, default=None, metavar="DIR",
+                   help="the remark ledger folder, one <part>.json per part (with --check or --apply)")
+    r.add_argument("--check", action="store_true",
+                   help="check the ledger against the class pages and the data; exit 0 only with no finding")
+    r.add_argument("--ledger-only", action="store_true",
+                   help="with --check: leave out the data's remarks rows and remark signals")
+    r.add_argument("--apply", action="store_true",
+                   help="rewrite only the data's remarks array with the ledger's draft rows")
 
     c = sub.add_parser("coverage", help="count how far cached dialogue matches a Client.txt (counts only)")
     c.add_argument("--log", type=Path, required=True, help="a Client.txt, read-only")
@@ -1078,9 +1584,38 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _check_remarks_options(parser: argparse.ArgumentParser, args) -> None:
+    """`remarks` alone drafts kill rows as it always has; the ledger options
+    combine only as `--keys --part P`, `--ledger DIR --check [--part P]
+    [--ledger-only]` and `--ledger DIR --apply`."""
+    ledger_mode = args.keys or args.check or args.apply or args.ledger_only or args.ledger is not None
+    if not ledger_mode:
+        if args.part is not None:
+            parser.error("remarks: --part goes with --keys or --check")
+        return
+    if args.classes:
+        parser.error("remarks: --class does not go with the ledger options; they read all eight classes")
+    if args.keys:
+        if args.part is None:
+            parser.error("remarks: --keys needs --part")
+        if args.check or args.apply or args.ledger_only or args.ledger is not None:
+            parser.error("remarks: --keys does not go with --ledger, --check, --ledger-only or --apply")
+        return
+    if args.ledger is None:
+        parser.error("remarks: --check and --apply need --ledger DIR")
+    if args.check == args.apply:
+        parser.error("remarks: --ledger needs exactly one of --check and --apply")
+    if args.ledger_only and not args.check:
+        parser.error("remarks: --ledger-only goes with --check")
+    if args.apply and args.part is not None:
+        parser.error("remarks: --apply writes every part's rows; it takes no --part")
+
+
 def main(argv: list[str] | None = None, fetcher=None, clock=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "remarks":
+        _check_remarks_options(parser, args)
     cache = args.cache if args.cache is not None else default_cache_dir()
     try:
         if args.command == "fetch":
@@ -1100,7 +1635,15 @@ def main(argv: list[str] | None = None, fetcher=None, clock=None) -> int:
         elif args.command == "extract":
             extract(cache, out=args.out, with_dialogue=args.with_dialogue, clock=clock)
         elif args.command == "remarks":
-            remarks(cache, args.data, classes=args.classes, clock=clock)
+            if args.keys:
+                remark_keys(cache, args.data, args.part)
+            elif args.check:
+                report = ledger_check(cache, args.data, args.ledger, part=args.part, ledger_only=args.ledger_only)
+                return 1 if report.findings else 0
+            elif args.apply:
+                return 1 if ledger_apply(cache, args.data, args.ledger).findings else 0
+            else:
+                remarks(cache, args.data, classes=args.classes, clock=clock)
         else:
             coverage(cache, args.log)
     except ToolError as err:

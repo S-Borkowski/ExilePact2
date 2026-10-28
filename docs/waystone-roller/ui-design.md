@@ -4,8 +4,10 @@ The Waystone Roller is one ordinary desktop window (Tauri 2, Svelte 5,
 TypeScript), not an overlay. The player sets rules in it — mods to want,
 mods to avoid, a tier range, rarities and corruption — and the app turns
 them into one Path of Exile 2 search string. Pressing the shortcut
-(`Ctrl+Alt+W` by default) while playing copies that string; the player
-pastes it into the stash or a vendor's search box. The window is where the
+(`Ctrl+Alt+W` by default) while playing copies that string and, with
+*Paste into the game's search box* on (the default), pastes it into the
+stash or vendor search box the player has focused, replacing its text;
+with it off, the player pastes it themselves. The window is where the
 rules are made and checked; it is not looked at while playing.
 
 This document is the direction the components follow. The critique of it is
@@ -144,14 +146,21 @@ whole `rarity` object for a rarity toggle).
   others" and the mods' labels.
 - **Copy** (primary button). Enabled only when the result is `ok`; when it
   is not, the reason sits beside it. Copy and the shortcut run the same
-  path in the shell.
-- **The hint** "<shortcut> copies this while you play" (the view's
-  `hotkey`, `Ctrl+Alt+W` by default).
+  copy path in the shell; Copy only copies, and only the shortcut pastes.
+- **The hint** "<shortcut> copies this and pastes it into the game" when
+  the paste is on, "<shortcut> copies this while you play" when it is off
+  (the view's `hotkey`, `Ctrl+Alt+W` by default).
 - **The status line** (`role="status"`, polite), the shell's last message;
   an error starts with `!` and takes the error colour.
 - **Shortcut**: a text field holding the current shortcut (caption "e.g.
   Ctrl+Alt+W") and a "Set" button; Enter in the field sets it too. The shell answers with a status
   when the shortcut is taken and keeps the old one.
+- **Paste into the game's search box**: a native checkbox beside the
+  shortcut field, checked from the view's `auto_paste` (on by default,
+  saved with the settings). Changing it sends `set_auto_paste` with
+  `{ on }`; the box shows the shell's value until the next view answers.
+  When on, the shortcut pastes into the window in front only when that is
+  Path of Exile 2, and only after a copy that succeeded.
 
 ## Settings window
 
@@ -231,19 +240,19 @@ page as the webview's scale would). Commands are logged, not acted on.
 | `ok-all` | Want-all with corruption |
 | `too-long` | Over the limit: error meter, every part with its length, Copy disabled |
 | `unmatchable` | Want-all including a mod with no token: disabled Want, `why_not`, the unmatchable notice |
-| `hotkey-taken` | The shortcut refused: the error status naming it |
+| `hotkey-taken` | The shortcut refused: the error status naming it; the paste off (the others have it on) |
 
 ## Browser preview
 
 Outside Tauri (`npm run dev`, port 1421) the page renders a fixture chosen
 by the query, `http://127.0.0.1:1421/?view=too-long` (default `ok-any`).
-Commands are logged; a selection patch is echoed into the shown selection so
-the controls respond, but the string and the meter stay the fixture's — the
+Commands are logged; a selection patch is echoed into the shown selection,
+and the paste checkbox into the shown `auto_paste`, so the controls respond, but the string and the meter stay the fixture's — the
 preview has no engine.
 
 ## Accessibility
 
-- Native controls throughout (select, radio, button, text input) so
+- Native controls throughout (select, radio, checkbox, button, text input) so
   keyboard and screen reader behaviour comes from the platform.
 - A visible focus ring (`--color-edit-accent`, 2 px) on every control.
 - Text contrast from the tracker's tokens (primary and secondary text on

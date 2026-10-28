@@ -5,9 +5,31 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
-use wr_app::{App, AppConfig, AppSettingsView, BeepAttempt, HotkeyError, Shell, Store, View};
+use wr_app::{App, AppConfig, AppSettingsView, BeepAttempt, HotkeyError, Key, Shell, Store, View};
 use wr_regex::ModData;
+
+/// One thing the app asked of the shell's clipboard or keyboard side, in
+/// the order it asked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Call {
+    /// A clipboard write that succeeded, with its text.
+    Clipboard(String),
+    /// The title of the window in front was read.
+    Title,
+    /// Whether any key is down was asked, and the answer.
+    KeysDown(bool),
+    /// One key event sent: the key, and `true` for down.
+    Key(Key, bool),
+    /// A key event whose send failed.
+    KeyFailed(Key, bool),
+    /// A pause the app asked for.
+    Pause(Duration),
+}
+
+/// Runs inside the fake's `pause`, with no lock of the fake held.
+pub type PauseHook = Box<dyn FnMut(Duration) + Send>;
 
 /// What the fake shell saw and holds.
 #[derive(Debug, Default)]
@@ -33,14 +55,35 @@ pub struct Recorded {
     pub settings_opened: usize,
     /// How often the app asked to quit and start again.
     pub restarts: usize,
+    /// A clipboard write fails with this text.
+    pub clipboard_fails: Option<String>,
+    /// The clipboard writes, title reads, key-state reads, key events and
+    /// pauses, in order.
+    pub calls: Vec<Call>,
+    /// The title of the window in front; `None` is no window at all.
+    pub title: Option<String>,
+    /// How many key-state reads answer "a key is down" before the keys
+    /// read as up (`usize::MAX`: held for ever).
+    pub held_polls: usize,
+    /// The key send with this index (0-based, counting every send asked
+    /// for) fails with [`SEND_ERROR`].
+    pub fail_send: Option<usize>,
+    /// Key sends asked for so far.
+    pub sends: usize,
 }
 
+/// What a failed key send says, as the glue reports a refused key event.
+pub const SEND_ERROR: &str = "the key could not be sent (Access is denied. (os error 5))";
+
 /// A shell whose hotkey registration behaves as Windows' does (a taken
-/// combination is refused and the old one stays), with a clipboard and a
-/// beep counter whose tone can be made to fail.
+/// combination is refused and the old one stays), with a clipboard, a beep
+/// counter whose tone can be made to fail, and a keyboard side with a
+/// scriptable window title, held keys and a failing send.
 #[derive(Clone, Default)]
 pub struct FakeShell {
     pub rec: Arc<Mutex<Recorded>>,
+    /// Called from `pause` after it is recorded, with no lock held.
+    pub on_pause: Arc<Mutex<Option<PauseHook>>>,
 }
 
 impl FakeShell {
@@ -56,8 +99,37 @@ impl FakeShell {
         shell
     }
 
+    /// A shell with Path of Exile 2 in front.
+    pub fn with_game() -> FakeShell {
+        FakeShell::with_title(Some(wr_app::GAME_WINDOW_TITLE))
+    }
+
+    /// A shell with `title` in front (`None`: no window).
+    pub fn with_title(title: Option<&str>) -> FakeShell {
+        let shell = FakeShell::default();
+        shell.rec.lock().unwrap().title = title.map(str::to_string);
+        shell
+    }
+
     pub fn rec(&self) -> std::sync::MutexGuard<'_, Recorded> {
         self.rec.lock().unwrap()
+    }
+
+    /// Every key event sent, in order: the key, and `true` for down.
+    pub fn keys(&self) -> Vec<(Key, bool)> {
+        self.rec()
+            .calls
+            .iter()
+            .filter_map(|c| match c {
+                Call::Key(k, down) => Some((*k, *down)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Runs `hook` inside every later `pause`.
+    pub fn on_pause(&self, hook: impl FnMut(Duration) + Send + 'static) {
+        *self.on_pause.lock().unwrap() = Some(Box::new(hook));
     }
 }
 
@@ -81,9 +153,55 @@ impl Shell for FakeShell {
 
     fn write_clipboard(&self, text: &str) -> Result<(), String> {
         let mut r = self.rec.lock().unwrap();
+        if let Some(e) = r.clipboard_fails.clone() {
+            return Err(e);
+        }
         r.writes.push(text.to_string());
         r.clipboard = Some(text.to_string());
+        r.calls.push(Call::Clipboard(text.to_string()));
         Ok(())
+    }
+
+    fn foreground_title(&self) -> Option<String> {
+        let mut r = self.rec.lock().unwrap();
+        r.calls.push(Call::Title);
+        r.title.clone()
+    }
+
+    fn any_key_down(&self) -> bool {
+        let mut r = self.rec.lock().unwrap();
+        let down = r.held_polls > 0;
+        if down && r.held_polls != usize::MAX {
+            r.held_polls -= 1;
+        }
+        r.calls.push(Call::KeysDown(down));
+        down
+    }
+
+    fn send_key(&self, key: Key, down: bool) -> Result<(), String> {
+        let mut r = self.rec.lock().unwrap();
+        let index = r.sends;
+        r.sends += 1;
+        if r.fail_send == Some(index) {
+            r.calls.push(Call::KeyFailed(key, down));
+            return Err(SEND_ERROR.to_string());
+        }
+        r.calls.push(Call::Key(key, down));
+        Ok(())
+    }
+
+    fn pause(&self, duration: Duration) {
+        self.rec.lock().unwrap().calls.push(Call::Pause(duration));
+        // The hook is taken out while it runs, so a press it makes from
+        // another thread never waits on this lock.
+        let hook = self.on_pause.lock().unwrap().take();
+        if let Some(mut hook) = hook {
+            hook(duration);
+            let mut slot = self.on_pause.lock().unwrap();
+            if slot.is_none() {
+                *slot = Some(hook);
+            }
+        }
     }
 
     fn beep(&self) -> Vec<BeepAttempt> {

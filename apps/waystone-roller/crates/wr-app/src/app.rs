@@ -1,5 +1,6 @@
-//! [`App`]: the state behind one lock, the commands, the shortcut and the
-//! one copy path the shortcut and the Copy button share.
+//! [`App`]: the state behind one lock, the commands, the shortcut, the one
+//! copy path the shortcut and the Copy button share, and the paste the
+//! shortcut adds after it.
 //!
 //! The copy path: build the search for the current selection; `Ok` writes
 //! the clipboard and stays silent; anything else beeps (the error tone),
@@ -9,9 +10,22 @@
 //! diagnostic log; a refusal adds one `refusal beep: <kind> ok|failed
 //! (<error>)` line per sound the shell tried.
 //!
-//! The selection, the shortcut and `check_updates` are saved to
-//! `settings.json` by a saver thread, [`SAVE_DELAY`] after the last change
-//! (debounced), and at once on [`App::flush`] and [`App::shutdown`].
+//! The paste: only after the shortcut's copy wrote the clipboard (never the
+//! Copy button's, never a refused copy), and only with `auto_paste` on. It
+//! waits until no key is down (the shortcut's own keys still are when it
+//! fires), for at most [`RELEASE_TIMEOUT`]; then, when the window in front
+//! is titled exactly [`GAME_WINDOW_TITLE`], read right before the first key,
+//! it sends Ctrl+A and Ctrl+V through the shell one key event at a time
+//! ([`Shell::send_key`]), so the game's focused search box is replaced by
+//! the search. Nothing else is ever sent: no other key, no mouse input, no
+//! window message, no focus change. A failed send lets up every key it put
+//! down and stops. One paste runs at a time, and the state lock is never
+//! held across a pause. Each ends in one `paste: ...`, `paste skipped: ...`
+//! or `paste failed: ...` line; the window's title is never written down.
+//!
+//! The selection, the shortcut, `auto_paste` and `check_updates` are saved
+//! to `settings.json` by a saver thread, [`SAVE_DELAY`] after the last
+//! change (debounced), and at once on [`App::flush`] and [`App::shutdown`].
 //!
 //! The update check and install (`ep-update`'s [`Updater`], behind a lock of
 //! its own that is never held with the app's): a check from the
@@ -48,6 +62,34 @@ use crate::view::{
 pub const DEFAULT_HOTKEY: &str = "Ctrl+Alt+W";
 /// How long after the last change the settings are written.
 pub const SAVE_DELAY: Duration = Duration::from_millis(500);
+
+/// The only window the paste is sent to: the one in front, titled exactly
+/// this (Live procedure 1 reads the game's title).
+pub const GAME_WINDOW_TITLE: &str = "Path of Exile 2";
+/// How often the paste asks whether a key is still down.
+pub const RELEASE_POLL: Duration = Duration::from_millis(10);
+/// How long the paste waits for every key to be up before it gives up,
+/// counted as the sum of the pauses it asked for.
+pub const RELEASE_TIMEOUT: Duration = Duration::from_millis(2000);
+/// The pause before the first key event, once every key is up.
+pub const SETTLE: Duration = Duration::from_millis(30);
+/// The pause between two key events of one chord.
+pub const KEY_GAP: Duration = Duration::from_millis(15);
+/// The pause between Ctrl+A and Ctrl+V.
+pub const CHORD_GAP: Duration = Duration::from_millis(50);
+
+/// The diagnostic line of a paste skipped because auto-paste is off.
+const PASTE_OFF: &str = "paste skipped: auto-paste is off";
+/// The chords the paste sends, in order.
+const CHORDS: [Key; 2] = [Key::A, Key::V];
+
+/// A key the paste sends; there is no other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Key {
+    Ctrl,
+    A,
+    V,
+}
 
 /// The keys of a selection patch (`update_selection`).
 const SELECTION_KEYS: [&str; 7] = [
@@ -125,6 +167,16 @@ pub trait Shell: Send + Sync {
     /// The error tone. Returns each sound tried, in order (a fallback
     /// follows a failed call); empty where the platform has none.
     fn beep(&self) -> Vec<BeepAttempt>;
+    /// The title of the window in front, or `None` when there is none.
+    /// Read for the paste only, and never written anywhere.
+    fn foreground_title(&self) -> Option<String>;
+    /// Whether any key is down now (mouse buttons not counted).
+    fn any_key_down(&self) -> bool;
+    /// Sends one event of `key`: down when `down`, else up. The only input
+    /// the app ever sends.
+    fn send_key(&self, key: Key, down: bool) -> Result<(), String>;
+    /// Waits `duration`, on the thread the paste runs on.
+    fn pause(&self, duration: Duration);
     /// Sends the view to the window (`wr:view`).
     fn emit_view(&self, view: &View);
     /// Sends the Settings window's view to it (`wr:app-settings`), from
@@ -159,6 +211,9 @@ struct Status {
 struct State {
     selection: Selection,
     hotkey: String,
+    /// The shortcut pastes after it copies; on unless the saved settings
+    /// say `false`.
+    auto_paste: bool,
     status: Option<Status>,
     /// "Automatically check for updates"; off unless the saved settings say
     /// `true`.
@@ -195,6 +250,8 @@ pub struct App {
     ticker: Mutex<Option<Sender<()>>>,
     /// A finished install asked the shell to quit and start the new exe.
     restart_requested: AtomicBool,
+    /// A paste is running (from its wait to its last key).
+    pasting: AtomicBool,
 }
 
 impl App {
@@ -243,6 +300,7 @@ impl App {
         let mut selection = Selection::default();
         let mut hotkey = DEFAULT_HOTKEY.to_string();
         let mut check_updates = false;
+        let mut auto_paste = true;
         let store = match store {
             Ok(s) => Some(Arc::new(s)),
             Err(e) => {
@@ -265,6 +323,8 @@ impl App {
                     // value but `true`, leaves it off.
                     check_updates = saved.get(CHECK_UPDATES_KEY).and_then(Value::as_bool)
                         == Some(true);
+                    // Missing, or any value but `false`, leaves it on.
+                    auto_paste = saved.get("auto_paste").and_then(Value::as_bool) != Some(false);
                     if let Some(h) = saved.get("hotkey").and_then(Value::as_str) {
                         if !h.trim().is_empty() {
                             hotkey = h.trim().to_string();
@@ -319,6 +379,7 @@ impl App {
             state: Mutex::new(State {
                 selection,
                 hotkey,
+                auto_paste,
                 status,
                 check_updates,
             }),
@@ -328,6 +389,7 @@ impl App {
             tick_every,
             ticker: Mutex::new(None),
             restart_requested: AtomicBool::new(false),
+            pasting: AtomicBool::new(false),
         });
         for n in notes {
             app.diag(&format!("settings: {n}"));
@@ -400,15 +462,45 @@ impl App {
         result
     }
 
-    /// The Copy button: the same path as the shortcut.
+    /// The Copy button: the same copy as the shortcut, and never a paste
+    /// (the app's own window is in front).
     pub fn copy_now(&self) -> View {
         self.copy("the Copy button");
         self.get_view()
     }
 
-    /// The global shortcut was pressed.
+    /// The global shortcut was pressed: the copy, then, when it wrote the
+    /// clipboard, the paste. Returns when both are done; the glue calls it
+    /// on a blocking task, since the paste pauses.
     pub fn hotkey_pressed(&self) {
-        self.copy("the shortcut");
+        if let Some(n) = self.copy("the shortcut") {
+            self.paste(n);
+        }
+    }
+
+    /// `set_auto_paste`: whether the shortcut pastes after it copies.
+    /// Saved, logged and sent to the window.
+    pub fn set_auto_paste(&self, on: bool) -> View {
+        {
+            let mut st = self.lock();
+            st.auto_paste = on;
+            st.status = Some(Status {
+                line: StatusLine::info(if on {
+                    "The shortcut now copies and pastes into the game."
+                } else {
+                    "The shortcut now only copies."
+                }),
+                sticky: false,
+            });
+            self.save(&st);
+        }
+        self.diag(if on {
+            "auto-paste on"
+        } else {
+            "auto-paste off"
+        });
+        self.emit();
+        self.get_view()
     }
 
     /// Registers `hotkey` in place of the current shortcut. When it is
@@ -663,6 +755,7 @@ impl App {
             selection: SelectionView::from(&st.selection),
             result: SearchResult::from_outcome(&self.builder.build(&st.selection)),
             hotkey: st.hotkey.clone(),
+            auto_paste: st.auto_paste,
             status: st.status.as_ref().map(|s| s.line.clone()),
             update_available: self.updater.newer().map(|v| v.to_string()),
         }
@@ -674,20 +767,26 @@ impl App {
     }
 
     /// The one copy path; `route` names what started it (the shortcut or
-    /// the Copy button) in `diag.log`.
-    fn copy(&self, route: &str) {
+    /// the Copy button) in `diag.log`. Returns the search's length in
+    /// characters when the clipboard was written, `None` when the copy was
+    /// refused.
+    fn copy(&self, route: &str) -> Option<usize> {
         self.diag(&format!("copy from {route}"));
         let selection = self.lock().selection.clone();
+        let mut written = None;
         let (line, diag) = match self.builder.build(&selection) {
             Outcome::Ok { regex, .. } => {
                 let n = regex.chars().count();
                 match self.shell.write_clipboard(&regex) {
-                    Ok(()) => (
-                        StatusLine::info(format!(
-                            "Copied the search ({n} characters). Paste it into the stash or a vendor's search box."
-                        )),
-                        format!("copied {n} characters: {regex}"),
-                    ),
+                    Ok(()) => {
+                        written = Some(n);
+                        (
+                            StatusLine::info(format!(
+                                "Copied the search ({n} characters). Paste it into the stash or a vendor's search box."
+                            )),
+                            format!("copied {n} characters: {regex}"),
+                        )
+                    }
                     Err(e) => (
                         StatusLine::error(format!(
                             "Not copied: the clipboard could not be written ({e})."
@@ -713,15 +812,131 @@ impl App {
         };
         self.diag(&diag);
         if line.kind == StatusKind::Error {
-            // Every refusal beeps once, and the log says which sound ran.
-            let tried = self.shell.beep();
-            if tried.is_empty() {
-                self.diag("refusal beep: none on this platform");
-            }
-            for attempt in &tried {
-                self.diag(&attempt.diag_line());
+            self.refusal_beep();
+        }
+        self.lock().status = Some(Status {
+            line,
+            sticky: false,
+        });
+        self.emit();
+        written
+    }
+
+    /// Every refusal beeps once, and the log says which sound ran.
+    fn refusal_beep(&self) {
+        let tried = self.shell.beep();
+        if tried.is_empty() {
+            self.diag("refusal beep: none on this platform");
+        }
+        for attempt in &tried {
+            self.diag(&attempt.diag_line());
+        }
+    }
+
+    /// The paste after the shortcut wrote `n` characters to the clipboard
+    /// (see the module doc). Holds no lock of the app while it pauses.
+    fn paste(&self, n: usize) {
+        if !self.lock().auto_paste {
+            self.diag(PASTE_OFF);
+            return;
+        }
+        if self
+            .pasting
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_err()
+        {
+            self.diag("paste skipped: a paste is already running");
+            return;
+        }
+        // Cleared however the paste ends.
+        struct Running<'a>(&'a AtomicBool);
+        impl Drop for Running<'_> {
+            fn drop(&mut self) {
+                self.0.store(false, Ordering::Release);
             }
         }
+        let _running = Running(&self.pasting);
+
+        // The shortcut fires on the press, its keys still down: a Ctrl+A
+        // sent now would reach the game as Ctrl+Alt+A.
+        let mut waited = Duration::ZERO;
+        while self.shell.any_key_down() {
+            if waited >= RELEASE_TIMEOUT {
+                self.diag(&format!(
+                    "paste skipped: keys still held after {} ms",
+                    RELEASE_TIMEOUT.as_millis()
+                ));
+                self.paste_ended(StatusLine::error(format!(
+                    "Copied the search ({n} characters), but did not paste it: keys were still held."
+                )));
+                self.refusal_beep();
+                return;
+            }
+            self.shell.pause(RELEASE_POLL);
+            waited += RELEASE_POLL;
+        }
+        self.shell.pause(SETTLE);
+
+        // Checked where it is used: right before the first key.
+        if self.shell.foreground_title().as_deref() != Some(GAME_WINDOW_TITLE) {
+            self.diag("paste skipped: the window in front is not Path of Exile 2");
+            return;
+        }
+
+        match self.send_chords() {
+            Ok(()) => {
+                self.diag("paste: sent Ctrl+A, Ctrl+V");
+                self.paste_ended(StatusLine::info(format!(
+                    "Copied the search ({n} characters) and pasted it into the game's search box."
+                )));
+            }
+            Err(e) => {
+                self.diag(&format!("paste failed: {e}"));
+                self.paste_ended(StatusLine::error(format!(
+                    "Copied the search ({n} characters), but it could not be pasted: {e}."
+                )));
+                self.refusal_beep();
+            }
+        }
+    }
+
+    /// Ctrl+A, then Ctrl+V, one key event at a time with the pinned pauses.
+    /// When a send fails, every key put down is sent up (no stuck Ctrl) and
+    /// nothing more is sent.
+    fn send_chords(&self) -> Result<(), String> {
+        let mut down: Vec<Key> = Vec::new();
+        for (i, key) in CHORDS.iter().enumerate() {
+            if i > 0 {
+                self.shell.pause(CHORD_GAP);
+            }
+            let chord = [
+                (Key::Ctrl, true),
+                (*key, true),
+                (*key, false),
+                (Key::Ctrl, false),
+            ];
+            for (j, (k, press)) in chord.into_iter().enumerate() {
+                if j > 0 {
+                    self.shell.pause(KEY_GAP);
+                }
+                if let Err(e) = self.shell.send_key(k, press) {
+                    for held in down.iter().rev() {
+                        let _ = self.shell.send_key(*held, false);
+                    }
+                    return Err(e);
+                }
+                if press {
+                    down.push(k);
+                } else {
+                    down.retain(|d| *d != k);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Sets the paste's outcome as the status and sends the view.
+    fn paste_ended(&self, line: StatusLine) {
         self.lock().status = Some(Status {
             line,
             sticky: false,
@@ -795,6 +1010,7 @@ impl App {
         let value = json!({
             "schema": SETTINGS_SCHEMA,
             "hotkey": st.hotkey,
+            "auto_paste": st.auto_paste,
             "selection": SelectionView::from(&st.selection),
             "check_updates": st.check_updates,
         });

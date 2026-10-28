@@ -94,9 +94,15 @@ fn hotkey_copies_the_built_regex_target() {
         )
     );
     let diag = diag_lines(dir.path());
+    // The fake shell has no window in front, so the paste after the copy is
+    // skipped (tests/paste.rs).
+    assert_eq!(
+        diag[diag.len() - 2],
+        format!("copied {} characters: {expected}", expected.chars().count())
+    );
     assert_eq!(
         diag.last().unwrap(),
-        &format!("copied {} characters: {expected}", expected.chars().count())
+        "paste skipped: the window in front is not Path of Exile 2"
     );
 
     // The copied string finds a rare uncorrupted item with the wanted mod

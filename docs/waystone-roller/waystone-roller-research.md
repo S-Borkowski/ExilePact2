@@ -177,6 +177,58 @@ read beside it.
   over-limit selection, game in front: "heard the tone". The System Sounds
   level, the output device and the diag line were not recorded.
 
+## The auto-paste in the game (Live 3)
+
+**Live 3**, 2026-10-28: the release build of 0.1.2 from this branch at
+`d934ef52` (exe SHA-256 `ca6d2570…8c99`, built after the last commit under
+`apps/waystone-roller/`), Path of Exile 2 in front with the owner at a
+stash, a settings folder of its own through `WAYSTONE_ROLLER_DIR` whose
+selection gives the search `corr`. The owner did every in-game action and
+answered each question; the operator read `diag.log`, the clipboard and the
+process list from outside.
+
+- **The game's window is titled exactly `Path of Exile 2`**: read from
+  outside with `Get-Process`, process name `PathOfExile`. That is the title
+  the app compares before it pastes.
+- **The shortcut's copy still works** (the control): with a sentinel on the
+  clipboard, a press logged `copy from the shortcut` and `copied 4
+  characters: corr`, and the clipboard then held `corr`.
+- **The paste replaced the box's text** (pass): the owner clicked into the
+  stash search box, typed `xyz` and pressed `Ctrl+Alt+W`; asked exactly
+  what the box held, they answered `corr`. `diag.log` added `paste: sent
+  Ctrl+A, Ctrl+V` within a second of the copy. So the game's search box
+  took the injected `Ctrl+A` as select-all and the injected `Ctrl+V` as a
+  paste over the selection.
+- **A second press left the search once** (pass): with the box still
+  focused, another press logged a second `paste: sent` line, and the owner
+  confirmed the box held exactly `corr`, once.
+- **With the checkbox off, the press only copied** (pass): the untick
+  logged `auto-paste off` and saved `"auto_paste": false`; a press over
+  newly typed `xyz` logged `paste skipped: auto-paste is off`, and the owner
+  saw `xyz` unchanged.
+- **Another window in front got nothing** (pass): ticked again (`auto-paste
+  on`), Notepad in front with `keep-me` typed, a press logged `paste
+  skipped: the window in front is not Path of Exile 2`, and the owner
+  confirmed Notepad held only `keep-me`.
+- **The app stopped cleanly** (pass): closing the window logged `stop`, and
+  no `waystone-roller.exe` was left running.
+- **With no text field focused, the keys reach the game's bindings** (the
+  research check): with the stash closed, three presses each logged
+  `paste: sent Ctrl+A, Ctrl+V`, and the owner reported that game key
+  bindings fired ("buttons were pressed"). The owner also opened the chat
+  and pressed the shortcut there: the search was pasted into the chat's
+  input line. So the paste goes to whatever text field of the game has
+  focus, chat included, and the app cannot tell which. Which binding fired,
+  and whether it was answering `Ctrl+A`, `Ctrl+V` or `Ctrl+Alt+W` itself,
+  was not separated.
+- **Presses the procedure did not ask for**: between the toggle-off check
+  and the Notepad check the log holds a second press while off (skipped),
+  a toggle on, two presses that sent the paste and a toggle off; the owner's
+  answers do not describe them. In one of those, the `paste: sent` line came
+  3 seconds (by the log's whole-second stamps) after its copy, where the
+  others came within a second; what was held or pressed meanwhile was not
+  recorded.
+
 ## Negatives and choices
 
 - **No lookahead.** `!` and `|` express want and avoid; a lookahead form

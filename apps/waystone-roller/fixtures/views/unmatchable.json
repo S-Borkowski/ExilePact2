@@ -151,6 +151,7 @@
     ]
   },
   "hotkey": "Ctrl+Alt+W",
+  "auto_paste": true,
   "status": {
     "kind": "error",
     "text": "Not copied: some mods cannot be told apart from others."

@@ -15,6 +15,10 @@
 //! Clearfell Encampment, where Renly's QUEST COMPLETE banner ticks "Take
 //! Renly's reward"; the fake tells a copy of the window's heading strip from
 //! a copy of the whole window by its area.
+//!
+//! The Tree of Souls test runs over the shipped data too, in the Grelwood,
+//! where the character's remark on finding the tree ticks "Search the
+//! Grelwood" from the voiced lines.
 
 use std::collections::{BTreeMap, VecDeque};
 use std::fs;
@@ -1447,5 +1451,73 @@ fn screen_dialogue_heading_in_the_strip_opens_the_full_read_and_ticks_target() {
         reads.iter().filter(|c| *c == "ocr dialogue window").count() >= 2,
         "{reads:?}"
     );
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
+}
+
+// ---------------------------------------------------------------------------
+// The Tree of Souls remark (2026-10-28).
+
+const TREE_STEP: &str = "secrets-in-the-dark/step-2";
+
+/// The Witch's `SinTreeSeenComment` (https://poe2db.tw/us/Witch, fetched
+/// 2026-10-28): her remark on finding the Tree of Souls.
+const WITCH_TREE: &str = "Well, well... who is this that adorns the Tree of Souls?";
+
+/// The character in the Grelwood over the shipped data, Secrets in the Dark
+/// started on the Clearfell entry: "Search the Grelwood" is open there.
+fn in_the_grelwood() -> Vec<String> {
+    let mut lines = in_the_riverbank();
+    for (time, code) in [
+        ("19:03:00", "G1_town"),
+        ("19:05:00", "G1_2"),
+        ("19:12:00", "G1_town"),
+        ("19:14:00", "G1_4"),
+    ] {
+        lines.push(area(time, code));
+    }
+    lines
+}
+
+/// Owner, 2026-10-28: a Ranger's remark at the tree did not move Secrets in
+/// the Dark. In the Grelwood the reader now reads the voiced lines for
+/// "Search the Grelwood", and the character's new tree remark ticks it,
+/// with its row change and its `remark` line.
+#[test]
+fn tree_demand_reads_the_voiced_lines_in_the_grelwood() {
+    let spoken = || {
+        Frame::Lines(vec![(
+            format!("{OWN}: {WITCH_TREE}"),
+            Rect::new(0.03, 0.71, 0.30, 0.73),
+        )])
+    };
+    let h = harness(
+        Setup {
+            shipped: true,
+            ..Setup::default()
+        },
+        |s| {
+            let mut voiced: Vec<Frame> = (0..8).map(|_| Frame::Lines(Vec::new())).collect();
+            voiced.extend((0..12).map(|_| spoken()));
+            s.script(Region::VoicedLines, voiced);
+        },
+    );
+    h.app.start();
+    h.feed(&in_the_grelwood());
+
+    h.wait_diag(&["screen: reading voiced lines for", TREE_STEP]);
+    let line = h.wait_diag(&["screen: remark SinTreeSeenComment ("]);
+    assert!(line.ends_with(&format!("): ticked {TREE_STEP}")), "{line}");
+    wait_until("the row change", || {
+        h.row_changes()
+            .iter()
+            .any(|c| c.step_done.as_deref() == Some("Search the Grelwood"))
+    });
+    // One tick, however long the line stays on screen.
+    let remarks = h
+        .screen_lines()
+        .into_iter()
+        .filter(|l| l.starts_with("screen: remark "))
+        .count();
+    assert_eq!(remarks, 1, "{:?}", h.screen_lines());
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }

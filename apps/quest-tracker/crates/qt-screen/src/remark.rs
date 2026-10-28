@@ -1,6 +1,7 @@
 //! The character's kill remark: a new `<prefix>: <text>` line in the list of
 //! voiced lines whose text matches a known kill-remark text is
-//! `kill_remark` for the boss.
+//! `kill_remark` for the boss. A remark at a quest moment is read the same
+//! way, by the texts of its key, and is `remark` for the key.
 //!
 //! The prefix is the speaker, here the character's name; it is not checked,
 //! since only the text tells a kill remark from the character's other
@@ -46,27 +47,64 @@ struct Read {
     fired: Vec<bool>,
 }
 
-/// One boss's kill remarks over a sequence of reads of the voiced lines.
+/// What a [`RemarkTracker`] reads for: a boss's kill remark, or a quest
+/// moment's remark by its key.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RemarkTarget {
+    /// `kill_remark` for the boss.
+    Boss(String),
+    /// `remark` for the key.
+    Key(String),
+}
+
+/// One boss's kill remarks, or one key's remarks, over a sequence of reads
+/// of the voiced lines.
 #[derive(Clone, Debug)]
 pub struct RemarkTracker {
-    boss: String,
+    target: RemarkTarget,
     texts: Vec<String>,
     reads: VecDeque<Read>,
 }
 
 impl RemarkTracker {
     /// `texts` are the known kill-remark texts for `boss` (the quest data's
-    /// `remarks` rows for the character's class).
+    /// `remarks` rows of the boss).
     pub fn new(boss: impl Into<String>, texts: Vec<String>) -> Self {
+        Self::reading(RemarkTarget::Boss(boss.into()), texts)
+    }
+
+    /// `texts` are the known remark texts of `key` (the quest data's
+    /// `remarks` rows of the key, every class's).
+    pub fn for_key(key: impl Into<String>, texts: Vec<String>) -> Self {
+        Self::reading(RemarkTarget::Key(key.into()), texts)
+    }
+
+    fn reading(target: RemarkTarget, texts: Vec<String>) -> Self {
         RemarkTracker {
-            boss: boss.into(),
+            target,
             texts,
             reads: VecDeque::new(),
         }
     }
 
-    pub fn boss(&self) -> &str {
-        &self.boss
+    pub fn target(&self) -> &RemarkTarget {
+        &self.target
+    }
+
+    /// The boss, for a kill remark's tracker.
+    pub fn boss(&self) -> Option<&str> {
+        match &self.target {
+            RemarkTarget::Boss(boss) => Some(boss),
+            RemarkTarget::Key(_) => None,
+        }
+    }
+
+    /// The key, for a key's tracker.
+    pub fn key(&self) -> Option<&str> {
+        match &self.target {
+            RemarkTarget::Key(key) => Some(key),
+            RemarkTarget::Boss(_) => None,
+        }
     }
 
     pub fn texts(&self) -> &[String] {
@@ -115,9 +153,15 @@ impl RemarkTracker {
             counts,
             fired,
         });
-        fire.then(|| ScreenEvent::KillRemark {
-            boss: self.boss.clone(),
-            at: t,
+        fire.then(|| match &self.target {
+            RemarkTarget::Boss(boss) => ScreenEvent::KillRemark {
+                boss: boss.clone(),
+                at: t,
+            },
+            RemarkTarget::Key(key) => ScreenEvent::Remark {
+                key: key.clone(),
+                at: t,
+            },
         })
     }
 }
@@ -183,6 +227,27 @@ mod tests {
                 at: 3_000
             }]
         );
+    }
+
+    #[test]
+    fn remark_of_a_key_is_a_remark_target() {
+        // Invented key; the same reads as a kill remark's.
+        let mut t = RemarkTracker::for_key("FixtureTreeComment", vec![KNOWN.to_string()]);
+        assert_eq!((t.key(), t.boss()), (Some("FixtureTreeComment"), None));
+        let mut obs = reads(0, 3_000, Vec::new());
+        obs.extend(reads(
+            3_000,
+            9_000,
+            vec![newest("Kestrella: That one won't be grinding any more.")],
+        ));
+        assert_eq!(
+            run(&mut t, &obs),
+            vec![ScreenEvent::Remark {
+                key: "FixtureTreeComment".into(),
+                at: 3_000
+            }]
+        );
+        assert_eq!(tracker().boss(), Some(MILLER));
     }
 
     #[test]

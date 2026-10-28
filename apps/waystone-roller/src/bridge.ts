@@ -8,8 +8,9 @@
 //
 //   http://127.0.0.1:1421/?view=too-long
 //
-// Commands are logged. A selection patch is echoed into the shown selection
-// so the controls respond, but the search string, the meter and the status
+// Commands are logged. A selection patch is echoed into the shown selection,
+// and the paste checkbox into the shown `auto_paste`, so the controls
+// respond, but the search string, the meter and the status
 // stay the fixture's: the preview has no engine. The fixtures are reached
 // only behind `import.meta.env.DEV`, which is false in `vite build`, so the
 // release bundle carries none of them.
@@ -28,6 +29,8 @@ export interface CommandArgs {
   update_selection: { patch: SelectionPatch };
   copy_now: Record<string, never>;
   set_hotkey: { hotkey: string };
+  /** The footer's checkbox: whether the shortcut pastes into the game after it copies. */
+  set_auto_paste: { on: boolean };
   /** The header's Settings button: opens the Settings window, or brings it up. */
   open_settings: Record<string, never>;
 }
@@ -135,6 +138,10 @@ export function previewBridge(search: string): Bridge & { readonly calls: Array<
       if (name === 'update_selection' && current && push) {
         const { patch } = args as CommandArgs['update_selection'];
         current = { ...current, selection: { ...current.selection, ...patch } };
+        push(current);
+      } else if (name === 'set_auto_paste' && current && push) {
+        const { on } = args as CommandArgs['set_auto_paste'];
+        current = { ...current, auto_paste: on };
         push(current);
       }
     },
