@@ -198,6 +198,22 @@ are the positive control), a level-up and client lines, and every voiced
 speaker in that session was an NPC or a boss. The own character's remarks
 were therefore not observed in the log (the whole log and two sessions
 with a person listening; not proof that they are never logged).
+A remark at a quest moment other than a kill is not observed either
+(2026-10-28, the research note's
+[§ "Remarks at every quest moment"](quest-tracker/quest-tracker-research.md#remarks-at-every-quest-moment)):
+in a Ranger's session that reached the Tree of Souls in the Grelwood
+(`G1_4`), where poe2db lists every class's remark on first seeing the tree
+(key `SinTreeSeenComment`), the log from the Grelwood entry to the game's
+close held only chat, window-focus lines, one shop request and the close.
+That session had no control that the remark played, and none that a
+voiced line there reaches the log: no voiced NPC line was logged in that
+window either, as Una was never summoned; Live 15 later logged Una's line
+in the Grelwood, the same-area control. Live 15 (measured
+2026-10-28, a new Ranger, the research note's
+[§ "Live 15: a quest-moment remark in the game"](quest-tracker/quest-tracker-research.md#live-15-a-quest-moment-remark-in-the-game))
+had one: the remark showed on screen at the tree and the person heard it,
+and `Client.txt` from the Grelwood entry to it held only window-focus
+lines.
 
 NPC lines and the dialogue option (measured 2026-10-26, Live 8, the
 research note's
@@ -442,6 +458,20 @@ rect.
   character's combat shouts carry the same name prefix as its kill
   remarks, so only the text tells a kill remark; at the Miller's kill the
   two remarks the person heard came 0.4 s and 3.0 s after their press.
+- **A quest-moment remark shows in the same list** (measured 2026-10-28,
+  Live 15, one new Ranger, the quest tracker's reader copying the
+  voiced-lines region from the running window;
+  [`quest-tracker-research.md`](quest-tracker/quest-tracker-research.md)
+  § "Live 15: a quest-moment remark in the game"). The character's
+  remark on reaching the Tree of Souls in the Grelwood (`G1_4`, poe2db
+  key `SinTreeSeenComment`), not a kill remark, showed in the lower-left
+  voiced-lines list as `<character name>: <text>`, the character's name
+  as its prefix, the text word for word poe2db's Ranger line for that key
+  (a screenshot by the person). The reader matched it at the first of
+  its reads that showed it, before Una was summoned there, and stopped
+  reading at the tick, so how many reads would have caught it is not
+  measured. Other classes' lines and
+  other quest moments are not measured.
 - **A quest dialogue window** (measured 2026-10-26, Live 8, Renly's talk
   after The Bloated Miller). Drawn in the centre: the NPC's name as a
   heading, the text at x 0.42 to 0.66, y 0.51 to 0.61 (moved left while

@@ -286,7 +286,7 @@
           "title": "Search the Grelwood",
           "text": "Search the Grelwood for any hint of what might have happened to the Count and his men that fateful night.",
           "tip": "Should be close to entrance.",
-          "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"}]
+          "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"}, {"kind": "screen", "what": "remark", "key": "SinTreeSeenComment", "area": "G1_4"}]
         },
         {
           "id": "step-3",
@@ -298,6 +298,7 @@
           "id": "step-4",
           "title": "Find the Red Vale",
           "text": "To release the Hooded One, you must find the 3 runes in the Red Vale. Look for the Red Vale in the Grelwood.",
+          "tip": "Follow up river.",
           "signals": [{"kind": "area", "code": "G1_5"}]
         },
         {
@@ -367,6 +368,7 @@
           "id": "step-22",
           "title": "Return to the Grelwood",
           "text": "You have taken the forged Rune Spikes from Renly. Return to the Grelwood with them.",
+          "tip": "Follow the mushrooms; more means closer.",
           "signals": []
         },
         {
@@ -402,7 +404,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Secrets_in_the_Dark",
       "fetched": "2026-10-25",
-      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Started (inferred) when Reaching Clearfell is done: Renly gives the quest in a talk the log does not record, and the Clearfell entry (G1_2) is the earliest evidence of it; in Live 2 the quest stayed available from Clearfell and showed in progress only from the Grelwood (measured 2026-10-25). Una's first line in the Grelwood (G1_4), \"What happened here...?\", comes when she is summoned at the tree, so it ends \"Search the Grelwood\" and leaves \"Ask Una for help\" next (measured 2026-10-25: 7 sessions of the owner's log). \"I'll wait here. The old magicks will protect me.\" followed it 2 to 8 s later in 4 sessions, from December 2025 on, among them Live 2, where the person had talked to her; in Live 3 the person summoned her and the game closed 2.5 min later without it (measured 2026-10-25). That it follows the talk, and so is \"Ask Una for help\", is inferred (2026-10-25); where it never comes, the Red Vale entry reaches the steps before it. Her \"Good. Now the others!\" there came after the session's Red Vale visits in 6 sessions (measured); that it is \"Use the Rune Spikes\" is inferred from its place in the order. Bringing the runes to Renly, taking the spikes and the two talks with Una after the last spike happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King.",
+      "notes": "Done (inferred) on entering the Cemetery of the Eternals (G1_7). Started (inferred) when Reaching Clearfell is done: Renly gives the quest in a talk the log does not record, and the Clearfell entry (G1_2) is the earliest evidence of it; in Live 2 the quest stayed available from Clearfell and showed in progress only from the Grelwood (measured 2026-10-25). Una's first line in the Grelwood (G1_4), \"What happened here...?\", comes when she is summoned at the tree, so it ends \"Search the Grelwood\" and leaves \"Ask Una for help\" next (measured 2026-10-25: 7 sessions of the owner's log). \"I'll wait here. The old magicks will protect me.\" followed it 2 to 8 s later in 4 sessions, from December 2025 on, among them Live 2, where the person had talked to her; in Live 3 the person summoned her and the game closed 2.5 min later without it (measured 2026-10-25). That it follows the talk, and so is \"Ask Una for help\", is inferred (2026-10-25); where it never comes, the Red Vale entry reaches the steps before it. Her \"Good. Now the others!\" there came after the session's Red Vale visits in 6 sessions (measured); that it is \"Use the Rune Spikes\" is inferred from its place in the order. Bringing the runes to Renly, taking the spikes and the two talks with Una after the last spike happen in dialogue windows the log does not record. The Mysterious Shade's steps put what Una says in the last of those talks before she clears the roots of the Grim Tangle, the way to the Cemetery; in the owner's log all 6 own characters that reached it did so only after The Rust King's lines and a later visit to Clearfell Encampment (measured 2026-10-25). Entering the Grim Tangle (G1_6) implies nothing: 3 of the 6 did so before the Rust King. With Read the screen on, the character's remark on first seeing the Tree of Souls (poe2db key SinTreeSeenComment, one text per class) also ends \"Search the Grelwood\", before Una is summoned; the remark is not in the log, and that it plays at first sight is read from poe2db, not measured (2026-10-28).",
       "done_inferred": true
     },
     {
@@ -565,7 +567,7 @@
           "id": "step-3",
           "title": "Retrieve Una's Lute",
           "text": "You have spotted Una's lute in her home in Ogham Farmlands. Retrieve it for her.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "PickUpLute", "area": "G1_13_1"}, {"kind": "screen", "what": "remark", "key": "PickUpLuteNoQuest", "area": "G1_13_1"}]
         },
         {
           "id": "step-4",
@@ -633,7 +635,8 @@
           "text": "You have found Asinia, Praetor Draven's Consort. Destroy her and retrieve her piece of the Memorial Gate key.",
           "signals": [
             {"kind": "npc", "speaker": "Asinia, the Praetor's Consort", "area": "G1_9"},
-            {"kind": "screen", "what": "kill_remark", "boss": "Asinia, the Praetor's Consort", "area": "G1_9"}
+            {"kind": "screen", "what": "kill_remark", "boss": "Asinia, the Praetor's Consort", "area": "G1_9"},
+            {"kind": "screen", "what": "remark", "key": "WifeSlainHusbandAliveComment", "area": "G1_9"}
           ]
         },
         {
@@ -701,7 +704,8 @@
           "signals": [
             {"kind": "npc", "speaker": "Asinia, the Praetor's Consort", "area": "G1_8"},
             {"kind": "npc", "speaker": "Draven, the Eternal Praetor", "area": "G1_8"},
-            {"kind": "screen", "what": "kill_remark", "boss": "Draven, the Eternal Praetor", "area": "G1_8"}
+            {"kind": "screen", "what": "kill_remark", "boss": "Draven, the Eternal Praetor", "area": "G1_8"},
+            {"kind": "screen", "what": "remark", "key": "HusbandSlainWifeAliveComment", "area": "G1_8"}
           ]
         },
         {
@@ -806,7 +810,7 @@
           "id": "step-3",
           "title": "Defeat the King in the Mists",
           "text": "You have found the King in the Mists guarding the final Ritual Altar in Freythorn. Defeat him to cleanse the altar.",
-          "signals": [{"kind": "npc", "speaker": "The King in the Mists", "area": "G1_12"}]
+          "signals": [{"kind": "npc", "speaker": "The King in the Mists", "area": "G1_12"}, {"kind": "screen", "what": "remark", "key": "CanopyKillRitualBoss", "area": "G1_12"}]
         },
         {
           "id": "step-4",
@@ -1380,7 +1384,7 @@
           "id": "step-6",
           "title": "Enter the Ardura Caravan",
           "text": "You have rescued the Ardura Caravan and earned passage upon it. Enter the Ardura Caravan.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "BoardCartTownComment", "area": "G2_town"}]
         }
       ],
       "unlock": [{"kind": "area", "code": "G2_1"}],
@@ -1529,7 +1533,7 @@
           "id": "step-5",
           "title": "Pick up the Mastodon Tusks",
           "text": "You have defeated Ekbab, Ancient Steed. Retrieve the Mastodon Tusks.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "BonePitsMastodonTusksHeld", "area": "G2_5_2"}]
         },
         {
           "id": "step-6",
@@ -2166,7 +2170,7 @@
           "id": "step-2",
           "title": "Find the Ziggurat",
           "text": "Only one seat of Vaal civilisation remains unlooted: the Sunken City of Utzaal. Explore the Sandswept Marsh in search of its most prominent Ziggurat.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "EnterZigguratEncampment", "area": "G3_town"}]
         },
         {
           "id": "step-3",
@@ -2274,7 +2278,7 @@
           "id": "step-24",
           "title": "Activate two Generators",
           "text": "To retrieve the large Soul Core you need, Alva has advised you that you must find two medium Soul Cores and use them to activate two Generators in Jiquani's Sanctum.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "MachinariumLowerPowerSecondGenerator", "area": "G3_6_2"}]
         },
         {
           "id": "step-25",
@@ -2643,7 +2647,7 @@
           "id": "step-7",
           "title": "Defeat Mektul, the Forgemaster",
           "text": "You have encountered the forgemaster, Mektul. Defeat him.",
-          "signals": [{"kind": "npc", "speaker": "Mektul, the Forgemaster", "area": "G3_9"}]
+          "signals": [{"kind": "npc", "speaker": "Mektul, the Forgemaster", "area": "G3_9"}, {"kind": "screen", "what": "remark", "key": "GoldcrushBossKilled", "area": "G3_9"}]
         },
         {
           "id": "step-8",
@@ -2661,7 +2665,7 @@
           "id": "step-10",
           "title": "Bring The Hammer of Kamasa to Oswald in Ziggurat Encampment",
           "text": "The Hammer of Kamasa could be of interest to Oswald. Bring it back to him in Ziggurat Encampment.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "ForgottenTempleQuestComplete", "area": "G3_town"}]
         }
       ],
       "unlock": [{"kind": "area", "code": "G3_8"}],
@@ -3052,7 +3056,7 @@
           "id": "step-30",
           "title": "Explore Plunder's Point",
           "text": "You have made it to Plunder's Point. You're not quite sure why you're here, but it's worth exploring the area in search of a point of interest.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "TreasureIslandEncampmentSeen", "area": "G4_13"}]
         },
         {
           "id": "step-31",
@@ -3229,7 +3233,7 @@
           "id": "step-8",
           "title": "Witness The Hooded One",
           "text": "You have summoned The Hooded One and notified them of the weapon piece. Watch as they gather it.",
-          "signals": [{"kind": "area", "code": "G4_3_2"}]
+          "signals": [{"kind": "area", "code": "G4_3_2"}, {"kind": "screen", "what": "remark", "key": "SingingCavernsSinTakingSpearComment", "area": "G4_3_2"}]
         },
         {
           "id": "step-9",
@@ -3397,7 +3401,7 @@
           "id": "step-37",
           "title": "Defeat Torvian, Hand of the Saviour",
           "text": "Defeat Torvian, Hand of the Saviour.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "ArastasGuardBosskilled", "area": "G4_8a"}, {"kind": "screen", "what": "remark", "key": "ArastasGuardBosskilled", "area": "G4_8b"}]
         },
         {
           "id": "step-38",
@@ -3567,7 +3571,7 @@
           "id": "step-1",
           "title": "Explore Shrike Island",
           "text": "Explore Shrike Island.",
-          "signals": [{"kind": "area", "code": "G4_7"}]
+          "signals": [{"kind": "area", "code": "G4_7"}, {"kind": "screen", "what": "remark", "key": "ShrikeBossSeen", "area": "G4_7"}]
         },
         {
           "id": "step-2",
@@ -3618,7 +3622,7 @@
           "id": "step-4",
           "title": "Slay Krutog",
           "text": "Slay Krutog, the Kin Tyrant.",
-          "signals": [{"kind": "npc", "speaker": "Krutog, Lord of Kin", "area": "G4_1_2"}]
+          "signals": [{"kind": "npc", "speaker": "Krutog, Lord of Kin", "area": "G4_1_2"}, {"kind": "screen", "what": "remark", "key": "VolcanoGoblinBossKilled", "area": "G4_1_2"}]
         }
       ],
       "unlock": [{"kind": "area", "code": "G4_1_1"}],
@@ -3690,7 +3694,7 @@
           "id": "step-3",
           "title": "Explore the Singing Caverns",
           "text": "Something is very wrong within this island's secret cave. Explore it in search of an answer.",
-          "signals": [{"kind": "area", "code": "G4_3_2"}]
+          "signals": [{"kind": "area", "code": "G4_3_2"}, {"kind": "screen", "what": "remark", "key": "SingingCavernsSirenSeen", "area": "G4_3_2"}]
         },
         {
           "id": "step-4",
@@ -3757,7 +3761,7 @@
           "id": "step-5",
           "title": "Slay the Prisoner",
           "text": "The Prisoner has been held here for centuries. Kill him... if you can.",
-          "signals": [{"kind": "npc", "speaker": "The Prisoner", "area": "G4_5_2"}]
+          "signals": [{"kind": "npc", "speaker": "The Prisoner", "area": "G4_5_2"}, {"kind": "screen", "what": "remark", "key": "LowerPrisonBossKilled", "area": "G4_5_2"}]
         }
       ],
       "unlock": [{"kind": "area", "code": "G4_5_1"}],
@@ -3975,7 +3979,7 @@
           "id": "step-9",
           "title": "Pick up the Verisium Ingots",
           "text": "Captain Hartlin is dead, but you have found the Verisium Ingots needed to release Freya from her trap. Pick them up.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "JourneysEndVerisiumObtainedNotKnown", "area": "G4_2_2"}, {"kind": "screen", "what": "remark", "key": "JourneysEndVerisiumObtained", "area": "G4_2_2"}]
         },
         {
           "id": "step-10",
@@ -3999,7 +4003,7 @@
           "id": "step-13",
           "title": "Free Freya Hartlin",
           "text": "Use the runed Verisium spikes to free Freya Hartlin.",
-          "signals": []
+          "signals": [{"kind": "screen", "what": "remark", "key": "JourneysEndUseSpikes", "area": "G4_2_2"}]
         },
         {
           "id": "step-14",
@@ -5171,7 +5175,8 @@
           "text": "Defeat Isolde of the White Shroud and Heldra of the Black Pyre.",
           "signals": [
             {"kind": "npc", "speaker": "Heldra of the Black Pyre", "area": "P1_1"},
-            {"kind": "npc", "speaker": "Isolde of the White Shroud", "area": "P1_1"}
+            {"kind": "npc", "speaker": "Isolde of the White Shroud", "area": "P1_1"},
+            {"kind": "screen", "what": "remark", "key": "IceVSFireBossDefeated", "area": "P1_1"}
           ]
         },
         {
@@ -5490,7 +5495,7 @@
           "id": "step-30",
           "title": "Defeat Azmadi, the Faridun Prince",
           "text": "Defeat Azmadi, the Faridun Prince.",
-          "signals": [{"kind": "npc", "speaker": "Azmadi, the Faridun Prince", "area": "P2_7"}]
+          "signals": [{"kind": "npc", "speaker": "Azmadi, the Faridun Prince", "area": "P2_7"}, {"kind": "screen", "what": "remark", "key": "QimarOlrothDefeated", "area": "P2_7"}]
         },
         {
           "id": "step-31",
@@ -5613,7 +5618,7 @@
           "id": "step-15",
           "title": "Defeat Stormgore",
           "text": "Defeat Stormgore.",
-          "signals": [{"kind": "npc", "speaker": "Stormgore", "area": "P3_6"}]
+          "signals": [{"kind": "npc", "speaker": "Stormgore", "area": "P3_6"}, {"kind": "screen", "what": "remark", "key": "RavineBlackjawBossDefeated", "area": "P3_6"}]
         },
         {
           "id": "step-16",
@@ -5917,7 +5922,7 @@
           "id": "fight",
           "title": "Fight Oswin, the Dread Warden",
           "text": "",
-          "signals": [{"kind": "npc", "speaker": "Oswin, The Dread Warden", "area": "P1_5"}]
+          "signals": [{"kind": "npc", "speaker": "Oswin, The Dread Warden", "area": "P1_5"}, {"kind": "screen", "what": "remark", "key": "PrisonForsakenSonBossDefeated", "area": "P1_5"}]
         }
       ],
       "unlock": [{"kind": "area", "code": "P1_5"}],
@@ -6044,26 +6049,20 @@
   "remarks": [
     {"class": "Warrior", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "I'm sorry Branoc... It was me or you...", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "I've fought some big buggers before, but... blimey.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
-    {"class": "Mercenary", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Your job's long over, me ol' mate. Take a rest.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "Man or beast - they die the same.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
     {"class": "Huntress", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "At least your friend weren't here to see what you've become!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
     {"class": "Witch", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "Impressive size but little acuity. Dismal.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
     {"class": "Sorceress", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "He bore the mark of Corruption... I know it.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "Skill always beats raw strength.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "The Bloated Miller", "key": "MillerKillComment", "text": "Sleep, now. Whatever's left of ye.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
-    {"class": "Huntress", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Simmer down, ya great big pile o' rust.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
-    {"class": "Witch", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Impressive. Perhaps I could learn a thing or two from this Jiquani.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
-    {"class": "Sorceress", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Stone-one, your duty has ended.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
-    {"class": "Monk", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "That thing, it fought with the ire of a mortal man...", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
-    {"class": "Druid", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Had more than my fill o' these cursed contraptions!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
-    {"class": "Warrior", "boss": "Lythara", "key": "KriarViperDefeated", "text": "You died as you lived - lost.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
-    {"class": "Mercenary", "boss": "Lythara", "key": "KriarViperDefeated", "text": "I think I did you a favour, truth be told.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
-    {"class": "Ranger", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Go join the ones you butchered.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
-    {"class": "Huntress", "boss": "Lythara", "key": "KriarViperDefeated", "text": "That's the last time you dirty the Spirit's name!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
-    {"class": "Witch", "boss": "Lythara", "key": "KriarViperDefeated", "text": "All bite, no brain!", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
-    {"class": "Sorceress", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Consider this a mercy.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
-    {"class": "Monk", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Your hunt is ended.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
-    {"class": "Druid", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Kill yer kin, and get what ye deserve!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "SinTreeSeenComment", "text": "I remember this place...", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "SinTreeSeenComment", "text": "Oh... well that's ominous.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "SinTreeSeenComment", "text": "Has the Tree not endured enough?", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "SinTreeSeenComment", "text": "Aye, it yet lives... but by what foul means?", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "SinTreeSeenComment", "text": "Well, well... who is this that adorns the Tree of Souls?", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "SinTreeSeenComment", "text": "This tree has an abundance of energy...", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "SinTreeSeenComment", "text": "Ahh... a remnant of the old magics.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "SinTreeSeenComment", "text": "This bein' feels ancient. What binds them here?", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "The Rust King", "key": "RedValeBossSlainComment", "text": "Go with honour. There is nothing left to defend.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "The Rust King", "key": "RedValeBossSlainComment", "text": "Ezomytes never give up a fight. I expected no less.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "The Rust King", "key": "RedValeBossSlainComment", "text": "Rust away into nothing. Your war is long over.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6072,14 +6071,6 @@
     {"class": "Sorceress", "boss": "The Rust King", "key": "RedValeBossSlainComment", "text": "Now, Battlelord... Accept your death.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "The Rust King", "key": "RedValeBossSlainComment", "text": "Sleep now, and dream no longer!", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "The Rust King", "key": "RedValeBossSlainComment", "text": "Rest now, if ye still can.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
-    {"class": "Warrior", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Your cruelty was immortalised in song, Asinia. Your end will be, too.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
-    {"class": "Mercenary", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Wow... you don't see that every day.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
-    {"class": "Ranger", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "May your name be forgotten by the clans, once and for all.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
-    {"class": "Huntress", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Even your witchcraft couldn't save ya.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
-    {"class": "Witch", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "I hate to put down a sister witch, but you had it coming.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
-    {"class": "Sorceress", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Repulsive witch. May your misdeeds be long forgotten.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
-    {"class": "Monk", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Forbidden thaumaturgy causes nothing but pain and misery.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
-    {"class": "Druid", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Yer grip on this world is broken. Let the earth take ye.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Draven, the Eternal Praetor", "key": "HusbandSlainComment", "text": "Your name has long been maligned in Ogham, Draven. This was my pleasure.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Draven, the Eternal Praetor", "key": "HusbandSlainComment", "text": "Bloody Eternals... never did know when to quit.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "Draven, the Eternal Praetor", "key": "HusbandSlainComment", "text": "Arrogance, humbled by my hand.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6088,6 +6079,29 @@
     {"class": "Sorceress", "boss": "Draven, the Eternal Praetor", "key": "HusbandSlainComment", "text": "Your demise is welcomed, I am sure of it.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Draven, the Eternal Praetor", "key": "HusbandSlainComment", "text": "Let the Ezomytes buried here finally know peace.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Draven, the Eternal Praetor", "key": "HusbandSlainComment", "text": "A warlord in life, a damn nuisance in death.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Your cruelty was immortalised in song, Asinia. Your end will be, too.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Wow... you don't see that every day.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "May your name be forgotten by the clans, once and for all.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Even your witchcraft couldn't save ya.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "I hate to put down a sister witch, but you had it coming.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Repulsive witch. May your misdeeds be long forgotten.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Forbidden thaumaturgy causes nothing but pain and misery.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "boss": "Asinia, the Praetor's Consort", "key": "WifeSlainComment", "text": "Yer grip on this world is broken. Let the earth take ye.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "CanopyKillRitualBoss", "text": "Shadows should remain where they belong!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "CanopyKillRitualBoss", "text": "Oh will you bugger off?! We've got enough problems!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "CanopyKillRitualBoss", "text": "Return to the void!", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "CanopyKillRitualBoss", "text": "Summat tells me we've not seen the last of him.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "CanopyKillRitualBoss", "text": "The darkness is mine. Never forget that.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "CanopyKillRitualBoss", "text": "I return you to the void, or wherever you hail from.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "CanopyKillRitualBoss", "text": "Whatever this was, it's not over. This dark power will return... someday.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "PickUpLute", "text": "I can put right one thing, at least.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "PickUpLute", "text": "Ah, Una will be happy to see this.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "PickUpLute", "text": "Hmm... a waste of wood if you ask me. But the songbird seems attached to it.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "PickUpLute", "text": "Una will thank me for this, no doubt.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "PickUpLute", "text": "Ah, the girl's lute... But dear me... what a desperately boring home.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "PickUpLute", "text": "Una will be most pleased to see this.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "PickUpLute", "text": "Perhaps this will assuage the girl's despair.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "PickUpLute", "text": "This'll give Una something to smile about.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "The Executioner", "key": "ExecutionerSlainComment", "text": "Death is not revenge enough for what you've done!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "The Executioner", "key": "ExecutionerSlainComment", "text": "That one was for me!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "The Executioner", "key": "ExecutionerSlainComment", "text": "The axe edge is dulled. Count Geonor's mongrel is no longer.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6104,6 +6118,38 @@
     {"class": "Sorceress", "boss": "Geonor, the Putrid Wolf", "key": "IronCountKilledComment", "text": "Hmm... the Shade is indeed powerful.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Geonor, the Putrid Wolf", "key": "IronCountKilledComment", "text": "The Dreamer will not take your soul to unity, Geonor. Rot here for all time.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Geonor, the Putrid Wolf", "key": "IronCountKilledComment", "text": "The wilds reclaim what ye defiled.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "PickUpLuteNoQuest", "text": "If I remember right, this was the home of Una's family. Could this be hers?", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "PickUpLuteNoQuest", "text": "Pretty piece of work, this is. I should ask about it in Clearfell.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "PickUpLuteNoQuest", "text": "Looks like someone left in a hurry...", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "PickUpLuteNoQuest", "text": "Looks well cared for, this does. Wonder whose it is... or was.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "PickUpLuteNoQuest", "text": "I suppose this belongs to Una.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "PickUpLuteNoQuest", "text": "Who's fine instrument is this?", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "PickUpLuteNoQuest", "text": "Hmm. I should ask about this in Clearfell.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "PickUpLuteNoQuest", "text": "This was precious to someone. Mayhaps it still is.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "HusbandSlainWifeAliveComment", "text": "So ends Draven's tyranny. But his witch still lingers.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "HusbandSlainWifeAliveComment", "text": "Right. Now to put his missus in the ground.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "HusbandSlainWifeAliveComment", "text": "Not to worry\u2014your wife won't be a widow for long.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "HusbandSlainWifeAliveComment", "text": "That's you dealt with\u2014now to track down your wife.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "HusbandSlainWifeAliveComment", "text": "Now it's your wife's turn to scream.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "HusbandSlainWifeAliveComment", "text": "Your wife won't have long to grieve you.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "HusbandSlainWifeAliveComment", "text": "Draven has fallen. But the hands that bound him to this world remain.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "HusbandSlainWifeAliveComment", "text": "A warlord, brought low. Now, for the witch.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "WifeSlainHusbandAliveComment", "text": "The Praetor remains. My work is not yet done.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "WifeSlainHusbandAliveComment", "text": "If Draven's as much of a windbag, I'm asking for a bigger reward.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "WifeSlainHusbandAliveComment", "text": "I'm sure Draven will be devastated... for the little time he has left.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "WifeSlainHusbandAliveComment", "text": "Don't fret\u2014your husband'll be along soon enough.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "WifeSlainHusbandAliveComment", "text": "Sorry sister, now it's your husband's turn.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "WifeSlainHusbandAliveComment", "text": "Your maleficence ends here. The Praetor will soon follow.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "WifeSlainHusbandAliveComment", "text": "Asinia returns to dust. Draven will not be far behind.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "WifeSlainHusbandAliveComment", "text": "Asinia returns to rot. Draven won't be far behind.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "BoardCartTownComment", "text": "They are nomads. Much like my ancestors.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "BoardCartTownComment", "text": "Never thought I'd work for the Maraketh again... Too bloody hot.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "BoardCartTownComment", "text": "I like to keep moving... but this is something else.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "BoardCartTownComment", "text": "The Azmeri'd make use o' this, to move from one hunting ground to the next.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "BoardCartTownComment", "text": "A roving village... How clever.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "BoardCartTownComment", "text": "Ahh. It's been too long since I felt the rumble of a caravan beneath my feet.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "BoardCartTownComment", "text": "So this is how they survive..", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "BoardCartTownComment", "text": "They move with the wind, these folk. Cannae help but admire it.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Kabala, Constrictor Queen", "key": "KethKabalaBossSlain", "text": "The Vastiri Desert is a strange and deadly place.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Kabala, Constrictor Queen", "key": "KethKabalaBossSlain", "text": "Disgusting creatures...", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "Kabala, Constrictor Queen", "key": "KethKabalaBossSlain", "text": "All these snake-women make me miss the Grelwood.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6120,6 +6166,28 @@
     {"class": "Sorceress", "boss": "Iktab, the Deathlord", "key": "BonePitsBothBossesSlain", "text": "The darkness is now dispelled. May it stay this way.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Iktab, the Deathlord", "key": "BonePitsBothBossesSlain", "text": "Death reclaims its own.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Iktab, the Deathlord", "key": "BonePitsBothBossesSlain", "text": "Dead now, the both o' ye... and better off for it.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "BonePitsMastodonTusksHeld", "text": "These tusks are what I seek.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "BonePitsMastodonTusksHeld", "text": "Time to take this trophy and run.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "BonePitsMastodonTusksHeld", "text": "They won't be needing these anymore...", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "BonePitsMastodonTusksHeld", "text": "Just what I were lookin' for.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "BonePitsMastodonTusksHeld", "text": "These should come in handy.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "BonePitsMastodonTusksHeld", "text": "The great steed's tusks. I shall honour them.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "BonePitsMastodonTusksHeld", "text": "I'll put these to better use than the blighted necromancer ever did.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "EnterZigguratEncampment", "text": "People? Here? Ah... not quite. Treasure hunters.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "EnterZigguratEncampment", "text": "A camp? Lucky me.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "EnterZigguratEncampment", "text": "Treasure hunters... Buzzards picking at the corpse of Wraeclast.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "EnterZigguratEncampment", "text": "What're these folk doin' out in the middle o' nowhere?", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "EnterZigguratEncampment", "text": "Treasure hunters. Greedy scoundrels. I like it here.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "EnterZigguratEncampment", "text": "A traditional place... overrun by vagabonds. I disapprove.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "EnterZigguratEncampment", "text": "I recognise this place from my dreams...", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "EnterZigguratEncampment", "text": "Treasure hunters? They've a death wish, diggin' for treasure out here.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "MachinariumLowerPowerSecondGenerator", "text": "Back to the central chamber...", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "MachinariumLowerPowerSecondGenerator", "text": "Ah, we're getting somewhere now!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Huntress", "key": "MachinariumLowerPowerSecondGenerator", "text": "That's done it. Right then, back to the main chamber.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "MachinariumLowerPowerSecondGenerator", "text": "Well... that seemed to bring the whole place alive.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "MachinariumLowerPowerSecondGenerator", "text": "It appears... the place now teems with energy. I should be quick.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "MachinariumLowerPowerSecondGenerator", "text": "That should be enough. Back to the central chamber.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "MachinariumLowerPowerSecondGenerator", "text": "That's both of 'em. Time to move.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Ignagduk, the Bog Witch", "key": "IgnagdukKilled", "text": "Your captured souls will suffer no longer!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Ignagduk, the Bog Witch", "key": "IgnagdukKilled", "text": "Taking children - that's where I draw the line, witch!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Huntress", "boss": "Ignagduk, the Bog Witch", "key": "IgnagdukKilled", "text": "Now that's a kill worth boastin' about.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
@@ -6127,6 +6195,21 @@
     {"class": "Sorceress", "boss": "Ignagduk, the Bog Witch", "key": "IgnagdukKilled", "text": "May your spirit shriek for eternity, vile one.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Ignagduk, the Bog Witch", "key": "IgnagdukKilled", "text": "I have had my fill of witches for one lifetime.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Ignagduk, the Bog Witch", "key": "IgnagdukKilled", "text": "Good riddance! Ye insulted the very earth on which ye walked.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "GoldcrushBossKilled", "text": "The better smith wins.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "GoldcrushBossKilled", "text": "Gotcha, bastard... and now it's all mine... and Oswald's, I guess.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "GoldcrushBossKilled", "text": "All this heat and I barely broke a sweat.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "GoldcrushBossKilled", "text": "You owe me for this one, Oswald.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "GoldcrushBossKilled", "text": "Wealth has never inspired me. But it was a fun fight.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "GoldcrushBossKilled", "text": "Oswald will be very pleased with all this gold.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "GoldcrushBossKilled", "text": "The dangers of wealth have never been so literal.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "GoldcrushBossKilled", "text": "The hammer falls... and stays fallen!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "ForgottenTempleQuestComplete", "text": "I will put this hammer to good use.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "ForgottenTempleQuestComplete", "text": "First thing I'm gonna do, when I get back to civilisation, is buy myself a boat and sail off forever...", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "ForgottenTempleQuestComplete", "text": "A 'finder's fee' for doing all the heavy lifting. Typical treasure hunter.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "ForgottenTempleQuestComplete", "text": "Reckon I'll leave treasure huntin' to the 'experts' next time.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "ForgottenTempleQuestComplete", "text": "Not a total waste after all.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "ForgottenTempleQuestComplete", "text": "A taste of the life of a treasure hunter. It has an appeal...", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "ForgottenTempleQuestComplete", "text": "Risked life and limb... for a pittance.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Queen of Filth", "key": "AggoratOvergrownQueenOfFilthKilled", "text": "Ugh... that was one fight... I won't tell tales of.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Queen of Filth", "key": "AggoratOvergrownQueenOfFilthKilled", "text": "Hate to tumble and run, but I need that.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "Queen of Filth", "key": "AggoratOvergrownQueenOfFilthKilled", "text": "I just did the world a huge favour.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6150,6 +6233,50 @@
     {"class": "Sorceress", "boss": "Viper Napuatzi", "key": "ViperNapuatziKilled", "text": "Did she die? What just happened?!", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Viper Napuatzi", "key": "ViperNapuatziKilled", "text": "What... where did she go?", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Viper Napuatzi", "key": "ViperNapuatziKilled", "text": "Did I slay the viper... or did she just shed her skin?", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Mercenary", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Your job's long over, me ol' mate. Take a rest.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Huntress", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Simmer down, ya great big pile o' rust.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Impressive. Perhaps I could learn a thing or two from this Jiquani.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Stone-one, your duty has ended.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "That thing, it fought with the ire of a mortal man...", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "boss": "Blackjaw", "key": "BlackjawKilled", "text": "Had more than my fill o' these cursed contraptions!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "VolcanoGoblinBossKilled", "text": "Your cruel reign is over!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "VolcanoGoblinBossKilled", "text": "Ain't the boss of much now, are ya?!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "VolcanoGoblinBossKilled", "text": "That's enough out of you.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "VolcanoGoblinBossKilled", "text": "Rot in yer own stink, ya feckless bastard!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "VolcanoGoblinBossKilled", "text": "Intellect always trumps mindless brawn.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "VolcanoGoblinBossKilled", "text": "Let this volcano be your tomb!", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "VolcanoGoblinBossKilled", "text": "You wrought death and ruin. Now it calls you home.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "VolcanoGoblinBossKilled", "text": "Ye've stuffed yer face long enough!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "SingingCavernsSinTakingSpearComment", "text": "One less piece to find.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "SingingCavernsSinTakingSpearComment", "text": "Must be nice to swoop in after someone else has done all the hard work.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Huntress", "key": "SingingCavernsSinTakingSpearComment", "text": "Shame he couldn't show up during the fight.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "SingingCavernsSinTakingSpearComment", "text": "One less thing to track down.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "SingingCavernsSinTakingSpearComment", "text": "Our quest bears fruit.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "SingingCavernsSinTakingSpearComment", "text": "Another piece reclaimed.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "SingingCavernsSinTakingSpearComment", "text": "One step nearer to the end o' the road.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "TreasureIslandEncampmentSeen", "text": "Kalguuran craft. Dannig ought to see this.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "TreasureIslandEncampmentSeen", "text": "If the Kalguurans grabbed all the good loot, I'll be bloody livid.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "TreasureIslandEncampmentSeen", "text": "This camp... Dannig's people, no doubt.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "TreasureIslandEncampmentSeen", "text": "Kalguurans got here first. Wonder if Dannig knows anythin'.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "TreasureIslandEncampmentSeen", "text": "Kalguurans, here?", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "TreasureIslandEncampmentSeen", "text": "A Kalguuran encampment. Best speak to Dannig.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "TreasureIslandEncampmentSeen", "text": "This appears to be Kalguuran equipment. I should talk to Dannig.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "TreasureIslandEncampmentSeen", "text": "Someone's been here already... Kalguurans, by the look of it.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "This was not born of earth alone.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "Shiny. Strange. Probably cursed.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "I should show this to Dannig.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "This ain't from any vein I've seen.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "Strange alloy... I'll ask Dannig what he knows.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "Someone will know what to do with this better than I.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "JourneysEndVerisiumObtainedNotKnown", "text": "Strange metal... shimmers like the night sky.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "SingingCavernsSirenSeen", "text": "You fed on my kin. Now choke on their fury!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "SingingCavernsSirenSeen", "text": "I've had just about enough of your screechin'!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "SingingCavernsSirenSeen", "text": "You're no Ulratha! But a charlatan all the same!", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "SingingCavernsSirenSeen", "text": "So you're what's been makin' all this bloody noise!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "SingingCavernsSirenSeen", "text": "I will rip my sisters' voices from your throat!", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "SingingCavernsSirenSeen", "text": "You will not find me such easy prey!", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "SingingCavernsSirenSeen", "text": "Your song will not sway my conviction!", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "SingingCavernsSirenSeen", "text": "You... how dare ye use her voice!?", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Diamora, the Song of Death", "key": "SingingCavernsSirenKilled", "text": "Justice for every last Karui life you claimed!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Diamora, the Song of Death", "key": "SingingCavernsSirenKilled", "text": "About time you shut up!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "Diamora, the Song of Death", "key": "SingingCavernsSirenKilled", "text": "Peace on the air. At last.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6166,8 +6293,60 @@
     {"class": "Sorceress", "boss": "Yama The White", "key": "HallsOfDeadYamaDefeated", "text": "He is much more than he appeared.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Yama The White", "key": "HallsOfDeadYamaDefeated", "text": "A worthy foe... and, a strange one.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Yama The White", "key": "HallsOfDeadYamaDefeated", "text": "A trial worthy o' the name. Ye fought well, Yama.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "LowerPrisonBossKilled", "text": "Your torment ends here!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "LowerPrisonBossKilled", "text": "No need to thank me for freein' ya.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "LowerPrisonBossKilled", "text": "As dead as the rest of this miserable place!", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "LowerPrisonBossKilled", "text": "Eternal Empire's long dead... yet their stench remains.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "LowerPrisonBossKilled", "text": "Such power! But mindless...", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "LowerPrisonBossKilled", "text": "Your lust for vengeance dies with you!", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "LowerPrisonBossKilled", "text": "Long have you suffered. May rest find you now.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "LowerPrisonBossKilled", "text": "Free of yer binds, at last.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "ShrikeBossSeen", "text": "Saqawal would never allow such a creature in his skies!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "ShrikeBossSeen", "text": "Here we are - the big ugly bird herself!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "ShrikeBossSeen", "text": "There you are. Knew you'd come squawking!", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "ShrikeBossSeen", "text": "You'll make a fine trophy!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "ShrikeBossSeen", "text": "My my... aren't you a sight?", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "ShrikeBossSeen", "text": "There you are. The source of all this filth.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "ShrikeBossSeen", "text": "Too many have died by your talons. That ends now.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "ShrikeBossSeen", "text": "You're no natural creature!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "ArastasGuardBosskilled", "text": "Your masters will soon go the same way!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "ArastasGuardBosskilled", "text": "The Twilight Order aren't sendin' their best, are they?", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "ArastasGuardBosskilled", "text": "Your Saviour's just another butcher hiding behind faith.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "ArastasGuardBosskilled", "text": "Drop dead, ya lumberin' oaf!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "ArastasGuardBosskilled", "text": "Down you go, you oversized puppet.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "ArastasGuardBosskilled", "text": "Pathetic sycophant. Where are your masters now?", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "ArastasGuardBosskilled", "text": "May your misguided Order soon follow!", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "ArastasGuardBosskilled", "text": "Twilight dogs... yer leash became a noose.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "JourneysEndVerisiumObtained", "text": "Here is the Verisium we seek.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "JourneysEndVerisiumObtained", "text": "Here's that Verisium we're after.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "JourneysEndVerisiumObtained", "text": "Verisium. Just what we need.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "JourneysEndVerisiumObtained", "text": "Summat almost otherwordly about this 'verisium'.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "JourneysEndVerisiumObtained", "text": "Rare. Dangerous. Volatile. I like it already.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "JourneysEndVerisiumObtained", "text": "I see why Verisium is so coveted.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "JourneysEndVerisiumObtained", "text": "Dannig will know what to do with this better than I.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "JourneysEndVerisiumObtained", "text": "Here's that Verisium we need.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Mercenary", "key": "JourneysEndUseSpikes", "text": "This should do the trick.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Huntress", "key": "JourneysEndUseSpikes", "text": "I'll let these spikes work their magic.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "JourneysEndUseSpikes", "text": "Time to free this unfortunate soul.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "JourneysEndUseSpikes", "text": "Time we broke the spell.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Huntress", "boss": "Captain Hartlin", "key": "CaptainHartlinKilled", "text": "You were dead already. I just made it stick.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Captain Hartlin", "key": "CaptainHartlinKilled", "text": "Your curse does not bind me!", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "IceVSFireBossDefeated", "text": "You stood side by side... but never as one!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "IceVSFireBossDefeated", "text": "You fought together, you died together. How sweet.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "IceVSFireBossDefeated", "text": "Couldn't kill each other, so you tried me instead. Bad idea.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "IceVSFireBossDefeated", "text": "You call that witchcraft?", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "IceVSFireBossDefeated", "text": "Witches, were you? Could've fooled me.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "IceVSFireBossDefeated", "text": "In all things opposed... yet they meet the same end.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "IceVSFireBossDefeated", "text": "In life, divided. In death, united.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "IceVSFireBossDefeated", "text": "Their feud's settled - by my hand.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "PrisonForsakenSonBossDefeated", "text": "Death is too good for you... but justice demands it.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "PrisonForsakenSonBossDefeated", "text": "That's for every poor bastard you fed to your Thane!", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "PrisonForsakenSonBossDefeated", "text": "All your cruelty, paid in full.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "key": "PrisonForsakenSonBossDefeated", "text": "A quicker death than you deserve... but it'll have to do.", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "PrisonForsakenSonBossDefeated", "text": "One less sycophant at the Thane's feet.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "PrisonForsakenSonBossDefeated", "text": "It will not bring back your victims... but may it bring them peace.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "PrisonForsakenSonBossDefeated", "text": "You fed the dark. Now it consumes you.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "PrisonForsakenSonBossDefeated", "text": "So ends the Thane's pet butcher!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Thane Wulfric", "key": "EstateTwinBossDefeated", "text": "As foul an influence as Geonor - and now, you share his fate.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Thane Wulfric", "key": "EstateTwinBossDefeated", "text": "The only throne you're fit for is an outhouse.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "Thane Wulfric", "key": "EstateTwinBossDefeated", "text": "Counts, Thanes, Kings - who's next?", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
@@ -6176,6 +6355,28 @@
     {"class": "Sorceress", "boss": "Thane Wulfric", "key": "EstateTwinBossDefeated", "text": "Your shadow darkens Ezomyr no more.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
     {"class": "Monk", "boss": "Thane Wulfric", "key": "EstateTwinBossDefeated", "text": "Ezomyr is free of your poisonous influence at last.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
     {"class": "Druid", "boss": "Thane Wulfric", "key": "EstateTwinBossDefeated", "text": "Ye bartered with yer souls... Now ye pay the price.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "QimarOlrothDefeated", "text": "You die without a throne, as you should!", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "QimarOlrothDefeated", "text": "Time's up, you dusty old bastard.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "QimarOlrothDefeated", "text": "Some prince. Bled like any other.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "QimarOlrothDefeated", "text": "Another crown for my collection.", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "QimarOlrothDefeated", "text": "Asala's throne is not yours to claim!", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "QimarOlrothDefeated", "text": "A tyrant uncrowned is still a tyrant.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "QimarOlrothDefeated", "text": "Prince or pauper - the Vastiri bows to no Faridun!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "boss": "Lythara", "key": "KriarViperDefeated", "text": "You died as you lived - lost.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "boss": "Lythara", "key": "KriarViperDefeated", "text": "I think I did you a favour, truth be told.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Go join the ones you butchered.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Huntress", "boss": "Lythara", "key": "KriarViperDefeated", "text": "That's the last time you dirty the Spirit's name!", "source_url": "https://poe2db.tw/us/Huntress", "fetched": "2026-10-28"},
+    {"class": "Witch", "boss": "Lythara", "key": "KriarViperDefeated", "text": "All bite, no brain!", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Consider this a mercy.", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Your hunt is ended.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "boss": "Lythara", "key": "KriarViperDefeated", "text": "Kill yer kin, and get what ye deserve!", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
+    {"class": "Warrior", "key": "RavineBlackjawBossDefeated", "text": "You were in the way.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
+    {"class": "Mercenary", "key": "RavineBlackjawBossDefeated", "text": "Never come between a man and his next payday.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
+    {"class": "Ranger", "key": "RavineBlackjawBossDefeated", "text": "You asked for it.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},
+    {"class": "Witch", "key": "RavineBlackjawBossDefeated", "text": "When will they learn not to stand in my way?", "source_url": "https://poe2db.tw/us/Witch", "fetched": "2026-10-28"},
+    {"class": "Sorceress", "key": "RavineBlackjawBossDefeated", "text": "Another beast led by nothing but its own hunger!", "source_url": "https://poe2db.tw/us/Sorceress", "fetched": "2026-10-28"},
+    {"class": "Monk", "key": "RavineBlackjawBossDefeated", "text": "You are no more.", "source_url": "https://poe2db.tw/us/Monk", "fetched": "2026-10-28"},
+    {"class": "Druid", "key": "RavineBlackjawBossDefeated", "text": "The way to the vault lies open.", "source_url": "https://poe2db.tw/us/Druid", "fetched": "2026-10-28"},
     {"class": "Warrior", "boss": "Zolin, Blood Priest", "key": "BloodTwinsBossDefeated", "text": "I am not your enemy! I stand with Doryani.", "source_url": "https://poe2db.tw/us/Warrior", "fetched": "2026-10-27"},
     {"class": "Mercenary", "boss": "Zolin, Blood Priest", "key": "BloodTwinsBossDefeated", "text": "Give it up! We're temporary allies, like it or not.", "source_url": "https://poe2db.tw/us/Mercenary", "fetched": "2026-10-27"},
     {"class": "Ranger", "boss": "Zolin, Blood Priest", "key": "BloodTwinsBossDefeated", "text": "Your precious Doryani and I stand together. Join us - or die.", "source_url": "https://poe2db.tw/us/Ranger", "fetched": "2026-10-28"},

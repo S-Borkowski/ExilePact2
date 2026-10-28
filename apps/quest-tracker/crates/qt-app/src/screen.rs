@@ -62,7 +62,8 @@ use qt_engine::{Engine, ScreenOutcome, ScreenWhat};
 use qt_screen::{
     aspect_is_16_9, classify_bar, fuzzy_score, is_banner, is_heading, remark_body, BackendError,
     BarClass, Demand, DialogueGate, DialogueRead, GateCounts, Hidden, Millis, Observation,
-    OcrReadiness, PixelRect, Region, RemarkDemand, ScreenBackend, ScreenEvent, Trackers,
+    KeyRemarkDemand, OcrReadiness, PixelRect, Region, RemarkDemand, ScreenBackend, ScreenEvent,
+    Trackers,
     BANNER_AREA, BANNER_TEXT, GONE_RUN, HEADING_STRIP, HEADING_WINDOW_MS, MATCH_THRESHOLD,
     MIN_PRESENT,
 };
@@ -128,9 +129,9 @@ pub(crate) struct DemandSnapshot {
 
 impl DemandSnapshot {
     /// The engine's screen demand as the reader takes it: each boss's bar,
-    /// each NPC's window, and each boss's kill remark that has a text, with
-    /// the steps they would tick. A `kill_remark` with no text reads nothing
-    /// and names no step.
+    /// each NPC's window, each boss's kill remark and each key's remark that
+    /// has a text, with the steps they would tick. A `kill_remark` or a
+    /// `remark` with no text reads nothing and names no step.
     pub fn of(engine: &Engine, pid: Option<u32>, deaths: u64) -> DemandSnapshot {
         let mut demand = Demand::default();
         let mut steps: Vec<(String, String)> = Vec::new();
@@ -159,6 +160,23 @@ impl DemandSnapshot {
                     if !demand.remarks.iter().any(|r| r.boss == want.name) {
                         demand.remarks.push(RemarkDemand {
                             boss: want.name.clone(),
+                            texts,
+                        });
+                    }
+                }
+                ScreenWhat::Remark => {
+                    let texts: Vec<String> = engine
+                        .data()
+                        .key_texts(&want.name)
+                        .into_iter()
+                        .map(str::to_string)
+                        .collect();
+                    if texts.is_empty() {
+                        continue;
+                    }
+                    if !demand.keys.iter().any(|k| k.key == want.name) {
+                        demand.keys.push(KeyRemarkDemand {
+                            key: want.name.clone(),
                             texts,
                         });
                     }
@@ -260,6 +278,7 @@ pub(crate) fn seen_head(event: &ScreenEvent, wall_ms: i64) -> String {
             format!("screen: quest complete in {npc}'s window ({at}Z)")
         }
         ScreenEvent::KillRemark { boss, .. } => format!("screen: kill remark for {boss} ({at}Z)"),
+        ScreenEvent::Remark { key, .. } => format!("screen: remark {key} ({at}Z)"),
     }
 }
 
@@ -309,6 +328,7 @@ pub(crate) fn engine_event(event: &ScreenEvent) -> qt_engine::ScreenEvent {
         ScreenEvent::BarGone { boss, .. } => qt_engine::ScreenEvent::bar_gone(boss),
         ScreenEvent::QuestComplete { npc, .. } => qt_engine::ScreenEvent::quest_complete(npc),
         ScreenEvent::KillRemark { boss, .. } => qt_engine::ScreenEvent::kill_remark(boss),
+        ScreenEvent::Remark { key, .. } => qt_engine::ScreenEvent::remark(key),
     }
 }
 
@@ -552,17 +572,39 @@ struct DialogueMinute {
     late: u64,
 }
 
-/// One boss's voiced lines over a minute, for its `minute: voiced lines,
-/// ...` line.
+/// One boss's or one key's voiced lines over a minute, for its `minute:
+/// voiced lines, ...` line.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 struct RemarkMinute {
     /// Visible reads of the region.
     reads: u64,
     /// Reads with a `<prefix>: <text>` line whose text matches one of the
-    /// boss's known remarks ([`remark_body`], [`fuzzy_score`]).
+    /// boss's or the key's known remarks ([`remark_body`], [`fuzzy_score`]).
     matched: u64,
-    /// The trackers' `kill_remark` events.
+    /// The trackers' `kill_remark` or `remark` events.
     new: u64,
+}
+
+impl RemarkMinute {
+    /// One read of the voiced lines, against `texts`.
+    fn observe(&mut self, obs: &Observation, texts: &[String]) {
+        if !obs.is_visible() {
+            return;
+        }
+        self.reads += 1;
+        let said = obs
+            .lines
+            .iter()
+            .filter_map(|l| remark_body(&l.text))
+            .any(|body| {
+                texts
+                    .iter()
+                    .any(|known| fuzzy_score(known, body) >= MATCH_THRESHOLD)
+            });
+        if said {
+            self.matched += 1;
+        }
+    }
 }
 
 /// Beside the dialogue and remark trackers, the positive control on their
@@ -576,10 +618,12 @@ struct RemarkMinute {
 struct RouteWatch {
     /// Per NPC, when its heading was last read, as its tracker keeps it.
     last_heading: BTreeMap<String, Millis>,
-    /// This minute's counts, per NPC and per boss. They outlive the demand,
-    /// so the minute an NPC's banner ticked its step still has its line.
+    /// This minute's counts, per NPC, per boss and per remark key. They
+    /// outlive the demand, so the minute an NPC's banner ticked its step
+    /// still has its line.
     dialogues: BTreeMap<String, DialogueMinute>,
     remarks: BTreeMap<String, RemarkMinute>,
+    keys: BTreeMap<String, RemarkMinute>,
 }
 
 impl RouteWatch {
@@ -632,29 +676,28 @@ impl RouteWatch {
             }
             Region::VoicedLines => {
                 for want in demand.remarks.iter().filter(|r| !r.texts.is_empty()) {
-                    let m = self.remarks.entry(want.boss.clone()).or_default();
-                    if !visible {
-                        continue;
-                    }
-                    m.reads += 1;
-                    let said = obs
-                        .lines
-                        .iter()
-                        .filter_map(|l| remark_body(&l.text))
-                        .any(|body| {
-                            want.texts
-                                .iter()
-                                .any(|known| fuzzy_score(known, body) >= MATCH_THRESHOLD)
-                        });
-                    if said {
-                        m.matched += 1;
-                    }
+                    self.remarks
+                        .entry(want.boss.clone())
+                        .or_default()
+                        .observe(obs, &want.texts);
+                }
+                for want in demand.keys.iter().filter(|k| !k.texts.is_empty()) {
+                    self.keys
+                        .entry(want.key.clone())
+                        .or_default()
+                        .observe(obs, &want.texts);
                 }
             }
         }
         for event in events {
-            if let ScreenEvent::KillRemark { boss, .. } = event {
-                self.remarks.entry(boss.clone()).or_default().new += 1;
+            match event {
+                ScreenEvent::KillRemark { boss, .. } => {
+                    self.remarks.entry(boss.clone()).or_default().new += 1;
+                }
+                ScreenEvent::Remark { key, .. } => {
+                    self.keys.entry(key.clone()).or_default().new += 1;
+                }
+                ScreenEvent::BarGone { .. } | ScreenEvent::QuestComplete { .. } => {}
             }
         }
     }
@@ -665,8 +708,9 @@ impl RouteWatch {
         !self.dialogues.is_empty()
     }
 
-    /// The minute's lines, one per NPC or boss whose region was read (a
-    /// hidden read included, which reads `0 of 0`), and the counts reset.
+    /// The minute's lines, one per NPC, boss or remark key whose region was
+    /// read (a hidden read included, which reads `0 of 0`), and the counts
+    /// reset.
     fn take_lines(&mut self) -> Vec<String> {
         let dialogues = std::mem::take(&mut self.dialogues).into_iter().map(|(npc, m)| {
             format!(
@@ -680,7 +724,13 @@ impl RouteWatch {
                 m.matched, m.reads, m.new
             )
         });
-        dialogues.chain(remarks).collect()
+        let keys = std::mem::take(&mut self.keys).into_iter().map(|(key, m)| {
+            format!(
+                "screen: minute: voiced lines, remark {key} in {} of {} reads, {} new",
+                m.matched, m.reads, m.new
+            )
+        });
+        dialogues.chain(remarks).chain(keys).collect()
     }
 }
 
@@ -1774,6 +1824,56 @@ mod tests {
             vec![
                 "screen: minute: voiced lines, kill remark for Beira of the Rotten Pack in 1 of 3 reads, 1 new"
                     .to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn remark_event_line_names_its_key() {
+        // Invented key and text.
+        let key = "FixtureTreeComment";
+        let event = ScreenEvent::Remark {
+            key: key.into(),
+            at: 0,
+        };
+        assert_eq!(
+            seen_head(&event, 45_296_789),
+            "screen: remark FixtureTreeComment (12:34:56.789Z)"
+        );
+        assert_eq!(engine_event(&event), qt_engine::ScreenEvent::remark(key));
+
+        // Its minute line, beside the kill remark's, counts by key.
+        let demand = Demand {
+            keys: vec![KeyRemarkDemand {
+                key: key.into(),
+                texts: vec!["An invented tree line.".into()],
+            }],
+            ..route_demand()
+        };
+        let mut w = RouteWatch::default();
+        let said = Observation::visible(
+            Region::VoicedLines,
+            0,
+            vec![remark_line("An invented tree line.")],
+        );
+        w.observe(&demand, &said, std::slice::from_ref(&event));
+        w.observe(
+            &demand,
+            &Observation::visible(Region::VoicedLines, 500, vec![remark_line("Onward.")]),
+            &[],
+        );
+        w.observe(
+            &demand,
+            &Observation::hidden(Region::VoicedLines, 1_000, Hidden::Overlay),
+            &[],
+        );
+        assert_eq!(
+            w.take_lines(),
+            vec![
+                "screen: minute: voiced lines, kill remark for Beira of the Rotten Pack in 0 of 2 reads, 0 new"
+                    .to_string(),
+                "screen: minute: voiced lines, remark FixtureTreeComment in 1 of 2 reads, 1 new"
+                    .to_string(),
             ]
         );
     }

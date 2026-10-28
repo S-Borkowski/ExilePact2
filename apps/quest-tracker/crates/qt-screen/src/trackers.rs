@@ -2,8 +2,9 @@
 //! replay run them.
 //!
 //! A [`Demand`] names what the screen could finish now: the bosses whose bar
-//! going would tick a step, the NPCs whose banner would, and the bosses whose
-//! kill remark would, with the remark texts. [`Trackers::set_demand`] keeps
+//! going would tick a step, the NPCs whose banner would, the bosses whose
+//! kill remark would and the remark keys whose remark would, with the remark
+//! texts. [`Trackers::set_demand`] keeps
 //! the state of every tracker still demanded and drops the rest, so a demand
 //! republished unchanged after each batch costs nothing.
 
@@ -12,12 +13,19 @@ use crate::dialogue::DialogueTracker;
 use crate::event::ScreenEvent;
 use crate::observation::Observation;
 use crate::region::Region;
-use crate::remark::RemarkTracker;
+use crate::remark::{RemarkTarget, RemarkTracker};
 
 /// A boss whose kill remark is demanded, with the known remark texts.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct RemarkDemand {
     pub boss: String,
+    pub texts: Vec<String>,
+}
+
+/// A remark key whose remark is demanded, with every class's texts of it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct KeyRemarkDemand {
+    pub key: String,
     pub texts: Vec<String>,
 }
 
@@ -32,6 +40,9 @@ pub struct Demand {
     /// Bosses whose kill remark would tick a step (`kill_remark`). An entry
     /// with no texts demands nothing.
     pub remarks: Vec<RemarkDemand>,
+    /// Remark keys whose remark would tick a step (`remark`). An entry with
+    /// no texts demands nothing.
+    pub keys: Vec<KeyRemarkDemand>,
 }
 
 impl Demand {
@@ -41,7 +52,10 @@ impl Demand {
             .into_iter()
             .filter(|r| match r {
                 Region::BossBar => !self.bars.is_empty(),
-                Region::VoicedLines => self.remarks.iter().any(|r| !r.texts.is_empty()),
+                Region::VoicedLines => {
+                    self.remarks.iter().any(|r| !r.texts.is_empty())
+                        || self.keys.iter().any(|k| !k.texts.is_empty())
+                }
                 Region::DialogueWindow => !self.dialogues.is_empty(),
             })
             .collect()
@@ -112,22 +126,36 @@ impl Trackers {
         }
         self.dialogues = dialogues;
 
+        // One tracker per boss and one per key, each with its texts.
+        let wanted = demand
+            .remarks
+            .iter()
+            .map(|r| (RemarkTarget::Boss(r.boss.clone()), &r.texts))
+            .chain(
+                demand
+                    .keys
+                    .iter()
+                    .map(|k| (RemarkTarget::Key(k.key.clone()), &k.texts)),
+            )
+            .filter(|(_, texts)| !texts.is_empty());
         let mut remarks = Vec::new();
-        for want in demand.remarks.iter().filter(|r| !r.texts.is_empty()) {
+        for (target, texts) in wanted {
             if remarks
                 .iter()
-                .any(|t: &RemarkTracker| t.boss() == want.boss)
+                .any(|t: &RemarkTracker| *t.target() == target)
             {
                 continue;
             }
             let kept = self
                 .remarks
                 .iter()
-                .position(|t| t.boss() == want.boss && t.texts() == want.texts);
-            remarks.push(
-                kept.map(|i| self.remarks.swap_remove(i))
-                    .unwrap_or_else(|| RemarkTracker::new(want.boss.clone(), want.texts.clone())),
-            );
+                .position(|t| *t.target() == target && t.texts() == texts.as_slice());
+            remarks.push(kept.map(|i| self.remarks.swap_remove(i)).unwrap_or_else(
+                || match target {
+                    RemarkTarget::Boss(boss) => RemarkTracker::new(boss, texts.clone()),
+                    RemarkTarget::Key(key) => RemarkTracker::for_key(key, texts.clone()),
+                },
+            ));
         }
         self.remarks = remarks;
     }
@@ -189,7 +217,54 @@ mod tests {
                 boss: "The Bloated Miller".into(),
                 texts: vec!["Invented words.".into()],
             }],
+            keys: vec![KeyRemarkDemand {
+                key: "FixtureTreeComment".into(),
+                texts: vec!["A fixture tree stands here.".into()],
+            }],
         }
+    }
+
+    #[test]
+    fn a_key_demands_the_voiced_lines_and_fires_by_key() {
+        let key_only = Demand {
+            keys: vec![KeyRemarkDemand {
+                key: "FixtureTreeComment".into(),
+                texts: vec!["A fixture tree stands here.".into()],
+            }],
+            ..Demand::default()
+        };
+        assert_eq!(key_only.regions(), vec![Region::VoicedLines]);
+        let no_texts = Demand {
+            keys: vec![KeyRemarkDemand {
+                key: "X".into(),
+                texts: vec![],
+            }],
+            ..Demand::default()
+        };
+        assert!(no_texts.is_empty());
+
+        // The key's line fires the key's remark only; the boss's tracker
+        // beside it stays quiet.
+        let mut t = Trackers::for_demand(&demand());
+        let line = |text: &str| vec![Line::new(text, Rect::new(0.03, 0.71, 0.30, 0.73))];
+        let mut events = Vec::new();
+        for at in (0..3_000).step_by(500) {
+            events.extend(t.observe(&Observation::visible(Region::VoicedLines, at, Vec::new())));
+        }
+        for at in (3_000..6_000).step_by(500) {
+            events.extend(t.observe(&Observation::visible(
+                Region::VoicedLines,
+                at,
+                line("Kestrella: A fixture tree stands here."),
+            )));
+        }
+        assert_eq!(
+            events,
+            vec![ScreenEvent::Remark {
+                key: "FixtureTreeComment".into(),
+                at: 3_000
+            }]
+        );
     }
 
     #[test]

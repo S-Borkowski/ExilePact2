@@ -271,16 +271,19 @@ pub enum Signal {
     /// Another quest has this status (evaluated at computation time).
     Quest { id: String, status: Status },
     /// What the opt-in screen reader saw in one area: a boss's bar going or
-    /// its kill remark (`boss`), or the QUEST COMPLETE banner in an NPC's
-    /// dialogue window (`npc`). It sits on a step only, fires only on a
-    /// screen event ([`crate::Engine::apply_screen`]), never on a log line,
-    /// and is kept as evidence like a log signal.
+    /// its kill remark (`boss`), the QUEST COMPLETE banner in an NPC's
+    /// dialogue window (`npc`), or the character's remark at a quest moment
+    /// (`key`, the poe2db key of its `remarks` rows). It sits on a step
+    /// only, fires only on a screen event ([`crate::Engine::apply_screen`]),
+    /// never on a log line, and is kept as evidence like a log signal.
     Screen {
         what: ScreenWhat,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         boss: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         npc: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        key: Option<String>,
         area: String,
     },
 }
@@ -293,14 +296,22 @@ impl Signal {
         matches!(self, Signal::Level { .. } | Signal::Quest { .. })
     }
 
-    /// A `screen` signal's kind and the name it reads (its `boss`, or its
-    /// `npc` for `quest_complete`); `None` for every other kind.
+    /// A `screen` signal's kind and the name it reads (its `boss`, its `npc`
+    /// for `quest_complete`, or its `key` for `remark`); `None` for every
+    /// other kind.
     pub fn screen(&self) -> Option<(ScreenWhat, &str)> {
         match self {
-            Signal::Screen { what, boss, npc, .. } => {
+            Signal::Screen {
+                what,
+                boss,
+                npc,
+                key,
+                ..
+            } => {
                 let name = match what {
                     ScreenWhat::QuestComplete => npc.as_deref(),
                     ScreenWhat::BarGone | ScreenWhat::KillRemark => boss.as_deref(),
+                    ScreenWhat::Remark => key.as_deref(),
                 };
                 Some((*what, name.unwrap_or_default()))
             }
@@ -322,16 +333,20 @@ pub enum ScreenWhat {
     /// The QUEST COMPLETE banner in the NPC's dialogue window (it names an
     /// `npc`).
     QuestComplete,
+    /// The character's remark at a quest moment, by the texts of every
+    /// class's `remarks` rows of its key (it names a `key`).
+    Remark,
 }
 
 impl ScreenWhat {
-    pub const NAMES: [&'static str; 3] = ["bar_gone", "kill_remark", "quest_complete"];
+    pub const NAMES: [&'static str; 4] = ["bar_gone", "kill_remark", "quest_complete", "remark"];
 
     pub fn as_str(self) -> &'static str {
         match self {
             ScreenWhat::BarGone => "bar_gone",
             ScreenWhat::KillRemark => "kill_remark",
             ScreenWhat::QuestComplete => "quest_complete",
+            ScreenWhat::Remark => "remark",
         }
     }
 }
@@ -342,15 +357,18 @@ impl fmt::Display for ScreenWhat {
     }
 }
 
-/// One kill-remark text of a class, from its poe2db class page: what a
-/// `kill_remark` screen signal for `boss` matches the character's line
-/// against. `key` is the page's name for the moment (e.g. the remark after
-/// a boss's kill); `text` is the short spoken line, stored verbatim.
+/// One remark text of a class, from its poe2db class page: what a
+/// `kill_remark` screen signal for `boss`, or a `remark` screen signal for
+/// `key`, matches the character's line against. `key` is the page's name
+/// for the moment (e.g. the remark after a boss's kill); `text` is the
+/// short spoken line, stored verbatim. Only the rows of a `kill_remark`
+/// boss name a `boss`; absent in the file means none.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Remark {
     pub class: String,
-    pub boss: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub boss: Option<String>,
     pub key: String,
     pub text: String,
     pub source_url: String,
@@ -437,8 +455,8 @@ pub struct QuestData {
     pub system_lines: Vec<String>,
     pub areas: BTreeMap<String, Area>,
     pub quests: Vec<Quest>,
-    /// The classes' kill-remark texts the `kill_remark` screen signals match;
-    /// absent in the file means empty.
+    /// The classes' remark texts the `kill_remark` and `remark` screen
+    /// signals match; absent in the file means empty.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub remarks: Vec<Remark>,
 }
@@ -509,7 +527,17 @@ impl QuestData {
     pub fn remark_texts(&self, boss: &str) -> Vec<&str> {
         self.remarks
             .iter()
-            .filter(|r| r.boss == boss)
+            .filter(|r| r.boss.as_deref() == Some(boss))
+            .map(|r| r.text.as_str())
+            .collect()
+    }
+
+    /// The remark texts of every class for `key`, in file order: what a
+    /// `remark` screen signal for `key` matches.
+    pub fn key_texts(&self, key: &str) -> Vec<&str> {
+        self.remarks
+            .iter()
+            .filter(|r| r.key == key)
             .map(|r| r.text.as_str())
             .collect()
     }
@@ -527,6 +555,8 @@ struct Checker<'a> {
     quest_ids: HashSet<&'a str>,
     /// The bosses the `remarks` table has a text for.
     remark_bosses: HashSet<&'a str>,
+    /// The keys the `remarks` table has a row of.
+    remark_keys: HashSet<&'a str>,
 }
 
 impl Checker<'_> {
@@ -668,7 +698,7 @@ impl Checker<'_> {
             "level" => (&["kind", "min"], &[]),
             "level_up" => (&["kind", "level", "area"], &[]),
             "quest" => (&["kind", "id", "status"], &[]),
-            "screen" => (&["kind", "what", "area"], &["boss", "npc"]),
+            "screen" => (&["kind", "what", "area"], &["boss", "npc", "key"]),
             other => {
                 return Err(self.err(
                     &kind_field,
@@ -750,15 +780,18 @@ impl Checker<'_> {
                 let f = join(path, "what");
                 self.one_of(&m["what"], &f, &ScreenWhat::NAMES)?;
                 let what = m["what"].as_str().expect("checked");
-                let (want, other) = match what {
-                    "quest_complete" => ("npc", "boss"),
-                    _ => ("boss", "npc"),
+                let want = match what {
+                    "quest_complete" => "npc",
+                    "remark" => "key",
+                    _ => "boss",
                 };
-                if m.contains_key(other) {
-                    return Err(self.err(
-                        &join(path, other),
-                        format!("a {what} screen signal names a {want} and no {other}"),
-                    ));
+                for other in ["boss", "npc", "key"] {
+                    if other != want && m.contains_key(other) {
+                        return Err(self.err(
+                            &join(path, other),
+                            format!("a {what} screen signal names a {want} and no {other}"),
+                        ));
+                    }
                 }
                 let Some(name) = m.get(want) else {
                     return Err(self.err(
@@ -770,6 +803,9 @@ impl Checker<'_> {
                 let name = self.nonempty(name, &f)?;
                 if what == "kill_remark" && !self.remark_bosses.contains(name) {
                     return Err(self.err(&f, format!("{name:?} has no text in remarks")));
+                }
+                if what == "remark" && !self.remark_keys.contains(name) {
+                    return Err(self.err(&f, format!("{name:?} has no row in remarks")));
                 }
             }
             _ => unreachable!("kind checked above"),
@@ -894,6 +930,7 @@ fn validate(value: &Value) -> Result<(), DataError> {
         areas: HashSet::new(),
         quest_ids: HashSet::new(),
         remark_bosses: HashSet::new(),
+        remark_keys: HashSet::new(),
     };
     let top = c.object(value, "")?;
     c.keys(
@@ -947,8 +984,9 @@ fn validate(value: &Value) -> Result<(), DataError> {
     }
     c.areas = areas.keys().map(String::as_str).collect();
 
-    // The remarks' shape first, so `kill_remark` signals can be checked
-    // against their bosses; whose bosses they are comes after the quests.
+    // The remarks' shape first, so `kill_remark` and `remark` signals can be
+    // checked against their bosses and keys; whose bosses they are, and
+    // which signal names a row with no boss, comes after the quests.
     let remarks: &[Value] = match top.get("remarks") {
         Some(r) => c.array(r, "remarks")?,
         None => &[],
@@ -956,10 +994,12 @@ fn validate(value: &Value) -> Result<(), DataError> {
     for (i, r) in remarks.iter().enumerate() {
         let p = format!("remarks[{i}]");
         let m = c.object(r, &p)?;
-        let fields = ["class", "boss", "key", "text", "source_url", "fetched"];
-        c.keys(m, &p, &fields, &[])?;
-        for f in &fields[..4] {
-            c.nonempty(&m[*f], &join(&p, f))?;
+        let fields = ["class", "key", "text", "source_url", "fetched"];
+        c.keys(m, &p, &fields, &["boss"])?;
+        for f in ["class", "boss", "key", "text"] {
+            if let Some(v) = m.get(f) {
+                c.nonempty(v, &join(&p, f))?;
+            }
         }
         let url = c.string(&m["source_url"], &join(&p, "source_url"))?;
         if !is_quest_url(url) {
@@ -971,6 +1011,7 @@ fn validate(value: &Value) -> Result<(), DataError> {
         c.date(&m["fetched"], &join(&p, "fetched"))?;
     }
     c.remark_bosses = remarks.iter().filter_map(|r| r["boss"].as_str()).collect();
+    c.remark_keys = remarks.iter().filter_map(|r| r["key"].as_str()).collect();
 
     let quests = c.array(&top["quests"], "quests")?;
     // First pass: every quest is an object with a well-formed, unique id, so
@@ -999,25 +1040,41 @@ fn validate(value: &Value) -> Result<(), DataError> {
     }
     c.quest = None;
 
-    // A remark is for a boss the data knows: one a `bar_gone` signal reads,
-    // or a listed speaker.
+    // A remark with a boss is for a boss the data knows: one a `bar_gone`
+    // signal reads, or a listed speaker. One with no boss is for a key a
+    // `remark` signal names; any other is an orphan.
     let mut bosses: HashSet<&str> = c.npcs.clone();
+    let mut keys: HashSet<&str> = HashSet::new();
     for q in quests {
         for step in q["steps"].as_array().expect("checked") {
             for s in step["signals"].as_array().expect("checked") {
                 if s["kind"] == "screen" && s["what"] == "bar_gone" {
                     bosses.extend(s["boss"].as_str());
                 }
+                if s["kind"] == "screen" && s["what"] == "remark" {
+                    keys.extend(s["key"].as_str());
+                }
             }
         }
     }
     for (i, r) in remarks.iter().enumerate() {
-        let boss = r["boss"].as_str().expect("checked");
-        if !bosses.contains(boss) {
-            return Err(c.err(
-                &format!("remarks[{i}].boss"),
-                format!("{boss:?} is neither the boss of a bar_gone signal nor in npcs"),
-            ));
+        match r["boss"].as_str() {
+            Some(boss) if !bosses.contains(boss) => {
+                return Err(c.err(
+                    &format!("remarks[{i}].boss"),
+                    format!("{boss:?} is neither the boss of a bar_gone signal nor in npcs"),
+                ));
+            }
+            Some(_) => {}
+            None => {
+                let key = r["key"].as_str().expect("checked");
+                if !keys.contains(key) {
+                    return Err(c.err(
+                        &format!("remarks[{i}].key"),
+                        format!("{key:?} has no boss and no remark signal names it"),
+                    ));
+                }
+            }
         }
     }
     Ok(())

@@ -6,7 +6,7 @@ roller.
 ## Quest tracker
 
 `quest-tracker.exe` is a small always-on-top overlay that lists the Path of
-Exile 2 campaign quests (Acts 1 to 6, 87 quests in 0.1.2). It says which ones
+Exile 2 campaign quests (Acts 1 to 6, 87 quests in 0.1.3). It says which ones
 are worth doing and why, and keeps each character's progress. It learns that
 progress from the game's `Client.txt` log. One setting is opt-in: *Read the
 screen* also reads three regions of the game's window with Windows' own OCR.
