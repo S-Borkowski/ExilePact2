@@ -2,15 +2,18 @@
   // The Settings window's root (`settings.html`): the title, each section of
   // `SECTIONS` in order under its heading, and the credit. It renders the
   // last `SettingsView` the bridge delivered; until the first arrives it
-  // shows the title and the credit only.
+  // shows the title and the credit only. The catalogue the blocked
+  // currencies are picked from is read once, at the start.
   import { onDestroy, onMount } from 'svelte';
-  import type { SettingsBridge, SettingsSend } from './bridge';
+  import type { CatalogueGroup } from '../ipc';
+  import type { SettingsSend, SettingsWindowBridge } from './bridge';
   import { SECTIONS } from './sections';
   import type { SettingsView } from './view';
 
-  let { bridge }: { bridge: SettingsBridge } = $props();
+  let { bridge }: { bridge: SettingsWindowBridge } = $props();
 
   let view = $state<SettingsView | null>(null);
+  let catalogue = $state<CatalogueGroup[]>([]);
   let stop: (() => void) | null = null;
 
   const send: SettingsSend = (name, args) => {
@@ -30,6 +33,12 @@
         },
         (error) => console.error('crafting-helper settings: the bridge did not start', error),
       );
+    bridge.catalogue().then(
+      (groups) => {
+        if (live) catalogue = groups;
+      },
+      (error) => console.error('crafting-helper settings: the catalogue did not load', error),
+    );
     return () => {
       live = false;
     };
@@ -47,7 +56,7 @@
       {#each SECTIONS as section (section.id)}
         <section class="section" aria-labelledby="section-{section.id}">
           <h2 class="group-label" id="section-{section.id}">{section.title}</h2>
-          <section.component {view} {send} />
+          <section.component {view} {send} {catalogue} />
         </section>
       {/each}
     {/if}

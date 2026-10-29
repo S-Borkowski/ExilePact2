@@ -6,12 +6,15 @@
 //
 // `state` is a fixture's name (default `idle`), `scale` zooms the page as
 // the webview zoom would (`1`|`1.33`|`2`). Commands are logged, not acted
-// on: the preview shows a view, it does not run the app.
+// on: the preview shows a view, it does not run the app. The blocked
+// currencies' picker reads `fixtures/catalogue.json`, as the main window's
+// preview does.
 //
 // The fixtures are reached only behind `import.meta.env.DEV`, which is false
 // in `vite build`, so the release bundle carries none of them.
 
-import type { SettingsBridge, SettingsCommand, SettingsCommandArgs } from './bridge';
+import { previewCatalogue } from '../bridge';
+import type { SettingsCommand, SettingsCommandArgs, SettingsWindowBridge } from './bridge';
 import type { SettingsView } from './view';
 
 type Loader = () => Promise<unknown>;
@@ -72,7 +75,7 @@ export async function settingsPreviewFixture(state: PreviewState): Promise<Setti
 }
 
 /** The bridge in a browser: a fixture view from the URL query, commands logged. */
-export function previewSettingsBridge(search: string, root: HTMLElement = document.documentElement): SettingsBridge & {
+export function previewSettingsBridge(search: string, root: HTMLElement = document.documentElement): SettingsWindowBridge & {
   readonly calls: Array<{ name: SettingsCommand; args: unknown }>;
 } {
   const query = parseSettingsPreviewQuery(search);
@@ -92,5 +95,6 @@ export function previewSettingsBridge(search: string, root: HTMLElement = docume
       calls.push({ name, args });
       console.info(`crafting-helper settings preview: ${name}`, args);
     },
+    catalogue: previewCatalogue,
   };
 }

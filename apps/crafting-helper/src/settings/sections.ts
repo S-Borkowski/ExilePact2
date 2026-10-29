@@ -3,6 +3,7 @@
 // its heading, its region and the divider before it from the window.
 
 import type { Component } from 'svelte';
+import type { CatalogueGroup } from '../ipc';
 import type { SettingsSend } from './bridge';
 import type { SettingsView } from './view';
 import BlockedCurrenciesSection from './BlockedCurrenciesSection.svelte';
@@ -12,6 +13,8 @@ import UpdatesSection from './UpdatesSection.svelte';
 export interface SectionProps {
   view: SettingsView;
   send: SettingsSend;
+  /** The catalogue the blocked currencies are picked from; empty until it has loaded. */
+  catalogue: CatalogueGroup[];
 }
 
 export interface SettingsSection {

@@ -5,13 +5,18 @@
 // progress); the window calls a command and waits for the next one, never
 // polling.
 //
+// The blocked currencies' picker lists the catalogue, which the window asks
+// for once: `get_catalogue` in the app, `fixtures/catalogue.json` in the
+// preview, through the main window's own readers (`../bridge.ts`).
+//
 // The page never reaches the network itself. A check, a download and an
 // install are made by the app, only when a command (or, for a check alone,
 // the setting) asks for it; nothing here opens a page or a browser.
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { APP_SETTINGS_EVENT, type SettingsCommandArgs as ShellCommandArgs } from '../bridge';
+import { APP_SETTINGS_EVENT, type SettingsCommandArgs as ShellCommandArgs, readCatalogue } from '../bridge';
+import type { CatalogueGroup } from '../ipc';
 import { type SettingsView, settingsProblems } from './view';
 
 export { APP_SETTINGS_EVENT };
@@ -31,12 +36,17 @@ export interface SettingsBridge {
   command<C extends SettingsCommand>(name: C, args: SettingsCommandArgs[C]): Promise<void>;
 }
 
+/** What the window runs on: the bridge, and the catalogue the blocked currencies' picker lists, read once. */
+export interface SettingsWindowBridge extends SettingsBridge {
+  catalogue(): Promise<CatalogueGroup[]>;
+}
+
 function warnIfOff(what: string, problems: string[]): void {
   if (problems.length > 0) console.warn(`crafting-helper settings: ${what} differs from the IPC types`, problems);
 }
 
 /** The bridge inside the Tauri app. */
-export function tauriSettingsBridge(): SettingsBridge {
+export function tauriSettingsBridge(): SettingsWindowBridge {
   return {
     kind: 'tauri',
     async start(onView) {
@@ -61,5 +71,6 @@ export function tauriSettingsBridge(): SettingsBridge {
         console.error(`crafting-helper settings: ${name} failed`, error);
       }
     },
+    catalogue: readCatalogue,
   };
 }

@@ -1,7 +1,8 @@
 // The Settings window (`settings.html`): every Settings view the Rust side
 // writes under `fixtures/app-settings/` renders and passes the strict
 // checker, each control sends its command (the hotkey form `set_hotkey`, the
-// blocked list the whole list), an install's progress and its failure are
+// blocked currencies' picker, which offers only the catalogue's names, the
+// whole list), an install's progress and its failure are
 // shown in words with no release page anywhere, and nothing on the page
 // reaches the network. The Updates section and its tests are the waystone
 // roller's.
@@ -11,10 +12,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { emit } from '@tauri-apps/api/event';
 import SettingsWindow from './SettingsWindow.svelte';
-import { APP_SETTINGS_EVENT, type SettingsBridge, type SettingsCommand, type SettingsCommandArgs, tauriSettingsBridge } from './bridge';
+import {
+  APP_SETTINGS_EVENT,
+  type SettingsCommand,
+  type SettingsCommandArgs,
+  type SettingsWindowBridge,
+  tauriSettingsBridge,
+} from './bridge';
 import { PREVIEW_STATES, parseSettingsPreviewQuery, previewSettingsBridge } from './preview';
 import { SECTIONS } from './sections';
-import { click, setValue } from '../test-support';
+import { CATALOGUE, click, setValue } from '../test-support';
+import type { CatalogueGroup } from '../ipc';
 import { type SettingsView, INSTALL_STATES, UPDATE_STATES, settingsProblems } from './view';
 
 const RAW = import.meta.glob('../../fixtures/app-settings/*.json', { eager: true, import: 'default' }) as Record<string, unknown>;
@@ -30,18 +38,29 @@ function fixture(name: string): SettingsView {
   return JSON.parse(JSON.stringify(json)) as SettingsView;
 }
 
-interface FakeSettingsBridge extends SettingsBridge {
+interface FakeSettingsBridge extends SettingsWindowBridge {
   calls: Array<{ name: SettingsCommand; args: unknown }>;
+  /** How many times the window asked for the catalogue. */
+  catalogueCalls: number;
   push(view: SettingsView): void;
 }
 
-/** A bridge that delivers views as the shell would and records every command; `null` delivers none. */
+/**
+ * A bridge that delivers views as the shell would, records every command
+ * and answers the catalogue with `fixtures/catalogue.json`; `null` delivers
+ * no view.
+ */
 function fakeBridge(initial: SettingsView | null): FakeSettingsBridge {
   let onView: ((view: SettingsView) => void) | null = null;
   const calls: Array<{ name: SettingsCommand; args: unknown }> = [];
   return {
     kind: 'tauri',
     calls,
+    catalogueCalls: 0,
+    async catalogue() {
+      this.catalogueCalls += 1;
+      return JSON.parse(JSON.stringify(CATALOGUE)) as CatalogueGroup[];
+    },
     async start(v) {
       onView = v;
       if (initial) v(initial);
@@ -61,8 +80,8 @@ function fakeBridge(initial: SettingsView | null): FakeSettingsBridge {
 
 let destroyers: Array<() => void> = [];
 
-/** Mounts the window on `bridge` and lets it take its first view (if the bridge sends one). */
-async function render(bridge: SettingsBridge, wait = true): Promise<HTMLElement> {
+/** Mounts the window on `bridge` and lets it take its first view (if the bridge sends one) and the catalogue. */
+async function render(bridge: SettingsWindowBridge, wait = true): Promise<HTMLElement> {
   const target = document.createElement('div');
   document.body.appendChild(target);
   const app = mount(SettingsWindow, { target, props: { bridge } });
@@ -71,7 +90,10 @@ async function render(bridge: SettingsBridge, wait = true): Promise<HTMLElement>
     target.remove();
   });
   flushSync();
-  for (let i = 0; wait && i < 200 && target.querySelector('.window')?.getAttribute('data-state') === 'none'; i++) {
+  const waiting = () =>
+    target.querySelector('.window')?.getAttribute('data-state') === 'none' ||
+    target.querySelector('section[aria-labelledby="section-blocked"] input[data-id]') === null;
+  for (let i = 0; wait && i < 200 && waiting(); i++) {
     await new Promise((resolve) => setTimeout(resolve, 5));
     flushSync();
   }
@@ -133,9 +155,12 @@ describe('the Settings window', () => {
       const help = document.getElementById(sw.getAttribute('aria-describedby')!);
       expect(help?.textContent).toMatch(/downloads nothing/i);
 
-      // The Grab section shows the hotkey, and the list its ids.
+      // The Grab section shows the hotkey, and the picker checks the saved ids.
       expect(text(root.querySelector('kbd.hotkey')), name).toBe(view.hotkey);
-      expect([...root.querySelectorAll('.blocked .id')].map((el) => text(el)), name).toEqual(view.blocked_currencies);
+      const checked = [...root.querySelectorAll<HTMLInputElement>('section[aria-labelledby="section-blocked"] input[data-id]')]
+        .filter((box) => box.checked)
+        .map((box) => box.dataset.id);
+      expect(checked.sort(), name).toEqual([...view.blocked_currencies].sort());
 
       // The update status is the app's text, in one polite live region: the
       // check's line, then the install's own line when it has one.
@@ -548,64 +573,94 @@ describe('the Settings window', () => {
     expect(bridge.calls).toHaveLength(3);
   });
 
-  it('blocked_currencies_editor_adds_and_removes', async () => {
-    // The saved list: one row per id, in the app's order, each with Remove.
+  it('blocked_currencies_picker_offers_only_catalogue_names', async () => {
     const saved = fixture('blocked-currencies');
-    expect(saved.blocked_currencies).toEqual(['divine', 'chaos', 'exalted']);
+    expect(saved.blocked_currencies).toEqual(['divine-orb', 'chaos-orb', 'exalted-orb']);
     const bridge = fakeBridge(saved);
     const root = await render(bridge);
     const region = root.querySelector<HTMLElement>('section[aria-labelledby="section-blocked"]')!;
     expect(text(region.querySelector('h2'))).toBe('Blocked currencies');
-    const ids = () => [...region.querySelectorAll('.blocked .item')].map((li) => li.getAttribute('data-id'));
-    expect(ids()).toEqual(['divine', 'chaos', 'exalted']);
-    expect([...region.querySelectorAll('.blocked .remove')].map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Remove divine',
-      'Remove chaos',
-      'Remove exalted',
+    expect(text(region.querySelector('.help'))).toBe('Currencies the helper never suggests. Pick them by name.');
+    expect(text(region.querySelector('.count'))).toBe('3 blocked');
+
+    // The window asked for the catalogue once.
+    expect(bridge.catalogueCalls).toBe(1);
+
+    // No field takes a typed id: the only text field is the picker's filter,
+    // and there is no Add or Remove.
+    expect(region.querySelector('#blocked-field')).toBeNull();
+    expect([...region.querySelectorAll('input:not([type="checkbox"])')].map((el) => el.getAttribute('aria-label'))).toEqual([
+      'Filter currencies',
     ]);
+    expect(button(region, 'Add')).toBeUndefined();
+    expect(region.querySelector('.remove')).toBeNull();
 
-    // Add sends the whole list with the new id last, trimmed.
-    const field = region.querySelector<HTMLInputElement>('#blocked-field')!;
-    const add = button(region, 'Add')!;
-    expect(add.disabled).toBe(true);
-    setValue(field, '  regal ');
-    add.click();
-    flushSync();
-    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { blocked_currencies: ['divine', 'chaos', 'exalted', 'regal'] } } }]);
-    expect(field.value).toBe('');
+    // The picker offers the catalogue and nothing else, each entry by its
+    // name, in its groups; with no tag in Settings.
+    const boxes = () => [...region.querySelectorAll<HTMLInputElement>('input[type="checkbox"][data-id]')];
+    const box = (id: string) => region.querySelector<HTMLInputElement>(`input[type="checkbox"][data-id="${id}"]`)!;
+    const entries = CATALOGUE.flatMap((group) => group.entries);
+    expect(entries.length).toBeGreaterThan(3);
+    expect(boxes().map((b) => b.dataset.id)).toEqual(entries.map((entry) => entry.id));
+    expect(boxes().map((b) => text(b.closest('label')))).toEqual(entries.map((entry) => entry.name));
+    expect([...region.querySelectorAll('legend')].map((el) => text(el))).toEqual(CATALOGUE.map((group) => group.label));
+    expect(region.querySelector('.tag')).toBeNull();
 
-    // The list shows what the next view carries, not the click.
-    expect(ids()).toEqual(['divine', 'chaos', 'exalted']);
-    bridge.push({ ...saved, blocked_currencies: ['divine', 'chaos', 'exalted', 'regal'] });
-    expect(ids()).toEqual(['divine', 'chaos', 'exalted', 'regal']);
+    // A saved id is shown by its name, checked; its id is not shown anywhere.
+    const nameOf = (id: string) => entries.find((entry) => entry.id === id)!.name;
+    const checkedNames = () => boxes().filter((b) => b.checked).map((b) => text(b.closest('label')));
+    expect(checkedNames().sort()).toEqual(saved.blocked_currencies.map(nameOf).sort());
+    for (const id of saved.blocked_currencies) expect(text(region)).not.toContain(id);
 
-    // Remove sends the whole list without that id.
-    click(region.querySelector('.item[data-id="chaos"] .remove'));
-    expect(bridge.calls[1]).toEqual({ name: 'update_settings', args: { patch: { blocked_currencies: ['divine', 'exalted', 'regal'] } } });
+    // Picking sends the whole list with the new id last; the box shows the
+    // view, so it stays unchecked until the next view carries the list.
+    const fresh = entries.find((entry) => !saved.blocked_currencies.includes(entry.id))!;
+    click(box(fresh.id));
+    expect(bridge.calls).toEqual([
+      { name: 'update_settings', args: { patch: { blocked_currencies: [...saved.blocked_currencies, fresh.id] } } },
+    ]);
+    expect(box(fresh.id).checked).toBe(false);
+    bridge.push({ ...saved, blocked_currencies: [...saved.blocked_currencies, fresh.id] });
+    expect(box(fresh.id).checked).toBe(true);
+    expect(text(region.querySelector('.count'))).toBe('4 blocked');
 
-    // Negative controls: a blank id or one already listed sends nothing.
-    bridge.calls.length = 0;
-    setValue(field, '   ');
-    field.form!.requestSubmit();
-    flushSync();
-    setValue(field, 'divine');
-    field.form!.requestSubmit();
-    flushSync();
-    expect(bridge.calls).toEqual([]);
+    // Unpicking sends the whole list without that id.
+    click(box('chaos-orb'));
+    expect(bridge.calls[1]).toEqual({
+      name: 'update_settings',
+      args: { patch: { blocked_currencies: ['divine-orb', 'exalted-orb', fresh.id] } },
+    });
 
-    // An empty list says so, and the first Add sends a list of one.
+    // The filter narrows the list by name; no match says so and sends nothing.
+    const filter = region.querySelector<HTMLInputElement>('input[type="search"]')!;
+    setValue(filter, 'orb');
+    const shown = boxes().filter((b) => !b.closest('li')!.hidden);
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.length).toBeLessThan(entries.length);
+    for (const b of shown) expect(text(b.closest('label')).toLowerCase()).toContain('orb');
+    setValue(filter, 'no such currency');
+    expect(text(region.querySelector('.no-match'))).toBe('No currency matches “no such currency”.');
+    expect(bridge.calls).toHaveLength(2);
+
+    // Negative control: an id the catalogue does not hold is never offered,
+    // even if a view carried one; only the catalogue's names are.
+    bridge.push({ ...saved, blocked_currencies: ['not-a-currency', 'chaos-orb'] });
+    expect(region.querySelector('input[data-id="not-a-currency"]')).toBeNull();
+    expect(text(region)).not.toContain('not-a-currency');
+    expect(boxes().map((b) => b.dataset.id)).toEqual(entries.map((entry) => entry.id));
+    expect(bridge.catalogueCalls).toBe(1);
+
+    // An empty list says so; the first pick sends a list of one, and
+    // unpicking the last sends an empty list.
     const empty = fakeBridge(fixture('idle'));
     const emptyRoot = await render(empty);
     const emptyRegion = emptyRoot.querySelector<HTMLElement>('section[aria-labelledby="section-blocked"]')!;
-    expect(emptyRegion.querySelector('.blocked')).toBeNull();
-    expect(text(emptyRegion.querySelector('.empty'))).toBe('No currency is blocked.');
-    setValue(emptyRegion.querySelector<HTMLInputElement>('#blocked-field')!, 'chaos');
-    click(button(emptyRegion, 'Add'));
-    expect(empty.calls).toEqual([{ name: 'update_settings', args: { patch: { blocked_currencies: ['chaos'] } } }]);
-
-    // Removing the last id sends an empty list.
-    empty.push({ ...fixture('idle'), blocked_currencies: ['chaos'] });
-    click(emptyRegion.querySelector('.item[data-id="chaos"] .remove'));
+    expect(text(emptyRegion.querySelector('.count'))).toBe('No currency is blocked.');
+    click(emptyRegion.querySelector('input[data-id="chaos-orb"]'));
+    expect(empty.calls).toEqual([{ name: 'update_settings', args: { patch: { blocked_currencies: ['chaos-orb'] } } }]);
+    empty.push({ ...fixture('idle'), blocked_currencies: ['chaos-orb'] });
+    expect(text(emptyRegion.querySelector('.count'))).toBe('1 blocked');
+    click(emptyRegion.querySelector('input[data-id="chaos-orb"]'));
     expect(empty.calls[1]).toEqual({ name: 'update_settings', args: { patch: { blocked_currencies: [] } } });
   });
 
@@ -615,6 +670,7 @@ describe('the Settings window', () => {
       (cmd, payload) => {
         asked.push(cmd);
         if (cmd === 'get_app_settings') return fixture('idle');
+        if (cmd === 'get_catalogue') return CATALOGUE;
         if (cmd === 'install_update') {
           expect(payload).toEqual({});
           return fixture('install-downloading');
@@ -642,6 +698,10 @@ describe('the Settings window', () => {
     off();
     await emit(APP_SETTINGS_EVENT, fixture('install-failed'));
     expect(views).toHaveLength(2);
+
+    // The catalogue the blocked list picks from is the app's `get_catalogue`.
+    expect(await bridge.catalogue()).toEqual(CATALOGUE);
+    expect(asked).toContain('get_catalogue');
   });
 
   it('preview_reads_the_state_from_the_query', async () => {
@@ -652,5 +712,11 @@ describe('the Settings window', () => {
     const root = await render(previewSettingsBridge('?state=install-downloading&scale=2'));
     expect(root.querySelector('.window')?.getAttribute('data-install')).toBe('downloading');
     expect(document.documentElement.dataset.previewScale).toBe('2');
+
+    // The preview's picker reads the catalogue fixture.
+    expect(await previewSettingsBridge('').catalogue()).toEqual(CATALOGUE);
+    expect(root.querySelectorAll('section[aria-labelledby="section-blocked"] input[data-id]')).toHaveLength(
+      CATALOGUE.flatMap((group) => group.entries).length,
+    );
   });
 });
