@@ -722,9 +722,11 @@ machine; the method, the numbers per shot and the tests are in
 screenshots and copies (2026-10-29) unless it says otherwise; nothing here
 was read from the game's code.
 
-- **Placement**: the tooltip draws beside the hovered item and is kept
-  inside the window, flush against its left or top edge when the item lies
-  near one, never cut (14 tooltips). Hovering a weapon once drew the
+- **Placement**: the tooltip draws beside the hovered item. In ten of the
+  14 measured tooltips it lay flush against the client's left edge and in
+  five within ten pixels of its top, whole each time; a tooltip at the
+  right or bottom edge, or one cut by the window's edge, was not observed.
+  Hovering a weapon once drew the
   equipped weapon's tooltip beside it as a second box; when the game does
   that is not established.
 - **Size scales with the client**: 663 to 877 pixels wide and 194 to 631

@@ -256,8 +256,9 @@ struct ScreenState {
     placed: Option<(OverlayPosition, ClientRect, (u32, u32))>,
     /// The last `watch:` state line written.
     watch_line: String,
-    /// A backend call failed and was logged; a success clears it.
-    window_failed: bool,
+    /// The game's window call that failed and was logged, by name; a
+    /// success clears it.
+    window_failed: Option<String>,
     /// The overlay's size was unknown, and that was logged.
     size_failed: bool,
     /// The last demand sent to the thread (whether guiding, whether to
@@ -273,8 +274,9 @@ struct ScreenState {
     /// A change the guide did not expect, read and not applied: its key,
     /// never applied again until the next grab.
     unexpected: Option<ItemKey>,
-    /// A read or OCR call failed and was logged; a success clears it.
-    read_failed: bool,
+    /// The read or OCR call that failed and was logged, by name; a success
+    /// clears it.
+    read_failed: Option<String>,
     /// The last `watch: idle (guide not active|screen watch off)` line
     /// written while guiding, and the last `watch: tooltip …` (or black)
     /// line; both forgotten when guiding ends.
@@ -289,7 +291,7 @@ impl Default for ScreenState {
             shown: false,
             placed: None,
             watch_line: idle_line(NOT_GUIDING),
-            window_failed: false,
+            window_failed: None,
             size_failed: false,
             demand: None,
             generation: 0,
@@ -297,7 +299,7 @@ impl Default for ScreenState {
             ocr: None,
             seen: None,
             unexpected: None,
-            read_failed: false,
+            read_failed: None,
             read_line: None,
             tooltip_line: None,
         }
@@ -671,20 +673,7 @@ impl App {
             Report::Window(window) => self.window_report(generation, window),
             Report::Ocr(ready) => self.ocr_report(ready),
             Report::Read { seen, confirmed } => self.read_report(generation, seen, confirmed),
-            Report::ReadFailed(failure) => {
-                let first = {
-                    let mut st = self.lock();
-                    let first = !st.screen.read_failed;
-                    st.screen.read_failed = true;
-                    first
-                };
-                if first {
-                    self.diag(&format!(
-                        "error: watch: {} failed: {}",
-                        failure.call, failure.error
-                    ));
-                }
-            }
+            Report::ReadFailed(failure) => self.read_failure(failure),
             Report::Minute { counts, busy_ms } => {
                 if self.lock().guiding() {
                     self.diag(&format!(
@@ -701,6 +690,28 @@ impl App {
         watch_line_view(&self.lock())
     }
 
+    /// A read or OCR call failed: logged once until a call succeeds, and
+    /// the watch line says the screen cannot be read and to grab the item,
+    /// so a watch that never reads does not say it is watching.
+    fn read_failure(&self, failure: WatchFailure) {
+        let before = self.watch_now();
+        let first = {
+            let mut st = self.lock();
+            let first = st.screen.read_failed.is_none();
+            st.screen.read_failed = Some(failure.call.clone());
+            first
+        };
+        if first {
+            self.diag(&format!(
+                "error: watch: {} failed: {}",
+                failure.call, failure.error
+            ));
+        }
+        if self.watch_now() != before {
+            self.emit();
+        }
+    }
+
     /// Whether the OCR reads English: said once, and a refusal stops the
     /// reads (the next demand says not to read).
     fn ocr_report(&self, ready: Result<OcrReadiness, WatchFailure>) {
@@ -709,22 +720,18 @@ impl App {
             let was = st.screen.ocr;
             let line = match ready {
                 Ok(OcrReadiness::Ready { language }) => {
-                    st.screen.read_failed = false;
+                    st.screen.read_failed = None;
                     st.screen.ocr = Some(true);
                     format!("watch: on (OCR {language})")
                 }
                 Ok(OcrReadiness::NoEnglish) => {
-                    st.screen.read_failed = false;
+                    st.screen.read_failed = None;
                     st.screen.ocr = Some(false);
                     "watch: refused: no English OCR".to_string()
                 }
                 Err(f) => {
-                    let first = !st.screen.read_failed;
-                    st.screen.read_failed = true;
                     drop(st);
-                    if first {
-                        self.diag(&format!("error: watch: {} failed: {}", f.call, f.error));
-                    }
+                    self.read_failure(f);
                     return;
                 }
             };
@@ -751,7 +758,7 @@ impl App {
             if st.screen.generation != generation || !st.guiding() {
                 return;
             }
-            st.screen.read_failed = false;
+            st.screen.read_failed = None;
             let mut lines = Vec::new();
             let line = seen.diag_line();
             if st.screen.tooltip_line.as_ref() != Some(&line) {
@@ -835,8 +842,8 @@ impl App {
             };
             st.screen.game = game;
             // Logged once until a call succeeds.
-            let first = failure.is_some() && !st.screen.window_failed;
-            st.screen.window_failed = failure.is_some();
+            let first = failure.is_some() && st.screen.window_failed.is_none();
+            st.screen.window_failed = failure.as_ref().map(|f| f.call.clone());
             failure.filter(|_| first)
         };
         if let Some(f) = failure {
@@ -1654,9 +1661,16 @@ fn watch_line_view(st: &State) -> Option<WatchLineView> {
         return line(NO_OCR_LINE, true);
     }
     match st.screen.game {
-        Game::NotInFront | Game::Failed => return line(NOT_IN_FRONT_LINE, false),
+        Game::Failed => {
+            let call = st.screen.window_failed.as_deref().unwrap_or("game window");
+            return line(&failed_line(call), true);
+        }
+        Game::NotInFront => return line(NOT_IN_FRONT_LINE, false),
         Game::Minimized => return line(MINIMIZED_LINE, false),
         Game::Unknown | Game::InFront(_) => {}
+    }
+    if let Some(call) = &st.screen.read_failed {
+        return line(&failed_line(call), true);
     }
     match &st.screen.seen {
         None | Some(Seen::NoTooltip) => line(WATCHING_LINE, false),
@@ -1670,6 +1684,14 @@ fn watch_line_view(st: &State) -> Option<WatchLineView> {
         Some(Seen::Covered) => line(COVERED_LINE, true),
         Some(Seen::Black) => line(BLACK_LINE, true),
     }
+}
+
+/// The watch line while a backend call fails (the game's window, a copy of
+/// it or the OCR): `Can't read the screen (<call> failed): grab the item
+/// after each step.`, in the form of [`NO_OCR_LINE`]. Shown until a call
+/// succeeds, so a watch that cannot read never says it is watching.
+fn failed_line(call: &str) -> String {
+    format!("Can't read the screen ({call} failed): grab the item after each step.")
 }
 
 /// An outcome as the `craft:` lines name it.
