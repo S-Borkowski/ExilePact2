@@ -15,7 +15,7 @@ The crafting helper's crafting techniques, one TOML file each, named
   Each error is one `<path>:<line>:<col>: <message>` line. Then run
   `cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test shipped`.
 
-The fourteen files here are paraphrases, in our own words, of the source
+The thirteen files here are paraphrases, in our own words, of the source
 each names in its `source` key; never paste a post's or a guide's text into
 one.
 
