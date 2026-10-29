@@ -7,7 +7,7 @@
 // fixtures under `fixtures/views/`, chosen by the query:
 //
 //   http://127.0.0.1:1422/?state=grabbed-item
-//   http://127.0.0.1:1422/overlay.html?state=overlay-active
+//   http://127.0.0.1:1422/overlay.html?state=overlay-active&scene=bright
 //
 // Commands are logged, not acted on: the preview has no app behind it, so a
 // paste is not shown as a grab, a target change does not re-plan and the
@@ -19,7 +19,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { type CatalogueGroup, type View, catalogueProblems, viewProblems } from './ipc';
+import { type CatalogueGroup, type OverlayPosition, type View, catalogueProblems, viewProblems } from './ipc';
 
 export const VIEW_EVENT = 'ch:view';
 
@@ -63,11 +63,13 @@ export type Command = keyof CommandArgs;
 /** How a component sends a command: fire and forget, the next view answers. */
 export type Send = <C extends Command>(name: C, args: CommandArgs[C]) => void;
 
-/** What `update_settings` takes: either key, or both; the app refuses any other. */
+/** What `update_settings` takes: any of these keys; the app refuses any other, and a position that is not one of the six. */
 export interface SettingsPatch {
   check_updates?: boolean;
   /** The whole list, which replaces the saved one. */
   blocked_currencies?: string[];
+  overlay_position?: OverlayPosition;
+  screen_watch?: boolean;
 }
 
 /**

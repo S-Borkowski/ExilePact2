@@ -26,7 +26,8 @@ const FIXTURES: Record<string, Loader> = import.meta.env.DEV
 /**
  * The fixtures: one per check state and one per install state (`install-*`;
  * the install state `none` is `idle`'s and `ready` is `available`'s), then a
- * refused hotkey and a saved blocked list. What
+ * refused hotkey, a saved blocked list and the overlay's settings changed
+ * from their defaults. What
  * `fixtures/app-settings/README.md` lists.
  */
 export const PREVIEW_STATES = [
@@ -43,6 +44,7 @@ export const PREVIEW_STATES = [
   'install-failed',
   'hotkey-refused',
   'blocked-currencies',
+  'overlay-settings',
 ] as const;
 export type PreviewState = (typeof PREVIEW_STATES)[number];
 

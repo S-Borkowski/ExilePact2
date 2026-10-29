@@ -29,9 +29,14 @@ export const CRAFT_FIXTURE_NAMES = [
   'craft-miss',
   'craft-replan',
   'craft-done',
+  'craft-watching',
+  'craft-screen-hit',
+  'craft-screen-unexpected',
+  'craft-watch-off',
+  'craft-watch-unavailable',
 ] as const;
 
-/** Every main-view state, one file each: M3's six, then the craft window's. */
+/** Every main-view state, one file each: M3's, the overlay's two, then the craft window's. */
 export const FIXTURE_NAMES = [
   'empty',
   'grabbed-item',
@@ -39,6 +44,7 @@ export const FIXTURE_NAMES = [
   'grab-refused',
   'hotkey-taken',
   'overlay-active',
+  'overlay-not-in-front',
   ...CRAFT_FIXTURE_NAMES,
 ] as const;
 

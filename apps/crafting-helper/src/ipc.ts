@@ -32,12 +32,55 @@ export interface StatusLine {
   text: string;
 }
 
+export const OVERLAY_POSITIONS = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const;
+/** Where the overlay sits inside the game's client area: an edge's middle or a corner (`top-center` by default). */
+export type OverlayPosition = (typeof OVERLAY_POSITIONS)[number];
+
 /** The overlay window's state. */
 export interface OverlayView {
-  /** True only while a craft is active; the shell shows or hides the window by it. */
+  /** True only while a craft is guiding and the game's window is in front; the shell shows or hides the window by it. */
   visible: boolean;
-  /** The one line the overlay shows. */
-  line: string;
+  /** Where it sits, so the page anchors its panel to that edge. */
+  position: OverlayPosition;
+  /** What it shows: present exactly while a craft is guiding, shown or not. */
+  guide: OverlayGuide | null;
+}
+
+/** The overlay's content: Rust's copy, rendered as sent (the labels are the page's). */
+export interface OverlayGuide {
+  status: GuideStatus;
+  route_name: string;
+  /** The current step's place in the route, from 1, while active or stuck. */
+  step_number: number | null;
+  /** Which try of that step this is, from 1. */
+  try_number: number | null;
+  /** The step's instruction; with replan and done, what to do instead. */
+  instruction: string;
+  /** The currency's name, then each omen's, while active. */
+  uses: string[];
+  /** The odds in words, while active. */
+  odds: string | null;
+  /** Why it is stuck or must be planned again: the first reason. */
+  why: string | null;
+  /** `On a hit: …`, while active or stuck. */
+  on_hit: string | null;
+  /** `On a miss: …`, while active or stuck. */
+  on_miss: string | null;
+  /** The last observed change; null before the first. */
+  last: HistoryEntry | null;
+  /** The screen watch's line, the guiding card's own; null with replan and done. */
+  watch: WatchLineView | null;
+}
+
+/**
+ * The screen watch's line (`ui-design.md` § "The screen watch's line"): what
+ * the watch sees and what to do, the same in the guiding card and the
+ * overlay's Screen row.
+ */
+export interface WatchLineView {
+  text: string;
+  /** It asks the player to do something: the warning colour. */
+  warning: boolean;
 }
 
 /** Everything the main window and the overlay show. */
@@ -75,6 +118,10 @@ export type GuideStatus = (typeof GUIDE_STATUSES)[number];
 
 export const OUTCOME_WORDS = ['hit', 'miss', 'unexpected'] as const;
 export type OutcomeWord = (typeof OUTCOME_WORDS)[number];
+
+export const OUTCOME_SOURCES = ['grab', 'screen'] as const;
+/** Where an observed change came from: a grab of the item's text, or the screen watch reading the hovered item twice alike. */
+export type OutcomeSource = (typeof OUTCOME_SOURCES)[number];
 
 /** The craft part of the view: exactly the part its mode names is set. */
 export interface CraftView {
@@ -228,10 +275,11 @@ export interface HistoryEntry {
   result: OutcomeWord;
   /** Starts `Hit:`, `Miss:` or `Unexpected:`. */
   summary: string;
+  source: OutcomeSource;
 }
 
 export interface GuidingView {
-  /** The item as last grabbed. */
+  /** The item as last grabbed, or as the screen watch last read a hit or a miss. */
   item: CraftItemView;
   blueprint: string;
   route_name: string;
@@ -242,6 +290,8 @@ export interface GuidingView {
   reasons: string[];
   /** Oldest first. */
   history: HistoryEntry[];
+  /** The screen watch's line, while active or stuck; null with replan and done. */
+  watch: WatchLineView | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -320,7 +370,6 @@ export function record<T>(spec: Spec<T>): Check {
 
 const grab = record<GrabView>({ text: str, line_count: uint, source: oneOf(GRAB_SOURCES), looks_like_item: bool });
 export const statusLine = record<StatusLine>({ kind: oneOf(STATUS_KINDS), text: str });
-const overlay = record<OverlayView>({ visible: bool, line: str });
 
 const side = oneOf(MOD_SIDES);
 const catalogueEntry = record<CatalogueEntry>({ id: str, name: str });
@@ -377,6 +426,15 @@ const planning = record<PlanningView>({
   ),
   can_accept: bool,
 });
+const historyEntry = record<HistoryEntry>({
+  number: uint,
+  step: str,
+  instruction: str,
+  result: oneOf(OUTCOME_WORDS),
+  summary: str,
+  source: oneOf(OUTCOME_SOURCES),
+});
+const watchLine = record<WatchLineView>({ text: str, warning: bool });
 const guiding = record<GuidingView>({
   item,
   blueprint: str,
@@ -384,8 +442,27 @@ const guiding = record<GuidingView>({
   status: oneOf(GUIDE_STATUSES),
   step: nullable(record<CurrentStepView>({ step: stepLine, on_hit: str, on_miss: str, try_number: uint })),
   reasons: list(str),
-  history: list(
-    record<HistoryEntry>({ number: uint, step: str, instruction: str, result: oneOf(OUTCOME_WORDS), summary: str }),
+  history: list(historyEntry),
+  watch: nullable(watchLine),
+});
+const overlay = record<OverlayView>({
+  visible: bool,
+  position: oneOf(OVERLAY_POSITIONS),
+  guide: nullable(
+    record<OverlayGuide>({
+      status: oneOf(GUIDE_STATUSES),
+      route_name: str,
+      step_number: nullable(uint),
+      try_number: nullable(uint),
+      instruction: str,
+      uses: list(str),
+      odds: nullable(str),
+      why: nullable(str),
+      on_hit: nullable(str),
+      on_miss: nullable(str),
+      last: nullable(historyEntry),
+      watch: nullable(watchLine),
+    }),
   ),
 });
 const craftFields = record<CraftView>({

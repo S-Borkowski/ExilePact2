@@ -1,6 +1,6 @@
 /*
  * The overlay's own rules, over the main page's base (`../app.css`): the
- * page is transparent, so only the line's panel is drawn over the game, and
+ * page is transparent, so only the step panel is drawn over the game, and
  * nothing on it can be selected or clicked (the window ignores the cursor
  * as well).
  */
@@ -13,4 +13,21 @@ body {
 body {
   pointer-events: none;
   user-select: none;
+}
+
+/* The browser preview alone (`preview.ts`): the page at the overlay
+   window's size (480 × 168), over a flat stand-in for a bright or a dark
+   scene when the query asks for one. */
+:root[data-overlay-preview] #app {
+  width: 480px;
+  height: 168px;
+  outline: 1px dashed var(--color-text-muted);
+}
+
+:root[data-overlay-preview='bright'] body {
+  background: #ffffff;
+}
+
+:root[data-overlay-preview='dark'] body {
+  background: #050506;
 }

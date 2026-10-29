@@ -21,7 +21,7 @@ import {
 } from './bridge';
 import { PREVIEW_STATES, parseSettingsPreviewQuery, previewSettingsBridge } from './preview';
 import { SECTIONS } from './sections';
-import { CATALOGUE, click, setValue } from '../test-support';
+import { CATALOGUE, choose, click, setValue } from '../test-support';
 import type { CatalogueGroup } from '../ipc';
 import { type SettingsView, INSTALL_STATES, UPDATE_STATES, settingsProblems } from './view';
 
@@ -105,7 +105,11 @@ const text = (el: Element | null | undefined) => (el?.textContent ?? '').replace
 const button = (root: HTMLElement, label: string): HTMLButtonElement | undefined =>
   [...root.querySelectorAll('button')].find((b) => text(b) === label);
 
-const toggle = (root: HTMLElement): HTMLInputElement => root.querySelector('input[role="switch"]') as HTMLInputElement;
+/** The Updates section's switch (the Overlay section has its own). */
+const toggle = (root: HTMLElement): HTMLInputElement =>
+  root.querySelector('section[aria-labelledby="section-updates"] input[role="switch"]') as HTMLInputElement;
+/** The Overlay section's region. */
+const overlaySection = (root: HTMLElement): HTMLElement => root.querySelector('section[aria-labelledby="section-overlay"]') as HTMLElement;
 
 /** The install states that write their own status line (all but `none` and `ready`). */
 const INSTALL_LINE_STATES = ['unsigned', 'downloading', 'verifying', 'restarting', 'failed'];
@@ -182,6 +186,11 @@ describe('the Settings window', () => {
 
       // The version line.
       expect(text(root.querySelector('.version'))).toBe(`Version ${view.version}`);
+
+      // The Overlay section shows the saved position and the screen watch.
+      const overlay = overlaySection(root);
+      expect(overlay.querySelector<HTMLSelectElement>('select')!.value, name).toBe(view.overlay_position);
+      expect(overlay.querySelector<HTMLInputElement>('input[role="switch"]')!.checked, name).toBe(view.screen_watch);
     }
     // The fixtures cover every state the types declare.
     expect([...seenUpdate].sort()).toEqual([...UPDATE_STATES].sort());
@@ -516,6 +525,18 @@ describe('the Settings window', () => {
     const notList = fixture('idle') as unknown as Record<string, unknown>;
     notList.blocked_currencies = 'divine';
     expect(settingsProblems(notList)).toEqual(['app_settings.blocked_currencies: expected a list']);
+
+    // The overlay's position and the screen watch.
+    const badPosition = fixture('overlay-settings') as unknown as Record<string, unknown>;
+    badPosition.overlay_position = 'center';
+    badPosition.screen_watch = 'off';
+    expect(settingsProblems(badPosition)).toEqual([
+      'app_settings.overlay_position: "center" is not one of top-left|top-center|top-right|bottom-left|bottom-center|bottom-right',
+      'app_settings.screen_watch: expected a boolean',
+    ]);
+    const noWatch = fixture('idle') as unknown as Record<string, unknown>;
+    delete noWatch.screen_watch;
+    expect(settingsProblems(noWatch)).toEqual(['app_settings.screen_watch: missing']);
   });
 
   it('hotkey_form_sends_set_hotkey', async () => {
@@ -571,6 +592,70 @@ describe('the Settings window', () => {
     bridge.push(fixture('idle'));
     expect(text(status)).toBe('');
     expect(bridge.calls).toHaveLength(3);
+  });
+
+  it('settings_overlay_section_sends_position_and_watch', async () => {
+    // Every other view has the defaults: top-center, the screen watch on.
+    for (const name of PREVIEW_STATES.filter((n) => n !== 'overlay-settings')) {
+      expect([fixture(name).overlay_position, fixture(name).screen_watch], name).toEqual(['top-center', true]);
+    }
+    const saved = fixture('overlay-settings');
+    expect([saved.overlay_position, saved.screen_watch]).toEqual(['bottom-right', false]);
+    const bridge = fakeBridge(saved);
+    const root = await render(bridge);
+
+    // After Grab, before the blocked list and Updates.
+    expect(SECTIONS.map((s) => s.id)).toEqual(['grab', 'overlay', 'blocked', 'updates']);
+    const region = overlaySection(root);
+    expect(text(region.querySelector('h2'))).toBe('Overlay');
+
+    // Position: a native select, labelled, the six places in reading order, the saved one selected.
+    const select = region.querySelector<HTMLSelectElement>('select')!;
+    expect(text(document.querySelector(`label[for="${select.id}"]`))).toBe('Position');
+    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual([
+      ['top-left', 'Top left'],
+      ['top-center', 'Top center'],
+      ['top-right', 'Top right'],
+      ['bottom-left', 'Bottom left'],
+      ['bottom-center', 'Bottom center'],
+      ['bottom-right', 'Bottom right'],
+    ]);
+    expect(select.value).toBe('bottom-right');
+    expect(text(document.getElementById(select.getAttribute('aria-describedby')!))).toBe(
+      "Where the step panel sits in the game's window while a craft is guided.",
+    );
+
+    // The screen watch: a switch, named by its label, described by its help, off as saved.
+    const watch = region.querySelector<HTMLInputElement>('input[role="switch"]')!;
+    expect(text(watch.closest('label'))).toBe('Read the item from the screen');
+    expect(watch.checked).toBe(false);
+    expect(text(document.getElementById(watch.getAttribute('aria-describedby')!))).toBe(
+      'After each step, hover the item in the game and the helper reads it. Copies of the screen stay in memory; nothing is saved or sent. Off: grab the item after each step.',
+    );
+
+    // Each control sends its one key.
+    choose(select, 'top-left');
+    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { overlay_position: 'top-left' } } }]);
+    watch.click();
+    flushSync();
+    expect(bridge.calls[1]).toEqual({ name: 'update_settings', args: { patch: { screen_watch: true } } });
+
+    // Both follow the next view, not their own change.
+    bridge.push(fixture('idle'));
+    expect(select.value).toBe('top-center');
+    expect(watch.checked).toBe(true);
+    bridge.push(saved);
+    expect(select.value).toBe('bottom-right');
+    expect(watch.checked).toBe(false);
+    watch.click();
+    flushSync();
+    expect(bridge.calls[2]).toEqual({ name: 'update_settings', args: { patch: { screen_watch: true } } });
+    expect(bridge.calls).toHaveLength(3);
+
+    // The Updates switch is a different control and sends its own key.
+    toggle(root).click();
+    flushSync();
+    expect(bridge.calls[3]).toEqual({ name: 'update_settings', args: { patch: { check_updates: true } } });
   });
 
   it('blocked_currencies_picker_offers_only_catalogue_names', async () => {

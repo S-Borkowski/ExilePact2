@@ -163,3 +163,117 @@ absent; colour is the warning hue on the one row that needs the player.
   fact appears; outcomes, sources and watch states are words, the warning
   colour is never the only signal, and the Settings controls are native
   and labelled.
+
+## Audit of the built overlay
+
+Run: 2026-10-29, `impeccable` 4.7.1, `audit` of the built overlay page
+(`src/overlay/`), the Settings window's Overlay section
+(`src/settings/OverlaySection.svelte`) and the guiding view's watch line and
+outcome sources (`src/craft/CurrentStep.svelte`, `History.svelte`) in the
+browser preview, against [`../ui-design.md`](../ui-design.md) and the
+critique above, with the `taste-skill` app-screen rules applied alongside as
+in the critique.
+
+**DEGRADED: single-context** (one implementer session, no sub-agent tool and
+no way to ask the owner; the owner reviews the built overlay later, as fixes
+on this branch, by the workorder's decision of 2026-10-29).
+`impeccable context` found no `PRODUCT.md` or `DESIGN.md`; the direction
+document was the brief. How the evidence was gathered:
+
+- **The states looked at:** the overlay at its window's 480 × 168 (the
+  preview draws it so) for every view fixture the milestone added and the
+  guide's other statuses: `overlay-active`, `overlay-not-in-front`,
+  `craft-watching`, `craft-screen-hit`, `craft-screen-unexpected`,
+  `craft-watch-off`, `craft-watch-unavailable`, `craft-replan` and
+  `craft-done`, each over `scene=bright` or `scene=dark`, and
+  `overlay-active` with its position set to a `bottom-*` place; Settings'
+  `overlay-settings` (with `install-downloading` beside it for the height)
+  at its fixed 440 × 720; the main window's `craft-watching`,
+  `craft-screen-hit` and `craft-screen-unexpected` at 960 × 680 and
+  `craft-screen-hit` at the minimum 600 × 480.
+- **Looking at the render:** headless Microsoft Edge 156 over the DevTools
+  protocol on `127.0.0.1`, the viewport set exactly
+  (`Emulation.setDeviceMetricsOverride`), one screenshot per state, read
+  before the fix and again after; the panel's height, which rows are cut
+  and the Settings page's height were read from the same pages with
+  `Runtime.evaluate`. The pictures stay on the implementer's machine; no
+  image is committed.
+- **Detector, source scan:** `impeccable detect --json` over `src/overlay`,
+  `src/settings/OverlaySection.svelte`, `src/craft/CurrentStep.svelte` and
+  `src/craft/History.svelte` returned `[]` (exit 0); the design hook
+  reported nothing on each edit it scanned.
+- **Detector, page scan:** `impeccable detect --cdp <port> --json` on
+  `settings.html?state=overlay-settings` returned `[]`; on
+  `overlay.html?state=overlay-active` it returned five warnings, before and
+  after the fix (finding 1 and "Checked and left as is"). Each page was a
+  background tab, so the pixel contrast pass read nothing; the contrast
+  figures are the critique's, computed from the tokens.
+- **taste-skill:** its `lint.mjs` and `inspect.mjs` were not run (they open
+  the page at 1440, 768 and 390 wide, sizes neither window has); its
+  app-screen questions were answered against the screenshots.
+
+### Audit health
+
+| # | Dimension | Score | Key finding |
+|---|---|---|---|
+| 1 | Accessibility | 3 | Settings' two controls are native and labelled, each described by its help line; the overlay is a mirror of the main window, with outcome, source and watch state in words, the warning colour never the only signal |
+| 2 | Performance | 4 | Seven text rows from the view, no motion, no images, no layout read in a loop |
+| 3 | Theming | 4 | Every colour and size from the copied tokens; the only literal colours are the preview's stand-in scenes |
+| 4 | Responsive | 3 | Both windows have fixed sizes; every overlay row is one line with an ellipsis, so the panel stays 156 px of 168 in every state |
+| 5 | Implementation integrity | 3 → 4 | The pages render what Rust sends; the direction promised a refusal line the view cannot carry (finding 3), and the text ran 8 px from the panel's edge (finding 1) |
+| **Total** | | **17/20 → 18/20** | **Excellent** |
+
+The overlay answers its question, *"what do I do now, and did the last try
+work?"*, at a glance: the instruction is the one 16 px bold row, and the
+Last row names the outcome and where it came from. Over the white stand-in
+the 0.92 ground holds every row legible; over the near-black one the 1 px
+edge keeps the panel apart from the scene. The watch line in the guiding
+card and on the overlay is one string, and the warning ones take the warning
+colour in both.
+
+### Findings and what changed
+
+1. **[P2] Text started 8 px from the panel's edge** (Implementation
+   integrity; the detector's `body-text-viewport-edge`, five rows). Over a
+   busy game scene the first letters sat almost on the border.
+   *Changed:* the panel's sides take `--space-row-pad` (12 px); top and
+   bottom keep `--space-panel-pad` (8 px), so the panel's height (156 px)
+   did not change. `ui-design.md` § "Overlay" says so.
+2. **[P2] The screen-read source and the watch line had to be checked in
+   both windows.** The guiding card's "Last:" line, each History entry and
+   the overlay's Last row were read for `craft-screen-hit` ("from the
+   screen") and `craft-guiding` ("from a grab"), and the watch line for
+   every watch fixture, in the colour Rust marks. Nothing to change; the
+   page tests pin each (`history_marks_outcomes_read_from_the_screen`,
+   `guiding_shows_the_watch_line`, `overlay_renders_the_watch_line`).
+3. **[P2] The direction promised a refusal line the view cannot carry.**
+   `ui-design.md` asked the Overlay section to show a refused position with
+   `!` in a status line, as the Grab section does; but `SettingsView` has a
+   status only for the hotkey, and the select offers only the six names the
+   app takes, so the page cannot send a refused one.
+   *Changed:* the direction now says so: a refusal from the shell (which
+   the page cannot cause) keeps the saved value, the next view shows it and
+   the bridge logs Rust's reason, as for the blocked list. No status line
+   was invented.
+
+### Checked and left as is
+
+- **The odds are cut in the Uses row** in every active state at 480 px
+  (`~3.0% ((4000 of 133355 weight) times (the l…`). The percent leads, as
+  the direction planned, so the cut keeps the number; the whole basis is in
+  the main window.
+- **Replan's Why and Last rows are cut** (the reason is long). Replan
+  points to the app, where the full reasons are listed under "Why:".
+- **The detector's five `body-text-viewport-edge` warnings remain** at
+  13 px: the scan's tab was wider than 480, where the rule asks 16 px; at
+  the overlay's own 480 px width it asks 12, which the panel now meets. The
+  rows are cut by design, not overflowing.
+- **"Last:" and "Why:" are plain muted words while "Uses" and "Screen" are
+  small caps**, as the direction sets them: the first two read as the start
+  of a sentence, the other two as a row's label.
+- **The Settings page is 904 px tall** in `overlay-settings` (950 in
+  `install-downloading`) in its 720 px window, so Updates is below the fold
+  and the page scrolls as a whole: the direction's choice, Updates being
+  the least-used section.
+- **No focus, no live region on the overlay**: it cannot be focused or
+  clicked, and the main window's status line announces each outcome.

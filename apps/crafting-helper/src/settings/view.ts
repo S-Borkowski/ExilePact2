@@ -1,7 +1,8 @@
 // The Settings window's view, mirrored from `ch-app`'s `SettingsView`
 // (`crates/ch-app/src/view.rs`): `ep-update`'s `AppSettingsView`
 // (`apps/shared/crates/ep-update/src/view.rs`) flattened in, then the
-// hotkey, what the last hotkey change said and the blocked currencies.
+// hotkey, what the last hotkey change said, the blocked currencies, the
+// overlay's position and the screen watch.
 // Field names are snake_case exactly as serde writes them in
 // `ch:app-settings` and the answer to `get_app_settings`. The window renders
 // these values; whether a check runs, what it found, which version is newer,
@@ -14,7 +15,18 @@
 // invents, fails them. It follows `../ipc.ts`'s checker for `View`, and the
 // waystone roller's copy of this file.
 
-import { type Check, type StatusLine, list, nullable, oneOf, record, statusLine, str } from '../ipc';
+import {
+  type Check,
+  OVERLAY_POSITIONS,
+  type OverlayPosition,
+  type StatusLine,
+  list,
+  nullable,
+  oneOf,
+  record,
+  statusLine,
+  str,
+} from '../ipc';
 
 export const UPDATE_STATES = ['idle', 'checking', 'up-to-date', 'available', 'no-release', 'failed'] as const;
 export type UpdateState = (typeof UPDATE_STATES)[number];
@@ -71,6 +83,10 @@ export interface SettingsView extends AppSettingsView {
   hotkey_status: StatusLine | null;
   /** The currency ids the player blocked, in the order the app keeps them. */
   blocked_currencies: string[];
+  /** Where the overlay sits over the game (`top-center` by default). */
+  overlay_position: OverlayPosition;
+  /** Whether the app reads the hovered item from the screen while a craft is guiding (on by default). */
+  screen_watch: boolean;
 }
 
 // One field spec per type, from `../ipc.ts`'s checks: `Spec<T>` makes the
@@ -94,6 +110,8 @@ const settings = record<SettingsView>({
   hotkey: str,
   hotkey_status: nullable(statusLine),
   blocked_currencies: list(str),
+  overlay_position: oneOf(OVERLAY_POSITIONS),
+  screen_watch: bool,
 });
 
 /** Every way `value` differs from a `SettingsView`; empty when it is one. */

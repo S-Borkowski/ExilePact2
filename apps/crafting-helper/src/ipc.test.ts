@@ -23,7 +23,8 @@ describe('the TypeScript IPC types', () => {
       'grabbed-not-item': ['paste', false, 'error', false, 'refused'],
       'grab-refused': ['shortcut', true, 'error', false, 'refused'],
       'hotkey-taken': [null, null, 'error', false, 'none'],
-      'overlay-active': ['paste', true, 'info', true, 'refused'],
+      'overlay-active': ['paste', true, 'info', true, 'guiding'],
+      'overlay-not-in-front': ['paste', true, 'info', false, 'guiding'],
       'craft-planning': ['paste', true, 'info', false, 'planning'],
       'craft-fallback': ['paste', true, 'info', false, 'planning'],
       'craft-no-route': ['paste', true, 'info', false, 'planning'],
@@ -32,8 +33,19 @@ describe('the TypeScript IPC types', () => {
       'craft-miss': ['paste', true, 'info', false, 'guiding'],
       'craft-replan': ['paste', true, 'error', false, 'guiding'],
       'craft-done': ['paste', true, 'info', false, 'guiding'],
+      'craft-watching': ['paste', true, 'info', true, 'guiding'],
+      'craft-screen-hit': ['paste', true, 'info', true, 'guiding'],
+      'craft-screen-unexpected': ['paste', true, 'error', true, 'guiding'],
+      'craft-watch-off': ['paste', true, 'info', true, 'guiding'],
+      'craft-watch-unavailable': ['paste', true, 'info', true, 'guiding'],
     });
-    // The overlay stays hidden while a craft is guided (M5 leaves it to M6).
+    // The overlay's content is there exactly while guiding, and it shows
+    // only with content; the M5 views had no game in front, so it stays hidden.
+    for (const name of FIXTURE_NAMES) {
+      const v = fixtureView(name);
+      expect(v.overlay.guide !== null, name).toBe(v.craft.mode === 'guiding');
+      if (v.overlay.visible) expect(v.overlay.guide, name).not.toBeNull();
+    }
     for (const name of ['craft-guiding', 'craft-miss', 'craft-replan', 'craft-done']) {
       expect(fixtureView(name).overlay.visible, name).toBe(false);
     }
@@ -66,10 +78,26 @@ describe('the TypeScript IPC types', () => {
 
     const badOverlay = fixtureView('overlay-active') as unknown as { overlay: Record<string, unknown> };
     badOverlay.overlay.visible = 'yes';
-    badOverlay.overlay.position = { x: 0, y: 0 };
+    badOverlay.overlay.position = 'center';
+    badOverlay.overlay.line = 'Next step: shown here while a craft is active.';
     expect(viewProblems(badOverlay)).toEqual([
       'view.overlay.visible: expected a boolean',
-      'view.overlay.position: not in the TypeScript types',
+      'view.overlay.position: "center" is not one of top-left|top-center|top-right|bottom-left|bottom-center|bottom-right',
+      'view.overlay.line: not in the TypeScript types',
+    ]);
+
+    // The overlay's content and the watch line, deep inside, and an entry's source.
+    const badGuide = fixtureView('overlay-active');
+    const guide = badGuide.overlay.guide! as unknown as Record<string, unknown>;
+    guide.step_number = -1;
+    (guide.watch as Record<string, unknown>).warning = 'yes';
+    (guide.last as Record<string, unknown>).source = 'ocr';
+    delete (badGuide.craft.guiding! as unknown as Record<string, unknown>).watch;
+    expect(viewProblems(badGuide)).toEqual([
+      'view.overlay.guide.step_number: expected an unsigned integer',
+      'view.overlay.guide.last.source: "ocr" is not one of grab|screen',
+      'view.overlay.guide.watch.warning: expected a boolean',
+      'view.craft.guiding.watch: missing',
     ]);
 
     const badUpdate = fixtureView('empty') as unknown as Record<string, unknown>;

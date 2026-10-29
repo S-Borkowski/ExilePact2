@@ -1,13 +1,14 @@
 <script lang="ts">
   // Current step (`ui-design.md` § "Mode guiding"): the route's name and the
   // guide's status as a word, the last outcome where the player looks after
-  // a re-grab, then for active and stuck the step's card with its branch
-  // lines as Rust wrote them, the reasons when stuck or replan, and "The
-  // craft is done." when done. The page judges nothing: the last outcome is
-  // the newest History entry, as sent.
+  // a re-grab or a screen read, then for active and stuck the step's card
+  // with its branch lines as Rust wrote them and the screen watch's line,
+  // the reasons when stuck or replan, and "The craft is done." when done.
+  // The page judges nothing: the last outcome is the newest History entry,
+  // with its source, and the watch line and its warning mark are Rust's.
   import type { GuidingView } from '../ipc';
   import StepFacts from './StepFacts.svelte';
-  import { OUTCOME_LABELS, STATUS_LABELS } from './words';
+  import { OUTCOME_LABELS, SOURCE_LABELS, STATUS_LABELS } from './words';
 
   let { guiding, hotkey }: { guiding: GuidingView; hotkey: string } = $props();
 
@@ -22,7 +23,7 @@
   </div>
 
   {#if last && guiding.status !== 'done'}
-    <p class="last"><span class="label">Last:</span> <span class="result" data-result={last.result}>{OUTCOME_LABELS[last.result]}</span> <span class="summary">{last.summary}</span></p>
+    <p class="last"><span class="label">Last:</span> <span class="result" data-result={last.result}>{OUTCOME_LABELS[last.result]}</span> <span class="source" data-source={last.source}>{SOURCE_LABELS[last.source]}</span> <span class="summary">{last.summary}</span></p>
   {/if}
 
   {#if guiding.step && (guiding.status === 'active' || guiding.status === 'stuck')}
@@ -35,6 +36,9 @@
         <li class="branch" data-branch="hit">{current.on_hit}</li>
         <li class="branch" data-branch="miss">{current.on_miss}</li>
       </ul>
+      {#if guiding.watch}
+        <p class="watch" data-warning={String(guiding.watch.warning)}><span class="label caps">Screen</span> <span class="watch-text">{guiding.watch.text}</span></p>
+      {/if}
       <p class="prompt">
         Take this step in the game, copy the item with <kbd>Ctrl+Alt+C</kbd>, then press <kbd>{hotkey}</kbd> or <kbd>Ctrl+V</kbd> here.
       </p>
@@ -129,6 +133,10 @@
     color: var(--color-text-secondary);
   }
 
+  .last .source {
+    color: var(--color-text-muted);
+  }
+
   .card {
     display: flex;
     flex-direction: column;
@@ -167,6 +175,28 @@
     color: var(--color-text-primary);
     font-size: var(--size-step);
     line-height: var(--line-step);
+  }
+
+  /* The screen watch's line: secondary while it only reports, the warning
+     colour when it asks the player to act (Rust says which; the words say
+     what to do either way). */
+  .watch {
+    display: flex;
+    align-items: baseline;
+    gap: calc(var(--space-unit) * 2);
+    padding-top: var(--space-unit);
+    border-top: var(--border-width) solid var(--color-panel-divider);
+    color: var(--color-text-secondary);
+  }
+
+  .watch .label {
+    flex: none;
+    font-size: var(--size-caption);
+    line-height: var(--line-caption);
+  }
+
+  .watch[data-warning='true'] .watch-text {
+    color: var(--error);
   }
 
   .prompt {

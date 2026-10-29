@@ -1,10 +1,10 @@
 <script lang="ts">
   // History (`ui-design.md` § "Mode guiding"): one entry per observed
-  // change, oldest first, each with its step, the outcome as a word and
-  // Rust's summary. Not a live region: the status line announces each
-  // outcome.
+  // change, oldest first, each with its step, the outcome as a word, where
+  // it came from (a grab or the screen) and Rust's summary. Not a live
+  // region: the status line announces each outcome.
   import type { HistoryEntry } from '../ipc';
-  import { OUTCOME_LABELS } from './words';
+  import { OUTCOME_LABELS, SOURCE_LABELS } from './words';
 
   let { history }: { history: HistoryEntry[] } = $props();
 
@@ -20,7 +20,7 @@
       {#each history as entry, i (i)}
         <li>
           <p class="head"><span class="step-no">Step {entry.number}</span> <span class="instruction">{entry.instruction}</span></p>
-          <p class="outcome"><span class="result" data-result={entry.result}>{OUTCOME_LABELS[entry.result]}</span> <span class="summary">{entry.summary}</span></p>
+          <p class="outcome"><span class="result" data-result={entry.result}>{OUTCOME_LABELS[entry.result]}</span> <span class="source" data-source={entry.source}>{SOURCE_LABELS[entry.source]}</span> <span class="summary">{entry.summary}</span></p>
         </li>
       {/each}
     </ol>
@@ -67,6 +67,10 @@
 
   .summary {
     color: var(--color-text-secondary);
+  }
+
+  .source {
+    color: var(--color-text-muted);
   }
 
   /* The outcome is a word, set as an outlined label (as the guide's status)

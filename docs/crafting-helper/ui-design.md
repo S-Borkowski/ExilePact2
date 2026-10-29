@@ -162,8 +162,10 @@ keeps it apart from a dark scene. Over a white scene the ground blends to
 the warning colour at 6.3:1 and muted text at 4.7:1; over black they are
 higher still. So the panel reads over a bright scene and a dark one alike;
 muted text is kept to labels and the source words. Square
-corners, `--space-panel-pad` (8 px) padding, no shadow (the window has
-none to draw it in).
+corners, `--space-panel-pad` (8 px) above and below and `--space-row-pad`
+(12 px) at the sides, so no line starts at the panel's edge over a busy
+scene (the audit's finding 1), no shadow (the window has none to draw it
+in).
 
 **The rows**, top to bottom, at most seven, each one line high and cut
 with an ellipsis at its end when too long (the page never wraps a row, so
@@ -570,9 +572,12 @@ From the top:
     "After each step, hover the item in the game and the helper reads it.
     Copies of the screen stay in memory; nothing is saved or sent. Off:
     grab the item after each step."
-  A refused change (an unknown position) leaves the saved value and shows
-  Rust's words with `!` in the section's status line (polite live region),
-  as the Grab section does. The section sits after Grab because both shape
+  The select offers only the six names the app takes, so the page cannot
+  send a position the app refuses; should the shell refuse a change all the
+  same, the saved value stays, the next view shows it and the bridge logs
+  Rust's reason, as it does for the blocked list (the view carries no
+  status line for this section; the audit's finding 3). The section sits
+  after Grab because both shape
   the craft loop; the page grows past the window's 720 px with it, and
   scrolls as a whole (as it already does in `install-downloading`), so
   Updates, the least-used section, is the one below the fold.
@@ -649,7 +654,8 @@ the other `craft-*` names),
 view fixture's name works, `craft-done` for instance, and `scene=bright` or
 `scene=dark` paints a flat white or near-black stand-in for the game behind
 the panel, in the preview only, so its legibility over both can be
-checked), and
+checked; the preview draws the page at the window's 480 × 168 inside a
+dashed outline, so the panel's height and anchoring show), and
 `http://127.0.0.1:1422/settings.html?state=install-downloading&scale=2`
 (default `idle`; `scale` zooms the page as the webview's scale would). The
 pickers read `fixtures/catalogue.json`. Commands are logged, not acted on: a

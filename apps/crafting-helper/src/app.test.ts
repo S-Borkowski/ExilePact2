@@ -255,7 +255,8 @@ describe('the craft window', () => {
       'grabbed-not-item': "Can't plan this item",
       'grab-refused': "Can't plan this item",
       'hotkey-taken': 'Last grabbed item',
-      'overlay-active': "Can't plan this item",
+      'overlay-active': 'Rings: resistances by whittling',
+      'overlay-not-in-front': 'Rings: resistances by whittling',
       'craft-planning': 'Doom Loop',
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
@@ -264,6 +265,11 @@ describe('the craft window', () => {
       'craft-miss': 'Rings: resistances by whittling',
       'craft-replan': 'Rings: resistances by whittling',
       'craft-done': 'Rings: resistances by whittling',
+      'craft-watching': 'Rings: resistances by whittling',
+      'craft-screen-hit': 'Rings: resistances by whittling',
+      'craft-screen-unexpected': 'Rings: resistances by whittling',
+      'craft-watch-off': 'Rings: resistances by whittling',
+      'craft-watch-unavailable': 'Rings: resistances by whittling',
     });
 
     // Refused: the reason as sent, how to grab another, the grabbed text open.
@@ -595,7 +601,7 @@ describe('the craft window', () => {
     const { root, bridge } = await render(guidingView);
     const guide = root.querySelector('.guide')!;
     expect(text(guide.querySelector('.guide-status'))).toBe('Crafting');
-    expect(text(guide.querySelector('.last'))).toBe(`Last: Hit ${g.history[0].summary}`);
+    expect(text(guide.querySelector('.last'))).toBe(`Last: Hit from a grab ${g.history[0].summary}`);
     const card = guide.querySelector('.card')!;
     expect(text(card.querySelector('.step-no'))).toBe('Step 2');
     expect(text(card.querySelector('.try'))).toBe('try 1');
@@ -608,7 +614,7 @@ describe('the craft window', () => {
     );
     const history = root.querySelector('.history')!;
     expect(text(history.querySelector('h2'))).toBe('History');
-    expect(texts(history, 'ol > li')).toEqual([`Step 1 ${g.history[0].instruction} Hit ${g.history[0].summary}`]);
+    expect(texts(history, 'ol > li')).toEqual([`Step 1 ${g.history[0].instruction} Hit from a grab ${g.history[0].summary}`]);
     expect(root.querySelector('.item-now .item-panel')).not.toBeNull();
 
     // End craft asks first while a craft is in progress; Keep crafting
@@ -633,7 +639,7 @@ describe('the craft window', () => {
     const missView = fixtureView('craft-miss');
     const m = missView.craft.guiding!;
     const miss = await render(missView);
-    expect(text(miss.root.querySelector('.last'))).toBe(`Last: Miss ${m.history[0].summary}`);
+    expect(text(miss.root.querySelector('.last'))).toBe(`Last: Miss from a grab ${m.history[0].summary}`);
     expect(miss.root.querySelector('.last .result')!.getAttribute('data-result')).toBe('miss');
     expect(text(miss.root.querySelector('.card .try'))).toBe('try 2');
     expect(texts(miss.root, '.card .branch')).toEqual([m.step!.on_hit, 'On a miss: this step again']);
@@ -673,6 +679,90 @@ describe('the craft window', () => {
     expect(stuck.root.querySelector('.card')).not.toBeNull();
     expect(texts(stuck.root, '.why-list li')).toEqual(['no alternative of this step is usable']);
     expect(stuck.root.querySelector('.replan-hint')).toBeNull();
+  });
+
+  it('history_marks_outcomes_read_from_the_screen', async () => {
+    // A hit the screen watch read: the Last line and History's entry name
+    // the source in words, as a grab's do; the page maps the source alone.
+    const hitView = fixtureView('craft-screen-hit');
+    const h = hitView.craft.guiding!;
+    expect(h.history.map((e) => e.source)).toEqual(['screen']);
+    const hit = await render(hitView);
+    expect(text(hit.root.querySelector('.last'))).toBe(`Last: Hit from the screen ${h.history[0].summary}`);
+    expect(text(hit.root.querySelector('.last .source'))).toBe('from the screen');
+    const entry = hit.root.querySelector('.history ol > li')!;
+    expect(text(entry)).toBe(`Step 1 ${h.history[0].instruction} Hit from the screen ${h.history[0].summary}`);
+    expect(text(entry.querySelector('.source'))).toBe('from the screen');
+    // The item now is the read one, and the guide moved to the next step.
+    expect(text(hit.root.querySelector('.card .step-no'))).toBe('Step 2');
+
+    // A grab's entry says so; a history of both keeps each entry's own.
+    const mixed = fixtureView('craft-done');
+    const d = mixed.craft.guiding!;
+    d.history = d.history.map((e, i) => ({ ...e, source: i % 2 === 0 ? 'grab' : 'screen' }));
+    const done = await render(mixed);
+    expect(texts(done.root, '.history .source')).toEqual(['from a grab', 'from the screen', 'from a grab', 'from the screen']);
+
+    // An unexpected change read from the screen is not kept: no entry, no Last line.
+    const unexpected = await render(fixtureView('craft-screen-unexpected'));
+    expect(unexpected.root.querySelector('.last')).toBeNull();
+    expect(text(unexpected.root.querySelector('.history .empty'))).toBe('No step taken yet.');
+    expect(unexpected.bridge.calls).toEqual([]);
+  });
+
+  it('guiding_shows_the_watch_line', async () => {
+    // The card's Screen line is the view's watch line, as sent, in the
+    // warning colour exactly when Rust marks it; the grab prompt stays in
+    // every watch state, since the grab is the fallback each line points to.
+    const marks: Record<string, string> = {};
+    for (const name of [
+      'craft-guiding',
+      'craft-watching',
+      'craft-screen-hit',
+      'craft-screen-unexpected',
+      'craft-watch-off',
+      'craft-watch-unavailable',
+      'overlay-active',
+      'overlay-not-in-front',
+    ]) {
+      const view = fixtureView(name);
+      const watch = view.craft.guiding!.watch!;
+      const r = await render(view);
+      const line = r.root.querySelector('.card .watch')!;
+      expect(text(line.querySelector('.label')), name).toBe('Screen');
+      expect(text(line.querySelector('.watch-text')), name).toBe(watch.text);
+      marks[name] = line.getAttribute('data-warning')!;
+      expect(text(r.root.querySelector('.card .prompt')), name).toMatch(/^Take this step in the game/);
+    }
+    expect(marks).toEqual({
+      'craft-guiding': 'false',
+      'craft-watching': 'false',
+      'craft-screen-hit': 'false',
+      'craft-screen-unexpected': 'true',
+      'craft-watch-off': 'false',
+      'craft-watch-unavailable': 'true',
+      'overlay-active': 'false',
+      'overlay-not-in-front': 'false',
+    });
+
+    // Stuck: the card and its watch line stay.
+    const stuckView = fixtureView('craft-watching');
+    stuckView.craft.guiding = {
+      ...stuckView.craft.guiding!,
+      status: 'stuck',
+      reasons: ['no alternative of this step is usable'],
+      watch: { text: 'Paused: the guide is stuck.', warning: false },
+    };
+    const stuck = await render(stuckView);
+    expect(text(stuck.root.querySelector('.card .watch .watch-text'))).toBe('Paused: the guide is stuck.');
+
+    // Replan and done: no card, no watch line (Rust sends none).
+    for (const name of ['craft-replan', 'craft-done']) {
+      const view = fixtureView(name);
+      expect(view.craft.guiding!.watch, name).toBeNull();
+      const r = await render(view);
+      expect(r.root.querySelector('.watch'), name).toBeNull();
+    }
   });
 
   it('unknown_odds_are_said_in_words', async () => {
