@@ -34,6 +34,12 @@
 //!   mirrors (Context "The IPC contract").
 //! - [`store`]: the store folder (refused inside a git checkout),
 //!   `settings.json` written atomically, and `diag.log`.
+//! - [`ch_engine`], re-exported for the craft window (M5): the blueprints,
+//!   the route a craft takes, the hit, miss or unexpected outcome of each
+//!   step, the next step's odds and the catalogue the blocked list offers;
+//!   through it the data ([`ch_data`]), the blueprint format
+//!   ([`ch_blueprint`]) and the item parser ([`ch_item`]). No command,
+//!   view or setting uses it yet.
 
 pub mod app;
 pub mod grab;
@@ -50,6 +56,10 @@ pub use settings::{MAX_BLOCKED, MAX_ID_CHARS};
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
 pub use updates::{Clock, SteadyClock, UpdateSetup, TICK_EVERY};
 pub use view::{GrabSource, GrabView, OverlayView, SettingsView, StatusKind, StatusLine, View};
+
+/// The crafting engine, for the craft window, and the crates it re-exports.
+pub use ch_engine;
+pub use ch_engine::{ch_blueprint, ch_data, ch_item};
 
 /// The shared update crate, for the glue's transport and start-up cleanup.
 pub use ep_update;
