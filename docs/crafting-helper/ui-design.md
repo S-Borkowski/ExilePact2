@@ -12,8 +12,10 @@ at a time, classifying each re-grab as a hit, a miss or unexpected. While
 a craft is guided, the app can also read the hovered item from the game's
 window (the screen watch, `screen_watch`) and advance the guide by itself,
 and a click-through overlay over the game shows the current step. A button
-in every state opens Craft of Exile in the default browser. This document
-is the direction the components follow.
+in every state opens Craft of Exile in the default browser, and another
+opens the *Find a base on trade* panel, which builds a trade site search
+for a magic base to start a craft from and opens it in the browser. This
+document is the direction the components follow.
 
 What each window does, and every command and event, is in the guide's
 Command reference ([`README.md`](README.md)). The direction was critiqued
@@ -31,7 +33,8 @@ Overlay section.
   validates a hotkey, plans a route, judges an outcome or edits a list
   itself, and waits for the next view instead of patching its copy. The
   only state a page keeps is the text of its filter fields (the target
-  filter and the currency filter), as the waystone roller's mod filter.
+  filter, the currency filter and the trade panel's modifier filter), as
+  the waystone roller's mod filter.
 - **The clipboard is the player's.** No page reads it on its own: the main
   window takes the text of a paste the player made (the paste event's
   `clipboardData`), and nothing else. There is no "Read clipboard" button.
@@ -44,9 +47,14 @@ Overlay section.
   a word.
 - **Refuse, never guess.** A refused grab, hotkey, list or craft command
   leaves the last good one in place and says why in a status line.
-- **One address, from Rust.** The only outside page the app opens is Craft
-  of Exile, at one address held in Rust; the page sends a command that
-  carries no address.
+- **Fixed addresses, from Rust.** The app opens two outside pages, Craft
+  of Exile and the trade site's search, each from an address held in Rust
+  (the trade link is Rust's fixed prefix with the league and the query
+  appended); a page sends a command that carries no address, and shows the
+  trade link as text, never as a link it follows. Besides the update check
+  (Settings, Updates), the app sends one request of its own: the trade
+  site's league list, and only when the player clicks the refresh icon
+  beside League in Settings.
 - **The overlay never gets in the way.** It does not take focus, lets
   every click through, and shows only while a craft is guided and the
   game's window is in front.
@@ -80,8 +88,8 @@ waystone roller's token mapping ([`docs/waystone-roller/ui-design.md`](../waysto
 
 Monospace (the grabbed text, the hotkey): the system's
 `ui-monospace, "Cascadia Mono", Consolas, monospace`; no font is added.
-Spacing on the 4 px grid (`--space-unit`). Odds, tiers and try counts use
-tabular figures (`font-variant-numeric: tabular-nums`) so a column of them
+Spacing on the 4 px grid (`--space-unit`). Odds, tiers, try counts and the
+trade panel's weights use tabular figures (`font-variant-numeric: tabular-nums`) so a column of them
 lines up.
 
 ## Windows
@@ -95,15 +103,18 @@ route of eight steps with their odds does not fit in 400; 680 high still
 fits a 1366 × 768 screen with the taskbar). A column of three parts:
 
 - **The header**: the title "Crafting Helper" in small caps, then at the
-  right end the **Explore more crafting on Craft of Exile** button and the
+  right end the **Find a base on trade** button (§ "Find a base on
+  trade"), the **Explore more crafting on Craft of Exile** button and the
   **Settings** button, which sends `open_settings`. When a check this run
   found a newer version (the view's `update_available`), the Settings
   button names it after a divider, "Settings | Update 1.3.0", with a small
   green square beside the version; its accessible name is then "Settings,
-  update 1.3.0 available". Below 760 px wide the header wraps and the
-  Craft of Exile button takes its own row under the title.
+  update 1.3.0 available". Below 760 px wide the header wraps: the title
+  and Settings keep the first row, and the Find a base on trade and Craft
+  of Exile buttons take their own row under it, in that order.
 - **The craft area**, which takes the rest of the window and shows one of
-  the craft part's four modes (§ "Craft window").
+  the craft part's four modes (§ "Craft window"), or, while it is open,
+  the trade panel in its place (§ "Find a base on trade").
 - **The status line** last (`role="status"`, polite): the app's last
   message; an error starts with `!` and takes the error colour.
 
@@ -603,12 +614,249 @@ text `Explore more crafting on Craft of Exile` (the owner's words) and an
 outward-arrow mark after it (hidden from screen readers); its accessible
 description is "Opens Craft of Exile in your web browser". It is styled as
 a secondary button (border, no accent fill), as Settings is, so it never
-competes with Start crafting, the window's one primary action. Its click sends
+competes with the area's one primary action (Start crafting, or the trade
+panel's search button while that panel is open). Its click sends
 `open_craft_of_exile {}` with no arguments, and Rust opens its one fixed
 address, `https://beta.craftofexile.com/?game=poe2`, in the default
 browser. The page holds no address: no `<a href>` to an outside page, no
 `window.open`, no change of `location`. A failure to open shows in the
 status line with `!`.
+
+## Find a base on trade
+
+A panel of the main window for starting a craft from a bought base: the
+player picks an item class, a base type, an optional minimum item level and
+the modifiers they want, sees how rare each is to roll on that base, and
+one button opens a trade site search for a **magic** item of that base
+carrying them, ranked by their rarity. Its one question is *"which magic
+bases on trade already carry what I want?"*. The app sends the trade site
+nothing for it: Rust builds the link from its fixed prefix, the league
+(Settings, Trade) and the query, and the default browser loads it. The
+panel never buys, whispers, copies to the clipboard or touches the game.
+
+### Opening and closing
+
+The header's **Find a base on trade** button (§ "Main window") is a
+secondary button, as Settings is, with no outward-arrow mark: it opens a
+panel in the app, not the browser. It sends `set_trade_search` with the
+view's current selection and `open: true`; Rust sends a view whose trade
+part is open, and the page shows **the panel in place of the craft area**.
+While the panel is open the header button carries `aria-pressed="true"`
+and pressing it again closes the panel.
+
+**Back to the craft**, the panel's first control (a secondary button with
+a left-arrow mark hidden from screen readers), sends `set_trade_search`
+with `open: false`; the craft area comes back as the craft now stands.
+
+**The craft is untouched underneath.** Opening the panel changes nothing
+of the craft, its guide, the screen watch or the overlay: a guided craft
+stays guided, the overlay keeps showing over the game, the screen watch
+keeps reading and advancing the guide, and a grab (the hotkey, or
+`Ctrl+V` outside a text field) goes to the craft as in any mode, the
+status line saying what it did; the panel stays open. The selection lives
+in Rust's memory for this run, kept while the panel is closed (reopening
+shows it as it was) and never saved.
+
+Focus: opening moves focus to the panel's heading; closing, either way,
+moves it to the header's Find a base on trade button.
+
+### Layout
+
+The panel takes the craft area's place and its rules: from 880 px wide,
+**two columns**, about 45 % and 55 %, each scrolling on its own; below,
+**one column** scrolling as a whole. Across the top, above the columns:
+**Back to the craft**, then the heading "Find a base on trade" (small caps,
+as the craft area's headings).
+
+| Width | Left column | Right column |
+|---|---|---|
+| from 880 px (960 × 680 by default) | Base, then Match, then League and the Trade link; the Search bar fixed at the column's foot | Modifiers |
+| below 880 px (down to 600 × 480) | Base, Modifiers, Match, League and the Trade link, in that order; the Search bar fixed at the window's foot above the status line | |
+
+At 960 × 680 the left column's groups (three fields, two choices, the
+league line and a three-line link) fit without scrolling above the Search
+bar, and the right column holds the modifier list, which is the long part.
+At 600 × 480 the Modifiers groups scroll together in a sunken box past
+200 px, so Match and the link are not a whole base's list away, and the
+Search bar stays in view, as the craft's Start bar does.
+
+### The controls
+
+Every change sends `set_trade_search { search: { open, class, base,
+item_level, picks: [{ mod_id, floor }], both_slots } }` with the **whole
+selection**, as `set_targets` sends the whole target list: `class` and
+`base` are `null` until chosen, `item_level` is `null` for none, `floor`
+is `null` for "Any tier". No field names an address, and the page sends
+no link. Rust validates and sends the next view; a refusal leaves the
+selection as it was and says why in the status line with `!`.
+
+**Base** (a group headed "Base"):
+
+- **Item class**, a native select labelled "Item class": first the
+  placeholder option "Choose a class", then the view's class list in its
+  order (Rust's names: "Rings", "Gloves", "Jewels", …). Choosing a class
+  clears the base and the picks (Rust does it, and the status line says
+  how many picks were cleared, so a slip of the select is not silent).
+- **Base type**, a native select labelled "Base type": "Choose a base",
+  then the chosen class's bases in the view's order ("Sapphire Ring").
+  Disabled until a class is chosen. Choosing another base keeps the picks
+  the new base offers and drops the rest; the status line says how many
+  were dropped (Rust's words).
+- **Minimum item level**, a number field labelled "Minimum item level",
+  with the help line "Optional. Empty searches any item level; a higher
+  level reaches better tiers." It sends on change (Enter, or leaving the
+  field), not on every key; empty sends `null`. Rust takes a whole number
+  from 1 to 100 and refuses anything else; on a refusal the field shows
+  the view's value again. The level also sets which tiers each modifier's
+  floor offers.
+
+**Modifiers** (right column, heading "Modifiers"): the help line "Weight:
+higher is rarer. 12.0 means about 1 in 12 modifiers added to that side of
+this base is this one, at the floor or better. The search ranks results by
+these weights." (the design critique's finding: a bare number has no
+scale, and 1 in N is what the weight is) and a filter field "Filter modifiers" that narrows the rows by
+text as the player types (the page's own state, as the craft's filter;
+with no match, "No modifier matches “<text>”."). Then two groups,
+"Prefixes" and "Suffixes", each heading with its count of picks
+("Prefixes · 1 picked"), the rows in the view's order. Each searchable row
+is one line:
+
+- a **checkbox** labelled with the modifier's text as the data writes it
+  (`+# to maximum Life`); checking picks it with floor "Any tier",
+  unchecking drops it;
+- at the row's right end, the **weight column**: the rarity weight as
+  Rust sends it, one decimal (`12.4`), right-aligned in tabular figures, so
+  the column lines up; unpicked rows show theirs too, so the player can
+  compare before picking;
+- when the weight is the **default** (the data gives this modifier no
+  usable spawn weight on this base: every jewel, some tiers), the word
+  "default" after the number, as an outlined caption-size tag (the
+  "target" tag's style), never a colour or a mark alone.
+
+A picked row adds, under its text:
+
+- its **floor select**, labelled "Floor for <modifier text>", whose
+  options are Rust's: `Any tier` (the default), then `At least T<n>` per
+  tier reachable at the item level. A stricter floor raises the row's
+  weight (a better tier is rarer), so the number changes with the floor;
+- for a default weight, the line `default: <reason>` in muted text, the
+  reason as Rust sends it (why the data has no weight here). Above the
+  groups, when any row's weight is the default, one muted line explains
+  the word: "“default” marks a weight the data does not give; a picked
+  modifier says why."
+
+At most **8 picks**: with 8, the view says no further pick is allowed, the
+unpicked checkboxes are disabled and Rust's line `At most 8 modifiers in
+one search.` shows above the groups.
+
+**Not searchable** rows (the view marks them, with a reason: a modifier
+with more than one line, whose lines the trade site lists as separate
+stats, or one with no trade site stat) are not mixed into the groups. They
+sit in one disclosure after the two groups, "Not searchable on trade: <n>",
+closed by default and narrowed by the same filter, each entry its text,
+its side ("prefix", "suffix") and
+Rust's reason, with no checkbox, so the keyboard never stops on a row it
+cannot pick. A base with none leaves the disclosure out.
+
+**Match** (a group headed "Match", a native radio group): "Both slots"
+(the default) and "At least one", each with a muted line under its label
+that says what it asks for, "A prefix and a suffix from your picks." and
+"Any one of your picks.", so the choice reads without the help. A magic
+item holds one prefix and one suffix, so "Both slots" asks for two of the
+picks, one on each side; "At least one" asks for one. Under the group,
+Rust's **count line**, which says what the search will ask for and, when
+it differs from the choice, why: with picks on both sides and Both slots,
+two; with At least one, one; with picks on one side only, one, because a
+magic item holds a single modifier of that side (§ "The trade panel's
+Rust-produced copy"). No count line before the first pick.
+
+**League**: one line, "League" (small caps, muted) and the view's league,
+then a small secondary **Change** button that sends `open_settings {}`
+(the league is set in Settings, Trade; the panel holds no league field).
+
+**Trade link**, shown only when the view carries a link: the label "Trade
+link", then the link in a **read-only** multi-line field (a `textarea` with
+`readonly`, three rows, the system monospace, a sunken surface, breaking
+anywhere, focusable and selectable so the keyboard can scroll it), and the
+help line "Select it and press Ctrl+C to copy it." The page never makes
+it a link: no `<a href>`, no `window.open`, no change of `location`; the
+app writes nothing to the clipboard.
+
+**The Search bar**: the window's primary button for as long as the panel
+is open, **Search on the trade site**, with an outward-arrow mark after
+the text (hidden from screen readers) and the accessible description
+"Opens the trade site in your web browser". It sends `open_trade_search
+{}`, with no arguments; Rust opens the link it built from its own state in
+the default browser. It is enabled only when the view says a search can
+be opened; while disabled, the line beside it says why, as Rust sends it.
+A failure to open shows in the status line with `!`.
+
+### Each state
+
+- **No class** (the panel just opened, the default): Item class on
+  "Choose a class", Base type disabled; the Modifiers column says "Choose
+  an item class to see its modifiers."; no count line, no link; the
+  Search button disabled beside Rust's `Choose an item class.`
+- **No base**: a class chosen, Base type on "Choose a base"; Modifiers
+  says "Choose a base type to see its modifiers."; disabled beside
+  `Choose a base type.`
+- **No pick**: the base's rows, each with its weight, none checked; no
+  count line, no link; disabled beside `Pick at least one modifier.`
+- **Picks on one side only**: the link shown and the button enabled; the
+  count line says the search asks for one, and why.
+- **A refusal**: a `set_trade_search` Rust refuses (a base the class does
+  not have, a modifier the base does not offer or cannot search, a ninth
+  pick, an item level out of range) changes nothing: the panel shows the
+  last view, and the status line says why with `!`. A selection Rust
+  cannot make a link for (the link would pass 2,000 characters) shows no
+  link, and the line beside the disabled button is Rust's reason, starting
+  with `!` and in the warning colour.
+- **Link ready**: a prefix and a suffix picked, Both slots on: the count
+  line asks for two, the link is shown, the Search button is enabled. Its
+  click writes `trade: opened, <n> modifiers, at least <k>` to the
+  diagnostic log (counts only) and the status line says the search opened
+  in the browser.
+
+### The trade panel's Rust-produced copy
+
+The page renders these as sent; `ch-app`'s tests pin each form.
+
+| What | Form |
+|---|---|
+| Class and base names | Rust's, from the shipped data (`Rings`, `Sapphire Ring`) |
+| Modifier text | as the data writes it, a line each (`+# to maximum Life`) |
+| Weight | one decimal, `12.4`; the source `spawn` or `default`, and for a default its reason |
+| Floor options | `Any tier` (the default), then `At least T<n>` per reachable tier |
+| Not searchable reason | `more than one line; the trade site lists each line as its own stat`, `no trade site stat for this text` |
+| Count line | `The search asks for two: one prefix and one suffix.`, `The search asks for at least one of your picks.`, `Your picks are all suffixes and a magic item holds one, so the search asks for one.` (prefixes alike) |
+| Why there is no link | `Choose an item class.`, `Choose a base type.`, `Pick at least one modifier.`, `! Too many modifiers for one link: remove one.` |
+| Pick limit | `At most 8 modifiers in one search.` |
+| League | the saved league's id (`Forbidden Rites`) |
+| The link | `https://www.pathofexile.com/trade2/search/poe2/<league>?q=<query>`, both percent-encoded |
+| Status lines | `Opened the trade search in your browser.`, `! Couldn't open the browser: <error>`, the refusal reasons, the count of picks a new base dropped |
+| Settings, Trade note | `Refreshed: 6 leagues from the trade site.`, `Refreshed: 5 leagues from the trade site; 1 skipped.`, `! Not refreshed: <reason>. The list and your league are unchanged.`, `! League not saved: <reason>.` |
+
+### The trade panel's UI-owned copy
+
+Buttons: "Find a base on trade", "Back to the craft", "Search on the trade
+site", "Change". Headings and labels: "Find a base on trade", "Base",
+"Item class", "Base type", "Minimum item level", "Modifiers", "Filter
+modifiers", "Prefixes", "Suffixes", "<n> picked", "Floor for <modifier
+text>", the tag "default", "Not searchable on trade: <n>", "prefix",
+"suffix", "Match", "Both slots", "At least one", "League", "Trade link".
+Placeholders, hints and help: "Choose a class", "Choose a base", "Optional.
+Empty searches any item level; a higher level reaches better tiers.",
+"A prefix and a suffix from your picks.", "Any one of your picks.",
+"Weight: higher is rarer. 12.0 means about 1 in 12 modifiers added to that
+side of this base is this one, at the floor or better. The search ranks
+results by these weights.", "“default” marks a weight the data does not give; a
+picked modifier says why.", "Choose an item class to see its modifiers.",
+"Choose a base type to see its modifiers.", "No modifier matches
+“<text>”.", "Select it and press Ctrl+C to copy it.", and the accessible
+description "Opens the trade site in your web browser". The Settings
+window's Trade section: "Trade", "League", the refresh button's
+accessible name "Refresh the league list from the trade site", "Refreshing
+the league list…" and its help line.
 
 ## Settings window
 
@@ -659,6 +907,54 @@ From the top:
   `update_settings`. Every id must be one of the catalogue's, with no
   repeats, so the list holds at most the whole catalogue; a saved id the
   catalogue no longer holds is dropped at load and counted in the status.
+- **Trade**: the league the trade panel's search opens in (§ "Find a base
+  on trade"). One row, then a help line and a note line:
+  - **League**, a native select labelled "League", and beside it, on the
+    same row, the **refresh icon button**. The select's options are the
+    view's offered leagues, in the view's order, each option's text and
+    value the league's id as the site writes it ("Forbidden Rites", "HC
+    Forbidden Rites"); the saved `trade_league` is selected. A change
+    sends `update_settings { trade_league }`.
+  - What the select offers, all Rust's: **before any refresh**, the six
+    leagues this version shipped with (`SHIPPED_TRADE_LEAGUES`: Forbidden
+    Rites, HC Forbidden Rites, Runes of Aldur, HC Runes of Aldur, Standard,
+    Hardcore, in the site's order); **after a refresh**, the site's poe2
+    leagues from the answer, in its order, for this run only (the list is
+    never saved; the next start offers the shipped six again and sends
+    nothing). In both, **the saved league is always offered**: appended
+    last when the list lacks it, so a league saved from an older list
+    never disappears and is never refused for being missing.
+  - The **refresh icon button**: a secondary button, 32 × 32 px, square,
+    with a circular-arrow mark drawn in SVG (hidden from screen readers;
+    no icon font) and no visible text; its accessible name is "Refresh
+    the league list from the trade site", and the same words are its
+    `title`, so a mouse user who does not know the mark can hover it. Its click sends
+    `refresh_trade_leagues {}`, with no arguments. **Busy**: while the
+    view says the list is refreshing, the button is disabled and carries
+    `aria-busy="true"`, the mark stays still (no spinner; § "Accessibility",
+    motion), and the note line reads "Refreshing the league list…". Rust
+    returns the view at once marked refreshing and sends the next one when
+    the answer is in; a click while one runs sends no second request (Rust
+    refuses it even if the page let it through). The select stays usable
+    meanwhile.
+  - The help line: "The league the trade search opens in. The refresh
+    button asks the trade site (pathofexile.com) for its current leagues;
+    nothing is sent until you click it, and the new list lasts until the
+    app closes."
+  - The **note line** (polite live region, as Grab's status): empty until
+    something happens this run; after a refresh, Rust's note, how many
+    leagues the list now holds and how many entries were skipped (§ "The
+    trade panel's Rust-produced copy"); after a refused refresh,
+    Rust's reason starting with `!` and in the warning colour, saying the
+    list and the league are unchanged. A refused `trade_league` patch (a
+    name over 64 characters, empty after trimming, or with a control
+    character; the select cannot send one, but the shell refuses it all
+    the same) shows its reason here too, and the saved league stays
+    selected.
+  **Nothing is requested until the icon is clicked**: not at start, not
+  on opening Settings or the trade panel, not on a timer, after an update
+  check or on a settings patch. The section sits after Blocked
+  currencies and before Updates, so Updates stays the last section.
 - **Updates**: the waystone roller's section, word for word with the app's
   name: the *Automatically check for updates* switch (off), its help line,
   the check's and the install's status lines, the download bar with its
@@ -669,8 +965,11 @@ From the top:
 - **Created by ST4H**, the window's footer, plain text.
 
 No button, link or state of the Settings window opens a release page or a
-browser; the only page the app opens is Craft of Exile, from the main
-window's button.
+browser. The app opens two pages, both from the main window: Craft of
+Exile, from its header button, and the trade site's search, from the trade
+panel's search button (§ "Find a base on trade"). Two sections here send
+requests: Updates (its check and its install), and Trade, whose refresh
+icon asks the trade site for its league list and nothing else.
 
 ## States
 
@@ -703,6 +1002,11 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `craft-screen-unexpected` | An unexpected change read and not applied: the step and item kept, the watch line in the warning colour |
 | `craft-watch-off` | `screen_watch` off: `Screen reading is off: …`; grabs drive the guide as in M5 |
 | `craft-watch-unavailable` | No English OCR: `Can't read the screen (no English OCR): …` |
+| `trade-empty` | The trade panel just opened over a planning craft: no class chosen, the Search button disabled with `Choose an item class.` |
+| `trade-picking` | Rings, Sapphire Ring, item level 75, one prefix and one suffix picked at Any tier, Both slots: the count line asks for two, every row's weight, the link shown, Search enabled |
+| `trade-one-side` | Two suffixes picked: the count line says the search asks for one and why; the link shown |
+| `trade-default-weight` | A jewel base: every weight tagged "default", the picked rows' `default: <reason>` lines, the legend above the groups |
+| `trade-refused` | After `trade-picking`, a `set_trade_search` naming a base the class does not have: `!` the reason in the status line, the selection and the link kept |
 
 | Settings window (`fixtures/app-settings/`) | What it shows |
 |---|---|
@@ -711,10 +1015,14 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `hotkey-refused` | `Ctrl+Alt+C` asked for: `!` the refusal, the old hotkey kept |
 | `blocked-currencies` | Three catalogue items blocked, checked by name in the picker |
 | `overlay-settings` | The Overlay section with a position other than `top-center` and the screen watch off |
+| `trade-league` | The Trade section with a league other than the default selected, the shipped list offered, no note |
+| `trade-league-refreshing` | A refresh running: the refresh button disabled and busy, "Refreshing the league list…" |
+| `trade-league-refresh-refused` | A refused refresh: `!` the reason in the note line, the list offered before and the saved league kept |
 
-Every view fixture carries the overlay part and the watch line, and every
-settings fixture `overlay_position` and `screen_watch`, so the page tests
-render the new fields in every state. The overlay page renders any view
+Every view fixture carries the overlay part, the watch line and the trade
+part (closed in every fixture but the `trade-*` ones), and every settings
+fixture `overlay_position`, `screen_watch`, `trade_league` and the offered
+leagues, so the page tests render the new fields in every state. The overlay page renders any view
 fixture: `overlay-active` for an active guide, `craft-replan` and
 `craft-done` for those statuses.
 
@@ -733,8 +1041,14 @@ dashed outline, so the panel's height and anchoring show), and
 `http://127.0.0.1:1422/settings.html?state=install-downloading&scale=2`
 (default `idle`; `scale` zooms the page as the webview's scale would). The
 pickers read `fixtures/catalogue.json`. Commands are logged, not acted on: a
-paste is not shown as a grab, a target change does not re-plan, and the
-Craft of Exile button logs `open_craft_of_exile` and opens nothing. The
+paste is not shown as a grab, a target change does not re-plan, the
+Craft of Exile button logs `open_craft_of_exile` and opens nothing, the
+trade panel's states are `?state=trade-picking` and the other `trade-*`
+names (a pick logs `set_trade_search`, the Search button logs
+`open_trade_search` and opens nothing), and the Settings window's
+`?state=trade-league` and the other `trade-league-*` names show the Trade
+section, whose refresh button logs `refresh_trade_leagues` and requests
+nothing. The
 fixtures are reached only on the dev server, so the release bundle carries
 none.
 
@@ -755,7 +1069,20 @@ none.
   planning), focus moves to the new mode's first heading, so a keyboard
   user is not left on a control that is gone.
 - The Craft of Exile button says it opens the web browser (its visible
-  mark and its accessible description).
+  mark and its accessible description), and so does the trade panel's
+  Search on the trade site; Find a base on trade, which opens a panel in
+  the app, carries no such mark and says whether the panel is open
+  (`aria-pressed`).
+- Opening the trade panel moves focus to its heading; closing it moves
+  focus back to the header's Find a base on trade button.
+- The trade panel's modifier rows are checkboxes in two labelled groups;
+  each row's weight sits inside its label, so a screen reader hears "+# to
+  maximum Life, weight 12.4" (", default" after a default weight). Rows
+  that cannot be searched carry no checkbox. The trade link is a read-only
+  field the keyboard can reach and select, never a link.
+- The Trade section's refresh button is an icon with an accessible name
+  ("Refresh the league list from the trade site"), disabled and
+  `aria-busy` while refreshing; its note line is a polite live region.
 - A disabled Start crafting says why in text beside it.
 - End craft's in-place question is a group with its sentence as the label;
   focus moves to its Keep crafting button when it opens, so a second
@@ -765,8 +1092,8 @@ none.
   entry's source is a word, not a mark.
 - The overlay cannot take focus and is not a live region; everything it
   shows is also in the main window, where the status line announces it.
-- The Settings window's Position select and screen-reading switch are
-  native controls with visible labels; the switch's state is its checked
+- The Settings window's Position and League selects and screen-reading
+  switch are native controls with visible labels; the switch's state is its checked
   state, as Updates' switch.
 - Text contrast from the tracker's tokens; on the overlay over a white
   scene, 12:1 for primary text and 4.7:1 for muted text (computed from
