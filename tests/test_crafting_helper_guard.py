@@ -1,6 +1,8 @@
 """The crafting helper touches nothing but its windows, one clipboard read per
 grab and, through the shared `ep-net` alone, GitHub's release list and
-assets. It sends no input, watches nothing and reaches no game file.
+assets. It sends no input, watches nothing but, while a craft is guiding,
+the game's window (which window is in front, and a copy of the game's own
+in memory, read with Windows' OCR) and reaches no game file.
 
 Read from the files only (no build, no network), these pin the rules of
 the app (`docs/crafting-helper/README.md`, Privacy). They are the waystone
@@ -20,7 +22,25 @@ copied, with these differences:
 - the one exception is the overlay's show and hide: `src-tauri/src/lib.rs`
   alone may name `ShowWindow`, and every `SW_` name it holds is
   `SW_SHOWNOACTIVATE` or `SW_HIDE`, so the game keeps the focus;
-  `ShowWindowAsync` stays an offence everywhere;
+  `ShowWindowAsync` stays an offence everywhere; the overlay is moved with
+  Tauri's own `set_position`, and `SetWindowPos` and `MoveWindow` stay
+  offences everywhere;
+- the other exception (M6) is the window in front:
+  `src-tauri/src/game_window.rs` alone may name `GetForegroundWindow` and
+  `GetWindowText` / `GetWindowTextLength`, to tell whether the game is in
+  front by its title, and names no other banned name; every other Rust
+  source, the glue's `lib.rs` and the tests included, still may not;
+- the quest tracker's `qt-screen` and `qt-capture`, which this app takes by
+  path and unchanged for the screen watch (M6), send no input either: every
+  Rust source of theirs (comments blanked) names none of the input,
+  watching, show, message, focus, hook, process or game-file names above,
+  but `EnumWindows` and `GetForegroundWindow` in `qt-capture/src/win.rs`,
+  its window lookup; `qt-capture` is a Windows-target dependency of
+  `src-tauri` and a Windows-target dev-dependency of `ch-watch` (its
+  screenshot tests), by path, and of no other manifest;
+- `ch-watch`'s library (outside `tests/`, `examples/` and `#[cfg(test)]`
+  items, comments blanked) names no `std::fs`, `File` or `OpenOptions`: no
+  copy, crop or OCR line is written anywhere;
 - no Rust source watches the clipboard or polls the keys:
   `AddClipboardFormatListener`, `SetClipboardViewer`,
   `GetClipboardSequenceNumber`, `GetAsyncKeyState`, `GetKeyState` and
@@ -80,7 +100,9 @@ the workorder that wrote the guide, not here.
 `Cargo.lock` but `minisign-verify` and every package in its
 `package-lock.json` is one the quest tracker's lock already holds, at the
 same version; the local packages are the workspace's members (`ch-item`
-included when it exists) and the shared `ep-net` and `ep-update`; and the
+included when it exists), the shared `ep-net` and `ep-update`, and the quest
+tracker's `qt-screen` and `qt-capture` (M6; `wr.SHARED_CRATES` is not
+widened for them); and the
 npm and workspace versions equal the quest tracker's. One workspace pin may
 be one the quest tracker's workspace lacks: `toml`, for the blueprint files.
 Its exact version must be one the quest tracker's `Cargo.lock` already holds
@@ -112,6 +134,26 @@ QT = ROOT / "apps" / "quest-tracker"
 GLUE_LIB = TAURI / "src" / "lib.rs"
 CH_APP = CRATES / "ch-app"
 CH_ITEM = CRATES / "ch-item"
+CH_WATCH = CRATES / "ch-watch"
+# The one Rust source that reads the window in front and its title, to tell
+# whether it is the game's (M6).
+GAME_WINDOW_FILE = TAURI / "src" / "game_window.rs"
+# The quest tracker's screen crates, taken by path and unchanged (M6).
+QT_SCREEN = QT / "crates" / "qt-screen"
+QT_CAPTURE = QT / "crates" / "qt-capture"
+LINKED_CRATES = {"qt-screen", "qt-capture"}
+CAPTURE_CRATE = "qt-capture"
+# Where `qt-capture` may be taken: the glue's Windows dependencies and the
+# watch crate's Windows dev-dependencies (its screenshot tests), nowhere
+# else.
+CAPTURE_TABLES = {
+    (TAURI / "Cargo.toml", "target.cfg(windows).dependencies"),
+    (CH_WATCH / "Cargo.toml", "target.cfg(windows).dev-dependencies"),
+}
+# `qt-capture`'s window lookup, the two banned names it may hold, in
+# `win.rs` alone (checked 2026-10-29: the only two there).
+QT_CAPTURE_WIN = QT_CAPTURE / "src" / "win.rs"
+QT_CAPTURE_ALLOWED = {"EnumWindows", "GetForegroundWindow"}
 
 CAPABILITIES = {
     "default.json": (["main"], ["core:event:default", "core:window:default"]),
@@ -142,6 +184,9 @@ NO_INPUT_NAMES = [m for m in wr.PASTE_ONLY_NAMES if m[0] != "GetAsyncKeyState"] 
     m for m in wr.GAME_NAMES if m[0] != SHOW_WINDOW
 ]
 SHOW_WINDOW_NAMES = [(SHOW_WINDOW, re.compile(r"\bShowWindow\b"))]
+# The window in front and its title: allowed in `GAME_WINDOW_FILE` alone.
+WINDOW_IN_FRONT_LABELS = {"GetForegroundWindow", "GetWindowText"}
+WINDOW_IN_FRONT_NAMES = [m for m in NO_INPUT_NAMES if m[0] in WINDOW_IN_FRONT_LABELS]
 SHOW_WINDOW_ASYNC = [("ShowWindowAsync", re.compile(r"\bShowWindowAsync\b"))]
 # In the glue, every show command is one of the overlay's two. No word
 # character before it, so `WS_EX_...` or `MSW_X` is not one.
@@ -210,15 +255,25 @@ PINS_OUTSIDE_THE_QUEST_TRACKER = {"toml"}
 # The package keys every member but `ch-item` (std-only, literal keys) takes
 # from the workspace.
 PACKAGE_KEYS = ("version", "edition", "publish")
+# What writing a file takes, which the watch crate's library never names.
+FILE_WRITE_NAMES = [
+    ("std::fs", re.compile(r"\bstd\s*::\s*(?:fs\b|\{[^}]*\bfs\b)")),
+    ("File", re.compile(r"\bFile\b")),
+    ("OpenOptions", re.compile(r"\bOpenOptions\b")),
+]
+CFG_TEST = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\]")
 
 
-def input_offences(name: str, text: str, glue: bool) -> list[str]:
+def input_offences(name: str, text: str, glue: bool, game_window: bool = False) -> list[str]:
     """The input, watching, window, process and game names one Rust source
     may not name. `glue` says whether it is `src-tauri/src/lib.rs`: there
     `ShowWindow` is allowed and every `SW_` name is one of the overlay's two
-    show commands; anywhere else `ShowWindow` is an offence."""
+    show commands; anywhere else `ShowWindow` is an offence. `game_window`
+    says whether it is `GAME_WINDOW_FILE`: there, and nowhere else,
+    `GetForegroundWindow` and `GetWindowText(Length)` are allowed."""
     code = wr.blank_rust_comments(text)
-    offences = wr.text_offences(name, code, NO_INPUT_NAMES + WATCH_NAMES + SHOW_WINDOW_ASYNC)
+    names = [m for m in NO_INPUT_NAMES if not (game_window and m[0] in WINDOW_IN_FRONT_LABELS)]
+    offences = wr.text_offences(name, code, names + WATCH_NAMES + SHOW_WINDOW_ASYNC)
     if not glue:
         return offences + wr.text_offences(name, code, SHOW_WINDOW_NAMES)
     for m in SW_NAME.finditer(code):
@@ -294,6 +349,65 @@ def member_dirs() -> list[Path]:
 def local_packages(lock: dict) -> dict[str, str]:
     """name -> version of every local (sourceless) package in a Cargo.lock."""
     return {p["name"]: p["version"] for p in lock.get("package", []) if "source" not in p}
+
+
+def linked_crate_offences(name: str, text: str, allowed: set[str]) -> list[str]:
+    """The input, watching, show, message, focus, hook, process and game-file
+    names one Rust source of a linked quest tracker crate names (comments
+    blanked), but those in `allowed`."""
+    matchers = NO_INPUT_NAMES + WATCH_NAMES + SHOW_WINDOW_ASYNC + SHOW_WINDOW_NAMES
+    return [o for o in wr.rust_offences(name, text, matchers) if o.rsplit(": ", 1)[1] not in allowed]
+
+
+def capture_crate_uses(path: Path, manifest: dict) -> set[tuple[Path, str]]:
+    """`(manifest, table label)` for each table of `manifest` that takes the
+    capture crate, and `(manifest, "<label> (path)")` when it is not taken by
+    path from the quest tracker's crate."""
+    uses = set()
+    for label, table in wr.dependency_tables(manifest):
+        spec = table.get(CAPTURE_CRATE)
+        if spec is None:
+            continue
+        uses.add((path, label))
+        target = spec.get("path") if isinstance(spec, dict) else None
+        if target is None or (path.parent / target).resolve() != QT_CAPTURE.resolve():
+            uses.add((path, f"{label} (path)"))
+    return uses
+
+
+def blank_cfg_test(code: str) -> str:
+    """`code` (comments already blanked) with each `#[cfg(test)]` item turned
+    to spaces: the attribute and the item after it, to its `;` or its
+    matching `}`, whichever ends it first. Strings are skipped over when
+    counting braces. Newlines are kept."""
+    out = list(code)
+    for m in CFG_TEST.finditer(code):
+        i, depth, n = m.end(), 0, len(code)
+        while i < n:
+            c = code[i]
+            if c == '"':
+                i += 1
+                while i < n and code[i] != '"':
+                    i += 2 if code[i] == "\\" else 1
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            elif c == ";" and depth == 0:
+                break
+            i += 1
+        for k in range(m.start(), min(i + 1, n)):
+            if out[k] != "\n":
+                out[k] = " "
+    return "".join(out)
+
+
+def file_write_offences(name: str, text: str) -> list[str]:
+    """The file names (`std::fs`, `File`, `OpenOptions`) one library source
+    names outside comments and `#[cfg(test)]` items."""
+    return wr.text_offences(name, blank_cfg_test(wr.blank_rust_comments(text)), FILE_WRITE_NAMES)
 
 
 def app_manifest_offences(name: str, manifest: dict, opener_table: str | None) -> list[str]:
@@ -440,8 +554,153 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
 
         offences = []
         for path in self.rust_sources():
-            offences += input_offences(wr.rel(path), wr.read(path), glue=path == GLUE_LIB)
+            offences += input_offences(
+                wr.rel(path), wr.read(path), glue=path == GLUE_LIB, game_window=path == GAME_WINDOW_FILE
+            )
         self.assertEqual(offences, [])
+
+    def test_only_the_game_window_file_reads_the_window_in_front(self):
+        reader = (
+            "// SetForegroundWindow in a comment is fine\n"
+            "let h = unsafe { GetForegroundWindow() };\n"
+            "let n = unsafe { GetWindowTextLengthW(h) };\n"
+            "let got = unsafe { GetWindowTextW(h, buf.as_mut_ptr(), len) };\n"
+        )
+        self.assertEqual(input_offences("game_window.rs", reader, glue=False, game_window=True), [])
+        # Anywhere else each is an offence, the glue's lib.rs included.
+        want = ["{0}:2: GetForegroundWindow", "{0}:3: GetWindowText", "{0}:4: GetWindowText"]
+        self.assertEqual(sorted(input_offences("app.rs", reader, glue=False)), [w.format("app.rs") for w in want])
+        self.assertEqual(sorted(input_offences("lib.rs", reader, glue=True)), [w.format("lib.rs") for w in want])
+        # The window file names no other banned name: focus, the show call,
+        # input, another process.
+        self.assertEqual(
+            input_offences(
+                "game_window.rs",
+                reader + "unsafe { SetForegroundWindow(h) };\nShowWindow(h, SW_HIDE);\nSendInput(1, p, 4);\n"
+                "OpenProcess(0, 0, pid);\n",
+                glue=False,
+                game_window=True,
+            ),
+            [
+                "game_window.rs:7: SendInput",
+                "game_window.rs:5: SetForegroundWindow",
+                "game_window.rs:8: OpenProcess",
+                "game_window.rs:6: ShowWindow",
+            ],
+        )
+
+        # The real tree: the file exists and reads the window in front (a
+        # positive control), and no other Rust source names either call.
+        files = self.rust_sources()
+        self.assertIn(GAME_WINDOW_FILE, files)
+        found = {}
+        for path in files:
+            hits = wr.rust_offences(wr.rel(path), wr.read(path), WINDOW_IN_FRONT_NAMES)
+            if hits:
+                found[path] = {h.rsplit(": ", 1)[1] for h in hits}
+        self.assertEqual(found, {GAME_WINDOW_FILE: WINDOW_IN_FRONT_LABELS})
+        self.assertEqual(
+            input_offences(wr.rel(GAME_WINDOW_FILE), wr.read(GAME_WINDOW_FILE), glue=False, game_window=True), []
+        )
+
+    def test_linked_quest_tracker_crates_send_no_input(self):
+        offender = (
+            "// SendInput in a comment is fine\n"
+            "let h = unsafe { GetForegroundWindow() };\n"
+            "unsafe { EnumWindows(Some(visit), l) };\n"
+            "unsafe { SetForegroundWindow(h); PostMessageW(h, 0, 0, 0) };\n"
+            "let p = \"PathOfExile.exe\";\n"
+        )
+        self.assertEqual(
+            linked_crate_offences("win.rs", offender, QT_CAPTURE_ALLOWED),
+            ["win.rs:4: PostMessage", "win.rs:4: SetForegroundWindow", "win.rs:5: PathOfExile"],
+        )
+        self.assertEqual(
+            linked_crate_offences("o.rs", offender, set()),
+            [
+                "o.rs:2: GetForegroundWindow",
+                "o.rs:4: PostMessage",
+                "o.rs:4: SetForegroundWindow",
+                "o.rs:3: EnumWindows",
+                "o.rs:5: PathOfExile",
+            ],
+        )
+
+        screen = wr.walk(QT_SCREEN, {".rs"})
+        capture = wr.walk(QT_CAPTURE, {".rs"})
+        self.assertGreater(len(screen), 5, "the walk found no qt-screen sources")
+        self.assertIn(QT_CAPTURE_WIN, capture)
+        offences = []
+        allowed_seen = set()
+        for path in screen + capture:
+            text = wr.read(path)
+            allowed = QT_CAPTURE_ALLOWED if path == QT_CAPTURE_WIN else set()
+            offences += linked_crate_offences(wr.rel(path), text, allowed)
+            if allowed:
+                hits = linked_crate_offences(wr.rel(path), text, set())
+                allowed_seen |= {h.rsplit(": ", 1)[1] for h in hits}
+        self.assertEqual(offences, [])
+        # Both allowances are used (else they are stale, or the walk blind).
+        self.assertEqual(allowed_seen, QT_CAPTURE_ALLOWED)
+
+    def test_the_watch_crate_writes_no_file(self):
+        offender = (
+            "// std::fs::write in a comment is fine\n"
+            "use std::fs;\n"
+            "use std::{io, fs::File};\n"
+            "let o = OpenOptions::new();\n"
+            "#[cfg(test)]\n"
+            "mod tests {\n"
+            "    fn f() { let s = \"}\"; std::fs::read(\"x\"); }\n"
+            "}\n"
+            "#[cfg(test)]\nuse std::fs::File;\n"
+            "fn g() -> Profile { Profile }\n"
+        )
+        self.assertEqual(
+            file_write_offences("o.rs", offender),
+            ["o.rs:2: std::fs", "o.rs:3: std::fs", "o.rs:3: File", "o.rs:4: OpenOptions"],
+        )
+        self.assertEqual(file_write_offences("c.rs", "#[cfg(test)]\nmod t { use std::fs::File; }\n"), [])
+
+        files = [
+            p
+            for p in wr.walk(CH_WATCH, {".rs"})
+            if not {"tests", "examples"} & set(p.relative_to(CH_WATCH).parts)
+        ]
+        self.assertIn(CH_WATCH / "src" / "lib.rs", files)
+        self.assertIn(CH_WATCH / "src" / "reader.rs", files)
+        offences = []
+        for path in files:
+            offences += file_write_offences(wr.rel(path), wr.read(path))
+        self.assertEqual(offences, [])
+
+    def test_only_the_glue_and_the_watch_tests_take_the_capture_crate(self):
+        here = TAURI / "Cargo.toml"
+        offender = tomllib.loads(
+            '[dependencies]\nqt-capture = { path = "../../quest-tracker/crates/qt-capture" }\n'
+            "[target.'cfg(windows)'.dependencies]\nqt-capture = { path = \"../../elsewhere/qt-capture\" }\n"
+            "[dev-dependencies]\nqt-capture = \"0.1\"\n"
+        )
+        self.assertEqual(
+            capture_crate_uses(here, offender),
+            {
+                (here, "dependencies"),
+                (here, "target.cfg(windows).dependencies"),
+                (here, "target.cfg(windows).dependencies (path)"),
+                (here, "dev-dependencies"),
+                (here, "dev-dependencies (path)"),
+            },
+        )
+
+        manifests = wr.walk(APP, names={"Cargo.toml"})
+        self.assertIn(CH_WATCH / "Cargo.toml", manifests)
+        uses = set()
+        for m in manifests:
+            uses |= capture_crate_uses(m, tomllib.loads(wr.read(m)))
+        self.assertEqual(
+            sorted((wr.rel(p), label) for p, label in uses),
+            sorted((wr.rel(p), label) for p, label in CAPTURE_TABLES),
+        )
 
     def test_every_input_and_watching_matcher_sees_its_name(self):
         matchers = NO_INPUT_NAMES + WATCH_NAMES + SHOW_WINDOW_ASYNC + SHOW_WINDOW_NAMES
@@ -921,7 +1180,10 @@ class LockedToQuestTrackerPins(unittest.TestCase):
         self.assertLessEqual({"ch-app", "crafting-helper"}, members)
         if CH_ITEM.is_dir():
             self.assertIn("ch-item", members)
-        self.assertEqual(set(local_packages(lock)), members | wr.SHARED_CRATES)
+        self.assertIn("ch-watch", members)
+        # The members, the shared crates and the quest tracker's two screen
+        # crates (M6); `wr.SHARED_CRATES` stays the shared crates alone.
+        self.assertEqual(set(local_packages(lock)), members | wr.SHARED_CRATES | LINKED_CRATES)
 
     def test_workspace_pins_equal_the_quest_trackers(self):
         ours = tomllib.loads(wr.read(APP / "Cargo.toml"))["workspace"]["dependencies"]

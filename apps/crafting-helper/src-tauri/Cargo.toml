@@ -30,7 +30,16 @@ tauri-plugin-opener = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
-# The clipboard reader, the error beep and the overlay's show and hide
-# without activating it.
+# The clipboard reader, the error beep, the overlay's show and hide without
+# activating it and its size, and the window in front (game_window.rs).
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true }
+# The screen watch's real backend (src/screen.rs): the quest tracker's
+# Windows capture (the game's client area, a GDI copy of it, the overlay's
+# own rect and Windows' OCR) and its pure screen crate, for the types that
+# capture takes. Both by path and unchanged; each takes its package keys
+# from its own workspace (apps/quest-tracker). This glue is the only
+# manifest that takes `qt-capture` but `ch-watch`'s screenshot tests
+# (tests/test_crafting_helper_guard.py).
+qt-capture = { path = "../../quest-tracker/crates/qt-capture" }
+qt-screen = { path = "../../quest-tracker/crates/qt-screen" }

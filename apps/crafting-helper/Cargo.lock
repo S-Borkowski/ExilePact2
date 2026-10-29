@@ -603,6 +603,8 @@ version = "0.1.0"
 dependencies = [
  "ch-app",
  "ep-net",
+ "qt-capture",
+ "qt-screen",
  "serde",
  "serde_json",
  "tauri",

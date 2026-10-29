@@ -7,12 +7,18 @@
 //!   combination another program holds is refused and the old one stays
 //!   registered), the clipboard read once per press through Win32, the
 //!   error beep, the `ch:view` event to the main and overlay windows and
-//!   `ch:app-settings` to the Settings window, the overlay's show and hide,
-//!   opening the Settings window, opening Craft of Exile in the default
-//!   browser, and the restart an installed update asks for (an exit through
-//!   the quit path below). The shortcut's handler runs
+//!   `ch:app-settings` to the Settings window, the overlay's show, hide,
+//!   size and placement, opening the Settings window, opening Craft of
+//!   Exile in the default browser, and the restart an installed update asks
+//!   for (an exit through the quit path below). The shortcut's handler runs
 //!   `App::hotkey_pressed` on a blocking task, so the clipboard's retries
 //!   and the beep never block the main thread.
+//! - **Screen**: `screen.rs` implements `ch_app::ScreenBackend` over the
+//!   quest tracker's Windows capture (`qt-capture`) and `ch-watch`'s reader:
+//!   the game's window when it is in front (`game_window.rs`, by its title,
+//!   the one file that reads the window in front) and its client area, the
+//!   OCR's readiness and the hovered item's tooltips. `ch-app` runs it on
+//!   its own watch thread while a craft is guiding.
 //! - **Browser**: `tauri-plugin-opener`, from Rust alone, opens the one
 //!   address `ch_app::App::open_craft_of_exile` passes,
 //!   `ch_app::CRAFT_OF_EXILE_URL`; no command takes an address. The plugin
@@ -37,14 +43,19 @@
 //!   `settings.html`, built when first opened on a blocking task, decorated,
 //!   not resizable, centred; its capability (`capabilities/settings.json`)
 //!   grants `core:event:default` alone. `overlay`, the page `overlay.html`
-//!   (`tauri.conf.json`): transparent, undecorated, always on top, off the
-//!   taskbar, not focusable (Tauri's Windows backend turns that into
+//!   (`tauri.conf.json`): 480 x 168 at scale 1 (`ui-design.md` §
+//!   "Overlay"), transparent, undecorated, always on top, off the taskbar,
+//!   not focusable (Tauri's Windows backend turns that into
 //!   `WS_EX_NOACTIVATE`) and hidden; made click-through at start with
 //!   `set_ignore_cursor_events`, which Tauri implements with
-//!   `WS_EX_TRANSPARENT | WS_EX_LAYERED`. It is shown with
-//!   `SW_SHOWNOACTIVATE` and hidden with `SW_HIDE`, so the game keeps
-//!   focus, and only when `App::set_craft_active` says so; no command calls
-//!   that in 0.1.0, so the overlay never shows yet.
+//!   `WS_EX_TRANSPARENT | WS_EX_LAYERED`. `ch-app` decides when it shows (a
+//!   craft guiding and the game in front) and where (inside the game's
+//!   client area, at the `overlay_position` setting); the shell shows it
+//!   with `SW_SHOWNOACTIVATE`, hides it with `SW_HIDE`, so the game keeps
+//!   focus, and moves it with Tauri's `set_position`, each posted to the
+//!   main thread and never waited on. Its handle is read once at setup, on
+//!   the main thread; its size is read from that handle with Win32, so no
+//!   call from the watch thread waits on a Tauri window getter.
 //! - **Restart**: the exe's path is captured at start, before any swap
 //!   could rename it. On `RunEvent::Exit` (plugins have run their own exit
 //!   first, so the single-instance mutex is released) the app shuts down,
@@ -56,11 +67,17 @@
 //! The app sends the game nothing: no key or mouse input, no window
 //! message, no focus change, no other process opened, no memory read. It
 //! reads the clipboard once per press of its own hotkey and at no other
-//! time (no watching, no polling, no read at start). Its other effects
-//! outside its windows are the beep, the update check's requests to GitHub,
-//! opening Craft of Exile's one address in the default browser when the
-//! user presses its button and, when the user presses the install button,
-//! replacing its own exe.
+//! time (no watching, no polling, no read at start). While a craft is
+//! guiding it looks at which window is in front and, when it is the game's,
+//! copies the game's client area and reads its item tooltips with Windows'
+//! OCR, in memory: no copy, crop or OCR line is written or logged. Its
+//! other effects outside its windows are the beep, the update check's
+//! requests to GitHub, opening Craft of Exile's one address in the default
+//! browser when the user presses its button and, when the user presses the
+//! install button, replacing its own exe.
+
+mod game_window;
+mod screen;
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -111,7 +128,22 @@ struct TauriShell {
     app: AppHandle,
     /// The shortcut registered now, if any.
     hotkey: Mutex<Option<Shortcut>>,
+    /// The overlay window's handle (an `HWND` as an integer), read once at
+    /// setup on the main thread; `None` when it could not be.
+    overlay: Option<isize>,
 }
+
+impl TauriShell {
+    /// Logs a failed call on the overlay window.
+    fn overlay_error(&self, e: &str) {
+        if let Some(shell) = self.app.try_state::<Arc<App>>() {
+            shell.diag(&format!("error: overlay window: {e}"));
+        }
+    }
+}
+
+/// What the overlay's calls say when its handle is not known.
+const NO_OVERLAY: &str = "the overlay window is gone";
 
 impl ch_app::Shell for TauriShell {
     fn register_hotkey(&self, hotkey: &str) -> Result<(), HotkeyError> {
@@ -171,16 +203,25 @@ impl ch_app::Shell for TauriShell {
         let _ = self.app.emit_to(SETTINGS, APP_SETTINGS_EVENT, view);
     }
 
+    /// Called from the watch thread and the commands: posted to the main
+    /// thread, never waited on.
     fn set_overlay_visible(&self, visible: bool) {
-        let result = self
-            .app
-            .get_webview_window(OVERLAY)
-            .ok_or_else(|| "the overlay window is gone".to_string())
-            .and_then(|w| overlay::show_without_activating(&self.app, &w, visible));
-        if let Err(e) = result {
-            if let Some(shell) = self.app.try_state::<Arc<App>>() {
-                shell.diag(&format!("error: overlay window: {e}"));
-            }
+        if let Err(e) = overlay::show_without_activating(&self.app, self.overlay, visible) {
+            self.overlay_error(&e);
+        }
+    }
+
+    /// Read from the overlay's handle on the calling thread (Win32), never
+    /// through Tauri's getter, which waits on the main thread.
+    fn overlay_size(&self) -> Result<(u32, u32), String> {
+        overlay::size(self.overlay)
+    }
+
+    /// Posted to the main thread, never waited on; `ch-app` computed the
+    /// place (`ch_app::overlay_origin`).
+    fn place_overlay(&self, x: i32, y: i32) {
+        if let Err(e) = overlay::place(&self.app, x, y) {
+            self.overlay_error(&e);
         }
     }
 
@@ -469,24 +510,42 @@ mod clipboard {
     }
 }
 
-/// The overlay's show and hide without taking focus from the game, as the
-/// quest tracker's overlay does.
+/// The overlay's show, hide, size and placement without taking focus from
+/// the game, as the quest tracker's overlay does. Every call that changes
+/// the window is posted to the main thread, which owns it, so the caller
+/// (the watch thread or a command) never waits for it.
 mod overlay {
-    use tauri::{AppHandle, WebviewWindow};
+    use std::sync::Arc;
+
+    use ch_app::App;
+    use tauri::{AppHandle, Manager, PhysicalPosition};
+
+    use super::{NO_OVERLAY, OVERLAY};
+
+    /// The overlay window's handle as an integer, read on the main thread
+    /// (at setup): Tauri's `hwnd` waits on the main thread.
+    #[cfg(windows)]
+    pub fn handle(window: &tauri::WebviewWindow) -> Result<isize, String> {
+        // A raw handle is not `Send`; its value is carried instead.
+        Ok(window.hwnd().map_err(|e| e.to_string())?.0 as isize)
+    }
+
+    #[cfg(not(windows))]
+    pub fn handle(_window: &tauri::WebviewWindow) -> Result<isize, String> {
+        Err("the overlay's handle is read only on Windows".to_string())
+    }
 
     /// Shows the overlay with `SW_SHOWNOACTIVATE`, so showing never takes
-    /// focus from the game, or hides it with `SW_HIDE`. Posted to the main
-    /// thread, which owns the window, so the caller never waits for it.
+    /// focus from the game, or hides it with `SW_HIDE`.
     #[cfg(windows)]
     pub fn show_without_activating(
         app: &AppHandle,
-        window: &WebviewWindow,
+        handle: Option<isize>,
         shown: bool,
     ) -> Result<(), String> {
         use windows_sys::Win32::Foundation::HWND;
         use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE, SW_SHOWNOACTIVATE};
-        // A raw handle is not `Send`; its value is carried to the main thread.
-        let handle = window.hwnd().map_err(|e| e.to_string())?.0 as isize;
+        let handle = handle.ok_or_else(|| NO_OVERLAY.to_string())?;
         app.run_on_main_thread(move || {
             // SAFETY: the overlay's own window, shown or hidden on the main
             // thread that owns it.
@@ -499,17 +558,71 @@ mod overlay {
 
     #[cfg(not(windows))]
     pub fn show_without_activating(
-        _app: &AppHandle,
-        window: &WebviewWindow,
+        app: &AppHandle,
+        _handle: Option<isize>,
         shown: bool,
     ) -> Result<(), String> {
-        if shown { window.show() } else { window.hide() }.map_err(|e| e.to_string())
+        let app2 = app.clone();
+        app.run_on_main_thread(move || {
+            if let Some(w) = app2.get_webview_window(OVERLAY) {
+                let _ = if shown { w.show() } else { w.hide() };
+            }
+        })
+        .map_err(|e| e.to_string())
+    }
+
+    /// The overlay window's size in physical pixels, from its handle on the
+    /// calling thread (`GetWindowRect`, in the process's DPI awareness:
+    /// Tauri makes it per-monitor aware, so physical pixels).
+    #[cfg(windows)]
+    pub fn size(handle: Option<isize>) -> Result<(u32, u32), String> {
+        use windows_sys::Win32::Foundation::{HWND, RECT};
+        use windows_sys::Win32::UI::WindowsAndMessaging::GetWindowRect;
+        let handle = handle.ok_or_else(|| NO_OVERLAY.to_string())?;
+        let mut r = RECT {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        // SAFETY: the overlay's own window (stale at worst, when the call
+        // fails); `r` is a local the call writes.
+        if unsafe { GetWindowRect(handle as HWND, &mut r) } == 0 {
+            return Err(format!("GetWindowRect failed: {}", std::io::Error::last_os_error()));
+        }
+        let side = |a: i32, b: i32| u32::try_from(i64::from(b) - i64::from(a)).unwrap_or(0);
+        Ok((side(r.left, r.right), side(r.top, r.bottom)))
+    }
+
+    #[cfg(not(windows))]
+    pub fn size(_handle: Option<isize>) -> Result<(u32, u32), String> {
+        Err("the overlay's size is read only on Windows".to_string())
+    }
+
+    /// Moves the overlay's top-left corner to `(x, y)`, physical screen
+    /// pixels, with Tauri's own `set_position` (which neither activates it
+    /// nor changes its size or order) on the main thread. A failure there is
+    /// logged.
+    pub fn place(app: &AppHandle, x: i32, y: i32) -> Result<(), String> {
+        let app2 = app.clone();
+        app.run_on_main_thread(move || {
+            let result = app2
+                .get_webview_window(OVERLAY)
+                .ok_or_else(|| NO_OVERLAY.to_string())
+                .and_then(|w| w.set_position(PhysicalPosition::new(x, y)).map_err(|e| e.to_string()));
+            if let Err(e) = result {
+                if let Some(shell) = app2.try_state::<Arc<App>>() {
+                    shell.diag(&format!("error: overlay window: place: {e}"));
+                }
+            }
+        })
+        .map_err(|e| e.to_string())
     }
 }
 
 /// Makes the overlay click-through: every mouse event passes to the window
-/// below (the game). A failure is logged; the overlay stays hidden in 0.1.0
-/// either way.
+/// below (the game). A failure is logged; the overlay still shows only
+/// while a craft is guiding and the game is in front.
 fn click_through(window: &WebviewWindow, shell: &App) {
     match window.set_ignore_cursor_events(true) {
         Ok(()) => shell.diag("overlay: click-through"),
@@ -657,13 +770,20 @@ pub fn run() {
                 Ok(p) => (Some(p), None),
                 Err(e) => (None, Some(e)),
             };
+            // Setup runs on the main thread: the overlay's handle is read
+            // here once, for the shell and the screen backend.
+            let overlay_window = app.get_webview_window(OVERLAY);
+            let overlay_handle = overlay_window.as_ref().map(overlay::handle);
+            let handle = overlay_handle.as_ref().and_then(|h| h.as_ref().ok().copied());
             let shell = App::with_updates(
                 AppConfig {
                     store,
                     shell: Box::new(TauriShell {
                         app: app.handle().clone(),
                         hotkey: Mutex::new(None),
+                        overlay: handle,
                     }),
+                    screen: screen::setup(handle),
                 },
                 UpdateSetup {
                     config: UpdateConfig {
@@ -679,9 +799,12 @@ pub fn run() {
                 exe: exe.clone(),
                 args: std::env::args_os().skip(1).collect(),
             });
-            match app.get_webview_window(OVERLAY) {
-                Some(w) => click_through(&w, &shell),
+            match &overlay_window {
+                Some(w) => click_through(w, &shell),
                 None => shell.diag("error: overlay window: not created"),
+            }
+            if let Some(Err(e)) = &overlay_handle {
+                shell.diag(&format!("error: overlay window: handle: {e}"));
             }
             shell.start();
             match exe {
