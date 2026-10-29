@@ -32,6 +32,7 @@ describe('the TypeScript IPC types', () => {
       'craft-refused': ['paste', true, 'info', false, 'refused'],
       'craft-guiding': ['paste', true, 'info', false, 'guiding'],
       'craft-miss': ['paste', true, 'info', false, 'guiding'],
+      'craft-miss-clean': ['paste', true, 'info', false, 'guiding'],
       'craft-replan': ['paste', true, 'error', false, 'guiding'],
       'craft-done': ['paste', true, 'info', false, 'guiding'],
       'craft-watching': ['paste', true, 'info', true, 'guiding'],

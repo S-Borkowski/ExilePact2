@@ -352,6 +352,7 @@ describe('the craft window', () => {
       'craft-refused': "Can't plan this item",
       'craft-guiding': 'Rings: resistances by whittling',
       'craft-miss': 'Rings: resistances by whittling',
+      'craft-miss-clean': 'Fill, desecrate the hardest, slam the last',
       'craft-replan': 'Rings: resistances by whittling',
       'craft-done': 'Rings: resistances by whittling',
       'craft-watching': 'Rings: resistances by whittling',

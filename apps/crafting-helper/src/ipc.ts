@@ -281,7 +281,7 @@ export interface HistoryEntry {
   step: string;
   instruction: string;
   result: OutcomeWord;
-  /** Starts `Hit:`, `Miss:` or `Unexpected:`. */
+  /** What changed, without the outcome's word (`result` carries it). */
   summary: string;
   source: OutcomeSource;
 }

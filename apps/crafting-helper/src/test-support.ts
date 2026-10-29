@@ -28,6 +28,7 @@ export const CRAFT_FIXTURE_NAMES = [
   'craft-refused',
   'craft-guiding',
   'craft-miss',
+  'craft-miss-clean',
   'craft-replan',
   'craft-done',
   'craft-watching',
