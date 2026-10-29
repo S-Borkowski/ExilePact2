@@ -109,7 +109,8 @@ tooltip from the game's window with Windows' own OCR and says whether the
 step hit or missed and what is next; when it cannot read the item, you
 grab it again. While a craft is guided and the game is in front, a
 click-through overlay over the game shows the current step, where a hit
-and a miss go and the last outcome, at the place chosen in Settings. It
+and a miss go, the last outcome and what the screen watch is doing, at the
+place chosen in Settings. It
 reads the clipboard once per grab and never watches it, keeps its copies
 of the game's window in memory (never saved, logged or sent), uses no
 keyboard hook and sends the game nothing: no keys, no mouse input, no

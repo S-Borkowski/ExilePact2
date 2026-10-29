@@ -650,6 +650,13 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   (`ocr_selftest_reads_rendered_names`, which renders names with GDI and
   reads them back), run from the quest tracker's workspace (the command
   above). It is the OCR's positive control on a machine.
+- The glue's `build.rs` links the Visual C++ runtime statically into the
+  app's exe alone, so the exe needs no `VCRUNTIME140.dll`. tauri-build's
+  own way of doing it puts a stand-in `msvcrt.lib` on a search path that
+  Cargo hands to every doctest of a `cargo test --workspace` run, where
+  it broke the `ch-blueprint` doctest's link (`LNK1120`); the build
+  script turns that off and passes the same libraries to the binary's
+  link alone.
 - `ch-app`'s `tests/craft_window.rs` drives the craft window over the
   whittled ring of `ch-engine`'s tests
   (`crates/ch-engine/tests/items/gear/rings-resist-whittle/`, read by
