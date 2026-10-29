@@ -1,0 +1,15 @@
+Item Class: Jewels
+Rarity: Rare
+Dusk Spiral
+Time-Lost Sapphire
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Chilling" (Tier: 1) — Elemental, Cold, Damage }
+Small Passive Skills in Radius also grant 2(1-2)% increased Cold Damage
+{ Prefix Modifier }
++1 Suffix Modifier allowed
+{ Suffix Modifier "of Unmaking" (Tier: 1) — Caster, Critical }
+Notable Passive Skills in Radius also grant 8(5-10)% increased Critical Spell Damage Bonus
+--------
+Place into an allocated Jewel Socket on the Passive Skill Tree. Right click to remove from the Socket.

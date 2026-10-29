@@ -1,0 +1,9 @@
+Item Class: One Hand Maces
+Rarity: Rare
+Brood Knell
+Wooden Club
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Vicious" (Tier: 5) — Damage, Physical, Attack }
+95(85-109)% increased Physical Damage

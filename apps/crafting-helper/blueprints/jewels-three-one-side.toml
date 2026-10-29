@@ -1,0 +1,125 @@
+# Jewels: three wanted modifiers on one side, the third from a desecration,
+# then the other side. Paraphrased from the owner's Discord post 6, with
+# post 5's note on the prefix side.
+id = "jewels-three-one-side"
+name = "Jewels: three on one side"
+classes = ["Jewels"]
+source = "Discord post 6 (and post 5's note), owner's paste, 2026-10-28"
+notes = """\
+Works the same on basic and Time-Lost jewels; on a Time-Lost one use the \
+Ancient Potent Liquid Contempt the second action names (the engine offers \
+the first one the blocked list allows, whatever the jewel). Which side the \
+Contempt modifier lands on, and so which side gains the slot, is not \
+established: check it before desecrating. Jewel odds are unknown and every \
+jewel modifier has one tier, so the desecration aims at the first remaining \
+target in the order you gave: list the third modifier of the full side \
+first. Post 5: for increased mana, keep the desecration for the prefix side. \
+The route does not work when the wanted desecrated modifier is an unusual \
+one on the two-modifier side. The last liquid (radius on a Time-Lost jewel, \
+increased effect on a basic one) adds no modifier the data knows, so it is \
+a manual step."""
+
+[[start]]
+rarity = ["rare"]
+wanted_prefixes_at_least = 2
+
+[[start]]
+rarity = ["rare"]
+wanted_suffixes_at_least = 2
+
+[[step]]
+id = "contempt"
+say = "Use a Potent Liquid Contempt for one more slot on the side holding your two; if it takes one of them, start over with another jewel"
+goal = "remove-unwanted"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "potent-liquid-contempt"
+
+[[step.action]]
+currency = "ancient-potent-liquid-contempt"
+
+[[step]]
+id = "desecrate"
+say = "Desecrate the third modifier's side"
+goal = "desecrate"
+bind = "hardest"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it with Abyssal Echoes, rerolling the options once if they miss"
+goal = "reveal"
+bind = "hardest"
+on_hit = "goto:clean-prefix"
+on_miss = "goto:unseal"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "unseal"
+say = "Remove the desecrated modifier with Omen of Light, then desecrate again"
+goal = "remove-desecrated"
+on_hit = "goto:desecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "clean-prefix"
+say = "Remove the Contempt modifier (or other junk) from the prefixes with a side-restricted annulment or Chaos Orb"
+goal = "remove-unwanted"
+side = "prefix"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "clean-suffix"
+say = "Remove the Contempt modifier (or other junk) from the suffixes with a side-restricted annulment or Chaos Orb"
+goal = "remove-unwanted"
+side = "suffix"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "fill"
+say = "Exalt into the empty slot"
+goal = "fill"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "reroll"
+say = "Chaos the other side's modifiers until a wanted one lands (stop at one, or keep going for two)"
+goal = "add-wanted"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "finish"
+say = "Last, the final liquid: the radius on a Time-Lost jewel, increased effect on a basic one"
+goal = "manual"
+on_hit = "done"

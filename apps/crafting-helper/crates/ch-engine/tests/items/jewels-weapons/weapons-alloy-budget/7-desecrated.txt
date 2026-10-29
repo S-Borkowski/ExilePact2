@@ -1,0 +1,19 @@
+Item Class: One Hand Maces
+Rarity: Rare
+Brood Knell
+Wooden Club
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Tyrannical" (Tier: 2) — Damage, Physical, Attack }
+160(155-169)% increased Physical Damage
+{ Prefix Modifier }
++380(327-427) to Accuracy Rating
+6(5-8)% increased Attack Speed
+{ Prefix Modifier "Tempered" (Tier: 2) — Damage, Physical, Attack }
+Adds 25(21-31) to 45(36-53) Physical Damage
+{ Suffix Modifier }
+17(15-20)% increased Physical Damage
++8(7-10) to all Attributes
+{ Unrevealed Desecrated Suffix Modifier }
+Unrevealed Desecrated Modifier

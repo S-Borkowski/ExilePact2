@@ -1,0 +1,11 @@
+Item Class: Wands
+Rarity: Rare
+Gloom Song
+Volatile Wand
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Incanter's" (Tier: 3) — Damage, Caster }
+80(75-89)% increased Spell Damage
+{ Prefix Modifier "Zealot's" (Tier: 3) — Damage, Elemental, Fire }
+Gain 23(22-24)% of Damage as Extra Fire Damage

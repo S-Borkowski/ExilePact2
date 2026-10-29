@@ -1,0 +1,19 @@
+Item Class: Jewels
+Rarity: Rare
+Grim Glyph
+Sapphire
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Mystic" (Tier: 1) — Caster, Damage }
+12(5-15)% increased Spell Damage
+{ Prefix Modifier "Shimmering" (Tier: 1) — Energy Shield }
+16(10-20)% increased maximum Energy Shield
+{ Desecrated Prefix Modifier "Lightless" (Tier: 1) }
+6(4-8)% increased Exposure Effect
+{ Suffix Modifier "of Annihilating" (Tier: 1) — Caster, Critical }
+11(5-15)% increased Critical Hit Chance for Spells
+{ Suffix Modifier "of Mind" (Tier: 1) — Life, Mana }
+3(2-4)% of Damage is taken from Mana before Life
+--------
+Place into an allocated Jewel Socket on the Passive Skill Tree. Right click to remove from the Socket.

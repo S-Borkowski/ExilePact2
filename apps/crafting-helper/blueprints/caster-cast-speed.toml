@@ -1,0 +1,107 @@
+# Caster weapons and foci: cast speed from the Transcendent Alloy, a
+# desecration holding a slot while a Perfect Exalted Orb adds two, then the
+# real desecration in the last slot. Paraphrased from the owner's Discord
+# post 13.
+id = "caster-cast-speed"
+name = "Caster weapons: cast speed by alloy"
+classes = ["Wands", "Staves", "Foci"]
+source = "Discord post 13, owner's paste, 2026-10-28"
+notes = """\
+The cast speed comes from the Transcendent Alloy, which exists for wands, \
+staves and foci in the data and not for sceptres, so sceptres are left out. \
+The exalted prefix is filler the alloy removes: the post relies on Sinistral \
+Crystallisation working with alloys, which the docs mark not established, \
+and the alloy's modifier is not one a target can name, so that step is \
+manual. The first desecration stays unrevealed: it holds a slot so the next \
+exalts cannot roll the mana modifier. The post does not say what to do when \
+the double exalt misses; the route moves on. Revealing the last desecration \
+with Abyssal Echoes, and retrying it with Omen of Light, is this \
+blueprint's."""
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "filler"
+say = "Exalt a prefix (Sinistral Exaltation) for the alloy to take"
+goal = "fill"
+side = "prefix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-sinistral-exaltation"]
+
+[[step]]
+id = "cast-speed"
+say = "Transcendent Alloy with Sinistral Crystallisation for cast speed, so it takes the filler prefix"
+goal = "manual"
+
+[[step.action]]
+currency = "transcendent-alloy"
+omens = ["omen-of-sinistral-crystallisation"]
+
+[[step]]
+id = "block"
+say = "Desecrate and leave it unrevealed, so the mana modifier cannot roll next"
+goal = "desecrate"
+
+[[step.action]]
+currency = "desecrate"
+
+[[step]]
+id = "double-slam"
+say = "Perfect Exalted Orb with Omen of Greater Exaltation: two modifiers at once"
+goal = "add-wanted"
+bind = "any-remaining"
+on_miss = "next"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["omen-of-greater-exaltation"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["omen-of-greater-exaltation"]
+
+[[step]]
+id = "unblock"
+say = "Remove the unrevealed modifier with Omen of Light"
+goal = "remove-desecrated"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "last"
+say = "Desecrate the last slot, on the side of the remaining target"
+goal = "desecrate"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it with Abyssal Echoes, rerolling the options once if they miss"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+on_hit = "done"
+on_miss = "goto:redo"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "redo"
+say = "Remove the desecrated modifier with Omen of Light, then desecrate again"
+goal = "remove-desecrated"
+on_hit = "goto:last"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]

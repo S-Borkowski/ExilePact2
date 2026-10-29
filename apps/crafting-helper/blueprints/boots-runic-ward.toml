@@ -1,0 +1,120 @@
+# Boots: movement speed (fractured), Runic Ward, both attributes and
+# augment effect, with the chosen runes. Paraphrased from the owner's
+# Discord post 8.
+id = "boots-runic-ward"
+name = "Boots: Runic Ward and both attributes"
+classes = ["Boots"]
+source = "Discord post 8, owner's paste, 2026-10-28"
+notes = """\
+Start from Rare boots with a fractured wanted modifier (movement speed in \
+the post) and two sockets. Each exalted prefix is filler the next \
+crystallised use removes. Essence of Horror (augment effect) and the \
+Sovereign Alloy (Runic Ward) add modifiers a target cannot name, so their \
+steps are manual; the alloy with Sinistral Crystallisation rests on a \
+mechanic the docs mark not established. The two attributes are your \
+targets: the Chaos Orb lands one, the desecration the other. Rune sockets \
+are manual: the helper does not read them."""
+
+[[start]]
+rarity = ["rare"]
+fractured_wanted = true
+
+[[step]]
+id = "attribute"
+say = "Chaos Orb until one of the attributes lands"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "chaos-orb"
+
+[[step]]
+id = "filler-one"
+say = "Exalt a prefix (Sinistral Exaltation) for the essence to take"
+goal = "fill"
+side = "prefix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-sinistral-exaltation"]
+
+[[step]]
+id = "augment"
+say = "Essence of Horror with Sinistral Crystallisation, so it takes the filler prefix"
+goal = "manual"
+
+[[step.action]]
+currency = "essence-of-horror"
+omens = ["omen-of-sinistral-crystallisation"]
+
+[[step]]
+id = "filler-two"
+say = "Exalt another prefix (Sinistral Exaltation) for the alloy to take"
+goal = "fill"
+side = "prefix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-sinistral-exaltation"]
+
+[[step]]
+id = "rune"
+say = "Socket the +1 rune into one socket"
+goal = "manual"
+
+[[step]]
+id = "runic-ward"
+say = "Sovereign Alloy with Sinistral Crystallisation for Runic Ward, so it takes the filler prefix"
+goal = "manual"
+
+[[step.action]]
+currency = "sovereign-alloy"
+omens = ["omen-of-sinistral-crystallisation"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate a suffix for the other attribute"
+goal = "desecrate"
+side = "suffix"
+bind = "last-remaining"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it with Abyssal Echoes, rerolling the options once if they miss"
+goal = "reveal"
+bind = "last-remaining"
+on_miss = "goto:unseal"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "last-prefix"
+say = "Exalt a last random prefix (Sinistral Exaltation)"
+goal = "fill"
+side = "prefix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-sinistral-exaltation"]
+
+[[step]]
+id = "runes"
+say = "Socket the runes you want"
+goal = "manual"
+on_hit = "done"
+
+[[step]]
+id = "unseal"
+say = "Remove the desecrated modifier with Omen of Light, then desecrate again"
+goal = "remove-desecrated"
+on_hit = "goto:desecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
