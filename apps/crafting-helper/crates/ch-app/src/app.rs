@@ -53,7 +53,10 @@ use serde_json::{json, Value};
 
 use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
-use crate::settings::{load_blocked, read_patch, BLOCKED_CURRENCIES_KEY, CHECK_UPDATES_KEY};
+use crate::settings::{
+    catalogue_groups, load_blocked, read_patch, CatalogueGroup, BLOCKED_CURRENCIES_KEY,
+    CHECK_UPDATES_KEY,
+};
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
 use crate::updates::{Clock, UpdateSetup};
 use crate::view::{GrabSource, GrabView, OverlayView, SettingsView, StatusKind, StatusLine, View};
@@ -472,11 +475,19 @@ impl App {
         }
     }
 
+    /// `get_catalogue`: every crafting item the blocked list may name,
+    /// grouped by kind with each group's heading and its entries (id, name)
+    /// sorted by name ([`catalogue_groups`]). Both windows ask for it once;
+    /// it never changes while the app runs.
+    pub fn get_catalogue(&self) -> Vec<CatalogueGroup> {
+        catalogue_groups()
+    }
+
     /// `update_settings`: `check_updates` and `blocked_currencies`, either
-    /// or both (see [`crate::settings`]). Anything else, or a value of the
-    /// wrong shape, is refused whole with nothing changed. Turning the check
-    /// on ticks at once, so a first check starts now when one is due. Sends
-    /// both views.
+    /// or both (see [`crate::settings`]). Anything else, a value of the
+    /// wrong shape or a blocked id outside the catalogue, is refused whole
+    /// with nothing changed. Turning the check on ticks at once, so a first
+    /// check starts now when one is due. Sends both views.
     pub fn update_settings(&self, patch: &Value) -> Result<SettingsView, String> {
         let patch = match read_patch(patch) {
             Ok(p) => p,

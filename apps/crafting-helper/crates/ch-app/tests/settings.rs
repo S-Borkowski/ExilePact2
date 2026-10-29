@@ -1,10 +1,12 @@
 //! The saved settings, through `App` with a recording fake shell and a
 //! temporary store: `check_updates` off unless saved `true`, and the blocked
-//! currencies saved, normalised, refused whole when bad and read back by a
-//! new app on the same store.
+//! currencies saved, normalised, refused whole when bad (an id outside the
+//! catalogue included) and read back by a new app on the same store, and
+//! the catalogue the blocked list picks from.
 
 mod common;
 
+use ch_app::ch_engine::catalogue;
 use ch_app::{App, AppConfig, Store, StoreError};
 use common::*;
 use serde_json::{json, Value};
@@ -73,13 +75,15 @@ fn blocked_currencies_persist() {
     // Trimmed, empty ids dropped, repeats removed keeping the first order.
     let view = app
         .update_settings(&json!({
-            "blocked_currencies": [" divine ", "chaos", "", "  ", "divine", "exalted", "chaos"]
+            "blocked_currencies": [
+                " divine-orb ", "chaos-orb", "", "  ", "divine-orb", "exalted-orb", "chaos-orb"
+            ]
         }))
         .unwrap();
     let want = vec![
-        "divine".to_string(),
-        "chaos".to_string(),
-        "exalted".to_string(),
+        "divine-orb".to_string(),
+        "chaos-orb".to_string(),
+        "exalted-orb".to_string(),
     ];
     assert_eq!(view.blocked_currencies, want);
     // Both windows heard it.
@@ -90,31 +94,25 @@ fn blocked_currencies_persist() {
     assert!(!shell.rec().views.is_empty());
 
     // Refused whole, with nothing changed: not a list, not text, too long an
-    // id, too many ids, another key, a bad value beside a good one.
-    let many: Vec<String> = (0..201).map(|i| format!("currency-{i}")).collect();
+    // id, an id outside the catalogue, another key, a bad value beside a
+    // good one.
     for bad in [
-        json!({ "blocked_currencies": "divine" }),
-        json!({ "blocked_currencies": ["divine", 7] }),
+        json!({ "blocked_currencies": "divine-orb" }),
+        json!({ "blocked_currencies": ["divine-orb", 7] }),
         json!({ "blocked_currencies": ["x".repeat(65)] }),
-        json!({ "blocked_currencies": many }),
+        json!({ "blocked_currencies": ["divine-orb", "divine"] }),
         json!({ "blocked_currencies": [], "hotkey": "Ctrl+Alt+R" }),
         json!({ "blocked_currencies": [], "check_updates": "yes" }),
         json!({ "auto_install": true }),
         json!({}),
-        json!(["divine"]),
+        json!(["divine-orb"]),
     ] {
         assert!(app.update_settings(&bad).is_err(), "{bad}");
         assert_eq!(app.get_app_settings().blocked_currencies, want, "{bad}");
     }
-    // The limits themselves are taken.
-    let two_hundred: Vec<String> = (0..200).map(|i| format!("currency-{i}")).collect();
-    let view = app
-        .update_settings(&json!({ "blocked_currencies": two_hundred }))
-        .unwrap();
-    assert_eq!(view.blocked_currencies.len(), 200);
     let view = app
         .update_settings(
-            &json!({ "blocked_currencies": [&want[0], &want[1], &want[2], "x".repeat(64)] }),
+            &json!({ "blocked_currencies": [&want[0], &want[1], &want[2], "regal-orb"] }),
         )
         .unwrap();
     assert_eq!(view.blocked_currencies.len(), 4);
@@ -129,7 +127,7 @@ fn blocked_currencies_persist() {
     let again = start(tmp.path(), &FakeShell::default());
     let read = again.get_app_settings().blocked_currencies;
     assert_eq!(read[..3], want[..]);
-    assert_eq!(read[3], "x".repeat(64));
+    assert_eq!(read[3], "regal-orb");
     // The empty list clears it.
     let view = again
         .update_settings(&json!({ "blocked_currencies": [] }))
@@ -147,18 +145,200 @@ fn a_bad_saved_list_keeps_its_valid_ids() {
         tmp.path(),
         &json!({
             "schema": 1,
-            "blocked_currencies": ["divine", 3, "", " chaos ", "divine", "x".repeat(65)]
+            "blocked_currencies": ["divine-orb", 3, "", " chaos-orb ", "divine-orb", "x".repeat(65)]
         }),
     );
     let app = start(tmp.path(), &FakeShell::default());
     assert_eq!(
         app.get_app_settings().blocked_currencies,
-        vec!["divine".to_string(), "chaos".to_string()]
+        vec!["divine-orb".to_string(), "chaos-orb".to_string()]
     );
     let status = app.get_view().status.unwrap();
     assert_eq!(
         status.text,
         "Dropped 4 saved blocked currencies that were not valid."
+    );
+    app.shutdown();
+}
+
+#[test]
+fn catalogue_is_grouped_with_names() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = start(tmp.path(), &FakeShell::default());
+    let groups = app.get_catalogue();
+    app.shutdown();
+
+    // One group per kind, in the catalogue's kind order, each with a label
+    // and its entries sorted by name.
+    let kinds: Vec<&str> = groups.iter().map(|g| g.kind.as_str()).collect();
+    let mut want_kinds: Vec<String> = Vec::new();
+    for c in catalogue() {
+        let kind = serde_json::to_value(c.kind).unwrap();
+        let kind = kind.as_str().unwrap().to_string();
+        if !want_kinds.contains(&kind) {
+            want_kinds.push(kind);
+        }
+    }
+    let mut order = want_kinds.clone();
+    order.sort_by_key(|k| KIND_ORDER.iter().position(|o| o == k).unwrap());
+    assert_eq!(kinds, order, "one group per kind, in order");
+    assert_eq!(groups[0].kind, "currency");
+    assert_eq!(groups[0].label, "Currency");
+    for g in &groups {
+        assert!(!g.label.trim().is_empty(), "{}", g.kind);
+        assert!(!g.entries.is_empty(), "{}", g.kind);
+        let names: Vec<String> = g.entries.iter().map(|e| e.name.to_lowercase()).collect();
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(names, sorted, "{} is sorted by name", g.kind);
+    }
+    let labels: Vec<&str> = groups.iter().map(|g| g.label.as_str()).collect();
+    assert!(labels.contains(&"Omens"), "{labels:?}");
+
+    // Every catalogue id exactly once, with its English name, in its kind's
+    // group, and nothing else.
+    let mut seen = 0;
+    for c in catalogue() {
+        let kind = serde_json::to_value(c.kind).unwrap();
+        let found: Vec<_> = groups
+            .iter()
+            .flat_map(|g| g.entries.iter().map(move |e| (g, e)))
+            .filter(|(_, e)| e.id == c.id)
+            .collect();
+        assert_eq!(found.len(), 1, "{}", c.id);
+        assert_eq!(found[0].1.name, c.name, "{}", c.id);
+        assert_eq!(json!(found[0].0.kind), kind, "{}", c.id);
+        seen += 1;
+    }
+    let total: usize = groups.iter().map(|g| g.entries.len()).sum();
+    assert_eq!(total, seen);
+    let divine = groups[0]
+        .entries
+        .iter()
+        .find(|e| e.id == "divine-orb")
+        .unwrap();
+    assert_eq!(divine.name, "Divine Orb");
+}
+
+/// The kinds in the order the catalogue groups them.
+const KIND_ORDER: [&str; 8] = [
+    "currency", "omen", "bone", "flux", "catalyst", "essence", "alloy", "liquid",
+];
+
+#[test]
+fn blocking_the_whole_catalogue_is_accepted() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = start(tmp.path(), &FakeShell::default());
+    let all: Vec<String> = catalogue().iter().map(|c| c.id.clone()).collect();
+    // More than M3's literal limit of 200: the catalogue is the limit now.
+    assert!(all.len() > 200, "{}", all.len());
+
+    // The whole catalogue, each id given twice: every id kept once, in the
+    // order given.
+    let twice: Vec<String> = all.iter().chain(all.iter()).cloned().collect();
+    let view = app
+        .update_settings(&json!({ "blocked_currencies": twice }))
+        .unwrap();
+    assert_eq!(view.blocked_currencies, all);
+    app.shutdown();
+    assert_eq!(saved_settings(tmp.path())["blocked_currencies"], json!(all));
+
+    // Read back whole by a new app, with nothing dropped.
+    let again = start(tmp.path(), &FakeShell::default());
+    assert_eq!(again.get_app_settings().blocked_currencies, all);
+    assert!(again.get_view().status.is_none());
+    again.shutdown();
+}
+
+#[test]
+fn an_id_outside_the_catalogue_is_refused() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    // Positive control: a catalogue id is taken.
+    let view = app
+        .update_settings(&json!({ "blocked_currencies": ["divine-orb"] }))
+        .unwrap();
+    assert_eq!(view.blocked_currencies, vec!["divine-orb".to_string()]);
+    let sent = shell.rec().app_settings.len();
+
+    // M3's short ids, a name instead of an id, a wrong case and a made-up
+    // id, alone or beside good ones and with another good change: each
+    // refused whole, with nothing changed and nothing sent.
+    for outside in [
+        "divine",
+        "exalted",
+        "Divine Orb",
+        "DIVINE-ORB",
+        "orb-of-nothing",
+    ] {
+        let patch = json!({
+            "check_updates": true,
+            "blocked_currencies": ["chaos-orb", outside, "exalted-orb"]
+        });
+        let why = app.update_settings(&patch).unwrap_err();
+        assert!(why.contains(&format!("{outside:?}")), "{outside}: {why}");
+        let now = app.get_app_settings();
+        assert_eq!(now.blocked_currencies, vec!["divine-orb".to_string()]);
+        assert!(!now.updates.check_updates, "{outside}");
+    }
+    assert_eq!(shell.rec().app_settings.len(), sent);
+    app.shutdown();
+    assert_eq!(
+        saved_settings(tmp.path())["blocked_currencies"],
+        json!(["divine-orb"])
+    );
+    let log = diag_lines(tmp.path());
+    assert!(
+        log.iter()
+            .any(|l| l.starts_with("settings refused: ") && l.contains("\"orb-of-nothing\"")),
+        "{log:?}"
+    );
+}
+
+#[test]
+fn saved_ids_outside_the_catalogue_are_dropped() {
+    let tmp = tempfile::tempdir().unwrap();
+    // M3's short ids beside real ones: the real ones kept in order, the
+    // others dropped and counted.
+    save_settings(
+        tmp.path(),
+        &json!({
+            "schema": 1,
+            "blocked_currencies": ["divine", "chaos-orb", "exalted", " divine-orb ", "Regal Orb"]
+        }),
+    );
+    let app = start(tmp.path(), &FakeShell::default());
+    assert_eq!(
+        app.get_app_settings().blocked_currencies,
+        vec!["chaos-orb".to_string(), "divine-orb".to_string()]
+    );
+    assert_eq!(
+        app.get_view().status.unwrap().text,
+        "Dropped 3 saved blocked currencies that were not valid."
+    );
+    // A change saves the list as read, without the dropped ids.
+    let _ = app.set_hotkey("Ctrl+Alt+R");
+    app.shutdown();
+    assert_eq!(
+        saved_settings(tmp.path())["blocked_currencies"],
+        json!(["chaos-orb", "divine-orb"])
+    );
+
+    // One outside id is counted as one.
+    let tmp = tempfile::tempdir().unwrap();
+    save_settings(
+        tmp.path(),
+        &json!({ "schema": 1, "blocked_currencies": ["chaos-orb", "chaos"] }),
+    );
+    let app = start(tmp.path(), &FakeShell::default());
+    assert_eq!(
+        app.get_app_settings().blocked_currencies,
+        vec!["chaos-orb".to_string()]
+    );
+    assert_eq!(
+        app.get_view().status.unwrap().text,
+        "Dropped 1 saved blocked currency that was not valid."
     );
     app.shutdown();
 }
@@ -185,7 +365,7 @@ fn a_store_inside_a_git_checkout_is_refused_and_nothing_is_saved() {
     assert!(status
         .text
         .ends_with("Set CRAFTING_HELPER_DIR to another folder."));
-    let _ = app.update_settings(&json!({ "blocked_currencies": ["divine"] }));
+    let _ = app.update_settings(&json!({ "blocked_currencies": ["divine-orb"] }));
     app.shutdown();
     assert!(!dir.exists());
 }

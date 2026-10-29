@@ -23,7 +23,7 @@ fn grab_reads_the_clipboard_once_per_press() {
     let _ = app.get_view();
     let _ = app.get_app_settings();
     let _ = app.set_hotkey("Ctrl+Alt+R");
-    let _ = app.update_settings(&json!({ "blocked_currencies": ["exalted"] }));
+    let _ = app.update_settings(&json!({ "blocked_currencies": ["exalted-orb"] }));
     let _ = app.update_settings(&json!({ "check_updates": true }));
     app.open_settings().unwrap();
     let _ = app.check_for_updates();

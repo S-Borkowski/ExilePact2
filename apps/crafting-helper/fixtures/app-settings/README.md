@@ -5,7 +5,7 @@ One file per check state (`update.state`: `idle`, `checking`, `up-to-date`,
 the files named `install-<state>`: `install-unsigned`,
 `install-downloading`, `install-verifying`, `install-restarting`,
 `install-failed`), then `hotkey-refused` (`set_hotkey` asked for the game's
-own Ctrl+Alt+C) and `blocked-currencies` (a list of three ids). Each is a
+own Ctrl+Alt+C) and `blocked-currencies` (a list of three catalogue ids). Each is a
 `SettingsView` exactly as `ch-app` serialises it and the shell sends it as
 `ch:app-settings`: `ep-update`'s `AppSettingsView` fields (`version`,
 `check_updates`, `update`, `install`) with `hotkey`, `hotkey_status` and

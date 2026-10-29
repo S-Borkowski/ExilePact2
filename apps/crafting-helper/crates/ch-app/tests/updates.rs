@@ -34,7 +34,7 @@ fn updates_default_settings_make_no_request_baseline() {
     let _ = h.app.set_hotkey("Ctrl+Alt+R");
     let _ = h
         .app
-        .update_settings(&json!({ "blocked_currencies": ["divine"] }));
+        .update_settings(&json!({ "blocked_currencies": ["divine-orb"] }));
     h.app.open_settings().unwrap();
     let view = h.app.get_app_settings();
     assert!(!view.updates.check_updates);
@@ -164,7 +164,7 @@ fn updates_install_is_reached_only_from_the_command_target() {
     let _ = h.app.cancel_update();
     h.app.open_settings().unwrap();
     h.app
-        .update_settings(&json!({ "check_updates": true, "blocked_currencies": ["divine"] }))
+        .update_settings(&json!({ "check_updates": true, "blocked_currencies": ["divine-orb"] }))
         .unwrap();
     assert!(h.downloads().is_empty(), "{:?}", h.downloads());
     assert_eq!(h.exe_bytes(), RUNNING_BYTES);
@@ -192,7 +192,7 @@ fn updates_install_restarts_through_the_quit_path_target() {
     h.manual(signed_newer());
     // A change the quit path's shutdown must still write.
     h.app
-        .update_settings(&json!({ "blocked_currencies": ["divine"] }))
+        .update_settings(&json!({ "blocked_currencies": ["divine-orb"] }))
         .unwrap();
     assert!(!h.app.restart_requested());
 
@@ -214,7 +214,10 @@ fn updates_install_restarts_through_the_quit_path_target() {
 
     // The quit path: the shell's exit runs the app's shutdown, which saves.
     h.app.shutdown();
-    assert_eq!(h.saved_settings()["blocked_currencies"], json!(["divine"]));
+    assert_eq!(
+        h.saved_settings()["blocked_currencies"],
+        json!(["divine-orb"])
+    );
     let log = diag_lines(&h.store);
     let pos = |l: &str| {
         log.iter()

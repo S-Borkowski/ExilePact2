@@ -1,8 +1,8 @@
 {
   "blocked_currencies": [
-    "divine",
-    "chaos",
-    "exalted"
+    "divine-orb",
+    "chaos-orb",
+    "exalted-orb"
   ],
   "check_updates": false,
   "hotkey": "Ctrl+Alt+X",

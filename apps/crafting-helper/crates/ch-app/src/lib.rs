@@ -21,11 +21,13 @@
 //!
 //! - [`app`]: [`App`], its commands (`get_view`, `grab_text`,
 //!   `open_settings`, `get_app_settings`, `update_settings`, `set_hotkey`,
-//!   `check_for_updates`, `install_update`, `cancel_update`), the hotkey
-//!   press and [`App::set_craft_active`].
+//!   `get_catalogue`, `check_for_updates`, `install_update`,
+//!   `cancel_update`), the hotkey press and [`App::set_craft_active`].
 //! - [`grab`]: the checks and the normalisation of a grab's text.
 //! - [`hotkey`]: the default hotkey and the game's item copy it may not be.
-//! - [`settings`]: what `update_settings` takes, and the blocked currencies.
+//! - [`settings`]: what `update_settings` takes, the blocked currencies
+//!   (catalogue ids only: the catalogue is the list's limit) and the
+//!   catalogue grouped by kind for the pickers ([`CatalogueGroup`]).
 //! - [`updates`]: what the update check is built from ([`UpdateSetup`]), its
 //!   clock and ticker interval. The check, the install of a signed release
 //!   and the Settings window's update view are `ep-update`'s, shared with
@@ -38,8 +40,8 @@
 //!   the route a craft takes, the hit, miss or unexpected outcome of each
 //!   step, the next step's odds and the catalogue the blocked list offers;
 //!   through it the data ([`ch_data`]), the blueprint format
-//!   ([`ch_blueprint`]) and the item parser ([`ch_item`]). No command,
-//!   view or setting uses it yet.
+//!   ([`ch_blueprint`]) and the item parser ([`ch_item`]). The blocked
+//!   list and `get_catalogue` read its catalogue.
 
 pub mod app;
 pub mod grab;
@@ -52,7 +54,7 @@ pub mod view;
 pub use app::{App, AppConfig, BeepAttempt, HotkeyError, Shell, OVERLAY_PLACEHOLDER, SAVE_DELAY};
 pub use grab::{ITEM_FIRST_LINE, MAX_GRAB_BYTES};
 pub use hotkey::{is_game_item_copy, DEFAULT_HOTKEY, GAME_ITEM_COPY};
-pub use settings::{MAX_BLOCKED, MAX_ID_CHARS};
+pub use settings::{CatalogueEntry, CatalogueGroup, MAX_ID_CHARS};
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
 pub use updates::{Clock, SteadyClock, UpdateSetup, TICK_EVERY};
 pub use view::{GrabSource, GrabView, OverlayView, SettingsView, StatusKind, StatusLine, View};

@@ -22,7 +22,7 @@ fn overlay_hidden_until_a_craft_is_active() {
     app.hotkey_pressed();
     let _ = app.grab_text(Some(ITEM_TEXT));
     let _ = app.set_hotkey("Ctrl+Alt+R");
-    let _ = app.update_settings(&json!({ "blocked_currencies": ["divine"] }));
+    let _ = app.update_settings(&json!({ "blocked_currencies": ["divine-orb"] }));
     let _ = app.update_settings(&json!({ "check_updates": true }));
     let _ = app.check_for_updates();
     let _ = app.install_update();

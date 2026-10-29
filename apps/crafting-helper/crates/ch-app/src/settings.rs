@@ -1,19 +1,32 @@
-//! What `settings.json` holds and what the Settings window may change.
+//! What `settings.json` holds and what the Settings window may change, and
+//! the catalogue the blocked list picks from.
 //!
 //! The file: `schema` 1, `hotkey`, `check_updates` and
 //! `blocked_currencies`. `check_updates` is off unless it is saved as
-//! `true`. The blocked currencies are plain ids for now; the crafting data
-//! names them later.
+//! `true`. The blocked currencies are ids of the engine's catalogue
+//! ([`ch_engine::catalogue`]): every currency, omen, bone, flux, catalyst,
+//! essence, alloy and liquid emotion a blueprint may name.
+//!
+//! The catalogue is the blocked list's limit: each id must be one of its
+//! ids, with no repeats, so the list may hold the whole catalogue and never
+//! more. There is no other count limit.
 //!
 //! `update_settings` takes a patch of [`CHECK_UPDATES_KEY`] and
 //! [`BLOCKED_CURRENCIES_KEY`], any of the two and nothing else, read whole
 //! by [`read_patch`] before anything changes. `blocked_currencies` replaces
 //! the whole list: each id is trimmed, empty ids are dropped and repeats
 //! removed, keeping the first order. A list that is not an array of
-//! strings, an id over [`MAX_ID_CHARS`] characters or more than
-//! [`MAX_BLOCKED`] ids is refused, with nothing changed. A saved list that
-//! breaks those rules keeps its valid ids ([`load_blocked`]).
+//! strings, an id over [`MAX_ID_CHARS`] characters or an id outside the
+//! catalogue is refused, with nothing changed. A saved list that breaks
+//! those rules keeps its valid ids and counts the rest ([`load_blocked`]).
+//!
+//! [`catalogue_groups`] is the `get_catalogue` command's answer: the
+//! catalogue grouped by kind, for the pickers of the Settings window and the
+//! craft window, which offer names and send ids.
 
+use ch_engine::ch_blueprint::catalogue::Kind;
+use ch_engine::{catalogue, catalogue_item};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// The `check_updates` key of a patch and of the file.
@@ -22,8 +35,6 @@ pub const CHECK_UPDATES_KEY: &str = "check_updates";
 pub const BLOCKED_CURRENCIES_KEY: &str = "blocked_currencies";
 /// The longest blocked currency id, in characters.
 pub const MAX_ID_CHARS: usize = 64;
-/// The most blocked currency ids.
-pub const MAX_BLOCKED: usize = 200;
 
 /// A checked `update_settings` patch: what it changes.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -78,20 +89,17 @@ pub fn blocked_list(list: &Value) -> Result<Vec<String>, String> {
                 "a currency id is longer than {MAX_ID_CHARS} characters"
             ));
         }
+        if !id.is_empty() && catalogue_item(id).is_none() {
+            return Err(format!("{id:?} is not in the crafting catalogue"));
+        }
         push_id(&mut ids, id);
-    }
-    if ids.len() > MAX_BLOCKED {
-        return Err(format!(
-            "{} currency ids are more than {MAX_BLOCKED}",
-            ids.len()
-        ));
     }
     Ok(ids)
 }
 
-/// The blocked list of a saved file: its valid ids, in order, at most
-/// [`MAX_BLOCKED`] of them, and how many entries were dropped. A value that
-/// is not a list keeps nothing.
+/// The blocked list of a saved file: its catalogue ids, in order, each
+/// once, and how many entries were dropped. A value that is not a list
+/// keeps nothing.
 pub fn load_blocked(saved: Option<&Value>) -> (Vec<String>, usize) {
     let Some(saved) = saved else {
         return (Vec::new(), 0);
@@ -103,11 +111,7 @@ pub fn load_blocked(saved: Option<&Value>) -> (Vec<String>, usize) {
     let mut dropped = 0;
     for item in items {
         match item.as_str().map(str::trim) {
-            Some(id)
-                if !id.is_empty()
-                    && id.chars().count() <= MAX_ID_CHARS
-                    && ids.len() < MAX_BLOCKED =>
-            {
+            Some(id) if id.chars().count() <= MAX_ID_CHARS && catalogue_item(id).is_some() => {
                 if !push_id(&mut ids, id) {
                     dropped += 1;
                 }
@@ -128,6 +132,81 @@ fn push_id(ids: &mut Vec<String>, id: &str) -> bool {
     true
 }
 
+/// One kind of crafting item in the catalogue, as the pickers list it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogueGroup {
+    /// The kind, as the engine serialises it (`currency`, `omen`, `bone`,
+    /// `flux`, `catalyst`, `essence`, `alloy`, `liquid`).
+    pub kind: String,
+    /// The group's heading.
+    pub label: String,
+    /// Sorted by name.
+    pub entries: Vec<CatalogueEntry>,
+}
+
+/// One crafting item a picker offers: the name it shows, the id it sends.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CatalogueEntry {
+    pub id: String,
+    /// The English name.
+    pub name: String,
+}
+
+/// The kinds in the order the pickers show them, each with its heading.
+const KINDS: [(Kind, &str); 8] = [
+    (Kind::Currency, "Currency"),
+    (Kind::Omen, "Omens"),
+    (Kind::Bone, "Bones"),
+    (Kind::Flux, "Fluxes"),
+    (Kind::Catalyst, "Catalysts"),
+    (Kind::Essence, "Essences"),
+    (Kind::Alloy, "Alloys"),
+    (Kind::Liquid, "Liquid emotions"),
+];
+
+/// The whole catalogue grouped by kind, in [`KINDS`]' order, each group's
+/// entries sorted by name (case aside, then by id). A kind with no entries
+/// has no group.
+pub fn catalogue_groups() -> Vec<CatalogueGroup> {
+    KINDS
+        .iter()
+        .filter_map(|(kind, label)| {
+            let mut entries: Vec<CatalogueEntry> = catalogue()
+                .iter()
+                .filter(|c| c.kind == *kind)
+                .map(|c| CatalogueEntry {
+                    id: c.id.clone(),
+                    name: c.name.clone(),
+                })
+                .collect();
+            if entries.is_empty() {
+                return None;
+            }
+            entries.sort_by(|a, b| {
+                a.name
+                    .to_lowercase()
+                    .cmp(&b.name.to_lowercase())
+                    .then_with(|| a.id.cmp(&b.id))
+            });
+            Some(CatalogueGroup {
+                kind: kind_name(*kind),
+                label: label.to_string(),
+                entries,
+            })
+        })
+        .collect()
+}
+
+/// The kind as the engine serialises it.
+fn kind_name(kind: Kind) -> String {
+    match serde_json::to_value(kind) {
+        Ok(Value::String(s)) => s,
+        _ => format!("{kind:?}").to_lowercase(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,36 +222,60 @@ mod tests {
             }
         );
         assert_eq!(
-            read_patch(&json!({ "blocked_currencies": [" a ", "", "b", "a"] }))
-                .unwrap()
-                .blocked_currencies,
-            Some(vec!["a".to_string(), "b".to_string()])
+            read_patch(
+                &json!({ "blocked_currencies": [" chaos-orb ", "", "divine-orb", "chaos-orb"] })
+            )
+            .unwrap()
+            .blocked_currencies,
+            Some(vec!["chaos-orb".to_string(), "divine-orb".to_string()])
         );
         for bad in [
             json!({}),
             json!({ "hotkey": "Ctrl+Alt+R" }),
             json!({ "check_updates": "yes" }),
-            json!({ "blocked_currencies": "a" }),
+            json!({ "blocked_currencies": "chaos-orb" }),
             json!({ "blocked_currencies": [1] }),
             json!({ "blocked_currencies": ["x".repeat(65)] }),
+            json!({ "blocked_currencies": ["chaos"] }),
             json!({ "check_updates": true, "auto_install": true }),
             json!([true]),
         ] {
             assert!(read_patch(&bad).is_err(), "{bad}");
         }
-        let many: Vec<String> = (0..201).map(|i| format!("c{i}")).collect();
-        assert!(read_patch(&json!({ "blocked_currencies": many })).is_err());
-        let enough: Vec<String> = (0..200).map(|i| format!("c{i}")).collect();
-        assert!(read_patch(&json!({ "blocked_currencies": enough })).is_ok());
-        assert!(read_patch(&json!({ "blocked_currencies": ["x".repeat(64)] })).is_ok());
+    }
+
+    #[test]
+    fn every_kind_has_its_heading() {
+        // A kind the catalogue holds but `KINDS` misses would drop its
+        // entries from the pickers.
+        for c in catalogue() {
+            assert!(KINDS.iter().any(|(k, _)| *k == c.kind), "{:?}", c.kind);
+        }
     }
 
     #[test]
     fn a_bad_saved_list_keeps_its_valid_ids() {
-        let saved = json!(["a", 3, "", " b ", "a", "x".repeat(65), null, "c"]);
+        let saved = json!([
+            "chaos-orb",
+            3,
+            "",
+            " divine-orb ",
+            "chaos-orb",
+            "x".repeat(65),
+            null,
+            "chaos",
+            "regal-orb"
+        ]);
         assert_eq!(
             load_blocked(Some(&saved)),
-            (vec!["a".to_string(), "b".to_string(), "c".to_string()], 5)
+            (
+                vec![
+                    "chaos-orb".to_string(),
+                    "divine-orb".to_string(),
+                    "regal-orb".to_string()
+                ],
+                6
+            )
         );
         assert_eq!(load_blocked(Some(&json!("a"))), (Vec::new(), 1));
         assert_eq!(load_blocked(None), (Vec::new(), 0));

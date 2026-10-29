@@ -1,9 +1,10 @@
 //! The IPC contract's fixtures: one serialised view per state the window
 //! pages render, built here by driving the app and compared with the files
 //! under `fixtures/` (`fixtures/app-settings/`, the Settings window's
-//! `SettingsView`; `fixtures/views/`, the main and overlay windows' `View`).
-//! The page tests render the same files and hold them against the
-//! TypeScript types, so the two sides cannot drift apart.
+//! `SettingsView`; `fixtures/views/`, the main and overlay windows' `View`),
+//! and `fixtures/catalogue.json`, the `get_catalogue` answer. The page tests
+//! render the same files and hold them against the TypeScript types, so the
+//! two sides cannot drift apart.
 //!
 //! With `CH_FIXTURES=1` set the test rewrites the files instead; review the
 //! diff. A JSON file in either folder that is not in the lists fails it.
@@ -13,7 +14,7 @@ mod common;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use ch_app::{InstallState, SettingsView, StatusKind, Version, View};
+use ch_app::{CatalogueGroup, InstallState, SettingsView, StatusKind, Version, View};
 use common::*;
 use serde_json::{json, Value};
 
@@ -88,7 +89,9 @@ fn app_settings_views() -> Vec<(&'static str, SettingsView)> {
     out.push((
         "blocked-currencies",
         h.app
-            .update_settings(&json!({ "blocked_currencies": ["divine", "chaos", "exalted"] }))
+            .update_settings(
+                &json!({ "blocked_currencies": ["divine-orb", "chaos-orb", "exalted-orb"] }),
+            )
             .unwrap(),
     ));
     h.app.shutdown();
@@ -280,5 +283,39 @@ fn fixtures_are_current() {
     assert!(
         stale.is_empty(),
         "stale fixtures {stale:?}: run with CH_FIXTURES=1 and review the diff"
+    );
+}
+
+/// `fixtures/catalogue.json`: the `get_catalogue` answer, which both pages'
+/// tests and previews read for their pickers.
+#[test]
+fn catalogue_fixture_is_current() {
+    let tmp = tempfile::tempdir().unwrap();
+    let app = start(tmp.path(), &FakeShell::default());
+    let groups = app.get_catalogue();
+    app.shutdown();
+    assert!(!groups.is_empty());
+
+    // It reads back into its type and writes the same JSON; an added field
+    // is refused.
+    let value = serde_json::to_value(&groups).unwrap();
+    let back: Vec<CatalogueGroup> = serde_json::from_value(value.clone()).unwrap();
+    assert_eq!(serde_json::to_value(back).unwrap(), value);
+    let mut extra = value.clone();
+    extra[0]["entries"][0]["extra"] = Value::Bool(true);
+    assert!(serde_json::from_value::<Vec<CatalogueGroup>>(extra).is_err());
+
+    let path = app_root().join("fixtures").join("catalogue.json");
+    if rewrite() {
+        let text = serde_json::to_string_pretty(&value).unwrap();
+        fs::write(&path, text + "\n").unwrap();
+    }
+    let text = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("{}: {e} (run with CH_FIXTURES=1)", path.display()));
+    let on_disk: Value = serde_json::from_str(&text).unwrap();
+    assert!(
+        on_disk == value,
+        "stale {}: run with CH_FIXTURES=1 and review the diff",
+        path.display()
     );
 }

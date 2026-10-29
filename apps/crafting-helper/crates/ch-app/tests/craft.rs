@@ -1,13 +1,13 @@
 //! The engine as the craft window (M5) will reach it: through `ch_app`'s
 //! re-exports, the shipped blueprints load and plan a route for a real
-//! item, and every id the blocked list may hold passes the settings'
-//! limits unchanged.
+//! item, and the whole catalogue, the blocked list's limit, passes the
+//! settings' rules unchanged.
 
 use std::path::PathBuf;
 
 use ch_app::ch_engine::{catalogue, Engine, Target};
 use ch_app::settings::blocked_list;
-use ch_app::{ch_item, MAX_BLOCKED, MAX_ID_CHARS};
+use ch_app::{ch_item, MAX_ID_CHARS};
 use serde_json::Value;
 
 /// The real Amethyst Ring (`ch-item/fixtures/real/`), made Rare: the
@@ -69,12 +69,14 @@ fn catalogue_ids_fit_the_settings_limits() {
             "{id} is longer than {MAX_ID_CHARS} characters"
         );
     }
-    // The whole catalogue is more than one saved list may hold (M5 decides
-    // what to do about it); each slice that fits is saved as given, so no
-    // id is trimmed, merged with another or dropped by the normalisation.
-    for chunk in ids.chunks(MAX_BLOCKED) {
-        let list = Value::from(chunk.to_vec());
-        let saved = blocked_list(&list).unwrap_or_else(|why| panic!("{why}"));
-        assert_eq!(saved, chunk, "the normalisation changed an id");
-    }
+    // The catalogue is the blocked list's limit: the whole of it is one
+    // list, saved as given, so no id is trimmed, merged with another or
+    // dropped by the normalisation.
+    let list = Value::from(ids.clone());
+    let saved = blocked_list(&list).unwrap_or_else(|why| panic!("{why}"));
+    assert_eq!(saved, ids, "the normalisation changed an id");
+    // Negative control: one id more than the catalogue is refused.
+    let mut more = ids.clone();
+    more.push("not-a-crafting-item");
+    assert!(blocked_list(&Value::from(more)).is_err());
 }
