@@ -1,21 +1,29 @@
 # Crafting Helper
 
-A small window for Path of Exile 2 that will help you craft items. Version
-0.1.0 is the app's shell: you copy an item in the game with the game's own
-`Ctrl+Alt+C`, then press the app's hotkey (`Ctrl+Alt+X` by default) or
-`Ctrl+V` in its window, and the window shows the item's text and its line
-count. The app reads the clipboard once per grab and never watches it. It
-uses no keyboard hook, sends the game no keys, reads no game memory, moves
-no mouse and clicks nothing. Choosing a craft, its steps and their odds are
-later versions' work.
+A small window for Path of Exile 2 that helps you craft items. You copy an
+item in the game with the game's own `Ctrl+Alt+C`, then press the app's
+hotkey (`Ctrl+Alt+X` by default) or `Ctrl+V` in its window, and the window
+becomes the craft window: it shows the item and its modifiers, lets you pick
+the modifiers you want as targets (each with a tier floor), and previews the
+route a crafting blueprint takes to them, each step with its currency, its
+omens and its rough odds, or "odds unknown" and why. *Start crafting* turns
+it into a guide: you take the step in the game, grab the item again, and the
+app says whether the step hit or missed and what to do next. The app reads
+the clipboard once per grab and never watches it. It uses no keyboard hook,
+sends the game no keys, reads no game memory, moves no mouse and clicks
+nothing. A button opens Craft of Exile in your web browser for the crafting
+this app does not cover.
 
 - UI direction, windows and states: [`ui-design.md`](ui-design.md)
+- The design reviews of the craft window: its direction, before it was
+  built ([`design/review-direction.md`](design/review-direction.md)), and
+  the built pages ([`design/review-craft-window.md`](design/review-craft-window.md))
 - What each crafting item does to an item's modifiers:
   [`crafting-mechanics.md`](crafting-mechanics.md)
 - Research note (poe2db's modifier pages, the data extractor, the data
   files): [`crafting-helper-research.md`](crafting-helper-research.md)
 - Writing and checking a crafting blueprint: [`blueprints.md`](blueprints.md)
-- The item text parser the app will use:
+- The item text parser the app uses:
   [`apps/crafting-helper/crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md)
 - How the app updates itself, shared with the quest tracker and the
   waystone roller: [`docs/app-updates.md`](../app-updates.md)
@@ -35,13 +43,38 @@ later versions' work.
   - press **`Ctrl+V` in the app's window**. The window takes the text the
     paste carries. A paste into a text field of the window is that field's,
     not a grab.
-- **The last grabbed item** fills the window: its line count, where it came
-  from ("from the hotkey" or "from a paste") and its text, as copied, in a
-  scrollable monospace block. Line breaks become plain line breaks, and
-  blank lines at the end are dropped. A text whose first line does not
-  start with `Item Class: ` is still shown, with a warning that it does not
-  look like an item copied with `Ctrl+Alt+C`. A grab is kept in memory only:
-  it is not saved, and the next grab replaces it.
+- **The craft window** is the main window's craft area, in one of four
+  modes:
+  - **Nothing grabbed**: how to grab.
+  - **Can't plan this item**: the last grab is not an item a blueprint
+    plans for (a text that is not an item copied with `Ctrl+Alt+C`, or the
+    engine's refusal, such as a corrupted item), with the reason in words
+    and the grabbed text shown.
+  - **Planning**: the item (name, rarity, base, class, item level, and its
+    prefixes and suffixes with their tiers), the **targets** (the
+    modifiers this base can roll at its item level, as prefixes, suffixes
+    and desecrated, filterable by text; each chosen one with a floor, "As
+    high as possible" by default or "At least T<n>"), **Blocked for this
+    craft** (the Settings list, which this craft can add to or allow
+    from, without changing Settings), and the **route** the engine chose:
+    the blueprint, each step's instruction, currency and omens, its rough
+    odds or "odds unknown" with the reason, a fallback line where a
+    blocked item made it take another, and other applicable routes to
+    choose from. With no route, one line per blueprint says why it does
+    not apply. *Start crafting* starts the guide.
+  - **Guiding**: the current step with its odds and two lines, where a
+    hit and where a miss go; the item as last grabbed; and the history of
+    each step's outcome. After taking the step in the game, copy the item
+    and grab it again: the app classifies the change as a hit, a miss or
+    unexpected and moves on. *End craft* goes back to planning on the
+    latest item, keeping the targets.
+
+  Each grab's text, as copied, is under a *Grabbed text* disclosure with
+  its line count and where it came from ("from the hotkey" or "from a
+  paste"). A text whose first line does not start with `Item Class: ` is
+  still shown, with a warning that it does not look like an item copied
+  with `Ctrl+Alt+C`. A grab and the craft are kept in memory only: nothing
+  of either is saved, and the next grab replaces the item.
 - **A grab is refused** when the clipboard or the paste holds no text, only
   whitespace, or more than 65,536 bytes (UTF-8), or when the clipboard could
   not be read. The status line says why and the last grab stays. A refused
@@ -52,14 +85,22 @@ later versions' work.
   Windows lets one program hold a key combination: when another program
   holds the one you chose, the app says so, keeps running and keeps the old
   hotkey.
+- **Explore more crafting on Craft of Exile**, a button in the main
+  window's header, opens one fixed address,
+  `https://beta.craftofexile.com/?game=poe2`, in your default web browser.
+  It is the only address the app opens (Privacy).
 - **A Settings window**, opened from the *Settings* button at the right of
   the main window's header, holds three sections, *Grab* (the hotkey),
   *Blocked currencies* and *Updates*, and the line "Created by ST4H". While a
   check has found a newer version, the *Settings* button says so in words
   (`Update <version>`, beside a green dot).
-- **Blocked currencies**: a saved list of currency ids the helper is never
-  to suggest. 0.1.0 suggests nothing yet; the list is kept for the crafting
-  versions to come.
+- **Blocked currencies**: a saved list of crafting items (currencies,
+  omens, bones, fluxes, catalysts, essences, alloys and liquid emotions)
+  the helper is never to suggest, picked by name from the whole catalogue.
+  A route avoids them: a step whose first choice is blocked falls back to
+  an alternative and says so, and a blueprint that cannot do without one
+  does not apply. Each craft starts from this list and can change it for
+  itself alone.
 - **An update check, only when you ask.** *Check now* asks GitHub once
   whether a newer Crafting Helper release is published; with *Automatically
   check for updates* on (off by default), the app also asks at launch and
@@ -71,18 +112,17 @@ later versions' work.
   and restarts into it, with a progress bar and *Cancel*. A failed step says
   why in one line, with *Try again*, and leaves the running app untouched;
   a newer release that is not signed says it cannot be installed and offers
-  no button. Nothing opens a release page or a browser
+  no button. An update never opens a release page or a browser
   ([`docs/app-updates.md`](../app-updates.md)).
 - **An overlay**, a click-through, always-on-top window for the next step of
-  a craft. It shows only while a craft is active, and 0.1.0 has no craft, so
-  it never shows yet (Known limitations).
-- **The crafting engine exists, but no window uses it yet.** In the source
-  tree, without a UI: the modifier data's lookups and odds (`ch-data`),
-  the hand-edited blueprints under `apps/crafting-helper/blueprints/` and
-  their format ([`blueprints.md`](blueprints.md)), and the engine that
-  picks a blueprint route for an item and classifies each step as hit,
-  miss or unexpected (`ch-engine`). The craft window that shows it is a
-  later version's.
+  a craft. Nothing in 0.1.0 shows it, a craft in the guide included (Known
+  limitations).
+- **What the craft window is built on**: the modifier data's lookups and
+  odds (`ch-data`), the hand-edited blueprints under
+  `apps/crafting-helper/blueprints/` and their format
+  ([`blueprints.md`](blueprints.md)), and the engine that picks a blueprint
+  route for an item and classifies each step as hit, miss or unexpected
+  (`ch-engine`), all built into the exe.
 
 ## Platforms and prerequisites
 
@@ -110,7 +150,8 @@ Takes no arguments.
 
 - `settings.json`: `schema` (1), `hotkey` (default `Ctrl+Alt+X`),
   `check_updates` (*Automatically check for updates*; any value but `true`,
-  or none, loads it off) and `blocked_currencies` (a list of ids). Written a
+  or none, loads it off) and `blocked_currencies` (a list of catalogue
+  ids). A craft's own changes to the blocked list are never saved. Written a
   moment after each change, through a temporary file renamed over the old
   one, and when the app quits. A saved hotkey of `Ctrl+Alt+C` is replaced by
   the default at launch, and the status line says so. A saved list of
@@ -121,7 +162,8 @@ Takes no arguments.
   writes:
   - `settings: <n>` at launch, for each note about the store or the saved
     settings that the status line also shows: the folder refused, the
-    settings unreadable, the saved hotkey replaced, saved ids dropped.
+    settings unreadable, the saved hotkey replaced, saved ids dropped, or
+    the shipped blueprints not loading (then no craft can be planned).
   - `start: crafting-helper <version>; store <folder>` (`store none` when
     the folder was refused).
   - `hotkey <hk> registered` or `hotkey <hk> could not be registered:
@@ -140,6 +182,15 @@ Takes no arguments.
     when the overlay could not be made click-through, shown or hidden;
     `overlay shown: a craft is active` and `overlay hidden: no craft is
     active` (neither happens in 0.1.0).
+  - The craft window's commands, one line each: `craft: <n> targets` (`1 target`),
+    `craft: <n> blocked for this craft`, `craft: route <blueprint id>`,
+    `craft: accepted <blueprint id>`, `craft: ended`, or `craft: refused:
+    <reason>` for one the app did not take. While guiding, each grab that
+    is a step's result adds `craft: hit at <step id>`, `craft: miss at
+    <step id>` or `craft: unexpected at <step id>`. Only counts, ids
+    (blueprints, steps, modifiers) and reasons: no item text.
+  - `opened Craft of Exile` after the button, or `error: opening Craft of
+    Exile: <e>` when the browser could not be asked to open it.
   - `blocked currencies: N ids` when the list changes; `settings refused:
     <reason>` when the Settings window sends a change the app does not
     take; `error: settings window: <reason>` when that window could not be
@@ -154,13 +205,24 @@ Takes no arguments.
 
   Rotated at 1 MB into `diag.log.1`.
 
-**The main window**, titled "Crafting Helper", 720 by 640 at 1x by default
-and usable from 480 by 400. Its header holds the title and the *Settings*
-button; under it, the "Last grabbed item" panel. With nothing grabbed, the
-panel says how to grab (`Ctrl+Alt+C` in the game, then the current hotkey
-or `Ctrl+V` here). Its status line is the app's last message: `Grabbed an
-item: N lines.`, `Not grabbed: <reason>.`, the warning for a text that does
-not look like an item, or a problem with the hotkey or the saved settings.
+**The main window**, titled "Crafting Helper", 960 by 680 at 1x by default
+and usable from 600 by 480. Its header holds the title, the *Explore more
+crafting on Craft of Exile* button and the *Settings* button; under it, the
+craft area, in two columns from 880 px wide and one below; last, the status
+line. With nothing grabbed, the craft area says how to grab (`Ctrl+Alt+C`
+in the game, then the current hotkey or `Ctrl+V` here). The status line is
+the app's last message: `Grabbed an item: N lines.` (with how many targets
+the new item dropped, when it cannot roll them), `Not grabbed: <reason>.`,
+the warning for a text that does not look like an item, what a craft
+command did or why it was refused (`Targets not changed: <reason>.` and the
+like, with nothing changed), a step's outcome while guiding, why a grab
+while guiding is not a step's result (the same item again, or not an item a
+blueprint plans for; the craft is unchanged), or a problem with the hotkey,
+the saved settings or opening Craft of Exile. Each target refers to a
+modifier this base can roll at its item level, with no floor ("As high as
+possible", the best tier) or a tier the item level reaches; a list with
+anything else is refused whole. The window's parts and their words are
+[`ui-design.md`](ui-design.md) § "Craft window".
 
 **The Settings window**, titled "Crafting Helper Settings", opens from the
 main window's *Settings* button (shown and focused when it is already
@@ -172,11 +234,18 @@ closing the main window quits the app with it. From the top:
   `The hotkey is now <hk>.`, `<hk> is the game's own item copy, so it
   cannot be the hotkey. The hotkey is still <old>.`, `Hotkey <hk> is taken
   by another program. The hotkey is still <old>.` and the like.
-- **Blocked currencies**: a field with *Add*, and the list with *Remove* on
-  each id. Each change sends the whole list; the app trims each id, drops
-  empty ones and repeats, and saves the list it kept. An id over 64
-  characters, more than 200 ids, or anything but a list of text is refused
-  whole, with nothing changed.
+- **Blocked currencies**: the count, then the catalogue as checkboxes by
+  name, grouped by kind (Currency, Omens, Bones, Fluxes, Catalysts,
+  Essences, Alloys, Liquid emotions), with a *Filter currencies* field and a
+  *Blocked only* checkbox; there is no field to type an id. Each change
+  sends the whole list of ids; the app trims each id, drops empty ones and
+  repeats, and saves the list it kept. The catalogue is the list's limit:
+  every id must be one of its ids (about 220), so the list can hold the
+  whole catalogue and never more. An id outside the catalogue, an id over
+  64 characters, or anything but a list of text is refused whole, with
+  nothing changed. A saved id the catalogue no longer holds is dropped at
+  launch and counted in the status line. The craft window's *Blocked for
+  this craft* uses the same picker over the craft's own list.
 - **Updates**, the waystone roller's section: *Automatically check for
   updates* (off), with the helper text "Asks GitHub once a day whether a
   newer version is out. Downloads nothing: an update is installed only when
@@ -194,10 +263,19 @@ closing the main window quits the app with it. From the top:
   started, or an hour after an automatic check failed.
 - "Created by ST4H" at the bottom.
 
-The main window's commands are `get_view`, `grab_text` (the paste's text)
-and `open_settings`; it is sent `ch:view`, which carries the hotkey, the
-last grab, the status line, the overlay's state and `update_available`. The
-Settings window's commands are `get_app_settings`, `set_hotkey`,
+The main window's commands are `get_view`, `grab_text` (the paste's text),
+`open_settings`, and the craft window's `set_targets` (the whole list of
+targets, each a modifier id and a floor or none), `set_craft_blocked` (the
+craft's whole blocked list, catalogue ids only; never saved),
+`choose_route` (a blueprint id the preview offers), `accept_craft`,
+`end_craft` and `open_craft_of_exile`, which takes no argument: the
+address is the app's own. Each craft command answers with the view. Both
+windows may send `get_catalogue`, which answers the catalogue grouped by
+kind, each entry's id and English name. The main window is sent `ch:view`,
+which carries the craft part (its mode and what the mode shows), the
+hotkey, the last grab, the status line, the overlay's state and
+`update_available`. The Settings window's commands are `get_app_settings`,
+`set_hotkey`,
 `update_settings` (an object of `check_updates` and `blocked_currencies`,
 either or both, and nothing else), `check_for_updates`, `install_update`
 (the only way an install starts) and `cancel_update`; it is sent
@@ -211,7 +289,7 @@ Run from `apps/crafting-helper/` (or with `npm --prefix apps/crafting-helper`).
 
 | Script | What it does |
 |---|---|
-| `npm run dev` | The pages alone in a browser at `http://127.0.0.1:1422/`, over the view fixtures (`?state=empty`, `settings.html?state=install-downloading`, `overlay.html`; [`ui-design.md`](ui-design.md) § "Browser preview"). |
+| `npm run dev` | The pages alone in a browser at `http://127.0.0.1:1422/`, over the view fixtures (`?state=empty`, `?state=craft-planning`, `settings.html?state=install-downloading`, `overlay.html`; [`ui-design.md`](ui-design.md) § "Browser preview"). |
 | `npm run build` | Type-checks the pages and writes `dist/`, which the executable embeds. Needed before any `cargo` build of the `crafting-helper` package. |
 | `npm test` | The pages' tests, in jsdom. |
 | `npm run start` | The app under `tauri dev`. |
@@ -237,17 +315,36 @@ the research note:
   key. It does not poll the keyboard's state either.
 - **It sends the game nothing.** No key, no mouse input or movement, no
   click, no typed text, no window message, no focus or activation change,
-  no other process opened, no game memory read and none of the game's
-  files. The overlay never takes focus and lets every click through.
+  no other process opened (but the web browser Windows starts when you
+  press the Craft of Exile button, below), no game memory read and none of
+  the game's files. The overlay never takes focus and lets every click
+  through.
 - **What it keeps of a grab**: the text, in memory, until the next grab or
-  until the app quits. It is not saved and not logged; `diag.log` gets only
-  the line count or the reason a grab was refused.
+  until the app quits, and the craft built on it (the item, the targets,
+  the craft's blocked changes, the guide and its history), in memory until
+  the app quits. None of it is saved, and none of the text is logged;
+  `diag.log` gets only the line count or the reason a grab was refused,
+  and the craft's counts, ids, refusal reasons and outcome words.
 - **Its other effects outside its windows** are the refusal tone, the
-  update check's requests to GitHub and, when you press the install button,
-  replacing its own exe.
+  update check's requests to GitHub, opening Craft of Exile in the default
+  browser when you press its button and, when you press the install
+  button, replacing its own exe.
+- **One web address, opened only by its button.** *Explore more crafting
+  on Craft of Exile* asks Windows to open
+  `https://beta.craftofexile.com/?game=poe2` in your default browser, and
+  nothing else: the address is fixed in the app (`ch-app`'s
+  `CRAFT_OF_EXILE_URL`), no command takes an address, and the pages hold
+  none and cannot open one themselves (no link, no `window.open`; the
+  opener plugin's own commands are granted to no window). The app itself
+  sends nothing for it, and nothing of your item, targets or craft goes
+  with it; the page loads in your browser, which connects to Craft of
+  Exile as for any page you open (Craft of Exile is not part of this
+  project). The guard pins each of these
+  (`tests.test_crafting_helper_guard`).
 - **Network: only the update check and the install, only when you ask.**
   With *Automatically check for updates* off (the default) and no *Check
-  now* pressed, the app sends and receives nothing. A check is one `GET
+  now* pressed, the app sends and receives nothing (the Craft of Exile page
+  is your browser's connection, not the app's). A check is one `GET
   https://api.github.com/repos/S-Borkowski/ExilePact2/releases?per_page=30`,
   port 443 only, from Rust through Windows' own WinHTTP, with three
   headers: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version:
@@ -275,8 +372,9 @@ the research note:
   data extractor asks poe2db.tw for pages only when a developer runs it.
 - **What it writes**: `settings.json` and `diag.log` in its folder (Command
   reference). The log holds the hotkey, the grabs' line counts, refusals,
-  the blocked list's length and the `updates:` lines; nothing about your
-  account or character, no item text, and nothing of GitHub's answers. An
+  the blocked list's length, the `craft:` lines, the Craft of Exile line
+  and the `updates:` lines; nothing about your account or character, no
+  item text, and nothing of GitHub's answers. An
   install also writes beside the exe: `crafting-helper.exe.download` while
   it downloads (deleted when the install fails or is cancelled) and
   `crafting-helper.exe.old`, the replaced exe, which the next start removes.
@@ -285,17 +383,17 @@ the research note:
 
 | Path | What it holds |
 |---|---|
-| `apps/crafting-helper/crates/ch-app/` | The app's logic without Tauri: the store, the grab's checks and normalisation (`grab.rs`), the hotkey's rules (`hotkey.rs`), the saved settings and blocked currencies (`settings.rs`), the views (`view.rs`, the IPC contract `src/ipc.ts` mirrors), the commands, the overlay's state (`App::set_craft_active`), and the update commands and ticker (`updates.rs`, over the shared `ep-update`). Tested through a recording fake shell, a fake transport and a temporary store. |
-| `apps/crafting-helper/crates/ch-item/` | The item text parser, a std-only crate the shell does not call yet: [`crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md). |
+| `apps/crafting-helper/crates/ch-app/` | The app's logic without Tauri: the store, the grab's checks and normalisation (`grab.rs`), the hotkey's rules (`hotkey.rs`), the saved settings, the blocked currencies and the catalogue grouped for the pickers (`settings.rs`), the craft window (`craft.rs`: its four modes in memory, what a grab does to it, its commands' rules, its view from the engine's plan, guide and outcomes, the copy the design marks Rust's, and `CRAFT_OF_EXILE_URL`), the views (`view.rs`, the IPC contract `src/ipc.ts` mirrors), the commands, the overlay's state (`App::set_craft_active`, which nothing calls yet), and the update commands and ticker (`updates.rs`, over the shared `ep-update`). Tested through a recording fake shell, a fake transport and a temporary store. |
+| `apps/crafting-helper/crates/ch-item/` | The item text parser, a std-only crate; the craft window parses each grab with it: [`crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md). |
 | `apps/crafting-helper/crates/ch-data/` | The modifier data under `data/`, embedded at build time: an item's variant from its base type, what it can roll at its item level, the join of each parsed modifier to its data modifier and tier, the affix limits (`AFFIX_LIMITS`), and one step's add and removal odds, or `unknown` with the reason. |
 | `apps/crafting-helper/crates/ch-blueprint/` | The blueprint format: the model (`model.rs`), the static catalogue of currencies, omens, bones, fluxes and catalysts with their ids (`catalogue.rs`), the structural validator whose every error is `<path>:<line>:<col>: <message>` (`validate.rs`), and the shipped blueprints, embedded by `build.rs`. |
-| `apps/crafting-helper/crates/ch-engine/` | The engine: blueprints resolved against the data, route choice for an item, its targets and the blocked currencies (`route.rs`), the guide's outcomes (`guide.rs`), the full catalogue with the data-backed essences, alloys and liquids, and the `check_blueprints` example. `ch-app` re-exports it for the craft window; no command or view uses it yet. |
+| `apps/crafting-helper/crates/ch-engine/` | The engine: blueprints resolved against the data, route choice for an item, its targets and the blocked currencies (`route.rs`), the guide's outcomes (`guide.rs`), the full catalogue with the data-backed essences, alloys and liquids, and the `check_blueprints` example. `ch-app` re-exports it and plans, guides and fills the blocked list's catalogue with it. |
 | `apps/crafting-helper/blueprints/` | The shipped blueprints, one TOML file each: how to write one is [`blueprints.md`](blueprints.md). |
-| `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start and shown without taking focus), each with its capability under `capabilities/`, the update transport over the shared `ep-net`, and the restart into an installed update. |
-| `apps/crafting-helper/src/` | The main page (`App.svelte`, `components/GrabPanel.svelte`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`) and the overlay's under `src/overlay/` (`overlay.html`). |
+| `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start and shown without taking focus), each with its capability under `capabilities/`, opening Craft of Exile's address through `tauri-plugin-opener` from Rust alone (registered without its link handler, no `opener:` permission in any capability), the update transport over the shared `ep-net`, and the restart into an installed update. |
+| `apps/crafting-helper/src/` | The main page (`App.svelte`; the shared parts under `components/`: the grab prompt, the grabbed text, the status line and `CurrencyPicker.svelte`; the craft area under `craft/`, one component per part, from `CraftArea.svelte`; the commands `bridge.ts`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`) and the overlay's under `src/overlay/` (`overlay.html`). |
 | `apps/crafting-helper/theme/` | The quest tracker's theme, copied byte for byte (`theme.test.ts`). |
-| `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), read by `ch-data`; not read by the 0.1.0 app. |
-| `apps/crafting-helper/fixtures/` | `views/`, one main window view per state, and `app-settings/`, one Settings window view per update, install and settings state, shared by the page's tests and `ch-app`'s. |
+| `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), embedded by `ch-data` when the app is built. |
+| `apps/crafting-helper/fixtures/` | `views/`, one main window view per state (the craft window's included, [`views/README.md`](../../apps/crafting-helper/fixtures/views/README.md)), `app-settings/`, one Settings window view per update, install and settings state, and `catalogue.json`, the `get_catalogue` answer, shared by the page's tests and `ch-app`'s. |
 | `apps/shared/` | The update code the three apps share, its own Cargo workspace: `ep-net` (the only network code) and `ep-update`: [`docs/app-updates.md`](../app-updates.md). |
 | `tools/crafting_helper/` | The poe2db data extractor (`poe2db.py`) and the release cutter (`release.py`). |
 | `.github/workflows/crafting-helper-release.yml` | The release build: from a pushed tag to a draft release. |
@@ -308,6 +406,8 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --workspace --locked 
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test grab     # the grab, fake shell
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test hotkey   # the hotkey's rules
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test updates  # the update commands, fake transport
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test craft_window  # the craft window, fake shell
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test settings # the saved settings, the blocked list, the catalogue
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked         # the data: join, valid modifiers, odds
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-blueprint --locked    # the format, the catalogue, the validator
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths
@@ -324,11 +424,22 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   per hotkey press (`grab_reads_the_clipboard_once_per_press`) and none for
   a paste (`grab_from_paste_reads_no_clipboard`). `tests/hotkey.rs` covers
   the default and `Ctrl+Alt+C` in every spelling; `tests/settings.rs` the
-  saved settings and the blocked list; `tests/overlay.rs` the overlay's
-  visibility.
+  saved settings, the blocked list (catalogue ids only, the whole
+  catalogue allowed) and the catalogue's groups; `tests/overlay.rs` the
+  overlay's visibility.
+- `ch-app`'s `tests/craft_window.rs` drives the craft window over the
+  whittled ring of `ch-engine`'s tests
+  (`crates/ch-engine/tests/items/gear/rings-resist-whittle/`, read by
+  path): the targets a base offers and their floors, refusals, a route
+  with odds in words, a blocked currency's fallback and a craft's own
+  blocked list, no route, accepting, a hit, a miss, an unexpected change,
+  an unchanged re-grab and the walk to done; that the overlay stays hidden
+  while guiding (`overlay_stays_hidden_while_guiding`); and that
+  `open_craft_of_exile` asks the shell for the one fixed address
+  (`open_craft_of_exile_opens_only_the_fixed_address`).
 - `ch-app`'s `tests/fixtures.rs` (`fixtures_are_current`) writes the
-  views under `fixtures/views/` and `fixtures/app-settings/` and fails when
-  a file differs. After a deliberate change, regenerate them with
+  views under `fixtures/views/` and `fixtures/app-settings/` and
+  `fixtures/catalogue.json`, and fails when a file differs. After a deliberate change, regenerate them with
   `CH_FIXTURES=1` before `cargo test --manifest-path
   apps/crafting-helper/Cargo.toml -p ch-app --locked --test fixtures`, and
   review the diff. The page's tests render each one.
@@ -337,7 +448,12 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   keyboard polling in any Rust source; no `navigator.clipboard` in the UI
   outside its tests; no input sent, no game access and no network but the
   shared `ep-net`, reached only from `src-tauri`; no Tauri plugin but the
-  global shortcut and single instance; the pinned CSP, the three windows'
+  global shortcut, single instance and opener; one web address in the Rust
+  sources, Craft of Exile's, once, in `ch-app`, the opener named and called
+  once in the glue and registered without its link handler, and no command
+  taking an address or a path (`open_craft_of_exile` takes only the app
+  state); no address, `window.open`, change of `location`, new-window link
+  or opener command in the pages; the pinned CSP, the three windows'
   capabilities and the overlay window's settings; one version everywhere
   (`ch-item`'s included); every member crate but `ch-item` taking its
   package keys and external dependencies from the workspace; and every
@@ -413,13 +529,14 @@ release already exists, only its assets are replaced.
 
 ## Known limitations
 
-- **0.1.0 crafts nothing.** It grabs and shows an item's text; it does not
-  parse it in the app, choose a craft or suggest a step. The blocked
-  currencies are saved but nothing reads them yet.
-- **The crafting engine is not in any window.** `ch-data`, `ch-blueprint`
-  and `ch-engine` are built and tested, and `ch-app` re-exports the engine,
-  but no command, view or setting uses it, and the blocked list is not
-  passed to it. Its limits, for the craft window to come:
+- **You grab the item again by hand after each step.** The guide learns a
+  step's result only from your next grab (`Ctrl+Alt+C` in the game, then
+  the hotkey or `Ctrl+V`); it does not read the item's tooltip by itself.
+  Reading the tooltip on screen is a later version's.
+- **A craft is not saved.** The item, the targets, the craft's blocked
+  changes, the guide and its history live in memory: quitting the app ends
+  the craft, and the next start begins with nothing grabbed.
+- **The crafting engine's limits** show in the craft window:
   - **Odds are often unknown.** Every jewel (poe2db shows no spawn weights
     for jewels), every desecration and reveal (no established weights; a
     reveal may also offer normal-pool modifiers, whose share is not
@@ -435,16 +552,15 @@ release already exists, only its assets are replaced.
     joined modifiers of the owner's five real items
     (`real_fixture_tiers_equal_game_tiers`); a class or modifier none of
     them carries has not been compared.
-  - **The catalogue is larger than the blocked list.** About 220 currency,
-    omen, bone, essence and liquid ids exist, and a saved blocked list holds
-    at most 200 (`MAX_BLOCKED`); blocking everything is not possible yet.
   - **A blueprint cannot branch into another**, and steps resting on a
     mechanic not established (alloys with Crystallisation omens, flux tier
     mapping, catalyst quality, rune sockets) are kept and said so in the
     blueprint's `notes`; catalyst and rune steps are manual.
 - **The overlay never shows in 0.1.0.** It appears only while a craft is
-  active, and no command or setting starts one yet. It is not placed over
-  the game and does not hide by itself when the game is not in front.
+  active, and nothing marks one active: a craft in the guide leaves it
+  hidden, and the current step is read in the main window. It is not
+  placed over the game and does not hide by itself when the game is not in
+  front.
 - **The "looks like an item" check is the first line only.** A text is
   taken for an item when its first line starts with `Item Class: `; every
   item text the owner copied for the parser (`ch-item`'s
@@ -488,9 +604,14 @@ release already exists, only its assets are replaced.
   no Authenticode signature, and how an antivirus treats an exe that
   downloads and renames its own file was not measured.
 - **The built exe has not been run with the game.** 0.1.0 is proven by
-  tests with fakes (a fake shell for the clipboard and the hotkey, a fake
-  transport and loopback servers for updates); no live session was part of
-  it.
+  tests with fakes (a fake shell for the clipboard, the hotkey and the
+  browser, a fake transport and loopback servers for updates); no live
+  session was part of it. The craft window's walks are the engine's test
+  items (constructed ring texts), not crafts taken in the game.
+- **Craft of Exile's page is outside this project.** The button opens its
+  beta address with `?game=poe2`; if the site moves or drops that address,
+  the button opens whatever the site serves there until the app is
+  updated.
 
 ## Maintenance triggers
 
@@ -505,9 +626,17 @@ release already exists, only its assets are replaced.
   needs a catalogue entry in `ch-blueprint`'s `catalogue.rs`. Run
   `check_blueprints` on `apps/crafting-helper/blueprints/` and the
   `ch-data` and `ch-engine` tests ([`blueprints.md`](blueprints.md)); the
-  odds anchors in `ch-data`'s tests change with the weights.
+  odds anchors in `ch-data`'s tests change with the weights. A catalogue
+  id that goes away is also dropped from saved blocked lists at the next
+  start, and `fixtures/catalogue.json` and the craft window's fixtures
+  change with it (`CH_FIXTURES=1`, Working on the app).
 - **poe2db's pages changing**: the extractor stops with an error naming the
   page; see the research note.
+- **Craft of Exile's address changing** (the site leaving
+  `beta.craftofexile.com`, or `?game=poe2` no longer choosing Path of
+  Exile 2): change `CRAFT_OF_EXILE_URL` in `ch-app`'s `craft.rs` and the
+  guard's `CRAFT_OF_EXILE_URL` in `tests/test_crafting_helper_guard.py`
+  together, with this guide's Privacy section; it stays the one address.
 - **A dependency bump**: keep the versions equal to the quest tracker's
   (`LockedToQuestTrackerPins`); bump them together.
 - **GitHub changes its API or its release flow**: the release list's
@@ -524,16 +653,29 @@ release already exists, only its assets are replaced.
 
 ### 0.1.0 (first version)
 
-- The crafting helper's first version, the app's shell: copy an item in the
-  game with `Ctrl+Alt+C`, then press `Ctrl+Alt+X` (changeable, never
-  `Ctrl+Alt+C`) or `Ctrl+V` in the window, and the window shows the item's
-  text and its line count.
+- The crafting helper's first version: copy an item in the game with
+  `Ctrl+Alt+C`, then press `Ctrl+Alt+X` (changeable, never `Ctrl+Alt+C`)
+  or `Ctrl+V` in the window, and the window becomes the craft window.
+- The craft window shows the item and its modifiers with their tiers. Pick
+  the modifiers you want as a target, from the prefixes, suffixes and
+  desecrated modifiers the item's base can roll, each "as high as
+  possible" or "at least" a tier, and it previews the route a blueprint
+  takes: each step's currency and omens, its rough odds or "odds unknown"
+  and why, the fallbacks taken because something is blocked, or why no
+  blueprint applies.
+- *Start crafting* guides you step by step: take the step in the game,
+  grab the item again, and the app says whether it was a hit, a miss or
+  unexpected, moves to the next step and keeps a history. A craft is kept
+  only until the app quits.
+- An *Explore more crafting on Craft of Exile* button opens Craft of Exile
+  in your web browser, the only page the app ever opens.
 - The app reads the clipboard once per grab and only then. It never watches
   the clipboard, uses no keyboard hook and sends the game nothing.
-- A Settings window with the hotkey, a saved list of blocked currencies,
-  *Automatically check for updates* (off by default; it only checks), *Check
-  now*, the in-app install of a signed newer version, the version and
-  "Created by ST4H".
+- A Settings window with the hotkey, a saved list of blocked currencies
+  picked by name from every crafting item (each craft can change it for
+  itself), *Automatically check for updates* (off by default; it only
+  checks), *Check now*, the in-app install of a signed newer version, the
+  version and "Created by ST4H".
 - Download `crafting-helper.exe` from the repository's
   [crafting helper releases](https://github.com/S-Borkowski/ExilePact2/releases?q=crafting-helper)
   and run it; there is no installer.
