@@ -1,0 +1,85 @@
+# Rings: flat attack damage prefixes over resistance suffixes, with attack
+# quality raised first. Paraphrased from the owner's paste; see
+# docs/crafting-helper/crafting-mechanics.md § "Crafting patterns seen".
+id = "rings-flat-attack"
+name = "Rings: flat attack damage and resistances"
+classes = ["Rings"]
+source = "Discord post 11, owner's paste, 2026-10-28"
+notes = """
+The quality steps rest on catalyst quality, which the helper cannot read: \
+they are manual, and the Essence of the Breach is there only to raise the \
+quality cap (the Chaos Orbs after it may take its modifier off again). The \
+poster names a desecration as the other way to the last flat modifier, and \
+says nothing about a missed slam; here a miss is annulled from the prefix \
+side and slammed again. The poster warns that rings get expensive on bad \
+luck."""
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "breach"
+say = "Essence of the Breach, for a higher quality cap"
+goal = "manual"
+
+[[step.action]]
+currency = "essence-of-the-breach"
+
+[[step]]
+id = "catalyst"
+say = "Reaver Catalysts up to 40% attack quality"
+goal = "manual"
+
+[[step.action]]
+currency = "reaver-catalyst"
+
+[[step]]
+id = "chaos"
+say = "Chaos Orb until a second flat attack damage prefix is on"
+goal = "add-wanted"
+side = "prefix"
+bind = "any-remaining"
+until = { wanted_prefixes_at_least = 2 }
+
+[[step.action]]
+currency = "chaos-orb"
+
+[[step]]
+id = "last-flat"
+say = "Perfect Exalted Orb on the prefix side for the last flat damage"
+goal = "add-wanted"
+side = "prefix"
+bind = "any-remaining"
+requires = { free_prefixes_at_least = 1 }
+on_miss = "goto:clean-prefix"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "suffixes"
+say = "Whittle the suffixes until the resistances are on"
+goal = "add-wanted"
+side = "suffix"
+bind = "any-remaining"
+until = { wanted_remaining_at_most = 0 }
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+# Reached only from a missed slam; left out once nothing remains (its
+# binding is only there for that).
+[[step]]
+id = "clean-prefix"
+say = "Annul the missed prefix (Sinistral Annulment), then slam again"
+goal = "remove-unwanted"
+side = "prefix"
+bind = "last-remaining"
+when = "bound"
+on_hit = "goto:last-flat"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-sinistral-annulment"]

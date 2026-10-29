@@ -1,0 +1,20 @@
+Item Class: Amulets
+Rarity: Rare
+Storm Beads
+Jade Amulet
+--------
+Requires: Level 8
+--------
+Item Level: 82
+--------
+{ Implicit Modifier — Attribute }
++12(10-15) to Dexterity
+--------
+{ Prefix Modifier "Virile" (Tier: 2) — Life }
++110(100-119) to maximum Life
+{ Prefix Modifier "Dazzling" (Tier: 3) — Defences, Energy Shield }
++66(62-70) to maximum Energy Shield
+{ Suffix Modifier "of Exile" (Tier: 2) — Chaos, Resistance }
++21(20-23)% to Chaos Resistance
+{ Suffix Modifier "of Magma" (Tier: 2) — Elemental, Fire, Resistance }
++38(36-40)% to Fire Resistance

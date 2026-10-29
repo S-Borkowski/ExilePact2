@@ -1,0 +1,220 @@
+# Any equipment: the owner's usual shape. An essence first when one meets a
+# target's floor, side-restricted exalts until two targets are left, a
+# desecration for the hardest one, and a last restricted slam.
+id = "fill-desecrate-exalt"
+name = "Fill, desecrate the hardest, slam the last"
+classes = [
+    "Gloves", "Boots", "Helmets", "Body Armours", "Shields", "Quivers",
+    "Bucklers", "Foci", "Wands", "One Hand Maces", "Sceptres", "Spears",
+    "Bows", "Staves", "Two Hand Maces", "Quarterstaves", "Crossbows",
+    "Talismans", "Belts", "Amulets", "Rings",
+]
+source = "roadmap (the owner's own description of a typical craft)"
+notes = """
+Every equipment class with spawn weights; jewels have none, so they are \
+left out. A Normal item cannot take an essence: transmute it first and plan \
+again. While more than one side still has a target the exalts are not tied \
+to a side: use the Sinistral or Dextral Exaltation omen for the side you \
+fill. After a missed exalt, whittle (Omen of Whittling with a Chaos Orb) \
+when the new modifier is the item's lowest level, and otherwise annul it \
+from its side; the guide offers the whittle first and the plain annulment \
+when Whittling is blocked. A reveal for a desecrated-section target counts \
+both pools, so its odds are unknown."""
+
+[[start]]
+rarity = ["rare"]
+wanted_at_least = 3
+fractured_wanted = true
+
+[[start]]
+rarity = ["rare"]
+wanted_at_least = 2
+fractured_wanted = false
+
+[[start]]
+rarity = ["magic"]
+essence_binds = true
+
+# Lesser, plain and Greater essences make a Magic item Rare with their
+# modifier; per family the cheapest grade comes first, so the first one
+# that meets the floor is the one offered.
+[[step]]
+id = "essence"
+say = "Use the essence that adds a target"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+action = [
+    { currency = "lesser-essence-of-the-body" },
+    { currency = "essence-of-the-body" },
+    { currency = "greater-essence-of-the-body" },
+    { currency = "lesser-essence-of-the-mind" },
+    { currency = "essence-of-the-mind" },
+    { currency = "greater-essence-of-the-mind" },
+    { currency = "lesser-essence-of-enhancement" },
+    { currency = "essence-of-enhancement" },
+    { currency = "greater-essence-of-enhancement" },
+    { currency = "lesser-essence-of-insulation" },
+    { currency = "essence-of-insulation" },
+    { currency = "greater-essence-of-insulation" },
+    { currency = "lesser-essence-of-thawing" },
+    { currency = "essence-of-thawing" },
+    { currency = "greater-essence-of-thawing" },
+    { currency = "lesser-essence-of-grounding" },
+    { currency = "essence-of-grounding" },
+    { currency = "greater-essence-of-grounding" },
+    { currency = "lesser-essence-of-ruin" },
+    { currency = "essence-of-ruin" },
+    { currency = "greater-essence-of-ruin" },
+    { currency = "lesser-essence-of-the-infinite" },
+    { currency = "essence-of-the-infinite" },
+    { currency = "greater-essence-of-the-infinite" },
+    { currency = "lesser-essence-of-abrasion" },
+    { currency = "essence-of-abrasion" },
+    { currency = "greater-essence-of-abrasion" },
+    { currency = "lesser-essence-of-flames" },
+    { currency = "essence-of-flames" },
+    { currency = "greater-essence-of-flames" },
+    { currency = "lesser-essence-of-ice" },
+    { currency = "essence-of-ice" },
+    { currency = "greater-essence-of-ice" },
+    { currency = "lesser-essence-of-electricity" },
+    { currency = "essence-of-electricity" },
+    { currency = "greater-essence-of-electricity" },
+    { currency = "lesser-essence-of-battle" },
+    { currency = "essence-of-battle" },
+    { currency = "greater-essence-of-battle" },
+    { currency = "lesser-essence-of-seeking" },
+    { currency = "essence-of-seeking" },
+    { currency = "greater-essence-of-seeking" },
+    { currency = "lesser-essence-of-alacrity" },
+    { currency = "essence-of-alacrity" },
+    { currency = "greater-essence-of-alacrity" },
+    { currency = "lesser-essence-of-haste" },
+    { currency = "essence-of-haste" },
+    { currency = "greater-essence-of-haste" },
+    { currency = "lesser-essence-of-sorcery" },
+    { currency = "essence-of-sorcery" },
+    { currency = "greater-essence-of-sorcery" },
+    { currency = "lesser-essence-of-command" },
+    { currency = "essence-of-command" },
+    { currency = "greater-essence-of-command" },
+    { currency = "lesser-essence-of-opulence" },
+    { currency = "essence-of-opulence" },
+    { currency = "greater-essence-of-opulence" },
+]
+
+[[step]]
+id = "fill"
+say = "Exalt a side that still has a target (with its Exaltation omen) until two targets are left"
+goal = "add-wanted"
+bind = "any-remaining"
+until = { wanted_remaining_at_most = 2 }
+on_miss = "goto:fill-clean"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side"
+goal = "desecrate"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "desecrate"
+
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+on_miss = "goto:light"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+# The last slam is tied to the last target's side; while several are left
+# (the desecration was not needed), an unrestricted one.
+[[step]]
+id = "slam"
+say = "Exalt for the last target, restricted to its side"
+goal = "add-wanted"
+bind = "last-remaining"
+until = { wanted_remaining_at_most = 0 }
+on_miss = "goto:slam-clean"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+
+[[step.action]]
+currency = "greater-exalted-orb"
+
+[[step.action]]
+currency = "exalted-orb"
+
+# The steps below are reached only from a miss. Their binding is there so
+# that they are left out once nothing remains.
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+bind = "last-remaining"
+when = "bound"
+on_hit = "goto:desecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "fill-clean"
+say = "Whittle the missed exalt when it is the lowest level, else annul it"
+goal = "remove-unwanted"
+bind = "last-remaining"
+when = "bound"
+on_hit = "goto:fill"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "slam-clean"
+say = "Whittle the missed slam when it is the lowest level, else annul it"
+goal = "remove-unwanted"
+bind = "last-remaining"
+when = "bound"
+on_hit = "goto:slam"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"

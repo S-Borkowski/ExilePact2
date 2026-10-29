@@ -1,0 +1,13 @@
+Item Class: Rings
+Rarity: Magic
+Gentian Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Prefix Modifier "Gentian" (Tier: 5) — Mana }
++95(90-104) to maximum Mana

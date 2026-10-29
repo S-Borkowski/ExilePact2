@@ -1,0 +1,162 @@
+# Amulets: two resistances turned into the wanted elements with fluxes, a
+# desecrated suffix that blocks the suffix pool for two Perfect Exalted
+# Orbs, then a desecrated Spirit modifier. Paraphrased from the owner's
+# paste; see docs/crafting-helper/crafting-mechanics.md § "Crafting
+# patterns seen".
+id = "amulets-resist-spirit"
+name = "Amulets: resistances, prefixes and a desecrated Spirit"
+classes = ["Amulets"]
+source = "Discord post 14, owner's paste, 2026-10-28"
+notes = """
+The post does not name the item; an amulet fits its modifiers (inferred). \
+How a flux maps one resistance's tier to the other's is not established, \
+so the flux steps have no odds, and a flux that lands below the floor \
+counts as a miss. Each Chaos Orb and slam for "any top-tier resistance" is \
+a manual step: the helper cannot tell which resistance the flux will want. \
+The desecrated suffix is a blocker (top-tier Intelligence or a resistance): \
+with the suffixes full, a Perfect Exalted Orb can only land a prefix. Only \
+one desecrated modifier fits on an item, so the Omen of Light takes the \
+blocker off before the desecration for Spirit; with the blocker gone, one \
+suffix is left open."""
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "annul-down"
+say = "Annul down to one modifier"
+goal = "remove-unwanted"
+until = { unwanted_at_most = 1 }
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "chaos-resistance"
+say = "Chaos Orb the last modifier until it is a top-tier elemental resistance"
+goal = "manual"
+
+[[step.action]]
+currency = "chaos-orb"
+
+[[step]]
+id = "void-flux"
+say = "Void Flux: the resistance becomes chaos resistance"
+goal = "convert"
+bind = "any-remaining"
+on_miss = "goto:chaos-resistance"
+
+[[step.action]]
+currency = "void-flux"
+
+[[step]]
+id = "slam-resistance"
+say = "Perfect Exalted Orb with Dextral Exaltation until another top-tier resistance"
+goal = "manual"
+side = "suffix"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "blazing-flux"
+say = "Blazing Flux: that resistance becomes fire resistance"
+goal = "convert"
+bind = "any-remaining"
+on_hit = "goto:desecrate-block"
+on_miss = "next"
+
+[[step.action]]
+currency = "blazing-flux"
+
+# Reached only from a missed Blazing Flux.
+[[step]]
+id = "annul-resistance"
+say = "Annul the missed resistance (Dextral Annulment) and slam again"
+goal = "remove-unwanted"
+side = "suffix"
+on_hit = "goto:slam-resistance"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step]]
+id = "desecrate-block"
+say = "Desecrate the last suffix (Dextral Necromancy)"
+goal = "desecrate"
+side = "suffix"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal-block"
+say = "Reveal top-tier Intelligence or a resistance; Echoes and Light as needed"
+goal = "manual"
+on_hit = "goto:slam-prefix"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+# Reached only from a missed slam.
+[[step]]
+id = "whittle-prefix"
+say = "Whittle the missed slam away (Omen of Whittling with a Chaos Orb)"
+goal = "remove-unwanted"
+on_hit = "goto:slam-prefix"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step]]
+id = "slam-prefix"
+say = "Perfect Exalted Orb: with the suffixes full it lands a prefix"
+goal = "add-wanted"
+side = "prefix"
+bind = "any-remaining"
+until = { wanted_prefixes_at_least = 2 }
+on_miss = "goto:whittle-prefix"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+
+# Left out once nothing remains (the binding is only there for that).
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the blocker goes"
+goal = "remove-desecrated"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "desecrate-spirit"
+say = "Desecrate for Spirit, with its side's Necromancy omen"
+goal = "desecrate"
+side = "prefix"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal-spirit"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "last-remaining"
+when = "bound"
+on_miss = "goto:light"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]

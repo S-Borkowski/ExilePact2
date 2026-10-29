@@ -1,0 +1,18 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Prefix Modifier "Annealed" (Tier: 4) — Damage, Physical, Attack }
+Adds 8(6-10) to 14(12-17) Physical Damage to Attacks
+{ Prefix Modifier }
++20% to Maximum Quality
+{ Suffix Modifier "of Elation" (Tier: 4) — Mana }
+34(30-39)% increased Mana Regeneration Rate

@@ -1,0 +1,117 @@
+# Gloves: critical damage from Essence of Hysteria, a desecrated prefix that
+# blocks a common family while the prefixes are slammed, then desecrated
+# suffixes until attack speed. Paraphrased from the owner's paste; see
+# docs/crafting-helper/crafting-mechanics.md § "Crafting patterns seen".
+id = "gloves-crit-melee"
+name = "Gloves: critical damage, melee levels and attack speed"
+classes = ["Gloves"]
+source = "Discord post 9, owner's paste, 2026-10-28"
+notes = """
+The goal in the post is critical damage, melee skill levels, attack speed \
+and a desecrated modifier. The first desecration is a blocker: revealed as \
+a common, heavily weighted defensive prefix, it keeps that family out of \
+the Perfect Exalted Orb's pool, and the Omen of Light takes it off \
+afterwards. The perfect slams and the suffix desecrations repeat until \
+attack speed lands. When the slammed prefixes are poor and of a lower level \
+than the ones to keep, the poster clears them with the Omen of Whittling; \
+do that by hand and plan again. The poster warns that without a large \
+budget it is mostly luck."""
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "exalt-suffix"
+say = "Exalt a suffix (Dextral Exaltation); the essence next may replace it"
+goal = "fill"
+side = "suffix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "hysteria"
+say = "Essence of Hysteria with Dextral Crystallisation for critical damage"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+
+[[step.action]]
+currency = "essence-of-hysteria"
+omens = ["omen-of-dextral-crystallisation"]
+
+[[step]]
+id = "block-prefix"
+say = "Desecrate a prefix (Sinistral Necromancy) for a blocker"
+goal = "desecrate"
+side = "prefix"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal-blocker"
+say = "Reveal it as a common defensive prefix, the more heavily weighted the better"
+goal = "manual"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "slam-prefix"
+say = "Perfect Exalted Orb with Sinistral Exaltation"
+goal = "add-wanted"
+side = "prefix"
+bind = "any-remaining"
+requires = { free_prefixes_at_least = 1 }
+on_miss = "next"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the desecrated modifier goes"
+goal = "remove-desecrated"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "slam-again"
+say = "Perfect Exalted Orb with Sinistral Exaltation into the free prefix"
+goal = "fill"
+side = "prefix"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "desecrate-suffix"
+say = "Desecrate for the last target (a suffix in the post), with its side's Necromancy omen"
+goal = "desecrate"
+side = "suffix"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "last-remaining"
+when = "bound"
+on_miss = "goto:light"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
