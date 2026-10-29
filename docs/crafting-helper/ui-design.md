@@ -8,14 +8,19 @@ window is the craft window: the player copies an item in the game with
 pick the modifiers they want with a tier floor each, previews the route the
 engine chose (each step's currency, omens and odds, and the fallbacks taken
 because something is blocked), and once accepted guides the craft one step
-at a time, classifying each re-grab as a hit, a miss or unexpected. A button
-in every state opens Craft of Exile in the default browser. The overlay
-stays hidden in this version; placing it over the game is later work. This
-document is the direction the components follow.
+at a time, classifying each re-grab as a hit, a miss or unexpected. While
+a craft is guided, the app can also read the hovered item from the game's
+window (the screen watch, `screen_watch`) and advance the guide by itself,
+and a click-through overlay over the game shows the current step. A button
+in every state opens Craft of Exile in the default browser. This document
+is the direction the components follow.
 
 What each window does, and every command and event, is in the guide's
 Command reference ([`README.md`](README.md)). The direction was critiqued
-before any component existed: [`design/review-direction.md`](design/review-direction.md).
+before any component existed: [`design/review-direction.md`](design/review-direction.md)
+for the craft window, [`design/review-overlay.md`](design/review-overlay.md)
+for the overlay, the screen watch's lines and the Settings window's
+Overlay section.
 
 ## Principles
 
@@ -43,8 +48,12 @@ before any component existed: [`design/review-direction.md`](design/review-direc
   of Exile, at one address held in Rust; the page sends a command that
   carries no address.
 - **The overlay never gets in the way.** It does not take focus, lets
-  every click through, and is hidden unless a craft is active (in this
-  version it stays hidden during a craft too).
+  every click through, and shows only while a craft is guided and the
+  game's window is in front.
+- **The screen is read, never touched.** The app sends the game nothing:
+  the player takes the step, hovers the item and holds Alt themselves. A
+  read the app cannot trust changes nothing and says to grab the item,
+  which stays the fallback in every state.
 
 ## Theme
 
@@ -103,16 +112,126 @@ same grab in every mode.
 
 ### Overlay
 
-`overlay.html`: one line, `view.overlay.line`, on a transparent,
-undecorated, always-on-top window off the taskbar, about 420 × 64. The line
-sits in a slightly see-through panel of the theme, one line high, cut with
-an ellipsis when too long; nothing on the page can be selected or clicked,
-and the window ignores the cursor. The shell shows it without activating it
-only while `view.overlay.visible` is set and hides it otherwise. Nothing in
-this version sets it: the craft window's guide does not show the overlay
-(placing it over the game, hiding it when the game is not in front and
-filling its line with the current step are later work), so its line stays
-the placeholder "Next step: shown here while a craft is active."
+`overlay.html`: the current step of a guided craft, over the game, so the
+player reads what to do and where a hit or a miss goes without looking
+away from the game. Its one question is *"what do I do now, and did the
+last try work?"*; everything else (the route, the fallbacks, the item, the
+history, every control) stays in the main window. This direction was
+critiqued before the page was built:
+[`design/review-overlay.md`](design/review-overlay.md).
+
+**The window.** Transparent, undecorated, always on top, off the taskbar,
+not resizable, **480 × 168** at scale 1 (the glue writes this size to
+`tauri.conf.json`). It never takes focus (it is shown with
+`SW_SHOWNOACTIVATE`, and is not focusable) and lets every click and the
+cursor through to the game; nothing on the page can be selected, focused
+or clicked. M3's placeholder line, "Next step: shown here while a craft is
+active.", is gone.
+
+**When it shows.** While the craft is guiding, in any guide status
+(Crafting, Stuck, Replan, Done), **and** the game's window is in front
+(its title is `Path of Exile 2`); hidden otherwise. It hides at once when
+guiding ends (End craft) and when the game is not in front: another
+window, the app's own windows included, or the game minimized. Rust
+decides (`view.overlay.visible`) and the shell shows or hides the window;
+the page never decides it. Each change is one diagnostic line:
+`overlay: shown`, `overlay: hidden (not guiding)`, `overlay: hidden (game
+not in front)`.
+
+**Where it sits.** Inside the game's client area, at the edge or corner
+the player chose in Settings (`overlay_position`): `top-left`,
+`top-center` (the default), `top-right`, `bottom-left`, `bottom-center`,
+`bottom-right`. The window is inset 12 physical pixels from the client's
+edges (12 from the top and centred across for `top-center`, and so on),
+from the overlay's size as the shell reports it in physical pixels, so the
+inset holds at every display scale. A client smaller than the overlay and
+its insets puts it at the client's top-left corner. Rust computes the
+place (a pure `ch-app` function, tested) and the shell only moves the
+window; it is placed again when the client rect or the setting changes,
+never on every tick, with `overlay: placed <position>`.
+
+**The panel.** One panel of the theme, as wide as the window and only as
+tall as its rows, anchored to the window's edge nearest the game's edge
+(its top for the three `top-*` positions, its bottom for the `bottom-*`
+ones; the view carries the position), so the inset is the panel's visible
+inset and the rest of the window is empty and click-through. The ground is
+`--color-panel-bg` at `--opacity-default` (0.92), the tracker's overlay
+ground: no blur, no glass, no gradient. A 1 px `--color-panel-border` edge
+keeps it apart from a dark scene. Over a white scene the ground blends to
+`#252729` (computed), which keeps primary text at 12:1, secondary at 7.4:1,
+the warning colour at 6.3:1 and muted text at 4.7:1; over black they are
+higher still. So the panel reads over a bright scene and a dark one alike;
+muted text is kept to labels and the source words. Square
+corners, `--space-panel-pad` (8 px) padding, no shadow (the window has
+none to draw it in).
+
+**The rows**, top to bottom, at most seven, each one line high and cut
+with an ellipsis at its end when too long (the page never wraps a row, so
+the panel never grows past 168):
+
+1. **Header**: the guide's status word ("Crafting", "Stuck", "Replan",
+   "Done") as the main window's outlined caption-size label, the route's
+   name (`--color-text-secondary`), and at the right "Step <n> · try <n>"
+   in tabular figures.
+2. **Instruction**: the step's instruction, `--size-title` (16 px) at
+   `--font-weight-title`, `--color-text-primary`: the row the eye lands on.
+3. **Uses**: the label "Uses" (small caps, muted), the currency and omen
+   names, then the odds as Rust sends them (`~12% (8000 of 69500
+   weight)`, `odds unknown: <reason>`); the odds lead with the percent, so
+   an ellipsis keeps the number. No fallback line: it is in the main
+   window.
+4. `On a hit: <where it goes>`, as Rust sends it.
+5. `On a miss: <where it goes>`, as Rust sends it.
+6. **Last**: once a change has been observed, "Last:", the outcome word
+   (Hit, Miss, Unexpected; Miss and Unexpected in `--color-warning`, the
+   word carries it), its source in muted words ("from the screen" or "from
+   a grab") and the summary as sent. Before the first: "No step taken
+   yet." in muted text.
+7. **Screen**: the label "Screen" (small caps, muted) and the watch line
+   as Rust sends it (§ "The screen watch's line"). In
+   `--color-text-secondary` while it only reports, in `--color-warning`
+   when it asks the player to do something (Rust says which); the words
+   say what to do either way.
+
+Rows 1–2 and 3–5 and 6–7 are three groups, 4 px apart; rows inside a group
+sit on `--line-step` (18 px), the header and the instruction on
+`--line-title` (20 px).
+Body text is `--size-step` (14 px); labels and the status word are
+`--font-family-caps` at `--size-caption`.
+
+**Each status:**
+
+- **Crafting** (active): all seven rows.
+- **Stuck**: the header says "Stuck"; row 3 becomes "Why:" and the first
+  reason as Rust sends it, and rows 4–7 stay, so the step and both branches
+  stay in view while the player fixes it in the app.
+- **Replan**: header "Replan"; row 2 "End the craft in the app to plan
+  again from this item."; row 3 "Why:" and the first reason; then Last.
+  The branch rows and the Screen row are left out (nothing is read).
+- **Done**: header "Done"; row 2 "The craft is done."; then Last. Nothing
+  else.
+
+The screen watch reads the hovered item's tooltip, and **the overlay can
+cover it**: a tooltip the overlay's window overlaps is never read in part
+(a hidden line would read as a lost modifier), and the Screen row says so
+and names the fix, moving the overlay in Settings or grabbing the item.
+The reader counts the overlay's whole window as covering, its empty part
+included (it reads the window's rect, not the panel's), which is why the
+window is no taller than seven rows need (about 156 px of panel in 168).
+Where the game draws a
+tooltip depends on where the item sits and is not established here;
+`top-center` is the owner's default, and Live 1 shows whether it covers a
+crafted item's tooltip.
+
+**Not in this version:** hiding under the game's panels (a craft is taken
+with the stash and the inventory open, so it would hide the overlay
+throughout), dragging or editing it in place, a scale setting, motion of
+any kind (rows change in place, without a transition, so nothing moves
+over the game), and exclusive fullscreen.
+
+The page is not a live region and has no accessible role beyond its
+text: the main window's status line already announces each outcome, and a
+second announcement from a window the player cannot focus would repeat it.
 
 ## Craft window
 
@@ -245,8 +364,9 @@ route).
 status as a word beside it: "Crafting" (active), "Stuck", "Replan" or
 "Done". Then, once a change has been observed, the **last outcome** line,
 where the player's eyes already are after a re-grab: "Last:" and the
-newest History entry's outcome word and summary (the page shows that
-entry; it judges nothing). Then, for active and stuck, a sunken card with:
+newest History entry's outcome word, its source ("from the screen" or
+"from a grab", muted) and summary (the page shows that entry; it judges
+nothing). Then, for active and stuck, a sunken card with:
 
 - "Step <n>" and the try count ("try 2"); the instruction, larger than the
   body text; the "Uses" line; the odds as sent; the fallback line when there
@@ -254,8 +374,14 @@ entry; it judges nothing). Then, for active and stuck, a sunken card with:
 - The two branch lines as sent: `On a hit: <where it goes>` and `On a miss:
   <where it goes>`, where Rust names the next step by its instruction or
   says this step again, start over, give the item up, or the craft is done.
+- The **watch line**: the label "Screen" (small caps, muted) and the
+  screen watch's line as Rust sends it (§ "The screen watch's line"), in
+  `--color-text-secondary` while it only reports and `--color-warning`
+  when it asks the player to act. It is the same line the overlay's Screen
+  row shows, so the two never disagree.
 - The prompt "Take this step in the game, copy the item with `Ctrl+Alt+C`,
-  then press `<hotkey>` or `Ctrl+V` here."
+  then press `<hotkey>` or `Ctrl+V` here." It stays in every watch state:
+  the grab is the fallback the watch line points to.
 
 When stuck or replan, the reasons follow as a list under "Why:"; replan
 adds "End the craft to plan again from this item." Done replaces the card
@@ -279,7 +405,9 @@ oldest first, one entry per observed change: "Step <n>", the instruction
 (muted), the outcome as a word ("Hit", "Miss", "Unexpected"; Miss and
 Unexpected take the warning colour, the word carries it), set as an
 outlined caption-size label like the guide's status word (the "Last:" line
-sets it the same way), and the summary
+sets it the same way), the entry's **source** in muted words after it,
+"from the screen" or "from a grab" (the view's source for the entry; the
+page maps it to these words and judges nothing), and the summary
 as sent, which starts `Hit:`, `Miss:` or `Unexpected:` and names the
 targets gained or lost with their tier, a below-floor roll, or the reasons.
 With none yet: "No step taken yet." The history is not a live region; the
@@ -287,7 +415,47 @@ status line announces each outcome.
 
 A grab while guiding is the step's result; a grab of the same item as the
 step was shown on, or of text that is not a plannable item, changes nothing
-and the status line says why (Rust's words).
+and the status line says why (Rust's words). With the screen watch on, the
+player can skip the grab: after the step, hovering the item lets the app
+read it, and a hit or a miss read twice alike is kept as a grab's would be
+(a History entry from the screen, the item now replaced). A change the
+guide did not expect is **not** kept from the screen: the guide and the
+item stay, and the status line and the watch line say to grab the item to
+check. A grab always wins over a read in flight. A grab of the item a
+screen read already gave (same rarity and explicit modifiers) is not a new
+outcome: `craft: grab matches the screen`, and the grabbed text replaces
+the read item.
+
+### The screen watch's line
+
+One line, Rust's copy, the same in the guiding card and the overlay's
+Screen row: what the watch sees and what to do. Each form names the next
+action in words, and the ones that ask the player to act are marked by
+Rust to take the warning colour. Rust's words; the
+`ch-app` tests pin each form.
+
+| The watch | The line | Warning colour |
+|---|---|---|
+| Reading, no tooltip | `Watching: after the step, hover the item in the game.` | |
+| The item unchanged | `Watching: the item has not changed yet.` | |
+| Another item hovered | `Watching: that is another item; hover the one you are crafting.` | |
+| A change, read once | `Checking the change: keep hovering the item.` | |
+| Unreadable | `Can't read the item (<reason>): hold Alt over it, or grab it.` | yes |
+| Under the overlay | `The overlay covers the item: move it in Settings, or grab the item.` | yes |
+| An unexpected change | `The item changed in a way the guide did not expect: grab it to check.` | yes |
+| 10 black copies in a row | `Can't copy the game's window: grab the item after each step.` | yes |
+| No English OCR | `Can't read the screen (no English OCR): grab the item after each step.` | yes |
+| `screen_watch` off | `Screen reading is off: grab the item after each step.` | |
+| No screen backend | `Screen reading is not available: grab the item after each step.` | |
+| The game not in front | `Paused: the game is not in front.` | |
+| The game minimized | `Paused: the game is minimized.` | |
+| Stuck | `Paused: the guide is stuck.` | |
+| Replan or done | none: the row and the line are left out | |
+
+`<reason>` is the matcher's reason in words: `a line it does not know`,
+`two tiers fit`, `the rarity is unclear`, `the item has no base type`,
+`it may be cut off at the window's edge`. None of these lines, nor any
+other, carries OCR text, a pixel or a window title.
 
 ### The currency picker
 
@@ -326,6 +494,8 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 | History summary | starts `Hit:`, `Miss:` or `Unexpected:`, then the targets gained or lost with their tier, a below-floor roll, or the reasons |
 | Refusal, rejection, stuck and replan reasons, the status line | Rust's words |
 | Catalogue group labels and currency names | Rust's (English) |
+| The watch line (guiding card and overlay) | § "The screen watch's line", with whether it takes the warning colour |
+| The overlay's rows | the route's name, the step number and try count, the instruction, the uses, the odds, both branch lines, the last outcome's word, source and summary, the stuck and replan reason and the watch line: Rust's, in the overlay part of the view; whether it shows and its position too |
 
 ### UI-owned copy
 
@@ -337,7 +507,12 @@ crafting on Craft of Exile", "Settings", "Start crafting", "End craft",
 "Filter currencies", "Blocked only", "Floor for <modifier text>", "Route",
 "Uses", "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
 "unrevealed", "target", "Settings", "this craft", "allowed for this craft",
-and the status words "Crafting", "Stuck", "Replan", "Done". Empty prompts
+the status words "Crafting", "Stuck", "Replan", "Done", the watch line's
+label "Screen", the sources "from the screen" and "from a grab", and the
+overlay's "Step <n> · try <n>", "Why:" and "End the craft in the app to
+plan again from this item.". The Settings window's Overlay section:
+"Overlay", "Position", the six position names, "Read the item from the
+screen" and their help lines (§ "Settings window"). Empty prompts
 and hints: "Nothing grabbed yet. To grab an item:", "Pick the modifiers you
 want from the list below.", "Pick a target to see a route.", "No route
 reaches these targets.", "Pick a target first.", "No route to start.", "No
@@ -382,6 +557,25 @@ From the top:
   status of the last change (`hotkey_status`, polite live region; an error
   starts with `!`). The field is cleared on Set; the hotkey shown is always
   the view's.
+- **Overlay**: two controls, each saving itself (one save model, as the
+  rest of the window):
+  - **Position**, a native select labelled "Position" with the six places
+    in reading order, "Top left", "Top center", "Top right", "Bottom
+    left", "Bottom center", "Bottom right", sending `update_settings {
+    overlay_position }` with `top-left` … `bottom-right`; the view's value
+    is selected (`top-center` by default). Help line: "Where the step
+    panel sits in the game's window while a craft is guided."
+  - **Read the item from the screen**, a switch styled as Updates' switch,
+    sending `update_settings { screen_watch }`; on by default. Help line:
+    "After each step, hover the item in the game and the helper reads it.
+    Copies of the screen stay in memory; nothing is saved or sent. Off:
+    grab the item after each step."
+  A refused change (an unknown position) leaves the saved value and shows
+  Rust's words with `!` in the section's status line (polite live region),
+  as the Grab section does. The section sits after Grab because both shape
+  the craft loop; the page grows past the window's 720 px with it, and
+  scrolls as a whole (as it already does in `install-downloading`), so
+  Updates, the least-used section, is the one below the fold.
 - **Blocked currencies**: the help line "Currencies the helper never
   suggests. Pick them by name.", the count ("3 blocked", or "No currency is
   blocked."), and the currency picker (§ "The currency picker") over the
@@ -415,7 +609,8 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `grab-refused` | A later press found an empty clipboard: the last grab kept, `!` the reason |
 | `grabbed-not-item` | A paste of text that is not an item, "from a paste", `!` the warning; craft mode refused |
 | `hotkey-taken` | Another program holds `Ctrl+Alt+X` at the start: `!` the status naming it |
-| `overlay-active` | The overlay's line is visible (the shell's switch, which nothing in this version sets) |
+| `overlay-active` | Guiding with the game in front: the overlay is visible with every row of an active guide, `top-center` |
+| `overlay-not-in-front` | Guiding with another window in front: the overlay is hidden |
 | `craft-planning` | Targets chosen with their floors; a route whose steps show known and unknown odds; Start crafting enabled |
 | `craft-fallback` | A blocked currency and the step's fallback line; Blocked for this craft open, the entry tagged with its source |
 | `craft-no-route` | Targets no blueprint reaches: one line per rejected blueprint; Start crafting disabled with its reason |
@@ -424,6 +619,11 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `craft-miss` | After a miss: the "Last:" line and History's Miss entry with its summary, the step the miss led to |
 | `craft-replan` | Status Replan with its reasons; End craft primary |
 | `craft-done` | Status Done: "The craft is done.", the whole history |
+| `craft-watching` | Guiding with the screen watch reading and no tooltip: the watch line `Watching: …` |
+| `craft-screen-hit` | A hit read from the screen: "Last:" and History's entry "from the screen", the next step |
+| `craft-screen-unexpected` | An unexpected change read and not applied: the step and item kept, the watch line in the warning colour |
+| `craft-watch-off` | `screen_watch` off: `Screen reading is off: …`; grabs drive the guide as in M5 |
+| `craft-watch-unavailable` | No English OCR: `Can't read the screen (no English OCR): …` |
 
 | Settings window (`fixtures/app-settings/`) | What it shows |
 |---|---|
@@ -431,6 +631,13 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `install-unsigned`, `install-downloading`, `install-verifying`, `install-restarting`, `install-failed` | Each state of the install |
 | `hotkey-refused` | `Ctrl+Alt+C` asked for: `!` the refusal, the old hotkey kept |
 | `blocked-currencies` | Three catalogue items blocked, checked by name in the picker |
+| `overlay-settings` | The Overlay section with a position other than `top-center` and the screen watch off |
+
+Every view fixture carries the overlay part and the watch line, and every
+settings fixture `overlay_position` and `screen_watch`, so the page tests
+render the new fields in every state. The overlay page renders any view
+fixture: `overlay-active` for an active guide, `craft-replan` and
+`craft-done` for those statuses.
 
 ## Browser preview
 
@@ -438,7 +645,11 @@ Outside Tauri (`npm run dev`, port 1422) each page renders a fixture chosen
 by the query's `state`: `http://127.0.0.1:1422/?state=empty` (default
 `grabbed-item`; the craft window's states are `?state=craft-planning` and
 the other `craft-*` names),
-`http://127.0.0.1:1422/overlay.html?state=overlay-active` (the default), and
+`http://127.0.0.1:1422/overlay.html?state=overlay-active` (the default; any
+view fixture's name works, `craft-done` for instance, and `scene=bright` or
+`scene=dark` paints a flat white or near-black stand-in for the game behind
+the panel, in the preview only, so its legibility over both can be
+checked), and
 `http://127.0.0.1:1422/settings.html?state=install-downloading&scale=2`
 (default `idle`; `scale` zooms the page as the webview's scale would). The
 pickers read `fixtures/catalogue.json`. Commands are logged, not acted on: a
@@ -469,6 +680,16 @@ none.
 - End craft's in-place question is a group with its sentence as the label;
   focus moves to its Keep crafting button when it opens, so a second
   Enter does not end the craft.
-- Text contrast from the tracker's tokens.
+- The watch line and the overlay's warning rows are told by their words
+  (each says what to do), not by the warning colour alone; a History
+  entry's source is a word, not a mark.
+- The overlay cannot take focus and is not a live region; everything it
+  shows is also in the main window, where the status line announces it.
+- The Settings window's Position select and screen-reading switch are
+  native controls with visible labels; the switch's state is its checked
+  state, as Updates' switch.
+- Text contrast from the tracker's tokens; on the overlay over a white
+  scene, 12:1 for primary text and 4.7:1 for muted text (computed from
+  the tokens at the panel's 0.92 opacity).
 - No motion beyond transitions of 120 ms (colours, the switch, the
   download bar), and none under `prefers-reduced-motion`.
