@@ -56,6 +56,10 @@ pub struct Recorded {
     pub settings_opened: usize,
     /// How often the app asked to quit and start again.
     pub restarts: usize,
+    /// Every address the app asked the browser to open, in order.
+    pub opened: Vec<String>,
+    /// Opening the browser fails with this reason.
+    pub open_fails: Option<String>,
 }
 
 /// What a busy clipboard's read says, as the glue reports it after its
@@ -161,6 +165,15 @@ impl Shell for FakeShell {
     fn restart(&self) {
         self.rec().restarts += 1;
     }
+
+    fn open_in_browser(&self, address: &str) -> Result<(), String> {
+        let mut r = self.rec();
+        r.opened.push(address.to_string());
+        match &r.open_fails {
+            Some(why) => Err(why.clone()),
+            None => Ok(()),
+        }
+    }
 }
 
 pub fn app_root() -> PathBuf {
@@ -216,6 +229,36 @@ pub const ITEM_TEXT: &str = "Item Class: Gloves\r\nRarity: Rare\r\nGale Grip\r\n
 pub const ITEM_TEXT_NORMALISED: &str = "Item Class: Gloves\nRarity: Rare\nGale Grip\nRiveted Mitts\n--------\nArmour: 52\n--------\nItem Level: 74\n--------\n+31 to maximum Life";
 /// Text that is not an item.
 pub const NOT_ITEM_TEXT: &str = "a shopping list\nmilk\neggs\n";
+
+/// One state of the whittled ring `ch-engine`'s tests walk
+/// (`crates/ch-engine/tests/items/gear/rings-resist-whittle/`): `01-start`
+/// is the start, `02-chaos-fire` … `05-revealed-lightning` the hit path,
+/// `06-chaos-below-floor`, `07-revealed-wrong` and `08-whittle-lightning`
+/// the miss path's other states.
+pub fn ring(name: &str) -> String {
+    let path = app_root()
+        .join("crates/ch-engine/tests/items/gear/rings-resist-whittle")
+        .join(format!("{name}.txt"));
+    fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// The ring's targets: fire, cold and lightning resistance at T3 or better.
+pub const RING_TARGETS: [&str; 3] = [
+    "suffix-to-fire-resistance",
+    "suffix-to-cold-resistance",
+    "suffix-to-lightning-resistance",
+];
+
+/// [`RING_TARGETS`] at floor 3, as `set_targets` takes them.
+pub fn ring_targets() -> Vec<ch_app::ch_engine::Target> {
+    RING_TARGETS
+        .iter()
+        .map(|id| ch_app::ch_engine::Target::new(*id, Some(3)))
+        .collect()
+}
+
+/// The blueprint the ring's walk follows.
+pub const WHITTLE: &str = "rings-resist-whittle";
 
 pub fn wait_until(what: &str, pred: impl Fn() -> bool) {
     let start = Instant::now();

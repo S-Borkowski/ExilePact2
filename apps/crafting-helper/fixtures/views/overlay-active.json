@@ -1,4 +1,10 @@
 {
+  "craft": {
+    "guiding": null,
+    "mode": "refused",
+    "planning": null,
+    "refusal": "the item text has no modifier headers, so no tiers"
+  },
   "grab": {
     "line_count": 10,
     "looks_like_item": true,

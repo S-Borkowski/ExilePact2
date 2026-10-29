@@ -1,0 +1,72 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [
+        {
+          "instruction": "Chaos Orb until one of the targets lands",
+          "number": 1,
+          "result": "unexpected",
+          "step": "chaos",
+          "summary": "Unexpected: Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came; gained +#% to Fire Resistance (T3), +#% to Cold Resistance (T3)"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+33(31-35)% to Fire Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+32(31-35)% to Cold Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [
+        "Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came"
+      ],
+      "route_name": "Rings: resistances by whittling",
+      "status": "replan",
+      "step": null
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 16,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Suffix Modifier \"of the Volcano\" (Tier: 3) — Elemental, Fire, Resistance }\n+33(31-35)% to Fire Resistance\n{ Suffix Modifier \"of the Polar Bear\" (Tier: 3) — Elemental, Cold, Resistance }\n+32(31-35)% to Cold Resistance"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": false
+  },
+  "status": {
+    "kind": "error",
+    "text": "Unexpected: Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came; gained +#% to Fire Resistance (T3), +#% to Cold Resistance (T3)."
+  },
+  "update_available": null
+}

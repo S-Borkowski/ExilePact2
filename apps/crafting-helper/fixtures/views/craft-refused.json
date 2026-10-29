@@ -1,0 +1,24 @@
+{
+  "craft": {
+    "guiding": null,
+    "mode": "refused",
+    "planning": null,
+    "refusal": "the item is corrupted"
+  },
+  "grab": {
+    "line_count": 18,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Suffix Modifier \"of the Lion\" (Tier: 5) — Attribute }\n+18(17-20) to Strength\n--------\nCorrupted"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Grabbed an item: 18 lines."
+  },
+  "update_available": null
+}

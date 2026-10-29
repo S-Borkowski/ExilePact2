@@ -1,0 +1,84 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [
+        {
+          "instruction": "Chaos Orb until one of the targets lands",
+          "number": 1,
+          "result": "miss",
+          "step": "chaos",
+          "summary": "Miss: +#% to Fire Resistance (T5) below its floor T3"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+95(90-104) to maximum Mana"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 5,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+23(21-25)% to Fire Resistance"
+            ],
+            "meets_target": false,
+            "side": "suffix",
+            "tier": 5,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step": {
+        "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+        "on_miss": "On a miss: this step again",
+        "step": {
+          "fallback": null,
+          "id": "chaos",
+          "instruction": "Chaos Orb until one of the targets lands",
+          "number": 1,
+          "odds": "~3.0% ((4000 of 133355 weight) times (2 of 2 removable modifiers are not wanted))",
+          "uses": [
+            "Chaos Orb"
+          ]
+        },
+        "try_number": 2
+      }
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 16,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Suffix Modifier \"of the Kiln\" (Tier: 5) — Elemental, Fire, Resistance }\n+23(21-25)% to Fire Resistance"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Miss: +#% to Fire Resistance (T5) below its floor T3."
+  },
+  "update_available": null
+}

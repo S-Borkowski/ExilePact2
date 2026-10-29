@@ -19,9 +19,20 @@
 //! Ctrl+Alt+C falls back to the default at launch, and says so. A key
 //! another program holds is reported and the app keeps running.
 //!
-//! The overlay: [`View::overlay`] is visible only while a craft is active
-//! ([`App::set_craft_active`], which the craft UI will call); no command
-//! calls it yet, so the overlay never shows in 0.1.0.
+//! The craft window ([`crate::craft`]): a grab that passes also goes to the
+//! craft, where it becomes the planning item, is refused with the reason,
+//! or, while guiding, is the result of the current step (`craft: <hit|miss|
+//! unexpected> at <step id>` in `diag.log`). The commands `set_targets`,
+//! `set_craft_blocked`, `choose_route`, `accept_craft` and `end_craft` each
+//! return the [`View`]; a refused one changes nothing, says why in the
+//! status line and logs `craft: refused: <reason>`. `open_craft_of_exile`
+//! asks the shell to open [`CRAFT_OF_EXILE_URL`] and nothing else. The
+//! shipped blueprints are loaded once, when the app is built.
+//!
+//! The overlay: [`View::overlay`] is visible only while
+//! [`App::set_craft_active`] says so; no command calls it, and the craft
+//! window does not either (the overlay is M6's), so the overlay never shows
+//! in 0.1.0.
 //!
 //! The hotkey, `check_updates` and the blocked currencies are saved to
 //! `settings.json` by a saver thread, [`SAVE_DELAY`] after the last change
@@ -51,15 +62,20 @@ use ep_update::{
 };
 use serde_json::{json, Value};
 
+use ch_engine::{Engine, Target};
+
+use crate::craft::{CommandResult, Craft, GrabEffect, CRAFT_OF_EXILE_URL};
 use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
 use crate::settings::{
-    catalogue_groups, load_blocked, read_patch, CatalogueGroup, BLOCKED_CURRENCIES_KEY,
-    CHECK_UPDATES_KEY,
+    blocked_list, catalogue_groups, load_blocked, read_patch, CatalogueGroup,
+    BLOCKED_CURRENCIES_KEY, CHECK_UPDATES_KEY,
 };
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
 use crate::updates::{Clock, UpdateSetup};
-use crate::view::{GrabSource, GrabView, OverlayView, SettingsView, StatusKind, StatusLine, View};
+use crate::view::{
+    GrabSource, GrabView, OutcomeWord, OverlayView, SettingsView, StatusKind, StatusLine, View,
+};
 
 /// How long after the last change the settings are written.
 pub const SAVE_DELAY: Duration = Duration::from_millis(500);
@@ -145,6 +161,12 @@ pub trait Shell: Send + Sync {
     fn open_settings(&self) -> Result<(), String> {
         Err("this shell has no Settings window".to_string())
     }
+    /// Opens `address` in the default browser. Called from
+    /// [`App::open_craft_of_exile`] alone, always with
+    /// [`CRAFT_OF_EXILE_URL`]; no command takes an address.
+    fn open_in_browser(&self, _address: &str) -> Result<(), String> {
+        Err("this shell cannot open a web browser".to_string())
+    }
     /// A new exe is in place: quit through the app's own quit path (whose
     /// shutdown calls [`App::shutdown`]); the shell starts the new exe once
     /// the app has shut down, because [`App::restart_requested`] says so.
@@ -175,7 +197,10 @@ struct State {
     /// `true`.
     check_updates: bool,
     blocked_currencies: Vec<String>,
+    /// Whether the overlay shows; nothing in 0.1.0 sets it (M6 will).
     craft_active: bool,
+    /// The craft window's state, in memory only.
+    craft: Craft,
 }
 
 enum SaveMsg {
@@ -208,6 +233,9 @@ pub struct App {
     ticker: Mutex<Option<Sender<()>>>,
     /// A finished install asked the shell to quit and start the new exe.
     restart_requested: AtomicBool,
+    /// The shipped blueprints, loaded once; `None` when they did not load
+    /// (then every grab is refused with that reason).
+    engine: Option<Engine>,
 }
 
 impl App {
@@ -307,6 +335,22 @@ impl App {
             }
         }
 
+        let engine = match Engine::shipped() {
+            Ok(engine) => Some(engine),
+            Err(errors) => {
+                set_status(
+                    StatusLine::error(format!(
+                        "The shipped blueprints did not load ({} error{}), so no craft can be planned.",
+                        errors.len(),
+                        if errors.len() == 1 { "" } else { "s" }
+                    )),
+                    false,
+                    &mut notes,
+                );
+                None
+            }
+        };
+
         let saver = store.as_ref().map(|s| start_saver(Arc::clone(s)));
         let app = Arc::new_cyclic(|me| App {
             me: me.clone(),
@@ -320,6 +364,7 @@ impl App {
                 check_updates,
                 blocked_currencies,
                 craft_active: false,
+                craft: Craft::default(),
             }),
             saver: Mutex::new(saver),
             hotkey_replaced,
@@ -328,6 +373,7 @@ impl App {
             tick_every,
             ticker: Mutex::new(None),
             restart_requested: AtomicBool::new(false),
+            engine,
         });
         for n in notes {
             app.diag(&format!("settings: {n}"));
@@ -372,7 +418,7 @@ impl App {
     pub fn get_view(&self) -> View {
         let newer = self.updater.newer().map(|v| v.to_string());
         let st = self.lock();
-        view_of(&st, newer)
+        view_of(&st, self.engine.as_ref(), newer)
     }
 
     /// The global hotkey was pressed: reads the clipboard once and grabs
@@ -393,7 +439,8 @@ impl App {
     }
 
     /// Whether a craft is active, and so whether the overlay shows. Public
-    /// for the tests and the craft UI to come; no IPC command calls it.
+    /// for the tests and the overlay to come (M6); no IPC command calls it,
+    /// and the craft window does not either: guiding leaves it hidden.
     pub fn set_craft_active(&self, active: bool) {
         {
             let mut st = self.lock();
@@ -574,6 +621,98 @@ impl App {
         })
     }
 
+    // -- the craft window (see `crate::craft`) -------------------------------
+
+    /// `set_targets`: the whole target list of the planning item. A
+    /// modifier the item cannot roll, or a floor outside the tiers its item
+    /// level reaches, refuses the list whole; repeats are dropped.
+    pub fn set_targets(&self, targets: &[Target]) -> View {
+        self.craft_command("Targets not changed", |craft, engine, settings| {
+            craft.set_targets(engine, targets, settings)
+        })
+    }
+
+    /// `set_craft_blocked`: the effective blocked list for this craft
+    /// (catalogue ids only). Never changes `settings.json`.
+    pub fn set_craft_blocked(&self, blocked: &[String]) -> View {
+        let checked = blocked_list(&Value::from(blocked.to_vec()));
+        self.craft_command("Blocked list not changed", |craft, _, settings| {
+            craft.set_blocked(checked?, settings)
+        })
+    }
+
+    /// `choose_route`: previews another applicable route.
+    pub fn choose_route(&self, blueprint: &str) -> View {
+        self.craft_command("Route not changed", |craft, engine, settings| {
+            craft.choose_route(engine, blueprint, settings)
+        })
+    }
+
+    /// `accept_craft`: starts the guide on the previewed route.
+    pub fn accept_craft(&self) -> View {
+        self.craft_command("Craft not started", |craft, engine, settings| {
+            craft.accept(engine, settings)
+        })
+    }
+
+    /// `end_craft`: from guiding, in any status, back to planning on the
+    /// latest item; targets and this craft's blocked changes are kept, the
+    /// history is cleared.
+    pub fn end_craft(&self) -> View {
+        self.craft_command("Craft not ended", |craft, _, _| craft.end())
+    }
+
+    /// `open_craft_of_exile`: asks the shell to open the one fixed address,
+    /// [`CRAFT_OF_EXILE_URL`], in the default browser. Takes no address.
+    pub fn open_craft_of_exile(&self) -> View {
+        let line = match self.shell.open_in_browser(CRAFT_OF_EXILE_URL) {
+            Ok(()) => {
+                self.diag("opened Craft of Exile");
+                StatusLine::info("Opened Craft of Exile in your web browser.")
+            }
+            Err(e) => {
+                self.diag(&format!("error: opening Craft of Exile: {e}"));
+                StatusLine::error(format!("Craft of Exile could not be opened: {e}."))
+            }
+        };
+        self.lock().status = Some(Status {
+            line,
+            about_hotkey: false,
+        });
+        self.emit();
+        self.get_view()
+    }
+
+    /// Runs one craft command on the state: a refusal changes nothing and
+    /// says why (`<what>: <reason>.`); either way one `diag.log` line, the
+    /// status line and both views.
+    fn craft_command(
+        &self,
+        what: &str,
+        command: impl FnOnce(&mut Craft, Option<&Engine>, &[String]) -> CommandResult,
+    ) -> View {
+        let result = {
+            let mut guard = self.lock();
+            let st = &mut *guard;
+            let result = command(&mut st.craft, self.engine.as_ref(), &st.blocked_currencies);
+            let line = match &result {
+                Ok(done) => StatusLine::info(done.status.clone()),
+                Err(why) => StatusLine::error(format!("{what}: {why}.")),
+            };
+            st.status = Some(Status {
+                line,
+                about_hotkey: false,
+            });
+            result
+        };
+        match result {
+            Ok(done) => self.diag(&done.diag),
+            Err(why) => self.diag(&format!("craft: refused: {why}")),
+        }
+        self.emit();
+        self.get_view()
+    }
+
     /// A finished install asked to quit and start the new exe: the glue's
     /// exit, after [`App::shutdown`], starts it.
     pub fn restart_requested(&self) -> bool {
@@ -735,7 +874,7 @@ impl App {
                 let n = g.line_count;
                 let lines = format!("{n} line{}", if n == 1 { "" } else { "s" });
                 self.diag(&format!("grab from {route}: {lines}"));
-                let line = if g.looks_like_item {
+                let grabbed = if g.looks_like_item {
                     StatusLine::info(format!("Grabbed an item: {lines}."))
                 } else {
                     StatusLine::error(format!(
@@ -743,11 +882,46 @@ impl App {
                     ))
                 };
                 let mut st = self.lock();
+                let effect = st
+                    .craft
+                    .grab(self.engine.as_ref(), &g.text, g.looks_like_item);
+                let line = match &effect {
+                    GrabEffect::Planning { dropped: 0 } | GrabEffect::Refused => grabbed,
+                    GrabEffect::Planning { dropped } => StatusLine::info(format!(
+                        "{} Dropped {dropped} target{} this item cannot roll.",
+                        grabbed.text,
+                        if *dropped == 1 { "" } else { "s" }
+                    )),
+                    GrabEffect::Unchanged => StatusLine::info(
+                        "This is the item the step was shown on: take the step in the game, copy the item with Ctrl+Alt+C, then grab it again.",
+                    ),
+                    GrabEffect::Ignored(why) => StatusLine::error(format!(
+                        "Not a step result: {why}. The craft is unchanged."
+                    )),
+                    GrabEffect::Observed {
+                        result, summary, ..
+                    } => {
+                        if *result == OutcomeWord::Unexpected {
+                            StatusLine::error(format!("{summary}."))
+                        } else {
+                            StatusLine::info(format!("{summary}."))
+                        }
+                    }
+                };
                 st.grab = Some(g);
                 st.status = Some(Status {
                     line,
                     about_hotkey: false,
                 });
+                drop(st);
+                if let GrabEffect::Observed { result, step, .. } = &effect {
+                    let word = match result {
+                        OutcomeWord::Hit => "hit",
+                        OutcomeWord::Miss => "miss",
+                        OutcomeWord::Unexpected => "unexpected",
+                    };
+                    self.diag(&format!("craft: {word} at {step}"));
+                }
             }
             Err(refusal) => {
                 let reason = refusal.reason(source);
@@ -811,8 +985,9 @@ impl Drop for App {
 }
 
 /// The view of `st`, with the newer version a check found.
-fn view_of(st: &State, update_available: Option<String>) -> View {
+fn view_of(st: &State, engine: Option<&Engine>, update_available: Option<String>) -> View {
     View {
+        craft: st.craft.view(engine, &st.blocked_currencies),
         hotkey: st.hotkey.clone(),
         grab: st.grab.clone(),
         status: st.status.as_ref().map(|s| s.line.clone()),

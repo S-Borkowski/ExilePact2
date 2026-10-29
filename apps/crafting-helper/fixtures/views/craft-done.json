@@ -1,0 +1,102 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [
+        {
+          "instruction": "Chaos Orb until one of the targets lands",
+          "number": 1,
+          "result": "hit",
+          "step": "chaos",
+          "summary": "Hit: gained +#% to Fire Resistance (T3)"
+        },
+        {
+          "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+          "number": 2,
+          "result": "hit",
+          "step": "whittle",
+          "summary": "Hit: gained +#% to Cold Resistance (T3)"
+        },
+        {
+          "instruction": "Desecrate for the last target",
+          "number": 3,
+          "result": "hit",
+          "step": "desecrate",
+          "summary": "Hit: the step did what it is for, no target gained or lost"
+        },
+        {
+          "instruction": "Reveal it at the Well of Souls",
+          "number": 4,
+          "result": "hit",
+          "step": "reveal",
+          "summary": "Hit: gained +#% to Lightning Resistance (T3)"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+33(31-35)% to Fire Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+32(31-35)% to Cold Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": true,
+            "fractured": false,
+            "lines": [
+              "+33(31-35)% to Lightning Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Rings: resistances by whittling",
+      "status": "done",
+      "step": null
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 18,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Suffix Modifier \"of the Volcano\" (Tier: 3) — Elemental, Fire, Resistance }\n+33(31-35)% to Fire Resistance\n{ Suffix Modifier \"of the Polar Bear\" (Tier: 3) — Elemental, Cold, Resistance }\n+32(31-35)% to Cold Resistance\n{ Desecrated Suffix Modifier \"of the Maelstrom\" (Tier: 3) — Elemental, Lightning, Resistance }\n+33(31-35)% to Lightning Resistance"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "line": "Next step: shown here while a craft is active.",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Hit: gained +#% to Lightning Resistance (T3)."
+  },
+  "update_available": null
+}

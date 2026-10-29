@@ -14,7 +14,10 @@ mod common;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use ch_app::{CatalogueGroup, InstallState, SettingsView, StatusKind, Version, View};
+use ch_app::{
+    CatalogueGroup, CraftMode, GuideStatusView, InstallState, OutcomeWord, SettingsView,
+    StatusKind, Version, View,
+};
 use common::*;
 use serde_json::{json, Value};
 
@@ -125,6 +128,66 @@ fn main_views() -> Vec<(&'static str, View)> {
     app.set_craft_active(true);
     out.push(("overlay-active", app.get_view()));
     app.shutdown();
+
+    // The craft window, over `ch-engine`'s whittled ring: each state from
+    // an app of its own, planning the ring's start with its three targets
+    // on the whittling route.
+    let planned = |dir: &str| {
+        let shell = FakeShell::default();
+        let app = start(&tmp.path().join(dir), &shell);
+        app.grab_text(Some(&ring("01-start")));
+        app.set_targets(&ring_targets());
+        app.choose_route(WHITTLE);
+        app
+    };
+    let app = planned("planning");
+    out.push(("craft-planning", app.get_view()));
+    app.shutdown();
+    let app = planned("fallback");
+    out.push((
+        "craft-fallback",
+        app.set_craft_blocked(&lines(&["omen-of-whittling"])),
+    ));
+    app.shutdown();
+    let app = planned("no-route");
+    out.push((
+        "craft-no-route",
+        app.set_craft_blocked(&lines(&["chaos-orb"])),
+    ));
+    app.shutdown();
+
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("refused"), &shell);
+    let corrupted = format!("{}\n--------\nCorrupted", ring("01-start").trim_end());
+    out.push(("craft-refused", app.grab_text(Some(&corrupted))));
+    app.shutdown();
+
+    // Guiding: one hit taken; a miss; an unexpected change; done.
+    let guided = |dir: &str, files: &[&str]| {
+        let app = planned(dir);
+        app.accept_craft();
+        let mut view = app.get_view();
+        for file in files {
+            view = app.grab_text(Some(&ring(file)));
+        }
+        app.shutdown();
+        view
+    };
+    out.push(("craft-guiding", guided("guiding", &["02-chaos-fire"])));
+    out.push(("craft-miss", guided("miss", &["06-chaos-below-floor"])));
+    out.push(("craft-replan", guided("replan", &["03-whittle-cold"])));
+    out.push((
+        "craft-done",
+        guided(
+            "done",
+            &[
+                "02-chaos-fire",
+                "03-whittle-cold",
+                "04-desecrated",
+                "05-revealed-lightning",
+            ],
+        ),
+    ));
     out
 }
 
@@ -240,6 +303,56 @@ fn fixtures_are_current() {
         .filter(|(n, _)| *n != "overlay-active")
         .all(|(_, v)| !v.overlay.visible));
 
+    // Each craft view is the mode and state it is named for.
+    assert_eq!(view("empty").craft.mode, CraftMode::None);
+    let plan = |n: &str| view(n).craft.planning.as_ref().unwrap();
+    let preview = |n: &str| plan(n).preview.as_ref().unwrap();
+    let route = preview("craft-planning").route.as_ref().unwrap();
+    assert!(route
+        .steps
+        .iter()
+        .any(|s| s.odds.as_deref().is_some_and(|o| o.starts_with('~'))));
+    assert!(route.steps.iter().any(|s| s
+        .odds
+        .as_deref()
+        .is_some_and(|o| o.starts_with("odds unknown: "))));
+    assert!(plan("craft-planning").can_accept);
+    assert!(preview("craft-fallback")
+        .route
+        .as_ref()
+        .unwrap()
+        .steps
+        .iter()
+        .any(|s| s.fallback.is_some()));
+    assert!(preview("craft-no-route").route.is_none());
+    assert!(!preview("craft-no-route").rejected.is_empty());
+    assert!(!plan("craft-no-route").can_accept);
+    assert_eq!(view("craft-refused").craft.mode, CraftMode::Refused);
+    let guide = |n: &str| view(n).craft.guiding.as_ref().unwrap();
+    assert_eq!(guide("craft-guiding").status, GuideStatusView::Active);
+    assert_eq!(guide("craft-guiding").history.len(), 1);
+    assert_eq!(guide("craft-miss").history[0].result, OutcomeWord::Miss);
+    assert_eq!(guide("craft-miss").step.as_ref().unwrap().try_number, 2);
+    assert_eq!(guide("craft-replan").status, GuideStatusView::Replan);
+    assert_eq!(guide("craft-done").status, GuideStatusView::Done);
+    for (name, v) in &views {
+        let mode = v.craft.mode;
+        let parts = (
+            v.craft.refusal.is_some(),
+            v.craft.planning.is_some(),
+            v.craft.guiding.is_some(),
+        );
+        let want = match mode {
+            CraftMode::None => (false, false, false),
+            CraftMode::Refused => (true, false, false),
+            CraftMode::Planning => (false, true, false),
+            CraftMode::Guiding => (false, false, true),
+        };
+        assert_eq!(parts, want, "{name}: exactly the part of its mode");
+        let text = serde_json::to_string(&v.craft).unwrap();
+        assert!(!text.contains("://"), "{name}: {text}");
+    }
+
     // Every view reads back into its type and writes the same JSON; the
     // main view refuses an added and a dropped field.
     for (name, v) in &views {
@@ -252,6 +365,9 @@ fn fixtures_are_current() {
         let mut dropped = value.clone();
         dropped["overlay"].as_object_mut().unwrap().remove("line");
         assert!(serde_json::from_value::<View>(dropped).is_err(), "{name}");
+        let mut extra = value.clone();
+        extra["craft"]["extra"] = Value::Bool(true);
+        assert!(serde_json::from_value::<View>(extra).is_err(), "{name}");
     }
     for (name, v) in &settings {
         let value = serde_json::to_value(v).unwrap();
@@ -277,7 +393,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 13);
-    assert_eq!(views.len(), 6);
+    assert_eq!(views.len(), 14);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

@@ -1,6 +1,8 @@
 //! The crafting helper's logic without Tauri: the store, the grab of an
-//! item's text on demand, the hotkey's rules, the saved settings, the
-//! overlay's state, the views, the commands and the diagnostic log.
+//! item's text on demand, the hotkey's rules, the saved settings, the craft
+//! window (the planning item, its targets, the route preview and the
+//! guide), the overlay's state, the views, the commands and the diagnostic
+//! log.
 //!
 //! The player copies an item with the game's own Ctrl+Alt+C, then presses
 //! the app's global hotkey (the clipboard is read once, for that press) or
@@ -12,7 +14,8 @@
 //! and `src-tauri` split it): it implements [`Shell`] (the global hotkey,
 //! the Win32 clipboard read, the error beep, the `ch:view` and
 //! `ch:app-settings` events, the overlay's show and hide, the Settings
-//! window and the quit that restarts into an installed update), hands
+//! window, opening [`CRAFT_OF_EXILE_URL`] in the default browser and the
+//! quit that restarts into an installed update), hands
 //! [`App::with_updates`] the update transport over `ep-net` and the running
 //! exe's path, and forwards each IPC command to the [`App`] method of the
 //! same name. Keeping every decision here means it tests with a recording
@@ -22,7 +25,15 @@
 //! - [`app`]: [`App`], its commands (`get_view`, `grab_text`,
 //!   `open_settings`, `get_app_settings`, `update_settings`, `set_hotkey`,
 //!   `get_catalogue`, `check_for_updates`, `install_update`,
-//!   `cancel_update`), the hotkey press and [`App::set_craft_active`].
+//!   `cancel_update`, and the craft window's `set_targets`,
+//!   `set_craft_blocked`, `choose_route`, `accept_craft`, `end_craft` and
+//!   `open_craft_of_exile`), the hotkey press and
+//!   [`App::set_craft_active`], which nothing calls in M5.
+//! - [`craft`]: the craft window's state (none, refused, planning,
+//!   guiding; in memory only), what a grab does to it, its commands' rules
+//!   and its view, built from the shipped engine's plan, guide and
+//!   outcomes, with the copy the design marks Rust's (odds, fallbacks,
+//!   floors, branches, history summaries).
 //! - [`grab`]: the checks and the normalisation of a grab's text.
 //! - [`hotkey`]: the default hotkey and the game's item copy it may not be.
 //! - [`settings`]: what `update_settings` takes, the blocked currencies
@@ -31,19 +42,24 @@
 //! - [`updates`]: what the update check is built from ([`UpdateSetup`]), its
 //!   clock and ticker interval. The check, the install of a signed release
 //!   and the Settings window's update view are `ep-update`'s, shared with
-//!   the quest tracker and the waystone roller; no URL is opened anywhere.
-//! - [`view`]: [`View`] and [`SettingsView`], the IPC contract `src/ipc.ts`
-//!   mirrors (Context "The IPC contract").
+//!   the quest tracker and the waystone roller.
+//! - [`view`]: [`View`] (with its craft part, [`CraftView`]) and
+//!   [`SettingsView`], the IPC contract `src/ipc.ts` mirrors.
 //! - [`store`]: the store folder (refused inside a git checkout),
 //!   `settings.json` written atomically, and `diag.log`.
 //! - [`ch_engine`], re-exported for the craft window (M5): the blueprints,
 //!   the route a craft takes, the hit, miss or unexpected outcome of each
 //!   step, the next step's odds and the catalogue the blocked list offers;
 //!   through it the data ([`ch_data`]), the blueprint format
-//!   ([`ch_blueprint`]) and the item parser ([`ch_item`]). The blocked
+//!   ([`ch_blueprint`]) and the item parser ([`ch_item`]). The craft
+//!   window plans with the shipped blueprints, loaded once; the blocked
 //!   list and `get_catalogue` read its catalogue.
+//!
+//! The one address the app opens is [`CRAFT_OF_EXILE_URL`], from
+//! `open_craft_of_exile`, which takes no address.
 
 pub mod app;
+pub mod craft;
 pub mod grab;
 pub mod hotkey;
 pub mod settings;
@@ -52,12 +68,19 @@ pub mod updates;
 pub mod view;
 
 pub use app::{App, AppConfig, BeepAttempt, HotkeyError, Shell, OVERLAY_PLACEHOLDER, SAVE_DELAY};
+pub use craft::CRAFT_OF_EXILE_URL;
 pub use grab::{ITEM_FIRST_LINE, MAX_GRAB_BYTES};
 pub use hotkey::{is_game_item_copy, DEFAULT_HOTKEY, GAME_ITEM_COPY};
 pub use settings::{CatalogueEntry, CatalogueGroup, MAX_ID_CHARS};
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
 pub use updates::{Clock, SteadyClock, UpdateSetup, TICK_EVERY};
-pub use view::{GrabSource, GrabView, OverlayView, SettingsView, StatusKind, StatusLine, View};
+pub use view::{
+    BlockedFrom, ChosenTarget, CraftBlockedEntry, CraftBlockedView, CraftItemView, CraftMode,
+    CraftView, CurrentStepView, FloorOption, GrabSource, GrabView, GuideStatusView, GuidingView,
+    HistoryEntry, ItemModView, ModSide, OutcomeWord, OverlayView, PlanningView, PreviewView,
+    RejectedLine, RouteChoice, RouteView, SettingsView, StatusKind, StatusLine, StepLineView,
+    TargetChoice, TargetChoices, View,
+};
 
 /// The crafting engine, for the craft window, and the crates it re-exports.
 pub use ch_engine;

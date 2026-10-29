@@ -1,4 +1,10 @@
 {
+  "craft": {
+    "guiding": null,
+    "mode": "refused",
+    "planning": null,
+    "refusal": "the text is not an item copied with Ctrl+Alt+C in the game"
+  },
   "grab": {
     "line_count": 3,
     "looks_like_item": false,

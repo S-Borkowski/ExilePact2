@@ -1,4 +1,10 @@
 {
+  "craft": {
+    "guiding": null,
+    "mode": "none",
+    "planning": null,
+    "refusal": null
+  },
   "grab": null,
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
