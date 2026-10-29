@@ -795,8 +795,10 @@ fn no_route_says_why_each_blueprint_was_rejected() {
     let app = start(tmp.path(), &shell);
     app.grab_text(Some(&ring("01-start")));
     app.set_targets(&ring_targets());
-    // With Chaos Orbs blocked no ring route has a first step.
-    let view = app.set_craft_blocked(&lines(&["chaos-orb"]));
+    // With Chaos Orbs and Orbs of Annulment blocked no ring route has a
+    // first step (the state-ordered ones, which clean the suffix side with
+    // an annulment, included).
+    let view = app.set_craft_blocked(&lines(&["chaos-orb", "orb-of-annulment"]));
     let p = planning(&view);
     let preview = p.preview.as_ref().unwrap();
     assert!(preview.route.is_none());

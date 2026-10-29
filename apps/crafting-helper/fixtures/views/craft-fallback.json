@@ -1570,7 +1570,20 @@
         "rarity": "Rare"
       },
       "preview": {
-        "other_routes": [],
+        "other_routes": [
+          {
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one"
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams"
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams"
+          }
+        ],
         "rejected": [],
         "route": {
           "blueprint": "rings-resist-whittle",

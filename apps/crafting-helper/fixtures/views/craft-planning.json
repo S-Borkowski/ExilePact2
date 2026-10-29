@@ -1568,6 +1568,18 @@
           {
             "blueprint": "rings-flat-attack",
             "name": "Rings: flat attack damage and resistances"
+          },
+          {
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one"
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams"
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams"
           }
         ],
         "rejected": [],

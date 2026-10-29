@@ -363,9 +363,10 @@ then:
 
 - With no target: "Pick a target to see a route." and nothing else.
 - With a route: its source (the blueprint's source line, muted:
-  attribution). The blueprint's name is not shown: the route ("fill,
-  desecrate the hardest, slam the last") is the app's recipe, not
-  something the player has to read. With other applicable routes, a select
+  attribution; Rust sends it without the web addresses a blueprint's
+  source names, so no view carries an address). The blueprint's name is
+  not shown: the route ("close the finished side, then slam the open
+  one") is the app's recipe, not something the player has to read. With other applicable routes, a select
   labelled "Route" whose options read "Route 1", "Route 2", ... in Rust's
   order, the previewed one first (so the route on screen is always Route
   1), each option's value its blueprint id; its change sends
@@ -375,7 +376,9 @@ then:
   least T3"). The panel says what is targeted and what to do; the
   blueprint's notes (the reasoning behind the technique) are not sent and
   not shown. Then the steps as a
-  numbered list; each step shows its instruction (Rust's, naming the
+  numbered list (for a state-ordered route, the projection: the steps the
+  craft takes if each one hits, from the item as it stands, so a step may
+  come twice); each step shows its instruction (Rust's, naming the
   step's target modifiers, § "Rust-produced copy"), a "Targets" line with
   the target modifiers a hit of the step may place (left out for a step
   that places none, such as a quality or removal step), a "Uses" line with
@@ -383,7 +386,8 @@ then:
   weight)`, or `odds unknown: <reason>` with the words "odds unknown" kept,
   never a blank or a dash), and, when an earlier alternative was passed
   over, the fallback line under the label "Fallback" (small caps), as sent:
-  `<used name> instead of <first alternative's name>: <names> blocked`.
+  `<used name> instead of <first alternative's name>: <names> blocked`
+  (§ "Rust-produced copy" for a state-ordered step's).
 - With no route: "No route reaches these targets." and one line per
   rejected blueprint, the rejection alone in Rust's words (no blueprint
   name), in Rust's order. The blocked list above is open, so the
@@ -411,13 +415,20 @@ active and stuck, a sunken card with:
 - "Step <n>" and the try count ("try 2"); the instruction, larger than the
   body text, which names the step's target modifiers, or for a removal
   step the currency and the modifier it removes (a whittle-or-annul step
-  names Omen of Whittling or Orb of Annulment, as the app decided from the
-  modifier levels, § "Rust-produced copy"); the "Targets" line
+  of a listed route names Omen of Whittling or Orb of Annulment, as the app
+  decided from the modifier levels, § "Rust-produced copy"); the "Targets" line
   (the target modifiers a hit may place, as in the route's step list); the
   "Uses" line; the odds as sent; the fallback line when there is one.
+  In a state-ordered route the engine picks each step from the item, so
+  "Step <n>" counts the steps in the order this craft takes them, not
+  their place in the blueprint or the preview: the first is 1, a step taken
+  again right after itself keeps its number (the try count goes up), and
+  any other step is the next number. A History entry keeps the number its
+  step had when it was shown.
 - The two branch lines as sent: `On a hit: <where it goes>` and `On a miss:
   <where it goes>`, where Rust names the next step by its instruction or
-  says this step again, start over, give the item up, or the craft is done.
+  says this step again, start over, give the item up, or the craft is done
+  (a state-ordered route's lines: § "Rust-produced copy").
 - The **watch line**: the label "Screen" (small caps, muted) and the
   screen watch's line as Rust sends it (§ "The screen watch's line"), in
   `--color-text-secondary` while it only reports and `--color-warning`
@@ -547,12 +558,12 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 |---|---|
 | Known odds | `~12% (8000 of 69500 weight)`: the percent as an integer from 10 up, with one decimal from 1 to under 10, `under 1%` above 0 and under 1; then the basis in brackets. 100 % is `certain (<basis>)` |
 | Unknown odds | `odds unknown: <reason>` |
-| Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id. None on a whittle-or-annul step the app named by the modifier levels: the whittle it passed over is not blocked |
-| Whittle or annul | a removal step that offers Chaos Orb with Omen of Whittling and then a plain Orb of Annulment (`fill-desecrate-exalt`'s two clean-up steps) is named by the app from the modifier levels, on the item the step is shown on: Chaos Orb with Omen of Whittling when the whittle is a certain hit (the single lowest-level removable modifier is unwanted), else Orb of Annulment, its action and odds the engine's. With Orb of Annulment blocked for the craft the whittle stays, with its odds as they are; with Whittling or the Chaos Orb blocked the engine itself takes the annulment and the Fallback line shows. A grab or a screen read is judged against the way the app named the step, and the next step is decided again on the next item. Only in a blueprint in which every step that names Omen of Whittling is such a step |
+| Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id. None on a whittle-or-annul step the app named by the modifier levels: the whittle it passed over is not blocked. A state-ordered step's engine passes alternatives over by its own rules too (a whittle that is not certain, a Sinistral or Dextral omen with nothing on the other side to protect), and that is no fallback: the line shows only when a blocked id made it pass one over, which Rust tells by asking the engine for the same step with those ids unblocked, and reads `<used, with its omens> instead of <that alternative, with its omens>: <names> blocked` (`Orb of Annulment instead of Orb of Annulment with Omen of Sinistral Annulment: Omen of Sinistral Annulment blocked`) |
+| Whittle or annul | in a listed blueprint, a removal step that offers Chaos Orb with Omen of Whittling and then a plain Orb of Annulment (the retired fill route's two clean-up steps, kept as `ch-engine`'s listed-order test blueprint) is named by the app from the modifier levels, on the item the step is shown on: Chaos Orb with Omen of Whittling when the whittle is a certain hit (the single lowest-level removable modifier is unwanted), else Orb of Annulment, its action and odds the engine's. With Orb of Annulment blocked for the craft the whittle stays, with its odds as they are; with Whittling or the Chaos Orb blocked the engine itself takes the annulment and the Fallback line shows. A grab or a screen read is judged against the way the app named the step, and the next step is decided again on the next item. Only in a listed blueprint in which every step that names Omen of Whittling is such a step. A state-ordered step is the engine's pick, never renamed: the engine takes the whittle only when it is certain to take a non-target on the blocked side and an annulment that fits could take a target, else the annulment, with Omen of Sinistral or Dextral Annulment when the other side holds a target |
 | Floor options | `As high as possible (T<best>)` (the default), then `At least T<n>` per reachable tier |
-| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A removal step names the currency with its omens and the modifier it removes, by its text as the item shows it: the whittle `Chaos Orb with Omen of Whittling to remove <modifier>, the lowest-level modifier` (or `to remove the lowest-level modifier: <a> or <b>` when several share the level), the annulment `Orb of Annulment to remove <a> or <b>; it takes one modifier at random`, naming the unwanted modifiers. Every other step keeps the blueprint's `say` text: a `fill`, `remove-desecrated`, quality or manual step, a removal step with no action, and a step that places a target when no target is left for it. The same function makes it for the route's step list, the current step, the overlay and a History entry |
+| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A removal step names the currency with its omens and the modifier it removes, by its text as the item shows it: the whittle `Chaos Orb with Omen of Whittling to remove <modifier>, the lowest-level modifier` (or `to remove the lowest-level modifier: <a> or <b>` when several share the level), the annulment `Orb of Annulment to remove <a> or <b>; it takes one modifier at random`, naming the unwanted modifiers; a side annulment names only those on its side, `Orb of Annulment with Omen of Sinistral Annulment to remove <a>; it takes one modifier at random`. A `fill` step with a currency names it, its omens and the side it fills, any modifier being its aim: `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier` (`<currency>, for any modifier` with no side), in every blueprint, listed included. Every other step keeps the blueprint's `say` text: a `remove-desecrated`, quality or manual step, a removal step with no action, and a step that places a target when no target is left for it. The same function makes it for the route's step list, the current step, the overlay and a History entry |
 | Step targets | each step line's target modifiers, as the planning list writes them; empty when the step places none |
-| Branches | `On a hit: …` and `On a miss: …`, naming the next step by its instruction as composed for the route on this item (a step the route left out by the blueprint's text), or this step again, start over, give the item up, or the craft is done; a step with a condition, `this step again until its condition holds, then <next>`. A miss that leads to a removal step says `the new modifier is removed next; the step says how once it is shown`: the modifier does not exist yet, so whittle or annul is decided when that step is shown |
+| Branches | `On a hit: …` and `On a miss: …`, naming the next step by its instruction as composed for the route on this item (a step the route left out by the blueprint's text), or this step again, start over, give the item up, or the craft is done; a step with a condition, `this step again until its condition holds, then <next>`. A miss that leads to a removal step says `the new modifier is removed next; the step says how once it is shown`: the modifier does not exist yet, so whittle or annul is decided when that step is shown. A state-ordered route has no transitions: the hit line names the projection's next step by its composed instruction, or says `the craft is done` when the step is the projection's last. The projection is the route the engine previews from the item the step is shown on; when no start of the route fits that item (both sides full, a magic route's item made rare), the one made when the craft started, while every step so far hit; with neither, `On a hit: the next step is picked from the item after the hit`. The miss line is always `On a miss: the next step is picked from the item after the miss` |
 | History summary | no outcome word: the targets gained or lost with their tier, a below-floor roll, or the reasons (`gained +#% to Fire Resistance (T3)`). The page puts the word before it; the status line, which shows the summary alone, adds it itself (`Hit: gained +#% to Fire Resistance (T3).`) |
 | Refusal, rejection, stuck and replan reasons, the status line | Rust's words. No status line names the blueprint (`Route chosen.`, `Craft started.`) |
 | Catalogue group labels and currency names | Rust's (English) |
@@ -679,11 +690,12 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `craft-prefilled` | Planning right after the grab: the item's own two modifiers ticked as targets at their tier and tagged "target", the route the engine previews for them |
 | `craft-planning` | Targets chosen with their floors, listed again above the route's steps; steps that name their target modifiers and show known and unknown odds; Start crafting enabled |
 | `craft-fallback` | A blocked currency and the step's fallback line; Blocked for this craft open, the entry tagged with its source |
-| `craft-no-route` | Targets no blueprint reaches: one line per rejected blueprint; Start crafting disabled with its reason |
+| `craft-no-route` | Targets no blueprint reaches (Chaos Orbs and Orbs of Annulment blocked): one line per rejected blueprint; Start crafting disabled with its reason |
+| `craft-close-side` | The owner's 2P/1S belt on the state-ordered `close-a-side`: the fill step `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier`, then the slam on the one open side with no side omen; the source line without its web addresses |
 | `craft-refused` | A grab the engine refuses: "Can't plan this item", the reason, the grabbed text |
 | `craft-guiding` | The guide on its first step: instruction, odds, both branch lines, try 1, "No step taken yet." |
 | `craft-miss` | After a miss: the "Last:" line and History's Miss entry with its summary, the step the miss led to |
-| `craft-miss-clean` | `fill-desecrate-exalt` after a missed exalt: the clean-up step named by the modifier levels as Orb of Annulment, its odds, no Fallback line |
+| `craft-miss-clean` | The belt's craft after the slam on its open side missed: Step 3, the engine's Orb of Annulment with Omen of Sinistral Annulment (a whittle would take a target), its odds, no Fallback line, both branch lines saying the item picks the next step |
 | `craft-replan` | Status Replan with its reasons; End craft primary |
 | `craft-done` | Status Done: "The craft is done.", the whole history |
 | `craft-watching` | Guiding with the screen watch reading and no tooltip: the watch line `Watching: …` |

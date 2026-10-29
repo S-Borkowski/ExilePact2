@@ -30,8 +30,10 @@ the targets and the whittling route chosen:
 - `craft-fallback`: as planning, with the Omen of Whittling blocked for
   this craft, so the whittle step falls back to a Perfect Exalted Orb and
   says why.
-- `craft-no-route`: as planning, with Chaos Orbs blocked for this craft:
-  no route, one rejection per blueprint.
+- `craft-no-route`: as planning, with Chaos Orbs and Orbs of Annulment
+  blocked for this craft: no route (the state-ordered routes, which clean
+  the suffix side with an annulment, included), one rejection per
+  blueprint.
 - `craft-refused`: the ring, corrupted: the engine's refusal in words.
 - `craft-guiding`: the route started and one hit taken: on the whittle
   step, with its branch lines and one history entry.
@@ -47,18 +49,28 @@ lost.`). No status line names the blueprint (`Route chosen.`, `Craft
 started.`). The branch lines name the next step by its composed
 instruction, never the blueprint's text.
 
-One craft state uses the ring of `ch-engine`'s fill walk
-(`crates/ch-engine/tests/items/gear/fill-desecrate-exalt/`), with life T3,
-fire T4, cold T4 and chaos T3 as the targets and the fill, desecrate, slam
-route chosen:
+Two craft states use the owner's 2P/1S belt (`crates/ch-app/tests/items/`,
+constructed), with maximum Life T2, maximum Mana T2, Armour T2 (missing)
+and Fire Resistance T3 as the targets and the state-ordered `close-a-side`
+chosen:
 
-- `craft-miss-clean`: planned on `03-fill-fire` and started, the exalt
-  missed (`07-fill-miss` rolled accuracy): on `fill-clean`, which the app
-  names by the modifier levels. Life, a target, is the lowest, so a
-  whittle would take it: the step is the Orb of Annulment, naming the
-  unwanted mana and accuracy and saying the orb takes one at random, with
-  the engine's odds for it and no fallback line. A miss branch to it says
-  the new modifier is removed next, without offering the choice.
+- `craft-close-side`: planning on the belt: the route closes the finished
+  suffix side first, `Exalted Orb with Omen of Greater Exaltation and Omen
+  of Dextral Exaltation on the suffix side, for any modifier` (a fill step's
+  instruction, composed from its data), then slams the one open prefix side
+  with a Perfect Exalted Orb and no side omen. No step offers an Exalted
+  Orb that could land on the prefix side's reserved slot. The route's
+  source line carries no web address.
+- `craft-miss-clean`: the same craft started, the suffix side closed (a
+  hit) and the slam on the prefix side missed (Flask Life Recovery): on
+  `remove`, numbered as the craft's third step. Mana, a target, is the
+  lowest modifier, so a whittle would take it: the engine takes the Orb of
+  Annulment with Omen of Sinistral Annulment (the suffix side holds fire),
+  naming the unwanted Flask Life Recovery and saying the orb takes one at
+  random, with its odds and no fallback line (the engine passed the
+  whittle over by its own rule). Both branch lines say the next step is
+  picked from the item (no route's start fits the full belt, and a step
+  missed).
 
 Every guiding view carries the overlay's content (`overlay.guide`: the
 current step, both branch lines, the last outcome and the screen watch's

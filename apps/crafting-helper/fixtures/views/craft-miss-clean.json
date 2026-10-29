@@ -1,85 +1,116 @@
 {
   "craft": {
     "guiding": {
-      "blueprint": "fill-desecrate-exalt",
+      "blueprint": "close-a-side",
       "history": [
         {
-          "instruction": "Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
+          "instruction": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier",
           "number": 1,
+          "result": "hit",
+          "source": "grab",
+          "step": "close",
+          "summary": "the step did what it is for, no target gained or lost"
+        },
+        {
+          "instruction": "Perfect Exalted Orb on the prefix side for +# to Armour",
+          "number": 2,
           "result": "miss",
           "source": "grab",
-          "step": "fill",
+          "step": "slam-open-side",
           "summary": "no target gained or lost"
         }
       ],
       "item": {
-        "base_type": "Amethyst Ring",
-        "class": "Rings",
-        "item_level": 76,
+        "base_type": "Heavy Belt",
+        "class": "Belts",
+        "item_level": 82,
         "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+130(120-149) to maximum Life"
+            ],
+            "meets_target": true,
+            "side": "prefix",
+            "tier": 2,
+            "unrevealed": false
+          },
           {
             "desecrated": false,
             "fractured": false,
             "lines": [
               "+95(90-104) to maximum Mana"
             ],
-            "meets_target": false,
-            "side": "prefix",
-            "tier": 5,
-            "unrevealed": false
-          },
-          {
-            "desecrated": false,
-            "fractured": false,
-            "lines": [
-              "+75(70-84) to maximum Life"
-            ],
             "meets_target": true,
             "side": "prefix",
-            "tier": 3,
+            "tier": 2,
             "unrevealed": false
           },
           {
             "desecrated": false,
             "fractured": false,
             "lines": [
-              "+200(168-236) to Accuracy Rating"
+              "38(35-40)% increased Flask Life Recovery rate"
             ],
             "meets_target": false,
             "side": "prefix",
-            "tier": 3,
+            "tier": 1,
             "unrevealed": false
           },
           {
             "desecrated": false,
             "fractured": false,
             "lines": [
-              "+28(26-30)% to Fire Resistance"
+              "+33(31-35)% to Fire Resistance"
             ],
             "meets_target": true,
             "side": "suffix",
-            "tier": 4,
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+38(36-40)% to Cold Resistance"
+            ],
+            "meets_target": false,
+            "side": "suffix",
+            "tier": 2,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+29(28-30) to Strength"
+            ],
+            "meets_target": false,
+            "side": "suffix",
+            "tier": 3,
             "unrevealed": false
           }
         ],
-        "name": "Doom Loop",
+        "name": "Cord Snare",
         "rarity": "Rare"
       },
       "reasons": [],
-      "route_name": "Fill, desecrate the hardest, slam the last",
+      "route_name": "Close the finished side, then slam the open one",
       "status": "active",
       "step": {
-        "on_hit": "On a hit: Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
-        "on_miss": "On a miss: this step again",
+        "on_hit": "On a hit: the next step is picked from the item after the hit",
+        "on_miss": "On a miss: the next step is picked from the item after the miss",
         "step": {
           "fallback": null,
-          "id": "fill-clean",
-          "instruction": "Orb of Annulment to remove +95(90-104) to maximum Mana or +200(168-236) to Accuracy Rating; it takes one modifier at random",
-          "number": 5,
-          "odds": "~50% (2 of 4 removable modifiers are not wanted)",
+          "id": "remove",
+          "instruction": "Orb of Annulment with Omen of Sinistral Annulment to remove 38(35-40)% increased Flask Life Recovery rate; it takes one modifier at random",
+          "number": 3,
+          "odds": "~33% (1 of 3 removable modifiers are not wanted)",
           "targets": [],
           "uses": [
-            "Orb of Annulment"
+            "Orb of Annulment",
+            "Omen of Sinistral Annulment"
           ]
         },
         "try_number": 1
@@ -94,32 +125,33 @@
     "refusal": null
   },
   "grab": {
-    "line_count": 20,
+    "line_count": 24,
     "looks_like_item": true,
     "source": "paste",
-    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Prefix Modifier \"Robust\" (Tier: 3) — Life }\n+75(70-84) to maximum Life\n{ Prefix Modifier \"Steady\" (Tier: 3) — Attack }\n+200(168-236) to Accuracy Rating\n{ Suffix Modifier \"of the Furnace\" (Tier: 4) — Elemental, Fire, Resistance }\n+28(26-30)% to Fire Resistance"
+    "text": "Item Class: Belts\nRarity: Rare\nCord Snare\nHeavy Belt\n--------\nRequires: Level 40\n--------\nItem Level: 82\n--------\n{ Implicit Modifier }\nHas 2 Charm Slots — Unscalable Value\n--------\n{ Prefix Modifier \"Athlete's\" (Tier: 2) — Life }\n+130(120-149) to maximum Life\n{ Prefix Modifier \"Gentian\" (Tier: 2) — Mana }\n+95(90-104) to maximum Mana\n{ Prefix Modifier \"Regenerating\" (Tier: 1) }\n38(35-40)% increased Flask Life Recovery rate\n{ Suffix Modifier \"of the Volcano\" (Tier: 3) — Elemental, Fire, Resistance }\n+33(31-35)% to Fire Resistance\n{ Suffix Modifier \"of the Ice\" (Tier: 2) — Elemental, Cold, Resistance }\n+38(36-40)% to Cold Resistance\n{ Suffix Modifier \"of the Leviathan\" (Tier: 3) — Attribute }\n+29(28-30) to Strength"
   },
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
     "guide": {
-      "instruction": "Orb of Annulment to remove +95(90-104) to maximum Mana or +200(168-236) to Accuracy Rating; it takes one modifier at random",
+      "instruction": "Orb of Annulment with Omen of Sinistral Annulment to remove 38(35-40)% increased Flask Life Recovery rate; it takes one modifier at random",
       "last": {
-        "instruction": "Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
-        "number": 1,
+        "instruction": "Perfect Exalted Orb on the prefix side for +# to Armour",
+        "number": 2,
         "result": "miss",
         "source": "grab",
-        "step": "fill",
+        "step": "slam-open-side",
         "summary": "no target gained or lost"
       },
-      "odds": "~50% (2 of 4 removable modifiers are not wanted)",
-      "on_hit": "On a hit: Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
-      "on_miss": "On a miss: this step again",
-      "route_name": "Fill, desecrate the hardest, slam the last",
+      "odds": "~33% (1 of 3 removable modifiers are not wanted)",
+      "on_hit": "On a hit: the next step is picked from the item after the hit",
+      "on_miss": "On a miss: the next step is picked from the item after the miss",
+      "route_name": "Close the finished side, then slam the open one",
       "status": "active",
-      "step_number": 5,
+      "step_number": 3,
       "try_number": 1,
       "uses": [
-        "Orb of Annulment"
+        "Orb of Annulment",
+        "Omen of Sinistral Annulment"
       ],
       "watch": {
         "text": "Screen reading is not available: grab the item after each step.",

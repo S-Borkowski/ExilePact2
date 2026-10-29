@@ -1,9 +1,11 @@
-//! The five equipment seed blueprints in `apps/crafting-helper/blueprints/`,
-//! each walked twice: a hit path (every step taken hits and the guide
+//! The five equipment seed blueprints, each walked twice: a hit path (every step taken hits and the guide
 //! reaches done) and a miss path (a miss follows the blueprint's miss
 //! transition, and the walk then reaches done). The item states are in
 //! `tests/items/gear/<blueprint id>/` (its README says which are
-//! constructed), plus `ch-item`'s real Sirenscale Gloves.
+//! constructed), plus `ch-item`'s real Sirenscale Gloves. Four are shipped
+//! (`apps/crafting-helper/blueprints/`); `fill-desecrate-exalt` is retired
+//! from the shipped set and walked from its test copy, the listed-order
+//! baseline (`tests/items/gear/fill-desecrate-exalt/`).
 
 mod common;
 
@@ -29,14 +31,26 @@ const COLD: &str = "suffix-to-cold-resistance";
 const LIGHTNING: &str = "suffix-to-lightning-resistance";
 const CHAOS: &str = "suffix-to-chaos-resistance";
 
+/// The retired blueprint, kept as a test blueprint beside its walk's items.
+const RETIRED: &str = "fill-desecrate-exalt";
+
 /// An engine over this file's five blueprints, read from the shipped
-/// folder (not `Engine::shipped`, so another item's blueprint cannot
-/// break these walks).
+/// folder and, for the retired one, from its test copy (not
+/// `Engine::shipped`, so another item's blueprint cannot break these
+/// walks).
 fn gear() -> Engine {
     let folder = crate_dir().join("..").join("..").join("blueprints");
     let paths: Vec<PathBuf> = IDS
         .iter()
-        .map(|id| folder.join(format!("{id}.toml")))
+        .map(|id| match *id {
+            RETIRED => crate_dir()
+                .join("tests")
+                .join("items")
+                .join("gear")
+                .join(RETIRED)
+                .join(format!("{RETIRED}.toml")),
+            _ => folder.join(format!("{id}.toml")),
+        })
         .collect();
     Engine::load(&paths).unwrap_or_else(|errors| {
         let lines: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
@@ -140,7 +154,7 @@ fn gained(out: &Outcome) -> Vec<&str> {
     out.gained.iter().map(|w| w.mod_id.as_str()).collect()
 }
 
-// --- fill-desecrate-exalt (roadmap) --------------------------------------
+// --- fill-desecrate-exalt (roadmap; retired, its test copy) --------------
 
 /// Life T3 (the plain Essence of the Body's tier on rings), fire and cold
 /// resistance T4, chaos resistance T3 (the hardest: 250 weight a tier).

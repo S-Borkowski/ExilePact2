@@ -10,6 +10,11 @@
             "from": "craft",
             "id": "chaos-orb",
             "name": "Chaos Orb"
+          },
+          {
+            "from": "craft",
+            "id": "orb-of-annulment",
+            "name": "Orb of Annulment"
           }
         ]
       },
@@ -1588,9 +1593,14 @@
             "reason": "not a blueprint for Rings"
           },
           {
-            "blueprint": "fill-desecrate-exalt",
-            "name": "Fill, desecrate the hardest, slam the last",
-            "reason": "no start fits the item (0 wanted modifiers, at least 3 needed; no fractured modifier | 0 wanted modifiers, at least 2 needed | the item is rare, not magic; no unblocked essence adds a remaining target at its floor)"
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one",
+            "reason": "no step can be taken while a target is missing (`remove`: every alternative is blocked; `close`: no side is closable; `slam-open-side`: its guard does not hold (0 sides are open, not one); `side-slam`: no open side has a target it can place)"
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams",
+            "reason": "no step can be taken while a target is missing (`essence`: its guard does not hold (the item is rare, not magic); `reveal`: no unrevealed modifier; `light`: its guard does not hold (no revealed desecrated modifier is unwanted); `remove`: every alternative is blocked; `desecrate`: a desecrated modifier is already on the item; `side-slam`: no open side has a target it can place)"
           },
           {
             "blueprint": "gloves-crit-melee",
@@ -1601,6 +1611,16 @@
             "blueprint": "jewels-three-one-side",
             "name": "Jewels: three on one side",
             "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "magic-augment-essence",
+            "name": "Magic with two good modifiers, then an essence",
+            "reason": "no start fits the item (the item is rare, not normal | the item is rare, not magic)"
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams",
+            "reason": "no step can be taken while a target is missing (`remove`: every alternative is blocked; `side-slam`: no open side has a target it can place)"
           },
           {
             "blueprint": "rings-flat-attack",
@@ -1671,7 +1691,7 @@
   },
   "status": {
     "kind": "info",
-    "text": "Blocked for this craft: 1."
+    "text": "Blocked for this craft: 2."
   },
   "update_available": null
 }

@@ -257,7 +257,8 @@ pub fn start_watching(
 /// The tooltip of an item text as the reader would report it, plain (no
 /// Alt): the name lines in the header with their rarity's colour, then the
 /// lines under them without the `Item Class:` and `Rarity:` lines, the
-/// separators, the `{ … }` headers and every `(min-max)` range. An
+/// separators, the `{ … }` headers, every `(min-max)` range and the advanced
+/// copy's ` — Unscalable Value` marker (a belt's charm slot line). An
 /// assumption until the `locator` item reads the owner's screenshots (as
 /// `ch-watch`'s own tests say).
 pub fn tooltip_of(text: &str) -> TooltipRead {
@@ -282,6 +283,7 @@ pub fn tooltip_of(text: &str) -> TooltipRead {
         if in_names {
             names.push(line.to_string());
         } else {
+            let line = line.strip_suffix(" — Unscalable Value").unwrap_or(line);
             rest.push(strip_ranges(line));
         }
     }
@@ -559,33 +561,61 @@ pub fn ring_targets() -> Vec<ch_app::ch_engine::Target> {
 /// The blueprint the ring's walk follows.
 pub const WHITTLE: &str = "rings-resist-whittle";
 
-/// One state of the ring `ch-engine`'s tests walk on the fill, desecrate,
-/// slam route (`crates/ch-engine/tests/items/gear/fill-desecrate-exalt/`):
-/// `03-fill-fire` a Rare with life and fire, `07-fill-miss` an exalt that
-/// rolled accuracy, `08-whittled` that accuracy whittled into strength.
-pub fn fill(name: &str) -> String {
+/// One state of the owner's 2P/1S belt (`tests/items/`, constructed; its
+/// README lists them): `belt-2p1s` the start, two target prefixes and a
+/// target suffix with the Armour prefix missing; `belt-closed` the suffix
+/// side closed; `belt-slam-miss` and `belt-slam-miss-low` the slam on the
+/// open prefix side missed, above and at the lowest modifier level;
+/// `belt-done` every target on it.
+pub fn belt(name: &str) -> String {
     let path = app_root()
-        .join("crates/ch-engine/tests/items/gear/fill-desecrate-exalt")
+        .join("crates/ch-app/tests/items")
         .join(format!("{name}.txt"));
     fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
 }
 
-/// The fill route's targets, as `ch-engine`'s seed walk sets them: life T3,
-/// fire T4, cold T4 and chaos T3.
-pub fn fill_targets() -> Vec<ch_app::ch_engine::Target> {
+/// The belt's targets: maximum Life T2, maximum Mana T2 and Armour T2 (the
+/// missing one) on the prefix side, Fire Resistance T3 on the suffix side.
+pub fn belt_targets() -> Vec<ch_app::ch_engine::Target> {
     [
-        ("prefix-to-maximum-life", 3),
-        ("suffix-to-fire-resistance", 4),
-        ("suffix-to-cold-resistance", 4),
-        ("suffix-to-chaos-resistance", 3),
+        ("prefix-to-maximum-life", 2),
+        ("prefix-to-maximum-mana", 2),
+        ("prefix-to-armour", 2),
+        ("suffix-to-fire-resistance", 3),
     ]
     .iter()
     .map(|(id, floor)| ch_app::ch_engine::Target::new(*id, Some(*floor)))
     .collect()
 }
 
-/// The blueprint the fill walk follows.
-pub const FILL: &str = "fill-desecrate-exalt";
+/// The state-ordered route the belt is crafted on: close the finished
+/// suffix side, then slam the open prefix side.
+pub const CLOSE: &str = "close-a-side";
+
+/// One of the slot cases' items `ch-engine`'s parity test reads
+/// (`crates/ch-engine/tests/items/slots/`, constructed): `rare-one-target`
+/// is issue #28's ring.
+pub fn slots_item(name: &str) -> String {
+    let path = app_root()
+        .join("crates/ch-engine/tests/items/slots")
+        .join(format!("{name}.txt"));
+    fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// Issue #28's ring's targets (`cases.json`'s `rare-one-target`): maximum
+/// Mana T5 (on it), maximum Life T4, Evasion Rating T3 and Chaos Resistance
+/// T3 (the hardest).
+pub fn one_target_targets() -> Vec<ch_app::ch_engine::Target> {
+    [
+        ("prefix-to-maximum-mana", 5),
+        ("prefix-to-maximum-life", 4),
+        ("prefix-to-evasion-rating", 3),
+        ("suffix-to-chaos-resistance", 3),
+    ]
+    .iter()
+    .map(|(id, floor)| ch_app::ch_engine::Target::new(*id, Some(*floor)))
+    .collect()
+}
 
 /// `text` without the modifier whose value line contains `line` (its
 /// header and that line): what an annulment of it leaves.

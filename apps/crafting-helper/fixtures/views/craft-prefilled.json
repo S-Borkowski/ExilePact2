@@ -1570,8 +1570,12 @@
             "name": "Rings: resistances by whittling"
           },
           {
-            "blueprint": "fill-desecrate-exalt",
-            "name": "Fill, desecrate the hardest, slam the last"
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams"
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams"
           }
         ],
         "rejected": [],

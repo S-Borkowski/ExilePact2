@@ -165,7 +165,7 @@ fn main_views() -> Vec<(&'static str, View)> {
     let app = planned("no-route");
     out.push((
         "craft-no-route",
-        app.set_craft_blocked(&lines(&["chaos-orb"])),
+        app.set_craft_blocked(&lines(&["chaos-orb", "orb-of-annulment"])),
     ));
     app.shutdown();
 
@@ -202,19 +202,21 @@ fn main_views() -> Vec<(&'static str, View)> {
         ),
     ));
 
-    // The fill route on `ch-engine`'s fill ring: planned on `03-fill-fire`
-    // with the seed walk's targets, its exalt missed (`07-fill-miss`
-    // rolled accuracy): on `fill-clean`, which the app names by the
-    // modifier levels (life, a target, is the lowest: the annulment).
+    // The owner's 2P/1S belt on the state-ordered `close-a-side`: planned
+    // (the suffix side closed first, with Greater and Dextral Exaltation);
+    // then started, the suffix side closed and the slam on the open prefix
+    // side missed: on `remove`, the engine's annulment kept to the prefix
+    // side (mana, a target, is the lowest, so a whittle would take it).
     let shell = FakeShell::default();
-    let app = start(&tmp.path().join("miss-clean"), &shell);
-    app.grab_text(Some(&fill("03-fill-fire")));
-    app.set_targets(&fill_targets());
-    app.choose_route(FILL);
+    let app = start(&tmp.path().join("close-side"), &shell);
+    app.grab_text(Some(&belt("belt-2p1s")));
+    app.set_targets(&belt_targets());
+    out.push(("craft-close-side", app.choose_route(CLOSE)));
     app.accept_craft();
+    app.grab_text(Some(&belt("belt-closed")));
     out.push((
         "craft-miss-clean",
-        app.grab_text(Some(&fill("07-fill-miss"))),
+        app.grab_text(Some(&belt("belt-slam-miss"))),
     ));
     app.shutdown();
 
@@ -475,9 +477,23 @@ fn fixtures_are_current() {
     assert_eq!(guide("craft-miss").history[0].result, OutcomeWord::Miss);
     assert_eq!(guide("craft-miss").step.as_ref().unwrap().try_number, 2);
     let clean = guide("craft-miss-clean").step.as_ref().unwrap();
-    assert_eq!(clean.step.id, "fill-clean");
-    assert_eq!(clean.step.uses, ["Orb of Annulment"]);
+    assert_eq!(clean.step.id, "remove");
+    assert_eq!(
+        clean.step.uses,
+        ["Orb of Annulment", "Omen of Sinistral Annulment"]
+    );
     assert!(clean.step.fallback.is_none());
+    let close = preview("craft-close-side").route.as_ref().unwrap();
+    assert_eq!(close.blueprint, CLOSE);
+    assert_eq!(
+        close.steps[0].uses,
+        [
+            "Exalted Orb",
+            "Omen of Greater Exaltation",
+            "Omen of Dextral Exaltation"
+        ]
+    );
+    assert!(plan("craft-close-side").can_accept);
     assert_eq!(guide("craft-replan").status, GuideStatusView::Replan);
     assert_eq!(guide("craft-done").status, GuideStatusView::Done);
 
@@ -578,7 +594,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 22);
+    assert_eq!(views.len(), 23);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

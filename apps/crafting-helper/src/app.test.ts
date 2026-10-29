@@ -386,10 +386,11 @@ describe('the craft window', () => {
       'craft-planning': 'Doom Loop',
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
+      'craft-close-side': 'Cord Snare',
       'craft-refused': "Can't plan this item",
       'craft-guiding': 'Doom Loop',
       'craft-miss': 'Doom Loop',
-      'craft-miss-clean': 'Doom Loop',
+      'craft-miss-clean': 'Cord Snare',
       'craft-replan': 'Doom Loop',
       'craft-done': 'Doom Loop',
       'craft-watching': 'Doom Loop',
@@ -463,7 +464,7 @@ describe('the craft window', () => {
     expect(text(route.querySelector('.route-source'))).toBe(previewed.source);
     expect(route.querySelector('.route-notes')).toBeNull();
     const routeSelect = labelled<HTMLSelectElement>(route, 'Route')!;
-    expect([...routeSelect.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2']);
+    expect([...routeSelect.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2', 'Route 3', 'Route 4', 'Route 5']);
     expect(texts(route, 'ol.steps > li .instruction')).toEqual(previewed.steps.map((s) => s.instruction));
     expect(texts(route, 'ol.steps > li .uses')).toEqual(previewed.steps.map((s) => `Uses ${s.uses.join(', ')}`));
     expect(route.querySelector('.fallback')).toBeNull();
@@ -629,11 +630,14 @@ describe('the craft window', () => {
     expect(p.other_routes.length).toBeGreaterThan(0);
     const planning = await renderPreview('craft-planning');
     const select = labelled<HTMLSelectElement>(planning.root.querySelector('.route')!, 'Route')!;
-    expect([...select.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2']);
+    expect([...select.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2', 'Route 3', 'Route 4', 'Route 5']);
     expect([...select.options].map((o) => o.value)).toEqual([p.route!.blueprint, ...p.other_routes.map((o) => o.blueprint)]);
     expect(select.value).toBe(p.route!.blueprint);
-    expect(fixtureView('craft-fallback').craft.planning!.preview!.other_routes).toEqual([]);
-    const single = await renderPreview('craft-fallback');
+    // A route with no other (every fixture's item now has several): the
+    // chooser is left out.
+    const alone = fixtureView('craft-fallback');
+    alone.craft.planning!.preview!.other_routes = [];
+    const single = await render(alone);
     expect(labelled(single.root.querySelector('.route')!, 'Route')).toBeNull();
 
     // No route: each rejection is its reason, in Rust's order.
