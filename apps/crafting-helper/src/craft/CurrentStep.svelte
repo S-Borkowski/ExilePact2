@@ -1,6 +1,8 @@
 <script lang="ts">
-  // Current step (`ui-design.md` § "Mode guiding"): the route's name and the
-  // guide's status as a word, the last outcome where the player looks after
+  // Current step (`ui-design.md` § "Mode guiding"): the item's title (its
+  // name, else its base type, as the Item panel says it; never the
+  // blueprint's name, which is the app's recipe) and the guide's status as
+  // a word, the last outcome where the player looks after
   // a re-grab or a screen read, then for active and stuck the step's card
   // with its branch lines as Rust wrote them and the screen watch's line,
   // the reasons when stuck or replan, and "The craft is done." when done.
@@ -14,11 +16,12 @@
 
   const uid = $props.id();
   const last = $derived(guiding.history.length > 0 ? guiding.history[guiding.history.length - 1] : null);
+  const title = $derived(guiding.item.name ?? guiding.item.base_type ?? guiding.item.class);
 </script>
 
 <section class="guide" aria-labelledby="{uid}-title">
   <div class="title-row">
-    <h2 class="route-title" id="{uid}-title" tabindex="-1" data-mode-heading>{guiding.route_name}</h2>
+    <h2 class="guide-title" id="{uid}-title" tabindex="-1" data-mode-heading>{title}</h2>
     <span class="guide-status" data-status={guiding.status}>{STATUS_LABELS[guiding.status]}</span>
   </div>
 
@@ -83,7 +86,7 @@
     gap: calc(var(--space-unit) * 3);
   }
 
-  .route-title {
+  .guide-title {
     margin: 0;
     color: var(--color-text-primary);
     font-size: var(--size-title);

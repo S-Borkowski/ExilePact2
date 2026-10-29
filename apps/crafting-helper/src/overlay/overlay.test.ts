@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_OVERLAY_PREVIEW_VIEW, previewBridge } from '../bridge';
 import type { View } from '../ipc';
 import { FIXTURE_NAMES, type Rendered, fakeBridge, fixtureView, renderComponent, text } from '../test-support';
+import { OUTCOME_LABELS, STATUS_LABELS } from '../craft/words';
 import Overlay from './Overlay.svelte';
 import { previewScene } from './preview';
 
@@ -34,6 +35,17 @@ const texts = (root: Element, selector: string): string[] => [...root.querySelec
 /** Each row of the panel, top to bottom, by its class. */
 const rows = (root: Element): string[] => [...root.querySelectorAll('.panel .row')].map((el) => el.classList[1]);
 
+/** Mounts the overlay on the preview bridge, opened on the fixture `name` as `?state=` opens it. */
+async function renderPreview(name: string) {
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  const r = await renderComponent(Overlay, { bridge: previewBridge(`?state=${name}`, DEFAULT_OVERLAY_PREVIEW_VIEW) }, ready);
+  mounted.push(r);
+  return r;
+}
+
+/** How many times an outcome's word (hit, miss, unexpected) is said in `line`. */
+const outcomeWords = (line: string): number => line.match(/\b(hit|miss|unexpected)\b/gi)?.length ?? 0;
+
 describe('the overlay', () => {
   it('overlay_renders_the_step_and_both_branches', async () => {
     const active = fixtureView('overlay-active');
@@ -52,7 +64,7 @@ describe('the overlay', () => {
     expect(rows(root)).toEqual(['head', 'instruction', 'uses', 'branch', 'branch', 'last', 'watch']);
     expect(root.querySelectorAll('.panel .group')).toHaveLength(3);
     expect(text(root.querySelector('.head .status-word'))).toBe('Crafting');
-    expect(text(root.querySelector('.head .route'))).toBe(g.route_name);
+    expect(root.querySelector('.head .route')).toBeNull();
     expect(text(root.querySelector('.head .step'))).toBe('Step 2 · try 1');
     expect(text(root.querySelector('.instruction'))).toBe(g.instruction);
     expect(text(root.querySelector('.uses .label'))).toBe('Uses');
@@ -222,5 +234,48 @@ describe('the overlay', () => {
     expect(text(d.root.querySelector('.instruction'))).toBe('The craft is done.');
     expect(text(d.root.querySelector('.last'))).toBe(`Last: Hit from a grab ${done.overlay.guide!.last!.summary}`);
     expect(d.root.querySelectorAll('.panel .group')).toHaveLength(2);
+  });
+
+  it('overlay_does_not_name_the_blueprint', async () => {
+    // The head row is the status word, then the step and try while there is
+    // a step; the blueprint's name, which the view still carries, is drawn
+    // nowhere on the panel.
+    const guided = FIXTURE_NAMES.filter((name) => fixtureView(name).overlay.guide !== null);
+    expect(guided).toContain('overlay-active');
+    expect(guided).toContain('craft-miss-clean');
+    for (const name of guided) {
+      const g = fixtureView(name).overlay.guide!;
+      expect(g.route_name, name).not.toBe('');
+      const { root } = await renderPreview(name);
+      const head = root.querySelector('.panel .head')!;
+      expect(head.querySelector('.route'), name).toBeNull();
+      const step = g.step_number === null ? null : `Step ${g.step_number}${g.try_number === null ? '' : ` · try ${g.try_number}`}`;
+      expect(text(head), name).toBe([STATUS_LABELS[g.status], step].filter((part) => part !== null).join(' '));
+      expect(root.querySelector('.panel')!.textContent, name).not.toContain(g.route_name);
+    }
+  });
+
+  it('overlay_last_line_says_the_outcome_word_once', async () => {
+    // The Last row says the outcome's word and Rust's summary, which carries
+    // no word of its own: the word once.
+    let seen = 0;
+    for (const name of FIXTURE_NAMES) {
+      const g = fixtureView(name).overlay.guide;
+      if (!g?.last) continue;
+      const { root } = await renderPreview(name);
+      const last = root.querySelector('.panel .last')!;
+      expect(g.last.summary, name).not.toMatch(/^(hit|miss|unexpected)\b/i);
+      expect(outcomeWords(text(last)), name).toBe(1);
+      expect(text(last.querySelector('.result')), name).toBe(OUTCOME_LABELS[g.last.result]);
+      seen++;
+    }
+    expect(seen).toBeGreaterThan(3);
+
+    // Control: a summary that starts with its word is said twice, and the count says so.
+    const doubled = fixtureView('craft-miss-clean');
+    const last = doubled.overlay.guide!.last!;
+    last.summary = `Miss: ${last.summary}`;
+    const { root } = await render(doubled);
+    expect(outcomeWords(text(root.querySelector('.panel .last')))).toBe(2);
   });
 });

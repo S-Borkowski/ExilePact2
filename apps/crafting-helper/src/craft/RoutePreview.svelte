@@ -1,9 +1,11 @@
 <script lang="ts">
   // The route preview (`ui-design.md` § "Mode planning"): nothing but a
-  // prompt with no target; with a route, its name and source, the route
-  // select when other routes apply, the chosen targets with their floors,
-  // and the numbered steps, each naming its target modifiers; with no route,
-  // one line per rejected blueprint in Rust's order. What the craft targets
+  // prompt with no target; with a route, its source, the route select when
+  // other routes apply (`Route 1`, `Route 2`, ... in Rust's order, the
+  // previewed one first), the chosen targets with their floors, and the
+  // numbered steps, each naming its target modifiers; with no route, one
+  // reason per rejected blueprint in Rust's order. No blueprint's name: the
+  // route is the app's recipe, not the player's. What the craft targets
   // and what to do, never the reasoning behind the technique. The route the
   // engine previews, the floor labels, and why a route does not apply, are
   // Rust's.
@@ -38,17 +40,16 @@
     <p class="no-target">Pick a target to see a route.</p>
   {:else if preview.route}
     {@const route = preview.route}
-    <div class="head">
-      <p class="route-name">{route.name}</p>
-      {#if preview.other_routes.length > 0}
+    {#if preview.other_routes.length > 0}
+      <div class="head">
         <select class="field" aria-label="Route" value={route.blueprint} onchange={(event) => chooseRoute(event, route.blueprint)}>
-          <option value={route.blueprint}>{route.name}</option>
-          {#each preview.other_routes as other (other.blueprint)}
-            <option value={other.blueprint}>{other.name}</option>
+          <option value={route.blueprint}>Route 1</option>
+          {#each preview.other_routes as other, i (other.blueprint)}
+            <option value={other.blueprint}>Route {i + 2}</option>
           {/each}
         </select>
-      {/if}
-    </div>
+      </div>
+    {/if}
     <p class="route-source">{route.source}</p>
     {#if planning.targets.length > 0}
       <h3 class="section-title caps" id="{uid}-targets">Targets</h3>
@@ -74,7 +75,7 @@
     <p class="no-route">No route reaches these targets.</p>
     <ul class="rejected">
       {#each preview.rejected as line (line.blueprint)}
-        <li><span class="name">{line.name}</span>: {line.reason}</li>
+        <li>{line.reason}</li>
       {/each}
     </ul>
   {/if}
@@ -103,13 +104,6 @@
     align-items: center;
     justify-content: space-between;
     gap: calc(var(--space-unit) * 2);
-  }
-
-  .route-name {
-    color: var(--color-text-primary);
-    font-size: var(--size-row);
-    line-height: var(--line-row);
-    font-weight: 700;
   }
 
   .route-source {
@@ -185,9 +179,5 @@
     color: var(--color-text-secondary);
     font-size: var(--size-step);
     line-height: var(--line-step);
-  }
-
-  .rejected .name {
-    color: var(--color-text-primary);
   }
 </style>

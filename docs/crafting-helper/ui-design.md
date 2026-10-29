@@ -116,7 +116,7 @@ same grab in every mode.
 `overlay.html`: the current step of a guided craft, over the game, so the
 player reads what to do and where a hit or a miss goes without looking
 away from the game. Its one question is *"what do I do now, and did the
-last try work?"*; everything else (the route, the fallbacks, the item, the
+last try work?"*; everything else (the route's steps, the fallbacks, the item, the
 history, every control) stays in the main window. This direction was
 critiqued before the page was built:
 [`design/review-overlay.md`](design/review-overlay.md).
@@ -173,12 +173,14 @@ with an ellipsis at its end when too long (the page never wraps a row, so
 the panel never grows past 168):
 
 1. **Header**: the guide's status word ("Crafting", "Stuck", "Replan",
-   "Done") as the main window's outlined caption-size label, the route's
-   name (`--color-text-secondary`), and at the right "Step <n> · try <n>"
-   in tabular figures.
+   "Done") as the main window's outlined caption-size label, then "Step
+   <n> · try <n>" in tabular figures (`--color-text-secondary`). No
+   blueprint name: the route is the app's recipe, not the player's.
 2. **Instruction**: the step's instruction as Rust sends it, which for a
    step that places a target names the currency, its omens, the side and
-   the target modifiers (§ "Rust-produced copy"); `--size-title` (16 px)
+   the target modifiers, and for a removal step the currency (Omen of
+   Whittling or Orb of Annulment, as the app decided) and the modifier it
+   removes (§ "Rust-produced copy"); `--size-title` (16 px)
    at `--font-weight-title`, `--color-text-primary`: the row the eye lands
    on. The overlay has no separate targets row: the instruction carries
    them.
@@ -192,8 +194,9 @@ the panel never grows past 168):
 6. **Last**: once a change has been observed, "Last:", the outcome word
    (Hit, Miss, Unexpected; Miss and Unexpected in `--color-warning`, the
    word carries it), its source in muted words ("from the screen" or "from
-   a grab") and the summary as sent. Before the first: "No step taken
-   yet." in muted text.
+   a grab") and the summary as sent, which carries no outcome word, so the
+   word is said once. Before the first: "No step taken yet." in muted
+   text.
 7. **Screen**: the label "Screen" (small caps, muted) and the watch line
    as Rust sends it (§ "The screen watch's line"). In
    `--color-text-secondary` while it only reports, in `--color-warning`
@@ -285,7 +288,8 @@ scrolls and is focusable so the keyboard can scroll it.
 
 ### Mode planning
 
-**Item** (left). The item's name as the heading, then one line of facts:
+**Item** (left). The item's title heads the panel (its name, else its
+base type), then one line of facts:
 rarity, base type, class and "item level 82" ("Rare · Sapphire Ring · Ring ·
 item level 82"). The explicit modifiers follow in two labelled lists,
 "Prefixes" and "Suffixes", each modifier as its lines (a hybrid modifier's
@@ -355,10 +359,14 @@ effective list; Settings is never changed from here.
 then:
 
 - With no target: "Pick a target to see a route." and nothing else.
-- With a route: the route's name and its source (the blueprint's source
-  line, muted: attribution); with other applicable routes, a select
-  labelled "Route" listing the previewed one first and then the others by
-  name, whose change sends `choose_route { blueprint }`. Then what the
+- With a route: its source (the blueprint's source line, muted:
+  attribution). The blueprint's name is not shown: the route ("fill,
+  desecrate the hardest, slam the last") is the app's recipe, not
+  something the player has to read. With other applicable routes, a select
+  labelled "Route" whose options read "Route 1", "Route 2", ... in Rust's
+  order, the previewed one first (so the route on screen is always Route
+  1), each option's value its blueprint id; its change sends
+  `choose_route { blueprint }`. Then what the
   craft targets: the sub-heading "Targets" and one row per chosen target,
   its text and its floor in Rust's words (the floor select's label, "At
   least T3"). The panel says what is targeted and what to do; the
@@ -374,8 +382,8 @@ then:
   over, the fallback line under the label "Fallback" (small caps), as sent:
   `<used name> instead of <first alternative's name>: <names> blocked`.
 - With no route: "No route reaches these targets." and one line per
-  rejected blueprint, its name and the rejection in words ("<name>:
-  <rejection>"), in Rust's order. The blocked list above is open, so the
+  rejected blueprint, the rejection alone in Rust's words (no blueprint
+  name), in Rust's order. The blocked list above is open, so the
   player can unblock what a rejection names.
 
 **The Start bar** (fixed at the right column's foot): the primary button
@@ -386,16 +394,22 @@ route).
 
 ### Mode guiding
 
-**Current step** (left). The route's name as the heading and the guide's
-status as a word beside it: "Crafting" (active), "Stuck", "Replan" or
-"Done". Then, once a change has been observed, the **last outcome** line,
-where the player's eyes already are after a re-grab: "Last:" and the
-newest History entry's outcome word, its source ("from the screen" or
-"from a grab", muted) and summary (the page shows that entry; it judges
-nothing). Then, for active and stuck, a sunken card with:
+**Current step** (left). The item's title heads it, as the Item panel
+titles it (its name, else its base type), with the guide's status as a
+word beside it: "Crafting" (active), "Stuck", "Replan" or "Done". The
+blueprint's name is not shown here or anywhere in the guide. Then, once a
+change has been observed, the **last outcome** line, where the player's
+eyes already are after a re-grab: "Last:" and the newest History entry's
+outcome word, its source ("from the screen" or "from a grab", muted) and
+summary (the page shows that entry; it judges nothing). The summary
+carries no outcome word of its own, so the word is said once. Then, for
+active and stuck, a sunken card with:
 
 - "Step <n>" and the try count ("try 2"); the instruction, larger than the
-  body text, which names the step's target modifiers; the "Targets" line
+  body text, which names the step's target modifiers, or for a removal
+  step the currency and the modifier it removes (a whittle-or-annul step
+  names Omen of Whittling or Orb of Annulment, as the app decided from the
+  modifier levels, § "Rust-produced copy"); the "Targets" line
   (the target modifiers a hit may place, as in the route's step list); the
   "Uses" line; the odds as sent; the fallback line when there is one.
 - The two branch lines as sent: `On a hit: <where it goes>` and `On a miss:
@@ -435,8 +449,9 @@ outlined caption-size label like the guide's status word (the "Last:" line
 sets it the same way), the entry's **source** in muted words after it,
 "from the screen" or "from a grab" (the view's source for the entry; the
 page maps it to these words and judges nothing), and the summary
-as sent, which starts `Hit:`, `Miss:` or `Unexpected:` and names the
-targets gained or lost with their tier, a below-floor roll, or the reasons.
+as sent, which carries no outcome word (the label before it says it once)
+and names the targets gained or lost with their tier, a below-floor roll,
+or the reasons.
 With none yet: "No step taken yet." The history is not a live region; the
 status line announces each outcome.
 
@@ -529,16 +544,17 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 |---|---|
 | Known odds | `~12% (8000 of 69500 weight)`: the percent as an integer from 10 up, with one decimal from 1 to under 10, `under 1%` above 0 and under 1; then the basis in brackets. 100 % is `certain (<basis>)` |
 | Unknown odds | `odds unknown: <reason>` |
-| Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id |
+| Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id. None on a whittle-or-annul step the app named by the modifier levels: the whittle it passed over is not blocked |
+| Whittle or annul | a removal step that offers Chaos Orb with Omen of Whittling and then a plain Orb of Annulment (`fill-desecrate-exalt`'s two clean-up steps) is named by the app from the modifier levels, on the item the step is shown on: Chaos Orb with Omen of Whittling when the whittle is a certain hit (the single lowest-level removable modifier is unwanted), else Orb of Annulment, its action and odds the engine's. With Orb of Annulment blocked for the craft the whittle stays, with its odds as they are; with Whittling or the Chaos Orb blocked the engine itself takes the annulment and the Fallback line shows. A grab or a screen read is judged against the way the app named the step, and the next step is decided again on the next item. Only in a blueprint in which every step that names Omen of Whittling is such a step |
 | Floor options | `As high as possible (T<best>)` (the default), then `At least T<n>` per reachable tier |
-| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A step that places none (a removal, a quality step, a manual step) keeps the blueprint's text. The same function makes it for the route's step list, the current step, the overlay and a History entry |
+| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A removal step names the currency with its omens and the modifier it removes, by its text as the item shows it: the whittle `Chaos Orb with Omen of Whittling to remove <modifier>, the lowest-level modifier` (or `to remove the lowest-level modifier: <a> or <b>` when several share the level), the annulment `Orb of Annulment to remove <a> or <b>; it takes one modifier at random`, naming the unwanted modifiers. A quality step and a manual step keep the blueprint's text. The same function makes it for the route's step list, the current step, the overlay and a History entry |
 | Step targets | each step line's target modifiers, as the planning list writes them; empty when the step places none |
-| Branches | `On a hit: …` and `On a miss: …`, naming the next step by its instruction, or this step again, start over, give the item up, or the craft is done |
-| History summary | starts `Hit:`, `Miss:` or `Unexpected:`, then the targets gained or lost with their tier, a below-floor roll, or the reasons |
-| Refusal, rejection, stuck and replan reasons, the status line | Rust's words |
+| Branches | `On a hit: …` and `On a miss: …`, naming the next step by its instruction as composed for the route on this item (a step the route left out by the blueprint's text), or this step again, start over, give the item up, or the craft is done; a step with a condition, `this step again until its condition holds, then <next>`. A miss that leads to a removal step says `the new modifier is removed next; the step says how once it is shown`: the modifier does not exist yet, so whittle or annul is decided when that step is shown |
+| History summary | no outcome word: the targets gained or lost with their tier, a below-floor roll, or the reasons (`gained +#% to Fire Resistance (T3)`). The page puts the word before it; the status line, which shows the summary alone, adds it itself (`Hit: gained +#% to Fire Resistance (T3).`) |
+| Refusal, rejection, stuck and replan reasons, the status line | Rust's words. No status line names the blueprint (`Route chosen.`, `Craft started.`) |
 | Catalogue group labels and currency names | Rust's (English) |
 | The watch line (guiding card and overlay) | § "The screen watch's line", with whether it takes the warning colour |
-| The overlay's rows | the route's name, the step number and try count, the instruction, the uses, the odds, both branch lines, the last outcome's word, source and summary, the stuck and replan reason and the watch line: Rust's, in the overlay part of the view; whether it shows and its position too |
+| The overlay's rows | the step number and try count, the instruction, the uses, the odds, both branch lines, the last outcome's word, source and summary, the stuck and replan reason and the watch line: Rust's, in the overlay part of the view; whether it shows and its position too |
 
 ### UI-owned copy
 
@@ -548,7 +564,7 @@ Headings: "Can't plan this item", "Grab another item:", "Grabbed text",
 crafting on Craft of Exile", "Settings", "Start crafting", "End craft",
 "Keep crafting", "Remove", "Clear targets". Labels: "Filter modifiers",
 "Filter currencies", "Blocked only", "Floor for <modifier text>", "Route",
-"Uses", "Targets" (a step's line), "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
+the route select's options "Route <n>", "Uses", "Targets" (a step's line), "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
 "unrevealed", "target", "Settings", "this craft", "allowed for this craft",
 the status words "Crafting", "Stuck", "Replan", "Done", the watch line's
 label "Screen", the sources "from the screen" and "from a grab", and the
@@ -664,6 +680,7 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `craft-refused` | A grab the engine refuses: "Can't plan this item", the reason, the grabbed text |
 | `craft-guiding` | The guide on its first step: instruction, odds, both branch lines, try 1, "No step taken yet." |
 | `craft-miss` | After a miss: the "Last:" line and History's Miss entry with its summary, the step the miss led to |
+| `craft-miss-clean` | `fill-desecrate-exalt` after a missed exalt: the clean-up step named by the modifier levels as Orb of Annulment, its odds, no Fallback line |
 | `craft-replan` | Status Replan with its reasons; End craft primary |
 | `craft-done` | Status Done: "The craft is done.", the whole history |
 | `craft-watching` | Guiding with the screen watch reading and no tooltip: the watch line `Watching: …` |

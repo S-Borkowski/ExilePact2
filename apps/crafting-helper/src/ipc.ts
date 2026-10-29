@@ -49,6 +49,7 @@ export interface OverlayView {
 /** The overlay's content: Rust's copy, rendered as sent (the labels are the page's). */
 export interface OverlayGuide {
   status: GuideStatus;
+  /** The blueprint's name: kept for Rust's own lines, never drawn (the route is the app's recipe). */
   route_name: string;
   /** The current step's place in the route, from 1, while active or stuck. */
   step_number: number | null;
@@ -229,6 +230,7 @@ export interface StepLineView {
 /** The route the preview shows: what it targets and what to do, never the blueprint's notes. */
 export interface RouteView {
   blueprint: string;
+  /** The blueprint's name: never drawn; the route select says `Route <n>`. */
   name: string;
   /** Where the technique came from (attribution). */
   source: string;
@@ -290,6 +292,7 @@ export interface GuidingView {
   /** The item as last grabbed, or as the screen watch last read a hit or a miss. */
   item: CraftItemView;
   blueprint: string;
+  /** The blueprint's name: never drawn; the heading is the item's title. */
   route_name: string;
   status: GuideStatus;
   /** The current step, while active or stuck. */

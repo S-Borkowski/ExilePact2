@@ -36,6 +36,7 @@ import {
   text,
 } from './test-support';
 import App from './App.svelte';
+import { OUTCOME_LABELS } from './craft/words';
 import Overlay from './overlay/Overlay.svelte';
 
 let mounted: Rendered[] = [];
@@ -323,6 +324,42 @@ const labelled = <E extends Element = HTMLElement>(root: Element, name: string):
 /** Lets a focus move or a `toggle` event that waits a task happen. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+/** Mounts the main window on the preview bridge, opened on the fixture `name` as `?state=` opens it. */
+async function renderPreview(name: string) {
+  vi.spyOn(console, 'info').mockImplementation(() => {});
+  const bridge = previewBridge(`?state=${name}`);
+  const r = await renderComponent(App, { bridge }, (root) => root.querySelector('.app[data-state]') !== null);
+  mounted.push(r);
+  return { ...r, bridge };
+}
+
+/** The fixtures in mode guiding. */
+const GUIDING_FIXTURES = FIXTURE_NAMES.filter((name) => fixtureView(name).craft.mode === 'guiding');
+
+/**
+ * Every blueprint name a fixture's view carries: the guide's and the
+ * overlay's, the previewed route's, the other routes' and the rejected
+ * ones'. Rust keeps them for its own lines; the pages draw none.
+ */
+const BLUEPRINT_NAMES = [
+  ...new Set(
+    FIXTURE_NAMES.flatMap((name) => {
+      const view = fixtureView(name);
+      const preview = view.craft.planning?.preview ?? null;
+      return [
+        view.craft.guiding?.route_name,
+        view.overlay.guide?.route_name,
+        preview?.route?.name,
+        ...(preview?.other_routes ?? []).map((other) => other.name),
+        ...(preview?.rejected ?? []).map((line) => line.name),
+      ].filter((n): n is string => typeof n === 'string' && n !== '');
+    }),
+  ),
+];
+
+/** How many times an outcome's word (hit, miss, unexpected) is said in `line`. */
+const outcomeWords = (line: string): number => line.match(/\b(hit|miss|unexpected)\b/gi)?.length ?? 0;
+
 describe('the craft window', () => {
   it('renders_every_craft_fixture', async () => {
     // Every fixture renders its mode, with the mode's first heading marked,
@@ -343,23 +380,23 @@ describe('the craft window', () => {
       'grabbed-not-item': "Can't plan this item",
       'grab-refused': "Can't plan this item",
       'hotkey-taken': 'Last grabbed item',
-      'overlay-active': 'Rings: resistances by whittling',
-      'overlay-not-in-front': 'Rings: resistances by whittling',
+      'overlay-active': 'Doom Loop',
+      'overlay-not-in-front': 'Doom Loop',
       'craft-prefilled': 'Doom Loop',
       'craft-planning': 'Doom Loop',
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
       'craft-refused': "Can't plan this item",
-      'craft-guiding': 'Rings: resistances by whittling',
-      'craft-miss': 'Rings: resistances by whittling',
-      'craft-miss-clean': 'Fill, desecrate the hardest, slam the last',
-      'craft-replan': 'Rings: resistances by whittling',
-      'craft-done': 'Rings: resistances by whittling',
-      'craft-watching': 'Rings: resistances by whittling',
-      'craft-screen-hit': 'Rings: resistances by whittling',
-      'craft-screen-unexpected': 'Rings: resistances by whittling',
-      'craft-watch-off': 'Rings: resistances by whittling',
-      'craft-watch-unavailable': 'Rings: resistances by whittling',
+      'craft-guiding': 'Doom Loop',
+      'craft-miss': 'Doom Loop',
+      'craft-miss-clean': 'Doom Loop',
+      'craft-replan': 'Doom Loop',
+      'craft-done': 'Doom Loop',
+      'craft-watching': 'Doom Loop',
+      'craft-screen-hit': 'Doom Loop',
+      'craft-screen-unexpected': 'Doom Loop',
+      'craft-watch-off': 'Doom Loop',
+      'craft-watch-unavailable': 'Doom Loop',
     });
 
     // Refused: the reason as sent, how to grab another, the grabbed text open.
@@ -422,14 +459,11 @@ describe('the craft window', () => {
     const route = root.querySelector('.route')!;
     const previewed = p.preview!.route!;
     expect(text(route.querySelector('h2'))).toBe('Route');
-    expect(text(route.querySelector('.route-name'))).toBe(previewed.name);
+    expect(route.querySelector('.route-name')).toBeNull();
     expect(text(route.querySelector('.route-source'))).toBe(previewed.source);
     expect(route.querySelector('.route-notes')).toBeNull();
     const routeSelect = labelled<HTMLSelectElement>(route, 'Route')!;
-    expect([...routeSelect.options].map((o) => o.textContent)).toEqual([
-      'Rings: resistances by whittling',
-      'Rings: flat attack damage and resistances',
-    ]);
+    expect([...routeSelect.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2']);
     expect(texts(route, 'ol.steps > li .instruction')).toEqual(previewed.steps.map((s) => s.instruction));
     expect(texts(route, 'ol.steps > li .uses')).toEqual(previewed.steps.map((s) => `Uses ${s.uses.join(', ')}`));
     expect(route.querySelector('.fallback')).toBeNull();
@@ -459,7 +493,7 @@ describe('the craft window', () => {
     const noRoute = await render(noRouteView);
     expect(text(noRoute.root.querySelector('.no-route'))).toBe('No route reaches these targets.');
     expect(texts(noRoute.root, 'ul.rejected li')).toEqual(
-      noRouteView.craft.planning!.preview!.rejected.map((r) => `${r.name}: ${r.reason}`),
+      noRouteView.craft.planning!.preview!.rejected.map((r) => r.reason),
     );
     expect(noRoute.root.querySelector<HTMLDetailsElement>('details.blocked')!.open).toBe(true);
     expect(button(noRoute.root, 'Start crafting')!.disabled).toBe(true);
@@ -534,8 +568,8 @@ describe('the craft window', () => {
   it('route_preview_lists_targets_and_the_craft_not_the_notes', async () => {
     // The Route panel says what is targeted and what to do: the chosen
     // targets with their floors (Rust's labels) above the steps, the route's
-    // name and source; never the blueprint's notes, which the view no
-    // longer carries.
+    // source; never the blueprint's name or notes, which the view no longer
+    // carries for the page.
     for (const name of ['craft-planning', 'craft-prefilled', 'craft-fallback']) {
       const view = fixtureView(name);
       const p = view.craft.planning!;
@@ -543,7 +577,7 @@ describe('the craft window', () => {
       expect(Object.keys(previewed).sort(), name).toEqual(['blueprint', 'name', 'source', 'steps']);
       const { root } = await render(view);
       const route = root.querySelector('.route')!;
-      expect(text(route.querySelector('.route-name')), name).toBe(previewed.name);
+      expect(route.querySelector('.route-name'), name).toBeNull();
       expect(text(route.querySelector('.route-source')), name).toBe(previewed.source);
       expect(route.querySelector('.route-notes'), name).toBeNull();
 
@@ -573,6 +607,40 @@ describe('the craft window', () => {
     const none = await render(bare);
     expect(none.root.querySelector('.route-targets')).toBeNull();
     expect(text(none.root.querySelector('.route .no-target'))).toBe('Pick a target to see a route.');
+  });
+
+  it('route_preview_does_not_name_the_blueprint', async () => {
+    // The blueprint's name is the app's recipe, not the player's: the Route
+    // panel has no route-name line, its chooser labels the routes `Route 1`,
+    // `Route 2`, ... in Rust's order (the previewed one first) with the
+    // blueprint id as each option's value, and a rejection is its reason
+    // alone.
+    expect(BLUEPRINT_NAMES.length).toBeGreaterThan(2);
+    for (const name of ['craft-prefilled', 'craft-planning', 'craft-fallback', 'craft-no-route']) {
+      const { root } = await renderPreview(name);
+      const route = root.querySelector('.route')!;
+      expect(route, name).not.toBeNull();
+      expect(route.querySelector('.route-name'), name).toBeNull();
+      for (const blueprintName of BLUEPRINT_NAMES) expect(route.textContent, `${name}: ${blueprintName}`).not.toContain(blueprintName);
+    }
+
+    // The chooser, shown only with other routes.
+    const p = fixtureView('craft-planning').craft.planning!.preview!;
+    expect(p.other_routes.length).toBeGreaterThan(0);
+    const planning = await renderPreview('craft-planning');
+    const select = labelled<HTMLSelectElement>(planning.root.querySelector('.route')!, 'Route')!;
+    expect([...select.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2']);
+    expect([...select.options].map((o) => o.value)).toEqual([p.route!.blueprint, ...p.other_routes.map((o) => o.blueprint)]);
+    expect(select.value).toBe(p.route!.blueprint);
+    expect(fixtureView('craft-fallback').craft.planning!.preview!.other_routes).toEqual([]);
+    const single = await renderPreview('craft-fallback');
+    expect(labelled(single.root.querySelector('.route')!, 'Route')).toBeNull();
+
+    // No route: each rejection is its reason, in Rust's order.
+    const rejected = fixtureView('craft-no-route').craft.planning!.preview!.rejected;
+    expect(rejected.length).toBeGreaterThan(0);
+    const noRoute = await renderPreview('craft-no-route');
+    expect(texts(noRoute.root, 'ul.rejected li')).toEqual(rejected.map((r) => r.reason));
   });
 
   it('step_lines_name_their_target_mods', async () => {
@@ -803,7 +871,7 @@ describe('the craft window', () => {
     bridge.pushView(fixtureView('craft-guiding'));
     await settle();
     expect(document.activeElement).toBe(root.querySelector('.craft [data-mode-heading]'));
-    expect(text(document.activeElement)).toBe('Rings: resistances by whittling');
+    expect(text(document.activeElement)).toBe('Doom Loop');
   });
 
   it('guide_shows_branches_and_history', async () => {
@@ -919,6 +987,65 @@ describe('the craft window', () => {
     expect(unexpected.root.querySelector('.last')).toBeNull();
     expect(text(unexpected.root.querySelector('.history .empty'))).toBe('No step taken yet.');
     expect(unexpected.bridge.calls).toEqual([]);
+  });
+
+  it('guiding_heading_does_not_name_the_blueprint', async () => {
+    // The guide's heading is the item's title as the Item panel says it
+    // (its name, else its base type); the status word beside it says
+    // "Crafting". No blueprint name is drawn anywhere in the window.
+    expect(GUIDING_FIXTURES).toContain('craft-miss-clean');
+    for (const name of GUIDING_FIXTURES) {
+      const g = fixtureView(name).craft.guiding!;
+      expect(g.route_name, name).not.toBe('');
+      const { root } = await renderPreview(name);
+      const heading = root.querySelector('.guide [data-mode-heading]');
+      expect(heading?.tagName, name).toBe('H2');
+      expect(text(heading), name).toBe(g.item.name ?? g.item.base_type ?? g.item.class);
+      expect(text(heading), name).toBe(text(root.querySelector('.item-now .item-title')));
+      for (const blueprintName of BLUEPRINT_NAMES) expect(root.textContent, `${name}: ${blueprintName}`).not.toContain(blueprintName);
+    }
+
+    // An item with no name is titled by its base type.
+    const unnamed = fixtureView('craft-guiding');
+    unnamed.craft.guiding!.item.name = null;
+    const { root } = await render(unnamed);
+    expect(text(root.querySelector('.guide [data-mode-heading]'))).toBe(unnamed.craft.guiding!.item.base_type);
+  });
+
+  it('last_line_says_the_outcome_word_once', async () => {
+    // The page says the outcome's word (bold, by its result) and Rust's
+    // summary, which carries no word of its own: once in the Last line,
+    // once in each History entry.
+    let seen = 0;
+    for (const name of GUIDING_FIXTURES) {
+      const g = fixtureView(name).craft.guiding!;
+      const { root } = await renderPreview(name);
+      const entries = [...root.querySelectorAll('.history ol > li .outcome')];
+      expect(entries, name).toHaveLength(g.history.length);
+      g.history.forEach((entry, i) => {
+        expect(entry.summary, name).not.toMatch(/^(hit|miss|unexpected)\b/i);
+        expect(outcomeWords(text(entries[i])), `${name} #${i}`).toBe(1);
+        expect(text(entries[i].querySelector('.result')), `${name} #${i}`).toBe(OUTCOME_LABELS[entry.result]);
+        seen++;
+      });
+      const last = root.querySelector('.guide .last');
+      if (g.history.length === 0 || g.status === 'done') {
+        expect(last, name).toBeNull();
+        continue;
+      }
+      const newest = g.history[g.history.length - 1];
+      expect(outcomeWords(text(last)), name).toBe(1);
+      expect(text(last!.querySelector('.result')), name).toBe(OUTCOME_LABELS[newest.result]);
+    }
+    expect(seen).toBeGreaterThan(3);
+
+    // Control: a summary that starts with its word is said twice, and the count says so.
+    const doubled = fixtureView('craft-miss');
+    const entry = doubled.craft.guiding!.history[0];
+    entry.summary = `Miss: ${entry.summary}`;
+    const { root } = await render(doubled);
+    expect(outcomeWords(text(root.querySelector('.guide .last')))).toBe(2);
+    expect(outcomeWords(text(root.querySelector('.history .outcome')))).toBe(2);
   });
 
   it('guiding_shows_the_watch_line', async () => {

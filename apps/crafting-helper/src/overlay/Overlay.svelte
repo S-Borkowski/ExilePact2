@@ -2,9 +2,12 @@
   // The overlay's root (`overlay.html`, `ui-design.md` § "Overlay"): the
   // guided craft's current step over the game, from `view.overlay.guide` in
   // the last `View` the bridge delivered. At most seven one-line rows in
-  // three groups: the status word, route and step; the instruction; the
+  // three groups: the status word, step and try; the instruction; the
   // uses and odds (or why it is stuck or must be planned again) and both
   // branch lines; the last outcome with its source; the screen watch's line.
+  // The blueprint's name stays in the view for Rust's own lines and is
+  // never drawn: the route is the app's recipe, not the player's. The
+  // outcome's word is the page's; Rust's summary carries none.
   // Every string is Rust's but the labels; a row Rust sends nothing for is
   // left out, which is how stuck, replan and done drop theirs. The panel is
   // anchored to the window's edge the view's position names. The window is
@@ -54,7 +57,6 @@
       <div class="group">
         <p class="row head">
           <span class="status-word caps" data-status={g.status}>{STATUS_LABELS[g.status]}</span>
-          <span class="route">{g.route_name}</span>
           {#if g.step_number !== null}
             <span class="step">Step {g.step_number}{#if g.try_number !== null}&nbsp;· try {g.try_number}{/if}</span>
           {/if}
@@ -168,14 +170,6 @@
 
   .status-word[data-status='done'] {
     color: var(--want);
-  }
-
-  .route {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--color-text-secondary);
   }
 
   .step {
