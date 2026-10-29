@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools.crafting_helper import poe2db  # noqa: E402
+from tools.crafting_helper import poe2db, trade_stats  # noqa: E402
 
 DATA = ROOT / "apps" / "crafting-helper" / "data"
 
@@ -58,9 +58,11 @@ class ShippedData(unittest.TestCase):
         names = [c["class"] for c in self.index["classes"]]
         self.assertEqual(names[:5], ["Gloves", "Boots", "Helmets", "Body Armours", "Shields"])
         self.assertEqual(names[-1], "Jewels")
-        # The folder holds the files the index names and nothing else.
+        # The folder holds the files the index names, the trade stat mapping
+        # (trade_stats.py writes it beside them), and nothing else.
         on_disk = sorted(p.relative_to(DATA).as_posix() for p in DATA.rglob("*") if p.is_file())
-        self.assertEqual(on_disk, sorted([poe2db.DATA_INDEX] + [c["file"] for c in self.index["classes"]]))
+        self.assertEqual(on_disk, sorted([poe2db.DATA_INDEX, trade_stats.DATA_FILE]
+                                         + [c["file"] for c in self.index["classes"]]))
 
     def test_every_class_file_passes_check_data(self):
         by_name = {c.name: c for c in poe2db.CLASS_TABLE}
@@ -167,6 +169,54 @@ class ShippedData(unittest.TestCase):
         self.assertTrue(broken(lambda d: d["essences"][0]["matches"].__setitem__(
             "int", {"mod": "no-such-mod", "tier": 1})))
         self.assertTrue(broken(lambda d: d.__setitem__("class", "Boots")))
+
+
+class ShippedTradeStats(unittest.TestCase):
+    """`trade-stats.json` as `trade_stats.py map` wrote it from the trade site's 2026-10-30 stat list.
+
+    The coverage floors are the counts measured in planning over the shipped
+    class data and the site's list (900 ordinary-pool modifiers: 77 hybrids,
+    32 lines the site does not list). A refresh that maps fewer is a change
+    to review, not a floor to lower.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text, cls.mapping = _read(DATA / trade_stats.DATA_FILE)
+
+    def test_the_check_command_passes(self):
+        self.assertEqual(trade_stats.check_dir(DATA), [])
+        self.assertNotIn("\r", self.text)
+        self.assertEqual(self.text, trade_stats.dumps(self.mapping))
+
+    def test_source_url_and_iso_fetch_date(self):
+        self.assertEqual(self.mapping["source"], "https://www.pathofexile.com/api/trade2/data/stats")
+        fetched = self.mapping["fetched"]
+        self.assertEqual(datetime.date.fromisoformat(fetched).isoformat(), fetched)
+        self.assertIn("Grinding Gear Games", self.mapping["source_note"])
+
+    def test_coverage_is_at_least_the_measured_counts(self):
+        counts = trade_stats.coverage(self.mapping)
+        self.assertEqual(counts["modifiers"], 900)
+        self.assertGreaterEqual(counts["searchable"], 900 - 77 - 32)
+        self.assertLessEqual(counts["no trade stat"], 32)
+        self.assertEqual(counts["hybrid"], 77)
+        self.assertGreater(counts["local"], 0)
+        # Control: the floors are not met by an empty mapping.
+        empty = {"classes": {name: {} for name in self.mapping["classes"]}}
+        self.assertLess(trade_stats.coverage(empty)["searchable"], 900 - 77 - 32)
+
+    def test_anchor_modifiers(self):
+        classes = self.mapping["classes"]
+        gloves, rings = classes["Gloves"], classes["Rings"]
+        self.assertTrue(gloves["prefix-increased-armour"]["text"].endswith(" (Local)"))
+        self.assertEqual(gloves["prefix-to-accuracy-rating"]["text"], "# to Accuracy Rating")
+        self.assertEqual(gloves["prefix-to-accuracy-rating"], rings["prefix-to-accuracy-rating"])
+        self.assertEqual(rings["prefix-to-maximum-life"]["text"], "# to maximum Life")
+        self.assertEqual(gloves["prefix-increased-armour-2"], {"searchable": False, "reason": "hybrid"})
+        self.assertEqual(len(rings["suffix-to-all-attributes"]["ids"]), 2)
+        self.assertTrue(all(i.startswith("explicit.stat_") for e in classes.values() for v in e.values()
+                            for i in v.get("ids", [])))
 
 
 if __name__ == "__main__":
