@@ -8,7 +8,9 @@
 //! - one of the item's own non-explicit lines: the item class as the
 //!   tooltip names it (`Amulet`; `Amulet: Item Level 12` with Alt held), a
 //!   property, the requirements, the item level, quality or sockets by the
-//!   name before the colon (their values may change), an implicit, rune,
+//!   name before the colon (their values may change); the requirement line
+//!   also by what follows its colon, `Level` and attributes with their
+//!   values, whatever OCR made of the word before it; an implicit, rune,
 //!   enchant or corruption line by its template, a piece of a description
 //!   line (the tooltip wraps a long one) or a flag. They are matched first,
 //!   each template line once, and every implicit line must be found;
@@ -220,6 +222,12 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
 
     let lines: Vec<Prepared> = tip.lines.iter().map(|l| prepare(&l.text)).collect();
     let headers: Vec<Option<Header>> = lines.iter().map(header_of).collect();
+    // The requirement line is told from its raw text, by its colon.
+    let requirement: Vec<bool> = tip
+        .lines
+        .iter()
+        .map(|l| item.requirements.is_some() && is_requirement_line(&l.text))
+        .collect();
     // An unrevealed modifier shows as glyphs OCR does not read, so neither
     // an item that has one nor a tooltip that shows one can be read; what a
     // fractured modifier looks like is not established.
@@ -236,7 +244,15 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
     // With no key of its own the item is neither unchanged nor changed: a
     // read of it is never an outcome.
     let own = item_key(item).ok_or(Unreadable::UnknownModifier)?;
-    let reads = read_mods(&lines, &headers, item, data, variant, item_level)?;
+    let reads = read_mods(
+        &lines,
+        &headers,
+        &requirement,
+        item,
+        data,
+        variant,
+        item_level,
+    )?;
 
     let prefixes = reads.iter().filter(|r| r.data.kind == Kind::Prefix).count();
     let suffixes = reads.len() - prefixes;
@@ -485,6 +501,27 @@ fn in_description(line: &str, description: &[String]) -> bool {
             .any(|d| qt_screen::fuzzy_score(line, d) >= LINE_THRESHOLD)
 }
 
+/// Whether the line, as OCR read it, is the requirement line by what follows
+/// its colon: `Level` and its value, then only attributes and their values
+/// (`Requires: Level 55, 40 Str`). The word before the colon is not looked
+/// at: over a busy scene OCR may split and mangle it (shot 13, 2026-10-29,
+/// read `Requires` as two broken words) while the rest reads intact.
+fn is_requirement_line(text: &str) -> bool {
+    let Some((_, after)) = text.rsplit_once(':') else {
+        return false;
+    };
+    let after = prepare(after);
+    let words: Vec<&str> = after.masked.split(' ').filter(|w| !w.is_empty()).collect();
+    let Some((first, attributes)) = words.split_first() else {
+        return false;
+    };
+    word_is(first, "level")
+        && attributes
+            .iter()
+            .all(|w| ["str", "dex", "int"].iter().any(|a| word_is(w, a)))
+        && after.values.len() == words.len()
+}
+
 /// Whether the line's first words are `key`.
 fn starts_with_key(line: &str, key: &str) -> bool {
     let n = key.split(' ').count();
@@ -597,6 +634,9 @@ struct Walk {
 struct Search<'a> {
     lines: &'a [Prepared],
     headers: &'a [Option<Header>],
+    /// For each line, whether it is the item's requirement line
+    /// ([`is_requirement_line`]).
+    requirement: &'a [bool],
     own: Own,
     /// For each line, the modifiers that may start there.
     spans: Vec<Vec<Span>>,
@@ -610,6 +650,7 @@ struct Search<'a> {
 fn read_mods(
     lines: &[Prepared],
     headers: &[Option<Header>],
+    requirement: &[bool],
     item: &Item,
     data: &'static ClassData,
     variant: &str,
@@ -693,6 +734,7 @@ fn read_mods(
     let mut search = Search {
         lines,
         headers,
+        requirement,
         own,
         spans,
         known,
@@ -792,6 +834,7 @@ impl Search<'_> {
                 .keys
                 .iter()
                 .any(|k| starts_with_key(&line.masked, k))
+                || self.requirement[i]
                 || in_description(&line.masked, &self.own.description)
                 || is_interface(&line.masked)
             {

@@ -476,3 +476,79 @@ fn measured_tooltip_lines_are_accounted_for() {
         ReadKind::Unreadable(Unreadable::NotEstablished)
     );
 }
+
+#[test]
+fn a_belt_with_charm_slots_and_a_flask_implicit_reads_unchanged() {
+    // A rare belt of the shape Live 1 could not read (2026-10-29): a charm
+    // slot block, a requirement, a flask implicit, two prefixes and a
+    // suffix. Its name and values are its own.
+    let text = "Item Class: Belts\n\
+        Rarity: Rare\n\
+        Bramble Clasp\n\
+        Utility Belt\n\
+        --------\n\
+        Charm Slots: 1\n\
+        --------\n\
+        Requires: Level 55\n\
+        --------\n\
+        Item Level: 79\n\
+        --------\n\
+        { Implicit Modifier }\n\
+        20% of Flask Recovery applied Instantly\n\
+        --------\n\
+        { Prefix Modifier \"Athlete's\" (Tier: 2) — Life }\n\
+        +131(120-149) to maximum Life\n\
+        { Prefix Modifier \"Cobalt\" (Tier: 8) — Mana }\n\
+        +19(15-24) to maximum Mana\n\
+        { Suffix Modifier \"of the Goliath\" (Tier: 4) — Attribute }\n\
+        +26(25-27) to Strength\n";
+    let belt = parse(text);
+    let k = key(&belt);
+    assert!(has(&k, "prefix-to-maximum-life", 2), "{k:?}");
+    assert!(has(&k, "prefix-to-maximum-mana", 8), "{k:?}");
+    assert!(has(&k, "suffix-to-strength", 4), "{k:?}");
+
+    // The plain tooltip names the class above the charm slots, as the shot
+    // shows it.
+    let mut tip = tooltip(text, false);
+    tip.lines.insert(0, "BELT".to_string());
+    assert_eq!(classify(&read_of(&[&tip]), &belt), ReadKind::Unchanged);
+    assert_eq!(
+        classify(&read_of(&[&tooltip(text, true)]), &belt),
+        ReadKind::Unchanged
+    );
+
+    // Shot 13's requirement line as OCR read it over the stash (measured,
+    // 2026-10-29): its first word split in two and mangled, the colon, the
+    // level and its value intact. The part after the colon says what it is.
+    let mangled = tip
+        .clone()
+        .replace("Requires: Level 55", "RQUEl S: LEVEL 55");
+    assert_eq!(classify(&read_of(&[&mangled]), &belt), ReadKind::Unchanged);
+    let with_attributes = tip
+        .clone()
+        .replace("Requires: Level 55", "RQUEl S: Level 55, 40 Str, 12 Int");
+    assert_eq!(
+        classify(&read_of(&[&with_attributes]), &belt),
+        ReadKind::Unchanged
+    );
+    // Without the colon, or with more than a level and attributes after it,
+    // the line is still unaccounted for.
+    for odd in [
+        "RQUEl S LEVEL 55",
+        "RQUEl S: LEVEL 55 of all Spell Skills",
+        "RQUEl S: 55",
+    ] {
+        let line = tip.clone().replace("Requires: Level 55", odd);
+        assert_eq!(
+            classify(&read_of(&[&line]), &belt),
+            ReadKind::Unreadable(Unreadable::UnaccountedLine),
+            "{odd}"
+        );
+    }
+
+    // Negative control: one more Strength reads as the next tier up, a change.
+    let stronger = tip.clone().replace("+26 to Strength", "+31 to Strength");
+    let read = changed(classify(&read_of(&[&stronger]), &belt));
+    assert!(has(&key(&read), "suffix-to-strength", 2));
+}

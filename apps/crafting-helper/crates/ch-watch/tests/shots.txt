@@ -15,8 +15,9 @@
 #         same scene with no tooltip, where it matches; else read off the
 #         pixel columns and rows). 07 has two: the equipped item's comparison
 #         tooltip first, then the hovered one.
-# Shots 01-11: 2560x1440 fullscreen; 12a and 12b: 1920x1080 windowed. HUD
-# scale middle, UI text size medium.
+# Shots 01-11 and 13: 2560x1440 fullscreen; 12a and 12b: 1920x1080 windowed.
+# HUD scale middle, UI text size medium. 13 is the rare belt Live 1 could not
+# read, with the app's overlay drawn at the top centre.
 01-rare-amulet-plain.png                      plain    0 0 2560 1440    0.00000 0.10833 0.29844 0.33611
 02-rare-amulet-alt.png                        alt      0 0 2560 1440    0.00000 0.10833 0.29844 0.33611
 03-rare-gloves-rune-stash-plain.png           plain    0 0 2560 1440    0.00000 0.00625 0.31133 0.26319
@@ -31,3 +32,4 @@
 11-exalted-orb.png                            currency 0 0 2560 1440    0.00000 0.14514 0.25898 0.32986
 12a-rare-amulet-plain-1080p-windowed.png      plain    1 31 1921 1111   0.00000 0.10833 0.30104 0.33611
 12b-rare-gloves-rune-plain-1080p-windowed.png plain    1 31 1921 1111   0.00000 0.00648 0.31354 0.26296
+13-belt-plain.png                             plain    0 0 2560 1440    0.03828 0.10278 0.30898 0.33889

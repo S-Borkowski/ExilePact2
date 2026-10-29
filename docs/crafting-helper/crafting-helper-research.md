@@ -279,8 +279,8 @@ gloves with a rune in the stash plain and with Alt, a magic ring, a normal
 belt, a rare quarterstaff, a rare jewel, rare gloves with an unrevealed
 desecrated modifier plain and with Alt, the stash and inventory with
 nothing hovered, an Exalted Orb, and the amulet and the gloves again at
-1920 x 1080. Shots 01-11 are 2560 x 1440 fullscreen, HUD scale middle, UI
-text size medium; 12a and 12b are the game windowed at 1920 x 1080,
+1920 x 1080. A fifteenth, shot 13, came after Live 1 (below). Shots 01-11
+and 13 are 2560 x 1440 fullscreen, HUD scale middle, UI text size medium; 12a and 12b are the game windowed at 1920 x 1080,
 captured with the Windows title bar. They were decoded with `qt-capture`'s
 decoder and read with Windows' OCR (en-US), the backend the app uses.
 `crates/ch-watch/tests/shots.txt` lists each shot's kind, its client inside
@@ -301,7 +301,7 @@ columns where the darkening stops. The header's top is its first frame row.
 OCR of each whole equipment shot, no locator, against its copy's explicit
 modifier lines: 4 of 4, 4 of 4, 3 of 3, 3 of 3, 2 of 2, 0 of 0 (the normal
 belt), 6 of 6, 4 of 4, 4 of 5, 4 of 5 (the unrevealed modifier's line is
-glyphs), 4 of 4 and 3 of 3. OCR reads this tooltip; the questions below
+glyphs), 4 of 4 and 3 of 3, and 3 of 3 for shot 13. OCR reads this tooltip; the questions below
 rest on it.
 
 The questions:
@@ -396,6 +396,38 @@ Two findings changed the matcher:
   2026-10-29). `ch-item` reads it (the belt's copy parses and joins), the
   matcher drops it like any range, and a tier holds a value between its
   bounds in either order.
+
+**Shot 13: the rare belt Live 1 could not read** (measured on the owner's
+screenshot `13-belt-plain` and its copy, 2026-10-29). In Live 1, hovering
+a rare `Utility Belt` (item level 77: a charm slot line, a requirement, a
+flask implicit, two prefixes and a suffix) logged the tooltip as
+unreadable, a line not accounted for. The owner's screenshot of the same
+hover, with the app's overlay drawn at the top centre, reproduced it on
+this machine: the locator found one box (its header's top at row 148, the
+body from column 98 to 791 and down to row 488 by hand; the locator's box
+runs on to row 831 over the dark stash, as for shot 01), the overlay was
+not in it, and OCR returned the two name lines and seven lines below. Each
+line was measured by taking it out of the read in turn: only without the
+requirement line did the read classify as unchanged. The class line
+(`Belt`), the charm slot line (a property, by its name), the implicit and
+the three modifier lines were all accounted for. OCR had read the
+requirement line's first word as two broken pieces, six letters for eight,
+while its colon, `Level` and the value came back intact; the key match on
+the line's first words could not place it. Why OCR broke that word here and
+not on the other shots is not established (the line lies over the stash
+grid's slot numbers in this shot). The matcher now also accounts for a
+requirement line by what follows its last colon, `Level` and its value,
+then only attributes with their values, whatever came before it; without
+the colon, or with any other word after it, the line stays unaccounted for.
+`the_belt_shot_reads_unchanged` (in `tests/shots.rs`) failed on the code
+before the fix and passes after it.
+`a_belt_with_charm_slots_and_a_flask_implicit_reads_unchanged` (in
+`tests/matcher.rs`, no screenshot) builds a belt of the same shape, its own
+name and values, and was green before the fix: the belt's line content, as
+the game writes it, was never the cause. It is kept as a pin, with the
+measured form of the requirement line (the first word broken, the rest
+intact) and its negatives added. With shot 13, 8 of the 10 plain-form
+equipment shots read as their copy.
 
 Not observed in the shots: a black copy, a tooltip cut by the window's
 edge, a tooltip over a bright scene (every body ended over the dark stash

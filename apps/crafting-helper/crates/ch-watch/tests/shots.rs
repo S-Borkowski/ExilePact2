@@ -216,7 +216,7 @@ fn shots_folder_holds_the_set() {
         "missing from {}: {missing:?}",
         dir.display()
     );
-    assert_eq!(shots().len(), 14);
+    assert_eq!(shots().len(), 15);
 }
 
 /// The positive control: OCR of each whole equipment shot, no locator,
@@ -312,6 +312,28 @@ fn shots_read_the_copied_mods_or_say_unreadable() {
     assert!(
         plain_equal * 4 >= plain * 3,
         "only {plain_equal} of {plain} plain-form equipment shots read as their copy"
+    );
+}
+
+/// The rare belt Live 1 hovered (2026-10-29), which the watch called
+/// unreadable (a line not accounted for): its plain tooltip, with the app's
+/// overlay drawn at the top centre of the shot, reads as its own copy.
+#[test]
+#[ignore = "reads the owner's screenshots: set CH_TOOLTIP_SHOTS"]
+fn the_belt_shot_reads_unchanged() {
+    let all = shots();
+    let shot = all
+        .iter()
+        .find(|s| s.file == "13-belt-plain.png")
+        .expect("tests/shots.txt lists 13-belt-plain.png");
+    let kind = classify(&read(shot), &copy_item(shot));
+    // Compared without `assert_eq!`, whose message would print a changed
+    // read's item text.
+    assert!(
+        kind == ReadKind::Unchanged,
+        "{}: {}",
+        shot.file,
+        describe(&kind)
     );
 }
 

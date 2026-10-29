@@ -713,7 +713,8 @@ otherwise, and adds to the waystone text layout in § "Item search box
 ## Item tooltip (on screen)
 
 Source: the owner's fourteen screenshots of the game's window with the
-hovered item's `Ctrl+Alt+C` copy beside each, 2026-10-29 (2560 x 1440
+hovered item's `Ctrl+Alt+C` copy beside each, 2026-10-29, and a fifteenth
+after Live 1, shot 13 (2560 x 1440
 fullscreen and 1920 x 1080 windowed, HUD scale middle, UI text size
 medium), read with Windows' OCR (en-US). The images stay on the owner's
 machine; the method, the numbers per shot and the tests are in
@@ -764,6 +765,15 @@ was read from the game's code.
   worst: `12(15-10)% reduced Charm Charges used`. A suffix may copy with no
   `(Tier: n)`: `{ Suffix Modifier "of the Parasite" — Life, Physical, Attack
   }`.
+- **A belt** (shot 13, a rare `Utility Belt`, measured from the owner's
+  screenshot, 2026-10-29): the plain tooltip names the class `Belt`, then
+  a `Charm Slots` line, the requirement, the flask implicit and each
+  modifier line, as for the other gear. OCR broke the requirement line's
+  first word into two mangled pieces while reading its colon, `Level` and
+  the value intact, so a reader cannot rely on the word before that colon;
+  why OCR broke it on this shot alone is not established. Research:
+  [`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
+  § "Item tooltip on screen", shot 13.
 - **A tier above the item level**: a level 43 item carried `Gleaming`,
   whose item level in the crafting helper's data (from poe2db) is 46.
 - Not established: whether the plain tooltip sums two modifiers' identical
