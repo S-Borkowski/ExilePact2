@@ -1,7 +1,9 @@
 //! Shared test support: a recording fake shell, a store in a temporary
 //! folder, and the update harness (a fake transport serving a release list
 //! and the two release assets, each held on a gate when a test asks, a fake
-//! clock and the running exe in a folder of its own).
+//! clock and the running exe in a folder of its own), and a fake screen
+//! backend (the game's window as the test sets it, its calls counted, a call
+//! held in flight on request).
 //!
 //! The signed release is the shared signature fixture
 //! (`apps/shared/fixtures/signing/`): its exe asset is `payload.bin`, signed
@@ -19,9 +21,10 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use ch_app::{
-    Answer, App, AppConfig, AssetKind, BeepAttempt, Clock, DownloadError, HotkeyError, Product,
-    SettingsView, Shell, Store, TransportError, UpdateConfig, UpdateSetup, UpdateState,
-    UpdateTransport, Version, View, CRAFTING_HELPER,
+    Answer, App, AppConfig, AssetKind, BeepAttempt, ClientRect, Clock, DownloadError, GameWindow,
+    HotkeyError, Product, ScreenBackend, ScreenSetup, SettingsView, Shell, Store, TransportError,
+    UpdateConfig, UpdateSetup, UpdateState, UpdateTransport, Version, View, WatchFailure,
+    CRAFTING_HELPER,
 };
 use serde_json::{json, Value};
 
@@ -52,6 +55,8 @@ pub struct Recorded {
     pub app_settings: Vec<SettingsView>,
     /// Every show (`true`) and hide (`false`) of the overlay, in order.
     pub overlay: Vec<bool>,
+    /// Every placement of the overlay's top-left corner, in order.
+    pub placed: Vec<(i32, i32)>,
     /// How often the Settings window was asked to open.
     pub settings_opened: usize,
     /// How often the app asked to quit and start again.
@@ -157,6 +162,14 @@ impl Shell for FakeShell {
         self.rec().overlay.push(visible);
     }
 
+    fn overlay_size(&self) -> Result<(u32, u32), String> {
+        Ok(OVERLAY_SIZE)
+    }
+
+    fn place_overlay(&self, x: i32, y: i32) {
+        self.rec().placed.push((x, y));
+    }
+
     fn open_settings(&self) -> Result<(), String> {
         self.rec().settings_opened += 1;
         Ok(())
@@ -180,11 +193,13 @@ pub fn app_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// An app with its store in `dir` and `shell`, not started.
+/// An app with its store in `dir` and `shell`, not started, with no screen
+/// backend (as M5's: the overlay never shows and nothing is read).
 pub fn make(dir: &Path, shell: &FakeShell) -> Arc<App> {
     App::new(AppConfig {
         store: Store::open(dir),
         shell: Box::new(shell.clone()),
+        screen: None,
     })
 }
 
@@ -193,6 +208,142 @@ pub fn start(dir: &Path, shell: &FakeShell) -> Arc<App> {
     let app = make(dir, shell);
     app.start();
     app
+}
+
+/// A started app with its store in `dir`, `shell` and `screen` as its
+/// screen backend; with `manual` its watch thread ticks only on
+/// [`App::tick_watch`], so a test decides when the backend is called.
+pub fn start_with_screen(
+    dir: &Path,
+    shell: &FakeShell,
+    screen: &FakeScreen,
+    manual: bool,
+) -> Arc<App> {
+    let backend = screen.backend();
+    let app = App::new(AppConfig {
+        store: Store::open(dir),
+        shell: Box::new(shell.clone()),
+        screen: Some(if manual {
+            ScreenSetup::manual(backend)
+        } else {
+            ScreenSetup::new(backend)
+        }),
+    });
+    app.start();
+    app
+}
+
+// ---------------------------------------------------------------------------
+// The fake screen backend.
+
+/// The game's client area the fake screen reports by default: a 2560x1440
+/// borderless window at the screen's origin, in physical pixels.
+pub const CLIENT: ClientRect = ClientRect {
+    left: 0,
+    top: 0,
+    right: 2560,
+    bottom: 1440,
+};
+
+/// The overlay's size the fake shell reports, in physical pixels.
+pub const OVERLAY_SIZE: (u32, u32) = (420, 160);
+
+/// The game in front, its client area at `client`.
+pub fn in_front(client: ClientRect) -> Result<GameWindow, WatchFailure> {
+    Ok(GameWindow::InFront {
+        handle: 0x1234,
+        client,
+    })
+}
+
+/// What the fake screen reports and saw.
+#[derive(Debug)]
+pub struct ScreenRec {
+    /// What the next call of `game_window` returns.
+    pub window: Result<GameWindow, WatchFailure>,
+    /// How often the app called the backend.
+    pub calls: usize,
+    /// A call waits while this is set (an OCR call or a copy in flight).
+    pub hold: bool,
+    /// A call is waiting on `hold`.
+    pub in_call: bool,
+    /// The backend was dropped: the watch thread ended.
+    pub dropped: bool,
+}
+
+impl Default for ScreenRec {
+    fn default() -> ScreenRec {
+        ScreenRec {
+            window: Ok(GameWindow::NotInFront),
+            calls: 0,
+            hold: false,
+            in_call: false,
+            dropped: false,
+        }
+    }
+}
+
+/// A screen backend that reports what the test sets, counts its calls,
+/// can hold a call in flight and records being dropped.
+#[derive(Clone, Default)]
+pub struct FakeScreen {
+    pub rec: Arc<(Mutex<ScreenRec>, Condvar)>,
+}
+
+impl FakeScreen {
+    /// The game in front at [`CLIENT`].
+    pub fn in_front() -> FakeScreen {
+        let screen = FakeScreen::default();
+        screen.set(in_front(CLIENT));
+        screen
+    }
+
+    pub fn backend(&self) -> Box<dyn ScreenBackend> {
+        Box::new(FakeBackend(self.clone()))
+    }
+
+    pub fn rec(&self) -> std::sync::MutexGuard<'_, ScreenRec> {
+        self.rec.0.lock().unwrap()
+    }
+
+    pub fn set(&self, window: Result<GameWindow, WatchFailure>) {
+        self.rec().window = window;
+    }
+
+    pub fn calls(&self) -> usize {
+        self.rec().calls
+    }
+
+    pub fn dropped(&self) -> bool {
+        self.rec().dropped
+    }
+
+    pub fn hold(&self, held: bool) {
+        self.rec().hold = held;
+        self.rec.1.notify_all();
+    }
+}
+
+struct FakeBackend(FakeScreen);
+
+impl ScreenBackend for FakeBackend {
+    fn game_window(&mut self) -> Result<GameWindow, WatchFailure> {
+        let (lock, cv) = &*self.0.rec;
+        let mut r = lock.lock().unwrap();
+        r.calls += 1;
+        r.in_call = true;
+        while r.hold {
+            r = cv.wait(r).unwrap();
+        }
+        r.in_call = false;
+        r.window.clone()
+    }
+}
+
+impl Drop for FakeBackend {
+    fn drop(&mut self) {
+        self.0.rec().dropped = true;
+    }
 }
 
 /// Writes `value` as the store's `settings.json`.
@@ -533,6 +684,7 @@ pub fn harness(setup: Setup) -> Harness {
         AppConfig {
             store: Store::open(&store),
             shell: Box::new(shell.clone()),
+            screen: None,
         },
         UpdateSetup {
             config: UpdateConfig {

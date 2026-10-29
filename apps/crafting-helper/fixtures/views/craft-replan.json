@@ -61,7 +61,26 @@
   },
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
-    "line": "Next step: shown here while a craft is active.",
+    "guide": {
+      "instruction": "End the craft in the app to plan again from this item.",
+      "last": {
+        "instruction": "Chaos Orb until one of the targets lands",
+        "number": 1,
+        "result": "unexpected",
+        "step": "chaos",
+        "summary": "Unexpected: Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came; gained +#% to Fire Resistance (T3), +#% to Cold Resistance (T3)"
+      },
+      "odds": null,
+      "on_hit": null,
+      "on_miss": null,
+      "route_name": "Rings: resistances by whittling",
+      "status": "replan",
+      "step_number": null,
+      "try_number": null,
+      "uses": [],
+      "why": "Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came"
+    },
+    "position": "top-center",
     "visible": false
   },
   "status": {

@@ -2,12 +2,13 @@
 //! temporary store: `check_updates` off unless saved `true`, and the blocked
 //! currencies saved, normalised, refused whole when bad (an id outside the
 //! catalogue included) and read back by a new app on the same store, and
-//! the catalogue the blocked list picks from.
+//! the catalogue the blocked list picks from; the overlay's position and the
+//! screen watch, saved and read back, an unknown position refused.
 
 mod common;
 
 use ch_app::ch_engine::catalogue;
-use ch_app::{App, AppConfig, Store, StoreError};
+use ch_app::{App, AppConfig, OverlayPosition, Store, StoreError};
 use common::*;
 use serde_json::{json, Value};
 
@@ -354,6 +355,7 @@ fn a_store_inside_a_git_checkout_is_refused_and_nothing_is_saved() {
     let app = App::new(AppConfig {
         store,
         shell: Box::new(shell.clone()),
+        screen: None,
     });
     app.start();
     let status = app.get_view().status.unwrap();
@@ -390,4 +392,90 @@ fn an_unreadable_settings_file_starts_from_the_defaults() {
     app.shutdown();
     let saved: Value = saved_settings(tmp.path());
     assert_eq!(saved["hotkey"], "Ctrl+Alt+R");
+}
+
+#[test]
+fn overlay_position_and_screen_watch_are_saved() {
+    // The defaults: a first launch, a file without the keys, and saved
+    // values that are not one of theirs.
+    for saved in [
+        None,
+        Some(json!({ "schema": 1, "hotkey": "Ctrl+Alt+X" })),
+        Some(json!({ "schema": 1, "overlay_position": "middle", "screen_watch": "off" })),
+        Some(json!({ "schema": 1, "overlay_position": 2, "screen_watch": null })),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        if let Some(s) = &saved {
+            save_settings(tmp.path(), s);
+        }
+        let app = start(tmp.path(), &FakeShell::default());
+        let view = app.get_app_settings();
+        assert_eq!(
+            view.overlay_position,
+            OverlayPosition::TopCenter,
+            "{saved:?}"
+        );
+        assert!(view.screen_watch, "{saved:?}");
+        assert_eq!(app.get_view().overlay.position, OverlayPosition::TopCenter);
+        app.shutdown();
+    }
+
+    // Changed, either or both, saved with the rest, and read back.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    let view = app
+        .update_settings(&json!({ "overlay_position": "bottom-left" }))
+        .unwrap();
+    assert_eq!(view.overlay_position, OverlayPosition::BottomLeft);
+    assert!(view.screen_watch);
+    let view = app
+        .update_settings(&json!({ "screen_watch": false, "overlay_position": "top-right" }))
+        .unwrap();
+    assert_eq!(view.overlay_position, OverlayPosition::TopRight);
+    assert!(!view.screen_watch);
+    // The Settings window and the overlay heard it.
+    assert_eq!(shell.rec().app_settings.last(), Some(&view));
+    assert_eq!(
+        shell.last_view().overlay.position,
+        OverlayPosition::TopRight
+    );
+    // Refused whole: an unknown position, a watch that is not true or
+    // false, an unknown key beside a good one.
+    for bad in [
+        json!({ "overlay_position": "centre" }),
+        json!({ "overlay_position": "Top-Left" }),
+        json!({ "screen_watch": 0 }),
+        json!({ "screen_watch": true, "overlay_scale": 2 }),
+        json!({ "overlay_position": "top-left", "screen_watch": "yes" }),
+    ] {
+        assert!(app.update_settings(&bad).is_err(), "{bad}");
+    }
+    let view = app.get_app_settings();
+    assert_eq!(view.overlay_position, OverlayPosition::TopRight);
+    assert!(!view.screen_watch);
+    app.shutdown();
+    let saved = saved_settings(tmp.path());
+    assert_eq!(saved["overlay_position"], "top-right");
+    assert_eq!(saved["screen_watch"], false);
+    assert_eq!(saved["hotkey"], "Ctrl+Alt+X");
+
+    let again = start(tmp.path(), &FakeShell::default());
+    let view = again.get_app_settings();
+    assert_eq!(view.overlay_position, OverlayPosition::TopRight);
+    assert!(!view.screen_watch);
+    again
+        .update_settings(&json!({ "screen_watch": true }))
+        .unwrap();
+    again.shutdown();
+    assert_eq!(saved_settings(tmp.path())["screen_watch"], true);
+    let log = diag_lines(tmp.path());
+    for line in [
+        "overlay position: bottom-left",
+        "overlay position: top-right",
+        "screen watch: off",
+        "screen watch: on",
+    ] {
+        assert!(log.contains(&line.to_string()), "{line}: {log:?}");
+    }
 }

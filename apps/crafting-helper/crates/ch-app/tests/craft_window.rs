@@ -827,30 +827,6 @@ fn craft_reaches_done() {
 }
 
 #[test]
-fn overlay_stays_hidden_while_guiding() {
-    let tmp = tempfile::tempdir().unwrap();
-    let shell = FakeShell::default();
-    let app = whittle_planned(tmp.path(), &shell);
-    let view = app.accept_craft();
-    assert_eq!(view.craft.mode, CraftMode::Guiding);
-    assert!(!view.overlay.visible);
-    for file in ["06-chaos-below-floor", "02-chaos-fire", "03-whittle-cold"] {
-        assert!(!app.grab_text(Some(&ring(file))).overlay.visible);
-    }
-    app.end_craft();
-    // The shell was never asked to show it, and no view sent showed it.
-    let rec = shell.rec();
-    assert!(rec.overlay.is_empty(), "{:?}", rec.overlay);
-    assert!(rec.views.iter().all(|v| !v.overlay.visible));
-    assert!(rec.views.iter().any(|v| v.craft.mode == CraftMode::Guiding));
-    drop(rec);
-    app.shutdown();
-    assert!(!diag_lines(tmp.path())
-        .iter()
-        .any(|l| l.starts_with("overlay")));
-}
-
-#[test]
 fn open_craft_of_exile_opens_only_the_fixed_address() {
     assert_eq!(
         CRAFT_OF_EXILE_URL,
@@ -918,6 +894,7 @@ fn open_craft_of_exile_opens_only_the_fixed_address() {
     let bare = ch_app::App::new(ch_app::AppConfig {
         store: ch_app::Store::open(bare_dir.path()),
         shell: Box::new(Bare),
+        screen: None,
     });
     let view = bare.open_craft_of_exile();
     assert_eq!(status(&view).0, StatusKind::Error);

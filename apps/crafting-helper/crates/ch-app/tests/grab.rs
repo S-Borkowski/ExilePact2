@@ -28,8 +28,7 @@ fn grab_reads_the_clipboard_once_per_press() {
     app.open_settings().unwrap();
     let _ = app.check_for_updates();
     let _ = app.cancel_update();
-    app.set_craft_active(true);
-    app.set_craft_active(false);
+    app.tick_watch();
     app.tick_updates(0);
     assert_eq!(shell.reads(), 0, "a clipboard read nobody asked for");
     assert_eq!(app.get_view().grab, None);

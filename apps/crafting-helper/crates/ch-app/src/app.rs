@@ -29,12 +29,21 @@
 //! asks the shell to open [`CRAFT_OF_EXILE_URL`] and nothing else. The
 //! shipped blueprints are loaded once, when the app is built.
 //!
-//! The overlay: [`View::overlay`] is visible only while
-//! [`App::set_craft_active`] says so; no command calls it, and the craft
-//! window does not either (the overlay is M6's), so the overlay never shows
-//! in 0.1.0.
+//! The overlay over the game ([`crate::overlay`]): [`View::overlay`] is
+//! visible while the craft is guiding, in any guide status, and the screen
+//! backend ([`crate::screen`], optional in [`AppConfig`]) last reported the
+//! game's window in front; hidden otherwise, and at once when guiding ends.
+//! Its content is the guide's current step and last outcome, present
+//! whenever the craft is guiding. The app places it through the shell
+//! ([`Shell::place_overlay`]) at the `overlay_position` setting inside the
+//! game's client area, again when that area, the setting or the overlay's
+//! size changes, then shows or hides it ([`Shell::set_overlay_visible`]).
+//! Without a backend it never shows. The watch thread looks at the game's
+//! window only while the craft is guiding; `App` sends it each change of
+//! that without waiting, and never waits on it with its lock held.
 //!
-//! The hotkey, `check_updates` and the blocked currencies are saved to
+//! The hotkey, `check_updates`, the blocked currencies, `overlay_position`
+//! and `screen_watch` are saved to
 //! `settings.json` by a saver thread, [`SAVE_DELAY`] after the last change
 //! (debounced), and at once on [`App::flush`] and [`App::shutdown`].
 //!
@@ -54,7 +63,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::thread::JoinHandle;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use ep_update::{
     outcome_line, started_line, turned_line, Answer, Begin, InstallEvents, TransportError, Updater,
@@ -67,20 +76,25 @@ use ch_engine::{Engine, Target};
 use crate::craft::{CommandResult, Craft, GrabEffect, CRAFT_OF_EXILE_URL};
 use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
+use crate::overlay::{overlay_guide, overlay_origin};
+use crate::screen::{
+    self, ClientRect, Demand, GameWindow, ScreenSetup, Watch, WatchFailure, WatchMsg,
+    WATCH_STOP_DEADLINE,
+};
 use crate::settings::{
-    blocked_list, catalogue_groups, load_blocked, read_patch, CatalogueGroup,
-    BLOCKED_CURRENCIES_KEY, CHECK_UPDATES_KEY,
+    blocked_list, catalogue_groups, load_blocked, load_overlay_position, load_screen_watch,
+    read_patch, CatalogueGroup, BLOCKED_CURRENCIES_KEY, CHECK_UPDATES_KEY, OVERLAY_POSITION_KEY,
+    SCREEN_WATCH_KEY,
 };
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
 use crate::updates::{Clock, UpdateSetup};
 use crate::view::{
-    GrabSource, GrabView, OutcomeWord, OverlayView, SettingsView, StatusKind, StatusLine, View,
+    CraftMode, GrabSource, GrabView, OutcomeWord, OverlayPosition, OverlayView, SettingsView,
+    StatusKind, StatusLine, View,
 };
 
 /// How long after the last change the settings are written.
 pub const SAVE_DELAY: Duration = Duration::from_millis(500);
-/// The overlay's one line until the craft UI fills it.
-pub const OVERLAY_PLACEHOLDER: &str = "Next step: shown here while a craft is active.";
 
 /// Why a hotkey was not registered.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,8 +169,20 @@ pub trait Shell: Send + Sync {
     /// Sends the Settings window's view to it (`ch:app-settings`), from
     /// whichever thread made the change, with no lock of the app held.
     fn emit_app_settings(&self, _view: &SettingsView) {}
-    /// Shows the overlay window without activating it, or hides it.
+    /// Shows the overlay window without activating it, or hides it. Posted
+    /// to the main thread and never waited on: called from the watch thread
+    /// and the commands, with no lock of the app held.
     fn set_overlay_visible(&self, visible: bool);
+    /// The overlay window's size in physical pixels (width, height), for
+    /// its placement. Called from the watch thread and the commands with no
+    /// lock of the app held; it must not wait on the main thread.
+    fn overlay_size(&self) -> Result<(u32, u32), String> {
+        Err("this shell has no overlay window".to_string())
+    }
+    /// Moves the overlay window's top-left corner to `(x, y)`, physical
+    /// pixels on the screen, and nothing else. Posted to the main thread and
+    /// never waited on, as [`Shell::set_overlay_visible`] is.
+    fn place_overlay(&self, _x: i32, _y: i32) {}
     /// Opens the Settings window, or brings it up when it is open.
     fn open_settings(&self) -> Result<(), String> {
         Err("this shell has no Settings window".to_string())
@@ -177,6 +203,65 @@ pub trait Shell: Send + Sync {
 pub struct AppConfig {
     pub store: Result<Store, StoreError>,
     pub shell: Box<dyn Shell>,
+    /// The game's window (and the screen reads); `None`: the overlay never
+    /// shows and nothing is read.
+    pub screen: Option<ScreenSetup>,
+}
+
+/// The game's window, as the watch thread last reported it while guiding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Game {
+    /// Not looked at since guiding began (or no backend).
+    Unknown,
+    NotInFront,
+    Minimized,
+    InFront(ClientRect),
+    /// The backend's call failed.
+    Failed,
+}
+
+/// The overlay window and the watch as the app last told the shell, the log
+/// and the thread.
+#[derive(Debug)]
+struct ScreenState {
+    /// The game's window, from the last report of this generation.
+    game: Game,
+    /// The shell was last told to show the overlay.
+    shown: bool,
+    /// The last placement: the position, the client area and the size.
+    placed: Option<(OverlayPosition, ClientRect, (u32, u32))>,
+    /// The last `watch:` state line written.
+    watch_line: String,
+    /// A backend call failed and was logged; a success clears it.
+    window_failed: bool,
+    /// The overlay's size was unknown, and that was logged.
+    size_failed: bool,
+    /// The last demand sent to the thread (whether guiding), and its
+    /// number; a report of another number is dropped.
+    demand: Option<bool>,
+    generation: u64,
+}
+
+impl Default for ScreenState {
+    fn default() -> ScreenState {
+        ScreenState {
+            game: Game::Unknown,
+            shown: false,
+            placed: None,
+            watch_line: idle_line(NOT_GUIDING),
+            window_failed: false,
+            size_failed: false,
+            demand: None,
+            generation: 0,
+        }
+    }
+}
+
+const NOT_GUIDING: &str = "not guiding";
+const NOT_IN_FRONT: &str = "game not in front";
+
+fn idle_line(reason: &str) -> String {
+    format!("watch: idle ({reason})")
 }
 
 /// The main window's status line, and whether it is about the hotkey (a
@@ -197,10 +282,26 @@ struct State {
     /// `true`.
     check_updates: bool,
     blocked_currencies: Vec<String>,
-    /// Whether the overlay shows; nothing in 0.1.0 sets it (M6 will).
-    craft_active: bool,
+    /// Where the overlay sits over the game.
+    overlay_position: OverlayPosition,
+    /// Read the hovered item from the screen while guiding; on unless the
+    /// saved settings say `false`.
+    screen_watch: bool,
     /// The craft window's state, in memory only.
     craft: Craft,
+    /// The overlay window and the watch.
+    screen: ScreenState,
+}
+
+impl State {
+    fn guiding(&self) -> bool {
+        self.craft.mode() == CraftMode::Guiding
+    }
+
+    /// The overlay should show: guiding, with the game's window in front.
+    fn overlay_wanted(&self) -> bool {
+        self.guiding() && matches!(self.screen.game, Game::InFront(_))
+    }
 }
 
 enum SaveMsg {
@@ -236,6 +337,18 @@ pub struct App {
     /// The shipped blueprints, loaded once; `None` when they did not load
     /// (then every grab is refused with that reason).
     engine: Option<Engine>,
+    /// The screen backend, until [`App::start`] moves it to the watch
+    /// thread.
+    screen_setup: Mutex<Option<ScreenSetup>>,
+    /// A screen backend was given: the overlay and the watch are in play.
+    has_screen: bool,
+    /// The watch thread, while it runs.
+    watch: Mutex<Option<Watch>>,
+    /// Keeps the overlay's shell calls in the order their decisions were
+    /// made; never taken with the state's lock held.
+    overlay_order: Mutex<()>,
+    /// [`App::shutdown`] began: a report from the watch changes nothing.
+    stopped: AtomicBool,
 }
 
 impl App {
@@ -249,7 +362,11 @@ impl App {
     /// starts the saver. Registers nothing, reads no clipboard, emits
     /// nothing and checks nothing until [`App::start`].
     pub fn with_updates(config: AppConfig, updates: UpdateSetup) -> Arc<App> {
-        let AppConfig { store, shell } = config;
+        let AppConfig {
+            store,
+            shell,
+            screen,
+        } = config;
         let UpdateSetup {
             config: update_config,
             product,
@@ -279,6 +396,8 @@ impl App {
         let mut hotkey_replaced = false;
         let mut check_updates = false;
         let mut blocked_currencies = Vec::new();
+        let mut overlay_position = OverlayPosition::default();
+        let mut screen_watch = true;
         let store = match store {
             Ok(s) => Some(Arc::new(s)),
             Err(e) => {
@@ -313,6 +432,8 @@ impl App {
                             hotkey = h.to_string();
                         }
                     }
+                    overlay_position = load_overlay_position(saved.get(OVERLAY_POSITION_KEY));
+                    screen_watch = load_screen_watch(saved.get(SCREEN_WATCH_KEY));
                     let (ids, dropped) = load_blocked(saved.get(BLOCKED_CURRENCIES_KEY));
                     blocked_currencies = ids;
                     if dropped > 0 {
@@ -363,8 +484,10 @@ impl App {
                 status,
                 check_updates,
                 blocked_currencies,
-                craft_active: false,
+                overlay_position,
+                screen_watch,
                 craft: Craft::default(),
+                screen: ScreenState::default(),
             }),
             saver: Mutex::new(saver),
             hotkey_replaced,
@@ -374,6 +497,11 @@ impl App {
             ticker: Mutex::new(None),
             restart_requested: AtomicBool::new(false),
             engine,
+            has_screen: screen.is_some(),
+            screen_setup: Mutex::new(screen),
+            watch: Mutex::new(None),
+            overlay_order: Mutex::new(()),
+            stopped: AtomicBool::new(false),
         });
         for n in notes {
             app.diag(&format!("settings: {n}"));
@@ -381,9 +509,10 @@ impl App {
         app
     }
 
-    /// Writes the start line, registers the hotkey, sends the first view,
-    /// starts the update ticker and, with `check_updates` on, the first
-    /// automatic check. Reads no clipboard.
+    /// Writes the start line, registers the hotkey, starts the watch thread
+    /// (with a screen backend), sends the first view, starts the update
+    /// ticker and, with `check_updates` on, the first automatic check. Reads
+    /// no clipboard.
     pub fn start(&self) {
         self.diag(&format!(
             "start: crafting-helper {}; store {}",
@@ -409,6 +538,7 @@ impl App {
             let st = self.lock();
             self.save(&st);
         }
+        self.start_watch();
         self.emit();
         self.start_ticker();
         self.tick_updates(self.clock.now_ms());
@@ -438,24 +568,189 @@ impl App {
         self.get_view()
     }
 
-    /// Whether a craft is active, and so whether the overlay shows. Public
-    /// for the tests and the overlay to come (M6); no IPC command calls it,
-    /// and the craft window does not either: guiding leaves it hidden.
-    pub fn set_craft_active(&self, active: bool) {
-        {
+    // -- the overlay and the watch (see `crate::overlay`, `crate::screen`) ---
+
+    /// With manual ticks ([`ScreenSetup::manual`]): one tick of the watch
+    /// thread now, waited for (up to 10 s) with no lock of the app held.
+    /// Does nothing on the thread's own clock, without a screen backend or
+    /// after the shutdown. For the tests and the fixtures; no IPC command
+    /// calls it.
+    pub fn tick_watch(&self) {
+        let tx = {
+            let watch = self.watch.lock().unwrap_or_else(|p| p.into_inner());
+            match watch.as_ref() {
+                Some(w) if w.manual => w.tx.clone(),
+                _ => return,
+            }
+        };
+        let (ack, done) = mpsc::channel();
+        if tx.send(WatchMsg::Tick(ack)).is_ok() {
+            let _ = done.recv_timeout(Duration::from_secs(10));
+        }
+    }
+
+    /// The watch thread's look at the game's window, for demand
+    /// `generation`: applied while that is the current demand and the craft
+    /// is guiding; then the overlay follows, with no lock held.
+    pub(crate) fn window_report(&self, generation: u64, window: Result<GameWindow, WatchFailure>) {
+        if self.stopped.load(Ordering::Acquire) {
+            return;
+        }
+        let failure = {
             let mut st = self.lock();
-            if st.craft_active == active {
+            if st.screen.generation != generation || !st.guiding() {
                 return;
             }
-            st.craft_active = active;
+            let (game, failure) = match window {
+                Ok(GameWindow::InFront { client, .. }) => (Game::InFront(client), None),
+                Ok(GameWindow::NotInFront) => (Game::NotInFront, None),
+                Ok(GameWindow::Minimized) => (Game::Minimized, None),
+                Err(f) => (Game::Failed, Some(f)),
+            };
+            st.screen.game = game;
+            // Logged once until a call succeeds.
+            let first = failure.is_some() && !st.screen.window_failed;
+            st.screen.window_failed = failure.is_some();
+            failure.filter(|_| first)
+        };
+        if let Some(f) = failure {
+            self.diag(&format!("error: watch: {} failed: {}", f.call, f.error));
         }
-        self.diag(if active {
-            "overlay shown: a craft is active"
+        if self.sync_screen() {
+            self.emit();
+        }
+    }
+
+    /// Starts the watch thread over the screen backend and sends it the
+    /// first demand. Nothing without a backend.
+    fn start_watch(&self) {
+        let setup = self
+            .screen_setup
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .take();
+        let Some(setup) = setup else {
+            return;
+        };
+        match screen::spawn(self.me.clone(), setup) {
+            Ok(watch) => *self.watch.lock().unwrap_or_else(|p| p.into_inner()) = Some(watch),
+            Err(e) => self.diag(&format!("error: the watch thread did not start: {e}")),
+        }
+        self.send_demand();
+    }
+
+    /// After a change that may move the craft in or out of guiding, or the
+    /// overlay's settings: tells the watch thread and brings the overlay in
+    /// line. The caller sends the view after.
+    fn screen_changed(&self) {
+        self.send_demand();
+        self.sync_screen();
+    }
+
+    /// Sends the watch thread the demand when it changed, never waiting. A
+    /// craft that stops guiding forgets the game's window, so the next one
+    /// starts from a fresh look.
+    fn send_demand(&self) {
+        let demand = {
+            let mut st = self.lock();
+            let guiding = st.guiding();
+            if !guiding {
+                st.screen.game = Game::Unknown;
+            }
+            if st.screen.demand == Some(guiding) {
+                return;
+            }
+            st.screen.demand = Some(guiding);
+            st.screen.generation += 1;
+            Demand {
+                generation: st.screen.generation,
+                guiding,
+            }
+        };
+        let watch = self.watch.lock().unwrap_or_else(|p| p.into_inner());
+        if let Some(w) = watch.as_ref() {
+            let _ = w.tx.send(WatchMsg::Demand(demand));
+        }
+    }
+
+    /// Brings the overlay window and the watch's state line in line with the
+    /// state: the line when it changed, the placement when the position,
+    /// the client area or the overlay's size changed, then the show or hide.
+    /// Decided under the state's lock and carried out after it, in order
+    /// (under `overlay_order`). True when the overlay's visibility changed
+    /// (the views carry it). Nothing without a screen backend.
+    fn sync_screen(&self) -> bool {
+        if !self.has_screen || self.stopped.load(Ordering::Acquire) {
+            return false;
+        }
+        // Read with no lock of the app held, `overlay_order` included.
+        let size = if self.lock().overlay_wanted() {
+            Some(self.shell.overlay_size())
         } else {
-            "overlay hidden: no craft is active"
-        });
-        self.shell.set_overlay_visible(active);
-        self.emit();
+            None
+        };
+        let _order = self.overlay_order.lock().unwrap_or_else(|p| p.into_inner());
+        let mut lines: Vec<String> = Vec::new();
+        let (place, show) = {
+            let mut guard = self.lock();
+            let st = &mut *guard;
+            if let Some(line) = watch_line(st) {
+                if line != st.screen.watch_line {
+                    lines.push(line.clone());
+                    st.screen.watch_line = line;
+                }
+            }
+            let mut place = None;
+            let mut show_now = st.overlay_wanted();
+            if let (true, Game::InFront(client)) = (show_now, st.screen.game) {
+                match &size {
+                    // It came to the front between the two locks: shown once
+                    // its place is known, at the next sync.
+                    None => show_now = st.screen.shown,
+                    Some(Ok(size)) => {
+                        st.screen.size_failed = false;
+                        let key = (st.overlay_position, client, *size);
+                        if st.screen.placed != Some(key) {
+                            st.screen.placed = Some(key);
+                            place = Some(overlay_origin(st.overlay_position, client, *size));
+                            lines.push(format!("overlay: placed {}", st.overlay_position.name()));
+                        }
+                    }
+                    // Shown where it is, said once.
+                    Some(Err(e)) => {
+                        if !st.screen.size_failed {
+                            st.screen.size_failed = true;
+                            lines.push(format!("error: overlay: its size is unknown: {e}"));
+                        }
+                    }
+                }
+            }
+            let show = (show_now != st.screen.shown).then_some(show_now);
+            if let Some(shown) = show {
+                st.screen.shown = shown;
+                lines.push(if shown {
+                    "overlay: shown".to_string()
+                } else {
+                    let why = if st.guiding() {
+                        NOT_IN_FRONT
+                    } else {
+                        NOT_GUIDING
+                    };
+                    format!("overlay: hidden ({why})")
+                });
+            }
+            (place, show)
+        };
+        for line in &lines {
+            self.diag(line);
+        }
+        if let Some((x, y)) = place {
+            self.shell.place_overlay(x, y);
+        }
+        if let Some(shown) = show {
+            self.shell.set_overlay_visible(shown);
+        }
+        show.is_some()
     }
 
     /// `set_hotkey`: registers `hotkey` in place of the current one. An
@@ -505,13 +800,15 @@ impl App {
 
     /// `get_app_settings`: what the Settings window shows.
     pub fn get_app_settings(&self) -> SettingsView {
-        let (on, hotkey, hotkey_status, blocked_currencies) = {
+        let (on, hotkey, hotkey_status, blocked_currencies, overlay_position, screen_watch) = {
             let st = self.lock();
             (
                 st.check_updates,
                 st.hotkey.clone(),
                 st.hotkey_status.clone(),
                 st.blocked_currencies.clone(),
+                st.overlay_position,
+                st.screen_watch,
             )
         };
         SettingsView {
@@ -519,6 +816,8 @@ impl App {
             hotkey,
             hotkey_status,
             blocked_currencies,
+            overlay_position,
+            screen_watch,
         }
     }
 
@@ -530,11 +829,13 @@ impl App {
         catalogue_groups()
     }
 
-    /// `update_settings`: `check_updates` and `blocked_currencies`, either
-    /// or both (see [`crate::settings`]). Anything else, a value of the
-    /// wrong shape or a blocked id outside the catalogue, is refused whole
-    /// with nothing changed. Turning the check on ticks at once, so a first
-    /// check starts now when one is due. Sends both views.
+    /// `update_settings`: `check_updates`, `blocked_currencies`,
+    /// `overlay_position` and `screen_watch`, any of them (see
+    /// [`crate::settings`]). Anything else, a value of the wrong shape, a
+    /// blocked id outside the catalogue or an unknown position, is refused
+    /// whole with nothing changed. Turning the check on ticks at once, so a
+    /// first check starts now when one is due; a new position places the
+    /// overlay again while it shows. Sends both views.
     pub fn update_settings(&self, patch: &Value) -> Result<SettingsView, String> {
         let patch = match read_patch(patch) {
             Ok(p) => p,
@@ -543,7 +844,7 @@ impl App {
                 return Err(reason);
             }
         };
-        let (turned, blocked) = {
+        let (turned, blocked, moved, watch) = {
             let mut st = self.lock();
             let turned = patch.check_updates.filter(|on| *on != st.check_updates);
             if let Some(on) = turned {
@@ -555,11 +856,32 @@ impl App {
             if let Some(ids) = &blocked {
                 st.blocked_currencies = ids.clone();
             }
-            if turned.is_some() || blocked.is_some() {
+            let moved = patch.overlay_position.filter(|p| *p != st.overlay_position);
+            if let Some(p) = moved {
+                st.overlay_position = p;
+            }
+            let watch = patch.screen_watch.filter(|on| *on != st.screen_watch);
+            if let Some(on) = watch {
+                st.screen_watch = on;
+            }
+            if turned.is_some() || blocked.is_some() || moved.is_some() || watch.is_some() {
                 self.save(&st);
             }
-            (turned, blocked.map(|ids| ids.len()))
+            (turned, blocked.map(|ids| ids.len()), moved, watch)
         };
+        if let Some(p) = moved {
+            self.diag(&format!("overlay position: {}", p.name()));
+        }
+        if let Some(on) = watch {
+            self.diag(if on {
+                "screen watch: on"
+            } else {
+                "screen watch: off"
+            });
+        }
+        if moved.is_some() || watch.is_some() {
+            self.screen_changed();
+        }
         if let Some(n) = blocked {
             self.diag(&format!(
                 "blocked currencies: {n} id{}",
@@ -709,6 +1031,7 @@ impl App {
             Ok(done) => self.diag(&done.diag),
             Err(why) => self.diag(&format!("craft: refused: {why}")),
         }
+        self.screen_changed();
         self.emit();
         self.get_view()
     }
@@ -830,12 +1153,28 @@ impl App {
     }
 
     /// Stops the updater (a running check or install ends without changing
-    /// anything; neither is waited for) and the ticker, writes any pending
-    /// settings and stops the saver. Safe to call twice.
+    /// anything; neither is waited for), the ticker and the watch thread
+    /// (waited for up to [`WATCH_STOP_DEADLINE`]; a call in flight is not
+    /// interrupted, and a thread still in one is logged as not ended),
+    /// writes any pending settings and stops the saver. Safe to call twice.
     pub fn shutdown(&self) {
         self.updater.stop();
+        self.stopped.store(true, Ordering::Release);
         // The ticker ends when its channel closes; it is not waited for.
         drop(self.ticker.lock().unwrap_or_else(|p| p.into_inner()).take());
+        let watch = self.watch.lock().unwrap_or_else(|p| p.into_inner()).take();
+        if let Some(Watch { tx, handle, .. }) = watch {
+            drop(tx);
+            // The last handle on the app may drop on the watch thread
+            // itself, which cannot wait for its own end.
+            let on_it = handle.thread().id() == std::thread::current().id();
+            if !on_it && !screen::join_by(handle, Instant::now() + WATCH_STOP_DEADLINE) {
+                self.diag(&format!(
+                    "error: watch: did not end within {} ms",
+                    WATCH_STOP_DEADLINE.as_millis()
+                ));
+            }
+        }
         let saver = self.saver.lock().unwrap_or_else(|p| p.into_inner()).take();
         if let Some(Saver { tx, thread }) = saver {
             drop(tx);
@@ -935,6 +1274,7 @@ impl App {
                 });
             }
         }
+        self.screen_changed();
         self.emit();
     }
 
@@ -970,6 +1310,8 @@ impl App {
             "hotkey": st.hotkey,
             "check_updates": st.check_updates,
             "blocked_currencies": st.blocked_currencies,
+            "overlay_position": st.overlay_position.name(),
+            "screen_watch": st.screen_watch,
         });
         let guard = self.saver.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(saver) = guard.as_ref() {
@@ -986,16 +1328,37 @@ impl Drop for App {
 
 /// The view of `st`, with the newer version a check found.
 fn view_of(st: &State, engine: Option<&Engine>, update_available: Option<String>) -> View {
+    let craft = st.craft.view(engine, &st.blocked_currencies);
+    let guide = craft.guiding.as_ref().map(overlay_guide);
     View {
-        craft: st.craft.view(engine, &st.blocked_currencies),
+        craft,
         hotkey: st.hotkey.clone(),
         grab: st.grab.clone(),
         status: st.status.as_ref().map(|s| s.line.clone()),
         overlay: OverlayView {
-            visible: st.craft_active,
-            line: OVERLAY_PLACEHOLDER.to_string(),
+            visible: st.screen.shown,
+            position: st.overlay_position,
+            guide,
         },
         update_available,
+    }
+}
+
+/// The watch's state line for `st`, or `None` when it has nothing new to
+/// say (guiding, with no look at the game's window yet, or a failed one).
+fn watch_line(st: &State) -> Option<String> {
+    if !st.guiding() {
+        return Some(idle_line(NOT_GUIDING));
+    }
+    match st.screen.game {
+        Game::Unknown | Game::Failed => None,
+        Game::NotInFront => Some(idle_line(NOT_IN_FRONT)),
+        Game::Minimized => Some(idle_line("minimized")),
+        Game::InFront(client) => Some(format!(
+            "watch: game window {}x{}",
+            client.width(),
+            client.height()
+        )),
     }
 }
 

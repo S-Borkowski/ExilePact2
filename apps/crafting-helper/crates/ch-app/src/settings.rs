@@ -1,9 +1,11 @@
 //! What `settings.json` holds and what the Settings window may change, and
 //! the catalogue the blocked list picks from.
 //!
-//! The file: `schema` 1, `hotkey`, `check_updates` and
-//! `blocked_currencies`. `check_updates` is off unless it is saved as
-//! `true`. The blocked currencies are ids of the engine's catalogue
+//! The file: `schema` 1, `hotkey`, `check_updates`, `blocked_currencies`,
+//! `overlay_position` and `screen_watch`. `check_updates` is off unless it
+//! is saved as `true`; `screen_watch` is on unless it is saved as `false`;
+//! `overlay_position` is one of [`OverlayPosition`]'s names, and anything
+//! else saved there is the default, `top-center`. The blocked currencies are ids of the engine's catalogue
 //! ([`ch_engine::catalogue`]): every currency, omen, bone, flux, catalyst,
 //! essence, alloy and liquid emotion a blueprint may name.
 //!
@@ -11,9 +13,11 @@
 //! ids, with no repeats, so the list may hold the whole catalogue and never
 //! more. There is no other count limit.
 //!
-//! `update_settings` takes a patch of [`CHECK_UPDATES_KEY`] and
-//! [`BLOCKED_CURRENCIES_KEY`], any of the two and nothing else, read whole
-//! by [`read_patch`] before anything changes. `blocked_currencies` replaces
+//! `update_settings` takes a patch of [`CHECK_UPDATES_KEY`],
+//! [`BLOCKED_CURRENCIES_KEY`], [`OVERLAY_POSITION_KEY`] and
+//! [`SCREEN_WATCH_KEY`], any of the four and nothing else, read whole by
+//! [`read_patch`] before anything changes; a position that is not one of
+//! the six names, exactly, is refused. `blocked_currencies` replaces
 //! the whole list: each id is trimmed, empty ids are dropped and repeats
 //! removed, keeping the first order. A list that is not an array of
 //! strings, an id over [`MAX_ID_CHARS`] characters or an id outside the
@@ -29,10 +33,23 @@ use ch_engine::{catalogue, catalogue_item};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::view::OverlayPosition;
+
 /// The `check_updates` key of a patch and of the file.
 pub const CHECK_UPDATES_KEY: &str = "check_updates";
 /// The `blocked_currencies` key of a patch and of the file.
 pub const BLOCKED_CURRENCIES_KEY: &str = "blocked_currencies";
+/// The `overlay_position` key of a patch and of the file.
+pub const OVERLAY_POSITION_KEY: &str = "overlay_position";
+/// The `screen_watch` key of a patch and of the file.
+pub const SCREEN_WATCH_KEY: &str = "screen_watch";
+/// The keys a patch may hold.
+const PATCH_KEYS: [&str; 4] = [
+    CHECK_UPDATES_KEY,
+    BLOCKED_CURRENCIES_KEY,
+    OVERLAY_POSITION_KEY,
+    SCREEN_WATCH_KEY,
+];
 /// The longest blocked currency id, in characters.
 pub const MAX_ID_CHARS: usize = 64;
 
@@ -41,18 +58,17 @@ pub const MAX_ID_CHARS: usize = 64;
 pub struct Patch {
     pub check_updates: Option<bool>,
     pub blocked_currencies: Option<Vec<String>>,
+    pub overlay_position: Option<OverlayPosition>,
+    pub screen_watch: Option<bool>,
 }
 
-/// Reads an `update_settings` patch. Anything but an object of the two keys
-/// with values of the right shape is refused whole, with the reason.
+/// Reads an `update_settings` patch. Anything but an object of the four
+/// keys with values of the right shape is refused whole, with the reason.
 pub fn read_patch(patch: &Value) -> Result<Patch, String> {
     let patch = patch
         .as_object()
         .ok_or_else(|| "the change is not an object".to_string())?;
-    if let Some(k) = patch
-        .keys()
-        .find(|k| k.as_str() != CHECK_UPDATES_KEY && k.as_str() != BLOCKED_CURRENCIES_KEY)
-    {
+    if let Some(k) = patch.keys().find(|k| !PATCH_KEYS.contains(&k.as_str())) {
         return Err(format!("{k:?} is not a setting of this window"));
     }
     if patch.is_empty() {
@@ -67,10 +83,39 @@ pub fn read_patch(patch: &Value) -> Result<Patch, String> {
         None => None,
         Some(list) => Some(blocked_list(list)?),
     };
+    let overlay_position = match patch.get(OVERLAY_POSITION_KEY) {
+        None => None,
+        Some(v) => Some(
+            v.as_str()
+                .and_then(OverlayPosition::from_name)
+                .ok_or_else(|| format!("{v} is not an overlay position"))?,
+        ),
+    };
+    let screen_watch = match patch.get(SCREEN_WATCH_KEY) {
+        None => None,
+        Some(Value::Bool(on)) => Some(*on),
+        Some(_) => return Err(format!("{SCREEN_WATCH_KEY} is not true or false")),
+    };
     Ok(Patch {
         check_updates,
         blocked_currencies,
+        overlay_position,
+        screen_watch,
     })
+}
+
+/// The overlay's position a saved file holds: the default unless it is one
+/// of the six names.
+pub fn load_overlay_position(saved: Option<&Value>) -> OverlayPosition {
+    saved
+        .and_then(Value::as_str)
+        .and_then(OverlayPosition::from_name)
+        .unwrap_or_default()
+}
+
+/// The screen watch a saved file holds: on unless it is saved `false`.
+pub fn load_screen_watch(saved: Option<&Value>) -> bool {
+    saved.and_then(Value::as_bool) != Some(false)
 }
 
 /// The blocked list a patch gives, normalised, or why it is refused.
@@ -218,7 +263,16 @@ mod tests {
             read_patch(&json!({ "check_updates": true })).unwrap(),
             Patch {
                 check_updates: Some(true),
-                blocked_currencies: None
+                ..Patch::default()
+            }
+        );
+        assert_eq!(
+            read_patch(&json!({ "overlay_position": "bottom-center", "screen_watch": false }))
+                .unwrap(),
+            Patch {
+                overlay_position: Some(OverlayPosition::BottomCenter),
+                screen_watch: Some(false),
+                ..Patch::default()
             }
         );
         assert_eq!(
@@ -238,6 +292,10 @@ mod tests {
             json!({ "blocked_currencies": ["x".repeat(65)] }),
             json!({ "blocked_currencies": ["chaos"] }),
             json!({ "check_updates": true, "auto_install": true }),
+            json!({ "overlay_position": "center" }),
+            json!({ "overlay_position": " top-left" }),
+            json!({ "overlay_position": null }),
+            json!({ "screen_watch": "on" }),
             json!([true]),
         ] {
             assert!(read_patch(&bad).is_err(), "{bad}");

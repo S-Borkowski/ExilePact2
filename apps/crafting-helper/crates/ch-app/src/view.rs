@@ -71,14 +71,90 @@ impl StatusLine {
     }
 }
 
+/// Where the overlay sits inside the game's client area: an edge's middle
+/// or a corner (`overlay_position` in the settings, `top-center` by
+/// default).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum OverlayPosition {
+    TopLeft,
+    #[default]
+    TopCenter,
+    TopRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight,
+}
+
+impl OverlayPosition {
+    /// Every position, in the order Settings offers them.
+    pub const ALL: [OverlayPosition; 6] = [
+        OverlayPosition::TopLeft,
+        OverlayPosition::TopCenter,
+        OverlayPosition::TopRight,
+        OverlayPosition::BottomLeft,
+        OverlayPosition::BottomCenter,
+        OverlayPosition::BottomRight,
+    ];
+
+    /// Its name as the settings and the view write it (`top-center`).
+    pub fn name(self) -> &'static str {
+        match self {
+            OverlayPosition::TopLeft => "top-left",
+            OverlayPosition::TopCenter => "top-center",
+            OverlayPosition::TopRight => "top-right",
+            OverlayPosition::BottomLeft => "bottom-left",
+            OverlayPosition::BottomCenter => "bottom-center",
+            OverlayPosition::BottomRight => "bottom-right",
+        }
+    }
+
+    /// The position `name` names exactly, or `None`.
+    pub fn from_name(name: &str) -> Option<OverlayPosition> {
+        OverlayPosition::ALL.into_iter().find(|p| p.name() == name)
+    }
+}
+
 /// The overlay window's state.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OverlayView {
-    /// True only while a craft is active.
+    /// True only while a craft is guiding and the game's window is in
+    /// front.
     pub visible: bool,
-    /// The one line the overlay shows.
-    pub line: String,
+    /// Where it sits, so the page anchors its panel to that edge.
+    pub position: OverlayPosition,
+    /// What it shows: present exactly while a craft is guiding, shown or
+    /// not.
+    pub guide: Option<OverlayGuide>,
+}
+
+/// The overlay's content: the guide's current step, where a hit and a miss
+/// go and the last outcome (the copy is Rust's; the labels are the page's).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OverlayGuide {
+    pub status: GuideStatusView,
+    pub route_name: String,
+    /// The current step's place in the route, from 1, while active or
+    /// stuck.
+    pub step_number: Option<usize>,
+    /// Which try of that step this is, from 1.
+    pub try_number: Option<u32>,
+    /// The step's instruction; with replan and done, what to do instead.
+    pub instruction: String,
+    /// The currency's name, then each omen's, while active.
+    pub uses: Vec<String>,
+    /// The odds in words, while active (as the guiding view's step).
+    pub odds: Option<String>,
+    /// Why it is stuck or must be planned again: the first reason.
+    pub why: Option<String>,
+    /// `On a hit: …`, while active or stuck.
+    pub on_hit: Option<String>,
+    /// `On a miss: …`, while active or stuck.
+    pub on_miss: Option<String>,
+    /// The last observed change; `None` before the first.
+    pub last: Option<HistoryEntry>,
 }
 
 /// Everything the main window and the overlay show.
@@ -388,7 +464,8 @@ pub struct GuidingView {
 }
 
 /// Everything the Settings window shows: `ep-update`'s view of the update
-/// check and install, then the hotkey and the blocked currencies.
+/// check and install, then the hotkey, the blocked currencies, the
+/// overlay's position and the screen watch.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsView {
     #[serde(flatten)]
@@ -397,4 +474,9 @@ pub struct SettingsView {
     /// What the last hotkey change, or the start, said about the hotkey.
     pub hotkey_status: Option<StatusLine>,
     pub blocked_currencies: Vec<String>,
+    /// Where the overlay sits over the game.
+    pub overlay_position: OverlayPosition,
+    /// Whether the app reads the hovered item from the screen while a craft
+    /// is guiding.
+    pub screen_watch: bool,
 }

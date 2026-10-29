@@ -91,7 +91,26 @@
   },
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
-    "line": "Next step: shown here while a craft is active.",
+    "guide": {
+      "instruction": "The craft is done.",
+      "last": {
+        "instruction": "Reveal it at the Well of Souls",
+        "number": 4,
+        "result": "hit",
+        "step": "reveal",
+        "summary": "Hit: gained +#% to Lightning Resistance (T3)"
+      },
+      "odds": null,
+      "on_hit": null,
+      "on_miss": null,
+      "route_name": "Rings: resistances by whittling",
+      "status": "done",
+      "step_number": null,
+      "try_number": null,
+      "uses": [],
+      "why": null
+    },
+    "position": "top-center",
     "visible": false
   },
   "status": {

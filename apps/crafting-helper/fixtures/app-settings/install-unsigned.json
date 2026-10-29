@@ -8,6 +8,8 @@
     "state": "unsigned",
     "text": "1.3.0 is available but cannot be installed: the release is not signed."
   },
+  "overlay_position": "top-center",
+  "screen_watch": true,
   "update": {
     "newer": "1.3.0",
     "state": "available",

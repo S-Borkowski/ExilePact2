@@ -74,7 +74,29 @@
   },
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
-    "line": "Next step: shown here while a craft is active.",
+    "guide": {
+      "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+      "last": {
+        "instruction": "Chaos Orb until one of the targets lands",
+        "number": 1,
+        "result": "hit",
+        "step": "chaos",
+        "summary": "Hit: gained +#% to Fire Resistance (T3)"
+      },
+      "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
+      "on_hit": "On a hit: this step again until its condition holds, then Desecrate for the last target",
+      "on_miss": "On a miss: this step again",
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step_number": 2,
+      "try_number": 1,
+      "uses": [
+        "Chaos Orb",
+        "Omen of Whittling"
+      ],
+      "why": null
+    },
+    "position": "top-center",
     "visible": false
   },
   "status": {

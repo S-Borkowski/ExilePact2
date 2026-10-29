@@ -5,11 +5,14 @@ One file per check state (`update.state`: `idle`, `checking`, `up-to-date`,
 the files named `install-<state>`: `install-unsigned`,
 `install-downloading`, `install-verifying`, `install-restarting`,
 `install-failed`), then `hotkey-refused` (`set_hotkey` asked for the game's
-own Ctrl+Alt+C) and `blocked-currencies` (a list of three catalogue ids). Each is a
-`SettingsView` exactly as `ch-app` serialises it and the shell sends it as
-`ch:app-settings`: `ep-update`'s `AppSettingsView` fields (`version`,
-`check_updates`, `update`, `install`) with `hotkey`, `hotkey_status` and
-`blocked_currencies` beside them. Nothing else may be here:
+own Ctrl+Alt+C), `blocked-currencies` (a list of three catalogue ids) and
+`overlay-settings` (the overlay at `bottom-right`, not the default
+`top-center`, and the screen watch off; every other view has the defaults).
+Each is a `SettingsView` exactly as `ch-app` serialises it and the shell
+sends it as `ch:app-settings`: `ep-update`'s `AppSettingsView` fields
+(`version`, `check_updates`, `update`, `install`) with `hotkey`,
+`hotkey_status`, `blocked_currencies`, `overlay_position` and
+`screen_watch` beside them. Nothing else may be here:
 `fixtures_are_current` fails on any other JSON file. The install state
 `none` is `idle.json`'s, and `ready` is `available.json`'s.
 

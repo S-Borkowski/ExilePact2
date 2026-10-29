@@ -13,7 +13,8 @@
   },
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
-    "line": "Next step: shown here while a craft is active.",
+    "guide": null,
+    "position": "top-center",
     "visible": false
   },
   "status": {

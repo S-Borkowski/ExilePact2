@@ -15,8 +15,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use ch_app::{
-    CatalogueGroup, CraftMode, GuideStatusView, InstallState, OutcomeWord, SettingsView,
-    StatusKind, Version, View,
+    CatalogueGroup, CraftMode, GameWindow, GuideStatusView, InstallState, OutcomeWord,
+    OverlayPosition, SettingsView, StatusKind, Version, View,
 };
 use common::*;
 use serde_json::{json, Value};
@@ -27,7 +27,8 @@ fn rewrite() -> bool {
 
 /// One Settings window view per check state and per install state, from
 /// runs of the app through the fake transport (the install states' names
-/// start `install-`), then the hotkey refused and a blocked list.
+/// start `install-`), then the hotkey refused, a blocked list and the
+/// overlay's settings changed.
 fn app_settings_views() -> Vec<(&'static str, SettingsView)> {
     let h = harness(Setup::default());
     h.app.start();
@@ -98,6 +99,18 @@ fn app_settings_views() -> Vec<(&'static str, SettingsView)> {
             .unwrap(),
     ));
     h.app.shutdown();
+
+    // The overlay's position other than the default, and the screen watch
+    // off.
+    let h = harness(Setup::default());
+    h.app.start();
+    out.push((
+        "overlay-settings",
+        h.app
+            .update_settings(&json!({ "overlay_position": "bottom-right", "screen_watch": false }))
+            .unwrap(),
+    ));
+    h.app.shutdown();
     out
 }
 
@@ -120,13 +133,6 @@ fn main_views() -> Vec<(&'static str, View)> {
     let shell = FakeShell::with_taken(&["Ctrl+Alt+X"]);
     let app = start(&tmp.path().join("b"), &shell);
     out.push(("hotkey-taken", app.get_view()));
-    app.shutdown();
-
-    let shell = FakeShell::default();
-    let app = start(&tmp.path().join("c"), &shell);
-    app.grab_text(Some(ITEM_TEXT));
-    app.set_craft_active(true);
-    out.push(("overlay-active", app.get_view()));
     app.shutdown();
 
     // The craft window, over `ch-engine`'s whittled ring: each state from
@@ -187,6 +193,29 @@ fn main_views() -> Vec<(&'static str, View)> {
                 "05-revealed-lightning",
             ],
         ),
+    ));
+
+    // The overlay: guiding after one hit, the game's window in front (shown)
+    // or not (hidden), the watch ticked once by hand.
+    let overlay = |dir: &str, window| {
+        let shell = FakeShell::default();
+        let screen = FakeScreen::default();
+        screen.set(window);
+        let app = start_with_screen(&tmp.path().join(dir), &shell, &screen, true);
+        app.grab_text(Some(&ring("01-start")));
+        app.set_targets(&ring_targets());
+        app.choose_route(WHITTLE);
+        app.accept_craft();
+        app.grab_text(Some(&ring("02-chaos-fire")));
+        app.tick_watch();
+        let view = app.get_view();
+        app.shutdown();
+        view
+    };
+    out.push(("overlay-active", overlay("overlay", in_front(CLIENT))));
+    out.push((
+        "overlay-not-in-front",
+        overlay("not-in-front", Ok(GameWindow::NotInFront)),
     ));
     out
 }
@@ -254,7 +283,10 @@ fn fixtures_are_current() {
                 *name,
             ),
         };
-        if !matches!(*name, "hotkey-refused" | "blocked-currencies") {
+        if !matches!(
+            *name,
+            "hotkey-refused" | "blocked-currencies" | "overlay-settings"
+        ) {
             assert_eq!(part, json!(state), "{name}");
         }
         assert_eq!(view.updates.version, RUNNING.to_string());
@@ -276,6 +308,15 @@ fn fixtures_are_current() {
         StatusKind::Error
     );
     assert_eq!(by("blocked-currencies").blocked_currencies.len(), 3);
+    assert_eq!(
+        by("overlay-settings").overlay_position,
+        OverlayPosition::BottomRight
+    );
+    assert!(!by("overlay-settings").screen_watch);
+    assert!(settings
+        .iter()
+        .filter(|(n, _)| *n != "overlay-settings")
+        .all(|(_, v)| v.screen_watch && v.overlay_position == OverlayPosition::TopCenter));
 
     // Each main view shows what it is named for.
     let view = |n: &str| &views.iter().find(|(name, _)| *name == n).unwrap().1;
@@ -302,6 +343,20 @@ fn fixtures_are_current() {
         .iter()
         .filter(|(n, _)| *n != "overlay-active")
         .all(|(_, v)| !v.overlay.visible));
+    // Both overlay views guide; only the game in front shows it. Every
+    // guiding view carries the overlay's content, and no other does.
+    for n in ["overlay-active", "overlay-not-in-front"] {
+        assert_eq!(view(n).craft.mode, CraftMode::Guiding, "{n}");
+        let guide = view(n).overlay.guide.as_ref().unwrap();
+        assert_eq!(guide.last.as_ref().unwrap().result, OutcomeWord::Hit);
+    }
+    for (name, v) in &views {
+        assert_eq!(
+            v.overlay.guide.is_some(),
+            v.craft.mode == CraftMode::Guiding,
+            "{name}"
+        );
+    }
 
     // Each craft view is the mode and state it is named for.
     assert_eq!(view("empty").craft.mode, CraftMode::None);
@@ -363,7 +418,7 @@ fn fixtures_are_current() {
         extra["overlay"]["extra"] = Value::Bool(true);
         assert!(serde_json::from_value::<View>(extra).is_err(), "{name}");
         let mut dropped = value.clone();
-        dropped["overlay"].as_object_mut().unwrap().remove("line");
+        dropped["overlay"].as_object_mut().unwrap().remove("visible");
         assert!(serde_json::from_value::<View>(dropped).is_err(), "{name}");
         let mut extra = value.clone();
         extra["craft"]["extra"] = Value::Bool(true);
@@ -392,8 +447,8 @@ fn fixtures_are_current() {
         .iter()
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
-    assert_eq!(settings.len(), 13);
-    assert_eq!(views.len(), 14);
+    assert_eq!(settings.len(), 14);
+    assert_eq!(views.len(), 15);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

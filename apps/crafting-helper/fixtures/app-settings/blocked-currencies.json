@@ -12,6 +12,8 @@
     "state": "none",
     "text": ""
   },
+  "overlay_position": "top-center",
+  "screen_watch": true,
   "update": {
     "newer": null,
     "state": "idle",

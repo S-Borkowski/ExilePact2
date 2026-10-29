@@ -8,6 +8,8 @@
     "state": "restarting",
     "text": "Crafting Helper 1.3.0 is installed. Restarting…"
   },
+  "overlay_position": "top-center",
+  "screen_watch": true,
   "update": {
     "newer": "1.3.0",
     "state": "available",
