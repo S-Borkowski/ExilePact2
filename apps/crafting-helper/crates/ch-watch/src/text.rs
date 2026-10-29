@@ -207,6 +207,11 @@ mod tests {
         assert_eq!(p.values, [33.0]);
         assert_eq!(p.masked, "to fire resistance");
         assert_eq!(prepare("-5% to Cold Resistance").values, [-5.0]);
+        // A reducing modifier's range runs best to worst, high to low
+        // (measured, 2026-10-29): dropped like any other.
+        let p = prepare("12(15-10)% reduced Charm Charges used");
+        assert_eq!(p.values, [12.0]);
+        assert_eq!(p.masked, "reduced charm charges used");
         assert_eq!(prepare("Prefix Modifier (Tier: 5)").values, [5.0]);
     }
 

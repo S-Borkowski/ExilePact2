@@ -7,6 +7,16 @@
 //! reused. Copies, crops and lines stay in memory; the last read's crops and
 //! lines are kept for that comparison alone, and dropped by a read that
 //! finds no tooltip.
+//!
+//! The lines OCR reads in a crop are laid out as the tooltip draws them
+//! (measured on the owner's screenshots, 2026-10-29): every line of a
+//! tooltip is centred, and OCR may split one line where its colour changes
+//! (`Requires: Level 54,` then `225` then `Dex, 90 Int`). So pieces on one
+//! row with a gap under [`JOIN_GAP`] line heights are joined, left to
+//! right, and a line that does not cross the box's middle is not the
+//! tooltip's: the key hints drawn over or beside it (`Alt Inspect`), the
+//! Alt form's `Prefix` and `Suffix` labels at its left edge, and whatever
+//! of the scene lies in the box below a tooltip over a dark scene.
 
 use std::fmt;
 
@@ -155,13 +165,58 @@ fn crop(image: &Image, rect: PixelRect) -> Image {
     }
 }
 
-/// A located box and its crop's lines: the lines moved to client pixels and
-/// split at the header band's bottom into name lines and the rest.
+/// Pieces of one row this many line heights apart or closer are one line.
+pub const JOIN_GAP: f64 = 1.5;
+
+/// A line is the tooltip's when it reaches within this share of the box's
+/// width of the box's middle column.
+pub const MIDDLE_SLACK: f64 = 1.0 / 40.0;
+
+/// The crop's lines laid out as the tooltip draws them: the pieces of one
+/// row joined left to right, then only the lines that cross the middle of a
+/// crop `width` wide, top to bottom.
+fn tooltip_lines(lines: &[PixelLine], width: i32) -> Vec<PixelLine> {
+    let mut pieces: Vec<&PixelLine> = lines.iter().collect();
+    pieces.sort_by_key(|l| (l.bbox.left, l.bbox.top));
+    let mut rows: Vec<PixelLine> = Vec::new();
+    for piece in pieces {
+        let b = piece.bbox;
+        let joined = rows.iter_mut().find(|row| {
+            let r = row.bbox;
+            let height = r.height().min(b.height()).max(1);
+            let overlap = r.bottom.min(b.bottom) - r.top.max(b.top);
+            let gap = b.left - r.right;
+            overlap * 2 >= height && gap >= -height && (gap as f64) <= JOIN_GAP * height as f64
+        });
+        match joined {
+            Some(row) => {
+                row.text.push(' ');
+                row.text.push_str(&piece.text);
+                row.bbox = PixelRect::new(
+                    row.bbox.left.min(b.left),
+                    row.bbox.top.min(b.top),
+                    row.bbox.right.max(b.right),
+                    row.bbox.bottom.max(b.bottom),
+                );
+            }
+            None => rows.push(piece.clone()),
+        }
+    }
+    let middle = width as f64 / 2.0;
+    let slack = width as f64 * MIDDLE_SLACK;
+    rows.retain(|l| l.bbox.left as f64 <= middle + slack && l.bbox.right as f64 >= middle - slack);
+    rows.sort_by_key(|l| (l.bbox.top, l.bbox.left));
+    rows
+}
+
+/// A located box and its crop's lines: the lines laid out
+/// ([`tooltip_lines`]), moved to client pixels and split at the header
+/// band's bottom into name lines and the rest.
 fn tooltip_box(found: &Located, lines: &[PixelLine]) -> TooltipBox {
     let header = found.header_bottom - found.rect.top;
     let mut name_lines = Vec::new();
     let mut rest = Vec::new();
-    for l in lines {
+    for l in &tooltip_lines(lines, found.rect.width()) {
         let moved = PixelLine::new(
             l.text.clone(),
             PixelRect::new(

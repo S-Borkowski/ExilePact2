@@ -702,8 +702,68 @@ otherwise, and adds to the waystone text layout in § "Item search box
   `desecrated_mods_join_to_normal_section` in the same file. So a reveal
   may yield a normal-pool modifier; how many options a reveal offers is not
   established.
-- Not established (no real text has shown it): a fractured modifier, an
-  unrevealed desecrated modifier, a crafted modifier, an enchant, `Mirrored`,
-  `Unidentified`, the class strings of the other equipment classes, a
-  requirements block, negative roll ranges, and any text form without
-  headers and roll ranges (no copy key has been seen to give one).
+- Not established (no real text has shown it): a fractured modifier, a
+  crafted modifier, an enchant, `Mirrored`, `Unidentified`, the class
+  strings of the other equipment classes, a requirements block, negative
+  roll ranges, and any text form without headers and roll ranges (no copy
+  key has been seen to give one). An unrevealed desecrated modifier and a
+  high-to-low range have since been copied: § "Item tooltip (on screen)"
+  below.
+
+## Item tooltip (on screen)
+
+Source: the owner's fourteen screenshots of the game's window with the
+hovered item's `Ctrl+Alt+C` copy beside each, 2026-10-29 (2560 x 1440
+fullscreen and 1920 x 1080 windowed, HUD scale middle, UI text size
+medium), read with Windows' OCR (en-US). The images stay on the owner's
+machine; the method, the numbers per shot and the tests are in
+[`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
+§ "Item tooltip on screen". Every fact below is measured from those
+screenshots and copies (2026-10-29) unless it says otherwise; nothing here
+was read from the game's code.
+
+- **Placement**: the tooltip draws beside the hovered item and is kept
+  inside the window, flush against its left or top edge when the item lies
+  near one, never cut (14 tooltips). Hovering a weapon once drew the
+  equipped weapon's tooltip beside it as a second box; when the game does
+  that is not established.
+- **Size scales with the client**: 663 to 877 pixels wide and 194 to 631
+  high at 2560 x 1440; the same item's box is the same fraction of a 1920 x
+  1080 client.
+- **Header**: opaque. A frame line along its top (a bright row, two darker
+  rows, two bright rows, even in colour along the line), a dark band with
+  the name lines, a frame line along its bottom about 42 pixels lower for
+  one name line and about 69 for two (at 1440; three quarters of that at
+  1080), and corner ornaments a quarter of that wide. Frame colour by
+  rarity: gold (RGB about 176, 155, 85) for rare, blue-grey for magic, grey
+  for normal, pale brown for currency.
+- **Name colours** (RGB): rare 254, 224, 85; magic 122, 151, 254; normal
+  200, 200, 200; currency 170, 158, 130. Unique: not established.
+- **Body**: no border; it darkens the scene behind it to about a fifth
+  (median 0.19 against the same scene with no tooltip) and draws every line
+  centred.
+- **Plain lines**: the name lines; the item class in the singular
+  (`Amulet`, `Quarterstaff`, `Two Hand Mace`); the properties; the
+  requirements without `(unmet)`; a rune's line; the implicit; each
+  explicit modifier's line with its value, without header or range. No item
+  level, no `Item Class:` or `Rarity:` line.
+- **Alt held**: the ranges appear, the class line becomes `Amulet: Item
+  Level 12`, and the side (`Implicit`, `Prefix`, `Suffix`) and the tier
+  (`T12`) sit at the body's left and right edges. No header lines.
+- **Key hints**: a small separate panel near the item, over the tooltip or
+  below it: `Alt Inspect`, `Shift Compare`, `Ctrl Quick Move`, `Shift Alt
+  Price Check`; `Use` on currency.
+- **An unrevealed desecrated modifier** shows as a row of green glyphs,
+  then the line `Take this item to the Well of Souls to reveal the
+  Desecrated Modifier`; its copy writes `{ Prefix Modifier "Veiled" }` then
+  `Desecrated Prefix` (no tier, no values). A fractured modifier: not
+  established.
+- **A reducing modifier's range runs high to low** in the copy, best to
+  worst: `12(15-10)% reduced Charm Charges used`. A suffix may copy with no
+  `(Tier: n)`: `{ Suffix Modifier "of the Parasite" — Life, Physical, Attack
+  }`.
+- **A tier above the item level**: a level 43 item carried `Gleaming`,
+  whose item level in the crafting helper's data (from poe2db) is 46.
+- Not established: whether the plain tooltip sums two modifiers' identical
+  stat lines into one (no item in the shots had two), a unique's tooltip,
+  and how a tooltip looks over a bright scene.

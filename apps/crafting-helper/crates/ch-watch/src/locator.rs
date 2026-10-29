@@ -1,23 +1,39 @@
-//! The provisional locator: the item tooltips in a copy of the game's
-//! client, from pixels alone.
+//! The locator: the item tooltips in a copy of the game's client, from
+//! pixels alone.
 //!
-//! PROVISIONAL. Its features are what is generally said of the game's
-//! tooltips, proven only on synthetic images: a near-opaque dark panel, a
-//! header band at its top drawn in colour with the name lines in the
-//! rarity's colour, and light text below. Every constant here is UNVERIFIED
-//! until the `locator` item measures the owner's screenshots and replaces
-//! them; [`locate`] and [`Located`] stay as they are.
+//! Its features are measured on the owner's screenshots (2026-10-29: 2560 x
+//! 1440 and 1920 x 1080, HUD scale middle, UI text medium; the research
+//! note's `## Item tooltip on screen`). Lengths are given for a 1440-pixel
+//! client and scaled by the client's height.
 //!
-//! 1. The copy is cut into [`CELL`]-pixel cells; a cell is panel when at
-//!    least [`CELL_PANEL_SHARE`] of its pixels are dark ([`PANEL_LUMA_MAX`]).
-//! 2. Each 4-connected group of panel cells at least [`MIN_WIDTH`] by
-//!    [`MIN_HEIGHT`] pixels that fills [`MIN_FILL`] of its bounding box is a
-//!    candidate, its edges moved to the pixel column or row where the panel
-//!    starts.
-//! 3. A candidate is a tooltip when its top rows form a header band: at
-//!    least [`MIN_HEADER`] rows in a row of which [`HEADER_SHARE`] of the
-//!    pixels are coloured or light. The rarity is the name text's colour in
-//!    that band, the nearest of [`RARITY_COLOURS`].
+//! - **The header.** A tooltip starts with a header band drawn opaque: a
+//!   frame line along its top (a bright row, two darker rows, two more
+//!   bright rows, each one colour along its length: gold for a rare,
+//!   blue-grey for a magic item, grey for a normal one, pale brown for
+//!   currency), a dark band holding the name lines, and a second frame line
+//!   along its bottom. The distance from the top frame to the bottom one is
+//!   about 42 pixels for one name line and about 69 for two
+//!   ([`ONE_NAME`], [`TWO_NAMES`]). [`locate`] finds a row with a long run of
+//!   bright, even pixels ([`FRAME_LUMA`], [`EVEN`], [`MIN_WIDTH`]), a second
+//!   bright row two to four rows below it, the dark band under them
+//!   ([`BAND_LUMA`]) and the bottom frame line, and keeps the candidate only
+//!   when the header's height is one of the two.
+//! - **The body.** Below the header the tooltip darkens what lies behind it
+//!   to about a fifth of its brightness (measured against the same scene
+//!   without a tooltip), so a row of the body with no text is dark across
+//!   its width ([`PANEL_LUMA`]). The body ends at the first row where the
+//!   scene shows bright again across most of the width (a bright scene), or
+//!   else after the last dark row that is followed by [`BODY_GAP`] rows with
+//!   none (a dark scene: the stash's grid looks much like the body, so the
+//!   box may run on below the tooltip; the reader keeps only the lines
+//!   that cross the box's middle).
+//! - **The width.** The frame line runs nearly the whole width; the corner
+//!   ornaments reach a little further, a quarter of the header's height.
+//! - **The rarity** is the colour of the name lines: the one of
+//!   [`RARITY_COLOURS`] most of the header band's bright pixels lie near.
+//! - **The window's edge.** The game keeps a tooltip inside the window: in
+//!   the shots it lies flush against the client's top or left edge, whole.
+//!   A box whose body runs to the bottom of the copy may be cut.
 
 use ch_engine::ch_item::Rarity;
 use qt_screen::{Image, PixelRect};
@@ -30,138 +46,96 @@ pub struct Located {
     pub header_bottom: i32,
     /// The rarity the name lines' colour says, when it is near one.
     pub rarity: Option<Rarity>,
-    /// The box touches the copy's edge: it may be cut.
+    /// The box touches the copy's edge where the tooltip may be cut.
     pub touches_edge: bool,
 }
 
-/// Cell size, pixels.
-pub const CELL: i32 = 8;
-/// A pixel this dark (luma, 0-255) or darker is panel.
-pub const PANEL_LUMA_MAX: u32 = 80;
-/// Share of a cell's pixels that must be panel for the cell to be.
-pub const CELL_PANEL_SHARE: f64 = 0.5;
-/// Smallest tooltip, pixels.
-pub const MIN_WIDTH: i32 = 120;
-pub const MIN_HEIGHT: i32 = 80;
-/// Share of a candidate's bounding box its panel cells must fill.
-pub const MIN_FILL: f64 = 0.6;
-/// Share of a column or row that must be panel for the box's edge to lie
-/// there.
+/// The client height the lengths below are given for.
+pub const BASE_HEIGHT: f64 = 1440.0;
+/// A frame line's pixels are this bright (luma, 0-255) or brighter.
+pub const FRAME_LUMA: u32 = 70;
+/// The frame's second bright row: this bright, over [`FRAME_SHARE`] of the
+/// line.
+pub const SECOND_LUMA: u32 = 60;
+pub const FRAME_SHARE: f64 = 0.8;
+/// Two neighbouring pixels of a frame line differ by at most this in every
+/// channel.
+pub const EVEN: u32 = 12;
+/// Shortest frame line, pixels at 1440: shorter runs are the game's other
+/// panels' title plates.
+pub const MIN_WIDTH: f64 = 250.0;
+/// A run of frame pixels may skip this many pixels (at 1440) where the
+/// colour steps.
+pub const FRAME_SKIP: f64 = 4.0;
+/// The header's dark band, 7 to 11 rows below the top (at 1440): pixels
+/// this dark over [`BAND_SHARE`] of the line.
+pub const BAND_LUMA: u32 = 50;
+pub const BAND_SHARE: f64 = 0.85;
+/// The bottom frame line: even pixels this bright over [`BOTTOM_SHARE`] of
+/// the line's middle, 25 to 110 rows below the top (at 1440).
+pub const BOTTOM_LUMA: u32 = 40;
+pub const BOTTOM_SHARE: f64 = 0.85;
+/// The distance from the top frame to the bottom one, pixels at 1440: one
+/// name line, or two.
+pub const ONE_NAME: (f64, f64) = (37.0, 47.0);
+pub const TWO_NAMES: (f64, f64) = (63.0, 75.0);
+/// The header band ends this far (at 1440) below the bottom frame's first
+/// row.
+pub const BOTTOM_FRAME: f64 = 9.0;
+/// A body pixel with no text on it is this dark or darker.
+pub const PANEL_LUMA: u32 = 50;
+/// A body row with no text is dark over this share of the line.
+pub const PANEL_SHARE: f64 = 0.95;
+/// The body ends after its last dark row when this many rows (at 1440)
+/// follow with none.
+pub const BODY_GAP: f64 = 80.0;
+/// The body ends where, over this share of the line, the rows below are at
+/// least [`EDGE_RATIO`] times as bright as the rows above (plus
+/// [`EDGE_OFFSET`]) and at least [`EDGE_LUMA`]: the scene undarkened.
 pub const EDGE_SHARE: f64 = 0.6;
-/// A header pixel is coloured (its channels this far apart) or light.
-pub const HEADER_CHROMA: u32 = 20;
-pub const TEXT_LUMA: u32 = 90;
-/// Share of a row that must be header pixels for the row to be header band.
-pub const HEADER_SHARE: f64 = 0.5;
-/// Fewest header rows.
-pub const MIN_HEADER: i32 = 12;
-/// The name colours (R, G, B) as generally given for the game's rarities.
+pub const EDGE_RATIO: f64 = 2.5;
+pub const EDGE_OFFSET: f64 = 6.0;
+pub const EDGE_LUMA: f64 = 55.0;
+/// The corner ornaments reach this share of the header's height beyond
+/// the frame line.
+pub const CORNER: f64 = 0.25;
+/// A name pixel is this bright or brighter.
+pub const NAME_LUMA: u32 = 110;
+/// The name colours (R, G, B), the most common bright pixel of the name
+/// lines in the shots. Unique: not in the shots; the colour generally given.
 pub const RARITY_COLOURS: [(Rarity, [u32; 3]); 4] = [
     (Rarity::Normal, [200, 200, 200]),
-    (Rarity::Magic, [136, 136, 255]),
-    (Rarity::Rare, [255, 255, 119]),
+    (Rarity::Magic, [122, 151, 254]),
+    (Rarity::Rare, [254, 224, 85]),
     (Rarity::Unique, [175, 96, 37]),
 ];
-/// Farthest (Euclidean, RGB) the name colour may lie from its rarity's.
-pub const RARITY_DISTANCE: f64 = 70.0;
+/// Farthest (Euclidean, RGB) a name pixel may lie from its rarity's colour
+/// to count for it. Currency's pale brown (170, 158, 130) lies over 85 from
+/// every one.
+pub const RARITY_DISTANCE: f64 = 60.0;
 
 /// Every tooltip in `image`, top to bottom, then left to right.
 pub fn locate(image: &Image) -> Vec<Located> {
     let px = Pixels::new(image);
-    if px.w < MIN_WIDTH || px.h < MIN_HEIGHT {
+    let scale = px.h as f64 / BASE_HEIGHT;
+    let at = |v: f64| ((v * scale).round() as i32).max(1);
+    if px.w < at(MIN_WIDTH) || px.h < at(TWO_NAMES.1 + 20.0) {
         return Vec::new();
     }
-    let cols = (px.w + CELL - 1) / CELL;
-    let rows = (px.h + CELL - 1) / CELL;
-    let mut panel = vec![false; (cols * rows) as usize];
-    for cy in 0..rows {
-        for cx in 0..cols {
-            let cell = PixelRect::new(
-                cx * CELL,
-                cy * CELL,
-                ((cx + 1) * CELL).min(px.w),
-                ((cy + 1) * CELL).min(px.h),
-            );
-            panel[(cy * cols + cx) as usize] = px.panel_share(cell) >= CELL_PANEL_SHARE;
+    let mut found: Vec<Located> = Vec::new();
+    for y in 0..px.h - at(TWO_NAMES.1) {
+        for (x0, x1) in px.frame_runs(y, at(MIN_WIDTH), at(FRAME_SKIP)) {
+            let line = PixelRect::new(x0, y, x1, y + 1);
+            if found.iter().any(|f| f.rect.intersects(&line)) {
+                continue;
+            }
+            if let Some(f) = px.tooltip_at(y, x0, x1, scale) {
+                found.push(f);
+            }
         }
-    }
-
-    let mut seen = vec![false; panel.len()];
-    let mut found = Vec::new();
-    for start in 0..panel.len() {
-        if !panel[start] || seen[start] {
-            continue;
-        }
-        let (count, bounds) = flood(&panel, &mut seen, cols, start);
-        let (x0, y0, x1, y1) = bounds;
-        let cells = ((x1 - x0 + 1) * (y1 - y0 + 1)) as f64;
-        let rough = PixelRect::new(
-            x0 * CELL,
-            y0 * CELL,
-            ((x1 + 1) * CELL).min(px.w),
-            ((y1 + 1) * CELL).min(px.h),
-        );
-        if rough.width() < MIN_WIDTH
-            || rough.height() < MIN_HEIGHT
-            || (count as f64) < MIN_FILL * cells
-        {
-            continue;
-        }
-        let rect = px.refine(rough);
-        if rect.width() < MIN_WIDTH || rect.height() < MIN_HEIGHT {
-            continue;
-        }
-        let header_bottom = px.header_bottom(rect);
-        let header = header_bottom - rect.top;
-        if header < MIN_HEADER || header > rect.height() * 3 / 5 {
-            continue;
-        }
-        found.push(Located {
-            rect,
-            header_bottom,
-            rarity: px.name_rarity(rect, header_bottom),
-            touches_edge: rect.left <= 0
-                || rect.top <= 0
-                || rect.right >= px.w
-                || rect.bottom >= px.h,
-        });
     }
     found.sort_by_key(|f| (f.rect.top, f.rect.left));
     found
-}
-
-/// One group of 4-connected panel cells from `start`: its size and its
-/// bounds in cells (inclusive).
-fn flood(
-    panel: &[bool],
-    seen: &mut [bool],
-    cols: i32,
-    start: usize,
-) -> (usize, (i32, i32, i32, i32)) {
-    let rows = panel.len() as i32 / cols;
-    let mut stack = vec![start];
-    seen[start] = true;
-    let mut count = 0;
-    let (mut x0, mut y0, mut x1, mut y1) = (i32::MAX, i32::MAX, i32::MIN, i32::MIN);
-    while let Some(at) = stack.pop() {
-        count += 1;
-        let (x, y) = (at as i32 % cols, at as i32 / cols);
-        x0 = x0.min(x);
-        y0 = y0.min(y);
-        x1 = x1.max(x);
-        y1 = y1.max(y);
-        for (nx, ny) in [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)] {
-            if nx < 0 || ny < 0 || nx >= cols || ny >= rows {
-                continue;
-            }
-            let n = (ny * cols + nx) as usize;
-            if panel[n] && !seen[n] {
-                seen[n] = true;
-                stack.push(n);
-            }
-        }
-    }
-    (count, (x0, y0, x1, y1))
 }
 
 struct Pixels<'a> {
@@ -188,113 +162,156 @@ impl<'a> Pixels<'a> {
         [p[0] as u32, p[1] as u32, p[2] as u32]
     }
 
-    fn luma(p: [u32; 3]) -> u32 {
+    fn luma(&self, x: i32, y: i32) -> u32 {
+        let p = self.at(x, y);
         (114 * p[0] + 587 * p[1] + 299 * p[2]) / 1000
     }
 
-    fn is_panel(&self, x: i32, y: i32) -> bool {
-        Self::luma(self.at(x, y)) <= PANEL_LUMA_MAX
+    /// The pixel at `x` is within [`EVEN`] of the one before it.
+    fn even(&self, x: i32, y: i32) -> bool {
+        x > 0 && {
+            let (a, b) = (self.at(x - 1, y), self.at(x, y));
+            (0..3).all(|i| a[i].abs_diff(b[i]) <= EVEN)
+        }
     }
 
-    fn is_header(&self, x: i32, y: i32) -> bool {
-        let p = self.at(x, y);
-        let chroma = p.iter().max().unwrap() - p.iter().min().unwrap();
-        chroma >= HEADER_CHROMA || Self::luma(p) >= TEXT_LUMA
-    }
-
-    fn share(&self, area: PixelRect, test: impl Fn(i32, i32) -> bool) -> f64 {
-        if area.is_empty() {
+    /// Share of the pixels of row `y`, columns `x0..x1`, that pass `test`.
+    fn share(&self, y: i32, x0: i32, x1: i32, test: impl Fn(i32, i32) -> bool) -> f64 {
+        if x1 <= x0 || y < 0 || y >= self.h {
             return 0.0;
         }
-        let mut hits = 0usize;
-        for y in area.top..area.bottom {
-            for x in area.left..area.right {
-                if test(x, y) {
-                    hits += 1;
-                }
+        let hits = (x0..x1).filter(|&x| test(x, y)).count();
+        hits as f64 / (x1 - x0) as f64
+    }
+
+    /// The runs of bright, even pixels in row `y` at least `min` long, a
+    /// skip of up to `skip` pixels allowed inside one.
+    fn frame_runs(&self, y: i32, min: i32, skip: i32) -> Vec<(i32, i32)> {
+        let mut runs = Vec::new();
+        let mut x = 0;
+        while x < self.w {
+            let frame = |x: i32| self.luma(x, y) >= FRAME_LUMA && self.even(x, y);
+            if !frame(x) {
+                x += 1;
+                continue;
             }
-        }
-        hits as f64 / (area.width() * area.height()) as f64
-    }
-
-    fn panel_share(&self, area: PixelRect) -> f64 {
-        self.share(area, |x, y| self.is_panel(x, y))
-    }
-
-    /// The rough box (whole cells) with each edge moved to the first column
-    /// or row, within a cell of it, that is mostly panel.
-    fn refine(&self, rough: PixelRect) -> PixelRect {
-        let inner_rows = (rough.top + CELL).min(rough.bottom)..(rough.bottom - CELL).max(rough.top);
-        let inner_cols = (rough.left + CELL).min(rough.right)..(rough.right - CELL).max(rough.left);
-        let col = |x: i32| {
-            self.panel_share(PixelRect::new(x, inner_rows.start, x + 1, inner_rows.end))
-                >= EDGE_SHARE
-        };
-        let row = |y: i32| {
-            self.panel_share(PixelRect::new(inner_cols.start, y, inner_cols.end, y + 1))
-                >= EDGE_SHARE
-        };
-        let left = ((rough.left - CELL).max(0)..rough.left + CELL)
-            .find(|&x| col(x))
-            .unwrap_or(rough.left);
-        let right = ((rough.right - CELL)..(rough.right + CELL).min(self.w))
-            .rev()
-            .find(|&x| col(x))
-            .map_or(rough.right, |x| x + 1);
-        let top = ((rough.top - CELL).max(0)..rough.top + CELL)
-            .find(|&y| row(y))
-            .unwrap_or(rough.top);
-        let bottom = ((rough.bottom - CELL)..(rough.bottom + CELL).min(self.h))
-            .rev()
-            .find(|&y| row(y))
-            .map_or(rough.bottom, |y| y + 1);
-        PixelRect::new(left, top, right, bottom)
-    }
-
-    /// The first row below the header band that starts at the box's top.
-    fn header_bottom(&self, rect: PixelRect) -> i32 {
-        let mut y = rect.top;
-        while y < rect.bottom
-            && self.share(PixelRect::new(rect.left, y, rect.right, y + 1), |x, y| {
-                self.is_header(x, y)
-            }) >= HEADER_SHARE
-        {
-            y += 1;
-        }
-        y
-    }
-
-    /// The rarity whose colour lies nearest the light pixels of the header
-    /// band (inside the border), if one lies near enough.
-    fn name_rarity(&self, rect: PixelRect, header_bottom: i32) -> Option<Rarity> {
-        let (mut sum, mut n) = ([0u64; 3], 0u64);
-        for y in (rect.top + 2)..header_bottom {
-            for x in (rect.left + 2)..(rect.right - 2) {
-                let p = self.at(x, y);
-                if Self::luma(p) >= TEXT_LUMA {
-                    // R, G, B
-                    sum[0] += p[2] as u64;
-                    sum[1] += p[1] as u64;
-                    sum[2] += p[0] as u64;
-                    n += 1;
+            let start = x;
+            let mut end = x + 1;
+            x += 1;
+            while x < self.w && x - end <= skip {
+                if frame(x) {
+                    end = x + 1;
                 }
+                x += 1;
             }
+            if end - start >= min {
+                runs.push((start, end));
+            }
+            x = end + 1;
         }
-        if n == 0 {
+        runs
+    }
+
+    /// The tooltip whose top frame line is the run `x0..x1` of row `y`, if
+    /// the rest of a header and a body follow.
+    fn tooltip_at(&self, y: i32, x0: i32, x1: i32, scale: f64) -> Option<Located> {
+        let at = |v: f64| ((v * scale).round() as i32).max(1);
+        let second = (y + 2..=y + 4)
+            .any(|r| self.share(r, x0, x1, |x, r| self.luma(x, r) >= SECOND_LUMA) >= FRAME_SHARE);
+        if !second {
             return None;
         }
-        let mean = sum.map(|s| s as f64 / n as f64);
-        RARITY_COLOURS
-            .iter()
-            .map(|(r, c)| {
-                let d = (0..3)
-                    .map(|i| (mean[i] - c[i] as f64).powi(2))
-                    .sum::<f64>()
-                    .sqrt();
-                (r, d)
-            })
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-            .filter(|(_, d)| *d <= RARITY_DISTANCE)
-            .map(|(r, _)| r.clone())
+        let band = (y + at(7.0)..=y + at(11.0))
+            .all(|r| self.share(r, x0, x1, |x, r| self.luma(x, r) <= BAND_LUMA) >= BAND_SHARE);
+        if !band {
+            return None;
+        }
+        let (m0, m1) = (x0 + (x1 - x0) / 10, x1 - (x1 - x0) / 10);
+        let bottom_frame = (y + at(25.0)..(y + at(110.0)).min(self.h)).find(|&r| {
+            self.share(r, m0, m1, |x, r| {
+                self.luma(x, r) >= BOTTOM_LUMA && self.even(x, r)
+            }) >= BOTTOM_SHARE
+        })?;
+        let height = (bottom_frame - y) as f64 / scale;
+        let fits = |(lo, hi): (f64, f64)| height >= lo && height <= hi;
+        if !fits(ONE_NAME) && !fits(TWO_NAMES) {
+            return None;
+        }
+        let header_bottom = (bottom_frame + at(BOTTOM_FRAME)).min(self.h);
+        let bottom = self.body_bottom(header_bottom, x0, x1, at(BODY_GAP));
+        let corner = (CORNER * (bottom_frame - y) as f64).round() as i32;
+        let rect = PixelRect::new((x0 - corner).max(0), y, (x1 + corner).min(self.w), bottom);
+        Some(Located {
+            rect,
+            header_bottom,
+            rarity: self.name_rarity(x0, x1, y + at(7.0), bottom_frame),
+            touches_edge: bottom >= self.h,
+        })
+    }
+
+    /// The first row below the body, scanning down from `top` over the
+    /// columns `x0..x1`.
+    fn body_bottom(&self, top: i32, x0: i32, x1: i32, gap: i32) -> i32 {
+        let mean = |x: i32, from: i32, to: i32| {
+            (from..to).map(|r| self.luma(x, r) as f64).sum::<f64>() / (to - from) as f64
+        };
+        let dark = |r: i32| self.share(r, x0, x1, |x, r| self.luma(x, r) <= PANEL_LUMA);
+        let mut last_dark = top;
+        for r in top + 3..self.h - 3 {
+            let edge = self.share(r, x0, x1, |x, r| {
+                let above = mean(x, r - 3, r);
+                let below = mean(x, r, r + 3);
+                above <= PANEL_LUMA as f64
+                    && below >= (EDGE_RATIO * above + EDGE_OFFSET).max(EDGE_LUMA)
+            });
+            if edge >= EDGE_SHARE && dark(r - 1) >= PANEL_SHARE {
+                return r;
+            }
+            if dark(r) >= PANEL_SHARE {
+                last_dark = r;
+            } else if r - last_dark > gap {
+                return last_dark + 1;
+            }
+        }
+        self.h
+    }
+
+    /// The rarity most of the bright pixels between the header's frames lie
+    /// near, over the middle of the line (the corner ornaments, gold for
+    /// every rarity, lie outside it): each pixel counts for the nearest
+    /// rarity colour within [`RARITY_DISTANCE`], and a rarity must hold more
+    /// than half of all the bright pixels.
+    fn name_rarity(&self, x0: i32, x1: i32, top: i32, bottom: i32) -> Option<Rarity> {
+        let (m0, m1) = (x0 + (x1 - x0) / 10, x1 - (x1 - x0) / 10);
+        let mut votes = [0usize; RARITY_COLOURS.len()];
+        let mut bright = 0usize;
+        for y in top..bottom {
+            for x in m0..m1 {
+                if self.luma(x, y) < NAME_LUMA {
+                    continue;
+                }
+                bright += 1;
+                let p = self.at(x, y);
+                // B, G, R against R, G, B.
+                let nearest = RARITY_COLOURS
+                    .iter()
+                    .enumerate()
+                    .map(|(n, (_, c))| {
+                        let d = [(p[2], c[0]), (p[1], c[1]), (p[0], c[2])]
+                            .iter()
+                            .map(|&(a, b)| (a as f64 - b as f64).powi(2))
+                            .sum::<f64>()
+                            .sqrt();
+                        (n, d)
+                    })
+                    .min_by(|a, b| a.1.total_cmp(&b.1))
+                    .filter(|(_, d)| *d <= RARITY_DISTANCE);
+                if let Some((n, _)) = nearest {
+                    votes[n] += 1;
+                }
+            }
+        }
+        let (best, count) = votes.iter().enumerate().max_by_key(|(_, c)| **c)?;
+        (bright > 0 && *count * 2 > bright).then(|| RARITY_COLOURS[best].0.clone())
     }
 }

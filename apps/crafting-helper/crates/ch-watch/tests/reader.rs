@@ -1,12 +1,13 @@
-//! The provisional locator and the reader, over synthetic images: a noisy
-//! scene with a tooltip-like panel drawn on it, and fake read calls that
-//! count what the reader asks for. No image file is read or written.
+//! The locator and the reader, over synthetic images: a noisy scene with a
+//! tooltip drawn on it as the owner's screenshots show one, and fake read
+//! calls that count what the reader asks for. No image file is read or
+//! written; `tests/shots.rs` reads the screenshots themselves.
 
 mod common;
 
 use ch_engine::ch_item::Rarity;
 use ch_watch::{locate, ReadCounts, Reader, TooltipRead};
-use common::{draw_tooltip, fill, header_height, noisy_scene, plain_image, FakeCalls, PANEL};
+use common::{draw_tooltip, fill, header_bottom, noisy_scene, plain_image, FakeCalls, PANEL};
 use qt_screen::{OverlayState, PixelLine, PixelRect, WindowHandle};
 
 const GAME: WindowHandle = WindowHandle(0x1234);
@@ -36,12 +37,9 @@ fn locator_finds_a_synthetic_tooltip() {
     assert_box_near(tip.rect, rare);
     assert_eq!(tip.rarity, Some(Rarity::Rare));
     assert!(!tip.touches_edge);
-    assert!(
-        near(
-            tip.header_bottom,
-            rare.top + 2 + header_height(&Rarity::Rare),
-            4
-        ),
+    assert_eq!(
+        tip.header_bottom,
+        header_bottom(&Rarity::Rare, rare.top, 720),
         "{tip:?}"
     );
 
@@ -60,13 +58,20 @@ fn locator_finds_a_synthetic_tooltip() {
     assert_box_near(found[1].rect, normal);
     assert_eq!(found[1].rarity, Some(Rarity::Normal));
 
-    // A tooltip running off the copy's edge is found and marked cut.
+    // The game keeps a tooltip inside the window: one flush against the
+    // copy's top and left edges is whole. One whose body runs off the bottom
+    // is found and marked cut.
     let mut image = noisy_scene(1280, 720, 13);
-    let cut = PixelRect::new(1000, 300, 1290, 600);
-    draw_tooltip(&mut image, cut, &Rarity::Rare, 8, 0);
+    let flush = PixelRect::new(0, 0, 330, 260);
+    let cut = PixelRect::new(700, 450, 1000, 760);
+    draw_tooltip(&mut image, flush, &Rarity::Rare, 8, 0);
+    draw_tooltip(&mut image, cut, &Rarity::Magic, 20, 0);
     let found = locate(&image);
-    assert_eq!(found.len(), 1, "{found:?}");
-    assert!(found[0].touches_edge);
+    assert_eq!(found.len(), 2, "{found:?}");
+    assert_box_near(found[0].rect, flush);
+    assert!(!found[0].touches_edge);
+    assert_eq!(found[1].rect.bottom, 720, "{found:?}");
+    assert!(found[1].touches_edge);
 }
 
 #[test]

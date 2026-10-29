@@ -3,10 +3,14 @@
 //! noisy scene with a tooltip-like panel drawn on it), with a fake set of
 //! read calls that counts them.
 //!
-//! The tooltip construction is an assumption until the `locator` item reads
-//! the owner's screenshots: the plain form drops the `{ … }` headers, the
-//! `Item Class:` and `Rarity:` lines, the separators and every `(min-max)`
-//! range; the Alt form keeps the headers (without braces) and the ranges.
+//! The plain form is the one the owner's screenshots show (2026-10-29): it
+//! drops the `{ … }` headers, the `Item Class:` and `Rarity:` lines, the
+//! separators and every `(min-max)` range (the real tooltip also names the
+//! class, `Amulet`, and leaves out the item level; `tests/shots.rs` reads the
+//! real thing). The Alt form here keeps the headers (without braces) and the
+//! ranges: the real one shows no header lines but the side and tier at the
+//! box's edges, which the reader drops, so this form tests the matcher's
+//! header reading alone.
 
 #![allow(dead_code)]
 
@@ -135,22 +139,28 @@ pub fn strip_ranges(line: &str) -> String {
 /// A BGR colour.
 pub type Bgr = [u8; 3];
 
-/// The panel, its border and the header band, as generally described of the
-/// game's tooltips (UNVERIFIED: the `locator` item measures the real ones).
+/// A dark colour no scene pixel is drawn in by these tests' tooltips.
 pub const PANEL: Bgr = [14, 14, 16];
-pub const BORDER: Bgr = [40, 70, 92];
-pub const HEADER: Bgr = [20, 45, 60];
-/// Modifier text: light blue.
-pub const MOD_TEXT: Bgr = [255, 136, 136];
+/// The header's dark band.
+pub const BAND: Bgr = [14, 18, 20];
+/// The rare frame's bright rows and its darker row, and the bottom frame,
+/// as measured on the owner's screenshots (RGB 176,155,85; 56,48,20;
+/// 79,63,29).
+pub const FRAME: Bgr = [85, 155, 176];
+pub const FRAME_DARK: Bgr = [20, 48, 56];
+pub const BOTTOM_FRAME: Bgr = [29, 63, 79];
+/// Modifier text: the measured blue (RGB 135,135,254).
+pub const MOD_TEXT: Bgr = [254, 135, 135];
 
-/// The name colour of a rarity, BGR.
+/// The name colour of a rarity, BGR: the most common bright pixel of the
+/// name lines in the shots (unique: not in the shots).
 pub fn name_colour(rarity: &Rarity) -> Bgr {
     match rarity {
         Rarity::Normal => [200, 200, 200],
-        Rarity::Magic => [255, 136, 136],
-        Rarity::Rare => [119, 255, 255],
+        Rarity::Magic => [254, 151, 122],
+        Rarity::Rare => [85, 224, 254],
         Rarity::Unique => [37, 96, 175],
-        Rarity::Other(_) => [128, 128, 128],
+        Rarity::Other(_) => [130, 158, 170],
     }
 }
 
@@ -207,17 +217,41 @@ fn text_row(image: &mut Image, left: i32, right: i32, top: i32, width: i32, bgr:
     }
 }
 
-/// The header band's height for a rarity: one name line, or two.
-pub fn header_height(rarity: &Rarity) -> i32 {
-    match rarity {
-        Rarity::Rare | Rarity::Unique => 48,
-        _ => 30,
+/// Darken `rect` (clipped to the image) to a fifth, as a tooltip's body
+/// darkens the scene behind it.
+fn darken(image: &mut Image, rect: PixelRect) {
+    let (w, h) = (image.width as i32, image.height as i32);
+    for y in rect.top.max(0)..rect.bottom.min(h) {
+        for x in rect.left.max(0)..rect.right.min(w) {
+            let i = ((y * w + x) * 4) as usize;
+            for c in &mut image.bgra[i..i + 3] {
+                *c = (*c as u32 * 19 / 100) as u8;
+            }
+        }
     }
 }
 
-/// Draw a tooltip-like panel at `rect`: a dark panel with a 2 px border, a
-/// tinted header band with the name lines in the rarity's colour, and
-/// `body_rows` rows of light text below. `wide` varies the text widths so two
+/// The distance from a tooltip's top frame to its bottom frame in an image
+/// `image_h` high: about 42 pixels at 1440 for one name line, 69 for two.
+pub fn header_height(rarity: &Rarity, image_h: u32) -> i32 {
+    let at_1440 = match rarity {
+        Rarity::Rare | Rarity::Unique => 69.0,
+        _ => 42.0,
+    };
+    (at_1440 * image_h as f64 / 1440.0).round() as i32
+}
+
+/// Where the locator puts the header band's bottom for a tooltip drawn at
+/// `top`.
+pub fn header_bottom(rarity: &Rarity, top: i32, image_h: u32) -> i32 {
+    top + header_height(rarity, image_h) + (9.0 * image_h as f64 / 1440.0).round() as i32
+}
+
+/// Draw a tooltip at `rect` as the shots show one: an opaque header (a frame
+/// line along its top, a dark band with the name lines in the rarity's
+/// colour, a frame line along its bottom, corners a quarter of its height
+/// wide), then a body that darkens the scene to a fifth with `body_rows`
+/// centred rows of light text. `wide` varies the text widths so two
 /// tooltips differ.
 pub fn draw_tooltip(
     image: &mut Image,
@@ -226,42 +260,70 @@ pub fn draw_tooltip(
     body_rows: i32,
     wide: i32,
 ) {
-    fill(image, rect, BORDER);
-    let inner = PixelRect::new(rect.left + 2, rect.top + 2, rect.right - 2, rect.bottom - 2);
-    fill(image, inner, PANEL);
-    let header = PixelRect::new(
-        inner.left,
-        inner.top,
-        inner.right,
-        inner.top + header_height(rarity),
+    let height = header_height(rarity, image.height);
+    let corner = (0.25 * height as f64).round() as i32;
+    let body_top = header_bottom(rarity, rect.top, image.height);
+    let (line_left, line_right) = (rect.left + corner, rect.right - corner);
+    fill(
+        image,
+        PixelRect::new(rect.left, rect.top, rect.right, body_top),
+        BAND,
     );
-    fill(image, header, HEADER);
-    let names = if header_height(rarity) > 30 { 2 } else { 1 };
-    let text_w = (inner.right - inner.left) / 2;
+    fill(
+        image,
+        PixelRect::new(line_left, rect.top, line_right, rect.top + 1),
+        FRAME,
+    );
+    fill(
+        image,
+        PixelRect::new(line_left, rect.top + 1, line_right, rect.top + 2),
+        FRAME_DARK,
+    );
+    fill(
+        image,
+        PixelRect::new(line_left, rect.top + 2, line_right, rect.top + 4),
+        FRAME,
+    );
+    let bottom_frame = rect.top + height;
+    fill(
+        image,
+        PixelRect::new(line_left, bottom_frame, line_right, bottom_frame + 2),
+        BOTTOM_FRAME,
+    );
+    let names = if matches!(rarity, Rarity::Rare | Rarity::Unique) {
+        2
+    } else {
+        1
+    };
+    let text_w = (rect.right - rect.left) * 2 / 5;
     for n in 0..names {
         text_row(
             image,
-            inner.left,
-            inner.right,
-            header.top + 8 + n * 18,
+            rect.left,
+            rect.right,
+            rect.top + 7 + n * 13,
             text_w - n * 20,
             name_colour(rarity),
         );
     }
-    let mut y = header.bottom + 12;
+    darken(
+        image,
+        PixelRect::new(rect.left, body_top, rect.right, rect.bottom),
+    );
+    let mut y = body_top + 6;
     for r in 0..body_rows {
-        if y + 10 > inner.bottom - 6 {
+        if y + 10 > rect.bottom - 8 {
             break;
         }
         text_row(
             image,
-            inner.left,
-            inner.right,
+            rect.left,
+            rect.right,
             y,
             text_w - 18 * (r % 3) + wide,
             MOD_TEXT,
         );
-        y += 22;
+        y += 16;
     }
 }
 

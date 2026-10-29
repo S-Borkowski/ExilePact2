@@ -263,3 +263,142 @@ Negatives and rejected alternatives:
   drift. Uniques are not read.
 - **poe2wiki and craftofexile**: not fetched. poe2wiki sits behind an
   anti-bot wall and craftofexile serves no data in its HTML.
+
+## Item tooltip on screen
+
+M6's screen watch reads the hovered item's tooltip from the game's window.
+What it looks like was measured on the owner's screenshots of 2026-10-29,
+static, before any live session; the game facts are folded into
+[`docs/RUNTIME_DATA_MODELS.md`](../RUNTIME_DATA_MODELS.md) § "Item tooltip
+(on screen)".
+
+**Method.** The owner took fourteen PNGs of the game's window, each with
+the hovered item's `Ctrl+Alt+C` copy beside it, in a folder outside every
+repository (never committed): a rare amulet plain and with Alt held, rare
+gloves with a rune in the stash plain and with Alt, a magic ring, a normal
+belt, a rare quarterstaff, a rare jewel, rare gloves with an unrevealed
+desecrated modifier plain and with Alt, the stash and inventory with
+nothing hovered, an Exalted Orb, and the amulet and the gloves again at
+1920 x 1080. Shots 01-11 are 2560 x 1440 fullscreen, HUD scale middle, UI
+text size medium; 12a and 12b are the game windowed at 1920 x 1080,
+captured with the Windows title bar. They were decoded with `qt-capture`'s
+decoder and read with Windows' OCR (en-US), the backend the app uses.
+`crates/ch-watch/tests/shots.txt` lists each shot's kind, its client inside
+the image and its hand-measured tooltip boxes; the tests in
+`crates/ch-watch/tests/shots.rs` read the folder `CH_TOOLTIP_SHOTS` names
+(`#[ignore]`d, so the default run needs no image):
+
+```text
+CH_TOOLTIP_SHOTS="$USERPROFILE/crafting-helper-shots" cargo test -p ch-watch --test shots -- --include-ignored
+```
+
+A box was measured against shot 10 (the same stash, nothing hovered) where
+the scene matches: the body is where a pixel is about a fifth of the same
+pixel without the tooltip. Elsewhere it was read off the pixel rows and
+columns where the darkening stops. The header's top is its first frame row.
+
+**Positive control first.** `whole_image_ocr_reads_the_copied_mod_lines`:
+OCR of each whole equipment shot, no locator, against its copy's explicit
+modifier lines: 4 of 4, 4 of 4, 3 of 3, 3 of 3, 2 of 2, 0 of 0 (the normal
+belt), 6 of 6, 4 of 4, 4 of 5, 4 of 5 (the unrevealed modifier's line is
+glyphs), 4 of 4 and 3 of 3. OCR reads this tooltip; the questions below
+rest on it.
+
+The questions:
+
+1. **Where it draws.** Beside the hovered item, kept inside the window: in
+   ten of the fourteen tooltips it lies flush against the client's left
+   edge, in five within ten pixels of its top, whole each time. At
+   2560 x 1440 the boxes were 663 to 877 pixels wide (0.26 to 0.34 of the
+   client) and 194 to 631 high; at 1920 x 1080 the amulet's box is the same
+   fraction of the client as at 1440 (0.108 to 0.336 of its height, both),
+   so the tooltip scales with the client. Hovering the quarterstaff (07)
+   drew the equipped weapon's tooltip beside it, higher and to the right,
+   with its own name lines; no other shot shows one, and their key hints
+   offer `Shift Compare`. When the game draws a comparison is not
+   established. `shot_tooltip_boxes_match_the_measured_ones` holds the
+   locator's boxes to the measured ones within a hundredth of the client.
+2. **Pixel features.** The header is drawn opaque: a frame line along its
+   top (a bright row, two darker ones, two more bright ones, each one
+   colour along the line; gold for a rare, blue-grey for a magic item, grey
+   for a normal one, pale brown for currency), a dark band with the name
+   lines, and a second frame line along its bottom, about 42 pixels below
+   the top for one name line and about 69 for two at 1440 (three quarters
+   of that at 1080). Corner ornaments reach a quarter of that past the line.
+   The body below darkens the scene behind it to about a fifth (median 0.19
+   over 8,645 pixels of shot 01 against shot 10) and has no border, so over
+   the stash's dark grid its bottom shows only faintly: the locator's box
+   may run on below the tooltip (01: to row 838 against a measured 484), and
+   the reader keeps only the lines that cross the box's middle. The
+   no-tooltip shot finds none and the currency shot reads as another item
+   (`shots_without_a_tooltip_find_none`); the stash's title plate, the same
+   gold, is too short and its band too thin to pass.
+3. **What OCR reads of a crop.** The plain form: the name lines, the item
+   class in the singular (`Amulet`, `Gloves`, `Quarterstaff`, the equipped
+   weapon's `Two Hand Mace`), the properties, the requirements (without
+   `(unmet)`; OCR splits the line where its colour changes, `Requires: Level
+   54,` then `225` then `Dex, 90 Int`, which the reader joins), the rune's
+   line, the implicit, and each explicit modifier's line with its value and
+   without a range; no item level and no `Item Class:` or `Rarity:` line.
+   Confusions seen: `UARTERSTAFF`, `PHYSIcAL`, `OSMAXIMUM` for `of
+   maximum`, `PUCE` for `Place`, `CLICKib`, `REQUIRE*`, and at 1080 `P R t C
+   E CHEC K`; small capitals come back upper case. The fixed interface
+   strings are the key hints the game draws in a small panel near the item,
+   over the tooltip's box or below it: `Alt Inspect`, `Shift Compare`, `Ctrl
+   Quick Move`, `Shift Alt Price Check`, and `Use` on currency. The matcher
+   counts them (`INTERFACE_STRINGS` after `KEY_CAPS`, spaces ignored) and
+   the class line. Whether the plain tooltip sums two modifiers' identical
+   stat lines into one is not established: no shot's item has two.
+4. **Name colours** (the most common bright pixel of the name lines, RGB):
+   rare 254, 224, 85; magic 122, 151, 254; normal 200, 200, 200; currency
+   170, 158, 130. Unique: not in the shots, so not established.
+5. **Which form.** Plain. Held Alt adds the ranges, writes `Amulet: Item
+   Level 12` for the class line and puts `Implicit`, `Prefix` and `Suffix`
+   at the box's left edge and a tier (`T12`) at its right, but OCR lost the
+   value of 2 of its 11 revealed modifier lines (`TO LIGHTNING RESISTANCE`)
+   and of the amulet's implicit, against none in the plain shots; the reader
+   drops the edge labels. The guide does not ask for Alt.
+6. **Times** (release build, this machine, `examples/shot_timings.rs`):
+   locating on a whole 2560 x 1440 client takes 12 to 36 ms (median of 5),
+   on 1920 x 1080 14 to 16 ms; OCR of one crop 34 to 215 ms, the most for
+   the jewel's box, which runs on 1009 rows over the dark stash. OCR of a
+   whole 2560 x 1440 shot took 694 to 847 ms. The copy of the window is not
+   part of these times: Live 1 measures it.
+7. **Unrevealed and fractured modifiers.** An unrevealed desecrated
+   modifier shows, plain and with Alt, as a row of green glyphs that OCR
+   reads nothing of, then the line `Take this item to the Well of Souls to
+   reveal the Desecrated Modifier`; the copy writes `{ Prefix Modifier
+   "Veiled" }` then `Desecrated Prefix`. The matcher calls an item with one,
+   or a tooltip with that line, unreadable. A fractured modifier is in no
+   shot: not established, and unreadable likewise.
+
+**The reads** (`shots_read_the_copied_mods_or_say_unreadable`): 7 of the 9
+plain-form equipment shots read as their copy (both amulets, both rune
+gloves, the ring, the belt, the jewel), and the rest are unreadable, never a
+different item: the quarterstaff's `of the Parasite` suffix (a suffix the
+copy gives no tier) has no modifier in the quarterstaff data, so its line
+is not accounted for; and the gloves with the unrevealed modifier. Of the
+Alt shots, the amulet reads as its copy and the rune gloves are unreadable
+(a lost value).
+
+Two findings changed the matcher:
+
+- **An item can carry a tier its item level does not allow in the data.**
+  The rune gloves (item level 43) have `Gleaming`, tier 5 of `Adds # to #
+  Physical Damage to Attacks`, whose data item level is 46; reading tiers
+  from item-level-filtered data, the plain line `Adds 5 to 9` fit tier 6
+  alone and the read came back as a different item. The matcher now counts
+  every tier of the variant, and a modifier whose id and values are the
+  item's keeps the item's tier (the modifier is unchanged); new values that
+  fit two tiers stay unreadable.
+- **A reducing modifier's range runs high to low** in the copy: the belt's
+  `12(15-10)% reduced Charm Charges used`, best to worst (the owner,
+  2026-10-29). `ch-item` reads it (the belt's copy parses and joins), the
+  matcher drops it like any range, and a tier holds a value between its
+  bounds in either order.
+
+Not observed in the shots: a black copy, a tooltip cut by the window's
+edge, a tooltip over a bright scene (every body ended over the dark stash
+or a dark panel), and a unique item. The locator and the reader are also
+tested on synthetic tooltips drawn the same way
+(`locator_finds_a_synthetic_tooltip`).

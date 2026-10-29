@@ -5,26 +5,42 @@
 //! unreadable: the matcher prefers unreadable to a guess. A line is
 //! accounted for when it is
 //!
-//! - one of the item's own non-explicit lines: a property, the
-//!   requirements, the item level, quality or sockets by the name before the
-//!   colon (their values may change), an implicit, rune, enchant or
-//!   corruption line by its template, a description line or a flag. They are
-//!   matched first, each template line once, and every implicit line must be
-//!   found;
+//! - one of the item's own non-explicit lines: the item class as the
+//!   tooltip names it (`Amulet`; `Amulet: Item Level 12` with Alt held), a
+//!   property, the requirements, the item level, quality or sockets by the
+//!   name before the colon (their values may change), an implicit, rune,
+//!   enchant or corruption line by its template, a piece of a description
+//!   line (the tooltip wraps a long one) or a flag. They are matched first,
+//!   each template line once, and every implicit line must be found;
 //! - alone or with the next lines, an explicit template the base can roll
 //!   (`valid_mods` for its variant and item level, normal and desecrated,
-//!   both sides), numbers read as values;
+//!   both sides), numbers read as values, its tier read as [`tier_of`] says
+//!   (an unchanged modifier keeps its tier; else the one tier of any item
+//!   level whose ranges hold the values);
 //! - an advanced-form header (`Prefix` or `Suffix Modifier`, a name, `Tier:
 //!   n`), which gives the next modifier's side and tier;
-//! - one of the fixed interface strings ([`INTERFACE_STRINGS`]).
+//! - one of the fixed interface strings ([`INTERFACE_STRINGS`]), after its
+//!   key caps.
 //!
 //! When more than one reading of the lines accounts for all of them and the
-//! readings differ, the read is unreadable.
+//! readings differ, the read is unreadable. An item with an unrevealed or a
+//! fractured modifier, or a tooltip showing the line under an unrevealed one
+//! ([`UNREVEALED_NOTE`]), is unreadable too: the tooltip draws an unrevealed
+//! modifier as glyphs OCR does not read, and what it draws of a fractured
+//! one is not established.
+//!
+//! What the shots measured (2026-10-29) and the tests pin: the plain
+//! tooltip shows each modifier's line with its value and without its header
+//! or range, the item class above the requirements, no item level; held
+//! Alt adds the ranges, the item level beside the class, and the side and
+//! tier at the box's edges (the reader drops those). A value's range may run
+//! high to low (`12(15-10)%`, a reducing modifier): it is dropped like any
+//! other, and a tier holds a value between its bounds in either order.
 
 use std::collections::BTreeMap;
 
 use ch_engine::ch_data::{self, ClassData, DataMod, Kind, Section, Tier};
-use ch_engine::ch_item::{Item, ModKind, ModLine, Modifier, Rarity, Value};
+use ch_engine::ch_item::{Item, ItemClass, ModKind, ModLine, Modifier, Rarity, Value};
 
 use crate::text::{prepare, prepare_template, similarity, Prepared};
 use crate::{TooltipBox, TooltipRead};
@@ -39,10 +55,26 @@ pub const LINE_THRESHOLD: f64 = 0.85;
 /// one word (`Physical` and `Cold`) both pass [`LINE_THRESHOLD`].
 pub const BEST_MARGIN: f64 = 0.05;
 
-/// Fixed strings of the game's interface that a tooltip may show and that
-/// say nothing of the item, compared as lines are. Empty until the `locator`
-/// item reads them off the owner's screenshots.
-pub const INTERFACE_STRINGS: &[&str] = &[];
+/// Fixed strings of the game's interface that a tooltip's box may show and
+/// that say nothing of the item, read off the owner's screenshots
+/// (2026-10-29): the key hints the game draws over or beside a hovered
+/// item's tooltip, each after its key caps ([`KEY_CAPS`]). A line is one of
+/// them when, its key caps dropped and its spaces taken out (OCR spaces the
+/// small letters: `P R t C E CHEC K`), it is alike one of these.
+pub const INTERFACE_STRINGS: &[&str] = &["Inspect", "Compare", "Quick Move", "Price Check", "Use"];
+
+/// The key caps drawn before a key hint.
+pub const KEY_CAPS: &[&str] = &["Alt", "Shift", "Ctrl"];
+
+/// The line the tooltip shows below an unrevealed desecrated modifier, whose
+/// own line is a row of glyphs OCR does not read (measured, 2026-10-29).
+pub const UNREVEALED_NOTE: &str =
+    "Take this item to the Well of Souls to reveal the Desecrated Modifier";
+
+/// A line counted as part of the item's description must be at least this
+/// long (masked): the tooltip wraps a long description over several lines,
+/// each a piece of it, and a short piece is alike too many texts.
+const MIN_DESCRIPTION_PIECE: usize = 8;
 
 /// Readings of one tooltip past which the matcher stops looking: the lines
 /// are too ambiguous to be worth reading.
@@ -184,7 +216,17 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
 
     let lines: Vec<Prepared> = tip.lines.iter().map(|l| prepare(&l.text)).collect();
     let headers: Vec<Option<Header>> = lines.iter().map(header_of).collect();
-    if headers.iter().flatten().any(|h| h.not_established) {
+    // An unrevealed modifier shows as glyphs OCR does not read, so neither
+    // an item that has one nor a tooltip that shows one can be read; what a
+    // fractured modifier looks like is not established.
+    let note = prepare(UNREVEALED_NOTE).masked;
+    if headers.iter().flatten().any(|h| h.not_established)
+        || item.has_unrevealed()
+        || item.has_fractured()
+        || lines
+            .iter()
+            .any(|l| similarity(&l.masked, &note) >= LINE_THRESHOLD)
+    {
         return Err(Unreadable::NotEstablished);
     }
     let reads = read_mods(&lines, &headers, item, data, variant, item_level)?;
@@ -316,16 +358,70 @@ fn header_of(line: &Prepared) -> Option<Header> {
 }
 
 /// A non-explicit line of the item: a keyed line (`Requires`, `Item
-/// Level`, a property), or a whole template line.
+/// Level`, a property, the item class), a whole template line, or a piece
+/// of the description.
 struct Own {
     keys: Vec<String>,
     /// Masked templates, with whether each must be found (implicit lines).
     templates: Vec<(String, bool)>,
+    /// The description's lines, masked: the tooltip wraps them.
+    description: Vec<String>,
 }
+
+/// The item class as the tooltip names it under the name lines, one item of
+/// it (`Amulet`, `Quarterstaff`, `Two Hand Mace` in the shots; the others by
+/// the same rule). The Alt-held form writes `Amulet: Item Level 12`.
+fn class_name(class: &ItemClass) -> String {
+    let one = match class {
+        ItemClass::BodyArmours => "Body Armour",
+        ItemClass::Helmets => "Helmet",
+        ItemClass::Quivers => "Quiver",
+        ItemClass::Shields => "Shield",
+        ItemClass::Bucklers => "Buckler",
+        ItemClass::Foci => "Focus",
+        ItemClass::Wands => "Wand",
+        ItemClass::OneHandMaces => "One Hand Mace",
+        ItemClass::Sceptres => "Sceptre",
+        ItemClass::Spears => "Spear",
+        ItemClass::Bows => "Bow",
+        ItemClass::Staves => "Staff",
+        ItemClass::TwoHandMaces => "Two Hand Mace",
+        ItemClass::Quarterstaves => "Quarterstaff",
+        ItemClass::Crossbows => "Crossbow",
+        ItemClass::Talismans => "Talisman",
+        ItemClass::Jewels => "Jewel",
+        ItemClass::Belts => "Belt",
+        ItemClass::Amulets => "Amulet",
+        ItemClass::Rings => "Ring",
+        ItemClass::Gloves | ItemClass::Boots => class.as_str(),
+        ItemClass::Other(text) => text.strip_suffix('s').unwrap_or(text),
+    };
+    one.to_string()
+}
+
+/// Whether the line is one of the [`INTERFACE_STRINGS`], after its
+/// [`KEY_CAPS`].
+fn is_interface(line: &str) -> bool {
+    let words: Vec<&str> = line
+        .split(' ')
+        .skip_while(|w| KEY_CAPS.iter().any(|k| word_is(w, &k.to_lowercase())))
+        .collect();
+    let compact = words.concat();
+    !compact.is_empty()
+        && INTERFACE_STRINGS.iter().any(|s| {
+            let want = prepare(s).masked.replace(' ', "");
+            similarity(&compact, &want) >= INTERFACE_THRESHOLD
+        })
+}
+
+/// Two interface strings with their spaces taken out are alike at this.
+/// Pinned by the tests: `prtcecheck` against `pricecheck` scores 0.9.
+const INTERFACE_THRESHOLD: f64 = 0.8;
 
 fn own_lines(item: &Item) -> Own {
     let mut keys: Vec<String> = Vec::new();
     let mut key = |k: &str| keys.push(prepare(k).masked);
+    key(&class_name(&item.class));
     if item.requirements.is_some() {
         for k in ["Requires", "Requirements", "Level", "Str", "Dex", "Int"] {
             key(k);
@@ -353,9 +449,11 @@ fn own_lines(item: &Item) -> Own {
             templates.push((prepare_template(&l.template).0, required));
         }
     }
-    for l in &item.description {
-        templates.push((prepare(&l.text).masked, false));
-    }
+    let description = item
+        .description
+        .iter()
+        .map(|l| prepare(&l.text).masked)
+        .collect();
     for (flag, on) in [
         ("Corrupted", item.corrupted),
         ("Mirrored", item.mirrored),
@@ -365,10 +463,19 @@ fn own_lines(item: &Item) -> Own {
             templates.push((prepare(flag).masked, false));
         }
     }
-    for s in INTERFACE_STRINGS {
-        templates.push((prepare(s).masked, false));
+    Own {
+        keys,
+        templates,
+        description,
     }
-    Own { keys, templates }
+}
+
+/// Whether the line is a piece of one of the description's lines.
+fn in_description(line: &str, description: &[String]) -> bool {
+    line.chars().count() >= MIN_DESCRIPTION_PIECE
+        && description
+            .iter()
+            .any(|d| qt_screen::fuzzy_score(line, d) >= LINE_THRESHOLD)
 }
 
 /// Whether the line's first words are `key`.
@@ -388,7 +495,7 @@ struct ReadMod {
 }
 
 /// A modifier that may start at a line: its data, its line count, its
-/// values, and every tier on the variant and item level.
+/// values, and every tier it has on the variant.
 struct Span {
     data: &'static DataMod,
     len: usize,
@@ -396,10 +503,24 @@ struct Span {
     tiers: Vec<&'static Tier>,
 }
 
+/// One of the item's explicit modifiers as the data joins it: its id, its
+/// tier and its values.
+type Known = (String, u32, Vec<f64>);
+
 /// The tier a span reads as under `header`: by the header's affix name, else
-/// its tier number, else the one tier whose ranges hold the values. `Err`
-/// when several fit, `Ok(None)` when none does.
-fn tier_of(span: &Span, header: Option<&Header>) -> Result<Option<&'static Tier>, ()> {
+/// its tier number; else, when the item has a modifier of the same id with
+/// the same values, that modifier's tier (the modifier is unchanged); else
+/// the one tier whose ranges hold the values. Every tier on the variant
+/// counts, whatever its item level: an item can carry a tier above the one
+/// its item level allows (shot 03, 2026-10-29: `Gleaming`, item level 46 in
+/// the data, on an item of level 43), and the plain form cannot tell
+/// overlapping tiers apart. `Err` when several fit, `Ok(None)` when none
+/// does.
+fn tier_of(
+    span: &Span,
+    header: Option<&Header>,
+    known: &[Known],
+) -> Result<Option<&'static Tier>, ()> {
     let fitting: Vec<&'static Tier> = span
         .tiers
         .iter()
@@ -421,11 +542,24 @@ fn tier_of(span: &Span, header: Option<&Header>) -> Result<Option<&'static Tier>
             return Ok(fitting.iter().copied().find(|t| t.tier == n));
         }
     }
+    let same = known
+        .iter()
+        .find(|(id, _, values)| *id == span.data.id && same_values(values, &span.values));
+    if let Some((_, n, _)) = same {
+        if let Some(t) = fitting.iter().copied().find(|t| t.tier == *n) {
+            return Ok(Some(t));
+        }
+    }
     match fitting.as_slice() {
         [] => Ok(None),
         [one] => Ok(Some(one)),
         _ => Err(()),
     }
+}
+
+/// The same values, in the same order.
+fn same_values(a: &[f64], b: &[f64]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).all(|(x, y)| (x - y).abs() <= 1e-6)
 }
 
 /// Every value lies within its tier's range (either bound order).
@@ -443,7 +577,7 @@ fn holds(t: &Tier, values: &[f64]) -> bool {
 type Reading = Vec<(ReadMod, bool)>;
 
 /// A modifier the base can roll: its data, each line's masked template and
-/// value count, and its tiers on the variant and item level.
+/// value count, and every tier it has on the variant.
 type Template = (&'static DataMod, Vec<(String, usize)>, Vec<&'static Tier>);
 
 /// One way of reading every line, as it is built.
@@ -459,6 +593,8 @@ struct Search<'a> {
     own: Own,
     /// For each line, the modifiers that may start there.
     spans: Vec<Vec<Span>>,
+    /// The item's explicit modifiers, for [`tier_of`].
+    known: Vec<Known>,
     readings: Vec<Reading>,
     missing: bool,
     overflow: bool,
@@ -480,7 +616,11 @@ fn read_mods(
         .filter_map(|v| {
             let data_mod = data.find_mod(v.id)?;
             let masked = data_mod.lines.iter().map(|l| prepare_template(l)).collect();
-            Some((data_mod, masked, v.tiers.clone()))
+            Some((
+                data_mod,
+                masked,
+                data_mod.tiers_on(variant).iter().collect(),
+            ))
         })
         .collect();
     let spans = (0..lines.len())
@@ -529,11 +669,26 @@ fn read_mods(
         .collect();
     let own = own_lines(item);
     let used = vec![false; own.templates.len()];
+    let joined = ch_data::join(item);
+    let known = joined
+        .mods
+        .iter()
+        .filter_map(|m| {
+            let found = m.matched()?;
+            let values = item.modifiers[m.index]
+                .lines
+                .iter()
+                .flat_map(|l| l.values.iter().map(|v| v.value))
+                .collect();
+            Some((found.mod_id.clone(), found.tier, values))
+        })
+        .collect();
     let mut search = Search {
         lines,
         headers,
         own,
         spans,
+        known,
         readings: Vec::new(),
         missing: false,
         overflow: false,
@@ -630,6 +785,8 @@ impl Search<'_> {
                 .keys
                 .iter()
                 .any(|k| starts_with_key(&line.masked, k))
+                || in_description(&line.masked, &self.own.description)
+                || is_interface(&line.masked)
             {
                 self.walk(i + 1, None, walk);
                 return;
@@ -642,7 +799,7 @@ impl Search<'_> {
             if header.is_some_and(|h| h.side != Some(span.data.kind)) {
                 continue;
             }
-            let (tier, ambiguous) = match tier_of(span, header) {
+            let (tier, ambiguous) = match tier_of(span, header, &self.known) {
                 Ok(Some(t)) => (t, false),
                 Ok(None) => continue,
                 Err(()) => (span.tiers[0], true),

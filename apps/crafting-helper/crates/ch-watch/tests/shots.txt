@@ -1,0 +1,33 @@
+# The owner's tooltip screenshots (2026-10-29), read by tests/shots.rs from the
+# folder CH_TOOLTIP_SHOTS names. The images and the item copies are never
+# committed; this file holds only their names and what was measured on them.
+#
+# One line per shot:
+#   file  kind  client  box...
+# kind:   plain (the hovered item's tooltip), alt (the same with Alt held),
+#         empty (stash and inventory open, nothing hovered), currency (an
+#         Exalted Orb hovered).
+# client: the game's client inside the image, pixels: left top right bottom
+#         (12a and 12b are windowed captures with the Windows title bar).
+# box:    each tooltip, hand-measured, as fractions of the client: left top
+#         right bottom. Top is the header's top frame line; the other edges
+#         are where the body stops darkening the scene (against shot 10, the
+#         same scene with no tooltip, where it matches; else read off the
+#         pixel columns and rows). 07 has two: the equipped item's comparison
+#         tooltip first, then the hovered one.
+# Shots 01-11: 2560x1440 fullscreen; 12a and 12b: 1920x1080 windowed. HUD
+# scale middle, UI text size medium.
+01-rare-amulet-plain.png                      plain    0 0 2560 1440    0.00000 0.10833 0.29844 0.33611
+02-rare-amulet-alt.png                        alt      0 0 2560 1440    0.00000 0.10833 0.29844 0.33611
+03-rare-gloves-rune-stash-plain.png           plain    0 0 2560 1440    0.00000 0.00625 0.31133 0.26319
+04-rare-gloves-rune-stash-alt.png             alt      0 0 2560 1440    0.00000 0.00625 0.31133 0.26319
+05-magic-ring-plain.png                       plain    0 0 2560 1440    0.00000 0.19444 0.28711 0.36042
+06-normal-belt-plain.png                      plain    0 0 2560 1440    0.13203 0.00000 0.40430 0.13472
+07-rare-quarterstaff-plain.png                plain    0 0 2560 1440    0.30742 0.21875 0.58555 0.65694    0.00000 0.27222 0.29844 0.60347
+08-rare-jewel-plain.png                       plain    0 0 2560 1440    0.00000 0.09722 0.29492 0.34375
+09-rare-gloves-desecrated-plain.png           plain    0 0 2560 1440    0.03633 0.00000 0.37891 0.28819
+09-rare-gloves-desecrated-alt.png             alt      0 0 2560 1440    0.02930 0.07222 0.37188 0.36042
+10-stash-inventory-nothing-hovered.png        empty    0 0 2560 1440
+11-exalted-orb.png                            currency 0 0 2560 1440    0.00000 0.14514 0.25898 0.32986
+12a-rare-amulet-plain-1080p-windowed.png      plain    1 31 1921 1111   0.00000 0.10833 0.30104 0.33611
+12b-rare-gloves-rune-plain-1080p-windowed.png plain    1 31 1921 1111   0.00000 0.00648 0.31354 0.26296

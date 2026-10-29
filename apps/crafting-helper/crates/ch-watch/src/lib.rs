@@ -17,13 +17,18 @@
 //! - [`item_key`]: an item's rarity and explicit modifiers as (data id,
 //!   tier), what "the same item" means for the guide.
 //!
-//! **The locator is provisional.** [`locate`] finds a dark panel with a
-//! coloured header band, which is what is generally said of the game's
-//! tooltips; it is proven only on synthetic images. Its features stay
-//! UNVERIFIED until the `locator` item measures the owner's screenshots and
-//! replaces them; its API stays. So do the matcher's tooltip assumptions
-//! (the plain form shows the modifier lines without headers or ranges, the
-//! Alt form adds both) and its empty [`INTERFACE_STRINGS`].
+//! **Measured on the owner's screenshots** (2026-10-29, 2560 x 1440 and
+//! 1920 x 1080; `docs/crafting-helper/crafting-helper-research.md` §
+//! "Item tooltip on screen"): [`locate`] finds a tooltip by its opaque
+//! header (a frame line along its top and bottom around the name lines, one
+//! name line or two) and follows its body, which darkens the scene behind
+//! it to about a fifth, down to where the scene shows again; the reader
+//! joins the pieces OCR splits one line into and keeps the lines that cross
+//! the box's middle (every tooltip line is centred); the matcher accounts
+//! for the class line and the key hints ([`INTERFACE_STRINGS`]). The plain
+//! form is the one to read: held Alt adds ranges but loses values to OCR.
+//! `tests/shots.rs` reads the screenshots themselves when
+//! `CH_TOOLTIP_SHOTS` names their folder; the images are never committed.
 //!
 //! OCR text is private. Copies, crops and lines live in memory only while a
 //! read is processed (the reader keeps the last read's crops and lines to

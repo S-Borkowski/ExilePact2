@@ -408,3 +408,41 @@ fn the_read_item_joins_to_the_read_mods() {
         .collect();
     assert_eq!(texts, ["+95 to maximum Mana", "+33% to Fire Resistance"]);
 }
+
+#[test]
+fn measured_tooltip_lines_are_accounted_for() {
+    // What the owner's screenshots show besides the item text (2026-10-29):
+    // the class above the requirements, and the key hints the game draws
+    // over the box, OCR spacing their small letters.
+    let start = ring("01-start");
+    let mut tip = tooltip(&ring_text("01-start"), false);
+    tip.lines.insert(0, "RING".to_string());
+    tip.lines.push("ALT INSPECT".to_string());
+    tip.lines.push("P R t C E CHEC K".to_string());
+    assert_eq!(classify(&read_of(&[&tip]), &start), ReadKind::Unchanged);
+
+    // A line that only looks like a hint is still unaccounted for.
+    let mut odd = tip.clone();
+    odd.lines.push("ALT INSPECTION OF RINGS".to_string());
+    assert_eq!(
+        classify(&read_of(&[&odd]), &start),
+        ReadKind::Unreadable(Unreadable::UnaccountedLine)
+    );
+
+    // The note under an unrevealed modifier, whose own line OCR does not
+    // read: never read as the item without it.
+    let mut veiled = tip.clone();
+    veiled
+        .lines
+        .push("TAKE THIS ITEM TO THE WELL OF SOULS TO REVEAL THE DESECRATED MODIFIER".to_string());
+    assert_eq!(
+        classify(&read_of(&[&veiled]), &start),
+        ReadKind::Unreadable(Unreadable::NotEstablished)
+    );
+    // Nor is an item that has one, whatever its tooltip shows.
+    let plain = tooltip(&ring_text("04-desecrated"), false);
+    assert_eq!(
+        classify(&read_of(&[&plain]), &ring("04-desecrated")),
+        ReadKind::Unreadable(Unreadable::NotEstablished)
+    );
+}
