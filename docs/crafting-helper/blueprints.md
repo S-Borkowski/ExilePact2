@@ -8,7 +8,8 @@ engine (`ch-engine`) reads every blueprint under
 picks the ones that fit an item and the modifiers you want on it, and guides
 you through one step at a time.
 
-No window uses the engine yet: the craft window is M5's work. Until then a
+The crafting helper's craft window previews a route from a blueprint and
+guides a craft through it ([`README.md`](README.md) § "Overview"). A
 blueprint is checked with `check_blueprints` (below) and walked in
 `ch-engine`'s tests.
 
@@ -24,7 +25,7 @@ Orbs and whittling, then desecrated for the last target (the shipped
 
 ```toml
 id = "rings-resist-whittle"                      # the file name without .toml
-name = "Rings: resistances by whittling"        # the title the player sees
+name = "Rings: resistances by whittling"        # the title; the app does not show it
 classes = ["Rings"]                             # data class strings
 source = "Discord post 10, owner's paste, 2026-10-28"
 notes = "Whether a Chaos Orb can take off a desecrated modifier is not established."
@@ -79,10 +80,10 @@ silently ignored. A `[[step.action]]` list may also be written inline,
 | Key | Required | What it holds |
 |---|---|---|
 | `id` | yes | The file name without `.toml`, in lower kebab case. Two files may not share one. |
-| `name` | yes | The title the player sees. Not empty. |
+| `name` | yes | The blueprint's title, for this guide and the people writing blueprints. The craft window does not show it: the route is the app's to follow, and other routes are offered as `Route 1`, `Route 2` and so on. Not empty. |
 | `classes` | yes | The item classes the blueprint is for, as the data spells them: `Gloves`, `Boots`, `Helmets`, `Body Armours`, `Shields`, `Quivers`, `Bucklers`, `Foci`, `Wands`, `One Hand Maces`, `Sceptres`, `Spears`, `Bows`, `Staves`, `Two Hand Maces`, `Quarterstaves`, `Crossbows`, `Talismans`, `Belts`, `Amulets`, `Rings`, `Jewels`. At least one. |
 | `source` | yes | Where the technique came from: `"Discord post 10, owner's paste, 2026-10-28"`, or `"roadmap"` for the owner's own description. Not empty. |
-| `notes` | no | Free text: caveats, and every mechanic the route rests on that the docs mark not established. |
+| `notes` | no | Free text: caveats, and every mechanic the route rests on that the docs mark not established. The craft window does not show it, so these caveats live in the blueprint file and in this guide (§ "The seed blueprints"). |
 | `[[start]]` | at least one | A start alternative (below). |
 | `[[step]]` | at least one | The steps, in order (below). |
 
@@ -123,7 +124,7 @@ side. These limits are the owner's, not measured.
 | Key | Required | What it holds |
 |---|---|---|
 | `id` | yes | Unique in the blueprint; `goto:` names it. |
-| `say` | yes | The short instruction the player sees. |
+| `say` | yes | The blueprint's own short instruction. The player sees it only where the app does not compose the instruction from the step's data: a `fill`, `remove-desecrated` or `manual` step, a step that places a target when no target is left for it, and a branch line naming a step the route left out. Everywhere else the craft window names the currency, its omens and the modifiers the step places or removes, and for a step that may whittle or annul, which of the two the modifier levels call for ([`README.md`](README.md) § "Overview"). |
 | `goal` | yes | What the step is for, and so what the engine checks after it (below). |
 | `side` | no | `prefix` or `suffix`: the side an add or remove goal is about. |
 | `bind` | no | Which target the step aims at (below). A `reveal` or `convert` step needs one. |
@@ -308,8 +309,9 @@ seen". Each is walked on a hit path and a miss path in `ch-engine`'s tests
 Steps that rest on a mechanic the docs mark not established (an alloy with
 the Crystallisation omens, how a flux maps one resistance's tier to
 another's, catalyst quality, rune sockets, which side a Contempt modifier
-lands on) are kept; each blueprint's `notes` says so, and its catalyst and
-rune steps are `manual`.
+lands on) are kept, and their catalyst and rune steps are `manual`. Each
+blueprint's `notes` names what it rests on, but the craft window does not
+show `notes`: the caveats live in the blueprint file and in this guide.
 
 Posts not made into a blueprint:
 

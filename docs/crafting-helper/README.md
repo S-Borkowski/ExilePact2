@@ -65,18 +65,30 @@ browser for the crafting this app does not cover.
     high as possible" by default or "At least T<n>"), **Blocked for this
     craft** (the Settings list, which this craft can add to or allow
     from, without changing Settings), and the **route** the engine chose:
-    the blueprint's name and source, the chosen targets with their floors,
-    then each step's instruction, the target modifiers a hit of it may
-    place, its currency and omens, its rough odds or "odds unknown" with
-    the reason, a fallback line where a blocked item made it take another,
-    and other applicable routes to choose from. A step that places a
+    the blueprint's source, the chosen targets with their floors, then
+    each step's instruction, the target modifiers a hit of it may place,
+    its currency and omens, its rough odds or "odds unknown" with the
+    reason, a fallback line where a blocked item made it take another,
+    and other applicable routes to choose from, as `Route 1`, `Route 2`
+    and so on. The blueprint's name is not shown: the technique is the
+    app's to follow, not the player's to read. A step that places a
     target says so in the app's own words, naming the currency, its omens,
     the side and the modifiers (`Chaos Orb for +#% to Fire Resistance
-    (suffix) or +#% to Cold Resistance (suffix)`); a step that places none
-    (a removal, a quality or a manual step) keeps the blueprint's text.
-    The blueprint's notes, the reasoning behind its technique, are not
-    shown. With no route, one line per blueprint says why it does not
-    apply. *Start crafting* starts the guide.
+    (suffix) or +#% to Cold Resistance (suffix)`). A removal step names
+    the currency with its omens and the modifier it removes, by its text
+    on the item (`Orb of Annulment to remove +95(90-104) to maximum Mana
+    or +200(168-236) to Accuracy Rating; it takes one modifier at
+    random`). Where a blueprint lets a clean-up step either whittle
+    (Chaos Orb with Omen of Whittling, which takes the lowest-level
+    modifier) or annul (a plain Orb of Annulment, which takes one at
+    random), the app decides from the modifier levels on the item: the
+    whittle when the single lowest-level modifier is one you do not want,
+    otherwise the annulment, and the whittle after all when Orb of
+    Annulment is blocked for the craft. A step that neither places nor
+    removes a modifier (a fill, a quality or a manual step) keeps the
+    blueprint's text. The blueprint's notes, the reasoning behind its
+    technique, are not shown. With no route, one line per blueprint says
+    why it does not apply. *Start crafting* starts the guide.
 
     A grab that enters planning arrives with the item's own explicit
     prefixes and suffixes already ticked as targets, each with its floor
@@ -93,8 +105,13 @@ browser for the crafting this app does not cover.
     the game, hover the item: the app reads it from the screen, classifies
     the change as a hit or a miss and moves on. Or copy the item and grab
     it again, which the app classifies the same way as a hit, a miss or
-    unexpected. *End craft* goes back to planning on the latest item,
-    keeping the targets.
+    unexpected. A clean-up step the app named as a whittle or an
+    annulment is judged against the one it named, and decided again on
+    the next item when it repeats: a whittle taken where the app said to
+    annul (one modifier out and one in) reads as unexpected, and the craft
+    asks to plan again, as with any currency other than the one shown.
+    *End craft* goes back to planning on the latest item, keeping the
+    targets.
 
   Each grab's text, as copied, is under a *Grabbed text* disclosure with
   its line count and where it came from ("from the hotkey" or "from a
@@ -165,8 +182,8 @@ browser for the crafting this app does not cover.
   OCR, or with the game not in front, nothing is read and grabs drive the
   guide.
 - **An overlay over the game**, a click-through, always-on-top panel, 480
-  by 168 at 1x, that shows the guide's status, the route, the step and its
-  try, the instruction, what it uses and its odds, where a hit and a miss
+  by 168 at 1x, that shows the guide's status, the step and its try, the
+  instruction, what it uses and its odds, where a hit and a miss
   go, the last outcome with its source, and the screen watch's line. It
   shows while a craft is guiding (in any guide status: crafting, stuck,
   replan or done) **and** the game's window is in front; it hides at once
@@ -553,6 +570,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test hotkey   # the hotkey's rules
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test updates  # the update commands, fake transport
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test craft_window  # the craft window, fake shell
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test remarks  # whittle or annul, removal and branch copy, fake shell
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test settings # the saved settings, the blocked list, the catalogue
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test overlay  # the overlay: when it shows, where it sits, what it says
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test watch    # the screen watch, fake backend
@@ -641,12 +659,36 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   odds in words and without the blueprint's notes
   (`the_route_view_drops_the_blueprint_notes`), each step naming its
   target modifiers in an instruction of the app's own
-  (`a_targeted_step_says_its_currency_side_and_mods`; a step with none
-  keeps the blueprint's text), a blocked currency's fallback and a craft's own
-  blocked list, no route, accepting, a hit, a miss, an unexpected change,
-  an unchanged re-grab and the walk to done; and that
-  `open_craft_of_exile` asks the shell for the one fixed address
+  (`a_targeted_step_says_its_currency_side_and_mods`; a removal step
+  names the unwanted modifiers it may take, and a step with no target
+  left or a manual step keeps the blueprint's text,
+  `a_step_without_targets_keeps_the_blueprint_text`), a blocked
+  currency's fallback and a craft's own blocked list, no route,
+  accepting, a hit, a miss, an unexpected change, an unchanged re-grab
+  and the walk to done; and that `open_craft_of_exile` asks the shell for
+  the one fixed address
   (`open_craft_of_exile_opens_only_the_fixed_address`).
+- `ch-app`'s `tests/remarks.rs` drives the shipped `fill-desecrate-exalt`
+  route over the ring of `ch-engine`'s seed walk
+  (`crates/ch-engine/tests/items/gear/fill-desecrate-exalt/`, read by
+  path, with its life, fire, cold and chaos targets): after a missed
+  exalt, the clean-up step is the annulment when the lowest-level
+  modifier is a target
+  (`a_missed_exalt_above_the_lowest_level_is_annulled`) and the whittle
+  when it is not (`a_missed_exalt_at_the_lowest_level_is_whittled`), the
+  whittle stays when Orb of Annulment is blocked for the craft
+  (`a_blocked_annulment_keeps_the_whittle`), a removal step names the
+  modifiers it removes (`a_removal_step_names_the_modifier_it_removes`),
+  a miss branch into it offers no choice, the branch lines name the next
+  step by its composed instruction, the desecrate step names the hardest
+  target, an annulment the app named is judged as one from a grab or the
+  screen while a whittle there reads unexpected
+  (`an_annulment_the_app_named_is_judged_as_an_annulment`,
+  `an_annulment_read_from_the_screen_is_judged_as_an_annulment`), a
+  missed annulment shows the step again with no fallback line, no status
+  line names the blueprint (`status_lines_do_not_name_the_blueprint`),
+  and the last outcome says its word once
+  (`the_last_outcome_says_its_word_once`).
 - `ch-app`'s `tests/fixtures.rs` (`fixtures_are_current`) writes the
   views under `fixtures/views/` and `fixtures/app-settings/` and
   `fixtures/catalogue.json`, the overlay's and the screen watch's views
@@ -749,18 +791,32 @@ release already exists, only its assets are replaced.
 
 ## Known limitations
 
-- **Reading the item from the screen is not yet measured in the game.**
+- **Reading the item from the screen was measured in one live session.**
   How the tooltip looks, where it draws and what OCR reads of it were
   measured on the owner's screenshots (2026-10-29: 2560 x 1440
   fullscreen and 1920 x 1080 windowed, HUD scale middle, UI text size
-  medium; the research note's
-  [Item tooltip on screen](crafting-helper-research.md#item-tooltip-on-screen)).
-  Whether the app's own copy of the window, its client size at other
-  display scales, its time from hover to outcome and its cost a minute
-  match them is for Live 1, the live session, whose first run stopped on
-  an unreadable belt (below) and which runs again; until then
-  the `watch: game window` and `watch: minute:` lines are what to read.
-  Another resolution, HUD scale or text size has not been tried.
+  medium), then in the game in Live 1 (2026-10-29, the exe built from
+  commit `0ca9d7f8`, a rare belt on `fill-desecrate-exalt`; the research
+  note's
+  [Item tooltip on screen](crafting-helper-research.md#item-tooltip-on-screen)
+  § "Live 1"). There the app's copy of the window read the client as
+  2560 x 1440 physical pixels, the crafted belt hovered with nothing used
+  read `unchanged`, another item read `another item`, and an Exalted Orb's
+  miss was read from the screen and applied about 1 s after the tooltip
+  changed, with no grab; a grab after it matched the screen and applied
+  nothing twice. The time from hover to outcome as the player sees it,
+  and what the watch reads while Alt is held, were not observed (neither
+  has a timestamp of its own). Only that one resolution, at HUD scale
+  middle and UI text size medium, ran live; another display scale,
+  resolution, HUD scale or text size has not been tried live, and the
+  `watch: game window` and `watch: minute:` lines are what to read there.
+- **The watch's cost while guiding.** In Live 1, with the game in front
+  and no tooltip in view, a minute held 61 to 98 copies at 3.2 to 5.0 s
+  busy, about 50 ms for a copy and its locating; with tooltips hovered,
+  the busiest minutes were 82 copies, 19 OCR reads and 7.9 s, and 73
+  copies, 13 OCR reads and 8.1 s, so up to about 8 s of copy and OCR in a
+  minute, on one machine. With the game not in front or the watch off, a
+  minute counts no copies. A slower machine has not been measured.
 - **What the watch cannot read** it calls unreadable and asks for a grab:
   a modifier the data has no modifier for, on the tooltip or on the item
   the step was shown on (the quarterstaff's `of the Parasite` suffix in
@@ -777,14 +833,16 @@ release already exists, only its assets are replaced.
   (<reason>): grab the item after each step.` instead. Eight of the ten
   plain equipment shots read as their item's copy and the rest unreadable,
   never another item.
-- **The belt Live 1 could not read now reads, on its screenshot.** In the
-  first run of Live 1 (2026-10-29), a rare Utility Belt read as unreadable
-  on every hover: OCR had broken the first word of its requirement line.
-  The watch now places a requirement line by what follows its colon
-  (`Level` and its value, then attributes), and the owner's screenshot of
-  that hover (shot 13) reads as the belt's copy; it has not yet been
-  hovered in the game again, which Live 1's next run does. Why OCR broke
-  the word on that shot alone is not established.
+- **A requirement line whose first word OCR breaks** is placed by what
+  follows its colon (`Level` and its value, then attributes). A rare
+  Utility Belt whose requirement line OCR broke so (the owner's shot 13)
+  reads as the belt's copy on that screenshot, and in Live 1 the crafted
+  belt hovered with nothing used read `unchanged`. If OCR breaks the
+  first word of a requirement line that also reads an `(unmet)` (an
+  attribute the character does not meet), the line is not accounted for
+  and the item reads as unreadable, never as another item; whether the
+  game draws that word on the tooltip at all is not established. Why OCR
+  broke the word on shot 13 alone is not established either.
 - **Another item of the same base** with the same modifiers and tiers
   looks like the item being crafted: the watch tells items by base type,
   rarity and explicit modifiers (ids and tiers), not by the values it
@@ -833,14 +891,13 @@ release already exists, only its assets are replaced.
   item text the owner copied for the parser (`ch-item`'s
   `fixtures/real/`) does, but the check reads nothing else. A text that
   fails it is still shown, with the warning.
-- **`Ctrl+Alt+X` with the game in front was not measured.** A hotkey
-  registered this way reached the waystone roller with Path of Exile 2 in
-  front (`Ctrl+Alt+W`, measured 2026-10-28;
+- **The hotkey reached the app with the game in front, in Live 1.** A
+  `Ctrl+Alt+X` grab arrived with Path of Exile 2 in front (2026-10-29),
+  as `Ctrl+Alt+W` did for the waystone roller (2026-10-28;
   [`docs/RUNTIME_DATA_MODELS.md`](../RUNTIME_DATA_MODELS.md) § "Item search
-  box (stash and vendor)"). The crafting helper's own key, and whether the
-  game binds `Ctrl+Alt+X` or still sees it while the app holds it, have not
-  been tried in the game. If a game binding stops working while the app
-  runs, choose another hotkey in Settings.
+  box (stash and vendor)"). Whether the game binds `Ctrl+Alt+X` itself, or
+  still sees it while the app holds it, was not checked. If a game binding
+  stops working while the app runs, choose another hotkey in Settings.
 - **A grab from the hotkey needs the copy first.** The hotkey reads what is
   on the clipboard now: press it after the game's `Ctrl+Alt+C` has copied
   the item. Pressed before, it shows whatever text was there, with the
@@ -870,13 +927,19 @@ release already exists, only its assets are replaced.
 - **Antivirus and SmartScreen behaviour is not established.** The exe has
   no Authenticode signature, and how an antivirus treats an exe that
   downloads and renames its own file was not measured.
-- **The built exe has not been run with the game.** 0.1.0 is proven by
-  tests with fakes (a fake shell for the clipboard, the hotkey, the
-  browser and the overlay, a fake screen backend, a fake transport and
-  loopback servers for updates) and by the screen reader's run over the
-  owner's screenshots; Live 1, the first session with the game, is still
-  to come. The craft window's walks are the engine's test items
-  (constructed ring texts), not crafts taken in the game.
+- **The built exe has run with the game once.** 0.1.0 is proven by tests
+  with fakes (a fake shell for the clipboard, the hotkey, the browser and
+  the overlay, a fake screen backend, a fake transport and loopback
+  servers for updates), by the screen reader's run over the owner's
+  screenshots, and by Live 1 (2026-10-29): one guided craft of a rare
+  belt, its first exalt read from the screen as a miss, with the overlay
+  shown at the top center over the game and hidden whenever another
+  window came in front. The craft window's walks to the end of a route
+  are the engine's test items (constructed ring texts), not crafts taken
+  in the game. The changes made after Live 1 (whittle or annul decided by
+  the app, a removal step naming its modifiers, the branch lines naming
+  the next step, no route name on screen, the outcome's word said once)
+  are proven by tests only.
 - **Craft of Exile's page is outside this project.** The button opens its
   beta address with `?game=poe2`; if the site moves or drops that address,
   the button opens whatever the site serves there until the app is
@@ -953,9 +1016,12 @@ release already exists, only its assets are replaced.
   prefixes, suffixes and desecrated modifiers the item's base can roll,
   each "as high as possible" or "at least" a tier, and it previews the
   route a blueprint takes: the targets, then each step naming the
-  modifiers it aims for with its currency and omens, its rough odds or
-  "odds unknown" and why, the fallbacks taken because something is
-  blocked, or why no blueprint applies.
+  modifiers it aims for, or the ones it removes, with its currency and
+  omens, its rough odds or "odds unknown" and why, the fallbacks taken
+  because something is blocked, or why no blueprint applies. Where a
+  clean-up step could whittle (Chaos Orb with Omen of Whittling) or annul
+  (Orb of Annulment), the app picks from the modifier levels on the item
+  and judges the result against the one it named.
 - *Start crafting* guides you step by step: take the step in the game and
   hover the item, and the app reads the item's tooltip from the screen with
   Windows' own OCR, says whether it was a hit or a miss, moves to the next
@@ -983,10 +1049,10 @@ release already exists, only its assets are replaced.
   default; it only checks), *Check now*, the in-app install of a signed
   newer version, the version and "Created by ST4H".
 - Reading the screen needs Windows' English OCR and the game windowed or
-  borderless in English; it was measured on screenshots, not yet in a live
-  session (Known limitations). A rare belt whose tooltip the first live
-  try could not read, because OCR broke the first word of its requirement
-  line, now reads on its screenshot.
+  borderless in English. It reads the hovered equipment's tooltip, belts
+  included, with their charm slot and flask lines, and was measured on
+  the owner's screenshots and in one live session at 2560 x 1440 (Known
+  limitations).
 - Download `crafting-helper.exe` from the repository's
   [crafting helper releases](https://github.com/S-Borkowski/ExilePact2/releases?q=crafting-helper)
   and run it; there is no installer.
