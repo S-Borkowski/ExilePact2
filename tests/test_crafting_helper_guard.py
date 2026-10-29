@@ -33,9 +33,21 @@ copied, with these differences:
   `ep_net` or depends on `ep-net`, and `ch-app` takes the shared
   `ep-update` and nothing else of it;
 - no manifest depends on an HTTP, socket, TLS, WebSocket, input or process
-  crate, or on a Tauri plugin but the global shortcut and single instance,
-  and `package.json` on no Tauri plugin; the `windows-sys` features are the
-  waystone roller's set;
+  crate, or on a Tauri plugin but the global shortcut, single instance and
+  opener, and `package.json` on no Tauri plugin; the `windows-sys` features
+  are the waystone roller's set. The opener (`tauri-plugin-opener`, the
+  quest tracker's pin) is the crafting helper's own addition to the
+  waystone roller's two plugins, so `wr.ALLOWED_TAURI_PLUGINS` is not
+  loosened: it is allowed in the workspace's `[workspace.dependencies]` and
+  `src-tauri`'s `[dependencies]` alone;
+- the app opens one web address, Craft of Exile's: in the Rust sources
+  outside tests (comments blanked) that address is the one `http://` or
+  `https://` literal, once, in `ch-app`; the glue alone names
+  `tauri_plugin_opener`, once, registers it with
+  `open_js_links_on_click(false)` (no link handler in the pages) and never
+  with `init`, and calls `.opener()` once; the `open_craft_of_exile`
+  command takes nothing but the app state, and no command takes a URL or
+  path argument;
 - the windows' CSP is the pinned string; the capabilities are three, the
   `main` window's (`core:event:default`, `core:window:default`), the
   `settings` window's and the `overlay` window's (`core:event:default`
@@ -139,6 +151,33 @@ WATCH_NAMES = [
     ("RegisterRawInputDevices", re.compile(r"\bRegisterRawInputDevices\b")),
 ]
 UI_CLIPBOARD_NAMES = [("navigator.clipboard", re.compile(r"\bnavigator\s*\??\.\s*clipboard\b"))]
+# The app's Tauri plugins: the waystone roller's two and the opener, which
+# opens Craft of Exile's one address. The opener is allowed in these
+# manifests' tables alone (`wr.manifest_offences` labels).
+OPENER_PLUGIN = "tauri-plugin-opener"
+ALLOWED_TAURI_PLUGINS = wr.ALLOWED_TAURI_PLUGINS | {OPENER_PLUGIN}
+OPENER_TABLES = {
+    APP / "Cargo.toml": "workspace.dependencies",
+    TAURI / "Cargo.toml": "dependencies",
+}
+# The one web address the app opens (`ch_app::CRAFT_OF_EXILE_URL`).
+CRAFT_OF_EXILE_URL = "https://beta.craftofexile.com/?game=poe2"
+URL_LITERAL = re.compile(r"\bhttps?://[^\"\s]*", re.IGNORECASE)
+OPENER_CRATE = re.compile(r"\btauri_plugin_opener\b")
+OPENER_INIT = re.compile(r"\btauri_plugin_opener\s*::\s*(?:\{[^}]*\b)?init\b")
+OPENER_CALL = re.compile(r"\.\s*opener\s*\(\s*\)")
+NO_LINK_HANDLER = re.compile(r"\bopen_js_links_on_click\s*\(\s*false\s*\)")
+ANY_LINK_HANDLER = re.compile(r"\bopen_js_links_on_click\b")
+# A Tauri command and its parameter list (no parameter type here holds a
+# `)`, so the list ends at the first one).
+COMMAND = re.compile(
+    r"#\[\s*tauri\s*::\s*command\b[^\]]*\]\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)"
+)
+# The app state, the one parameter `open_craft_of_exile` takes.
+STATE_TYPE = re.compile(r"^(?:Shared<'_>|(?:tauri\s*::\s*)?State<'_,\s*Arc<App>>)$")
+# A parameter that would carry an address or a file: by its name or its type.
+ADDRESS_PARAM_NAME = re.compile(r"url|uri|href|link|address|path|file|dir|location", re.IGNORECASE)
+ADDRESS_PARAM_TYPE = re.compile(r"\b(?:PathBuf|Path|Url|OsString|Uri)\b")
 # The workspace pins the quest tracker's workspace lacks: `ch-blueprint`'s
 # TOML reader, a package already in its lock (through the Tauri build).
 PINS_OUTSIDE_THE_QUEST_TRACKER = {"toml"}
@@ -229,6 +268,62 @@ def member_dirs() -> list[Path]:
 def local_packages(lock: dict) -> dict[str, str]:
     """name -> version of every local (sourceless) package in a Cargo.lock."""
     return {p["name"]: p["version"] for p in lock.get("package", []) if "source" not in p}
+
+
+def app_manifest_offences(name: str, manifest: dict, opener_table: str | None) -> list[str]:
+    """`wr.manifest_offences` for one of this app's manifests, the opener
+    plugin allowed in the table labelled `opener_table` alone (`None`:
+    nowhere)."""
+    allowed = f"{name}: {opener_table}.{OPENER_PLUGIN} (a Tauri plugin)" if opener_table else None
+    return [o for o in wr.manifest_offences(name, manifest) if o != allowed]
+
+
+def is_rust_test(path: Path) -> bool:
+    """A Rust source under a crate's `tests/` directory."""
+    return "tests" in path.relative_to(APP).parts
+
+
+def url_literals(name: str, text: str) -> list[tuple[str, str]]:
+    """`(name:line, literal)` for each `http://` or `https://` in `text`,
+    comments blanked (strings kept)."""
+    code = wr.blank_rust_comments(text)
+    return [(f"{name}:{code.count(chr(10), 0, m.start()) + 1}", m.group(0)) for m in URL_LITERAL.finditer(code)]
+
+
+def commands(text: str) -> dict[str, list[tuple[str, str]]]:
+    """Each `#[tauri::command]` function in `text` (comments blanked) and its
+    parameters as `(name, type)`."""
+    found = {}
+    for m in COMMAND.finditer(wr.blank_rust_comments(text)):
+        params = []
+        for part in m.group(2).split(","):
+            if part.strip():
+                pname, _, ptype = part.partition(":")
+                params.append((pname.strip().removeprefix("mut ").strip(), " ".join(ptype.split())))
+        found[m.group(1)] = params
+    return found
+
+
+def address_parameter_offences(name: str, found: dict[str, list[tuple[str, str]]]) -> list[str]:
+    """Each command parameter that could carry a web address or a file: by
+    its name or its type."""
+    return [
+        f"{name}: {command}({pname}: {ptype})"
+        for command, params in found.items()
+        for pname, ptype in params
+        if ADDRESS_PARAM_NAME.search(pname) or ADDRESS_PARAM_TYPE.search(ptype)
+    ]
+
+
+def open_command_offences(found: dict[str, list[tuple[str, str]]]) -> list[str]:
+    """Where `open_craft_of_exile` is missing or takes more than the app
+    state."""
+    params = found.get("open_craft_of_exile")
+    if params is None:
+        return ["open_craft_of_exile: no such command"]
+    if len(params) != 1 or not STATE_TYPE.match(params[0][1]):
+        return [f"open_craft_of_exile: takes {params}, not the app state alone"]
+    return []
 
 
 class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
@@ -398,7 +493,7 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
         self.assertIn(CH_APP / "Cargo.toml", manifests)
         offences = []
         for m in manifests:
-            offences += wr.manifest_offences(wr.rel(m), tomllib.loads(wr.read(m)))
+            offences += app_manifest_offences(wr.rel(m), tomllib.loads(wr.read(m)), OPENER_TABLES.get(m))
         self.assertEqual(offences, [])
         workspace = tomllib.loads(wr.read(APP / "Cargo.toml"))
         self.assertEqual(
@@ -407,8 +502,123 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
         )
         self.assertEqual(
             {d for d in workspace["workspace"]["dependencies"] if d.startswith("tauri-plugin-")},
-            wr.ALLOWED_TAURI_PLUGINS,
+            ALLOWED_TAURI_PLUGINS,
         )
+
+    def test_only_the_glue_takes_the_opener_plugin(self):
+        offender = tomllib.loads(
+            '[dependencies]\ntauri-plugin-opener = { workspace = true }\n'
+            "[target.'cfg(windows)'.dependencies]\ntauri-plugin-opener = { workspace = true }\n"
+            'tauri-plugin-shell = "2"\n'
+        )
+        # Nowhere allowed: every opener is an offence.
+        self.assertEqual(
+            app_manifest_offences("o", offender, None),
+            [
+                "o: dependencies.tauri-plugin-opener (a Tauri plugin)",
+                "o: target.cfg(windows).dependencies.tauri-plugin-opener (a Tauri plugin)",
+                "o: target.cfg(windows).dependencies.tauri-plugin-shell (a Tauri plugin)",
+            ],
+        )
+        # Allowed in one table: that one alone, and no other plugin.
+        self.assertEqual(
+            app_manifest_offences("o", offender, "dependencies"),
+            [
+                "o: target.cfg(windows).dependencies.tauri-plugin-opener (a Tauri plugin)",
+                "o: target.cfg(windows).dependencies.tauri-plugin-shell (a Tauri plugin)",
+            ],
+        )
+        # The waystone roller's set stays its own two.
+        self.assertNotIn(OPENER_PLUGIN, wr.ALLOWED_TAURI_PLUGINS)
+
+        # The workspace pins it and the glue takes it; no other member does.
+        takers = []
+        for m in wr.walk(APP, names={"Cargo.toml"}):
+            manifest = tomllib.loads(wr.read(m))
+            for label, table in wr.dependency_tables(manifest):
+                if OPENER_PLUGIN in table:
+                    takers.append((m, label))
+        self.assertEqual(sorted(takers), sorted(OPENER_TABLES.items()))
+        workspace = tomllib.loads(wr.read(APP / "Cargo.toml"))["workspace"]["dependencies"]
+        quest_tracker = tomllib.loads(wr.read(QT / "Cargo.toml"))["workspace"]["dependencies"]
+        self.assertEqual(pin_version(workspace[OPENER_PLUGIN]), pin_version(quest_tracker[OPENER_PLUGIN]))
+        glue = tomllib.loads(wr.read(TAURI / "Cargo.toml"))["dependencies"]
+        self.assertEqual(glue[OPENER_PLUGIN], {"workspace": True})
+
+    def test_only_the_craft_of_exile_address_is_opened(self):
+        offender = (
+            "// https://in.a.comment is fine\n"
+            f'pub const A: &str = "{CRAFT_OF_EXILE_URL}";\n'
+            'let b = "http://example.com/x";\n'
+            "use tauri_plugin_opener::OpenerExt;\n"
+            ".plugin(tauri_plugin_opener::init())\n"
+            "app.opener().open_url(u, None::<&str>);\n"
+            "#[tauri::command(async)]\nfn open_page(app: Shared<'_>, url: String) -> View { todo!() }\n"
+            "#[tauri::command]\npub fn reveal(app: Shared<'_>, at: PathBuf) {}\n"
+            "#[tauri::command]\nfn open_craft_of_exile(app: Shared<'_>, page: String) -> View { todo!() }\n"
+        )
+        self.assertEqual(
+            url_literals("o.rs", offender),
+            [("o.rs:2", CRAFT_OF_EXILE_URL), ("o.rs:3", "http://example.com/x")],
+        )
+        self.assertEqual(len(OPENER_CRATE.findall(wr.blank_rust_comments(offender))), 2)
+        self.assertTrue(OPENER_INIT.search(offender))
+        self.assertTrue(OPENER_INIT.search("use tauri_plugin_opener::{init, OpenerExt};"))
+        self.assertFalse(OPENER_INIT.search("use tauri_plugin_opener::{Builder as OpenerPlugin, OpenerExt};"))
+        self.assertFalse(NO_LINK_HANDLER.search(offender))
+        self.assertTrue(NO_LINK_HANDLER.search(".open_js_links_on_click( false )"))
+        self.assertEqual(len(OPENER_CALL.findall(offender)), 1)
+        found = commands(offender)
+        self.assertEqual(
+            found,
+            {
+                "open_page": [("app", "Shared<'_>"), ("url", "String")],
+                "reveal": [("app", "Shared<'_>"), ("at", "PathBuf")],
+                "open_craft_of_exile": [("app", "Shared<'_>"), ("page", "String")],
+            },
+        )
+        self.assertEqual(
+            address_parameter_offences("o.rs", found),
+            ["o.rs: open_page(url: String)", "o.rs: reveal(at: PathBuf)"],
+        )
+        self.assertEqual(
+            open_command_offences(found),
+            ["open_craft_of_exile: takes [('app', \"Shared<'_>\"), ('page', 'String')], not the app state alone"],
+        )
+        self.assertEqual(open_command_offences({}), ["open_craft_of_exile: no such command"])
+        self.assertEqual(open_command_offences({"open_craft_of_exile": [("app", "Shared<'_>")]}), [])
+
+        sources = [p for p in self.rust_sources() if not is_rust_test(p)]
+        self.assertIn(CH_APP / "src" / "craft.rs", sources)
+        self.assertFalse(any(is_rust_test(p) for p in sources))
+        literals, crate_names, calls, found = [], [], [], {}
+        for path in sources:
+            text = wr.read(path)
+            code = wr.blank_rust_comments(text)
+            literals += [(path, literal) for _, literal in url_literals(wr.rel(path), text)]
+            crate_names += [path for _ in OPENER_CRATE.finditer(code)]
+            calls += [path for _ in OPENER_CALL.finditer(code)]
+            self.assertFalse(OPENER_INIT.search(code), wr.rel(path))
+            for command, params in commands(text).items():
+                self.assertNotIn(command, found, f"{command} declared twice")
+                found[command] = params
+                self.assertEqual(path, GLUE_LIB, f"{command}: a command outside the glue")
+        # The address, once, in ch-app; no other web address.
+        self.assertEqual(len(literals), 1, [(wr.rel(p), lit) for p, lit in literals])
+        path, literal = literals[0]
+        self.assertEqual(literal, CRAFT_OF_EXILE_URL)
+        self.assertTrue(path.is_relative_to(CH_APP / "src"), wr.rel(path))
+        # The opener: named once, called once, both in the glue.
+        self.assertEqual(crate_names, [GLUE_LIB])
+        self.assertEqual(calls, [GLUE_LIB])
+        glue = wr.blank_rust_comments(wr.read(GLUE_LIB))
+        self.assertEqual(len(NO_LINK_HANDLER.findall(glue)), 1)
+        self.assertEqual(len(ANY_LINK_HANDLER.findall(glue)), 1)
+        # The commands: the walk sees them, the open command takes the state
+        # alone, and none takes an address or a path.
+        self.assertIn("grab_text", found)
+        self.assertEqual(open_command_offences(found), [])
+        self.assertEqual(address_parameter_offences("glue", found), [])
 
     def test_package_json_has_no_tauri_plugin(self):
         self.assertEqual(

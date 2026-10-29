@@ -23,6 +23,10 @@ ep-net = { path = "../../shared/crates/ep-net" }
 tauri = { workspace = true }
 tauri-plugin-global-shortcut = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
+# Opens Craft of Exile's one fixed address in the default browser, from Rust
+# alone: registered without its link handler, and no capability grants the
+# pages any of its commands.
+tauri-plugin-opener = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

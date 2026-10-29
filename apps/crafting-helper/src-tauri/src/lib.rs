@@ -8,19 +8,28 @@
 //!   registered), the clipboard read once per press through Win32, the
 //!   error beep, the `ch:view` event to the main and overlay windows and
 //!   `ch:app-settings` to the Settings window, the overlay's show and hide,
-//!   opening the Settings window, and the restart an installed update asks
-//!   for (an exit through the quit path below). The shortcut's handler runs
+//!   opening the Settings window, opening Craft of Exile in the default
+//!   browser, and the restart an installed update asks for (an exit through
+//!   the quit path below). The shortcut's handler runs
 //!   `App::hotkey_pressed` on a blocking task, so the clipboard's retries
 //!   and the beep never block the main thread.
+//! - **Browser**: `tauri-plugin-opener`, from Rust alone, opens the one
+//!   address `ch_app::App::open_craft_of_exile` passes,
+//!   `ch_app::CRAFT_OF_EXILE_URL`; no command takes an address. The plugin
+//!   is registered with `open_js_links_on_click(false)`, so it injects no
+//!   link handler into the pages, and no capability grants an `opener:`
+//!   permission, so the pages cannot reach its own commands.
 //! - **Update transport**: [`NetTransport`] implements
 //!   `ch_app::UpdateTransport` over `ep-net`, the app's only network code
 //!   (the release list and the two fixed assets of a crafting helper
 //!   release; no caller names a host or a URL). `ch-app` calls it only on a
-//!   check's or an install's own thread. Nothing here opens a URL.
-//! - **Commands**: `get_view` and `get_app_settings` (sync) and the async
-//!   `grab_text`, `open_settings`, `update_settings`, `set_hotkey`,
-//!   `check_for_updates`, `install_update` and `cancel_update`, each
-//!   forwarded to the `App` method of the same name.
+//!   check's or an install's own thread.
+//! - **Commands**: `get_view`, `get_app_settings` and `get_catalogue`
+//!   (sync) and the async `grab_text`, `open_settings`, `update_settings`,
+//!   `set_hotkey`, `check_for_updates`, `install_update`, `cancel_update`,
+//!   and the craft window's `set_targets`, `set_craft_blocked`,
+//!   `choose_route`, `accept_craft`, `end_craft` and `open_craft_of_exile`,
+//!   each forwarded to the `App` method of the same name.
 //! - **Single instance**: a second launch exits and brings this window up.
 //! - **Windows**: `main`, ordinary, titled "Crafting Helper", resizable, in
 //!   the taskbar; closing it quits the app (even with the Settings window or
@@ -48,18 +57,22 @@
 //! message, no focus change, no other process opened, no memory read. It
 //! reads the clipboard once per press of its own hotkey and at no other
 //! time (no watching, no polling, no read at start). Its other effects
-//! outside its windows are the beep, the update check's requests to GitHub
-//! and, when the user presses the install button, replacing its own exe.
+//! outside its windows are the beep, the update check's requests to GitHub,
+//! opening Craft of Exile's one address in the default browser when the
+//! user presses its button and, when the user presses the install button,
+//! replacing its own exe.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
+use ch_app::ch_engine::Target;
 use ch_app::ep_update::spawn_cleanup;
 use ch_app::{
-    Answer, App, AppConfig, AssetKind, BeepAttempt, DownloadError, HotkeyError, SettingsView,
-    Store, TransportError, UpdateConfig, UpdateSetup, UpdateTransport, Version, View,
+    Answer, App, AppConfig, AssetKind, BeepAttempt, CatalogueGroup, DownloadError, HotkeyError,
+    SettingsView, Store, TransportError, UpdateConfig, UpdateSetup, UpdateTransport, Version,
+    View,
 };
 use serde_json::Value;
 use tauri::{
@@ -67,6 +80,7 @@ use tauri::{
     WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
+use tauri_plugin_opener::{Builder as OpenerPlugin, OpenerExt};
 
 /// The main window's label (`tauri.conf.json`).
 const MAIN: &str = "main";
@@ -173,6 +187,16 @@ impl ch_app::Shell for TauriShell {
     fn open_settings(&self) -> Result<(), String> {
         open_settings_window(&self.app);
         Ok(())
+    }
+
+    /// Called by `App::open_craft_of_exile` alone, with its one fixed
+    /// address; the default browser opens it, as the quest tracker opens a
+    /// source page.
+    fn open_in_browser(&self, address: &str) -> Result<(), String> {
+        self.app
+            .opener()
+            .open_url(address, None::<&str>)
+            .map_err(|e| e.to_string())
     }
 
     /// The quit path: `RunEvent::Exit` runs the shutdown, then starts the
@@ -530,6 +554,50 @@ fn open_settings(app: Shared<'_>) -> Result<(), String> {
     app.open_settings()
 }
 
+// The craft window's commands: each returns the view, and a refused one
+// changes nothing and says why in its status line.
+
+/// The whole target list of the planning item.
+#[tauri::command(async)]
+fn set_targets(app: Shared<'_>, targets: Vec<Target>) -> View {
+    app.set_targets(&targets)
+}
+
+/// This craft's effective blocked list (catalogue ids only); never saved.
+#[tauri::command(async)]
+fn set_craft_blocked(app: Shared<'_>, blocked: Vec<String>) -> View {
+    app.set_craft_blocked(&blocked)
+}
+
+#[tauri::command(async)]
+fn choose_route(app: Shared<'_>, blueprint: String) -> View {
+    app.choose_route(&blueprint)
+}
+
+#[tauri::command(async)]
+fn accept_craft(app: Shared<'_>) -> View {
+    app.accept_craft()
+}
+
+#[tauri::command(async)]
+fn end_craft(app: Shared<'_>) -> View {
+    app.end_craft()
+}
+
+/// Takes no address: `ch-app` opens its one fixed address.
+#[tauri::command(async)]
+fn open_craft_of_exile(app: Shared<'_>) -> View {
+    app.open_craft_of_exile()
+}
+
+// Both windows' command.
+
+/// Every crafting item the blocked list may name, grouped by kind.
+#[tauri::command]
+fn get_catalogue(app: Shared<'_>) -> Vec<CatalogueGroup> {
+    app.get_catalogue()
+}
+
 // The Settings window's commands.
 
 #[tauri::command]
@@ -580,6 +648,8 @@ pub fn run() {
                 })
                 .build(),
         )
+        // Opened from Rust alone: no link handler injected into the pages.
+        .plugin(OpenerPlugin::new().open_js_links_on_click(false).build())
         .setup(|app| {
             let store = Store::open_default();
             // Captured now and never read again: a swap renames the file.
@@ -647,6 +717,13 @@ pub fn run() {
             get_view,
             grab_text,
             open_settings,
+            set_targets,
+            set_craft_blocked,
+            choose_route,
+            accept_craft,
+            end_craft,
+            open_craft_of_exile,
+            get_catalogue,
             get_app_settings,
             update_settings,
             set_hotkey,
