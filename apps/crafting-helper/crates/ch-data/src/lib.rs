@@ -13,6 +13,9 @@
 //!   modifier and tier.
 //! - [`add_odds`], [`removal_odds`], [`AFFIX_LIMITS`]: slots, pools and the
 //!   chance of one random add or removal.
+//! - [`start_weight`], [`trade_offer`], [`trade_query`]: how rare a modifier
+//!   is to roll on a base, what a base offers a trade search, and the trade
+//!   site's search query for a pick (no address, no league).
 //!
 //! ```
 //! let text = "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nItem Level: 76\n";
@@ -30,8 +33,12 @@ mod join;
 mod lookup;
 mod model;
 mod odds;
+mod trade;
 
-pub use embedded::{class_data, class_data_by_name, embedded_class, index, EMBEDDED_CLASSES};
+pub use embedded::{
+    class_data, class_data_by_name, embedded_class, index, trade_stats, EMBEDDED_CLASSES,
+    TRADE_STATS_JSON,
+};
 pub use join::{join, join_one, Join, JoinResult, JoinedMod, Matched, TierRule, Unmatched};
 pub use lookup::{variant_of, EssenceFor, ValidMod, ValidMods, VariantUnknown};
 pub use model::{
@@ -42,4 +49,9 @@ pub use odds::{
     add_odds, affix_limits, item_affix_limits, removal_odds, AddOptions, AffixLimits, LimitClasses,
     LimitRow, Odds, Pool, PoolEntry, Removal, AFFIX_LIMITS, CONTEMPT_EXTRA_PREFIX_LINE,
     CONTEMPT_EXTRA_SUFFIX_LINE, PLACEHOLDER_WEIGHT,
+};
+pub use trade::{
+    searchability, start_weight, trade_offer, trade_query, OfferedMod, Searchability, StartWeight,
+    TradeEntry, TradeOffer, TradePick, TradeQuery, TradeSearch, TradeStat, TradeStats,
+    WeightSource, DEFAULT_WEIGHT_WITHOUT_PEERS, MAX_TRADE_PICKS,
 };

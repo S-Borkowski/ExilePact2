@@ -91,6 +91,62 @@ derived tier equals the game's `Tier:`; the two revealed desecrated ones
 - Desecration and reveal odds are not computed here: no weights are
   established for them (`weights.desecrated` is `not-established`).
 
+## Trade: start weights and the search query
+
+The `trade` module serves the app's *Find a base on trade* panel. It is pure
+and offline: it builds the trade site's search JSON as a
+`serde_json::Value`, and the address, the league and the link are
+`ch-app`'s. The stat ids come from `apps/crafting-helper/data/trade-stats.json`
+(embedded as `TRADE_STATS_JSON`, parsed by `trade_stats()`), which
+`tools/crafting_helper/trade_stats.py` writes from the site's public stat
+list: per class, per modifier id, the site's text and every id carrying it,
+or `searchable: false` with the reason (`hybrid`, `no trade stat`).
+
+- **Start weight** (`start_weight(data, variant, item_level, mod, floor)`):
+  how rare a modifier is to roll on a base, as a 1-in-N add. The add pool
+  of the modifier's own side on the variant (`add_pool`, unchanged) and
+  `Pool::odds(mod, floor)`; known with `hits` of `total`, the weight is
+  `total / hits`. A floor of `None` ("any tier") is the worst reachable
+  tier, so a stricter floor gives a higher weight; no item level reaches
+  every tier. A floor that is not a reachable tier, or a modifier outside
+  the ordinary pool, is refused. Anchor: Rings (`all`) at item level 82,
+  `+# to Accuracy Rating` at T1 (400) weighs 69500 / 400 = 173.75, 2.5
+  times `+# to maximum Life` at T1 (1000).
+- **The default weight**: where the odds are unknown (the variant's page
+  weights are not `spawn`, as on every jewel page and
+  `Body_Armours_str_dex_int`; a counting tier with no weight or poe2db's
+  placeholder 1), the weight is the median of that side's weighed modifiers
+  on the base at any tier (the lower middle for an even count), or 1.0
+  (`DEFAULT_WEIGHT_WITHOUT_PEERS`) when none has one. The result says
+  `source: default` and carries the reason and the rule; it is never
+  silent.
+- **The offer** (`trade_offer(class, base, item_level)`): every
+  ordinary-pool modifier with a reachable tier, prefixes and suffixes apart,
+  each with its lines, reachable tiers, any-tier weight and whether it can
+  be searched for (`Searchability`: the site's text and ids, or why not; a
+  modifier of more than one line is a hybrid whatever the mapping says).
+- **The query** (`trade_query(&TradeSearch)`): a magic item of the base
+  (`query.type`), online, not corrupted, with `ilvl.min` only when an item
+  level is given, and two stat groups over every stat id of every pick: a
+  `count` group asking for 2 when the picks hold a prefix and a suffix and
+  *Both slots* is on, else 1 (with `count_line` saying why; a magic item
+  holds one prefix and one suffix), whose filters carry `value.min` only
+  for a pick whose floor is a chosen tier; and a `weight` group whose
+  weight per stat is the trade weight, sorted by `statgroup.1`. The trade
+  weight is the rarity weight over the reference value, the floor tier's
+  minimum roll (the mean of the two minimums on an `Adds # to #` line), to
+  four significant digits: the site sums value times weight, so without it
+  a large-valued modifier would outrank a rarer one by its value alone.
+  Refused, with the reason, for an unknown class or base, no pick, more
+  than `MAX_TRADE_PICKS` (8), a modifier picked twice or outside the
+  ordinary pool, an unreachable floor, or a modifier the site has no stat
+  for. Each entry of the report carries the weight, its source, the
+  reference value and the stat ids.
+
+The site's query keys come from its public filter list (2026-10-29); the
+`?q=` link form, the `count` and `weight` group types and the `statgroup`
+sort are not confirmed statically and are checked live.
+
 ## Tests
 
 ```
@@ -104,3 +160,9 @@ place from `crates/ch-item/fixtures/real/`), the valid modifiers, the ring
 anchor above, unknown odds on a jewel and the essence lookup by floor. The
 data itself is refreshed by `tools/crafting_helper/poe2db.py`; a refresh
 that moves a weight or tier changes the anchors here, and the tests say so.
+
+`tests/trade.rs` checks the trade module on the same data: the ring pool
+anchor pinned before it existed, the start weights and their default, the
+offer, and the query's keys, count rule, local stat ids, value floors and
+refusals. A refresh of `trade-stats.json` that moves an id changes the
+Gloves anchors there.
