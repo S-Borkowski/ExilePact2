@@ -891,14 +891,17 @@ impl App {
     /// Sends the watch thread the demand when it changed, or with `force`,
     /// never waiting; a new demand has a new generation, and with `force`
     /// the watch's last read and an unexpected change turned down are
-    /// forgotten. A craft that stops guiding forgets the game's window and
-    /// the reads, so the next one starts from a fresh look.
+    /// forgotten. A craft that stops guiding forgets the game's window, the
+    /// reads and a failed call, so the next one starts from a fresh look
+    /// (and a call that still fails is said and logged again).
     fn send_demand(&self, force: bool) {
         let demand = {
             let mut st = self.lock();
             let guiding = st.guiding();
             if !guiding {
                 st.screen.game = Game::Unknown;
+                st.screen.window_failed = None;
+                st.screen.read_failed = None;
                 st.screen.seen = None;
                 st.screen.unexpected = None;
                 st.screen.read_line = None;

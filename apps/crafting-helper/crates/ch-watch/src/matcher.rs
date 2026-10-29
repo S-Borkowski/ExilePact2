@@ -138,6 +138,9 @@ pub enum Unreadable {
     /// An unrevealed or fractured modifier: what the tooltip shows of one is
     /// not established.
     NotEstablished,
+    /// One of the item's explicit modifiers is not in the data, so whether
+    /// the read is the item unchanged or changed cannot be told.
+    UnknownModifier,
 }
 
 impl Unreadable {
@@ -154,6 +157,7 @@ impl Unreadable {
             Unreadable::Cut => "the tooltip is cut by the window's edge",
             Unreadable::SeveralTooltips => "two tooltips carry the base type",
             Unreadable::NotEstablished => "an unrevealed or fractured modifier",
+            Unreadable::UnknownModifier => "a modifier of the item is not in the data",
         }
     }
 }
@@ -229,6 +233,9 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
     {
         return Err(Unreadable::NotEstablished);
     }
+    // With no key of its own the item is neither unchanged nor changed: a
+    // read of it is never an outcome.
+    let own = item_key(item).ok_or(Unreadable::UnknownModifier)?;
     let reads = read_mods(&lines, &headers, item, data, variant, item_level)?;
 
     let prefixes = reads.iter().filter(|r| r.data.kind == Kind::Prefix).count();
@@ -251,7 +258,7 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
         rarity: rarity.clone(),
         mods: read_key,
     };
-    if item_key(item).as_ref() == Some(&key) {
+    if own == key {
         return Ok(ReadKind::Unchanged);
     }
     Ok(ReadKind::Changed(Box::new(read_item(item, rarity, &reads))))

@@ -339,6 +339,8 @@ pub struct FakeCalls {
     pub captures: usize,
     pub overlay_calls: usize,
     pub ocr_calls: usize,
+    /// The OCR call fails.
+    pub ocr_fails: bool,
     /// The area each capture asked for.
     pub areas: Vec<PixelRect>,
 }
@@ -352,6 +354,7 @@ impl FakeCalls {
             captures: 0,
             overlay_calls: 0,
             ocr_calls: 0,
+            ocr_fails: false,
             areas: Vec::new(),
         }
     }
@@ -371,6 +374,9 @@ impl ReadCalls for FakeCalls {
 
     fn ocr(&mut self, _image: &Image) -> Result<Vec<PixelLine>, BackendError> {
         self.ocr_calls += 1;
+        if self.ocr_fails {
+            return Err(BackendError::new("the OCR engine is busy"));
+        }
         Ok(self.ocr_lines.clone())
     }
 }

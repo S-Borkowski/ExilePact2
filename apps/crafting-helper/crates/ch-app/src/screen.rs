@@ -561,11 +561,12 @@ pub const NOT_IN_FRONT_LINE: &str = "Paused: the game is not in front.";
 pub const MINIMIZED_LINE: &str = "Paused: the game is minimized.";
 pub const STUCK_LINE: &str = "Paused: the guide is stuck.";
 
-/// The unreadable line: `Can't read the item (<reason>): hold Alt over it,
-/// or grab it.`
+/// The unreadable line: `Can't read the item (<reason>): hover it without
+/// Alt, or grab it.` The plain tooltip reads best: with Alt held OCR lost
+/// some values in the owner's shots.
 pub fn unreadable_line(why: Unreadable) -> String {
     format!(
-        "Can't read the item ({}): hold Alt over it, or grab it.",
+        "Can't read the item ({}): hover it without Alt, or grab it.",
         unreadable_words(why)
     )
 }
@@ -583,5 +584,6 @@ pub fn unreadable_words(why: Unreadable) -> &'static str {
         Unreadable::Cut => "it may be cut off at the window's edge",
         Unreadable::SeveralTooltips => "two tooltips show the item",
         Unreadable::NotEstablished => "an unrevealed or fractured modifier",
+        Unreadable::UnknownModifier => "a modifier it does not know",
     }
 }

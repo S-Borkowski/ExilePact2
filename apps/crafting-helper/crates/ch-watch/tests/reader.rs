@@ -163,6 +163,34 @@ fn reader_reports_a_box_under_the_overlay_as_covered() {
 }
 
 #[test]
+fn a_failed_ocr_call_is_not_counted_as_a_read() {
+    let mut calls = FakeCalls::new(scene(0));
+    calls.ocr_lines = ocr_lines();
+    calls.ocr_fails = true;
+    let mut reader = Reader::new();
+    for _ in 0..3 {
+        assert!(reader.read(&mut calls, GAME, CLIENT).is_err());
+    }
+    assert_eq!(calls.ocr_calls, 3, "each failed crop is tried again");
+    assert_eq!(
+        reader.take_counts(),
+        ReadCounts {
+            copies: 3,
+            tooltips: 3,
+            ocr_reads: 0,
+        }
+    );
+
+    // The OCR works again: that read is counted.
+    calls.ocr_fails = false;
+    assert!(matches!(
+        reader.read(&mut calls, GAME, CLIENT).unwrap(),
+        TooltipRead::Boxes(_)
+    ));
+    assert_eq!(reader.take_counts().ocr_reads, 1);
+}
+
+#[test]
 fn an_unchanged_crop_is_ocr_read_once() {
     let mut calls = FakeCalls::new(scene(0));
     calls.ocr_lines = ocr_lines();

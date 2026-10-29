@@ -60,7 +60,7 @@ pub struct ReadCounts {
     pub copies: u64,
     /// Tooltips found in them.
     pub tooltips: u64,
-    /// OCR calls made.
+    /// OCR calls that returned lines; a failed call is not counted.
     pub ocr_reads: u64,
 }
 
@@ -137,8 +137,9 @@ impl Reader {
             let lines = match self.last.iter().find(|(seen, _)| *seen == crop) {
                 Some((_, lines)) => lines.clone(),
                 None => {
+                    let lines = calls.ocr(&crop)?;
                     self.counts.ocr_reads += 1;
-                    calls.ocr(&crop)?
+                    lines
                 }
             };
             boxes.push(tooltip_box(&f, &lines));

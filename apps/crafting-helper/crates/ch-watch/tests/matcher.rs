@@ -188,6 +188,36 @@ fn unchanged_item_reads_as_unchanged() {
 }
 
 #[test]
+fn an_item_whose_key_does_not_join_never_reads_as_a_change() {
+    // The start ring with its Strength suffix swapped for one the data does
+    // not hold: the item has no key, so no read can say it changed.
+    let unknown = parse(&start_with_suffix(
+        "{ Suffix Modifier \"of Nowhere\" (Tier: 5) — Attribute }\n+18(17-20) to Nonsense",
+    ));
+    assert!(!unknown.has_unrevealed() && !unknown.has_fractured());
+    assert_eq!(item_key(&unknown), None);
+    for after in ["01-start", "02-chaos-fire"] {
+        for alt in [false, true] {
+            let tip = tooltip(&ring_text(after), alt);
+            assert_eq!(
+                classify(&read_of(&[&tip]), &unknown),
+                ReadKind::Unreadable(Unreadable::UnknownModifier),
+                "{after} alt={alt}"
+            );
+        }
+    }
+    // Positive control: the same reads against the start ring itself.
+    let start = ring("01-start");
+    let tip = tooltip(&ring_text("01-start"), false);
+    assert_eq!(classify(&read_of(&[&tip]), &start), ReadKind::Unchanged);
+    let tip = tooltip(&ring_text("02-chaos-fire"), false);
+    assert_eq!(
+        key(&changed(classify(&read_of(&[&tip]), &start))),
+        key(&ring("02-chaos-fire"))
+    );
+}
+
+#[test]
 fn another_base_reads_as_another_item() {
     let start = ring("01-start");
     let ruby = tooltip(&ring_text("01-start"), false).replace("Amethyst Ring", "Ruby Ring");

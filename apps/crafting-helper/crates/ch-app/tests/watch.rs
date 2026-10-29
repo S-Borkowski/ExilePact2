@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use ch_app::{
     App, GameWindow, GuideStatusView, OcrReadiness, OutcomeSource, OutcomeWord, ReadCounts,
-    StatusKind, TooltipRead, View, WatchLineView,
+    StatusKind, TooltipRead, View, WatchFailure, WatchLineView,
 };
 use common::*;
 use serde_json::json;
@@ -390,7 +390,7 @@ fn another_item_changes_nothing() {
     assert_eq!(
         watch(&app),
         WatchLineView {
-            text: "Can't read the item (a line it does not know): hold Alt over it, or grab it."
+            text: "Can't read the item (a line it does not know): hover it without Alt, or grab it."
                 .to_string(),
             warning: true
         }
@@ -721,4 +721,116 @@ fn black_copies_and_the_minute_line_are_logged() {
         "{minute:?}"
     );
     assert!(minute[0].ends_with(" ms"));
+}
+
+/// A backend call that failed with the system's error.
+fn failure(call: &str) -> WatchFailure {
+    WatchFailure {
+        call: call.to_string(),
+        error: "Access is denied. (0x80070005)".to_string(),
+    }
+}
+
+/// The watch line while `call` fails.
+fn failed(call: &str) -> WatchLineView {
+    WatchLineView {
+        text: format!("Can't read the screen ({call} failed): grab the item after each step."),
+        warning: true,
+    }
+}
+
+fn ticks(app: &App, ms: &AtomicU64, n: usize) {
+    for _ in 0..n {
+        app.tick_watch();
+        later(ms, 500);
+    }
+}
+
+#[test]
+fn a_failed_backend_call_is_said_and_logged_once() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    // The game's window call fails: the line says so, not that the game is
+    // not in front.
+    screen.set(Err(failure("window")));
+    let (app, ms) = guiding(tmp.path(), &shell, &screen);
+    ticks(&app, &ms, 3);
+    assert_eq!(watch(&app), failed("window"));
+    assert_eq!((screen.ocr_checks(), screen.reads()), (0, 0));
+
+    // The window call works, the OCR check fails.
+    screen.set(in_front(CLIENT));
+    screen.rec().ocr = Err(failure("OCR"));
+    ticks(&app, &ms, 3);
+    assert_eq!(watch(&app), failed("OCR"));
+    assert_eq!((screen.ocr_checks(), screen.reads()), (3, 0));
+
+    // The OCR reads English, the copy fails.
+    screen.rec().ocr = Ok(OcrReadiness::Ready {
+        language: "en-US".to_string(),
+    });
+    screen.rec().tooltip = Err(failure("copy"));
+    ticks(&app, &ms, 3);
+    assert_eq!(watch(&app), failed("copy"));
+    assert_eq!(screen.reads(), 3);
+    assert!(guide(&app.get_view()).history.is_empty());
+
+    // Every call works again: watching.
+    screen.show(TooltipRead::NoTooltip);
+    ticks(&app, &ms, 1);
+    assert_eq!(
+        watch(&app),
+        WatchLineView {
+            text: "Watching: after the step, hover the item in the game.".to_string(),
+            warning: false
+        }
+    );
+    app.shutdown();
+    let log = diag_lines(tmp.path());
+    for call in ["window", "OCR", "copy"] {
+        let line = format!("error: watch: {call} failed: Access is denied. (0x80070005)");
+        assert_eq!(count(&log, &line), 1, "{call}: {log:?}");
+    }
+    assert_eq!(count(&log, "watch: idle (game not in front)"), 0, "{log:?}");
+}
+
+#[test]
+fn a_failure_is_forgotten_when_guiding_ends() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    let watching = WatchLineView {
+        text: "Watching: after the step, hover the item in the game.".to_string(),
+        warning: false,
+    };
+    let again = |app: &App| {
+        app.end_craft();
+        app.choose_route(WHITTLE);
+        let view = app.accept_craft();
+        assert_eq!(view.craft.mode, ch_app::CraftMode::Guiding);
+    };
+
+    // The copy fails in one craft; the next starts from a fresh look.
+    screen.rec().tooltip = Err(failure("copy"));
+    let (app, ms) = guiding(tmp.path(), &shell, &screen);
+    ticks(&app, &ms, 2);
+    assert_eq!(watch(&app), failed("copy"));
+    again(&app);
+    assert_eq!(watch(&app), watching);
+
+    // So does the game's window call.
+    screen.set(Err(failure("window")));
+    ticks(&app, &ms, 2);
+    assert_eq!(watch(&app), failed("window"));
+    again(&app);
+    assert_eq!(watch(&app), watching);
+    // Still failing in the new craft: said and logged again.
+    ticks(&app, &ms, 1);
+    assert_eq!(watch(&app), failed("window"));
+    app.shutdown();
+    let log = diag_lines(tmp.path());
+    let line = |call: &str| format!("error: watch: {call} failed: Access is denied. (0x80070005)");
+    assert_eq!(count(&log, &line("copy")), 1, "{log:?}");
+    assert_eq!(count(&log, &line("window")), 2, "{log:?}");
 }
