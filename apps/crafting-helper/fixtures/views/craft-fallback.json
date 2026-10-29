@@ -1575,15 +1575,19 @@
         "route": {
           "blueprint": "rings-resist-whittle",
           "name": "Rings: resistances by whittling",
-          "notes": "The poster's ring aimed at three top-tier resistances and flat damage, and said a different set of suffixes works the same way. No omen but Whittling is used: every slot after the first is brute-forced. A reveal that misses goes back to whittling. Whether a Chaos Orb can take off a desecrated modifier is not established in the docs.",
           "source": "Discord post 10, owner's paste, 2026-10-28",
           "steps": [
             {
               "fallback": null,
               "id": "chaos",
-              "instruction": "Chaos Orb until one of the targets lands",
+              "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 1,
               "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+              "targets": [
+                "+#% to Fire Resistance",
+                "+#% to Cold Resistance",
+                "+#% to Lightning Resistance"
+              ],
               "uses": [
                 "Chaos Orb"
               ]
@@ -1591,9 +1595,14 @@
             {
               "fallback": "Perfect Exalted Orb instead of Chaos Orb: Omen of Whittling blocked",
               "id": "whittle",
-              "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+              "instruction": "Perfect Exalted Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 2,
               "odds": "~15% (6000 of 40202 weight)",
+              "targets": [
+                "+#% to Fire Resistance",
+                "+#% to Cold Resistance",
+                "+#% to Lightning Resistance"
+              ],
               "uses": [
                 "Perfect Exalted Orb"
               ]
@@ -1601,9 +1610,14 @@
             {
               "fallback": null,
               "id": "desecrate",
-              "instruction": "Desecrate for the last target",
+              "instruction": "Preserved Collarbone for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 3,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "targets": [
+                "+#% to Fire Resistance",
+                "+#% to Cold Resistance",
+                "+#% to Lightning Resistance"
+              ],
               "uses": [
                 "Preserved Collarbone"
               ]
@@ -1611,9 +1625,14 @@
             {
               "fallback": null,
               "id": "reveal",
-              "instruction": "Reveal it at the Well of Souls",
+              "instruction": "Reveal at the Well of Souls for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 4,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "targets": [
+                "+#% to Fire Resistance",
+                "+#% to Cold Resistance",
+                "+#% to Lightning Resistance"
+              ],
               "uses": [
                 "Reveal at the Well of Souls"
               ]

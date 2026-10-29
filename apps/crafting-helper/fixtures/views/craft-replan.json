@@ -4,7 +4,7 @@
       "blueprint": "rings-resist-whittle",
       "history": [
         {
-          "instruction": "Chaos Orb until one of the targets lands",
+          "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
           "number": 1,
           "result": "unexpected",
           "source": "grab",
@@ -66,7 +66,7 @@
     "guide": {
       "instruction": "End the craft in the app to plan again from this item.",
       "last": {
-        "instruction": "Chaos Orb until one of the targets lands",
+        "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
         "number": 1,
         "result": "unexpected",
         "source": "grab",

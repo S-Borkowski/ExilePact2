@@ -18,8 +18,15 @@ The craft window's states use the whittled ring of `ch-engine`'s tests
 item texts), with fire, cold and lightning resistance at T3 or better as
 the targets and the whittling route chosen:
 
+- `craft-prefilled`: planning right after the grab of the ring's start,
+  before any target is changed: the item's own two modifiers (mana and
+  strength, each at T5) ticked as targets and met, and the route the
+  engine previews for them.
 - `craft-planning`: planning, the route previewed with known odds for the
-  orbs and `odds unknown: …` for the desecration and the reveal.
+  orbs and `odds unknown: …` for the desecration and the reveal. Each step
+  line carries the target modifiers a hit of it may place (`targets`) and
+  an instruction composed from its data (the currency, its omens, the side
+  and those modifiers); the route carries no blueprint notes.
 - `craft-fallback`: as planning, with the Omen of Whittling blocked for
   this craft, so the whittle step falls back to a Perfect Exalted Orb and
   says why.

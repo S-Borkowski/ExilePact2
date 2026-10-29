@@ -278,10 +278,7 @@ fn overlay_lines_follow_the_step_and_the_last_outcome() {
     let step = view.craft.guiding.as_ref().unwrap().step.clone().unwrap();
     assert_eq!(guide.step_number, Some(1));
     assert_eq!(guide.try_number, Some(1));
-    assert_eq!(
-        guide.instruction,
-        "Chaos Orb until one of the targets lands"
-    );
+    assert_eq!(guide.instruction, CHAOS_STEP);
     assert_eq!(guide.uses, ["Chaos Orb"]);
     assert_eq!(guide.odds, step.step.odds);
     assert!(guide.odds.as_deref().unwrap().starts_with('~'));
@@ -357,6 +354,45 @@ fn overlay_lines_follow_the_step_and_the_last_outcome() {
         guide.last.unwrap().summary,
         "Hit: gained +#% to Lightning Resistance (T3)"
     );
+    app.shutdown();
+}
+
+/// The whittling route's first step on the ring's start, composed from its
+/// data.
+const CHAOS_STEP: &str = "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)";
+
+#[test]
+fn overlay_step_names_the_mods_it_targets() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    let app = planned(tmp.path(), &shell, &screen);
+    app.accept_craft();
+    app.tick_watch();
+
+    // The overlay's step is the guiding view's, which names every target the
+    // Chaos Orb may land, each with its side, and not the blueprint's text.
+    let view = app.get_view();
+    let guide = view.overlay.guide.clone().unwrap();
+    let step = view.craft.guiding.as_ref().unwrap().step.clone().unwrap();
+    assert_eq!(guide.instruction, step.step.instruction);
+    assert_eq!(guide.instruction, CHAOS_STEP);
+    for t in &step.step.targets {
+        assert!(guide.instruction.contains(t.as_str()), "{t}");
+    }
+    assert!(!guide.instruction.contains("until one of the targets lands"));
+
+    // After fire lands, the whittle step names the two still missing.
+    let view = app.grab_text(Some(&ring("02-chaos-fire")));
+    let guide = view.overlay.guide.clone().unwrap();
+    assert_eq!(guide.step_number, Some(2));
+    assert_eq!(
+        guide.instruction,
+        "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
+    );
+    assert!(!guide.instruction.contains("Fire Resistance"));
+    // The last outcome's step is named as it was shown.
+    assert_eq!(guide.last.unwrap().instruction, CHAOS_STEP);
     app.shutdown();
 }
 

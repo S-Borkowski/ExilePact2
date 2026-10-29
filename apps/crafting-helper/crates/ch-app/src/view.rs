@@ -349,8 +349,15 @@ pub struct StepLineView {
     pub id: String,
     /// Its place in the route, from 1.
     pub number: usize,
-    /// The blueprint's instruction.
+    /// What to do: for a step that places one of the targets, composed from
+    /// its data (the currency, its omens, the side and the target
+    /// modifiers, `crate::craft::step_instruction`); otherwise the
+    /// blueprint's text.
     pub instruction: String,
+    /// The texts of the target modifiers a hit of this step may place, as
+    /// the planning list writes them; empty for a step that places none
+    /// (a removal or a manual step).
+    pub targets: Vec<String>,
     /// The currency's name, then each omen's; empty for a manual step.
     pub uses: Vec<String>,
     /// The odds in words; `None` for a manual step.
@@ -359,15 +366,16 @@ pub struct StepLineView {
     pub fallback: Option<String>,
 }
 
-/// The route the preview shows.
+/// The route the preview shows: what it targets and what to do, never the
+/// blueprint's `notes` (the reasoning behind it); the page shows the chosen
+/// targets (`PlanningView::targets`) above the steps.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RouteView {
     pub blueprint: String,
     pub name: String,
-    /// Where the technique came from.
+    /// Where the technique came from (attribution).
     pub source: String,
-    pub notes: Option<String>,
     pub steps: Vec<StepLineView>,
 }
 
@@ -407,7 +415,8 @@ pub struct PreviewView {
 pub struct PlanningView {
     pub item: CraftItemView,
     pub choices: TargetChoices,
-    /// The chosen targets, in the order chosen.
+    /// The chosen targets, in the order chosen. A grab that starts planning
+    /// ticks the item's own explicit modifiers, each at the tier it has.
     pub targets: Vec<ChosenTarget>,
     pub blocked: CraftBlockedView,
     /// `None` with no target.

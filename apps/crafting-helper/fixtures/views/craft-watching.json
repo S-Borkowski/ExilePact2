@@ -43,9 +43,14 @@
         "step": {
           "fallback": null,
           "id": "chaos",
-          "instruction": "Chaos Orb until one of the targets lands",
+          "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
           "number": 1,
           "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+          "targets": [
+            "+#% to Fire Resistance",
+            "+#% to Cold Resistance",
+            "+#% to Lightning Resistance"
+          ],
           "uses": [
             "Chaos Orb"
           ]
@@ -70,7 +75,7 @@
   "hotkey": "Ctrl+Alt+X",
   "overlay": {
     "guide": {
-      "instruction": "Chaos Orb until one of the targets lands",
+      "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
       "last": null,
       "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
       "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",

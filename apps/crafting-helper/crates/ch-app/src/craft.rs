@@ -8,7 +8,11 @@
 //!
 //! - **A grab** that passes M3's checks, in none, refused or planning,
 //!   becomes the planning item when the engine plans for it: the targets
-//!   still valid for it are kept, the others dropped. Otherwise the mode is
+//!   still valid for it are kept, the others dropped, and the item's own
+//!   explicit modifiers not already among them are ticked after them, each
+//!   with its floor at the tier it has (so each starts met); one the
+//!   validity check below refuses, or one with no data modifier yet (an
+//!   unrevealed desecrated one), is left out silently. Otherwise the mode is
 //!   refused, with the reason in words. While guiding it is the "after" of
 //!   the current step: the engine classifies the change from the item the
 //!   step was shown on, the history grows and the guide moves on. A grab
@@ -34,17 +38,20 @@
 //! - **The preview**: with targets, the engine's first applicable route, or
 //!   the one `choose_route` picked while it still applies, the other
 //!   applicable routes, or every blueprint's rejection when none applies.
+//!   The route view carries what the route targets and what to do, never
+//!   the blueprint's `notes`.
 //!   `accept_craft` starts the guide on the previewed route; `end_craft`
 //!   goes back to planning on the latest item, targets and blocked changes
 //!   kept, history cleared.
 //!
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
-//! "Rust-produced copy" is made here: [`odds_words`], [`fallback_line`],
-//! [`floor_options`], the branch lines ([`branch_lines`]) and the history
-//! summary ([`summary`]).
+//! "Rust-produced copy" is made here: a step's instruction and target
+//! modifiers ([`step_instruction`], [`step_targets`]), [`odds_words`],
+//! [`fallback_line`], [`floor_options`], the branch lines
+//! ([`branch_lines`]) and the history summary ([`summary`]).
 
 use ch_engine::ch_blueprint::catalogue::{bones_for, Currency, ItemGroup, SIDE_OMEN};
-use ch_engine::ch_blueprint::{Blueprint, Side, Step, Transition};
+use ch_engine::ch_blueprint::{Blueprint, Goal, Side, Step, Transition};
 use ch_engine::ch_data::{self, Kind, Odds, Section, ValidMod};
 use ch_engine::ch_item::{self, Item, Rarity};
 use ch_engine::{
@@ -263,6 +270,12 @@ impl Craft {
                 let before = self.targets.len();
                 self.targets.retain(|t| target_problem(&valid, t).is_none());
                 let dropped = before - self.targets.len();
+                for own in own_targets(&grabbed.item) {
+                    let taken = self.targets.iter().any(|t| t.mod_id == own.mod_id);
+                    if !taken && target_problem(&valid, &own).is_none() {
+                        self.targets.push(own);
+                    }
+                }
                 self.mode = Mode::Planning(Box::new(grabbed));
                 GrabEffect::Planning { dropped }
             }
@@ -691,7 +704,13 @@ fn keep(
     source: OutcomeSource,
 ) -> (OutcomeWord, String, String) {
     let blueprint = engine.blueprint(&guide.blueprint).map(|r| r.blueprint());
-    let (number, instruction) = step_place(blueprint, &g.route, &outcome.step);
+    let (number, mut instruction) = step_place(blueprint, &g.route, &outcome.step, &g.item.item);
+    // The step as it was shown, on the item it was shown on.
+    if let Next::Step { step } = &g.next {
+        if step.id == outcome.step {
+            instruction = step_instruction(step, &g.item.item);
+        }
+    }
     let summary = summary(&outcome, &after.item);
     let result = outcome_word(outcome.result);
     g.history.push(HistoryEntry {
@@ -757,7 +776,6 @@ fn preview(
             blueprint: route.blueprint.clone(),
             name: route.name.clone(),
             source: route.source.clone(),
-            notes: route.notes.clone(),
             steps: route
                 .steps
                 .iter()
@@ -794,7 +812,7 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
     };
     let step = match &g.next {
         Next::Step { step } if status == GuideStatusView::Active => {
-            let (number, _) = step_place(blueprint, &g.route, &step.id);
+            let (number, _) = step_place(blueprint, &g.route, &step.id, &g.item.item);
             Some(current_step(
                 blueprint,
                 step_line(blueprint, step, number, &g.item.item, &g.guide.blocked),
@@ -802,13 +820,21 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
             ))
         }
         Next::Stuck { step, .. } => {
-            let (number, instruction) = step_place(blueprint, &g.route, step);
+            let (number, instruction) = step_place(blueprint, &g.route, step, &g.item.item);
+            let targets = g
+                .route
+                .steps
+                .iter()
+                .find(|s| s.id == *step)
+                .map(|s| step_targets(s, &g.item.item))
+                .unwrap_or_default();
             Some(current_step(
                 blueprint,
                 StepLineView {
                     id: step.clone(),
                     number,
                     instruction,
+                    targets,
                     uses: Vec::new(),
                     odds: None,
                     fallback: None,
@@ -878,8 +904,15 @@ fn outcome_word(kind: OutcomeKind) -> OutcomeWord {
 }
 
 /// A step's place in the route (from 1; its place in the blueprint when
-/// the route left it out) and its instruction.
-fn step_place(blueprint: Option<&Blueprint>, route: &Route, id: &str) -> (usize, String) {
+/// the route left it out) and its instruction on `item`
+/// ([`step_instruction`] of the route's step; the blueprint's text for a
+/// step the route left out).
+fn step_place(
+    blueprint: Option<&Blueprint>,
+    route: &Route,
+    id: &str,
+    item: &Item,
+) -> (usize, String) {
     let in_route = route.steps.iter().position(|s| s.id == id);
     let in_blueprint = blueprint.and_then(|b| {
         b.steps
@@ -894,7 +927,7 @@ fn step_place(blueprint: Option<&Blueprint>, route: &Route, id: &str) -> (usize,
         .steps
         .iter()
         .find(|s| s.id == id)
-        .map(|s| s.say.clone())
+        .map(|s| step_instruction(s, item))
         .or(in_blueprint.map(|(_, say)| say))
         .unwrap_or_else(|| id.to_string());
     (number, instruction)
@@ -919,7 +952,8 @@ fn step_line(
     StepLineView {
         id: step.id.clone(),
         number,
-        instruction: step.say.clone(),
+        instruction: step_instruction(step, item),
+        targets: step_targets(step, item),
         uses,
         odds: step.odds.as_ref().map(odds_words),
         fallback: blueprint.and_then(|b| fallback_line(b, step, item, blocked)),
@@ -969,6 +1003,18 @@ fn item_view(item: &Item, floors: &[(String, u32)]) -> CraftItemView {
     }
 }
 
+/// The item's own explicit modifiers as targets, in text order, each with
+/// its floor at the tier it has; a modifier with no data modifier (an
+/// unrevealed desecrated one, or one the data does not know) is left out.
+fn own_targets(item: &Item) -> Vec<Target> {
+    ch_data::join(item)
+        .mods
+        .iter()
+        .filter_map(|jm| jm.matched())
+        .map(|m| Target::new(m.mod_id.as_str(), Some(m.tier)))
+        .collect()
+}
+
 fn mod_side(kind: Kind) -> ModSide {
     match kind {
         Kind::Prefix => ModSide::Prefix,
@@ -1010,6 +1056,98 @@ fn plural(n: usize) -> &'static str {
 
 // ---------------------------------------------------------------------------
 // Rust-produced copy (`ui-design.md` § "Rust-produced copy").
+
+/// Whether a hit of a step with this goal places one of the targets: an
+/// added, desecrated, revealed or converted modifier. A removal or fill
+/// step's targets are only what its binding names, and a manual step does
+/// what the blueprint says.
+fn places_a_target(goal: Goal) -> bool {
+    matches!(
+        goal,
+        Goal::AddWanted | Goal::Desecrate | Goal::Reveal | Goal::Convert
+    )
+}
+
+/// The texts of the target modifiers a hit of `step` may place on `item`,
+/// as the planning list writes them; empty for a step that places none.
+pub fn step_targets(step: &StepView, item: &Item) -> Vec<String> {
+    if !places_a_target(step.goal) {
+        return Vec::new();
+    }
+    step.targets
+        .iter()
+        .map(|id| mod_text_of(item, id))
+        .collect()
+}
+
+/// A step's instruction. A step with a currency that places one of its
+/// targets is composed from its data, never from the blueprint's text: the
+/// currency, `with` each omen, the side when the step is tied to one, and
+/// the targets it may place, `or` before the last:
+///
+/// - `Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix)
+///   or +#% to Lightning Resistance (suffix)`: not tied to a side, so each
+///   target says its own;
+/// - `Exalted Orb on the prefix side for +# to maximum Life or +# to
+///   maximum Mana`: tied to a side, named once.
+///
+/// Any other step (no target left, a removal, a fill or a manual step)
+/// keeps the blueprint's `say`.
+pub fn step_instruction(step: &StepView, item: &Item) -> String {
+    let targets = step_targets(step, item);
+    let Some(action) = step.action.as_ref().filter(|_| !targets.is_empty()) else {
+        return step.say.clone();
+    };
+    let mut uses = action.name.clone();
+    if !action.omen_names.is_empty() {
+        uses.push_str(" with ");
+        uses.push_str(&word_list(&action.omen_names, "and"));
+    }
+    match step.side {
+        Some(side) => format!(
+            "{uses} on the {} side for {}",
+            side_word(side),
+            word_list(&targets, "or")
+        ),
+        None => {
+            let each: Vec<String> = step
+                .targets
+                .iter()
+                .zip(&targets)
+                .map(|(id, text)| match target_kind(item, id) {
+                    Some(kind) => format!("{text} ({})", side_word(kind)),
+                    None => text.clone(),
+                })
+                .collect();
+            format!("{uses} for {}", word_list(&each, "or"))
+        }
+    }
+}
+
+/// A modifier id's side on the item's class.
+fn target_kind(item: &Item, id: &str) -> Option<Side> {
+    let (data, _) = ch_data::variant_of(item).ok()?;
+    Some(match data.find_mod(id)?.kind {
+        Kind::Prefix => Side::Prefix,
+        Kind::Suffix => Side::Suffix,
+    })
+}
+
+fn side_word(side: Side) -> &'static str {
+    match side {
+        Side::Prefix => "prefix",
+        Side::Suffix => "suffix",
+    }
+}
+
+/// `a`, `a <last> b`, `a, b <last> c`.
+fn word_list(items: &[String], last: &str) -> String {
+    match items {
+        [] => String::new(),
+        [one] => one.clone(),
+        [rest @ .., end] => format!("{} {last} {end}", rest.join(", ")),
+    }
+}
 
 /// The odds in words: `~12% (8000 of 69500 weight)` (an integer percent
 /// from 10, one decimal from 1 to under 10, `under 1%` above 0 and under 1),
@@ -1095,13 +1233,7 @@ pub fn fallback_line(
 
 /// The side a step's omens are for: its bound target's, or its own.
 fn target_side(item: &Item, step: &StepView) -> Option<Side> {
-    let from_target = step.target.as_deref().and_then(|id| {
-        let (data, _) = ch_data::variant_of(item).ok()?;
-        Some(match data.find_mod(id)?.kind {
-            Kind::Prefix => Side::Prefix,
-            Kind::Suffix => Side::Suffix,
-        })
-    });
+    let from_target = step.target.as_deref().and_then(|id| target_kind(item, id));
     from_target.or(step.side)
 }
 

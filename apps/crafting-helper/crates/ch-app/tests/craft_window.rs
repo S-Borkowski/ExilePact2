@@ -20,6 +20,13 @@ use serde_json::json;
 
 const FIRE: &str = "suffix-to-fire-resistance";
 const COLD: &str = "suffix-to-cold-resistance";
+const FIRE_TEXT: &str = "+#% to Fire Resistance";
+const COLD_TEXT: &str = "+#% to Cold Resistance";
+const LIGHTNING_TEXT: &str = "+#% to Lightning Resistance";
+
+/// The whittling route's first step on the ring's start, composed from its
+/// data (the blueprint says "Chaos Orb until one of the targets lands").
+const CHAOS_STEP: &str = "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)";
 
 fn planning(view: &View) -> &ch_app::PlanningView {
     assert_eq!(view.craft.mode, CraftMode::Planning, "{:?}", view.status);
@@ -94,7 +101,8 @@ fn grabbed_item_offers_valid_targets_by_side() {
         [(ModSide::Prefix, Some(5)), (ModSide::Suffix, Some(5))]
     );
     assert_eq!(p.item.modifiers[0].lines, ["+95(90-104) to maximum Mana"]);
-    assert!(p.item.modifiers.iter().all(|m| !m.meets_target));
+    // Its own modifiers start ticked as targets, each met at its tier.
+    assert!(p.item.modifiers.iter().all(|m| m.meets_target));
 
     // The choices are what the base rolls at item level 76, by side and
     // group, each with the default floor first and one per reachable tier.
@@ -146,8 +154,138 @@ fn grabbed_item_offers_valid_targets_by_side() {
         .iter()
         .chain(&p.choices.suffixes)
         .all(|c| !c.mod_id.contains("runic-ward")));
-    // No target yet: no preview, nothing to accept.
+    // The targets are the item's own two modifiers; cleared, there is no
+    // preview and nothing to accept.
+    assert_eq!(p.targets.len(), 2);
+    let view = app.set_targets(&[]);
+    let p = planning(&view);
     assert!(p.targets.is_empty() && p.preview.is_none() && !p.can_accept);
+    app.shutdown();
+}
+
+/// The item's own explicit modifiers as targets, each at the tier it has.
+fn own_targets(text: &str) -> Vec<(String, Option<u32>)> {
+    let item = ch_app::ch_item::parse(text).unwrap();
+    ch_app::ch_data::join(&item)
+        .mods
+        .iter()
+        .filter_map(|jm| jm.matched())
+        .map(|m| (m.mod_id.clone(), Some(m.tier)))
+        .collect()
+}
+
+fn chosen(p: &ch_app::PlanningView) -> Vec<(String, Option<u32>)> {
+    p.targets
+        .iter()
+        .map(|t| (t.mod_id.clone(), t.floor))
+        .collect()
+}
+
+#[test]
+fn a_grab_ticks_the_items_own_mods_as_targets() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+
+    // Mana at T5 and fire resistance at T3: both ticked, each at its tier,
+    // so each starts met.
+    let view = app.grab_text(Some(&ring("02-chaos-fire")));
+    let p = planning(&view);
+    let own = own_targets(&ring("02-chaos-fire"));
+    assert_eq!(own.len(), 2);
+    assert_eq!(chosen(p), own);
+    assert!(own.contains(&(FIRE.to_string(), Some(3))));
+    for t in &p.targets {
+        assert_eq!(Some(t.floor_in_force), t.floor, "{}", t.mod_id);
+    }
+    assert!(p.item.modifiers.iter().all(|m| m.meets_target));
+    let fire = p.targets.iter().find(|t| t.mod_id == FIRE).unwrap();
+    assert_eq!(fire.text, "+#% to Fire Resistance");
+    // Nothing was dropped: the status line is the grab's alone.
+    assert_eq!(
+        status(&view),
+        (StatusKind::Info, "Grabbed an item: 16 lines.".to_string())
+    );
+
+    // Negative control: an unrevealed desecrated modifier has no data
+    // modifier yet, so it is not ticked; the three it has are.
+    let view = app.grab_text(Some(&ring("04-desecrated")));
+    let p = planning(&view);
+    let ids: Vec<&str> = p.targets.iter().map(|t| t.mod_id.as_str()).collect();
+    assert!(ids.contains(&FIRE) && ids.contains(&COLD), "{ids:?}");
+    assert!(p
+        .item
+        .modifiers
+        .iter()
+        .filter(|m| m.unrevealed)
+        .all(|m| !m.meets_target));
+
+    // A modifier whose tier the item level does not reach is left out,
+    // silently: the same ring at item level 1 starts with none ticked.
+    let low = ring("01-start").replace("Item Level: 76", "Item Level: 1");
+    app.set_targets(&[]);
+    let view = app.grab_text(Some(&low));
+    let p = planning(&view);
+    assert!(p.targets.is_empty(), "{:?}", chosen(p));
+    assert!(!status(&view).1.contains("Dropped"), "{:?}", view.status);
+    app.shutdown();
+}
+
+#[test]
+fn a_grab_of_an_item_with_no_explicit_mods_ticks_nothing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    // The ring's start as a Normal item: its implicit only.
+    let normal = "Item Class: Rings\nRarity: Normal\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n";
+    let view = app.grab_text(Some(normal));
+    let p = planning(&view);
+    assert!(p.item.modifiers.is_empty());
+    assert!(p.targets.is_empty() && p.preview.is_none() && !p.can_accept);
+    // Positive control: the same base with explicit modifiers ticks them.
+    let view = app.grab_text(Some(&ring("01-start")));
+    assert_eq!(planning(&view).targets.len(), 2);
+    app.shutdown();
+}
+
+#[test]
+fn a_regrab_while_planning_adds_the_new_items_own_mods() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(&ring("01-start")));
+    // The player's own list: fire resistance at T2 or better.
+    app.set_targets(&[Target::new(FIRE, Some(2))]);
+    // The next item has fire and cold resistance at T3: the chosen fire
+    // target stays first, with its own floor, and the item's other
+    // modifier follows.
+    let view = app.grab_text(Some(&ring("03-whittle-cold")));
+    let p = planning(&view);
+    let mut want = vec![(FIRE.to_string(), Some(2))];
+    want.extend(
+        own_targets(&ring("03-whittle-cold"))
+            .into_iter()
+            .filter(|(id, _)| id != FIRE),
+    );
+    assert_eq!(chosen(p), want);
+    assert!(want.contains(&(COLD.to_string(), Some(3))));
+    // Fire at T3 does not meet its T2 floor; the others do.
+    let fire = p
+        .item
+        .modifiers
+        .iter()
+        .find(|m| m.lines[0].contains("Fire Resistance"))
+        .unwrap();
+    assert!(!fire.meets_target);
+    assert!(p
+        .item
+        .modifiers
+        .iter()
+        .filter(|m| !m.lines[0].contains("Fire Resistance"))
+        .all(|m| m.meets_target));
+    // Unticking still replaces the whole list.
+    let view = app.set_targets(&[Target::new(COLD, None)]);
+    assert_eq!(chosen(planning(&view)), [(COLD.to_string(), None)]);
     app.shutdown();
 }
 
@@ -316,15 +454,14 @@ fn targets_plan_a_route_with_odds_in_words() {
     let route = preview.route.as_ref().unwrap();
     assert_eq!(route.name, "Rings: resistances by whittling");
     assert!(route.source.contains("Discord post 10"));
-    assert!(route.notes.is_some());
+    // The blueprint's notes are not the route's (the route panel shows the
+    // targets and the steps instead).
+    assert!(serde_json::to_value(route).unwrap().get("notes").is_none());
     let ids: Vec<&str> = route.steps.iter().map(|s| s.id.as_str()).collect();
     assert_eq!(ids, ["chaos", "whittle", "desecrate", "reveal"]);
     let numbers: Vec<usize> = route.steps.iter().map(|s| s.number).collect();
     assert_eq!(numbers, [1, 2, 3, 4]);
-    assert_eq!(
-        route.steps[0].instruction,
-        "Chaos Orb until one of the targets lands"
-    );
+    assert_eq!(route.steps[0].instruction, CHAOS_STEP);
     assert_eq!(route.steps[0].uses, ["Chaos Orb"]);
     assert_eq!(route.steps[1].uses, ["Chaos Orb", "Omen of Whittling"]);
     let first = route.steps[0].odds.as_deref().unwrap();
@@ -353,6 +490,178 @@ fn targets_plan_a_route_with_odds_in_words() {
     app.shutdown();
     let log = craft_lines(tmp.path());
     assert!(log.contains(&format!("craft: route {WHITTLE}")), "{log:?}");
+}
+
+/// A ring target's text, as the planning list writes it.
+fn ring_text(id: &str) -> &'static str {
+    match id {
+        FIRE => FIRE_TEXT,
+        COLD => COLD_TEXT,
+        "suffix-to-lightning-resistance" => LIGHTNING_TEXT,
+        other => panic!("`{other}` is not a ring target"),
+    }
+}
+
+/// The engine's whittling route on the ring's start, and the item.
+fn whittle_route() -> (ch_app::ch_engine::Route, ch_app::ch_item::Item) {
+    let engine = Engine::shipped().unwrap();
+    let item = ch_app::ch_item::parse(&ring("01-start")).unwrap();
+    let plan = engine.plan(&item, &ring_targets(), &[]).unwrap();
+    let route = plan
+        .routes
+        .into_iter()
+        .find(|r| r.blueprint == WHITTLE)
+        .unwrap();
+    (route, item)
+}
+
+#[test]
+fn each_step_names_the_mods_it_targets() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = whittle_planned(tmp.path(), &shell);
+    let view = app.get_view();
+    let p = planning(&view);
+    let route = p.preview.as_ref().unwrap().route.as_ref().unwrap();
+    // Each step line carries the texts of the modifiers the engine says a
+    // hit of it may produce, as the planning list writes them, and its
+    // instruction names each of them.
+    let (engine_route, _) = whittle_route();
+    assert_eq!(route.steps.len(), engine_route.steps.len());
+    for (line, step) in route.steps.iter().zip(&engine_route.steps) {
+        assert_eq!(line.id, step.id);
+        let want: Vec<&str> = step.targets.iter().map(|id| ring_text(id)).collect();
+        assert!(!want.is_empty(), "{}", line.id);
+        assert_eq!(line.targets, want, "{}", line.id);
+        for t in &line.targets {
+            assert!(
+                line.instruction.contains(t.as_str()),
+                "{}",
+                line.instruction
+            );
+            assert!(p.targets.iter().any(|c| c.text == *t), "{t}");
+        }
+    }
+    assert_eq!(
+        route.steps[0].targets,
+        [FIRE_TEXT, COLD_TEXT, LIGHTNING_TEXT]
+    );
+
+    // Guiding: the current step names what is still missing. Fire landed,
+    // so the whittle step is for cold and lightning.
+    app.accept_craft();
+    let view = app.grab_text(Some(&ring("02-chaos-fire")));
+    let g = guiding(&view);
+    let step = &g.step.as_ref().unwrap().step;
+    assert_eq!(step.id, "whittle");
+    assert_eq!(step.targets, [COLD_TEXT, LIGHTNING_TEXT]);
+    assert_eq!(
+        step.instruction,
+        "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
+    );
+    // The history entry says the chaos step as it was shown.
+    assert_eq!(g.history[0].instruction, CHAOS_STEP);
+    app.shutdown();
+}
+
+#[test]
+fn a_targeted_step_says_its_currency_side_and_mods() {
+    use ch_app::ch_engine::ch_blueprint::Side;
+    use ch_app::craft::step_instruction;
+    let (route, item) = whittle_route();
+
+    // Not tied to a side: the currency, its omen, then each target with its
+    // side. Never the blueprint's text.
+    let whittle = route.steps[1].clone();
+    assert_eq!(whittle.id, "whittle");
+    assert_eq!(whittle.side, None);
+    let said = step_instruction(&whittle, &item);
+    assert_eq!(
+        said,
+        "Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
+    );
+    assert!(!said.contains(&whittle.say));
+
+    // Tied to a side: the side once, by name.
+    let mut tied = whittle.clone();
+    tied.side = Some(Side::Suffix);
+    assert_eq!(
+        step_instruction(&tied, &item),
+        "Chaos Orb with Omen of Whittling on the suffix side for +#% to Fire Resistance, +#% to Cold Resistance or +#% to Lightning Resistance"
+    );
+
+    // One target left (the desecration's last, once two have landed): the
+    // currency the step uses (the bone it resolved to) and that target.
+    let last = vec!["suffix-to-lightning-resistance".to_string()];
+    let mut desecrate = route.steps[2].clone();
+    assert_eq!(desecrate.id, "desecrate");
+    desecrate.targets = last.clone();
+    let bone = desecrate.action.as_ref().unwrap().name.clone();
+    assert_eq!(
+        step_instruction(&desecrate, &item),
+        format!("{bone} for +#% to Lightning Resistance (suffix)")
+    );
+    // The reveal names what it reveals into.
+    let mut reveal = route.steps[3].clone();
+    reveal.targets = last;
+    assert_eq!(
+        step_instruction(&reveal, &item),
+        "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)"
+    );
+}
+
+#[test]
+fn a_step_without_targets_keeps_the_blueprint_text() {
+    use ch_app::ch_engine::ch_blueprint::Goal;
+    use ch_app::craft::{step_instruction, step_targets};
+    let (route, item) = whittle_route();
+    let chaos = &route.steps[0];
+    assert_eq!(chaos.say, "Chaos Orb until one of the targets lands");
+    // Positive control: with its targets, the step is composed.
+    assert_eq!(step_instruction(chaos, &item), CHAOS_STEP);
+
+    // No target left for it: the blueprint's text, and no target line.
+    let mut none = chaos.clone();
+    none.targets.clear();
+    assert_eq!(step_instruction(&none, &item), chaos.say);
+    assert!(step_targets(&none, &item).is_empty());
+    // A removal step's targets are only what its binding names: a hit takes
+    // a modifier off and places none, so its text stays.
+    let mut removal = chaos.clone();
+    removal.goal = Goal::RemoveUnwanted;
+    assert_eq!(step_instruction(&removal, &item), chaos.say);
+    assert!(step_targets(&removal, &item).is_empty());
+    // A manual step has no currency to name.
+    let mut manual = chaos.clone();
+    manual.goal = Goal::Manual;
+    manual.action = None;
+    assert_eq!(step_instruction(&manual, &item), chaos.say);
+}
+
+#[test]
+fn the_route_view_drops_the_blueprint_notes() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = whittle_planned(tmp.path(), &shell);
+    let view = app.get_view();
+    let p = planning(&view);
+    let route = p.preview.as_ref().unwrap().route.as_ref().unwrap();
+    // Positive control: the blueprint has notes to drop.
+    let (engine_route, _) = whittle_route();
+    let notes = engine_route.notes.expect("the whittling blueprint's notes");
+    // The route view has no notes field, and the notes' text is nowhere in
+    // the view.
+    assert!(serde_json::to_value(route).unwrap().get("notes").is_none());
+    let sent = serde_json::to_string(&view).unwrap();
+    let start: String = notes.chars().take(40).collect();
+    assert!(!sent.contains(&start), "{start}");
+    // In their place the panel has the chosen targets and the steps with
+    // theirs; the name and the source (attribution) stay.
+    assert_eq!(p.targets.len(), 3);
+    assert!(route.steps.iter().all(|s| !s.targets.is_empty()));
+    assert_eq!(route.name, "Rings: resistances by whittling");
+    assert!(route.source.contains("Discord post 10"));
+    app.shutdown();
 }
 
 #[test]
@@ -629,7 +938,7 @@ fn regrab_hit_advances_the_guide() {
         (h.number, h.step.as_str(), h.result),
         (1, "chaos", OutcomeWord::Hit)
     );
-    assert_eq!(h.instruction, "Chaos Orb until one of the targets lands");
+    assert_eq!(h.instruction, CHAOS_STEP);
     assert_eq!(h.summary, "Hit: gained +#% to Fire Resistance (T3)");
     assert_eq!(status(&view), (StatusKind::Info, format!("{}.", h.summary)));
     let step = g.step.as_ref().unwrap();

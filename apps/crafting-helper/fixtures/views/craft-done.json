@@ -4,7 +4,7 @@
       "blueprint": "rings-resist-whittle",
       "history": [
         {
-          "instruction": "Chaos Orb until one of the targets lands",
+          "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
           "number": 1,
           "result": "hit",
           "source": "grab",
@@ -12,7 +12,7 @@
           "summary": "Hit: gained +#% to Fire Resistance (T3)"
         },
         {
-          "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+          "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
           "number": 2,
           "result": "hit",
           "source": "grab",
@@ -20,7 +20,7 @@
           "summary": "Hit: gained +#% to Cold Resistance (T3)"
         },
         {
-          "instruction": "Desecrate for the last target",
+          "instruction": "Preserved Collarbone for +#% to Lightning Resistance (suffix)",
           "number": 3,
           "result": "hit",
           "source": "grab",
@@ -28,7 +28,7 @@
           "summary": "Hit: the step did what it is for, no target gained or lost"
         },
         {
-          "instruction": "Reveal it at the Well of Souls",
+          "instruction": "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)",
           "number": 4,
           "result": "hit",
           "source": "grab",
@@ -99,7 +99,7 @@
     "guide": {
       "instruction": "The craft is done.",
       "last": {
-        "instruction": "Reveal it at the Well of Souls",
+        "instruction": "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)",
         "number": 4,
         "result": "hit",
         "source": "grab",

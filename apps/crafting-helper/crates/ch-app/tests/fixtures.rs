@@ -150,6 +150,12 @@ fn main_views() -> Vec<(&'static str, View)> {
     let app = planned("planning");
     out.push(("craft-planning", app.get_view()));
     app.shutdown();
+    // Right after the grab of the ring's start, before any target is
+    // changed: its own two modifiers ticked, each at its tier.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("prefilled"), &shell);
+    out.push(("craft-prefilled", app.grab_text(Some(&ring("01-start")))));
+    app.shutdown();
     let app = planned("fallback");
     out.push((
         "craft-fallback",
@@ -430,6 +436,12 @@ fn fixtures_are_current() {
         .as_deref()
         .is_some_and(|o| o.starts_with("odds unknown: "))));
     assert!(plan("craft-planning").can_accept);
+    // No route carries the blueprint's notes; every step line carries its
+    // target modifiers.
+    assert!(route.steps.iter().all(|s| !s.targets.is_empty()));
+    let prefilled = plan("craft-prefilled");
+    assert_eq!(prefilled.targets.len(), 2);
+    assert!(prefilled.item.modifiers.iter().all(|m| m.meets_target));
     assert!(preview("craft-fallback")
         .route
         .as_ref()
@@ -546,7 +558,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 20);
+    assert_eq!(views.len(), 21);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(
