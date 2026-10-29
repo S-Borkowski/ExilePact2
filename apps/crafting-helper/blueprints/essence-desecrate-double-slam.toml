@@ -1,0 +1,194 @@
+# Any equipment, state-ordered: the usual 0.5 craft. An essence for one
+# target as the magic item turns rare, a desecration for the hardest target
+# on its side, then side-restricted slams, two at a time where two fit.
+# Paraphrased from the guides `source` names; the rules are
+# docs/models/crafting-slots-spec.md.
+id = "essence-desecrate-double-slam"
+name = "Essence, desecrate the hardest, then side slams"
+classes = [
+    "Gloves", "Boots", "Helmets", "Body Armours", "Shields", "Quivers",
+    "Bucklers", "Foci", "Wands", "One Hand Maces", "Sceptres", "Spears",
+    "Bows", "Staves", "Two Hand Maces", "Quarterstaves", "Crossbows",
+    "Talismans", "Belts", "Amulets", "Rings",
+]
+source = "timesaver.gg, PoE2 0.5 crafting guide (https://timesaver.gg/blog/poe2-0-5-crafting-guide), the domistae PoE2 Crafting Codex (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html) and maxroll, How to Craft in Path of Exile 2, methods 2 and 4 (https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2), fetched 2026-10-29"
+notes = """
+The guides' standard 0.5 craft: since 0.5 an item keeps one crafted and one \
+desecrated modifier, so the essence and the desecration each place one \
+target. The essence (Lesser, plain or Greater, the cheapest that meets the \
+floor) works only on a magic item and makes it rare. The desecration goes \
+to the hardest missing target, on its side with Omen of Sinistral or \
+Dextral Necromancy and with Omen of Abyssal Echoes for the reveal, both \
+active before use; a wrong reveal is taken off with Omen of Light and an \
+Orb of Annulment and the bone used again. The other targets come from \
+Perfect Exalted Orbs restricted to their side, with Omen of Greater \
+Exaltation where two free slots take two targets. A side with too few free \
+slots is cleaned first (a certain whittle, else an annulment). On body \
+armours, gloves, boots and helmets there are no desecrated prefixes, and \
+what Sinistral Necromancy does there is not established. The preview \
+assumes every step hits."""
+order = "state"
+relies_on = [
+    "greater-with-side-omen",
+    "greater-needs-two-free",
+    "whittling-mod-level",
+    "fractured-not-removed",
+    "omens-active-before-use",
+    "necromancy-without-pool",
+]
+
+[[start]]
+rarity = ["magic"]
+essence_binds = true
+
+[[start]]
+rarity = ["rare"]
+
+# Lesser, plain and Greater essences make a Magic item Rare with their
+# modifier; per family the cheapest grade comes first, so the first one
+# that meets the floor is the one offered.
+[[step]]
+id = "essence"
+say = "Use the essence that adds a target"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+guard = { rarity = ["magic"] }
+action = [
+    { currency = "lesser-essence-of-the-body" },
+    { currency = "essence-of-the-body" },
+    { currency = "greater-essence-of-the-body" },
+    { currency = "lesser-essence-of-the-mind" },
+    { currency = "essence-of-the-mind" },
+    { currency = "greater-essence-of-the-mind" },
+    { currency = "lesser-essence-of-enhancement" },
+    { currency = "essence-of-enhancement" },
+    { currency = "greater-essence-of-enhancement" },
+    { currency = "lesser-essence-of-insulation" },
+    { currency = "essence-of-insulation" },
+    { currency = "greater-essence-of-insulation" },
+    { currency = "lesser-essence-of-thawing" },
+    { currency = "essence-of-thawing" },
+    { currency = "greater-essence-of-thawing" },
+    { currency = "lesser-essence-of-grounding" },
+    { currency = "essence-of-grounding" },
+    { currency = "greater-essence-of-grounding" },
+    { currency = "lesser-essence-of-ruin" },
+    { currency = "essence-of-ruin" },
+    { currency = "greater-essence-of-ruin" },
+    { currency = "lesser-essence-of-the-infinite" },
+    { currency = "essence-of-the-infinite" },
+    { currency = "greater-essence-of-the-infinite" },
+    { currency = "lesser-essence-of-abrasion" },
+    { currency = "essence-of-abrasion" },
+    { currency = "greater-essence-of-abrasion" },
+    { currency = "lesser-essence-of-flames" },
+    { currency = "essence-of-flames" },
+    { currency = "greater-essence-of-flames" },
+    { currency = "lesser-essence-of-ice" },
+    { currency = "essence-of-ice" },
+    { currency = "greater-essence-of-ice" },
+    { currency = "lesser-essence-of-electricity" },
+    { currency = "essence-of-electricity" },
+    { currency = "greater-essence-of-electricity" },
+    { currency = "lesser-essence-of-battle" },
+    { currency = "essence-of-battle" },
+    { currency = "greater-essence-of-battle" },
+    { currency = "lesser-essence-of-seeking" },
+    { currency = "essence-of-seeking" },
+    { currency = "greater-essence-of-seeking" },
+    { currency = "lesser-essence-of-alacrity" },
+    { currency = "essence-of-alacrity" },
+    { currency = "greater-essence-of-alacrity" },
+    { currency = "lesser-essence-of-haste" },
+    { currency = "essence-of-haste" },
+    { currency = "greater-essence-of-haste" },
+    { currency = "lesser-essence-of-sorcery" },
+    { currency = "essence-of-sorcery" },
+    { currency = "greater-essence-of-sorcery" },
+    { currency = "lesser-essence-of-command" },
+    { currency = "essence-of-command" },
+    { currency = "greater-essence-of-command" },
+    { currency = "lesser-essence-of-opulence" },
+    { currency = "essence-of-opulence" },
+    { currency = "greater-essence-of-opulence" },
+]
+
+# An unrevealed modifier is revealed before anything else touches the item.
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+bind = "hardest"
+when = "bound"
+guard = { desecrated_unwanted = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "remove"
+say = "Whittle the blocker when that is certain, else annul it (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+# The bone waits for a free slot on its side, so the game never takes a
+# random modifier off a full item for it.
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "desecrate"
+
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["greater-omen", "side-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["greater-omen", "side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["greater-omen", "side-omen"]

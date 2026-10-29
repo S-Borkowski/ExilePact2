@@ -1,0 +1,24 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Prefix Modifier "Gentian" (Tier: 5) — Mana }
++95(90-104) to maximum Mana
+{ Prefix Modifier "Virile" (Tier: 1) — Life }
++110(100-119) to maximum Life
+{ Prefix Modifier "Elusory" (Tier: 2) — Defences, Evasion }
++190(175-202) to Evasion Rating
+{ Suffix Modifier "of the Yeti" (Tier: 5) — Elemental, Cold, Resistance }
++23(21-25)% to Cold Resistance
+{ Suffix Modifier "of the Lynx" (Tier: 7) — Attribute }
++10(9-12) to Dexterity
+{ Suffix Modifier "of Exile" (Tier: 2) — Chaos, Resistance }
++21(20-23)% to Chaos Resistance

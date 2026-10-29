@@ -1,0 +1,20 @@
+Item Class: Belts
+Rarity: Rare
+Cord Snare
+Heavy Belt
+--------
+Requires: Level 40
+--------
+Item Level: 82
+--------
+{ Implicit Modifier }
+Has 2 Charm Slots — Unscalable Value
+--------
+{ Prefix Modifier "Progressive" (Tier: 3) }
+18(16-21)% increased Charm Effect Duration
+{ Prefix Modifier "Stirring" (Tier: 5) }
+13(11-16)% increased Flask Mana Recovery rate
+{ Suffix Modifier "of Granite Skin" (Tier: 5) }
++110(98-124) to Stun Threshold
+{ Suffix Modifier "of the Hydra" (Tier: 5) }
+7.5(6.1-9) Life Regeneration per second
