@@ -1,0 +1,68 @@
+# A state-ordered test blueprint (engine tests only): reveal, desecrate the
+# hardest target's side (before any clean-up, so a full side shows), clean,
+# slam.
+id = "test-state-desecrate"
+name = "Test: desecrate the hardest target's side"
+classes = ["Rings"]
+source = "ch-engine tests"
+order = "state"
+relies_on = ["omens-active-before-use", "necromancy-without-pool", "whittling-mod-level"]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "desecrate"
+
+[[step]]
+id = "remove"
+say = "Whittle the blocker when that is certain, else annul it (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["greater-omen", "side-omen"]

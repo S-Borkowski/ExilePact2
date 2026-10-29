@@ -20,6 +20,15 @@ are `ch-item`'s, under `crates/ch-item/fixtures/real/`.
 | `gloves-magic-cold.txt` | Magic Sirenscale Gloves (int), item level 81, Cold Resistance T5: an essence can make it Rare. |
 | `gloves-rare-cold.txt` | The same item Rare. |
 | `jewels-rare-sapphire.txt` | Rare Sapphire, item level 82, two modifiers, not corrupted (the real one is): jewel pages have no spawn weights. |
+| `ring-state-closed-suffix.txt` | `ring-rare-life-hit.txt` plus Cold and Lightning Resistance T5: the suffix side closed by a Greater exalt. |
+| `ring-state-one-suffix-free.txt` | `ring-rare-life-hit.txt` plus Cold Resistance T5: one free suffix slot. |
+| `ring-state-complete.txt` | The closed ring plus Accuracy Rating T3: every target of the 2P/1S craft on it. |
+| `ring-state-prefix-blocked.txt` | Rare ring: Mana T5, Accuracy Rating T3 and Cold Damage T3 (prefixes), Fire Resistance T5 (suffix, the lowest modifier level). With Life missing the prefix side is blocked. |
+| `ring-state-whittle.txt` | The same with Rarity of Items T3 (modifier level 10) for Cold Damage: the one lowest-level modifier is a junk prefix. |
+| `ring-state-whittled.txt` | The whittle's hit: the Rarity prefix gone, Cold Resistance T5 come. |
+| `ring-state-one-target.txt` | Issue #28's shape: Mana T5 and Accuracy Rating T3 (prefixes), Cold Resistance T5 and Dexterity T4 (suffixes). |
+| `ring-state-no-target.txt` | Accuracy Rating T3 and Rarity of Items T3 (prefixes), Cold Resistance T5 and Dexterity T4 (suffixes): no target on it. |
+| `ring-state-desecrated-target.txt` | Mana T5, Life T3, Fire Resistance T4 and a revealed desecrated Chaos Resistance T3 (a copy of `gear/fill-desecrate-exalt/05-revealed-chaos.txt`). |
 
 ## Test blueprints
 
@@ -35,3 +44,20 @@ the same way as the shipped ones:
   taken only when bound, then an exalt; a Magic start needs an essence
   binding.
 - `test-jewel.toml` (Jewels): one exalt.
+
+State-ordered test blueprints (`order = "state"`, `tests/state_order.rs`):
+
+- `test-state-close.toml`: close-a-side's shape: remove (whittle, side
+  annulment, annulment) on the blocked side, fill the closable side
+  (`greater-omen`, `side-omen`), slam the one open side, slam a target's
+  side.
+- `test-state-clean.toml`: rare-clean-then-slam's shape: remove, then a
+  Perfect Exalted Orb with `greater-omen` and `side-omen` on a target's
+  side.
+- `test-state-unrestricted.toml`: a plain Exalted Orb before the side one,
+  so the passed-over plain exalt shows.
+- `test-state-desecrate.toml`: reveal, desecrate the hardest target's side
+  (before the clean-up, so a full side shows), remove, slam.
+- `test-state-prefix-only.toml`, `test-state-loop.toml` and
+  `test-state-light.toml`: a route that cannot finish, for no candidate,
+  the step cap and no change.

@@ -7,7 +7,7 @@ use ch_blueprint::{Goal, Rarity as BpRarity};
 use ch_data::{Kind, Odds, Removal, Section, WeightBasis, PLACEHOLDER_WEIGHT};
 
 use crate::catalogue::data_entries;
-use crate::context::{item_rarity, kind_of, Ctx, State};
+use crate::context::{item_rarity, kind_of, Ctx, ModInfo, Role, State};
 use crate::route::ChosenAction;
 
 /// The odds of the step's goal on its first try, or `None` for a manual
@@ -33,12 +33,7 @@ pub(crate) fn step_odds(
     }
     Some(match goal {
         Goal::RemoveUnwanted => removal_chance(st, action),
-        Goal::RemoveDesecrated => ch_data::removal_odds(
-            &st.join,
-            &st.wanted_positions(),
-            action.side.map(kind_of),
-            Removal::Desecrated,
-        ),
+        Goal::RemoveDesecrated => removal_odds(st, action.side.map(kind_of), Removal::Desecrated),
         Goal::Fill => {
             if add_sides(ctx, st, action).is_empty() {
                 Odds::certain(false, "no free slot on the allowed side")
@@ -80,12 +75,78 @@ pub(crate) fn has_omen_change(action: &ChosenAction, change: OmenChange) -> bool
 
 /// The chance the modifier the action removes is not a wanted one.
 pub(crate) fn removal_chance(st: &State, action: &ChosenAction) -> Odds {
-    ch_data::removal_odds(
-        &st.join,
-        &st.wanted_positions(),
-        action.side.map(kind_of),
-        removal_rule(action),
-    )
+    removal_odds(st, action.side.map(kind_of), removal_rule(action))
+}
+
+/// `ch-data`'s removal odds on the joined item; on an item the projection
+/// changed, the same rules read off its modifiers (a placed target or a
+/// filler has no known level).
+fn removal_odds(st: &State, side: Option<Kind>, rule: Removal) -> Odds {
+    if !st.projected {
+        return ch_data::removal_odds(&st.join, &st.wanted_positions(), side, rule);
+    }
+    let removable: Vec<&ModInfo> = st
+        .mods
+        .iter()
+        .filter(|m| !m.fractured && side.is_none_or(|s| s == m.side))
+        .collect();
+    let wanted = |m: &ModInfo| matches!(m.role, Role::Wanted(_));
+    match rule {
+        Removal::Random => {
+            if removable.is_empty() {
+                return Odds::unknown("no removable modifier");
+            }
+            let hits = removable.iter().filter(|m| !wanted(m)).count() as u64;
+            Odds::known(
+                hits,
+                removable.len() as u64,
+                "removable modifiers are not wanted",
+            )
+        }
+        Removal::Whittle => {
+            let Some(levels) = removable
+                .iter()
+                .map(|m| m.level)
+                .collect::<Option<Vec<u32>>>()
+            else {
+                return Odds::unknown("a modifier's level is not known before the earlier steps");
+            };
+            let Some(lowest) = levels.iter().min().copied() else {
+                return Odds::unknown("no removable modifier");
+            };
+            let at_lowest: Vec<&&ModInfo> = removable
+                .iter()
+                .zip(&levels)
+                .filter(|(_, l)| **l == lowest)
+                .map(|(m, _)| m)
+                .collect();
+            match at_lowest.as_slice() {
+                [only] => Odds::certain(
+                    !wanted(only),
+                    format!("the lowest modifier level ({lowest}) is unique"),
+                ),
+                _ => Odds::unknown(format!(
+                    "{} modifiers share the lowest modifier level {lowest}",
+                    at_lowest.len()
+                )),
+            }
+        }
+        Removal::Desecrated => {
+            let desecrated: Vec<&&ModInfo> = removable.iter().filter(|m| m.desecrated).collect();
+            match desecrated.as_slice() {
+                [] => Odds::unknown("no desecrated modifier"),
+                [only] => Odds::certain(!wanted(only), "the one desecrated modifier"),
+                several => {
+                    let hits = several.iter().filter(|m| !wanted(m)).count() as u64;
+                    Odds::known(
+                        hits,
+                        several.len() as u64,
+                        "desecrated modifiers are not wanted",
+                    )
+                }
+            }
+        }
+    }
 }
 
 /// The sides one random add of this action can land on: the side omen's,
@@ -166,7 +227,7 @@ fn add_wanted_odds(ctx: &Ctx, st: &State, aims: &[usize], action: &ChosenAction)
     }
 }
 
-fn with_basis_note(odds: Odds, note: &str) -> Odds {
+pub(crate) fn with_basis_note(odds: Odds, note: &str) -> Odds {
     match odds {
         Odds::Known {
             percent,
@@ -218,7 +279,8 @@ pub(crate) fn add_chance(
         }
     }
     let mut families: Vec<String> = Vec::new();
-    for m in st.mods.iter().filter(|m| !m.unrevealed) {
+    // A projected filler takes its slot and excludes no family.
+    for m in st.mods.iter().filter(|m| !m.unrevealed && !m.filler) {
         if m.mod_id.is_none() {
             return Odds::unknown(format!(
                 "the modifier `{}` did not join the data",

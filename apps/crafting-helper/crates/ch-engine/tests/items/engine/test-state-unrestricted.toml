@@ -1,0 +1,25 @@
+# A state-ordered test blueprint (engine tests only): a plain Exalted Orb
+# first, the side-restricted one second, so the engine's passing over the
+# plain one shows.
+id = "test-state-unrestricted"
+name = "Test: a plain exalt, then a side one"
+classes = ["Rings"]
+source = "ch-engine tests"
+order = "state"
+relies_on = []
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt for a target"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]

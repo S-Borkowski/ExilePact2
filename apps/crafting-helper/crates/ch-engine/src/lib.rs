@@ -15,6 +15,12 @@
 //!   guide. Given the item before and after a step, an [`Outcome`] (hit,
 //!   miss or unexpected, the wanted modifiers gained and lost) and the
 //!   [`Next`] step with its odds.
+//! - State order: a blueprint with `order = "state"` has no transitions; the
+//!   guide takes the first step that is a candidate on the item as it
+//!   stands, and its route is the projection, the steps the craft takes if
+//!   each one hits (docs/models/crafting-slots-spec.md). Both read one slot
+//!   accounting; a route whose hit path cannot finish is rejected
+//!   ([`Rejection::RouteCannotFinish`]).
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!
@@ -67,10 +73,15 @@ mod engine;
 mod guide;
 mod odds;
 mod route;
+mod slots;
+mod state_order;
 
 pub use catalogue::{catalogue, catalogue_item, CatalogueItem};
 pub use ch_data::Odds;
 pub use context::{Refusal, Target, TargetInfo};
 pub use engine::{check_path, resolve, toml_files, Engine, Resolved};
-pub use guide::{Guide, GuideError, Next, Outcome, OutcomeKind, Started, Status, WantedMod};
-pub use route::{ChosenAction, Plan, Rejected, Rejection, Route, Skipped, StepView};
+pub use guide::{
+    Guide, GuideError, Next, Outcome, OutcomeKind, Started, Status, WantedMod, PICKED,
+};
+pub use route::{ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView};
+pub use state_order::STEP_CAP;

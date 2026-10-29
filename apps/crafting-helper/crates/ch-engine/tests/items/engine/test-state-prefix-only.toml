@@ -1,0 +1,21 @@
+# A state-ordered test blueprint (engine tests only) that can only add a
+# prefix: a missing suffix leaves it no candidate.
+id = "test-state-prefix-only"
+name = "Test: prefixes only"
+classes = ["Rings"]
+source = "ch-engine tests"
+order = "state"
+relies_on = []
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "prefix-slam"
+say = "Exalt a prefix (Sinistral Exaltation)"
+goal = "add-wanted"
+side = "prefix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]

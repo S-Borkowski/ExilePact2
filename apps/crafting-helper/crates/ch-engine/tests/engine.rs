@@ -547,3 +547,57 @@ fn every_catalogue_id_is_offered() {
     assert!(enhancement.data_backed && enhancement.classes.contains(&"Gloves".to_string()));
     assert!(all.iter().any(|c| c.id == "liquid-despair"));
 }
+
+// --- The listed fill-desecrate-exalt (the baseline) ------------------------
+
+/// The listed blueprint as it shipped up to 0.1.0, kept as a test copy.
+const LEGACY: &str = "gear/fill-desecrate-exalt/fill-desecrate-exalt.toml";
+const MANA: &str = "prefix-to-maximum-mana";
+const ACCURACY: &str = "prefix-to-accuracy-rating";
+
+#[test]
+fn legacy_fill_names_a_plain_exalted_orb_on_two_prefixes_and_a_suffix() {
+    // The owner's craft: Mana and Life on the prefix side, Fire Resistance
+    // on the suffix side, Accuracy Rating (a third prefix) missing. The
+    // prefix side has one free slot and needs it.
+    let engine = engine(&[LEGACY]);
+    let ring = item("gear/fill-desecrate-exalt/legacy-two-prefixes-one-suffix.txt");
+    let list = targets(&[
+        (MANA, Some(5)),
+        (LIFE, Some(4)),
+        (ACCURACY, Some(3)),
+        (FIRE, Some(5)),
+    ]);
+    let plan = engine.plan(&ring, &list, &[]).unwrap();
+    let route = &plan.routes[0];
+    assert_eq!(route.blueprint, "fill-desecrate-exalt");
+    let first = &route.steps[0];
+    assert_eq!(first.id, "fill");
+    let action = first.action.as_ref().unwrap();
+    assert_eq!(action.uses, "exalted-orb");
+    assert!(action.omens.is_empty(), "{:?}", action.omens);
+    // Unrestricted, so it may land on the suffix side as well as in the
+    // one prefix slot the missing target needs.
+    assert_eq!(action.side, None);
+    let p = first.odds.as_ref().unwrap().percent().unwrap();
+    assert!(p > 0.0 && p < 100.0, "{p}");
+}
+
+#[test]
+fn legacy_fill_rejects_a_rare_with_one_target() {
+    // Issue #28: one target (Mana) among two prefixes and two suffixes.
+    let engine = engine(&[LEGACY]);
+    let ring = item("gear/fill-desecrate-exalt/legacy-one-target.txt");
+    let list = targets(&[
+        (MANA, Some(5)),
+        (LIFE, Some(4)),
+        ("prefix-to-evasion-rating", Some(4)),
+        (FIRE, Some(5)),
+    ]);
+    let plan = engine.plan(&ring, &list, &[]).unwrap();
+    assert!(plan.routes.is_empty());
+    assert!(matches!(
+        plan.rejected[0].reason,
+        Rejection::NoStartFits { .. }
+    ));
+}
