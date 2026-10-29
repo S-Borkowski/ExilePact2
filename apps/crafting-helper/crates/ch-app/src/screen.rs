@@ -221,7 +221,12 @@ pub(crate) enum Seen {
     NoTooltip,
     Covered,
     AnotherItem,
-    Unreadable(Unreadable),
+    /// Unreadable, and whether the reason comes from the demand's item
+    /// itself ([`from_the_item`]), so that no hover can read it.
+    Unreadable {
+        why: Unreadable,
+        from_item: bool,
+    },
     Unchanged,
     /// The item, changed: the read item's key.
     Changed(ItemKey),
@@ -237,7 +242,7 @@ impl Seen {
             Seen::NoTooltip => "none",
             Seen::Covered => "covered by the overlay",
             Seen::AnotherItem => "another item",
-            Seen::Unreadable(_) => "unreadable",
+            Seen::Unreadable { .. } => "unreadable",
             Seen::Unchanged => "unchanged",
             Seen::Changed(_) => "changed",
         };
@@ -485,7 +490,10 @@ impl Watcher {
                     ReadKind::NoTooltip => Seen::NoTooltip,
                     ReadKind::Covered => Seen::Covered,
                     ReadKind::AnotherItem => Seen::AnotherItem,
-                    ReadKind::Unreadable(why) => Seen::Unreadable(why),
+                    ReadKind::Unreadable(why) => Seen::Unreadable {
+                        why,
+                        from_item: from_the_item(why, self.demand.item.as_deref()),
+                    },
                     _ => Seen::Unchanged,
                 };
                 return (seen, None);
@@ -495,7 +503,13 @@ impl Watcher {
         // told from another.
         let Some(key) = item_key(&item) else {
             self.pending = None;
-            return (Seen::Unreadable(Unreadable::Ambiguous), None);
+            return (
+                Seen::Unreadable {
+                    why: Unreadable::Ambiguous,
+                    from_item: false,
+                },
+                None,
+            );
         };
         if self.reported.as_ref() == Some(&key) {
             return (Seen::Changed(key), None);
@@ -561,14 +575,36 @@ pub const NOT_IN_FRONT_LINE: &str = "Paused: the game is not in front.";
 pub const MINIMIZED_LINE: &str = "Paused: the game is minimized.";
 pub const STUCK_LINE: &str = "Paused: the guide is stuck.";
 
-/// The unreadable line: `Can't read the item (<reason>): hover it without
-/// Alt, or grab it.` The plain tooltip reads best: with Alt held OCR lost
-/// some values in the owner's shots.
+/// The unreadable line for a reason the read brought: `Can't read the item
+/// (<reason>): hover it without Alt, or grab it.` The plain tooltip reads
+/// best: with Alt held OCR lost some values in the owner's shots.
 pub fn unreadable_line(why: Unreadable) -> String {
     format!(
         "Can't read the item ({}): hover it without Alt, or grab it.",
         unreadable_words(why)
     )
+}
+
+/// The unreadable line for a reason that comes from the item itself, which
+/// no other hover can read: `Can't read the item (<reason>): grab the item
+/// after each step.`
+pub fn item_unreadable_line(why: Unreadable) -> String {
+    format!(
+        "Can't read the item ({}): grab the item after each step.",
+        unreadable_words(why)
+    )
+}
+
+/// Whether `why` comes from the item the step was shown on (`item`, the
+/// demand's), not from the read: a modifier of it the data does not hold,
+/// or an unrevealed or fractured modifier it has itself. A
+/// `NotEstablished` the read brought, on a plain item, does not.
+pub(crate) fn from_the_item(why: Unreadable, item: Option<&Item>) -> bool {
+    match why {
+        Unreadable::UnknownModifier => true,
+        Unreadable::NotEstablished => item.is_some_and(|i| i.has_unrevealed() || i.has_fractured()),
+        _ => false,
+    }
 }
 
 /// The matcher's reason in the watch line's words.

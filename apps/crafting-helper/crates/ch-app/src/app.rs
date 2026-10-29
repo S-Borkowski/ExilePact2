@@ -100,10 +100,11 @@ use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
 use crate::overlay::{overlay_guide, overlay_origin};
 use crate::screen::{
-    self, unreadable_line, ClientRect, Demand, GameWindow, OcrReadiness, Report, ScreenSetup, Seen,
-    Watch, WatchFailure, WatchMsg, ANOTHER_ITEM_LINE, BLACK_LINE, CHECKING_LINE, COVERED_LINE,
-    MINIMIZED_LINE, NOT_IN_FRONT_LINE, NO_BACKEND_LINE, NO_OCR_LINE, STUCK_LINE, UNCHANGED_LINE,
-    UNEXPECTED_LINE, WATCHING_LINE, WATCH_OFF_LINE, WATCH_STOP_DEADLINE,
+    self, item_unreadable_line, unreadable_line, ClientRect, Demand, GameWindow, OcrReadiness,
+    Report, ScreenSetup, Seen, Watch, WatchFailure, WatchMsg, ANOTHER_ITEM_LINE, BLACK_LINE,
+    CHECKING_LINE, COVERED_LINE, MINIMIZED_LINE, NOT_IN_FRONT_LINE, NO_BACKEND_LINE, NO_OCR_LINE,
+    STUCK_LINE, UNCHANGED_LINE, UNEXPECTED_LINE, WATCHING_LINE, WATCH_OFF_LINE,
+    WATCH_STOP_DEADLINE,
 };
 use crate::settings::{
     blocked_list, catalogue_groups, load_blocked, load_overlay_position, load_screen_watch,
@@ -584,7 +585,7 @@ impl App {
     }
 
     /// Writes the start line, registers the hotkey, starts the watch thread
-    /// (with a screen backend), sends the first view, starts the update
+    /// (with a screen backend, after its `watch: idle (not guiding)`), sends the first view, starts the update
     /// ticker and, with `check_updates` on, the first automatic check. Reads
     /// no clipboard.
     pub fn start(&self) {
@@ -611,6 +612,11 @@ impl App {
         if self.hotkey_replaced {
             let st = self.lock();
             self.save(&st);
+        }
+        // The watch's first state, said once before any craft (the state
+        // starts on it, so the end of a craft says it again, not a tick).
+        if self.has_screen {
+            self.diag(&idle_line(NOT_GUIDING));
         }
         self.start_watch();
         self.emit();
@@ -1683,7 +1689,14 @@ fn watch_line_view(st: &State) -> Option<WatchLineView> {
             line(UNEXPECTED_LINE, true)
         }
         Some(Seen::Changed(_)) => line(CHECKING_LINE, false),
-        Some(Seen::Unreadable(why)) => line(&unreadable_line(*why), true),
+        Some(Seen::Unreadable {
+            why,
+            from_item: false,
+        }) => line(&unreadable_line(*why), true),
+        Some(Seen::Unreadable {
+            why,
+            from_item: true,
+        }) => line(&item_unreadable_line(*why), true),
         Some(Seen::Covered) => line(COVERED_LINE, true),
         Some(Seen::Black) => line(BLACK_LINE, true),
     }

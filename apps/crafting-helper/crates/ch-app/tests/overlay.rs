@@ -160,12 +160,14 @@ fn overlay_shows_the_step_while_guiding_with_the_game_in_front() {
     assert_eq!(shell.rec().overlay, vec![true]);
     assert_eq!(shell.rec().placed.len(), 1, "never placed per tick");
     app.shutdown();
-    // The overlay's lines once each; the watch's read lines (English OCR,
-    // no tooltip, then idle once the guide is done) said once each too.
+    // The overlay's lines once each; the watch's read lines (idle at the
+    // start, English OCR, no tooltip, then idle once the guide is done)
+    // said once each too.
     let log = overlay_lines(tmp.path());
     assert_eq!(
         log,
         [
+            "watch: idle (not guiding)",
             "watch: game window 2560x1440",
             "overlay: placed top-center",
             "overlay: shown",
@@ -600,4 +602,45 @@ fn shutdown_stops_the_watch() {
     wait_until("the thread to end", || screen.dropped());
     assert!(!app.get_view().overlay.visible);
     assert!(shell.rec().overlay.is_empty());
+}
+
+#[test]
+fn watch_idle_is_logged_once_at_start() {
+    let idle = "watch: idle (not guiding)";
+    let count = |dir: &Path| diag_lines(dir).iter().filter(|l| *l == idle).count();
+
+    // A started app with a screen backend and no craft: said once, before
+    // anything else the watch says, and not again on ticks or commands.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    let app = start_with_screen(tmp.path(), &shell, &screen, true);
+    assert_eq!(count(tmp.path()), 1, "{:?}", diag_lines(tmp.path()));
+    app.tick_watch();
+    app.grab_text(Some(&ring("01-start")));
+    app.tick_watch();
+    app.shutdown();
+    assert_eq!(count(tmp.path()), 1, "{:?}", diag_lines(tmp.path()));
+    assert_eq!(overlay_lines(tmp.path()), [idle]);
+
+    // The end of a craft still says it, once more.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    let app = planned(tmp.path(), &shell, &screen);
+    app.accept_craft();
+    app.tick_watch();
+    app.end_craft();
+    app.tick_watch();
+    app.shutdown();
+    let log = overlay_lines(tmp.path());
+    assert_eq!(log.first().map(String::as_str), Some(idle), "{log:?}");
+    assert_eq!(count(tmp.path()), 2, "{log:?}");
+
+    // Without a screen backend there is no watch to speak of.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.shutdown();
+    assert_eq!(count(tmp.path()), 0);
 }

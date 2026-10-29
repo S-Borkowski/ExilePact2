@@ -834,3 +834,80 @@ fn a_failure_is_forgotten_when_guiding_ends() {
     assert_eq!(count(&log, &line("copy")), 1, "{log:?}");
     assert_eq!(count(&log, &line("window")), 2, "{log:?}");
 }
+
+#[test]
+fn an_unreadable_item_says_to_grab_after_each_step() {
+    let hover_or_grab = |why: &str| WatchLineView {
+        text: format!("Can't read the item ({why}): hover it without Alt, or grab it."),
+        warning: true,
+    };
+    let grab_each_step = |why: &str| WatchLineView {
+        text: format!("Can't read the item ({why}): grab the item after each step."),
+        warning: true,
+    };
+
+    // Negative controls, on the plain start ring: a reason the read
+    // brought keeps the line that says to hover again, both a line the
+    // matcher does not know and the note under an unrevealed modifier.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    let (app, ms) = guiding(tmp.path(), &shell, &screen);
+    let odd = format!("{}\nGrants a wish", ring("02-chaos-fire").trim_end());
+    screen.show(tooltip_of(&odd));
+    read_twice(&app, &ms);
+    assert_eq!(watch(&app), hover_or_grab("a line it does not know"));
+    let veiled = format!(
+        "{}\nTake this item to the Well of Souls to reveal the Desecrated Modifier",
+        ring("01-start").trim_end()
+    );
+    screen.show(tooltip_of(&veiled));
+    read_twice(&app, &ms);
+    assert_eq!(
+        watch(&app),
+        hover_or_grab("an unrevealed or fractured modifier")
+    );
+
+    // Target: the step's item has an unrevealed modifier itself (the ring
+    // after the desecrate step), so no hover can read it.
+    for file in ["02-chaos-fire", "03-whittle-cold", "04-desecrated"] {
+        app.grab_text(Some(&ring(file)));
+    }
+    assert_eq!(guide(&app.get_view()).history.len(), 3);
+    screen.show(tooltip_of(&ring("04-desecrated")));
+    read_twice(&app, &ms);
+    assert_eq!(
+        watch(&app),
+        grab_each_step("an unrevealed or fractured modifier")
+    );
+    assert_eq!(guide(&app.get_view()).history.len(), 3, "nothing applied");
+    app.shutdown();
+
+    // Target: one of the step item's modifiers is not in the data.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let screen = FakeScreen::in_front();
+    let (app, ms) = start_watching(tmp.path(), &shell, &screen);
+    let unknown = ring("01-start").replace(
+        "{ Suffix Modifier \"of the Lion\" (Tier: 5) — Attribute }\n+18(17-20) to Strength",
+        "{ Suffix Modifier \"of Nowhere\" (Tier: 5) — Attribute }\n+18(17-20) to Nonsense",
+    );
+    assert_ne!(unknown, ring("01-start"));
+    app.grab_text(Some(&unknown));
+    app.set_targets(&ring_targets());
+    app.choose_route(WHITTLE);
+    let view = app.accept_craft();
+    assert_eq!(
+        view.craft.mode,
+        ch_app::CraftMode::Guiding,
+        "{:?}",
+        view.status
+    );
+    screen.show(tooltip_of(&ring("02-chaos-fire")));
+    read_twice(&app, &ms);
+    assert_eq!(watch(&app), grab_each_step("a modifier it does not know"));
+    assert!(guide(&app.get_view()).history.is_empty());
+    app.shutdown();
+    let log = watch_log(tmp.path());
+    assert_eq!(count(&log, "watch: tooltip unreadable"), 1, "{log:?}");
+}
