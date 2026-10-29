@@ -109,9 +109,15 @@
     color: var(--color-text-muted);
   }
 
+  /* As in History: the outcome word as an outlined label. */
   .last .result {
-    font-weight: 700;
+    display: inline-block;
+    padding: 0 var(--space-unit);
+    border: var(--border-width) solid currentColor;
     color: var(--want);
+    font-size: var(--size-caption);
+    line-height: var(--line-caption);
+    font-weight: 700;
   }
 
   .last .result[data-result='miss'],

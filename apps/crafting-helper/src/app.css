@@ -152,6 +152,13 @@ select.field option {
   letter-spacing: 0.03em;
 }
 
+/* A section's own heading (Targets, Route, History) is a step brighter than
+   the group labels inside it (Prefixes, Chosen ...), so the column reads as
+   sections, not one run of equal labels. */
+h2.section-title {
+  color: var(--color-text-secondary);
+}
+
 /* A heading that takes the focus when the craft mode changes shows no ring
    for that programmatic move; it is not a control. */
 [data-mode-heading]:focus {

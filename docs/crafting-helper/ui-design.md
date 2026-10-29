@@ -65,6 +65,7 @@ waystone roller's token mapping ([`docs/waystone-roller/ui-design.md`](../waysto
 | Error status, a Miss or Unexpected outcome's word, the "stuck" and "replan" status words | `--color-warning` |
 | Focus ring (2 px), the download bar, the primary button's border | `--color-edit-accent` |
 | Headings, group labels, the status word | `--font-family-caps` (small caps) |
+| A section's heading (Targets, Route, History) / a group label inside it (Prefixes, Chosen) | `--color-text-secondary` / `--color-text-muted` |
 | Corners | square, as the tracker |
 
 Monospace (the grabbed text, the hotkey): the system's
@@ -173,8 +174,9 @@ Under the lists, the **Grabbed text** disclosure, closed.
 line "T1 is the best tier; a floor keeps a roll at that tier or better.",
 then:
 
-- **Chosen**: the chosen targets, each with its text, its floor select and
-  a **Remove** button ("Remove <modifier text>" to a screen reader), and a
+- **Chosen**: the chosen targets, each on one row with its text (which
+  wraps when long), its floor select and a **Remove** button ("Remove
+  <modifier text>" to a screen reader), and a
   **Clear targets** button (disabled with none chosen). With none: "Pick
   the modifiers you want from the list below."
 - A filter field, "Filter modifiers", which narrows the list below by text
@@ -188,6 +190,9 @@ then:
   choice also shows its **floor select**, labelled "Floor for <modifier
   text>", whose options are Rust's: `As high as possible (T<best>)` first
   (the default), then `At least T<n>` per tier this item level reaches.
+  In one column (below 880 px) the three groups scroll together in a
+  sunken box past 240 px, so the route under them is not a whole base's
+  modifier list away.
 
 Every change (check, uncheck, a floor, Remove, Clear targets) sends
 `set_targets { targets: [{ mod_id, floor }] }` with the whole list, `floor`
@@ -272,7 +277,9 @@ grabbed, with the same "target" tags.
 **History** (right, under the item): "History", then an ordered list,
 oldest first, one entry per observed change: "Step <n>", the instruction
 (muted), the outcome as a word ("Hit", "Miss", "Unexpected"; Miss and
-Unexpected take the warning colour, the word carries it) and the summary
+Unexpected take the warning colour, the word carries it), set as an
+outlined caption-size label like the guide's status word (the "Last:" line
+sets it the same way), and the summary
 as sent, which starts `Hit:`, `Miss:` or `Unexpected:` and names the
 targets gained or lost with their tier, a below-floor roll, or the reasons.
 With none yet: "No step taken yet." The history is not a live region; the
@@ -293,9 +300,15 @@ its entries, id and name, sorted by name); there is no field to type an id.
   player types (the page's own state); with no match, "No currency matches
   “<text>”."
 - A **Blocked only** checkbox that hides the unchecked entries.
-- The list, scrolling past 240 px: each group's heading (Rust's label,
-  small caps), then one checkbox per entry labelled with its name, checked
-  when blocked, and the tag the caller gives (none in Settings).
+- The list, scrolling past 240 px in the craft window and past 136 px
+  (about six names) in the Settings window, whose fixed 440 × 720 must
+  also hold Updates: each group's heading (Rust's label, small caps), then
+  one checkbox per entry labelled with its name, checked when blocked, and
+  the tag the caller gives (none in Settings).
+- Each time the list comes into view (the window opens, or Blocked for
+  this craft opens), it scrolls itself to its first checked entry when
+  that entry is out of sight, so what is blocked shows without a search;
+  once per showing, and never after the player has scrolled it.
 
 The list can hold the whole catalogue; there is no other limit.
 

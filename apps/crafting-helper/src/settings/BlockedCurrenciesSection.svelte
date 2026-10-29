@@ -37,7 +37,10 @@
     margin: 0 0 var(--space-section-gap);
   }
 
+  /* The window is a fixed 440 × 720: a shorter list (about six names) keeps
+     Updates, its Check now and the footer on screen without scrolling. */
   .picker-wrap {
+    --picker-list-height: 136px;
     margin-bottom: calc(var(--space-unit) * 3);
   }
 </style>

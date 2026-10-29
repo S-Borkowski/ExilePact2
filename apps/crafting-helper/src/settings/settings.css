@@ -11,7 +11,8 @@ html[data-preview-scale] {
   zoom: var(--preview-scale);
 }
 
-/* The page is as tall as its content; the shell sizes the window to it. */
+/* The page is as tall as its content; the window is a fixed 440 × 720, so
+   anything taller scrolls the page. */
 #app {
   height: auto;
 }

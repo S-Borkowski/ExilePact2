@@ -39,6 +39,41 @@
     box.checked = checked.has(id);
     onchange(next);
   }
+
+  // Each time the list comes into view (the window opens, or the disclosure
+  // around it opens), it scrolls itself to its first checked entry when that
+  // entry is out of sight, so what is blocked shows without a search. Once
+  // per showing, and never after the player has scrolled the list, so a tick
+  // never makes it jump.
+  let list = $state<HTMLElement | null>(null);
+  let revealed = false;
+
+  function reveal(): void {
+    if (!list || revealed || list.clientHeight === 0 || !list.querySelector('input')) return;
+    revealed = true;
+    const first = list.querySelector<HTMLInputElement>('input:checked')?.closest('li');
+    if (!first || list.scrollTop !== 0) return;
+    if (first.offsetTop + first.offsetHeight > list.clientHeight) {
+      list.scrollTop = Math.max(0, first.offsetTop - first.offsetHeight * 2);
+    }
+  }
+
+  $effect(() => {
+    void groups;
+    void selected;
+    reveal();
+  });
+
+  $effect(() => {
+    const details = list?.closest('details');
+    if (!details) return;
+    const ontoggle = (): void => {
+      revealed = false;
+      if (details.open) reveal();
+    };
+    details.addEventListener('toggle', ontoggle);
+    return () => details.removeEventListener('toggle', ontoggle);
+  });
 </script>
 
 <div class="picker">
@@ -46,7 +81,7 @@
     <input class="field filter" type="search" aria-label="Filter currencies" placeholder="Filter currencies" bind:value={filter} />
     <label class="blocked-only"><input type="checkbox" bind:checked={blockedOnly} /> Blocked only</label>
   </div>
-  <div class="list">
+  <div class="list" bind:this={list}>
     {#each groups as group (group.kind)}
       <fieldset class="picker-group" hidden={!group.entries.some(shows)}>
         <legend class="caps">{group.label}</legend>
@@ -97,9 +132,12 @@
     cursor: pointer;
   }
 
-  /* The list scrolls past 240 px, so a long catalogue never pushes the route away. */
+  /* The list scrolls past 240 px, so a long catalogue never pushes the route
+     away; a caller with less room sets `--picker-list-height` (Settings).
+     Positioned, so an entry's `offsetTop` is measured from the list. */
   .list {
-    max-height: 240px;
+    position: relative;
+    max-height: var(--picker-list-height, 240px);
     overflow-y: auto;
     padding: var(--space-unit) calc(var(--space-unit) * 2);
     border: var(--border-width) solid var(--color-panel-border);

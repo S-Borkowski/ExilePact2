@@ -69,10 +69,17 @@
     color: var(--color-text-secondary);
   }
 
-  /* The outcome is a word; Miss and Unexpected take the warning colour too. */
+  /* The outcome is a word, set as an outlined label (as the guide's status)
+     so it reads as the entry's mark before Rust's summary, which starts with
+     the same word; Miss and Unexpected take the warning colour too. */
   .result {
-    font-weight: 700;
+    display: inline-block;
+    padding: 0 var(--space-unit);
+    border: var(--border-width) solid currentColor;
     color: var(--want);
+    font-size: var(--size-caption);
+    line-height: var(--line-caption);
+    font-weight: 700;
   }
 
   .result[data-result='miss'],

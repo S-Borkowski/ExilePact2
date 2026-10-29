@@ -101,30 +101,32 @@
 
   <input class="field filter" type="search" aria-label="Filter modifiers" placeholder="Filter modifiers" bind:value={filter} />
 
-  {#each groups as group (group.key)}
-    {@const count = group.choices.filter((c) => chosen.has(c.mod_id)).length}
-    <fieldset class="choices" data-group={group.key} hidden={!group.choices.some(shows)}>
-      <legend class="section-title caps">{group.label} · {count} chosen</legend>
-      <ul>
-        {#each group.choices as choice (choice.mod_id)}
-          {@const target = chosen.get(choice.mod_id)}
-          <li hidden={!shows(choice)}>
-            <label>
-              <input type="checkbox" checked={target !== undefined} onchange={(event) => toggle(event, choice)} />
-              <span class="name">{choice.text}</span>
-              <span class="best">best T{choice.best_tier}</span>
-            </label>
-            {#if target}
-              {@render floorSelect(target, choice.floors)}
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </fieldset>
-  {/each}
-  {#if !anyShown && needle !== ''}
-    <p class="no-match">No modifier matches “{filter.trim()}”.</p>
-  {/if}
+  <div class="choice-list">
+    {#each groups as group (group.key)}
+      {@const count = group.choices.filter((c) => chosen.has(c.mod_id)).length}
+      <fieldset class="choices" data-group={group.key} hidden={!group.choices.some(shows)}>
+        <legend class="section-title caps">{group.label} · {count} chosen</legend>
+        <ul>
+          {#each group.choices as choice (choice.mod_id)}
+            {@const target = chosen.get(choice.mod_id)}
+            <li hidden={!shows(choice)}>
+              <label>
+                <input type="checkbox" checked={target !== undefined} onchange={(event) => toggle(event, choice)} />
+                <span class="name">{choice.text}</span>
+                <span class="best">best T{choice.best_tier}</span>
+              </label>
+              {#if target}
+                {@render floorSelect(target, choice.floors)}
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      </fieldset>
+    {/each}
+    {#if !anyShown && needle !== ''}
+      <p class="no-match">No modifier matches “{filter.trim()}”.</p>
+    {/if}
+  </div>
 </section>
 
 <style>
@@ -165,11 +167,13 @@
     list-style: none;
   }
 
+  /* One row per target: its text (wrapping when long), the floor, Remove.
+     The text gives way, so Remove never drops to a line of its own. */
   .chosen li {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: var(--space-unit) calc(var(--space-unit) * 2);
+    gap: calc(var(--space-unit) * 2);
     padding: var(--space-unit) 0;
   }
 
@@ -178,10 +182,10 @@
   }
 
   .target-text {
-    flex: 1 1 160px;
     min-width: 0;
     color: var(--color-text-primary);
     font-size: var(--size-step);
+    line-height: var(--line-step);
   }
 
   .floor {
@@ -190,6 +194,25 @@
 
   .filter {
     width: 100%;
+  }
+
+  .choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-unit) * 2);
+  }
+
+  /* In one column (below the craft area's 880 px split) the choices scroll
+     in their own sunken box, as the currency list does, so the route under
+     them is not a whole base's modifier list away. */
+  @media (max-width: 879px) {
+    .choice-list {
+      max-height: 240px;
+      overflow-y: auto;
+      padding: var(--space-unit) calc(var(--space-unit) * 2);
+      border: var(--border-width) solid var(--color-panel-border);
+      background: var(--color-panel-sunken);
+    }
   }
 
   fieldset {
