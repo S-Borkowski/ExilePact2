@@ -20,7 +20,9 @@ What is here:
   closable, open) and what each currency and omen the v2 blueprints name
   does to the slots;
 - the four v2 blueprints as rule lists (`BLUEPRINTS`), each with the
-  not-established facts it relies on;
+  not-established facts it relies on, the last-target desecration's steps
+  among them, bound to `last-remaining` (made afresh on every item) and
+  held to the case's `desecration_pool`;
 - the next-step rules, the side rules, the `greater-omen` and `side-omen`
   placeholders, the removal rules and the projection (`plan`), with the
   rejections in the spec's order;
@@ -184,6 +186,9 @@ class Case:
     expect: dict
     listed: dict | None = None
     about: str = ""
+    # The sides on which the class has a desecrated modifier at the item's
+    # level (the last-target desecration's pool condition).
+    desecration_pool: frozenset = frozenset(SIDES)
 
 
 def _mod_from_dict(d):
@@ -210,6 +215,9 @@ def case_from_dict(d):
     for t in targets:
         if t.side not in SIDES or t.pool not in ("base", "desecrated"):
             raise ValueError(f"case {d['id']!r}: target {t}")
+    pool = frozenset(d.get("desecration_pool", SIDES))
+    if not pool <= set(SIDES):
+        raise ValueError(f"case {d['id']!r}: desecration_pool {sorted(pool)}")
     return Case(
         id=d["id"], cls=d["class"],
         item=Item(d["rarity"], [_mod_from_dict(m) for m in d["prefixes"]],
@@ -220,6 +228,7 @@ def case_from_dict(d):
         expect=d.get("expect", {}),
         listed=d.get("listed"),
         about=d.get("about", ""),
+        desecration_pool=pool,
     )
 
 
@@ -237,10 +246,12 @@ class State:
     hardest_alias: str | None = None
     bindings: dict = field(default_factory=dict)
     fillers: int = 0
+    desecration_pool: frozenset = frozenset(SIDES)
 
     @classmethod
     def from_case(cls, case):
-        return cls(copy.deepcopy(case.item), case.targets, case.blocked, case.hardest)
+        return cls(copy.deepcopy(case.item), case.targets, case.blocked, case.hardest,
+                   desecration_pool=case.desecration_pool)
 
 
 def present(state):
@@ -413,6 +424,18 @@ SIDE_SLAM = Step("side-slam", "add-wanted", side="target",
 ESSENCE_STEP = Step("essence", "add-wanted", bind="essence", when="bound",
                     guard=(("rarity", ("magic",)),), actions=_grades(ESSENCES))
 
+# The last-target desecration (spec § "The last-target desecration"): on a
+# rare with no desecrated modifier and one target missing, desecrate that
+# target's side and reveal; a wrong reveal is taken off with Omen of Light.
+REVEAL_LAST = Step("reveal-last", "reveal", bind="last-remaining", when="bound",
+                   actions=(Action(REVEAL, (ECHOES,)), Action(REVEAL)))
+LIGHT_LAST = Step("light-last", "remove-desecrated", bind="last-remaining", when="bound",
+                  guard=(("desecrated_unwanted", True),),
+                  actions=(Action(ANNUL, (LIGHT,)),))
+DESECRATE_LAST = Step("desecrate-last", "desecrate", side="target", bind="last-remaining",
+                      when="bound", guard=(("rarity", ("rare",)),),
+                      actions=(Action(DESECRATE, ("side-omen",)),))
+
 ALL_GREATER = ("greater-with-side-omen", "greater-needs-two-free",
                "whittling-mod-level", "fractured-not-removed")
 
@@ -423,7 +446,10 @@ BLUEPRINTS = {
         starts=[{"rarity": ("rare",), "closable_side": True},
                 {"rarity": ("rare",), "one_side_open": True}],
         steps=[
+            REVEAL_LAST,
+            LIGHT_LAST,
             REMOVE,
+            DESECRATE_LAST,
             Step("close", "fill", side="close",
                  actions=_grades(CHEAPEST_FIRST, ("greater-omen", "side-omen"))),
             Step("slam-open-side", "add-wanted", side="target",
@@ -431,7 +457,7 @@ BLUEPRINTS = {
                  actions=_grades(PERFECT_FIRST, ("greater-omen",))),
             SIDE_SLAM,
         ],
-        relies_on=ALL_GREATER + ("open-side-landing",),
+        relies_on=ALL_GREATER + ("open-side-landing", "omens-active-before-use"),
     ),
     "essence-desecrate-double-slam": Blueprint(
         id="essence-desecrate-double-slam",
@@ -447,6 +473,7 @@ BLUEPRINTS = {
             REMOVE,
             Step("desecrate", "desecrate", side="target", bind="hardest", when="bound",
                  actions=(Action(DESECRATE, ("side-omen",)), Action(DESECRATE))),
+            DESECRATE_LAST,
             SIDE_SLAM,
         ],
         relies_on=ALL_GREATER + ("omens-active-before-use", "necromancy-without-pool"),
@@ -464,18 +491,21 @@ BLUEPRINTS = {
             Step("augment", "add-wanted", guard=(("rarity", ("magic",)),),
                  actions=_grades(tuple(reversed(AUGMENTS)))),
             ESSENCE_STEP,
+            REVEAL_LAST,
+            LIGHT_LAST,
             Step("remove", "remove-unwanted", side="blocked", guard=(("rarity", ("rare",)),),
                  actions=REMOVE.actions),
+            DESECRATE_LAST,
             SIDE_SLAM,
         ],
-        relies_on=ALL_GREATER + ("open-side-landing",),
+        relies_on=ALL_GREATER + ("open-side-landing", "omens-active-before-use"),
     ),
     "rare-clean-then-slam": Blueprint(
         id="rare-clean-then-slam",
         classes=EQUIPMENT_CLASSES,
         starts=[{"rarity": ("rare",)}],
-        steps=[REMOVE, SIDE_SLAM],
-        relies_on=ALL_GREATER,
+        steps=[REVEAL_LAST, LIGHT_LAST, REMOVE, DESECRATE_LAST, SIDE_SLAM],
+        relies_on=ALL_GREATER + ("omens-active-before-use",),
     ),
 }
 
@@ -506,7 +536,8 @@ def hardest_target(state):
 
 def ensure_bindings(state, bp):
     """Make each binding the blueprint uses as soon as the item allows it;
-    a binding once made is kept (spec § "Candidates and the next step")."""
+    `essence` and `hardest` once made are kept, `last-remaining` is made
+    afresh on every item (spec § "Candidates and the next step")."""
     binds = bp.binds()
     if "essence" in binds and "essence" not in state.bindings and state.item.rarity == "magic":
         t = essence_target(state)
@@ -514,6 +545,12 @@ def ensure_bindings(state, bp):
             state.bindings["essence"] = t.alias
     if "hardest" in binds and "hardest" not in state.bindings and missing(state):
         state.bindings["hardest"] = hardest_target(state).alias
+    if "last-remaining" in binds:
+        miss = missing(state)
+        if len(miss) == 1:
+            state.bindings["last-remaining"] = miss[0].alias
+        else:
+            state.bindings.pop("last-remaining", None)
 
 
 def condition_failures(state, cond, acc):
@@ -683,6 +720,8 @@ def fit(state, step, side, index, acc):
             return None, "needs a rare item and a side"
         if acc[side].free <= 0:
             return None, "no free slot on its side"
+        if step.bind == "last-remaining" and side not in state.desecration_pool:
+            return None, f"no desecrated {side} modifier for the class at the item level"
         return omens, ""
     if k == "reveal":
         return (omens, "") if any(m.unrevealed for m in item.mods()) else (None, "nothing to reveal")
@@ -919,7 +958,8 @@ def omen_problems(pstep):
             problems.append("Greater Exaltation without a side omen while both sides are open")
     if k == "exalt" and not sided and two_open_one_reserved(acc):
         problems.append("an unrestricted exalt while a reserved side shares the open slots")
-    if k == "desecrate" and side is not None and SIDE_OMENS["desecrate"][side] not in omens:
+    if (k == "desecrate" and side is not None and SIDE_OMENS["desecrate"][side] not in omens
+            and SIDE_OMENS["desecrate"][side] not in pstep.before.blocked):
         problems.append(f"a {side} desecration without its Necromancy omen")
     if k == "reveal" and ECHOES not in omens and ECHOES not in pstep.before.blocked:
         problems.append("a reveal without Omen of Abyssal Echoes")
