@@ -25,6 +25,7 @@ describe('the TypeScript IPC types', () => {
       'hotkey-taken': [null, null, 'error', false, 'none'],
       'overlay-active': ['paste', true, 'info', true, 'guiding'],
       'overlay-not-in-front': ['paste', true, 'info', false, 'guiding'],
+      'craft-prefilled': ['paste', true, 'info', false, 'planning'],
       'craft-planning': ['paste', true, 'info', false, 'planning'],
       'craft-fallback': ['paste', true, 'info', false, 'planning'],
       'craft-no-route': ['paste', true, 'info', false, 'planning'],

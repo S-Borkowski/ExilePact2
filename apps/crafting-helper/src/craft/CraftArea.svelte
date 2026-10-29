@@ -52,7 +52,7 @@
       </div>
       <div class="col right">
         <BlockedForCraft blocked={planning.blocked} preview={planning.preview} {catalogue} {send} />
-        <RoutePreview preview={planning.preview} {send} />
+        <RoutePreview {planning} {send} />
       </div>
     </div>
     <div class="bar start-bar" data-under="right">

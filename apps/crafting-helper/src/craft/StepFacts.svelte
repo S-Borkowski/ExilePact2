@@ -1,6 +1,8 @@
 <script lang="ts">
   // A step's facts under its instruction, as the preview and the guide's
-  // card show them: the "Uses" line (currency, then omens), the odds as
+  // card show them: the "Targets" line (the target modifiers a hit of the
+  // step may place, as Rust sent them; none for a step that places none),
+  // the "Uses" line (currency, then omens), the odds as
   // Rust wrote them (`odds unknown: <reason>` kept whole, never a blank or a
   // dash), and the fallback line when an earlier alternative was passed
   // over. A manual step has neither uses nor odds, so shows no such line.
@@ -9,6 +11,12 @@
   let { step }: { step: StepLineView } = $props();
 </script>
 
+{#if step.targets.length > 0}
+  <p class="step-targets">
+    <span class="label">Targets</span>
+    {#each step.targets as target, i (i)}{#if i > 0}<span class="sep" aria-hidden="true"> · </span>{/if}<span class="target">{target}</span>{/each}
+  </p>
+{/if}
 {#if step.uses.length > 0}
   <p class="uses"><span class="label">Uses</span> {step.uses.join(', ')}</p>
 {/if}
@@ -28,6 +36,14 @@
   }
 
   .label {
+    color: var(--color-text-muted);
+  }
+
+  .step-targets .target {
+    color: var(--color-text-primary);
+  }
+
+  .step-targets .sep {
     color: var(--color-text-muted);
   }
 

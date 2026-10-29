@@ -124,6 +124,28 @@ describe('the overlay', () => {
     expect(previewScene('')).toBeNull();
   });
 
+  it('overlay_renders_the_step_targets', async () => {
+    // The overlay's step is Rust's instruction, which names the current
+    // step's target modifiers (the guiding view's step line), the same
+    // words the craft window's card shows; the page adds nothing to it.
+    for (const name of ['overlay-active', 'craft-guiding', 'craft-watching']) {
+      const view = fixtureView(name);
+      const current = view.craft.guiding!.step!.step;
+      const g = view.overlay.guide!;
+      expect(current.targets.length, name).toBeGreaterThan(0);
+      expect(g.instruction, name).toBe(current.instruction);
+      const { root } = await render(view);
+      const shown = text(root.querySelector('.panel .instruction'));
+      expect(shown, name).toBe(g.instruction);
+      for (const target of current.targets) expect(shown, name).toContain(target);
+      expect(text(root.querySelector('.uses .names')), name).toBe(current.uses.join(', '));
+    }
+    // The last outcome's instruction is the history entry's, composed the same way.
+    const active = fixtureView('overlay-active');
+    expect(active.overlay.guide!.last!.instruction).toBe(active.craft.guiding!.history[0].instruction);
+    expect(active.overlay.guide!.last!.instruction).toContain('+#% to Fire Resistance');
+  });
+
   it('overlay_renders_the_watch_line', async () => {
     // Each watch state's line as sent, in the warning colour exactly when
     // Rust marks it; the same string the guiding card shows.

@@ -210,7 +210,14 @@ export interface StepLineView {
   id: string;
   /** Its place in the route, from 1. */
   number: number;
+  /**
+   * What to do: for a step that places a target, Rust composes it from the
+   * step's data (the currency, its omens, the side and the target
+   * modifiers); otherwise the blueprint's text.
+   */
   instruction: string;
+  /** The target modifiers a hit of this step may place, as the planning list writes them; empty when it places none. */
+  targets: string[];
   /** The currency's name, then each omen's; empty for a manual step. */
   uses: string[];
   /** The odds in words; null for a manual step. */
@@ -219,11 +226,12 @@ export interface StepLineView {
   fallback: string | null;
 }
 
+/** The route the preview shows: what it targets and what to do, never the blueprint's notes. */
 export interface RouteView {
   blueprint: string;
   name: string;
+  /** Where the technique came from (attribution). */
   source: string;
-  notes: string | null;
   steps: StepLineView[];
 }
 
@@ -249,7 +257,7 @@ export interface PreviewView {
 export interface PlanningView {
   item: CraftItemView;
   choices: TargetChoices;
-  /** The chosen targets, in the order chosen. */
+  /** The chosen targets, in the order chosen; a grab that starts planning ticks the item's own explicit modifiers. */
   targets: ChosenTarget[];
   blocked: CraftBlockedView;
   /** null with no target. */
@@ -405,6 +413,7 @@ const stepLine = record<StepLineView>({
   id: str,
   number: uint,
   instruction: str,
+  targets: list(str),
   uses: list(str),
   odds: nullable(str),
   fallback: nullable(str),
@@ -419,7 +428,7 @@ const planning = record<PlanningView>({
   }),
   preview: nullable(
     record<PreviewView>({
-      route: nullable(record<RouteView>({ blueprint: str, name: str, source: str, notes: nullable(str), steps: list(stepLine) })),
+      route: nullable(record<RouteView>({ blueprint: str, name: str, source: str, steps: list(stepLine) })),
       other_routes: list(record<RouteChoice>({ blueprint: str, name: str })),
       rejected: list(record<RejectedLine>({ blueprint: str, name: str, reason: str })),
     }),

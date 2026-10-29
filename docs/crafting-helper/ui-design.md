@@ -176,8 +176,12 @@ the panel never grows past 168):
    "Done") as the main window's outlined caption-size label, the route's
    name (`--color-text-secondary`), and at the right "Step <n> · try <n>"
    in tabular figures.
-2. **Instruction**: the step's instruction, `--size-title` (16 px) at
-   `--font-weight-title`, `--color-text-primary`: the row the eye lands on.
+2. **Instruction**: the step's instruction as Rust sends it, which for a
+   step that places a target names the currency, its omens, the side and
+   the target modifiers (§ "Rust-produced copy"); `--size-title` (16 px)
+   at `--font-weight-title`, `--color-text-primary`: the row the eye lands
+   on. The overlay has no separate targets row: the instruction carries
+   them.
 3. **Uses**: the label "Uses" (small caps, muted), the currency and omen
    names, then the odds as Rust sends them (`~12% (8000 of 69500
    weight)`, `odds unknown: <reason>`); the odds lead with the percent, so
@@ -316,6 +320,17 @@ then:
   sunken box past 240 px, so the route under them is not a whole base's
   modifier list away.
 
+**Prefilled targets.** A grab that enters planning arrives with the
+item's own explicit prefixes and suffixes already chosen, each with its
+floor at the tier it has ("At least T5" for a T5 modifier), so each is
+ticked in its group, its count is in the group heading, and the item panel
+tags it "target": the player only adds the new modifier. A modifier the
+craft cannot keep at that tier is left unticked, without a message. After a
+grab that enters planning again, the list is the targets chosen before that
+still fit the new item, then the new item's own modifiers not already in
+it. The list is Rust's; the page sends nothing for it, and unticking works
+as for any target. An item with no explicit modifier starts with none.
+
 Every change (check, uncheck, a floor, Remove, Clear targets) sends
 `set_targets { targets: [{ mod_id, floor }] }` with the whole list, `floor`
 none for "as high as possible". A refusal leaves the list as it was and
@@ -340,12 +355,20 @@ effective list; Settings is never changed from here.
 then:
 
 - With no target: "Pick a target to see a route." and nothing else.
-- With a route: the route's name, its source (the blueprint's source line,
-  muted) and its notes; with other applicable routes, a select labelled
-  "Route" listing the previewed one first and then the others by name,
-  whose change sends `choose_route { blueprint }`. Then the steps as a
-  numbered list; each step shows its instruction, a "Uses" line with the
-  currency and omen names, its odds as sent (`~12% (8000 of 69500
+- With a route: the route's name and its source (the blueprint's source
+  line, muted: attribution); with other applicable routes, a select
+  labelled "Route" listing the previewed one first and then the others by
+  name, whose change sends `choose_route { blueprint }`. Then what the
+  craft targets: the sub-heading "Targets" and one row per chosen target,
+  its text and its floor in Rust's words (the floor select's label, "At
+  least T3"). The panel says what is targeted and what to do; the
+  blueprint's notes (the reasoning behind the technique) are not sent and
+  not shown. Then the steps as a
+  numbered list; each step shows its instruction (Rust's, naming the
+  step's target modifiers, § "Rust-produced copy"), a "Targets" line with
+  the target modifiers a hit of the step may place (left out for a step
+  that places none, such as a quality or removal step), a "Uses" line with
+  the currency and omen names, its odds as sent (`~12% (8000 of 69500
   weight)`, or `odds unknown: <reason>` with the words "odds unknown" kept,
   never a blank or a dash), and, when an earlier alternative was passed
   over, the fallback line under the label "Fallback" (small caps), as sent:
@@ -372,8 +395,9 @@ newest History entry's outcome word, its source ("from the screen" or
 nothing). Then, for active and stuck, a sunken card with:
 
 - "Step <n>" and the try count ("try 2"); the instruction, larger than the
-  body text; the "Uses" line; the odds as sent; the fallback line when there
-  is one.
+  body text, which names the step's target modifiers; the "Targets" line
+  (the target modifiers a hit may place, as in the route's step list); the
+  "Uses" line; the odds as sent; the fallback line when there is one.
 - The two branch lines as sent: `On a hit: <where it goes>` and `On a miss:
   <where it goes>`, where Rust names the next step by its instruction or
   says this step again, start over, give the item up, or the craft is done.
@@ -444,6 +468,7 @@ Rust to take the warning colour. Rust's words; the
 | Another item hovered | `Watching: that is another item; hover the one you are crafting.` | |
 | A change, read once | `Checking the change: keep hovering the item.` | |
 | Unreadable | `Can't read the item (<reason>): hover it without Alt, or grab it.` | yes |
+| Unreadable because of the item itself | `Can't read the item (<reason>): grab the item after each step.` | yes |
 | Under the overlay | `The overlay covers the item: move it in Settings, or grab the item.` | yes |
 | An unexpected change | `The item changed in a way the guide did not expect: grab it to check.` | yes |
 | 10 black copies in a row | `Can't copy the game's window: grab the item after each step.` | yes |
@@ -460,6 +485,12 @@ Rust to take the warning colour. Rust's words; the
 `<reason>` is the matcher's reason in words: `a line it does not know`,
 `two tiers fit`, `the rarity is unclear`, `the item has no base type`,
 `it may be cut off at the window's edge`, `a modifier it does not know`.
+The reason comes from the item itself, so hovering differently cannot
+help, when it is `a modifier it does not know`, or when the tier cannot be
+told and the crafted item's own copy has an unrevealed or a fractured
+modifier; then the line says to grab the item instead. Rust decides which
+from the item it is guiding; a reason the read itself brought keeps the
+first form.
 `<call>` is the system call that failed, as the one-time `error: watch:
 <call> failed: <error>` line names it; the line stays until a call
 succeeds or the craft stops guiding. A failed window call never reads as
@@ -500,6 +531,8 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 | Unknown odds | `odds unknown: <reason>` |
 | Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id |
 | Floor options | `As high as possible (T<best>)` (the default), then `At least T<n>` per reachable tier |
+| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A step that places none (a removal, a quality step, a manual step) keeps the blueprint's text. The same function makes it for the route's step list, the current step, the overlay and a History entry |
+| Step targets | each step line's target modifiers, as the planning list writes them; empty when the step places none |
 | Branches | `On a hit: …` and `On a miss: …`, naming the next step by its instruction, or this step again, start over, give the item up, or the craft is done |
 | History summary | starts `Hit:`, `Miss:` or `Unexpected:`, then the targets gained or lost with their tier, a below-floor roll, or the reasons |
 | Refusal, rejection, stuck and replan reasons, the status line | Rust's words |
@@ -515,7 +548,7 @@ Headings: "Can't plan this item", "Grab another item:", "Grabbed text",
 crafting on Craft of Exile", "Settings", "Start crafting", "End craft",
 "Keep crafting", "Remove", "Clear targets". Labels: "Filter modifiers",
 "Filter currencies", "Blocked only", "Floor for <modifier text>", "Route",
-"Uses", "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
+"Uses", "Targets" (a step's line), "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
 "unrevealed", "target", "Settings", "this craft", "allowed for this craft",
 the status words "Crafting", "Stuck", "Replan", "Done", the watch line's
 label "Screen", the sources "from the screen" and "from a grab", and the
@@ -624,7 +657,8 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `hotkey-taken` | Another program holds `Ctrl+Alt+X` at the start: `!` the status naming it |
 | `overlay-active` | Guiding with the game in front: the overlay is visible with every row of an active guide, `top-center` |
 | `overlay-not-in-front` | Guiding with another window in front: the overlay is hidden |
-| `craft-planning` | Targets chosen with their floors; a route whose steps show known and unknown odds; Start crafting enabled |
+| `craft-prefilled` | Planning right after the grab: the item's own two modifiers ticked as targets at their tier and tagged "target", the route the engine previews for them |
+| `craft-planning` | Targets chosen with their floors, listed again above the route's steps; steps that name their target modifiers and show known and unknown odds; Start crafting enabled |
 | `craft-fallback` | A blocked currency and the step's fallback line; Blocked for this craft open, the entry tagged with its source |
 | `craft-no-route` | Targets no blueprint reaches: one line per rejected blueprint; Start crafting disabled with its reason |
 | `craft-refused` | A grab the engine refuses: "Can't plan this item", the reason, the grabbed text |

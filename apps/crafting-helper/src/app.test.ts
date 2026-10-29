@@ -257,6 +257,7 @@ describe('the craft window', () => {
       'hotkey-taken': 'Last grabbed item',
       'overlay-active': 'Rings: resistances by whittling',
       'overlay-not-in-front': 'Rings: resistances by whittling',
+      'craft-prefilled': 'Doom Loop',
       'craft-planning': 'Doom Loop',
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
@@ -334,7 +335,7 @@ describe('the craft window', () => {
     expect(text(route.querySelector('h2'))).toBe('Route');
     expect(text(route.querySelector('.route-name'))).toBe(previewed.name);
     expect(text(route.querySelector('.route-source'))).toBe(previewed.source);
-    expect(text(route.querySelector('.route-notes'))).toBe(previewed.notes);
+    expect(route.querySelector('.route-notes')).toBeNull();
     const routeSelect = labelled<HTMLSelectElement>(route, 'Route')!;
     expect([...routeSelect.options].map((o) => o.textContent)).toEqual([
       'Rings: resistances by whittling',
@@ -398,6 +399,127 @@ describe('the craft window', () => {
     expect(text(first.querySelector('.tier'))).toBe('—');
     expect(first.querySelector('.tier')!.getAttribute('aria-label')).toBe('no tier');
     expect(texts(first, '.tag')).toEqual(['fractured', 'target']);
+  });
+
+  it('planning_shows_the_items_own_mods_ticked', async () => {
+    // Right after a grab (`craft-prefilled`): the item's own explicit
+    // modifiers are the chosen targets, each at the tier it has, ticked in
+    // their group and marked met on the item. The page sent nothing for it:
+    // the list is Rust's.
+    const view = fixtureView('craft-prefilled');
+    const p = view.craft.planning!;
+    expect(p.targets.map((t) => [t.text, t.side, t.floor])).toEqual([
+      ['+# to maximum Mana', 'prefix', 5],
+      ['+# to Strength', 'suffix', 5],
+    ]);
+    expect(p.item.modifiers.map((m) => [m.side, m.tier, m.meets_target])).toEqual([
+      ['prefix', 5, true],
+      ['suffix', 5, true],
+    ]);
+    const { root, bridge } = await render(view);
+    const targets = root.querySelector('.targets')!;
+    expect(texts(targets, '.chosen li .target-text')).toEqual(['+# to maximum Mana', '+# to Strength']);
+    expect(texts(targets, 'fieldset.choices > legend')).toEqual(['Prefixes · 1 chosen', 'Suffixes · 1 chosen', 'Desecrated · 0 chosen']);
+    for (const name of ['+# to maximum Mana', '+# to Strength']) {
+      expect(checkbox(targets, name)!.checked, name).toBe(true);
+      const floor = labelled<HTMLSelectElement>(targets.querySelector('.chosen')!, `Floor for ${name}`)!;
+      expect(floor.selectedOptions[0].textContent, name).toBe('At least T5');
+    }
+    for (const li of root.querySelectorAll('.item-panel ul.mods li')) {
+      expect(texts(li, '.tag')).toContain('target');
+    }
+    expect(button(root, 'Clear targets')!.disabled).toBe(false);
+    expect(bridge.calls).toEqual([]);
+
+    // Negative control: with the player's own list (resistances), the
+    // item's modifiers are neither ticked nor marked as targets.
+    const planning = await render(fixtureView('craft-planning'));
+    const other = planning.root.querySelector('.targets')!;
+    expect(checkbox(other, '+# to maximum Mana')!.checked).toBe(false);
+    expect(checkbox(other, '+# to Strength')!.checked).toBe(false);
+    for (const li of planning.root.querySelectorAll('.item-panel ul.mods li')) {
+      expect(texts(li, '.tag')).not.toContain('target');
+    }
+  });
+
+  it('route_preview_lists_targets_and_the_craft_not_the_notes', async () => {
+    // The Route panel says what is targeted and what to do: the chosen
+    // targets with their floors (Rust's labels) above the steps, the route's
+    // name and source; never the blueprint's notes, which the view no
+    // longer carries.
+    for (const name of ['craft-planning', 'craft-prefilled', 'craft-fallback']) {
+      const view = fixtureView(name);
+      const p = view.craft.planning!;
+      const previewed = p.preview!.route!;
+      expect(Object.keys(previewed).sort(), name).toEqual(['blueprint', 'name', 'source', 'steps']);
+      const { root } = await render(view);
+      const route = root.querySelector('.route')!;
+      expect(text(route.querySelector('.route-name')), name).toBe(previewed.name);
+      expect(text(route.querySelector('.route-source')), name).toBe(previewed.source);
+      expect(route.querySelector('.route-notes'), name).toBeNull();
+
+      const list = route.querySelector('ul.route-targets')!;
+      expect(text(route.querySelector(`#${list.getAttribute('aria-labelledby')}`)), name).toBe('Targets');
+      expect(texts(list, 'li .target-text'), name).toEqual(p.targets.map((t) => t.text));
+      const floors = new Map(
+        [...p.choices.prefixes, ...p.choices.suffixes, ...p.choices.desecrated].map((c) => [c.mod_id, c.floors]),
+      );
+      expect(texts(list, 'li .floor'), name).toEqual(
+        p.targets.map((t) => floors.get(t.mod_id)!.find((f) => f.floor === t.floor)!.label),
+      );
+      // The targets come before the steps.
+      const steps = route.querySelector('ol.steps')!;
+      expect(list.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING, name).toBeTruthy();
+      expect(texts(steps, ':scope > li .instruction'), name).toEqual(previewed.steps.map((s) => s.instruction));
+    }
+    expect(texts((await render(fixtureView('craft-planning'))).root, '.route-targets .floor')).toEqual([
+      'At least T3',
+      'At least T3',
+      'At least T3',
+    ]);
+
+    // No target: no preview, so no target list either.
+    const bare = fixtureView('craft-planning');
+    bare.craft.planning = { ...bare.craft.planning!, targets: [], preview: null, can_accept: false };
+    const none = await render(bare);
+    expect(none.root.querySelector('.route-targets')).toBeNull();
+    expect(text(none.root.querySelector('.route .no-target'))).toBe('Pick a target to see a route.');
+  });
+
+  it('step_lines_name_their_target_mods', async () => {
+    // Each step that places a target names its target modifiers: in the
+    // route's step list and on the current step's card, as Rust sent them,
+    // under an instruction Rust composed that names them too.
+    const view = fixtureView('craft-planning');
+    const steps = view.craft.planning!.preview!.route!.steps;
+    expect(steps.every((s) => s.targets.length > 0)).toBe(true);
+    const { root } = await render(view);
+    const shown = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(shown).toHaveLength(steps.length);
+    steps.forEach((step, i) => {
+      expect(text(shown[i].querySelector('.step-targets .label')), step.id).toBe('Targets');
+      expect(texts(shown[i], '.step-targets .target'), step.id).toEqual(step.targets);
+      for (const target of step.targets) expect(text(shown[i].querySelector('.instruction')), step.id).toContain(target);
+    });
+
+    // A step that places none (the quality steps of `craft-prefilled`'s
+    // route) shows its blueprint text and no Targets line.
+    const prefilled = fixtureView('craft-prefilled');
+    const plain = prefilled.craft.planning!.preview!.route!.steps;
+    expect(plain.every((s) => s.targets.length === 0)).toBe(true);
+    const pr = await render(prefilled);
+    expect(texts(pr.root, '.route ol.steps > li .instruction')).toEqual(plain.map((s) => s.instruction));
+    expect(pr.root.querySelector('.route .step-targets')).toBeNull();
+
+    // The current step's card.
+    const guiding = fixtureView('craft-guiding');
+    const current = guiding.craft.guiding!.step!.step;
+    expect(current.targets).toEqual(['+#% to Cold Resistance', '+#% to Lightning Resistance']);
+    const gr = await render(guiding);
+    const card = gr.root.querySelector('.guide .card')!;
+    expect(text(card.querySelector('.instruction'))).toBe(current.instruction);
+    expect(texts(card, '.step-targets .target')).toEqual(current.targets);
+    for (const target of current.targets) expect(text(card.querySelector('.instruction'))).toContain(target);
   });
 
   it('target_filter_hides_rows_without_changing_targets', async () => {

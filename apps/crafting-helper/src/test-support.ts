@@ -21,6 +21,7 @@ export const FIXTURES: Record<string, unknown> = byName(
 
 /** The craft window's states, one file each (`fixtures/views/README.md`). */
 export const CRAFT_FIXTURE_NAMES = [
+  'craft-prefilled',
   'craft-planning',
   'craft-fallback',
   'craft-no-route',

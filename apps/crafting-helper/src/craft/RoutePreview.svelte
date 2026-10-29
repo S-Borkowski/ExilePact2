@@ -1,16 +1,28 @@
 <script lang="ts">
   // The route preview (`ui-design.md` § "Mode planning"): nothing but a
-  // prompt with no target; with a route, its name, source and notes, the
-  // route select when other routes apply, and the numbered steps; with no
-  // route, one line per rejected blueprint in Rust's order. The route the
-  // engine previews, and why one does not apply, are Rust's.
+  // prompt with no target; with a route, its name and source, the route
+  // select when other routes apply, the chosen targets with their floors,
+  // and the numbered steps, each naming its target modifiers; with no route,
+  // one line per rejected blueprint in Rust's order. What the craft targets
+  // and what to do, never the reasoning behind the technique. The route the
+  // engine previews, the floor labels, and why a route does not apply, are
+  // Rust's.
   import type { Send } from '../bridge';
-  import type { PreviewView } from '../ipc';
+  import type { ChosenTarget, PlanningView } from '../ipc';
   import StepFacts from './StepFacts.svelte';
 
-  let { preview, send }: { preview: PreviewView | null; send: Send } = $props();
+  let { planning, send }: { planning: PlanningView; send: Send } = $props();
 
   const uid = $props.id();
+  const preview = $derived(planning.preview);
+  /** Each choice's floor options, to say a target's floor in Rust's words. */
+  const floorsOf = $derived(
+    new Map(
+      [...planning.choices.prefixes, ...planning.choices.suffixes, ...planning.choices.desecrated].map((c) => [c.mod_id, c.floors]),
+    ),
+  );
+  const floorLabel = (target: ChosenTarget): string | null =>
+    floorsOf.get(target.mod_id)?.find((option) => option.floor === target.floor)?.label ?? null;
 
   function chooseRoute(event: Event, current: string): void {
     const select = event.currentTarget as HTMLSelectElement;
@@ -38,7 +50,15 @@
       {/if}
     </div>
     <p class="route-source">{route.source}</p>
-    {#if route.notes}<p class="route-notes">{route.notes}</p>{/if}
+    {#if planning.targets.length > 0}
+      <h3 class="section-title caps" id="{uid}-targets">Targets</h3>
+      <ul class="route-targets" aria-labelledby="{uid}-targets">
+        {#each planning.targets as target (target.mod_id)}
+          {@const floor = floorLabel(target)}
+          <li><span class="target-text">{target.text}</span>{#if floor !== null}<span class="floor">{floor}</span>{/if}</li>
+        {/each}
+      </ul>
+    {/if}
     <ol class="steps">
       {#each route.steps as step (step.id)}
         <li>
@@ -96,8 +116,23 @@
     color: var(--color-text-muted);
   }
 
-  .route-notes {
+  .route-targets li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 calc(var(--space-unit) * 3);
+    padding: var(--space-unit) 0;
+    font-size: var(--size-step);
+    line-height: var(--line-step);
+  }
+
+  .route-targets .target-text {
+    color: var(--color-text-primary);
+  }
+
+  .route-targets .floor {
     color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
   }
 
   ol,
