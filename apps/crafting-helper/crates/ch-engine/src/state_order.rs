@@ -9,7 +9,9 @@
 
 use std::collections::BTreeMap;
 
-use ch_blueprint::catalogue::{Currency, Effect, OmenChange, GREATER_OMEN, SIDE_OMEN};
+use ch_blueprint::catalogue::{
+    bones_for, entry, Currency, Effect, ItemGroup, OmenChange, GREATER_OMEN, SIDE_OMEN,
+};
 use ch_blueprint::{Action, Binding, Goal, Rarity as BpRarity, SideRule, Spanned, Step, When};
 use ch_data::{Kind, Section};
 
@@ -28,7 +30,8 @@ use crate::slots::{at_risk, removable, whittle_certain, Slots, Takes, SIDES};
 /// (the spec's "Step cap").
 pub const STEP_CAP: usize = 16;
 
-/// Step id to the target id its `essence` or `hardest` binding chose.
+/// Step id to the target id its `essence`, `hardest` or `last-remaining`
+/// binding chose.
 pub(crate) type Bindings = BTreeMap<String, String>;
 
 /// The position `Item::modifiers` gives a modifier the projection placed:
@@ -41,7 +44,8 @@ pub(crate) struct Pick {
     pub index: usize,
     /// The side its side rule resolved to; `None` for a step without one.
     pub side: Option<Kind>,
-    /// The target its `essence` or `hardest` binding names.
+    /// The target its `essence`, `hardest` or `last-remaining` binding
+    /// names.
     pub target: Option<usize>,
     /// The targets a hit may produce.
     pub aims: Vec<usize>,
@@ -71,10 +75,11 @@ fn bound(ctx: &Ctx, steps: &[Spanned<Step>], bindings: &Bindings, kind: Binding)
         .and_then(|m| ctx.target_index(m))
 }
 
-/// The target a step's own `essence` or `hardest` binding names.
+/// The target a step's own `essence`, `hardest` or `last-remaining` binding
+/// names.
 fn step_target(ctx: &Ctx, step: &Step, bindings: &Bindings) -> Option<usize> {
     match binding_of(step) {
-        Some(Binding::Essence | Binding::Hardest) => bindings
+        Some(Binding::Essence | Binding::Hardest | Binding::LastRemaining) => bindings
             .get(step.id.get_ref())
             .and_then(|m| ctx.target_index(m)),
         _ => None,
@@ -94,7 +99,10 @@ fn bind_all(steps: &[Spanned<Step>], bindings: &mut Bindings, kind: Binding, mod
 /// target (in target order) an unblocked essence of the essence step adds
 /// at its floor; `hardest` while a target is missing, to a missing
 /// desecrated-section target first, else the one with the lowest add odds
-/// (leaving out the essence's).
+/// (leaving out the essence's). `last-remaining` is made afresh on every
+/// item, to the one missing target when exactly one is missing: kept like
+/// `hardest`, a miss that leaves a second target missing would keep a
+/// desecration bound to a target that is no longer the last.
 pub(crate) fn ensure_bindings(
     ctx: &Ctx,
     st: &State,
@@ -148,6 +156,21 @@ pub(crate) fn ensure_bindings(
                 bindings,
                 Binding::Hardest,
                 &ctx.targets[t].mod_id.clone(),
+            );
+        }
+    }
+    if uses(Binding::LastRemaining) {
+        for s in steps.iter().map(|s| s.get_ref()) {
+            if binding_of(s) == Some(Binding::LastRemaining) {
+                bindings.remove(s.id.get_ref());
+            }
+        }
+        if let [last] = missing.as_slice() {
+            bind_all(
+                steps,
+                bindings,
+                Binding::LastRemaining,
+                &ctx.targets[*last].mod_id.clone(),
             );
         }
     }
@@ -308,6 +331,117 @@ fn resolve_side(
     }
 }
 
+/// Whether the item's class has a desecrated-section modifier on `side` at
+/// the item's level (the craft window's Desecrated group): the
+/// last-target desecration's pool condition.
+fn has_desecration_pool(ctx: &Ctx, side: Kind) -> bool {
+    ctx.data
+        .valid_mods(ctx.variant, ctx.item_level)
+        .desecrated
+        .iter()
+        .any(|m| m.kind == side)
+}
+
+fn no_desecration_pool(ctx: &Ctx, side: Kind) -> String {
+    format!(
+        "no desecrated {} modifier on {} at item level {}",
+        side_of(side).name(),
+        ctx.data.class.as_str(),
+        ctx.item_level
+    )
+}
+
+/// The names of what the player blocked that the step's alternatives need
+/// for a desecration on `side`: every bone that fits the item, and each
+/// omen (`side-omen` as that side's Necromancy omen).
+fn blocked_names(ctx: &Ctx, step: &Step, side: Kind) -> Vec<&'static str> {
+    let mut names: Vec<&'static str> = Vec::new();
+    let mut add = |name: &'static str| {
+        if !names.contains(&name) {
+            names.push(name);
+        }
+    };
+    for action in step.actions.iter().map(|a| a.get_ref()) {
+        let id = action.currency.get_ref().as_str();
+        let currency = Currency::of(id);
+        match currency {
+            Some(Currency::Desecrate) => {
+                let bones = ItemGroup::of_class(ctx.data.class.as_str())
+                    .map(|g| bones_for(g, ctx.item_level))
+                    .unwrap_or_default();
+                if !bones.is_empty() && bones.iter().all(|b| ctx.is_blocked(b.id)) {
+                    bones.iter().for_each(|b| add(b.name));
+                }
+            }
+            Some(Currency::Static(e)) if ctx.is_blocked(e.id) => add(e.name),
+            _ => {}
+        }
+        for omen in action.omens.iter().map(|o| o.get_ref().as_str()) {
+            let resolved = if omen == SIDE_OMEN {
+                currency.and_then(|c| c.side_omen(side_of(side)))
+            } else {
+                entry(omen)
+            };
+            if let Some(e) = resolved.filter(|e| ctx.is_blocked(e.id)) {
+                add(e.name);
+            }
+        }
+    }
+    names
+}
+
+/// `a`, `a and b`, `a, b and c`.
+fn and_list(names: &[&str]) -> String {
+    match names {
+        [] => String::new(),
+        [one] => one.to_string(),
+        [rest @ .., last] => format!("{} and {last}", rest.join(", ")),
+    }
+}
+
+/// Why the last-target desecration is not the step taken, in words, when
+/// the rule applies (a rare with no desecrated modifier, unrevealed ones
+/// included, and exactly one target missing) and the step at `picked`
+/// comes after the blueprint's `last-remaining` desecration, so was taken
+/// in its place (docs/models/crafting-slots-spec.md, "The last-target
+/// desecration"): no pool on the target's side, the bone or the
+/// Necromancy omen blocked, or the engine's own reason. `None` otherwise;
+/// the steps before it (a reveal, Omen of Light, a removal) clear the way
+/// for it rather than replace it.
+fn desecration_passed_over(
+    ctx: &Ctx,
+    st: &State,
+    steps: &[Spanned<Step>],
+    bindings: &Bindings,
+    picked: usize,
+) -> Option<String> {
+    if st.rarity != Some(BpRarity::Rare) || st.has_desecrated() {
+        return None;
+    }
+    let missing = st.missing(ctx.targets.len());
+    let [last] = missing.as_slice() else {
+        return None;
+    };
+    let index = steps.iter().position(|s| {
+        let s = s.get_ref();
+        *s.goal.get_ref() == Goal::Desecrate && binding_of(s) == Some(Binding::LastRemaining)
+    })?;
+    if picked <= index {
+        return None;
+    }
+    let slots = Slots::new(st, &ctx.targets);
+    let why = evaluate(ctx, st, &slots, steps, index, bindings).err()?;
+    let side = ctx.targets[*last].side;
+    if !has_desecration_pool(ctx, side) {
+        return Some(no_desecration_pool(ctx, side));
+    }
+    let blocked = blocked_names(ctx, steps[index].get_ref(), side);
+    if !blocked.is_empty() {
+        return Some(format!("{} blocked", and_list(&blocked)));
+    }
+    Some(why)
+}
+
 /// What a removal alternative takes.
 fn takes(action: &ChosenAction) -> Takes {
     if has_omen_change(action, OmenChange::DesecratedOnly) {
@@ -398,6 +532,12 @@ fn fit(
             match side {
                 None => unfit("it needs a side"),
                 Some(s) if slots.on(s).free == 0 => unfit("no free slot on its side"),
+                Some(s)
+                    if binding_of(step) == Some(Binding::LastRemaining)
+                        && !has_desecration_pool(ctx, s) =>
+                {
+                    unfit(&no_desecration_pool(ctx, s))
+                }
                 Some(_) => Ok(chosen),
             }
         }
@@ -476,7 +616,10 @@ pub(crate) fn evaluate(
         }
     }
     let target = step_target(ctx, step, bindings);
-    let binds_one = matches!(binding_of(step), Some(Binding::Essence | Binding::Hardest));
+    let binds_one = matches!(
+        binding_of(step),
+        Some(Binding::Essence | Binding::Hardest | Binding::LastRemaining)
+    );
     if step.when.as_ref().map(|w| *w.get_ref()) == Some(When::Bound)
         && binds_one
         && target.is_none()
@@ -536,8 +679,15 @@ pub(crate) fn next_step(
 }
 
 /// The step as the player sees it. On an item the projection changed, the
-/// odds are read off it and say "if the earlier steps hit".
-pub(crate) fn view(ctx: &Ctx, st: &State, steps: &[Spanned<Step>], pick: Pick) -> StepView {
+/// odds are read off it and say "if the earlier steps hit". Taken in place
+/// of the last-target desecration, it carries why.
+pub(crate) fn view(
+    ctx: &Ctx,
+    st: &State,
+    steps: &[Spanned<Step>],
+    bindings: &Bindings,
+    pick: Pick,
+) -> StepView {
     let step = steps[pick.index].get_ref();
     let goal = *step.goal.get_ref();
     let odds = step_odds(ctx, st, goal, &pick.aims, &pick.action).map(|o| {
@@ -547,6 +697,7 @@ pub(crate) fn view(ctx: &Ctx, st: &State, steps: &[Spanned<Step>], pick: Pick) -
             o
         }
     });
+    let instead_of_desecration = desecration_passed_over(ctx, st, steps, bindings, pick.index);
     StepView {
         id: step.id.get_ref().clone(),
         say: step.say.get_ref().clone(),
@@ -561,6 +712,7 @@ pub(crate) fn view(ctx: &Ctx, st: &State, steps: &[Spanned<Step>], pick: Pick) -
             .collect(),
         action: Some(pick.action),
         odds,
+        instead_of_desecration,
     }
 }
 
@@ -720,19 +872,22 @@ fn apply_hit(
     new
 }
 
-/// Ties each unrevealed modifier on the item to the target the route's
-/// desecration was bound to, when that target belongs on its side.
+/// Ties each unrevealed modifier on the item to the missing target a
+/// desecration of the route is bound to (`hardest` or `last-remaining`, in
+/// file order), when that target belongs on its side.
 pub(crate) fn mark_waiting(
     ctx: &Ctx,
     st: &mut State,
     steps: &[Spanned<Step>],
     bindings: &Bindings,
 ) {
+    let missing = st.missing(ctx.targets.len());
     let desecration = steps
         .iter()
         .map(|s| s.get_ref())
         .filter(|s| *s.goal.get_ref() == Goal::Desecrate)
-        .find_map(|s| step_target(ctx, s, bindings));
+        .filter_map(|s| step_target(ctx, s, bindings))
+        .find(|t| missing.contains(t));
     for m in st
         .mods
         .iter_mut()
@@ -792,7 +947,7 @@ pub(crate) fn project(
                 reasons: Vec::new(),
             });
         }
-        views.push(view(ctx, &st, steps, pick));
+        views.push(view(ctx, &st, steps, &bindings, pick));
         st = after;
     }
     let skipped = steps

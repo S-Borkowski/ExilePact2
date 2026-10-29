@@ -503,7 +503,7 @@ fn take(
         state_order::mark_waiting(ctx, &mut st, steps, bindings);
         let slots = Slots::new(&st, &ctx.targets);
         return state_order::evaluate(ctx, &st, &slots, steps, index, bindings)
-            .map(|pick| state_order::view(ctx, &st, steps, pick))
+            .map(|pick| state_order::view(ctx, &st, steps, bindings, pick))
             .map_err(|why| GuideError::StepNotTakeable {
                 step: step.id.get_ref().clone(),
                 why,
@@ -589,7 +589,7 @@ fn walk_state(
     }
     match state_order::next_step(ctx, &st, steps, &guide.bindings) {
         Ok(pick) => {
-            let view = state_order::view(ctx, &st, steps, pick);
+            let view = state_order::view(ctx, &st, steps, &guide.bindings, pick);
             guide.tries = if came_from == Some(view.id.as_str()) {
                 guide.tries + 1
             } else {

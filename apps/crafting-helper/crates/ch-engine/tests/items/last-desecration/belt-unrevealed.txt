@@ -1,0 +1,19 @@
+Item Class: Belts
+Rarity: Rare
+Cord Snare
+Heavy Belt
+--------
+Requires: Level 40
+--------
+Item Level: 82
+--------
+{ Implicit Modifier }
+Has 2 Charm Slots — Unscalable Value
+--------
+{ Prefix Modifier "Athlete's" (Tier: 2) — Life }
++130(120-149) to maximum Life
+{ Prefix Modifier "Gentian" (Tier: 2) — Mana }
++95(90-104) to maximum Mana
+{ Unrevealed Desecrated Prefix Modifier }
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++33(31-35)% to Fire Resistance
