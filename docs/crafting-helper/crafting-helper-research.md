@@ -279,7 +279,7 @@ gloves with a rune in the stash plain and with Alt, a magic ring, a normal
 belt, a rare quarterstaff, a rare jewel, rare gloves with an unrevealed
 desecrated modifier plain and with Alt, the stash and inventory with
 nothing hovered, an Exalted Orb, and the amulet and the gloves again at
-1920 x 1080. A fifteenth, shot 13, came after Live 1 (below). Shots 01-11
+1920 x 1080. A fifteenth, shot 13, came after Live 1's first run (below). Shots 01-11
 and 13 are 2560 x 1440 fullscreen, HUD scale middle, UI text size medium; 12a and 12b are the game windowed at 1920 x 1080,
 captured with the Windows title bar. They were decoded with `qt-capture`'s
 decoder and read with Windows' OCR (en-US), the backend the app uses.
@@ -307,8 +307,9 @@ rest on it.
 The questions:
 
 1. **Where it draws.** Beside the hovered item, kept inside the window: in
-   ten of the fourteen tooltips it lies flush against the client's left
-   edge, in five within ten pixels of its top, whole each time. At
+   ten of the fifteen tooltips it lies flush against the client's left
+   edge, in five within ten pixels of its top, whole each time (shot 13's
+   is neither: its body starts 98 pixels in, its header at row 148). At
    2560 x 1440 the boxes were 663 to 877 pixels wide (0.26 to 0.34 of the
    client) and 194 to 631 high; at 1920 x 1080 the amulet's box is the same
    fraction of the client as at 1440 (0.108 to 0.336 of its height, both),
@@ -363,7 +364,8 @@ The questions:
    on 1920 x 1080 14 to 16 ms; OCR of one crop 34 to 215 ms, the most for
    the jewel's box, which runs on 1009 rows over the dark stash. OCR of a
    whole 2560 x 1440 shot took 694 to 847 ms. The copy of the window is not
-   part of these times: Live 1 measures it.
+   part of these times: Live 1 measured it together with the locating and
+   the OCR, a minute at a time (§ "Live 1" below).
 7. **Unrevealed and fractured modifiers.** An unrevealed desecrated
    modifier shows, plain and with Alt, as a row of green glyphs that OCR
    reads nothing of, then the line `Take this item to the Well of Souls to
@@ -398,7 +400,7 @@ Two findings changed the matcher:
   bounds in either order.
 
 **Shot 13: the rare belt Live 1 could not read** (measured on the owner's
-screenshot `13-belt-plain` and its copy, 2026-10-29). In Live 1, hovering
+screenshot `13-belt-plain` and its copy, 2026-10-29). In Live 1's first run, hovering
 a rare `Utility Belt` (item level 77: a charm slot line, a requirement, a
 flask implicit, two prefixes and a suffix) logged the tooltip as
 unreadable, a line not accounted for. The owner's screenshot of the same
@@ -419,6 +421,14 @@ grid's slot numbers in this shot). The matcher now also accounts for a
 requirement line by what follows its last colon, `Level` and its value,
 then only attributes with their values, whatever came before it; without
 the colon, or with any other word after it, the line stays unaccounted for.
+That leaves one named case open: a requirement line that carries `(unmet)`,
+the form the item's copy writes for an attribute the character does not
+meet (`89 (unmet) Dex`, `docs/RUNTIME_DATA_MODELS.md` § "Item text
+(Ctrl+Alt+C and Ctrl+C)"). If OCR breaks that line's first word and reads
+an `(unmet)` after its colon, neither the key match nor the fallback places
+it, and the item reads as unreadable, never as another item. No shot's
+tooltip read the word (question 3: the requirement lines read without it),
+so whether the game ever draws it there is not established.
 `the_belt_shot_reads_unchanged` (in `tests/shots.rs`) failed on the code
 before the fix and passes after it.
 `a_belt_with_charm_slots_and_a_flask_implicit_reads_unchanged` (in
@@ -434,3 +444,88 @@ edge, a tooltip over a bright scene (every body ended over the dark stash
 or a dark panel), and a unique item. The locator and the reader are also
 tested on synthetic tooltips drawn the same way
 (`locator_finds_a_synthetic_tooltip`).
+
+### Live 1
+
+Measured 2026-10-29, 14:28-14:53Z (times UTC), with the M6 workorder's
+Live procedure 1 on its second run (capture
+`.claude/workorders/crafting-helper-m6-ocr-overlay-live-1.md`; the session's
+store kept outside the repository). The first run, capture
+`crafting-helper-m6-ocr-overlay-live-1-attempt-1.md`, was ruled
+instrument-blind and counts for nothing here but the belt of shot 13. The
+build was the release exe of commit `0ca9d7f8` (the `round-3` fix, "the
+pages wait for the app state at start"; SHA-256 `E00E2B8D…8EE8`), run as
+its own process beside the game with a store folder of its own. An earlier
+start of the same run, on the build before that fix, left the main window
+blank (its pages asked for the app's state before it existed) and was
+stopped; the rerun from the build is what follows. The app sent the game
+nothing; the owner hovered, held Alt and used the orb by hand.
+
+The game's client read as 2560 x 1440 (`watch: game window 2560x1440`,
+each time it came in front), the physical resolution the owner gave for
+the shots, so the app's copy sees physical pixels. The owner grabbed a rare
+belt with `Ctrl+Alt+C` then `Ctrl+Alt+X` while in the game, picked four
+targets and accepted the route `fill-desecrate-exalt`; its first step was a
+plain Exalted Orb for the cold resistance suffix.
+
+The checks, each against the capture's `## Checks`:
+
+- **build**: pass. The exe was the one built at that commit, and its
+  `start:` line named the session's store.
+- **ocr-ready**: pass. `watch: on (OCR en-US)` when the game first came in
+  front with the craft guiding.
+- **control**: pass. `qt-capture`'s OCR self-test passed on this machine
+  before the session, and, in the game, hovering the crafted belt with
+  nothing used read `watch: tooltip unchanged`: the copy, the locator and
+  the OCR saw this tooltip in this session, the positive control for every
+  read below.
+- **overlay-shown**: pass. `overlay: placed top-center` and `overlay:
+  shown`; the owner saw the step over the game at the top middle.
+- **overlay-hides**: pass. Leaving the game logged `overlay: hidden (game
+  not in front)`, coming back `overlay: shown`; the log shows the same
+  pair at each switch of window in the session.
+- **other-item**: pass. Hovering an item of another kind read `watch:
+  tooltip another item`, and no outcome was applied.
+- **screen-outcome**: pass. After the Exalted Orb, the hovered belt read
+  `watch: tooltip changed` and, about 1 s later, `craft: miss at fill (from
+  the screen)`: a real miss, read from the screen with no grab, and the
+  overlay showed the miss branch's next step. The last `unchanged` read
+  before it was 6 s earlier; when within those 6 s the orb went on is not
+  timestamped. A grab after it logged `craft: grab matches the screen` and
+  applied nothing a second time.
+- **watch-off**: pass, on the driver's ruling. Turning the watch off logged
+  `watch: idle (screen watch off)`; the next minute line counted 2 copies
+  and the one after 0. The driver ruled the first window began 5 s before
+  the switch, so its 2 copies fell before it; the minute line gives no time
+  per copy, so that placement is the driver's inference.
+- **end-hides**: pass in substance, on the driver's ruling. Ending the
+  craft logged `craft: ended` and `watch: idle (not guiding)`, but not
+  `overlay: hidden (not guiding)`: the overlay was already hidden because
+  the game was not in front, and the app logs a change only. No `overlay:
+  shown` followed, and the owner confirmed the panel stayed hidden back in
+  the game.
+- **hotkey-in-game**: the `Ctrl+Alt+X` grab reached the app with the game
+  in front (`grab from the shortcut: 20 lines`, and 22 lines later); the
+  paste fallback was not needed.
+- **busy-minute**: the `watch: minute:` lines from the start of guiding to
+  the watch going off. With the game in front and no tooltip in view, a
+  minute held 61 to 98 copies at 3.2 to 5.0 s busy, about 50 ms for a copy
+  and its locating. With tooltips hovered, the busiest minutes were 82
+  copies, 19 OCR reads and 7.9 s, and 73 copies, 13 OCR reads and 8.1 s:
+  up to about 8 s of copy and OCR in a minute. A minute with the game out
+  of front, or the watch off, counted 0 copies and 2 or 3 ms busy.
+- **alt-held**: not observed. The tooltip states read in the seconds Alt
+  may have been held were `unreadable`, `unchanged` and `none`, but neither
+  the owner's reply nor the log gives a time for Alt, so no state is tied
+  to it.
+- **read-latency**: not observed as defined (from the owner's reply to the
+  outcome line): the outcome was logged before the reply arrived, and the
+  reply carries no time. What the log does give is the 1 s from `tooltip
+  changed` to the outcome, above.
+
+Not observed in this session: a black copy (`watch: black`), a `watch:
+tooltip covered by the overlay` line, an unexpected change, and an
+`error: watch:` line. Hovering between items also toggled `another item`
+and `none` a second or two at a time, without any outcome. The owner's
+remarks on the app from this session went to the post-Live fix batch and
+are recorded with the app, not here.

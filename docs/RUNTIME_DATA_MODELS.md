@@ -714,17 +714,18 @@ otherwise, and adds to the waystone text layout in § "Item search box
 
 Source: the owner's fourteen screenshots of the game's window with the
 hovered item's `Ctrl+Alt+C` copy beside each, 2026-10-29, and a fifteenth
-after Live 1, shot 13 (2560 x 1440
+after Live 1's first run, shot 13 (2560 x 1440
 fullscreen and 1920 x 1080 windowed, HUD scale middle, UI text size
 medium), read with Windows' OCR (en-US). The images stay on the owner's
 machine; the method, the numbers per shot and the tests are in
 [`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
 § "Item tooltip on screen". Every fact below is measured from those
-screenshots and copies (2026-10-29) unless it says otherwise; nothing here
-was read from the game's code.
+screenshots and copies (2026-10-29) unless it says otherwise; the last
+bullet but one was measured in the game, in the crafting helper's Live 1.
+Nothing here was read from the game's code.
 
 - **Placement**: the tooltip draws beside the hovered item. In ten of the
-  14 measured tooltips it lay flush against the client's left edge and in
+  15 measured tooltips it lay flush against the client's left edge and in
   five within ten pixels of its top, whole each time; a tooltip at the
   right or bottom edge, or one cut by the window's edge, was not observed.
   Hovering a weapon once drew the
@@ -776,6 +777,19 @@ was read from the game's code.
   § "Item tooltip on screen", shot 13.
 - **A tier above the item level**: a level 43 item carried `Gleaming`,
   whose item level in the crafting helper's data (from poe2db) is 46.
+- **In the game** (measured 2026-10-29, Live 1, the crafting helper's
+  release build beside the game, 2560 x 1440, English client; research:
+  [`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
+  § "Live 1"): a GDI copy of the game's client reads at its physical size
+  (2560 x 1440), and Windows' OCR read the hovered tooltip live: a rare
+  belt hovered with nothing used read as unchanged, an item of another
+  kind as another item, the cursor off any item as no tooltip, and the
+  belt after an Exalted Orb as changed, classified as a miss about 1 s
+  later. A copy and its locating cost about 50 ms with no tooltip in view;
+  a minute of hovering cost up to about 8 s of copy and OCR (82 copies and
+  19 OCR reads, or 73 and 13). A global `Ctrl+Alt+X` registered by another
+  app reaches it with the game in front. Not observed: a black copy, and
+  which tooltip state holds while Alt is held (no time was taken for Alt).
 - Not established: whether the plain tooltip sums two modifiers' identical
   stat lines into one (no item in the shots had two), a unique's tooltip,
   and how a tooltip looks over a bright scene.
