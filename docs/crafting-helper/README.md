@@ -82,8 +82,9 @@ browser for the crafting this app does not cover.
     (Chaos Orb with Omen of Whittling, which takes the lowest-level
     modifier) or annul (a plain Orb of Annulment, which takes one at
     random), the app decides from the modifier levels on the item: the
-    whittle when the single lowest-level modifier is one you do not want,
-    otherwise the annulment, and the whittle after all when Orb of
+    whittle when the engine's whittle is a certain hit, every modifier at
+    the lowest level being one you do not want (when several share that
+    level, the step names each), otherwise the annulment, and the whittle after all when Orb of
     Annulment is blocked for the craft. A step that neither places nor
     removes a modifier (a fill, a quality or a manual step) keeps the
     blueprint's text. The blueprint's notes, the reasoning behind its
@@ -803,8 +804,8 @@ release already exists, only its assets are replaced.
   2560 x 1440 physical pixels, the crafted belt hovered with nothing used
   read `unchanged`, another item read `another item`, and an Exalted Orb's
   miss was read from the screen and applied about 1 s after the tooltip
-  changed, with no grab; a grab after it matched the screen and applied
-  nothing twice. The time from hover to outcome as the player sees it,
+  changed, with no grab; a grab after it logged `craft: grab matches the
+  screen` and did not apply the outcome a second time. The time from hover to outcome as the player sees it,
   and what the watch reads while Alt is held, were not observed (neither
   has a timestamp of its own). Only that one resolution, at HUD scale
   middle and UI text size medium, ran live; another display scale,
@@ -815,8 +816,12 @@ release already exists, only its assets are replaced.
   busy, about 50 ms for a copy and its locating; with tooltips hovered,
   the busiest minutes were 82 copies, 19 OCR reads and 7.9 s, and 73
   copies, 13 OCR reads and 8.1 s, so up to about 8 s of copy and OCR in a
-  minute, on one machine. With the game not in front or the watch off, a
-  minute counts no copies. A slower machine has not been measured.
+  minute, on one machine. With the game not in front, a minute counted no
+  copies. With the watch off it counts none by inference: the first minute
+  line after the switch counted 2 copies and the next 0, and the line
+  gives no time per copy, so placing those 2 before the switch is an
+  inference, not a measurement (the research note's § "Live 1",
+  watch-off). A slower machine has not been measured.
 - **What the watch cannot read** it calls unreadable and asks for a grab:
   a modifier the data has no modifier for, on the tooltip or on the item
   the step was shown on (the quarterstaff's `of the Parasite` suffix in
