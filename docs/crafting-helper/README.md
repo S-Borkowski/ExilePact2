@@ -266,7 +266,8 @@ Takes no arguments.
     - `watch: black: 10 copies in a row`, when the copy of the window
       comes back black;
     - `watch: minute: <n> copies, <n> tooltips, <n> OCR reads, busy <n>
-      ms`, once a minute while guiding;
+      ms`, once a minute while guiding (a failed OCR call is not an OCR
+      read: it is the `error: watch:` line below);
     - `error: watch: <call> failed: <system error>`, once until that call
       succeeds; `error: the watch thread did not start: <e>`; and `error:
       watch: did not end within <n> ms` when the app quits during a slow
@@ -432,9 +433,9 @@ the research note:
   click, no typed text, no window message, no focus or activation change,
   no simulated Alt, no other process opened (but the web browser Windows
   starts when you press the Craft of Exile button, below), no game memory
-  read and none of the game's files. Hovering the item, and holding Alt if
-  you wish, is yours to do. The overlay never takes focus and lets every
-  click and the cursor through.
+  read and none of the game's files. Hovering the item is yours to do
+  (without Alt: the plain tooltip reads best). The overlay never takes
+  focus and lets every click and the cursor through.
 - **What it keeps of a grab**: the text, in memory, until the next grab or
   until the app quits, and the craft built on it (the item, the targets,
   the craft's blocked changes, the guide and its history, and the item the
@@ -722,13 +723,15 @@ release already exists, only its assets are replaced.
   the `watch: game window` and `watch: minute:` lines are what to read.
   Another resolution, HUD scale or text size has not been tried.
 - **What the watch cannot read** it calls unreadable and asks for a grab:
-  a modifier line the data has no modifier for (the quarterstaff's `of the
-  Parasite` suffix in the shots), an unrevealed desecrated modifier (a row
-  of glyphs OCR reads nothing of), a fractured modifier (in no shot), new
-  values that fit two tiers, a name colour far from every rarity's, an
-  item with no base type, and a tooltip touching the window's edge. A
-  unique item is in no shot. With Alt held, OCR lost some values in the
-  shots: hover without Alt. Seven of the nine plain equipment shots read
+  a modifier the data has no modifier for, on the tooltip or on the item
+  the step was shown on (the quarterstaff's `of the Parasite` suffix in
+  the shots), an unrevealed desecrated modifier (a row of glyphs OCR reads
+  nothing of), a fractured modifier (in no shot), new values that fit two
+  tiers, a name colour far from every rarity's, an item with no base
+  type, and a tooltip reaching the bottom edge of the game's window, where
+  it may be cut off (only the bottom edge is checked). A unique item is in
+  no shot. With Alt held, OCR lost some values in the shots: hover without
+  Alt, as the watch line says. Seven of the nine plain equipment shots read
   as their item's copy and the rest unreadable, never another item.
 - **Another item of the same base** with the same modifiers and tiers
   looks like the item being crafted: the watch tells items by base type,

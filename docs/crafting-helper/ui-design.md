@@ -51,7 +51,8 @@ Overlay section.
   every click through, and shows only while a craft is guided and the
   game's window is in front.
 - **The screen is read, never touched.** The app sends the game nothing:
-  the player takes the step, hovers the item and holds Alt themselves. A
+  the player takes the step and hovers the item themselves, without Alt
+  (the plain tooltip is the one the app reads best). A
   read the app cannot trust changes nothing and says to grab the item,
   which stays the fallback in every state.
 
@@ -442,11 +443,13 @@ Rust to take the warning colour. Rust's words; the
 | The item unchanged | `Watching: the item has not changed yet.` | |
 | Another item hovered | `Watching: that is another item; hover the one you are crafting.` | |
 | A change, read once | `Checking the change: keep hovering the item.` | |
-| Unreadable | `Can't read the item (<reason>): hold Alt over it, or grab it.` | yes |
+| Unreadable | `Can't read the item (<reason>): hover it without Alt, or grab it.` | yes |
 | Under the overlay | `The overlay covers the item: move it in Settings, or grab the item.` | yes |
 | An unexpected change | `The item changed in a way the guide did not expect: grab it to check.` | yes |
 | 10 black copies in a row | `Can't copy the game's window: grab the item after each step.` | yes |
 | No English OCR | `Can't read the screen (no English OCR): grab the item after each step.` | yes |
+| The game's window call fails | `Can't read the screen (<call> failed): grab the item after each step.`, in place of the paused lines | yes |
+| A copy or the OCR call fails | `Can't read the screen (<call> failed): grab the item after each step.` | yes |
 | `screen_watch` off | `Screen reading is off: grab the item after each step.` | |
 | No screen backend | `Screen reading is not available: grab the item after each step.` | |
 | The game not in front | `Paused: the game is not in front.` | |
@@ -456,8 +459,13 @@ Rust to take the warning colour. Rust's words; the
 
 `<reason>` is the matcher's reason in words: `a line it does not know`,
 `two tiers fit`, `the rarity is unclear`, `the item has no base type`,
-`it may be cut off at the window's edge`. None of these lines, nor any
-other, carries OCR text, a pixel or a window title.
+`it may be cut off at the window's edge`, `a modifier it does not know`.
+`<call>` is the system call that failed, as the one-time `error: watch:
+<call> failed: <error>` line names it; the line stays until a call
+succeeds or the craft stops guiding. A failed window call never reads as
+`Paused: the game is not in front.`: whether the game is in front is not
+known. None of these lines, nor any other, carries OCR text, a pixel or
+a window title.
 
 ### The currency picker
 
