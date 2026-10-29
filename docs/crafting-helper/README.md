@@ -31,6 +31,11 @@ browser for the crafting this app does not cover.
   files, the item tooltip on screen):
   [`crafting-helper-research.md`](crafting-helper-research.md)
 - Writing and checking a crafting blueprint: [`blueprints.md`](blueprints.md)
+- How a state-ordered route uses an item's free slots, and the facts it
+  rests on with their labels:
+  [`docs/models/crafting-slots-spec.md`](../models/crafting-slots-spec.md);
+  why routes are planned that way:
+  [`docs/adr/0001-crafting-helper-route-design.md`](../adr/0001-crafting-helper-route-design.md)
 - The item text parser the app uses:
   [`apps/crafting-helper/crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md)
 - How the app updates itself, shared with the quest tracker and the
@@ -78,7 +83,7 @@ browser for the crafting this app does not cover.
     the currency with its omens and the modifier it removes, by its text
     on the item (`Orb of Annulment to remove +95(90-104) to maximum Mana
     or +200(168-236) to Accuracy Rating; it takes one modifier at
-    random`). Where a blueprint lets a clean-up step either whittle
+    random`). Where a listed blueprint lets a clean-up step either whittle
     (Chaos Orb with Omen of Whittling, which takes the lowest-level
     modifier) or annul (a plain Orb of Annulment, which takes one at
     random), the app decides from the modifier levels on the item: the
@@ -90,6 +95,25 @@ browser for the crafting this app does not cover.
     blueprint's text. The blueprint's notes, the reasoning behind its
     technique, are not shown. With no route, one line per blueprint says
     why it does not apply. *Start crafting* starts the guide.
+
+    Four of the blueprints are **state-ordered** (since 0.1.1): the
+    engine plans them from each side's free slots rather than a fixed
+    order, taking the first step whose condition holds on the item as it
+    stands, so an item part-way through a craft (a rare with some of the
+    targets, a fractured target, a magic item with one good modifier)
+    starts where it is. Their route is the path the craft takes if each
+    step hits, from this item, so a step may appear twice. On such a
+    route no step offers an Exalted Orb without a side omen while a side's
+    last free slots are kept for its missing targets; a step names Omen
+    of Greater Exaltation where two free slots take two targets; a step
+    that closes a finished side says so in the app's words (`Exalted Orb
+    with Omen of Greater Exaltation and Omen of Dextral Exaltation on the
+    suffix side, for any modifier`); a removal is a whittle only when it
+    is certain to take a modifier you do not want, and names Omen of
+    Sinistral or Dextral Annulment when the other side holds a target;
+    and the engine's choice is final (the app does not decide again by
+    the modifier levels). How they work: [`blueprints.md`](blueprints.md)
+    § "State-ordered blueprints".
 
     A grab that enters planning arrives with the item's own explicit
     prefixes and suffixes already ticked as targets, each with its floor
@@ -111,6 +135,10 @@ browser for the crafting this app does not cover.
     the next item when it repeats: a whittle taken where the app said to
     annul (one modifier out and one in) reads as unexpected, and the craft
     asks to plan again, as with any currency other than the one shown.
+    On a state-ordered route the step is picked from the item after each
+    outcome, so "Step <n>" counts the steps in the order this craft takes
+    them; the hit line names the preview's next step and the miss line
+    says the next step is picked from the item after the miss.
     *End craft* goes back to planning on the latest item, keeping the
     targets.
 
@@ -200,7 +228,11 @@ browser for the crafting this app does not cover.
   `apps/crafting-helper/blueprints/` and their format
   ([`blueprints.md`](blueprints.md)), and the engine that picks a blueprint
   route for an item and classifies each step as hit, miss or unexpected
-  (`ch-engine`), all built into the exe.
+  (`ch-engine`), all built into the exe. The rules the engine follows on a
+  state-ordered blueprint are written down first, in
+  [`crafting-slots-spec.md`](../models/crafting-slots-spec.md), and
+  modelled in stdlib Python; the engine is held to that model by tests
+  (Working on the app).
 
 ## Platforms and prerequisites
 
@@ -549,8 +581,9 @@ the research note:
 | `apps/quest-tracker/crates/qt-screen/`, `qt-capture/` | The quest tracker's screen crates, taken **by path and unchanged**: `qt-screen` (the image, the boxes, the OCR line, the fuzzy match) by `ch-watch` and the glue, `qt-capture` (the game's client area, the GDI copy, the overlay's own rect and Windows' OCR) by the glue and by `ch-watch`'s tests. Each takes its package keys from its own workspace; a change there is a change to this app ([Maintenance triggers](#maintenance-triggers)). |
 | `apps/crafting-helper/crates/ch-item/` | The item text parser, a std-only crate; the craft window parses each grab with it: [`crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md). |
 | `apps/crafting-helper/crates/ch-data/` | The modifier data under `data/`, embedded at build time: an item's variant from its base type, what it can roll at its item level, the join of each parsed modifier to its data modifier and tier, the affix limits (`AFFIX_LIMITS`), and one step's add and removal odds, or `unknown` with the reason. |
-| `apps/crafting-helper/crates/ch-blueprint/` | The blueprint format: the model (`model.rs`), the static catalogue of currencies, omens, bones, fluxes and catalysts with their ids (`catalogue.rs`), the structural validator whose every error is `<path>:<line>:<col>: <message>` (`validate.rs`), and the shipped blueprints, embedded by `build.rs`. |
-| `apps/crafting-helper/crates/ch-engine/` | The engine: blueprints resolved against the data, route choice for an item, its targets and the blocked currencies (`route.rs`), the guide's outcomes (`guide.rs`), the full catalogue with the data-backed essences, alloys and liquids, and the `check_blueprints` example. `ch-app` re-exports it and plans, guides and fills the blocked list's catalogue with it. |
+| `apps/crafting-helper/crates/ch-blueprint/` | The blueprint format: the model (`model.rs`, listed and state order), the static catalogue of currencies, omens, bones, fluxes and catalysts with their ids, and the not-established fact ids `relies_on` may name (`catalogue.rs`), the structural validator whose every error is `<path>:<line>:<col>: <message>` (`validate.rs`), and the shipped blueprints, embedded by `build.rs`. |
+| `apps/crafting-helper/crates/ch-engine/` | The engine: blueprints resolved against the data, route choice for an item, its targets and the blocked currencies (`route.rs`), the slot accounting every state-ordered rule reads (`slots.rs`), the state-ordered next step, side rules, placeholders and preview (`state_order.rs`), the guide's outcomes (`guide.rs`), the full catalogue with the data-backed essences, alloys and liquids, and the `check_blueprints` example. `ch-app` re-exports it and plans, guides and fills the blocked list's catalogue with it. |
+| `docs/models/crafting-slots-spec.md` | The mechanism behind state-ordered routes, in our own words, each fact labelled documented, measured or not established with its source: the slot accounting, what each crafting item does to the slots, the route rules, the preview and the representative crafts. The model and the engine follow it; a gap is fixed there first. |
 | `apps/crafting-helper/blueprints/` | The shipped blueprints, one TOML file each: how to write one is [`blueprints.md`](blueprints.md). |
 | `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start, moved where `ch-app` places it and shown without taking focus), the screen watch's real backend (`screen.rs`, over `qt-capture` and `ch-watch`'s reader) and the one file that reads the window in front and its title (`game_window.rs`), each window with its capability under `capabilities/`, opening Craft of Exile's address through `tauri-plugin-opener` from Rust alone (registered without its link handler, no `opener:` permission in any capability), the update transport over the shared `ep-net`, and the restart into an installed update. |
 | `apps/crafting-helper/src/` | The main page (`App.svelte`; the shared parts under `components/`: the grab prompt, the grabbed text, the status line and `CurrencyPicker.svelte`; the craft area under `craft/`, one component per part, from `CraftArea.svelte`; the commands `bridge.ts`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`) and the overlay's under `src/overlay/` (`overlay.html`, `Overlay.svelte`: the step panel). |
@@ -558,7 +591,7 @@ the research note:
 | `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), embedded by `ch-data` when the app is built. |
 | `apps/crafting-helper/fixtures/` | `views/`, one main window view per state (the craft window's included, [`views/README.md`](../../apps/crafting-helper/fixtures/views/README.md)), `app-settings/`, one Settings window view per update, install and settings state, and `catalogue.json`, the `get_catalogue` answer, shared by the page's tests and `ch-app`'s. |
 | `apps/shared/` | The update code the three apps share, its own Cargo workspace: `ep-net` (the only network code) and `ep-update`: [`docs/app-updates.md`](../app-updates.md). |
-| `tools/crafting_helper/` | The poe2db data extractor (`poe2db.py`) and the release cutter (`release.py`). |
+| `tools/crafting_helper/` | The poe2db data extractor (`poe2db.py`), the release cutter (`release.py`) and the slot model (`slot_model.py`, stdlib only, built from the spec alone: `py -3 -m tools.crafting_helper.slot_model check` plans every case of `cases.json` and names each difference). |
 | `.github/workflows/crafting-helper-release.yml` | The release build: from a pushed tag to a draft release. |
 
 Tests (none opens a window, reads a real clipboard, copies the screen or
@@ -572,6 +605,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test updates  # the update commands, fake transport
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test craft_window  # the craft window, fake shell
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test remarks  # whittle or annul, removal and branch copy, fake shell
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test state_order  # the craft window on state-ordered routes, fake shell
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test settings # the saved settings, the blocked list, the catalogue
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test overlay  # the overlay: when it shows, where it sits, what it says
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test watch    # the screen watch, fake backend
@@ -581,7 +615,9 @@ cargo run --release --manifest-path apps/crafting-helper/Cargo.toml -p ch-watch 
 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p qt-capture --locked -- --include-ignored  # reads OCR: qt-capture's own tests and its OCR self-test
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked         # the data: join, valid modifiers, odds
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-blueprint --locked    # the format, the catalogue, the validator
-cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths, state order, the parity test
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test slots  # the parity test: the engine against the slot model's cases
+py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
 npm --prefix apps/crafting-helper test                                                  # the pages, in jsdom
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
@@ -676,27 +712,43 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   and the walk to done; and that `open_craft_of_exile` asks the shell for
   the one fixed address
   (`open_craft_of_exile_opens_only_the_fixed_address`).
-- `ch-app`'s `tests/remarks.rs` drives the shipped `fill-desecrate-exalt`
-  route over the ring of `ch-engine`'s seed walk
-  (`crates/ch-engine/tests/items/gear/fill-desecrate-exalt/`, read by
-  path, with its life, fire, cold and chaos targets): after a missed
-  exalt, the clean-up step is the annulment when the lowest-level
-  modifier is a target
+- `ch-app`'s `tests/remarks.rs` drives the shipped state-ordered
+  `close-a-side` over the owner's 2P/1S belt (`crates/ch-app/tests/items/`,
+  constructed; its README lists the states), with Life, Mana and the
+  missing Armour as target prefixes and Fire Resistance as a target
+  suffix, after the suffix side was closed and the slam on the open
+  prefix side missed: the removal is the annulment with Omen of
+  Sinistral Annulment when the lowest-level modifier is a target
   (`a_missed_exalt_above_the_lowest_level_is_annulled`) and the whittle
-  when it is not (`a_missed_exalt_at_the_lowest_level_is_whittled`), the
-  whittle stays when Orb of Annulment is blocked for the craft
-  (`a_blocked_annulment_keeps_the_whittle`), a removal step names the
-  modifiers it removes (`a_removal_step_names_the_modifier_it_removes`),
-  a miss branch into it offers no choice, the branch lines name the next
-  step by its composed instruction, the desecrate step names the hardest
-  target, an annulment the app named is judged as one from a grab or the
-  screen while a whittle there reads unexpected
+  when it is not (`a_missed_exalt_at_the_lowest_level_is_whittled`), a
+  removal step names the modifiers it removes
+  (`a_removal_step_names_the_modifier_it_removes`), a miss branch into it
+  offers no choice, the branch lines name the next step by its composed
+  instruction, the desecrate step names the hardest target (on issue
+  #28's ring, `ch-engine`'s slot case `rare-one-target`), an annulment
+  the app named is judged as one from a grab or the screen while a
+  whittle there reads unexpected
   (`an_annulment_the_app_named_is_judged_as_an_annulment`,
   `an_annulment_read_from_the_screen_is_judged_as_an_annulment`), a
   missed annulment shows the step again with no fallback line, no status
   line names the blueprint (`status_lines_do_not_name_the_blueprint`),
   and the last outcome says its word once
-  (`the_last_outcome_says_its_word_once`).
+  (`the_last_outcome_says_its_word_once`). These moved off the retired
+  `fill-desecrate-exalt` in 0.1.1; the listed whittle-or-annul by level,
+  and that the whittle stays when Orb of Annulment is blocked
+  (`a_blocked_annulment_keeps_the_whittle`), are `craft.rs`'s unit tests,
+  on that blueprint's test copy in `ch-engine`.
+- `ch-app`'s `tests/state_order.rs` drives the craft window on
+  state-ordered routes: a fill step names its currency, omens and side
+  (`a_fill_step_names_its_currency_omens_and_side`), two target prefixes
+  and a suffix never get an Exalted Orb without a side omen on any route
+  (`two_prefixes_and_a_suffix_never_get_an_unrestricted_exalt`), a rare
+  with one target gets a route (`a_rare_with_one_target_gets_a_route`,
+  issue #28), the hit line names the preview's next step and the miss
+  line says the item picks it, no fallback line for the engine's own
+  pick, a removal names its side annulment, and the route's source line
+  carries no web address
+  (`the_route_source_carries_no_web_address`).
 - `ch-app`'s `tests/fixtures.rs` (`fixtures_are_current`) writes the
   views under `fixtures/views/` and `fixtures/app-settings/` and
   `fixtures/catalogue.json`, the overlay's and the screen watch's views
@@ -735,14 +787,43 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   (`ring_life_exalt_odds_match_the_weights`); the rest of its items are
   constructed in the test. `ch-blueprint`'s `tests/format.rs` reads the
   files under `tests/fixtures/valid/` and `tests/fixtures/invalid/` and
-  checks each error's line and column. `ch-engine`'s `tests/engine.rs`
-  covers route choice and outcomes; `tests/seeds_gear.rs` and
-  `tests/seeds_jewels_weapons.rs` walk each shipped blueprint on a hit and
+  checks each error's line and column, and reads the spec's facts table
+  against the fact ids `relies_on` may name (`facts_match_the_spec_table`).
+  `ch-engine`'s `tests/engine.rs`
+  covers route choice and outcomes, and the listed-order baseline: the
+  retired `fill-desecrate-exalt`, kept as a test blueprint under
+  `tests/items/gear/fill-desecrate-exalt/`, still names a plain Exalted
+  Orb and still rejects a rare with one target; `tests/state_order.rs`
+  covers state order over its `test-state-*` blueprints; `tests/seeds_gear.rs`,
+  `tests/seeds_jewels_weapons.rs` and `tests/seeds_v2.rs` walk each shipped
+  blueprint on a hit and
   a miss path, over the item texts under `tests/items/` (each folder's
   `README.md` says which are real and which constructed); and
   `tests/shipped.rs` validates and resolves every file under
   `blueprints/`. After editing a blueprint, run `check_blueprints` (above)
   and the `ch-engine` tests: [`blueprints.md`](blueprints.md).
+- **The slot model and the parity test.** The state-ordered rules are
+  written down in
+  [`docs/models/crafting-slots-spec.md`](../models/crafting-slots-spec.md)
+  first (the decision:
+  [`docs/adr/0001-crafting-helper-route-design.md`](../adr/0001-crafting-helper-route-design.md)),
+  then modelled from the spec alone in `tools/crafting_helper/slot_model.py`.
+  `tests/test_crafting_helper_slot_model.py` holds the model's baselines
+  (an Exalted Orb with no side omen can take the prefix slot a 2P/1S craft
+  still needs; the listed `fill-desecrate-exalt` names a plain one there
+  and rejects a rare with one target) and its targets (every case projects
+  as recorded, and the spec's invariants hold, each with a control). The
+  model owns
+  `apps/crafting-helper/crates/ch-engine/tests/items/slots/cases.json`,
+  each case an abstract item, its targets and what each state-ordered
+  blueprint must preview on it; `ch-engine`'s `tests/slots.rs`
+  (`every_case_projects_as_the_model_records`) builds a constructed item
+  per case and asserts every expectation, beside a negative control that
+  a changed expectation is reported. A disagreement is settled by the
+  spec, never by editing `cases.json` to match the engine. A new
+  state-ordered blueprint is held to the model only once the model's
+  `BLUEPRINTS`, an expectation in every case and `tests/slots.rs`'s list
+  of the four (`V2`) name it.
 
 **Refreshing the modifier data**: see the research note's
 [Data extractor](crafting-helper-research.md#data-extractor).
@@ -804,7 +885,8 @@ release already exists, only its assets are replaced.
   measured on the owner's screenshots (2026-10-29: 2560 x 1440
   fullscreen and 1920 x 1080 windowed, HUD scale middle, UI text size
   medium), then in the game in Live 1 (2026-10-29, the exe built from
-  commit `0ca9d7f8`, a rare belt on `fill-desecrate-exalt`; the research
+  commit `0ca9d7f8`, a rare belt on `fill-desecrate-exalt`, a route
+  retired in 0.1.1; the research
   note's
   [Item tooltip on screen](crafting-helper-research.md#item-tooltip-on-screen)
   § "Live 1"). There the app's copy of the window read the client as
@@ -887,7 +969,10 @@ release already exists, only its assets are replaced.
     an expected cost.
   - **The affix limits are assumed**: Magic 1 prefix and 1 suffix, Rare 3
     and 3, Rare jewel 2 and 2, one more on the other side with a Contempt
-    liquid emotion. The owner's figures, not measured from the game.
+    liquid emotion. The Magic and Rare limits are documented (poe2db's
+    item text, the spec's `magic-slots` and `rare-slots`), the jewel and
+    Contempt ones are the owner's; none is measured from the game, and
+    every state-ordered route's slot accounting rests on them.
   - **The tier join is measured on five items.** The tier the engine
     derives from poe2db's levels equalled the game's `Tier:` on all 18
     joined modifiers of the owner's five real items
@@ -898,6 +983,38 @@ release already exists, only its assets are replaced.
     mapping, catalyst quality, rune sockets) are kept and said so in the
     blueprint file's `notes`, which the craft window does not show;
     catalyst and rune steps are manual.
+  - **The state-ordered routes rely on facts that are not established.**
+    Each of the four names them in its `relies_on`, by their id in the
+    spec's facts table
+    ([`crafting-slots-spec.md`](../models/crafting-slots-spec.md)
+    § "Facts"); community guides state them or they are inferred, and
+    none was measured in the game: Omen of Greater Exaltation with a
+    Sinistral or Dextral Exaltation omen adding both modifiers on that
+    side (`greater-with-side-omen`, all four), Greater Exaltation needing
+    two free slots (`greater-needs-two-free`, all four), an exalt or
+    augment with no side omen landing on the open side when the other is
+    full (`open-side-landing`, `close-a-side` and `magic-augment-essence`),
+    Whittling taking the lowest modifier level (`whittling-mod-level`,
+    all four), a fractured modifier never being annulled or chaosed
+    (`fractured-not-removed`, all four), the Necromancy and Abyssal
+    Echoes omens needing to be active before use
+    (`omens-active-before-use`), and what Sinistral Necromancy does on a
+    class with no desecrated prefixes (`necromancy-without-pool`), these
+    two `essence-desecrate-double-slam`'s alone. The craft window does
+    not show `relies_on`: the blueprint files and
+    [`blueprints.md`](blueprints.md) § "The seed blueprints" carry it. If
+    one of them is false in the game, the step is still shown as the
+    route has it, and what the currency did is classified from the item
+    as usual, as a miss or as unexpected.
+  - **A state-ordered preview assumes every step hits** and nothing else
+    changes: no modifier lands where the step did not aim, no omen is
+    wasted, and every fact above holds. A whittle's added modifier is not
+    shown; a filler that closes a side is shown as "any modifier"; a later
+    step's odds are read off that projected item ("if the earlier steps
+    hit"), so they are rougher than the first step's. A preview longer
+    than 16 steps is rejected as one that cannot finish. The odds of an
+    uncertain removal assume each modifier it may take is equally likely
+    to go (`removal-equally-likely`, not established).
 - **The "looks like an item" check is the first line only.** A text is
   taken for an item when its first line starts with `Item Class: `; every
   item text the owner copied for the parser (`ch-item`'s
@@ -951,7 +1068,9 @@ release already exists, only its assets are replaced.
   in the game. The changes made after Live 1 (whittle or annul decided by
   the app, a removal step naming its modifiers, the branch lines naming
   the next step, no route name on screen, the outcome's word said once)
-  are proven by tests only.
+  are proven by tests only, and so are 0.1.1's state-ordered routes: the
+  engine's walks, the slot model and the parity test over constructed
+  items, with no craft taken in the game.
 - **Craft of Exile's page is outside this project.** The button opens its
   beta address with `?game=poe2`; if the site moves or drops that address,
   the button opens whatever the site serves there until the app is
@@ -996,6 +1115,19 @@ release already exists, only its assets are replaced.
   id that goes away is also dropped from saved blocked lists at the next
   start, and `fixtures/catalogue.json` and the craft window's fixtures
   change with it (`CH_FIXTURES=1`, Working on the app).
+- **A patch that changes slots or omens** (how many prefixes and suffixes
+  a magic or rare item holds, what an Exaltation, Annulment or Necromancy
+  omen does, Omen of Greater Exaltation or Whittling, or a crafting item
+  made available or unobtainable): update the facts table and the rules in
+  [`docs/models/crafting-slots-spec.md`](../models/crafting-slots-spec.md)
+  first, then the model (`tools/crafting_helper/slot_model.py`) and the
+  cases it records in `cases.json` (`py -3 -m unittest
+  tests.test_crafting_helper_slot_model`), then the engine until the
+  parity test (`ch-engine`'s `tests/slots.rs`) passes. A fact relabelled
+  in the table also means `ch-blueprint`'s list of not-established ids
+  (`facts_match_the_spec_table` fails until they agree) and the
+  `relies_on` of each blueprint that names it; a fact a session measures
+  is relabelled measured there.
 - **poe2db's pages changing**: the extractor stops with an error naming the
   page; see the research note.
 - **Craft of Exile's address changing** (the site leaving
@@ -1016,6 +1148,43 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.1.1
+
+- Crafts are planned from each side's free slots. Four new routes,
+  drawn from published 0.5 crafting guides, pick their next step from the
+  item as it stands, so an item already part-way there (a rare with some
+  of your targets, a fractured target, a magic item with one good
+  modifier) starts where it is, and the route preview shows the steps the
+  craft takes if each one lands:
+  - **close a side**: fill the side that already has its targets with
+    cheap modifiers, so the last exalt can only go where the missing
+    target is;
+  - **essence, desecrate, then side slams**: an essence on a magic item,
+    a desecration for the hardest target on its side, then Exalted Orbs
+    restricted to each target's side;
+  - **a magic item with two good modifiers, then an essence**: transmute
+    and augment, annul a wrong one, then an essence makes it rare with a
+    third;
+  - **clean a rare, then slam**: for a rare with few or none of your
+    targets, such as a dropped one (#28): remove what is in the way, then
+    side-restricted slams.
+- The routes never offer an Exalted Orb without a side omen while one
+  side's last free slots are kept for its missing targets, so an exalt can
+  no longer take the prefix slot your last prefix needs.
+- Every omen a step needs is named: the Sinistral or Dextral omen for its
+  side, and Omen of Greater Exaltation where two free slots take two
+  targets.
+- A removal says Omen of Sinistral or Dextral Annulment when the other
+  side holds a target, so the annul cannot take it, and uses a whittle
+  only when it is certain to take a modifier you do not want.
+- The old "fill, desecrate, slam" route is gone; the new ones cover its
+  crafts and the rare with one target it refused.
+- Some of what these routes do is how community guides describe the
+  game, not something GGG has stated or this project has measured (such
+  as Greater Exaltation with a side omen putting both modifiers on that
+  side). Each route's file lists those facts (Known limitations).
+- The app still sends the game nothing.
 
 ### 0.1.0 (first version)
 
