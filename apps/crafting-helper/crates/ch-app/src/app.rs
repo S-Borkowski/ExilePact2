@@ -40,7 +40,27 @@
 //! size changes, then shows or hides it ([`Shell::set_overlay_visible`]).
 //! Without a backend it never shows. The watch thread looks at the game's
 //! window only while the craft is guiding; `App` sends it each change of
-//! that without waiting, and never waits on it with its lock held.
+//! that, and of whether to read, without waiting, and never waits on it
+//! with its lock held.
+//!
+//! The screen watch ([`crate::screen`]): while the guide is active,
+//! `screen_watch` is on and the game is in front, the thread reads the
+//! hovered item's tooltip and reports what it saw (`watch: tooltip <state>`
+//! in `diag.log` when it changes). A change read twice alike, for the
+//! current generation, is classified by the engine on a copy of the guide:
+//! a hit or a miss is kept as a grab's is, with the screen as its history
+//! entry's source and the read item (no copied text) as the item now
+//! (`craft: <hit|miss> at <step id> (from the screen)`); an unexpected
+//! change keeps nothing, says to grab the item, and is not applied again
+//! (`watch: unexpected change at <step id> not applied`). Every grab and
+//! every command moves the generation on, so a read in flight is dropped:
+//! a grab wins. A grab after a screen read whose rarity and explicit
+//! modifiers (ids and tiers) are the read item's is not an outcome: it
+//! replaces the read item (`craft: grab matches the screen`). No English
+//! OCR (`watch: refused: no English OCR`), `screen_watch` off or no backend
+//! reads nothing, and grabs drive the guide as in M5. The guiding view and
+//! the overlay carry the same watch line ([`WatchLineView`]): what the
+//! watch sees and what to do.
 //!
 //! The hotkey, `check_updates`, the blocked currencies, `overlay_position`
 //! and `screen_watch` are saved to
@@ -71,15 +91,19 @@ use ep_update::{
 };
 use serde_json::{json, Value};
 
+use ch_engine::ch_item::Item;
 use ch_engine::{Engine, Target};
+use ch_watch::ItemKey;
 
-use crate::craft::{CommandResult, Craft, GrabEffect, CRAFT_OF_EXILE_URL};
+use crate::craft::{CommandResult, Craft, GrabEffect, ScreenEffect, CRAFT_OF_EXILE_URL};
 use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
 use crate::overlay::{overlay_guide, overlay_origin};
 use crate::screen::{
-    self, ClientRect, Demand, GameWindow, ScreenSetup, Watch, WatchFailure, WatchMsg,
-    WATCH_STOP_DEADLINE,
+    self, unreadable_line, ClientRect, Demand, GameWindow, OcrReadiness, Report, ScreenSetup, Seen,
+    Watch, WatchFailure, WatchMsg, ANOTHER_ITEM_LINE, BLACK_LINE, CHECKING_LINE, COVERED_LINE,
+    MINIMIZED_LINE, NOT_IN_FRONT_LINE, NO_BACKEND_LINE, NO_OCR_LINE, STUCK_LINE, UNCHANGED_LINE,
+    UNEXPECTED_LINE, WATCHING_LINE, WATCH_OFF_LINE, WATCH_STOP_DEADLINE,
 };
 use crate::settings::{
     blocked_list, catalogue_groups, load_blocked, load_overlay_position, load_screen_watch,
@@ -89,8 +113,8 @@ use crate::settings::{
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
 use crate::updates::{Clock, UpdateSetup};
 use crate::view::{
-    CraftMode, GrabSource, GrabView, OutcomeWord, OverlayPosition, OverlayView, SettingsView,
-    StatusKind, StatusLine, View,
+    CraftMode, GrabSource, GrabView, GuideStatusView, OutcomeWord, OverlayPosition, OverlayView,
+    SettingsView, StatusKind, StatusLine, View, WatchLineView,
 };
 
 /// How long after the last change the settings are written.
@@ -236,10 +260,26 @@ struct ScreenState {
     window_failed: bool,
     /// The overlay's size was unknown, and that was logged.
     size_failed: bool,
-    /// The last demand sent to the thread (whether guiding), and its
-    /// number; a report of another number is dropped.
-    demand: Option<bool>,
+    /// The last demand sent to the thread (whether guiding, whether to
+    /// read), and its number; a report of another number is dropped.
+    demand: Option<(bool, bool)>,
     generation: u64,
+    /// A screen backend was given.
+    has_screen: bool,
+    /// The OCR reads English (`Some(true)`) or not, once the thread asked.
+    ocr: Option<bool>,
+    /// What the last read of this generation saw.
+    seen: Option<Seen>,
+    /// A change the guide did not expect, read and not applied: its key,
+    /// never applied again until the next grab.
+    unexpected: Option<ItemKey>,
+    /// A read or OCR call failed and was logged; a success clears it.
+    read_failed: bool,
+    /// The last `watch: idle (guide not active|screen watch off)` line
+    /// written while guiding, and the last `watch: tooltip …` (or black)
+    /// line; both forgotten when guiding ends.
+    read_line: Option<String>,
+    tooltip_line: Option<String>,
 }
 
 impl Default for ScreenState {
@@ -253,6 +293,13 @@ impl Default for ScreenState {
             size_failed: false,
             demand: None,
             generation: 0,
+            has_screen: false,
+            ocr: None,
+            seen: None,
+            unexpected: None,
+            read_failed: false,
+            read_line: None,
+            tooltip_line: None,
         }
     }
 }
@@ -301,6 +348,27 @@ impl State {
     /// The overlay should show: guiding, with the game's window in front.
     fn overlay_wanted(&self) -> bool {
         self.guiding() && matches!(self.screen.game, Game::InFront(_))
+    }
+
+    /// The watch should read the tooltips (while the game is in front): a
+    /// screen backend, an active guide, `screen_watch` on and English OCR
+    /// not refused.
+    fn reads(&self) -> bool {
+        self.screen.has_screen
+            && self.craft.guide_status() == Some(GuideStatusView::Active)
+            && self.screen_watch
+            && self.screen.ocr != Some(false)
+    }
+
+    /// Why the watch reads nothing while guiding with the game's window
+    /// looked at, for its `watch: idle (<reason>)` line.
+    fn read_idle(&self) -> Option<&'static str> {
+        match self.craft.guide_status() {
+            None => None,
+            Some(GuideStatusView::Active) if self.screen_watch => None,
+            Some(GuideStatusView::Active) => Some("screen watch off"),
+            Some(_) => Some("guide not active"),
+        }
     }
 }
 
@@ -473,6 +541,7 @@ impl App {
         };
 
         let saver = store.as_ref().map(|s| start_saver(Arc::clone(s)));
+        let has_screen = screen.is_some();
         let app = Arc::new_cyclic(|me| App {
             me: me.clone(),
             shell,
@@ -487,7 +556,10 @@ impl App {
                 overlay_position,
                 screen_watch,
                 craft: Craft::default(),
-                screen: ScreenState::default(),
+                screen: ScreenState {
+                    has_screen,
+                    ..ScreenState::default()
+                },
             }),
             saver: Mutex::new(saver),
             hotkey_replaced,
@@ -497,7 +569,7 @@ impl App {
             ticker: Mutex::new(None),
             restart_requested: AtomicBool::new(false),
             engine,
-            has_screen: screen.is_some(),
+            has_screen,
             screen_setup: Mutex::new(screen),
             watch: Mutex::new(None),
             overlay_order: Mutex::new(()),
@@ -589,13 +661,167 @@ impl App {
         }
     }
 
-    /// The watch thread's look at the game's window, for demand
-    /// `generation`: applied while that is the current demand and the craft
-    /// is guiding; then the overlay follows, with no lock held.
-    pub(crate) fn window_report(&self, generation: u64, window: Result<GameWindow, WatchFailure>) {
+    /// A report of the watch thread, for demand `generation` (see
+    /// [`crate::screen`]). Nothing after the shutdown began.
+    pub(crate) fn watch_report(&self, generation: u64, report: Report) {
         if self.stopped.load(Ordering::Acquire) {
             return;
         }
+        match report {
+            Report::Window(window) => self.window_report(generation, window),
+            Report::Ocr(ready) => self.ocr_report(ready),
+            Report::Read { seen, confirmed } => self.read_report(generation, seen, confirmed),
+            Report::ReadFailed(failure) => {
+                let first = {
+                    let mut st = self.lock();
+                    let first = !st.screen.read_failed;
+                    st.screen.read_failed = true;
+                    first
+                };
+                if first {
+                    self.diag(&format!(
+                        "error: watch: {} failed: {}",
+                        failure.call, failure.error
+                    ));
+                }
+            }
+            Report::Minute { counts, busy_ms } => {
+                if self.lock().guiding() {
+                    self.diag(&format!(
+                        "watch: minute: {} copies, {} tooltips, {} OCR reads, busy {busy_ms} ms",
+                        counts.copies, counts.tooltips, counts.ocr_reads
+                    ));
+                }
+            }
+        }
+    }
+
+    /// The watch line the views carry now.
+    fn watch_now(&self) -> Option<WatchLineView> {
+        watch_line_view(&self.lock())
+    }
+
+    /// Whether the OCR reads English: said once, and a refusal stops the
+    /// reads (the next demand says not to read).
+    fn ocr_report(&self, ready: Result<OcrReadiness, WatchFailure>) {
+        let (line, changed) = {
+            let mut st = self.lock();
+            let was = st.screen.ocr;
+            let line = match ready {
+                Ok(OcrReadiness::Ready { language }) => {
+                    st.screen.read_failed = false;
+                    st.screen.ocr = Some(true);
+                    format!("watch: on (OCR {language})")
+                }
+                Ok(OcrReadiness::NoEnglish) => {
+                    st.screen.read_failed = false;
+                    st.screen.ocr = Some(false);
+                    "watch: refused: no English OCR".to_string()
+                }
+                Err(f) => {
+                    let first = !st.screen.read_failed;
+                    st.screen.read_failed = true;
+                    drop(st);
+                    if first {
+                        self.diag(&format!("error: watch: {} failed: {}", f.call, f.error));
+                    }
+                    return;
+                }
+            };
+            let changed = was != st.screen.ocr;
+            (line, changed)
+        };
+        if changed {
+            self.diag(&line);
+            self.screen_changed();
+            self.emit();
+        }
+    }
+
+    /// A read of the tooltips, for demand `generation`: what it saw becomes
+    /// the watch's state (its line written when it changed), and a change
+    /// read twice alike is applied to the craft (see `Craft::screen_change`)
+    /// unless it is the unexpected change already turned down. Dropped for
+    /// another generation or when the craft is not guiding.
+    fn read_report(&self, generation: u64, seen: Seen, confirmed: Option<(Box<Item>, ItemKey)>) {
+        let before = self.watch_now();
+        let (lines, kept) = {
+            let mut guard = self.lock();
+            let st = &mut *guard;
+            if st.screen.generation != generation || !st.guiding() {
+                return;
+            }
+            st.screen.read_failed = false;
+            let mut lines = Vec::new();
+            let line = seen.diag_line();
+            if st.screen.tooltip_line.as_ref() != Some(&line) {
+                lines.push(line.clone());
+                st.screen.tooltip_line = Some(line);
+            }
+            st.screen.seen = Some(seen);
+            let mut kept = None;
+            if let Some((item, key)) = confirmed {
+                if st.screen.unexpected.as_ref() != Some(&key) {
+                    match st.craft.screen_change(self.engine.as_ref(), *item) {
+                        ScreenEffect::Kept {
+                            result,
+                            step,
+                            summary,
+                        } => {
+                            lines.push(format!(
+                                "craft: {} at {step} (from the screen)",
+                                outcome_name(result)
+                            ));
+                            st.status = Some(Status {
+                                line: StatusLine::info(format!("{summary}. Read from the screen.")),
+                                about_hotkey: false,
+                            });
+                            kept = Some(true);
+                        }
+                        ScreenEffect::Unexpected { step } => {
+                            lines.push(format!("watch: unexpected change at {step} not applied"));
+                            st.screen.unexpected = Some(key);
+                            st.status = Some(Status {
+                                line: StatusLine::error(
+                                    "Read from the screen: the item changed in a way the guide did not expect. Grab it to check; the craft is unchanged.",
+                                ),
+                                about_hotkey: false,
+                            });
+                            kept = Some(false);
+                        }
+                        ScreenEffect::Ignored => {}
+                    }
+                }
+            }
+            (lines, kept)
+        };
+        for line in &lines {
+            self.diag(line);
+        }
+        match kept {
+            // The item the next step is shown on changed: a new demand.
+            Some(true) => {
+                self.send_demand(true);
+                self.sync_screen();
+                self.emit();
+            }
+            Some(false) => {
+                self.sync_screen();
+                self.emit();
+            }
+            None => {
+                if self.sync_screen() || self.watch_now() != before {
+                    self.emit();
+                }
+            }
+        }
+    }
+
+    /// The watch thread's look at the game's window, for demand
+    /// `generation`: applied while that is the current demand and the craft
+    /// is guiding; then the overlay follows, with no lock held.
+    fn window_report(&self, generation: u64, window: Result<GameWindow, WatchFailure>) {
+        let before = self.watch_now();
         let failure = {
             let mut st = self.lock();
             if st.screen.generation != generation || !st.guiding() {
@@ -616,7 +842,7 @@ impl App {
         if let Some(f) = failure {
             self.diag(&format!("error: watch: {} failed: {}", f.call, f.error));
         }
-        if self.sync_screen() {
+        if self.sync_screen() || self.watch_now() != before {
             self.emit();
         }
     }
@@ -636,35 +862,60 @@ impl App {
             Ok(watch) => *self.watch.lock().unwrap_or_else(|p| p.into_inner()) = Some(watch),
             Err(e) => self.diag(&format!("error: the watch thread did not start: {e}")),
         }
-        self.send_demand();
+        self.send_demand(false);
     }
 
-    /// After a change that may move the craft in or out of guiding, or the
-    /// overlay's settings: tells the watch thread and brings the overlay in
-    /// line. The caller sends the view after.
+    /// After a change that may move the craft in or out of guiding, change
+    /// whether to read, or move the overlay: tells the watch thread and
+    /// brings the overlay in line. The caller sends the view after.
     fn screen_changed(&self) {
-        self.send_demand();
+        self.send_demand(false);
         self.sync_screen();
     }
 
-    /// Sends the watch thread the demand when it changed, never waiting. A
-    /// craft that stops guiding forgets the game's window, so the next one
-    /// starts from a fresh look.
-    fn send_demand(&self) {
+    /// After a grab or a craft command: as [`App::screen_changed`], with a
+    /// new generation whatever changed, so a read in flight is dropped and
+    /// the thread matches against the item the step is shown on now.
+    fn screen_moved(&self) {
+        self.send_demand(true);
+        self.sync_screen();
+    }
+
+    /// Sends the watch thread the demand when it changed, or with `force`,
+    /// never waiting; a new demand has a new generation, and with `force`
+    /// the watch's last read and an unexpected change turned down are
+    /// forgotten. A craft that stops guiding forgets the game's window and
+    /// the reads, so the next one starts from a fresh look.
+    fn send_demand(&self, force: bool) {
         let demand = {
             let mut st = self.lock();
             let guiding = st.guiding();
             if !guiding {
                 st.screen.game = Game::Unknown;
+                st.screen.seen = None;
+                st.screen.unexpected = None;
+                st.screen.read_line = None;
+                st.screen.tooltip_line = None;
             }
-            if st.screen.demand == Some(guiding) {
+            let read = st.reads();
+            if !force && st.screen.demand == Some((guiding, read)) {
                 return;
             }
-            st.screen.demand = Some(guiding);
+            st.screen.demand = Some((guiding, read));
             st.screen.generation += 1;
+            if force {
+                st.screen.seen = None;
+                st.screen.unexpected = None;
+            }
             Demand {
                 generation: st.screen.generation,
                 guiding,
+                read,
+                item: if read {
+                    st.craft.step_item().cloned().map(Box::new)
+                } else {
+                    None
+                },
             }
         };
         let watch = self.watch.lock().unwrap_or_else(|p| p.into_inner());
@@ -699,6 +950,15 @@ impl App {
                     lines.push(line.clone());
                     st.screen.watch_line = line;
                 }
+            }
+            match st.read_idle().map(idle_line) {
+                Some(line) => {
+                    if st.screen.read_line.as_ref() != Some(&line) {
+                        lines.push(line.clone());
+                        st.screen.read_line = Some(line);
+                    }
+                }
+                None => st.screen.read_line = None,
             }
             let mut place = None;
             let mut show_now = st.overlay_wanted();
@@ -1031,7 +1291,7 @@ impl App {
             Ok(done) => self.diag(&done.diag),
             Err(why) => self.diag(&format!("craft: refused: {why}")),
         }
-        self.screen_changed();
+        self.screen_moved();
         self.emit();
         self.get_view()
     }
@@ -1237,6 +1497,9 @@ impl App {
                     GrabEffect::Ignored(why) => StatusLine::error(format!(
                         "Not a step result: {why}. The craft is unchanged."
                     )),
+                    GrabEffect::MatchesScreen => StatusLine::info(
+                        "This is the item the screen read: the grab replaces it, and the craft is unchanged.",
+                    ),
                     GrabEffect::Observed {
                         result, summary, ..
                     } => {
@@ -1253,13 +1516,12 @@ impl App {
                     about_hotkey: false,
                 });
                 drop(st);
-                if let GrabEffect::Observed { result, step, .. } = &effect {
-                    let word = match result {
-                        OutcomeWord::Hit => "hit",
-                        OutcomeWord::Miss => "miss",
-                        OutcomeWord::Unexpected => "unexpected",
-                    };
-                    self.diag(&format!("craft: {word} at {step}"));
+                match &effect {
+                    GrabEffect::Observed { result, step, .. } => {
+                        self.diag(&format!("craft: {} at {step}", outcome_name(*result)));
+                    }
+                    GrabEffect::MatchesScreen => self.diag("craft: grab matches the screen"),
+                    _ => {}
                 }
             }
             Err(refusal) => {
@@ -1274,7 +1536,8 @@ impl App {
                 });
             }
         }
-        self.screen_changed();
+        // Every grab moves the generation on: a read in flight is dropped.
+        self.screen_moved();
         self.emit();
     }
 
@@ -1328,7 +1591,10 @@ impl Drop for App {
 
 /// The view of `st`, with the newer version a check found.
 fn view_of(st: &State, engine: Option<&Engine>, update_available: Option<String>) -> View {
-    let craft = st.craft.view(engine, &st.blocked_currencies);
+    let mut craft = st.craft.view(engine, &st.blocked_currencies);
+    if let Some(g) = craft.guiding.as_mut() {
+        g.watch = watch_line_view(st);
+    }
     let guide = craft.guiding.as_ref().map(overlay_guide);
     View {
         craft,
@@ -1359,6 +1625,59 @@ fn watch_line(st: &State) -> Option<String> {
             client.width(),
             client.height()
         )),
+    }
+}
+
+/// The screen watch's line for the views (`ui-design.md` § "The screen
+/// watch's line"): while guiding, what the watch sees and what to do, the
+/// ones that ask the player to act marked for the warning colour; `None`
+/// when not guiding and with replan and done.
+fn watch_line_view(st: &State) -> Option<WatchLineView> {
+    let line = |text: &str, warning: bool| {
+        Some(WatchLineView {
+            text: text.to_string(),
+            warning,
+        })
+    };
+    match st.craft.guide_status()? {
+        GuideStatusView::Replan | GuideStatusView::Done => return None,
+        GuideStatusView::Stuck => return line(STUCK_LINE, false),
+        GuideStatusView::Active => {}
+    }
+    if !st.screen.has_screen {
+        return line(NO_BACKEND_LINE, false);
+    }
+    if !st.screen_watch {
+        return line(WATCH_OFF_LINE, false);
+    }
+    if st.screen.ocr == Some(false) {
+        return line(NO_OCR_LINE, true);
+    }
+    match st.screen.game {
+        Game::NotInFront | Game::Failed => return line(NOT_IN_FRONT_LINE, false),
+        Game::Minimized => return line(MINIMIZED_LINE, false),
+        Game::Unknown | Game::InFront(_) => {}
+    }
+    match &st.screen.seen {
+        None | Some(Seen::NoTooltip) => line(WATCHING_LINE, false),
+        Some(Seen::Unchanged) => line(UNCHANGED_LINE, false),
+        Some(Seen::AnotherItem) => line(ANOTHER_ITEM_LINE, false),
+        Some(Seen::Changed(key)) if st.screen.unexpected.as_ref() == Some(key) => {
+            line(UNEXPECTED_LINE, true)
+        }
+        Some(Seen::Changed(_)) => line(CHECKING_LINE, false),
+        Some(Seen::Unreadable(why)) => line(&unreadable_line(*why), true),
+        Some(Seen::Covered) => line(COVERED_LINE, true),
+        Some(Seen::Black) => line(BLACK_LINE, true),
+    }
+}
+
+/// An outcome as the `craft:` lines name it.
+fn outcome_name(result: OutcomeWord) -> &'static str {
+    match result {
+        OutcomeWord::Hit => "hit",
+        OutcomeWord::Miss => "miss",
+        OutcomeWord::Unexpected => "unexpected",
     }
 }
 

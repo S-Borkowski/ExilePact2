@@ -13,10 +13,11 @@ mod common;
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 
 use ch_app::{
-    CatalogueGroup, CraftMode, GameWindow, GuideStatusView, InstallState, OutcomeWord,
-    OverlayPosition, SettingsView, StatusKind, Version, View,
+    CatalogueGroup, CraftMode, GameWindow, GuideStatusView, InstallState, OcrReadiness,
+    OutcomeSource, OutcomeWord, OverlayPosition, SettingsView, StatusKind, Version, View,
 };
 use common::*;
 use serde_json::{json, Value};
@@ -217,6 +218,55 @@ fn main_views() -> Vec<(&'static str, View)> {
         "overlay-not-in-front",
         overlay("not-in-front", Ok(GameWindow::NotInFront)),
     ));
+
+    // The screen watch: guiding from the ring's start with the game in
+    // front, the settings patched first, then `reads` ticks by hand, 400 ms
+    // apart on the watch's clock.
+    let watching = |dir: &str, screen: &FakeScreen, settings: Option<Value>, reads: usize| {
+        let shell = FakeShell::default();
+        let (app, ms) = start_watching(&tmp.path().join(dir), &shell, screen);
+        if let Some(patch) = settings {
+            app.update_settings(&patch).unwrap();
+        }
+        app.grab_text(Some(&ring("01-start")));
+        app.set_targets(&ring_targets());
+        app.choose_route(WHITTLE);
+        app.accept_craft();
+        for _ in 0..reads {
+            app.tick_watch();
+            ms.fetch_add(400, Ordering::SeqCst);
+        }
+        let view = app.get_view();
+        app.shutdown();
+        view
+    };
+    let screen = FakeScreen::in_front();
+    out.push(("craft-watching", watching("watching", &screen, None, 1)));
+    let screen = FakeScreen::in_front();
+    screen.show(tooltip_of(&ring("02-chaos-fire")));
+    out.push(("craft-screen-hit", watching("screen-hit", &screen, None, 2)));
+    let screen = FakeScreen::in_front();
+    screen.show(tooltip_of(&ring("03-whittle-cold")));
+    out.push((
+        "craft-screen-unexpected",
+        watching("screen-unexpected", &screen, None, 2),
+    ));
+    let screen = FakeScreen::in_front();
+    out.push((
+        "craft-watch-off",
+        watching(
+            "watch-off",
+            &screen,
+            Some(json!({ "screen_watch": false })),
+            1,
+        ),
+    ));
+    let screen = FakeScreen::in_front();
+    screen.rec().ocr = Ok(OcrReadiness::NoEnglish);
+    out.push((
+        "craft-watch-unavailable",
+        watching("watch-unavailable", &screen, None, 1),
+    ));
     out
 }
 
@@ -338,11 +388,19 @@ fn fixtures_are_current() {
         view("hotkey-taken").status.as_ref().unwrap().kind,
         StatusKind::Error
     );
-    assert!(view("overlay-active").overlay.visible);
-    assert!(views
-        .iter()
-        .filter(|(n, _)| *n != "overlay-active")
-        .all(|(_, v)| !v.overlay.visible));
+    // The overlay shows in the views with the game in front: the active
+    // overlay and the screen watch's.
+    const IN_FRONT: [&str; 6] = [
+        "overlay-active",
+        "craft-watching",
+        "craft-screen-hit",
+        "craft-screen-unexpected",
+        "craft-watch-off",
+        "craft-watch-unavailable",
+    ];
+    for (name, v) in &views {
+        assert_eq!(v.overlay.visible, IN_FRONT.contains(name), "{name}");
+    }
     // Both overlay views guide; only the game in front shows it. Every
     // guiding view carries the overlay's content, and no other does.
     for n in ["overlay-active", "overlay-not-in-front"] {
@@ -390,6 +448,43 @@ fn fixtures_are_current() {
     assert_eq!(guide("craft-miss").step.as_ref().unwrap().try_number, 2);
     assert_eq!(guide("craft-replan").status, GuideStatusView::Replan);
     assert_eq!(guide("craft-done").status, GuideStatusView::Done);
+
+    // The screen watch's views: the watch line each names, the hit from the
+    // screen kept, the unexpected change not.
+    let line = |n: &str| guide(n).watch.clone().unwrap_or_else(|| panic!("{n}"));
+    assert_eq!(
+        line("craft-watching").text,
+        "Watching: after the step, hover the item in the game."
+    );
+    let hit = guide("craft-screen-hit").history.last().unwrap();
+    assert_eq!(
+        (hit.result, hit.source),
+        (OutcomeWord::Hit, OutcomeSource::Screen)
+    );
+    assert!(guide("craft-screen-unexpected").history.is_empty());
+    assert!(line("craft-screen-unexpected").warning);
+    assert!(line("craft-screen-unexpected")
+        .text
+        .contains("did not expect"));
+    assert!(line("craft-watch-off")
+        .text
+        .starts_with("Screen reading is off"));
+    assert!(line("craft-watch-unavailable").warning);
+    assert!(line("craft-watch-unavailable")
+        .text
+        .contains("(no English OCR)"));
+    // Without a backend the guide says the screen is not read; replan and
+    // done carry no line; the overlay's line is the guiding view's.
+    assert!(line("craft-guiding")
+        .text
+        .starts_with("Screen reading is not available"));
+    assert_eq!(guide("craft-replan").watch, None);
+    assert_eq!(guide("craft-done").watch, None);
+    for (name, v) in &views {
+        if let (Some(g), Some(o)) = (&v.craft.guiding, &v.overlay.guide) {
+            assert_eq!(g.watch, o.watch, "{name}");
+        }
+    }
     for (name, v) in &views {
         let mode = v.craft.mode;
         let parts = (
@@ -418,7 +513,10 @@ fn fixtures_are_current() {
         extra["overlay"]["extra"] = Value::Bool(true);
         assert!(serde_json::from_value::<View>(extra).is_err(), "{name}");
         let mut dropped = value.clone();
-        dropped["overlay"].as_object_mut().unwrap().remove("visible");
+        dropped["overlay"]
+            .as_object_mut()
+            .unwrap()
+            .remove("visible");
         assert!(serde_json::from_value::<View>(dropped).is_err(), "{name}");
         let mut extra = value.clone();
         extra["craft"]["extra"] = Value::Bool(true);
@@ -448,7 +546,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 15);
+    assert_eq!(views.len(), 20);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

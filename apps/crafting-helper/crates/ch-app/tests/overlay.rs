@@ -160,6 +160,8 @@ fn overlay_shows_the_step_while_guiding_with_the_game_in_front() {
     assert_eq!(shell.rec().overlay, vec![true]);
     assert_eq!(shell.rec().placed.len(), 1, "never placed per tick");
     app.shutdown();
+    // The overlay's lines once each; the watch's read lines (English OCR,
+    // no tooltip, then idle once the guide is done) said once each too.
     let log = overlay_lines(tmp.path());
     assert_eq!(
         log,
@@ -167,6 +169,9 @@ fn overlay_shows_the_step_while_guiding_with_the_game_in_front() {
             "watch: game window 2560x1440",
             "overlay: placed top-center",
             "overlay: shown",
+            "watch: on (OCR en-US)",
+            "watch: tooltip none",
+            "watch: idle (guide not active)",
         ],
         "{log:?}"
     );

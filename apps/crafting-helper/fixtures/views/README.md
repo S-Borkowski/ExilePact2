@@ -35,19 +35,43 @@ the targets and the whittling route chosen:
 - `craft-done`: the hit path to the end: four hits, done.
 
 Every guiding view carries the overlay's content (`overlay.guide`: the
-current step, both branch lines and the last outcome), and no other view
-does; only the two overlay views below have a screen backend, so only the
-first of them shows it:
+current step, both branch lines, the last outcome and the screen watch's
+line), and no other view does; each history entry carries its source
+(`grab` or `screen`), and each guiding view the watch line (`watch`), the
+same in the overlay's part. The views above have no screen backend, so
+their watch line says the screen is not read. The overlay views below have
+one; those with the game's window in front show the overlay:
 
 - `overlay-active`: guiding after one hit (on the whittle step), the
-  game's window in front: the overlay is visible at `top-center`.
+  game's window in front: the overlay is visible at `top-center`, the
+  watch reading and seeing no tooltip.
 - `overlay-not-in-front`: the same craft with another window in front: the
-  overlay is hidden, its content kept.
+  overlay is hidden, its content kept, the watch paused.
+
+The screen watch's views: guiding from the ring's start with the game in
+front, the fake backend's tooltip read set and the watch ticked by hand,
+400 ms apart on its clock (the tooltips are built from the ring's texts:
+the plain form, an assumption until the `locator` item reads the owner's
+screenshots):
+
+- `craft-watching`: reading, no tooltip: `Watching: after the step, hover
+  the item in the game.`
+- `craft-screen-hit`: the Chaos Orb's hit read twice alike: "Last:" and
+  the history entry from the screen, the item now the read one, the next
+  step.
+- `craft-screen-unexpected`: two targets at once read twice alike: not
+  applied, the step and the item kept, the status line and the watch line
+  (warning) say to grab the item.
+- `craft-watch-off`: `screen_watch` off: `Screen reading is off: …`; grabs
+  drive the guide as in M5.
+- `craft-watch-unavailable`: no English OCR: `Can't read the screen (no
+  English OCR): …` (warning).
 
 Nothing else may be here: `fixtures_are_current` fails on any other JSON
 file. The views are made by `crates/ch-app/tests/fixtures.rs` by driving the
-app with a recording fake shell (and, for the overlay views, a fake screen
-backend whose watch thread is ticked by hand, so they are deterministic),
+app with a recording fake shell (and, for the overlay and screen watch
+views, a fake screen backend whose watch thread is ticked by hand on a clock
+the test moves, so they are deterministic),
 and the test fails when a file differs
 from what the Rust types serialise. The main view's types deny unknown
 fields, so a field either side adds, drops or renames fails it too. After

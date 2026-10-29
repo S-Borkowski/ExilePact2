@@ -1,0 +1,117 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [
+        {
+          "instruction": "Chaos Orb until one of the targets lands",
+          "number": 1,
+          "result": "hit",
+          "source": "screen",
+          "step": "chaos",
+          "summary": "Hit: gained +#% to Fire Resistance (T3)"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+95 to maximum Mana"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 5,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+33% to Fire Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step": {
+        "on_hit": "On a hit: this step again until its condition holds, then Desecrate for the last target",
+        "on_miss": "On a miss: this step again",
+        "step": {
+          "fallback": null,
+          "id": "whittle",
+          "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+          "number": 2,
+          "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
+          "uses": [
+            "Chaos Orb",
+            "Omen of Whittling"
+          ]
+        },
+        "try_number": 1
+      },
+      "watch": {
+        "text": "Watching: after the step, hover the item in the game.",
+        "warning": false
+      }
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 16,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Suffix Modifier \"of the Lion\" (Tier: 5) — Attribute }\n+18(17-20) to Strength"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": {
+      "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+      "last": {
+        "instruction": "Chaos Orb until one of the targets lands",
+        "number": 1,
+        "result": "hit",
+        "source": "screen",
+        "step": "chaos",
+        "summary": "Hit: gained +#% to Fire Resistance (T3)"
+      },
+      "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
+      "on_hit": "On a hit: this step again until its condition holds, then Desecrate for the last target",
+      "on_miss": "On a miss: this step again",
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step_number": 2,
+      "try_number": 1,
+      "uses": [
+        "Chaos Orb",
+        "Omen of Whittling"
+      ],
+      "watch": {
+        "text": "Watching: after the step, hover the item in the game.",
+        "warning": false
+      },
+      "why": null
+    },
+    "position": "top-center",
+    "visible": true
+  },
+  "status": {
+    "kind": "info",
+    "text": "Hit: gained +#% to Fire Resistance (T3). Read from the screen."
+  },
+  "update_available": null
+}

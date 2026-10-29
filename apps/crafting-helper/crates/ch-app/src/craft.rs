@@ -14,6 +14,14 @@
 //!   step was shown on, the history grows and the guide moves on. A grab
 //!   whose text equals the item the step was shown on is not an outcome,
 //!   and one that is not a plannable item leaves the guide as it is.
+//! - **A change read from the screen** ([`Craft::screen_change`]), with an
+//!   active guide: classified the same way; a hit or a miss is kept with
+//!   the screen as its source and the read item (which has no copied text)
+//!   as the item now; an unexpected change keeps nothing. A grab after it
+//!   whose rarity and explicit modifiers (ids and tiers) are the read
+//!   item's is not an outcome and replaces it. When either item came from
+//!   the screen, both are compared with their explicit lines written from
+//!   template and values, since only a grab's lines carry ranges.
 //! - **The targets** (`set_targets`): the whole list, each a modifier the
 //!   base can roll at the item level with no floor ("as high as possible",
 //!   the best tier) or one of the tiers it reaches; anything else refuses
@@ -48,19 +56,21 @@ use crate::settings::CatalogueEntry;
 use crate::view::{
     BlockedFrom, ChosenTarget, CraftBlockedEntry, CraftBlockedView, CraftItemView, CraftMode,
     CraftView, CurrentStepView, FloorOption, GuideStatusView, GuidingView, HistoryEntry,
-    ItemModView, ModSide, OutcomeWord, PlanningView, PreviewView, RejectedLine, RouteChoice,
-    RouteView, StepLineView, TargetChoice, TargetChoices,
+    ItemModView, ModSide, OutcomeSource, OutcomeWord, PlanningView, PreviewView, RejectedLine,
+    RouteChoice, RouteView, StepLineView, TargetChoice, TargetChoices,
 };
 
 /// The one address the app opens: Craft of Exile's Path of Exile 2
 /// calculator, in the default browser. No other address is ever opened.
 pub const CRAFT_OF_EXILE_URL: &str = "https://beta.craftofexile.com/?game=poe2";
 
-/// An item text the engine plans for, and the item parsed from it.
+/// An item the engine plans for: grabbed (its text and the item parsed from
+/// it), or read from the screen (the item alone).
 #[derive(Debug, Clone)]
 pub(crate) struct Grabbed {
-    /// The normalised text (as the grab keeps it).
-    text: String,
+    /// The normalised text (as the grab keeps it); `None` for an item the
+    /// screen watch read, which has no copied text.
+    text: Option<String>,
     item: Item,
 }
 
@@ -69,7 +79,8 @@ pub(crate) struct Grabbed {
 pub(crate) struct Guiding {
     guide: Guide,
     route: Route,
-    /// The item the current step was shown on: the latest one grabbed.
+    /// The item the current step was shown on: the latest one grabbed, or
+    /// the latest hit or miss read from the screen.
     item: Grabbed,
     /// What the engine said to do next, on `item`.
     next: Next,
@@ -111,12 +122,32 @@ pub(crate) enum GrabEffect {
     /// While guiding: not a plannable item, or the guide is not waiting
     /// for a step's result; the guide is as it was.
     Ignored(String),
+    /// While guiding: the item the screen watch read, grabbed: the same
+    /// rarity and explicit modifiers (ids and tiers). The grabbed item
+    /// replaces it; not an outcome.
+    MatchesScreen,
     /// While guiding: the change was classified.
     Observed {
         result: OutcomeWord,
         step: String,
         summary: String,
     },
+}
+
+/// What a change the screen watch read twice alike did to the craft.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ScreenEffect {
+    /// Not guiding an active guide, or no engine: nothing changed.
+    Ignored,
+    /// A hit or a miss, kept as a grab's would be (with the screen as its
+    /// source).
+    Kept {
+        result: OutcomeWord,
+        step: String,
+        summary: String,
+    },
+    /// A change the guide did not expect at `step`: nothing kept.
+    Unexpected { step: String },
 }
 
 /// The result of a craft command: what to log and say, or why it was
@@ -143,7 +174,7 @@ fn plannable(engine: Option<&Engine>, text: &str) -> Result<Grabbed, String> {
     // "no target": any other refusal is the item's.
     match engine.plan(&item, &[], &[]) {
         Err(Refusal::NoTargets) | Ok(_) => Ok(Grabbed {
-            text: text.to_string(),
+            text: Some(text.to_string()),
             item,
         }),
         Err(why) => Err(why.to_string()),
@@ -239,6 +270,54 @@ impl Craft {
                 self.mode = Mode::Refused(reason);
                 GrabEffect::Refused
             }
+        }
+    }
+
+    /// While guiding: the guide's status.
+    pub(crate) fn guide_status(&self) -> Option<GuideStatusView> {
+        match &self.mode {
+            Mode::Guiding(g) => Some(status_view(&g.guide.status)),
+            _ => None,
+        }
+    }
+
+    /// While guiding: the item the current step was shown on, which the
+    /// screen watch matches its reads against.
+    pub(crate) fn step_item(&self) -> Option<&Item> {
+        match &self.mode {
+            Mode::Guiding(g) => Some(&g.item.item),
+            _ => None,
+        }
+    }
+
+    /// A change the screen watch read twice alike (`item`: the step's item
+    /// with the read rarity and explicit modifiers): with an active guide,
+    /// the engine classifies it on a copy of the guide. A hit or a miss is
+    /// kept as a grab's is, with the screen as its source, and `item` (no
+    /// copied text) becomes the next step's item; an unexpected change keeps
+    /// nothing.
+    pub(crate) fn screen_change(&mut self, engine: Option<&Engine>, item: Item) -> ScreenEffect {
+        let (Mode::Guiding(g), Some(engine)) = (&mut self.mode, engine) else {
+            return ScreenEffect::Ignored;
+        };
+        if g.guide.status != Status::Active {
+            return ScreenEffect::Ignored;
+        }
+        let after = Grabbed { text: None, item };
+        match classify(engine, g, &after) {
+            Ok((outcome, _)) if outcome.result == OutcomeKind::Unexpected => {
+                ScreenEffect::Unexpected { step: outcome.step }
+            }
+            Ok((outcome, guide)) => {
+                let (result, step, summary) =
+                    keep(engine, g, outcome, guide, after, OutcomeSource::Screen);
+                ScreenEffect::Kept {
+                    result,
+                    step,
+                    summary,
+                }
+            }
+            Err(_) => ScreenEffect::Ignored,
         }
     }
 
@@ -497,15 +576,24 @@ impl Craft {
     }
 }
 
-/// While guiding, a grab is the result of the current step.
+/// While guiding, a grab is the result of the current step. A grab whose
+/// text equals the grabbed item's the step was shown on is not an outcome;
+/// nor is one of the item the screen watch read (no text to compare), when
+/// its rarity and explicit modifiers (ids and tiers) are the read item's:
+/// the grab then replaces the read item.
 fn observe(
     engine: &Engine,
     g: &mut Guiding,
     text: &str,
     checked: Result<Grabbed, String>,
 ) -> GrabEffect {
-    if text == g.item.text {
-        return GrabEffect::Unchanged;
+    match (&g.item.text, &checked) {
+        (Some(before), _) if before == text => return GrabEffect::Unchanged,
+        (None, Ok(after)) if same_key(&g.item.item, &after.item) => {
+            g.item = after.clone();
+            return GrabEffect::MatchesScreen;
+        }
+        _ => {}
     }
     let after = match checked {
         Ok(after) => after,
@@ -521,31 +609,103 @@ fn observe(
             }
         ));
     }
-    let mut guide = g.guide.clone();
-    match engine.observe(&mut guide, &g.item.item, &after.item) {
-        Ok(outcome) => {
-            let blueprint = engine.blueprint(&guide.blueprint).map(|r| r.blueprint());
-            let (number, instruction) = step_place(blueprint, &g.route, &outcome.step);
-            let summary = summary(&outcome, &after.item);
-            let result = outcome_word(outcome.result);
-            g.history.push(HistoryEntry {
-                number,
-                step: outcome.step.clone(),
-                instruction,
-                result,
-                summary: summary.clone(),
-            });
-            g.guide = guide;
-            g.item = after;
-            g.next = outcome.next;
+    match classify(engine, g, &after) {
+        Ok((outcome, guide)) => {
+            let (result, step, summary) =
+                keep(engine, g, outcome, guide, after, OutcomeSource::Grab);
             GrabEffect::Observed {
                 result,
-                step: outcome.step,
+                step,
                 summary,
             }
         }
-        Err(e) => GrabEffect::Ignored(e.to_string()),
+        Err(why) => GrabEffect::Ignored(why),
     }
+}
+
+/// Two items with the same rarity and explicit modifiers (ids and tiers);
+/// false when either has a modifier that does not join.
+fn same_key(a: &Item, b: &Item) -> bool {
+    ch_watch::item_key(a).is_some_and(|k| Some(k) == ch_watch::item_key(b))
+}
+
+/// The engine's outcome of the current step for `after`, run on a copy of
+/// the guide, and that copy moved on.
+///
+/// The engine tells the same modifier on both items by its lines as shown.
+/// A grabbed item's lines carry the advanced copy's `(min-max)` ranges and
+/// an item read from the screen's do not, so when either item came from the
+/// screen both are compared in one form: each explicit modifier line
+/// written from its template and values ([`as_read`]). Two grabs are
+/// compared as M5 compared them.
+fn classify(engine: &Engine, g: &Guiding, after: &Grabbed) -> Result<(Outcome, Guide), String> {
+    let mut guide = g.guide.clone();
+    let observed = if g.item.text.is_some() && after.text.is_some() {
+        engine.observe(&mut guide, &g.item.item, &after.item)
+    } else {
+        engine.observe(&mut guide, &as_read(&g.item.item), &as_read(&after.item))
+    };
+    let outcome = observed.map_err(|e| e.to_string())?;
+    Ok((outcome, guide))
+}
+
+/// The item with each explicit modifier line's text written from its
+/// template, each `#` its value, and no range: the form a screen read gives.
+/// A line whose template does not hold one `#` per value is left as it is.
+fn as_read(item: &Item) -> Item {
+    let mut out = item.clone();
+    for m in &mut out.modifiers {
+        if !matches!(m.kind, ch_item::ModKind::Prefix | ch_item::ModKind::Suffix) {
+            continue;
+        }
+        for line in &mut m.lines {
+            let parts: Vec<&str> = line.template.split('#').collect();
+            if line.values.is_empty() || parts.len() != line.values.len() + 1 {
+                continue;
+            }
+            let mut text = String::from(parts[0]);
+            for (value, part) in line.values.iter().zip(&parts[1..]) {
+                let v = value.value;
+                if v.fract() == 0.0 {
+                    text.push_str(&format!("{}", v as i64));
+                } else {
+                    text.push_str(&format!("{v}"));
+                }
+                text.push_str(part);
+            }
+            line.text = text;
+        }
+    }
+    out
+}
+
+/// Keeps an outcome: its history entry (with its source), the guide moved
+/// on and `after` as the item the next step is shown on. Returns the result,
+/// the step and the summary.
+fn keep(
+    engine: &Engine,
+    g: &mut Guiding,
+    outcome: Outcome,
+    guide: Guide,
+    after: Grabbed,
+    source: OutcomeSource,
+) -> (OutcomeWord, String, String) {
+    let blueprint = engine.blueprint(&guide.blueprint).map(|r| r.blueprint());
+    let (number, instruction) = step_place(blueprint, &g.route, &outcome.step);
+    let summary = summary(&outcome, &after.item);
+    let result = outcome_word(outcome.result);
+    g.history.push(HistoryEntry {
+        number,
+        step: outcome.step.clone(),
+        instruction,
+        result,
+        summary: summary.clone(),
+        source,
+    });
+    g.guide = guide;
+    g.item = after;
+    g.next = outcome.next;
+    (result, outcome.step, summary)
 }
 
 /// The route `chosen` names while it applies, or the engine's first.
@@ -666,6 +826,8 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
         step,
         reasons,
         history: g.history.clone(),
+        // The app's: the screen watch's state is not the craft's.
+        watch: None,
     }
 }
 

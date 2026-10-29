@@ -459,6 +459,7 @@ name = "ch-app"
 version = "0.1.0"
 dependencies = [
  "ch-engine",
+ "ch-watch",
  "ep-update",
  "serde",
  "serde_json",

@@ -7,6 +7,7 @@
           "instruction": "Chaos Orb until one of the targets lands",
           "number": 1,
           "result": "hit",
+          "source": "grab",
           "step": "chaos",
           "summary": "Hit: gained +#% to Fire Resistance (T3)"
         },
@@ -14,6 +15,7 @@
           "instruction": "Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
           "number": 2,
           "result": "hit",
+          "source": "grab",
           "step": "whittle",
           "summary": "Hit: gained +#% to Cold Resistance (T3)"
         },
@@ -21,6 +23,7 @@
           "instruction": "Desecrate for the last target",
           "number": 3,
           "result": "hit",
+          "source": "grab",
           "step": "desecrate",
           "summary": "Hit: the step did what it is for, no target gained or lost"
         },
@@ -28,6 +31,7 @@
           "instruction": "Reveal it at the Well of Souls",
           "number": 4,
           "result": "hit",
+          "source": "grab",
           "step": "reveal",
           "summary": "Hit: gained +#% to Lightning Resistance (T3)"
         }
@@ -77,7 +81,8 @@
       "reasons": [],
       "route_name": "Rings: resistances by whittling",
       "status": "done",
-      "step": null
+      "step": null,
+      "watch": null
     },
     "mode": "guiding",
     "planning": null,
@@ -97,6 +102,7 @@
         "instruction": "Reveal it at the Well of Souls",
         "number": 4,
         "result": "hit",
+        "source": "grab",
         "step": "reveal",
         "summary": "Hit: gained +#% to Lightning Resistance (T3)"
       },
@@ -108,6 +114,7 @@
       "step_number": null,
       "try_number": null,
       "uses": [],
+      "watch": null,
       "why": null
     },
     "position": "top-center",

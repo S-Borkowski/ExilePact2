@@ -1,0 +1,99 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+95(90-104) to maximum Mana"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 5,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+18(17-20) to Strength"
+            ],
+            "meets_target": false,
+            "side": "suffix",
+            "tier": 5,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step": {
+        "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+        "on_miss": "On a miss: this step again",
+        "step": {
+          "fallback": null,
+          "id": "chaos",
+          "instruction": "Chaos Orb until one of the targets lands",
+          "number": 1,
+          "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+          "uses": [
+            "Chaos Orb"
+          ]
+        },
+        "try_number": 1
+      },
+      "watch": {
+        "text": "The item changed in a way the guide did not expect: grab it to check.",
+        "warning": true
+      }
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 16,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Suffix Modifier \"of the Lion\" (Tier: 5) — Attribute }\n+18(17-20) to Strength"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": {
+      "instruction": "Chaos Orb until one of the targets lands",
+      "last": null,
+      "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+      "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+      "on_miss": "On a miss: this step again",
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step_number": 1,
+      "try_number": 1,
+      "uses": [
+        "Chaos Orb"
+      ],
+      "watch": {
+        "text": "The item changed in a way the guide did not expect: grab it to check.",
+        "warning": true
+      },
+      "why": null
+    },
+    "position": "top-center",
+    "visible": true
+  },
+  "status": {
+    "kind": "error",
+    "text": "Read from the screen: the item changed in a way the guide did not expect. Grab it to check; the craft is unchanged."
+  },
+  "update_available": null
+}

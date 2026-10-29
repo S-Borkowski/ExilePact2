@@ -8,8 +8,11 @@
 //! The player copies an item with the game's own Ctrl+Alt+C, then presses
 //! the app's global hotkey (the clipboard is read once, for that press) or
 //! pastes into the main window (the page sends the pasted text; no
-//! clipboard is read). The app never watches the clipboard, never hooks the
-//! keyboard and never sends input.
+//! clipboard is read). While a craft is guiding, the app can also read the
+//! hovered item's tooltip from a copy of the game's window with Windows'
+//! OCR, which the player may hold Alt for themselves. The app never watches
+//! the clipboard, never hooks the keyboard, reads no input state and never
+//! sends input.
 //!
 //! `src-tauri` is glue around this crate (as the waystone roller's `wr-app`
 //! and `src-tauri` split it): it implements [`Shell`] (the global hotkey,
@@ -18,7 +21,9 @@
 //! the Settings window, opening [`CRAFT_OF_EXILE_URL`] in the default
 //! browser and the quit that restarts into an installed update) and
 //! [`ScreenBackend`] (the game's window when it is in front, by
-//! [`GAME_WINDOW_TITLE`], and its client area), hands
+//! [`GAME_WINDOW_TITLE`], and its client area; whether Windows' OCR reads
+//! English; the item tooltips read from that client area by `ch-watch`'s
+//! reader over the quest tracker's capture), hands
 //! [`App::with_updates`] the update transport over `ep-net` and the running
 //! exe's path, and forwards each IPC command to the [`App`] method of the
 //! same name. Keeping every decision here means it tests with a recording
@@ -30,17 +35,24 @@
 //!   `get_catalogue`, `check_for_updates`, `install_update`,
 //!   `cancel_update`, and the craft window's `set_targets`,
 //!   `set_craft_blocked`, `choose_route`, `accept_craft`, `end_craft` and
-//!   `open_craft_of_exile`), the hotkey press, and the overlay's
-//!   visibility and placement from the watch thread's reports
-//!   ([`App::tick_watch`] ticks it by hand for the tests and fixtures).
+//!   `open_craft_of_exile`), the hotkey press, the overlay's visibility and
+//!   placement from the watch thread's reports, a hit or a miss the watch
+//!   read from the screen kept as a grab's would be, and the watch line
+//!   ([`WatchLineView`]) ([`App::tick_watch`] ticks the thread by hand for
+//!   the tests and fixtures).
 //! - [`overlay`]: where the overlay sits inside the game's client area
 //!   ([`overlay_origin`], at the `overlay_position` setting, inset
 //!   [`OVERLAY_INSET`]) and what it shows ([`OverlayGuide`]: the current
-//!   step, both branch lines and the last outcome).
+//!   step, both branch lines, the last outcome and the watch line).
 //! - [`screen`]: the screen backend ([`ScreenBackend`], optional in
 //!   [`AppConfig`]; without one the overlay never shows and nothing is
 //!   read) and the watch thread, which looks at the game's window every
-//!   [`WINDOW_EVERY`] while a craft is guiding and calls nothing otherwise.
+//!   [`WINDOW_EVERY`] while a craft is guiding and calls nothing otherwise;
+//!   while the guide is active, `screen_watch` is on, the OCR reads English
+//!   and the game is in front, it reads the hovered item's tooltip at most
+//!   every [`READ_EVERY`], matches it against the item the step was shown
+//!   on ([`ch_watch`]) and reports a change read twice alike, at least
+//!   [`CONFIRM_AFTER`] apart. No copy, crop or OCR line leaves the read.
 //! - [`craft`]: the craft window's state (none, refused, planning,
 //!   guiding; in memory only), what a grab does to it, its commands' rules
 //!   and its view, built from the shipped engine's plan, guide and
@@ -88,8 +100,8 @@ pub use grab::{ITEM_FIRST_LINE, MAX_GRAB_BYTES};
 pub use hotkey::{is_game_item_copy, DEFAULT_HOTKEY, GAME_ITEM_COPY};
 pub use overlay::{overlay_origin, OVERLAY_INSET};
 pub use screen::{
-    ClientRect, GameWindow, ScreenBackend, ScreenSetup, WatchFailure, GAME_WINDOW_TITLE,
-    WATCH_STOP_DEADLINE, WINDOW_EVERY,
+    ClientRect, GameWindow, OcrReadiness, ScreenBackend, ScreenSetup, WatchFailure, BLACK_IN_A_ROW,
+    CONFIRM_AFTER, GAME_WINDOW_TITLE, MINUTE_EVERY, READ_EVERY, WATCH_STOP_DEADLINE, WINDOW_EVERY,
 };
 pub use settings::{CatalogueEntry, CatalogueGroup, MAX_ID_CHARS};
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
@@ -97,14 +109,19 @@ pub use updates::{Clock, SteadyClock, UpdateSetup, TICK_EVERY};
 pub use view::{
     BlockedFrom, ChosenTarget, CraftBlockedEntry, CraftBlockedView, CraftItemView, CraftMode,
     CraftView, CurrentStepView, FloorOption, GrabSource, GrabView, GuideStatusView, GuidingView,
-    HistoryEntry, ItemModView, ModSide, OutcomeWord, OverlayGuide, OverlayPosition, OverlayView,
-    PlanningView, PreviewView, RejectedLine, RouteChoice, RouteView, SettingsView, StatusKind,
-    StatusLine, StepLineView, TargetChoice, TargetChoices, View,
+    HistoryEntry, ItemModView, ModSide, OutcomeSource, OutcomeWord, OverlayGuide, OverlayPosition,
+    OverlayView, PlanningView, PreviewView, RejectedLine, RouteChoice, RouteView, SettingsView,
+    StatusKind, StatusLine, StepLineView, TargetChoice, TargetChoices, View, WatchLineView,
 };
 
 /// The crafting engine, for the craft window, and the crates it re-exports.
 pub use ch_engine;
 pub use ch_engine::{ch_blueprint, ch_data, ch_item};
+
+/// The screen watch's pure part (the tooltip read, the matcher), for the
+/// glue's backend, which runs its reader, and the tests' fake one.
+pub use ch_watch;
+pub use ch_watch::{ReadCounts, TooltipBox, TooltipRead, Unreadable};
 
 /// The shared update crate, for the glue's transport and start-up cleanup.
 pub use ep_update;

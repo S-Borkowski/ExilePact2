@@ -155,6 +155,20 @@ pub struct OverlayGuide {
     pub on_miss: Option<String>,
     /// The last observed change; `None` before the first.
     pub last: Option<HistoryEntry>,
+    /// The screen watch's line, the guiding view's own; `None` with replan
+    /// and done.
+    pub watch: Option<WatchLineView>,
+}
+
+/// The screen watch's line (Rust's copy, `ui-design.md` § "The screen
+/// watch's line"): what the watch sees and what to do. The guiding card and
+/// the overlay's Screen row show the same one.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WatchLineView {
+    pub text: String,
+    /// It asks the player to do something: the warning colour.
+    pub warning: bool,
 }
 
 /// Everything the main window and the overlay show.
@@ -434,6 +448,16 @@ pub enum OutcomeWord {
     Unexpected,
 }
 
+/// Where an observed change came from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutcomeSource {
+    /// A grab of the item's text (the hotkey or a paste).
+    Grab,
+    /// The screen watch read the hovered item twice alike.
+    Screen,
+}
+
 /// One observed change, oldest first.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -445,13 +469,15 @@ pub struct HistoryEntry {
     pub result: OutcomeWord,
     /// Starts `Hit:`, `Miss:` or `Unexpected:`.
     pub summary: String,
+    pub source: OutcomeSource,
 }
 
 /// Mode guiding.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GuidingView {
-    /// The item as last grabbed.
+    /// The item as last grabbed, or as the screen watch last read a hit or
+    /// a miss.
     pub item: CraftItemView,
     pub blueprint: String,
     pub route_name: String,
@@ -461,6 +487,9 @@ pub struct GuidingView {
     /// Why it is stuck or must be planned again.
     pub reasons: Vec<String>,
     pub history: Vec<HistoryEntry>,
+    /// The screen watch's line, while active or stuck; `None` with replan
+    /// and done.
+    pub watch: Option<WatchLineView>,
 }
 
 /// Everything the Settings window shows: `ep-update`'s view of the update

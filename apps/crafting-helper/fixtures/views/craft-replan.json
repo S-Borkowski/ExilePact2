@@ -7,6 +7,7 @@
           "instruction": "Chaos Orb until one of the targets lands",
           "number": 1,
           "result": "unexpected",
+          "source": "grab",
           "step": "chaos",
           "summary": "Unexpected: Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came; gained +#% to Fire Resistance (T3), +#% to Cold Resistance (T3)"
         }
@@ -47,7 +48,8 @@
       ],
       "route_name": "Rings: resistances by whittling",
       "status": "replan",
-      "step": null
+      "step": null,
+      "watch": null
     },
     "mode": "guiding",
     "planning": null,
@@ -67,6 +69,7 @@
         "instruction": "Chaos Orb until one of the targets lands",
         "number": 1,
         "result": "unexpected",
+        "source": "grab",
         "step": "chaos",
         "summary": "Unexpected: Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came; gained +#% to Fire Resistance (T3), +#% to Cold Resistance (T3)"
       },
@@ -78,6 +81,7 @@
       "step_number": null,
       "try_number": null,
       "uses": [],
+      "watch": null,
       "why": "Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came"
     },
     "position": "top-center",

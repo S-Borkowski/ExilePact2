@@ -60,7 +60,8 @@ pub const DONE_LINE: &str = "The craft is done.";
 /// instruction, uses, odds and both branch lines) while active; the step,
 /// its branches and the first reason while stuck; what to do instead and
 /// the first reason with replan; that it is done. The last observed change
-/// in every status.
+/// in every status, and the screen watch's line while active or stuck (the
+/// guiding view's own, so the two never disagree).
 pub fn overlay_guide(g: &GuidingView) -> OverlayGuide {
     let active = g.status == GuideStatusView::Active;
     let step = match g.status {
@@ -91,5 +92,6 @@ pub fn overlay_guide(g: &GuidingView) -> OverlayGuide {
         on_hit: step.map(|s| s.on_hit.clone()),
         on_miss: step.map(|s| s.on_miss.clone()),
         last: g.history.last().cloned(),
+        watch: g.watch.clone(),
     }
 }

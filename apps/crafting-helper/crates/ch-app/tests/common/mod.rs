@@ -20,11 +20,12 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
+use ch_app::ch_item::Rarity;
 use ch_app::{
     Answer, App, AppConfig, AssetKind, BeepAttempt, ClientRect, Clock, DownloadError, GameWindow,
-    HotkeyError, Product, ScreenBackend, ScreenSetup, SettingsView, Shell, Store, TransportError,
-    UpdateConfig, UpdateSetup, UpdateState, UpdateTransport, Version, View, WatchFailure,
-    CRAFTING_HELPER,
+    HotkeyError, OcrReadiness, Product, ReadCounts, ScreenBackend, ScreenSetup, SettingsView,
+    Shell, Store, TooltipBox, TooltipRead, TransportError, UpdateConfig, UpdateSetup, UpdateState,
+    UpdateTransport, Version, View, WatchFailure, CRAFTING_HELPER,
 };
 use serde_json::{json, Value};
 
@@ -233,6 +234,83 @@ pub fn start_with_screen(
     app
 }
 
+/// A started app with `screen` as its backend, ticked by hand, and the
+/// watch's clock (milliseconds) the test moves on: the confirmation of a
+/// change and the minute line count with it.
+pub fn start_watching(
+    dir: &Path,
+    shell: &FakeShell,
+    screen: &FakeScreen,
+) -> (Arc<App>, Arc<AtomicU64>) {
+    let ms = Arc::new(AtomicU64::new(0));
+    let app = App::new(AppConfig {
+        store: Store::open(dir),
+        shell: Box::new(shell.clone()),
+        screen: Some(
+            ScreenSetup::manual(screen.backend()).with_clock(Box::new(FakeClock(Arc::clone(&ms)))),
+        ),
+    });
+    app.start();
+    (app, ms)
+}
+
+/// The tooltip of an item text as the reader would report it, plain (no
+/// Alt): the name lines in the header with their rarity's colour, then the
+/// lines under them without the `Item Class:` and `Rarity:` lines, the
+/// separators, the `{ … }` headers and every `(min-max)` range. An
+/// assumption until the `locator` item reads the owner's screenshots (as
+/// `ch-watch`'s own tests say).
+pub fn tooltip_of(text: &str) -> TooltipRead {
+    let mut rarity = None;
+    let mut names: Vec<String> = Vec::new();
+    let mut rest: Vec<String> = Vec::new();
+    let mut in_names = false;
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with("Item Class:") || line.starts_with('{') {
+            continue;
+        }
+        if let Some(r) = line.strip_prefix("Rarity:") {
+            rarity = Some(Rarity::from_text(r.trim()));
+            in_names = true;
+            continue;
+        }
+        if line == "--------" {
+            in_names = false;
+            continue;
+        }
+        if in_names {
+            names.push(line.to_string());
+        } else {
+            rest.push(strip_ranges(line));
+        }
+    }
+    TooltipRead::Boxes(vec![TooltipBox::from_text(&names, &rest, rarity)])
+}
+
+/// The line with every `(min-max)` range removed.
+fn strip_ranges(line: &str) -> String {
+    let mut out = String::new();
+    let mut rest = line;
+    while let Some(open) = rest.find('(') {
+        let Some(close) = rest[open..].find(')') else {
+            break;
+        };
+        let inner = &rest[open + 1..open + close];
+        let is_range = inner.contains('-')
+            && inner
+                .chars()
+                .all(|c| c.is_ascii_digit() || c == '-' || c == '.');
+        out.push_str(&rest[..open]);
+        if !is_range {
+            out.push_str(&rest[open..=open + close]);
+        }
+        rest = &rest[open + close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
 // ---------------------------------------------------------------------------
 // The fake screen backend.
 
@@ -261,7 +339,7 @@ pub fn in_front(client: ClientRect) -> Result<GameWindow, WatchFailure> {
 pub struct ScreenRec {
     /// What the next call of `game_window` returns.
     pub window: Result<GameWindow, WatchFailure>,
-    /// How often the app called the backend.
+    /// How often the app called `game_window`.
     pub calls: usize,
     /// A call waits while this is set (an OCR call or a copy in flight).
     pub hold: bool,
@@ -269,6 +347,21 @@ pub struct ScreenRec {
     pub in_call: bool,
     /// The backend was dropped: the watch thread ended.
     pub dropped: bool,
+    /// What `ocr_readiness` returns; English (`en-US`) by default.
+    pub ocr: Result<OcrReadiness, WatchFailure>,
+    /// How often the app asked whether the OCR reads English.
+    pub ocr_checks: usize,
+    /// What the next `read_tooltips` returns; no tooltip by default.
+    pub tooltip: Result<TooltipRead, WatchFailure>,
+    /// How often the app read the tooltips, and the client areas it read.
+    pub reads: usize,
+    pub read_areas: Vec<(isize, ClientRect)>,
+    /// A read waits while this is set.
+    pub hold_read: bool,
+    /// A read is waiting on `hold_read`.
+    pub in_read: bool,
+    /// What `take_counts` returns next (then zero).
+    pub counts: ReadCounts,
 }
 
 impl Default for ScreenRec {
@@ -279,12 +372,22 @@ impl Default for ScreenRec {
             hold: false,
             in_call: false,
             dropped: false,
+            ocr: Ok(OcrReadiness::Ready {
+                language: "en-US".to_string(),
+            }),
+            ocr_checks: 0,
+            tooltip: Ok(TooltipRead::NoTooltip),
+            reads: 0,
+            read_areas: Vec::new(),
+            hold_read: false,
+            in_read: false,
+            counts: ReadCounts::default(),
         }
     }
 }
 
 /// A screen backend that reports what the test sets, counts its calls,
-/// can hold a call in flight and records being dropped.
+/// can hold a call or a read in flight and records being dropped.
 #[derive(Clone, Default)]
 pub struct FakeScreen {
     pub rec: Arc<(Mutex<ScreenRec>, Condvar)>,
@@ -322,6 +425,24 @@ impl FakeScreen {
         self.rec().hold = held;
         self.rec.1.notify_all();
     }
+
+    pub fn hold_read(&self, held: bool) {
+        self.rec().hold_read = held;
+        self.rec.1.notify_all();
+    }
+
+    /// The tooltip the next reads return.
+    pub fn show(&self, read: TooltipRead) {
+        self.rec().tooltip = Ok(read);
+    }
+
+    pub fn reads(&self) -> usize {
+        self.rec().reads
+    }
+
+    pub fn ocr_checks(&self) -> usize {
+        self.rec().ocr_checks
+    }
 }
 
 struct FakeBackend(FakeScreen);
@@ -337,6 +458,33 @@ impl ScreenBackend for FakeBackend {
         }
         r.in_call = false;
         r.window.clone()
+    }
+
+    fn ocr_readiness(&mut self) -> Result<OcrReadiness, WatchFailure> {
+        let mut r = self.0.rec();
+        r.ocr_checks += 1;
+        r.ocr.clone()
+    }
+
+    fn read_tooltips(
+        &mut self,
+        handle: isize,
+        client: ClientRect,
+    ) -> Result<TooltipRead, WatchFailure> {
+        let (lock, cv) = &*self.0.rec;
+        let mut r = lock.lock().unwrap();
+        r.reads += 1;
+        r.read_areas.push((handle, client));
+        r.in_read = true;
+        while r.hold_read {
+            r = cv.wait(r).unwrap();
+        }
+        r.in_read = false;
+        r.tooltip.clone()
+    }
+
+    fn take_counts(&mut self) -> ReadCounts {
+        std::mem::take(&mut self.0.rec().counts)
     }
 }
 
