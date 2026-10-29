@@ -33,6 +33,29 @@
 //!
 //! Keys are snake case; enumerated values are kebab case. Every table
 //! refuses a key it does not know.
+//!
+//! A file that says `order = "state"` is state-ordered: the engine takes the
+//! first step whose `guard` holds (and whose goal is not met) on the item as
+//! it stands, so it has no transitions, and `side` may name a rule
+//! (`target`, `close`, `blocked`) instead of a side. It names the
+//! not-established facts its route relies on in `relies_on`. The rules are
+//! docs/models/crafting-slots-spec.md, "Route rules".
+//!
+//! ```toml
+//! order = "state"
+//! relies_on = ["greater-with-side-omen", "greater-needs-two-free"]
+//!
+//! [[step]]
+//! id = "slam"
+//! say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+//! goal = "add-wanted"
+//! side = "target"
+//! guard = { blocked_side = false }
+//!
+//! [[step.action]]
+//! currency = "perfect-exalted-orb"
+//! omens = ["side-omen", "greater-omen"]
+//! ```
 
 use std::fmt;
 
@@ -116,6 +139,32 @@ named_enum! {
     Side {
         Prefix = "prefix",
         Suffix = "suffix",
+    }
+}
+
+named_enum! {
+    /// A side rule: the side a step of a state-ordered blueprint works on,
+    /// resolved on the item as it stands (the spec's "Side rules").
+    SideRule {
+        /// The bound target's side; unbound, the open side with the most
+        /// missing targets the step can place there.
+        Target = "target",
+        /// The closable side.
+        Close = "close",
+        /// The blocked side (with two, the larger deficit first).
+        Blocked = "blocked",
+    }
+}
+
+named_enum! {
+    /// How the engine picks the next step.
+    Order {
+        /// Steps in file order, moved between by transitions (`on_hit`,
+        /// `on_miss`, `until`); what every blueprint without `order` does.
+        Listed = "listed",
+        /// The first step whose `guard` holds and whose goal is not met, on
+        /// the item as it stands.
+        State = "state",
     }
 }
 
@@ -250,6 +299,15 @@ pub struct Blueprint {
     /// Free text: caveats, mechanics not established.
     #[serde(default)]
     pub notes: Option<Spanned<String>>,
+    /// How the next step is picked; [`Order::Listed`] when left out
+    /// ([`Blueprint::order`]).
+    #[serde(default)]
+    pub order: Option<Spanned<Order>>,
+    /// The not-established facts the route relies on, by their id in the
+    /// spec's facts table ([`crate::catalogue::NOT_ESTABLISHED`]). Required,
+    /// possibly empty, when `order = "state"`.
+    #[serde(default)]
+    pub relies_on: Option<Spanned<Vec<Spanned<String>>>>,
     /// The items the route may start from; any one suffices (`[[start]]`).
     #[serde(default, rename = "start")]
     pub starts: Vec<Spanned<Condition>>,
@@ -258,9 +316,16 @@ pub struct Blueprint {
     pub steps: Vec<Spanned<Step>>,
 }
 
+impl Blueprint {
+    /// How the next step is picked, with the default applied.
+    pub fn order(&self) -> Order {
+        self.order.as_ref().map_or(Order::Listed, |o| *o.get_ref())
+    }
+}
+
 /// A predicate on the item. A start alternative takes the first group of
-/// keys; a step's `requires` and `until` take them all. Every key left out
-/// holds.
+/// keys; a step's `requires`, `until` and `guard` take them all. Every key
+/// left out holds; a bool key set to `false` asks for the opposite.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Condition {
@@ -287,6 +352,18 @@ pub struct Condition {
     /// at its floor on this item.
     #[serde(default)]
     pub essence_binds: Option<Spanned<bool>>,
+    /// Some side is blocked (the spec's "Slot accounting").
+    #[serde(default)]
+    pub blocked_side: Option<Spanned<bool>>,
+    /// Some side is closable.
+    #[serde(default)]
+    pub closable_side: Option<Spanned<bool>>,
+    /// Exactly one side is open.
+    #[serde(default)]
+    pub one_side_open: Option<Spanned<bool>>,
+    /// A revealed desecrated modifier on the item is not a target.
+    #[serde(default)]
+    pub desecrated_unwanted: Option<Spanned<bool>>,
     /// Step conditions only: at least this many free prefix slots.
     #[serde(default)]
     pub free_prefixes_at_least: Option<Spanned<u32>>,
@@ -319,8 +396,12 @@ impl Condition {
         "fractured_wanted",
         "unwanted_at_most",
         "essence_binds",
+        "blocked_side",
+        "closable_side",
+        "one_side_open",
+        "desecrated_unwanted",
     ];
-    /// The keys only a step's `requires` and `until` may use.
+    /// The keys only a step's `requires`, `until` and `guard` may use.
     pub const STEP_ONLY_KEYS: &'static [&'static str] = &[
         "free_prefixes_at_least",
         "free_suffixes_at_least",
@@ -332,8 +413,11 @@ impl Condition {
 }
 
 /// One step of the route.
+///
+/// The file's `side` key fills either [`side`](Step::side) (a side) or
+/// [`side_rule`](Step::side_rule) (a rule word), never both.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(from = "StepFile")]
 pub struct Step {
     /// Unique within the blueprint; `goto:` names it.
     pub id: Spanned<String>,
@@ -341,37 +425,112 @@ pub struct Step {
     pub say: Spanned<String>,
     /// What the step is for.
     pub goal: Spanned<Goal>,
-    /// The side an add or remove goal is about, when it is one side.
-    #[serde(default)]
+    /// The side an add or remove goal is about, when the file names one
+    /// side (`prefix`, `suffix`).
     pub side: Option<Spanned<Side>>,
+    /// State order only: the rule that picks the side on the item as it
+    /// stands, when the file's `side` names one (`target`, `close`,
+    /// `blocked`).
+    pub side_rule: Option<Spanned<SideRule>>,
     /// Which target the step aims at.
-    #[serde(default)]
     pub bind: Option<Spanned<Binding>>,
-    /// What must hold before the step is taken; when it does not, the guide
-    /// says which part failed and stops ("stuck").
-    #[serde(default)]
+    /// Listed order only: what must hold before the step is taken; when it
+    /// does not, the guide says which part failed and stops ("stuck").
     pub requires: Option<Spanned<Condition>>,
     /// When the step is part of the route at all.
-    #[serde(default)]
     pub when: Option<Spanned<When>>,
-    /// On a hit, repeat the step until this holds.
-    #[serde(default)]
+    /// Listed order only: on a hit, repeat the step until this holds.
     pub until: Option<Spanned<Condition>>,
     /// The ways to take the step, preferred first (`[[step.action]]`). The
     /// route takes the first one none of whose ids is blocked. A `manual`
     /// step may have none.
-    #[serde(default, rename = "action")]
     pub actions: Vec<Spanned<Action>>,
-    /// Where to go on a hit; `next` (or `repeat` while `until` fails) when
-    /// left out.
-    #[serde(default)]
+    /// Listed order only: where to go on a hit; `next` (or `repeat` while
+    /// `until` fails) when left out.
     pub on_hit: Option<Spanned<Transition>>,
-    /// Where to go on a miss; `repeat` when left out.
-    #[serde(default)]
+    /// Listed order only: where to go on a miss; `repeat` when left out.
     pub on_miss: Option<Spanned<Transition>>,
+    /// State order only: the step is a candidate only while this holds.
+    pub guard: Option<Spanned<Condition>>,
+}
+
+/// A `[[step]]` table as the file writes it, before its `side` is split
+/// into a side or a rule.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StepFile {
+    id: Spanned<String>,
+    say: Spanned<String>,
+    goal: Spanned<Goal>,
+    #[serde(default)]
+    side: Option<Spanned<SideWord>>,
+    #[serde(default)]
+    bind: Option<Spanned<Binding>>,
+    #[serde(default)]
+    requires: Option<Spanned<Condition>>,
+    #[serde(default)]
+    when: Option<Spanned<When>>,
+    #[serde(default)]
+    until: Option<Spanned<Condition>>,
+    #[serde(default, rename = "action")]
+    actions: Vec<Spanned<Action>>,
+    #[serde(default)]
+    on_hit: Option<Spanned<Transition>>,
+    #[serde(default)]
+    on_miss: Option<Spanned<Transition>>,
+    #[serde(default)]
+    guard: Option<Spanned<Condition>>,
+}
+
+/// A word a step's `side` may hold: a side, or a side rule.
+#[derive(Clone, Copy)]
+enum SideWord {
+    Side(Side),
+    Rule(SideRule),
+}
+
+impl<'de> Deserialize<'de> for SideWord {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let text = String::deserialize(d)?;
+        Side::from_name(&text)
+            .map(Self::Side)
+            .or_else(|| SideRule::from_name(&text).map(Self::Rule))
+            .ok_or_else(|| D::Error::custom(format!("`{text}` is not one of {}", Step::SIDE_WORDS.join(", "))))
+    }
+}
+
+impl From<StepFile> for Step {
+    fn from(f: StepFile) -> Self {
+        let (mut side, mut side_rule) = (None, None);
+        if let Some(word) = f.side {
+            let span = word.span();
+            match *word.get_ref() {
+                SideWord::Side(s) => side = Some(Spanned::new(span, s)),
+                SideWord::Rule(r) => side_rule = Some(Spanned::new(span, r)),
+            }
+        }
+        Step {
+            id: f.id,
+            say: f.say,
+            goal: f.goal,
+            side,
+            side_rule,
+            bind: f.bind,
+            requires: f.requires,
+            when: f.when,
+            until: f.until,
+            actions: f.actions,
+            on_hit: f.on_hit,
+            on_miss: f.on_miss,
+            guard: f.guard,
+        }
+    }
 }
 
 impl Step {
+    /// Every word a step's `side` may hold: the sides, then the rules.
+    pub const SIDE_WORDS: &'static [&'static str] = &["prefix", "suffix", "target", "close", "blocked"];
+
     /// The transition on a hit, with the default applied. `until_holds`
     /// says whether the step's `until` holds on the new item (`true` when
     /// it has none).

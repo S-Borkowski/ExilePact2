@@ -5,8 +5,9 @@
 //! - [`model`]: what a blueprint file says (the format's contract with
 //!   `ch-engine`), with the span of every value a check may refuse.
 //! - [`catalogue`]: every currency, omen, bone, flux and catalyst with its
-//!   id and effect, and the shapes of the data-backed essence, alloy and
-//!   liquid ids.
+//!   id and effect, the shapes of the data-backed essence, alloy and
+//!   liquid ids, the placeholders, and the not-established fact ids a
+//!   blueprint's `relies_on` may name.
 //! - [`validate`]: [`check`] a blueprint's text, or [`check_file`]; every
 //!   error is one `<path>:<line>:<col>: <message>` [`Diagnostic`].
 //! - [`shipped`]: the blueprints embedded at build time.
@@ -43,7 +44,9 @@ pub mod model;
 pub mod validate;
 
 pub use catalogue::{Currency, Effect, Entry, Kind, CATALOGUE};
-pub use model::{Action, Binding, Blueprint, Condition, Goal, Rarity, Side, Span, Spanned, Step, Transition, When};
+pub use model::{
+    Action, Binding, Blueprint, Condition, Goal, Order, Rarity, Side, SideRule, Span, Spanned, Step, Transition, When,
+};
 pub use validate::{check, check_file, line_col, Checked, Diagnostic};
 
 /// A blueprint file embedded at build time.

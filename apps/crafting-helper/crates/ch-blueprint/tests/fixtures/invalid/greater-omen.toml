@@ -1,0 +1,31 @@
+id = "greater-omen"
+name = "greater-omen off an Exalted Orb"
+classes = ["Rings"]
+source = "roadmap"
+order = "state"
+relies_on = ["greater-needs-two-free"]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "chaos"
+say = "Chaos the open side"
+goal = "fill"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["greater-omen"]
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "fill"
+
+[[step.action]]
+currency = "regal-orb"
+omens = ["greater-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["greater-omen", "omen-of-greater-exaltation"]

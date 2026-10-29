@@ -106,7 +106,7 @@ action = [
 
 [[step]]
 id = "fill"
-say = "Exalt a side that still has a target (with its Exaltation omen) until two targets are left"
+say = "Exalt a side that still has a target until two targets are left"
 goal = "add-wanted"
 bind = "any-remaining"
 until = { wanted_remaining_at_most = 2 }
