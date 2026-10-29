@@ -41,6 +41,25 @@ the targets and the whittling route chosen:
   plan again.
 - `craft-done`: the hit path to the end: four hits, done.
 
+Each history summary carries no outcome word (the pages show the result's
+own beside it); the status line leads with it (`Miss: no target gained or
+lost.`). No status line names the blueprint (`Route chosen.`, `Craft
+started.`). The branch lines name the next step by its composed
+instruction, never the blueprint's text.
+
+One craft state uses the ring of `ch-engine`'s fill walk
+(`crates/ch-engine/tests/items/gear/fill-desecrate-exalt/`), with life T3,
+fire T4, cold T4 and chaos T3 as the targets and the fill, desecrate, slam
+route chosen:
+
+- `craft-miss-clean`: planned on `03-fill-fire` and started, the exalt
+  missed (`07-fill-miss` rolled accuracy): on `fill-clean`, which the app
+  names by the modifier levels. Life, a target, is the lowest, so a
+  whittle would take it: the step is the Orb of Annulment, naming the
+  unwanted mana and accuracy and saying the orb takes one at random, with
+  the engine's odds for it and no fallback line. A miss branch to it says
+  the new modifier is removed next, without offering the choice.
+
 Every guiding view carries the overlay's content (`overlay.guide`: the
 current step, both branch lines, the last outcome and the screen watch's
 line), and no other view does; each history entry carries its source

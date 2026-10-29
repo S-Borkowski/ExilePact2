@@ -306,10 +306,10 @@ fn overlay_lines_follow_the_step_and_the_last_outcome() {
     assert_eq!((guide.step_number, guide.try_number), (Some(2), Some(1)));
     let last = guide.last.unwrap();
     assert_eq!(last.result, OutcomeWord::Hit);
-    assert_eq!(last.summary, "Hit: gained +#% to Fire Resistance (T3)");
+    assert_eq!(last.summary, "gained +#% to Fire Resistance (T3)");
     assert_eq!(
         guide.on_hit.as_deref(),
-        Some("On a hit: this step again until its condition holds, then Desecrate for the last target")
+        Some("On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)")
     );
     app.shutdown();
 
@@ -352,7 +352,7 @@ fn overlay_lines_follow_the_step_and_the_last_outcome() {
     assert!(guide.on_hit.is_none() && guide.odds.is_none() && guide.why.is_none());
     assert_eq!(
         guide.last.unwrap().summary,
-        "Hit: gained +#% to Lightning Resistance (T3)"
+        "gained +#% to Lightning Resistance (T3)"
     );
     app.shutdown();
 }

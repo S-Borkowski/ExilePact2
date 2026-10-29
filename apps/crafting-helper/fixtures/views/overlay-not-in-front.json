@@ -9,7 +9,7 @@
           "result": "hit",
           "source": "grab",
           "step": "chaos",
-          "summary": "Hit: gained +#% to Fire Resistance (T3)"
+          "summary": "gained +#% to Fire Resistance (T3)"
         }
       ],
       "item": {
@@ -47,7 +47,7 @@
       "route_name": "Rings: resistances by whittling",
       "status": "active",
       "step": {
-        "on_hit": "On a hit: this step again until its condition holds, then Desecrate for the last target",
+        "on_hit": "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
         "on_miss": "On a miss: this step again",
         "step": {
           "fallback": null,
@@ -91,10 +91,10 @@
         "result": "hit",
         "source": "grab",
         "step": "chaos",
-        "summary": "Hit: gained +#% to Fire Resistance (T3)"
+        "summary": "gained +#% to Fire Resistance (T3)"
       },
       "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
-      "on_hit": "On a hit: this step again until its condition holds, then Desecrate for the last target",
+      "on_hit": "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
       "on_miss": "On a miss: this step again",
       "route_name": "Rings: resistances by whittling",
       "status": "active",

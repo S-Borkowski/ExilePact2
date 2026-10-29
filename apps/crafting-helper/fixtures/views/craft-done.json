@@ -9,7 +9,7 @@
           "result": "hit",
           "source": "grab",
           "step": "chaos",
-          "summary": "Hit: gained +#% to Fire Resistance (T3)"
+          "summary": "gained +#% to Fire Resistance (T3)"
         },
         {
           "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
@@ -17,7 +17,7 @@
           "result": "hit",
           "source": "grab",
           "step": "whittle",
-          "summary": "Hit: gained +#% to Cold Resistance (T3)"
+          "summary": "gained +#% to Cold Resistance (T3)"
         },
         {
           "instruction": "Preserved Collarbone for +#% to Lightning Resistance (suffix)",
@@ -25,7 +25,7 @@
           "result": "hit",
           "source": "grab",
           "step": "desecrate",
-          "summary": "Hit: the step did what it is for, no target gained or lost"
+          "summary": "the step did what it is for, no target gained or lost"
         },
         {
           "instruction": "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)",
@@ -33,7 +33,7 @@
           "result": "hit",
           "source": "grab",
           "step": "reveal",
-          "summary": "Hit: gained +#% to Lightning Resistance (T3)"
+          "summary": "gained +#% to Lightning Resistance (T3)"
         }
       ],
       "item": {
@@ -104,7 +104,7 @@
         "result": "hit",
         "source": "grab",
         "step": "reveal",
-        "summary": "Hit: gained +#% to Lightning Resistance (T3)"
+        "summary": "gained +#% to Lightning Resistance (T3)"
       },
       "odds": null,
       "on_hit": null,

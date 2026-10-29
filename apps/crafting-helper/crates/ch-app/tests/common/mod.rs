@@ -559,6 +559,52 @@ pub fn ring_targets() -> Vec<ch_app::ch_engine::Target> {
 /// The blueprint the ring's walk follows.
 pub const WHITTLE: &str = "rings-resist-whittle";
 
+/// One state of the ring `ch-engine`'s tests walk on the fill, desecrate,
+/// slam route (`crates/ch-engine/tests/items/gear/fill-desecrate-exalt/`):
+/// `03-fill-fire` a Rare with life and fire, `07-fill-miss` an exalt that
+/// rolled accuracy, `08-whittled` that accuracy whittled into strength.
+pub fn fill(name: &str) -> String {
+    let path = app_root()
+        .join("crates/ch-engine/tests/items/gear/fill-desecrate-exalt")
+        .join(format!("{name}.txt"));
+    fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+}
+
+/// The fill route's targets, as `ch-engine`'s seed walk sets them: life T3,
+/// fire T4, cold T4 and chaos T3.
+pub fn fill_targets() -> Vec<ch_app::ch_engine::Target> {
+    [
+        ("prefix-to-maximum-life", 3),
+        ("suffix-to-fire-resistance", 4),
+        ("suffix-to-cold-resistance", 4),
+        ("suffix-to-chaos-resistance", 3),
+    ]
+    .iter()
+    .map(|(id, floor)| ch_app::ch_engine::Target::new(*id, Some(*floor)))
+    .collect()
+}
+
+/// The blueprint the fill walk follows.
+pub const FILL: &str = "fill-desecrate-exalt";
+
+/// `text` without the modifier whose value line contains `line` (its
+/// header and that line): what an annulment of it leaves.
+pub fn without_mod(text: &str, line: &str) -> String {
+    let rows: Vec<&str> = text.lines().collect();
+    let at = rows
+        .iter()
+        .position(|r| r.contains(line))
+        .unwrap_or_else(|| panic!("no line with {line:?}"));
+    assert!(
+        rows[at - 1].starts_with('{'),
+        "{:?} has no header",
+        rows[at]
+    );
+    let mut out: Vec<&str> = rows[..at - 1].to_vec();
+    out.extend(&rows[at + 1..]);
+    out.join("\n") + "\n"
+}
+
 pub fn wait_until(what: &str, pred: impl Fn() -> bool) {
     let start = Instant::now();
     while !pred() {

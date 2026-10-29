@@ -9,7 +9,7 @@
           "result": "miss",
           "source": "grab",
           "step": "chaos",
-          "summary": "Miss: +#% to Fire Resistance (T5) below its floor T3"
+          "summary": "+#% to Fire Resistance (T5) below its floor T3"
         }
       ],
       "item": {
@@ -47,7 +47,7 @@
       "route_name": "Rings: resistances by whittling",
       "status": "active",
       "step": {
-        "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+        "on_hit": "On a hit: Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
         "on_miss": "On a miss: this step again",
         "step": {
           "fallback": null,
@@ -91,10 +91,10 @@
         "result": "miss",
         "source": "grab",
         "step": "chaos",
-        "summary": "Miss: +#% to Fire Resistance (T5) below its floor T3"
+        "summary": "+#% to Fire Resistance (T5) below its floor T3"
       },
       "odds": "~3.0% ((4000 of 133355 weight) times (2 of 2 removable modifiers are not wanted))",
-      "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+      "on_hit": "On a hit: Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
       "on_miss": "On a miss: this step again",
       "route_name": "Rings: resistances by whittling",
       "status": "active",

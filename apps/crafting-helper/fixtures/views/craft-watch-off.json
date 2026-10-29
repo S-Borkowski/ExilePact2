@@ -38,7 +38,7 @@
       "route_name": "Rings: resistances by whittling",
       "status": "active",
       "step": {
-        "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+        "on_hit": "On a hit: Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
         "on_miss": "On a miss: this step again",
         "step": {
           "fallback": null,
@@ -78,7 +78,7 @@
       "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
       "last": null,
       "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
-      "on_hit": "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left",
+      "on_hit": "On a hit: Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
       "on_miss": "On a miss: this step again",
       "route_name": "Rings: resistances by whittling",
       "status": "active",
@@ -98,7 +98,7 @@
   },
   "status": {
     "kind": "info",
-    "text": "Started Rings: resistances by whittling."
+    "text": "Craft started."
   },
   "update_available": null
 }

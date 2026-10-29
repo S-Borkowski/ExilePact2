@@ -202,6 +202,22 @@ fn main_views() -> Vec<(&'static str, View)> {
         ),
     ));
 
+    // The fill route on `ch-engine`'s fill ring: planned on `03-fill-fire`
+    // with the seed walk's targets, its exalt missed (`07-fill-miss`
+    // rolled accuracy): on `fill-clean`, which the app names by the
+    // modifier levels (life, a target, is the lowest: the annulment).
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("miss-clean"), &shell);
+    app.grab_text(Some(&fill("03-fill-fire")));
+    app.set_targets(&fill_targets());
+    app.choose_route(FILL);
+    app.accept_craft();
+    out.push((
+        "craft-miss-clean",
+        app.grab_text(Some(&fill("07-fill-miss"))),
+    ));
+    app.shutdown();
+
     // The overlay: guiding after one hit, the game's window in front (shown)
     // or not (hidden), the watch ticked once by hand.
     let overlay = |dir: &str, window| {
@@ -458,6 +474,10 @@ fn fixtures_are_current() {
     assert_eq!(guide("craft-guiding").history.len(), 1);
     assert_eq!(guide("craft-miss").history[0].result, OutcomeWord::Miss);
     assert_eq!(guide("craft-miss").step.as_ref().unwrap().try_number, 2);
+    let clean = guide("craft-miss-clean").step.as_ref().unwrap();
+    assert_eq!(clean.step.id, "fill-clean");
+    assert_eq!(clean.step.uses, ["Orb of Annulment"]);
+    assert!(clean.step.fallback.is_none());
     assert_eq!(guide("craft-replan").status, GuideStatusView::Replan);
     assert_eq!(guide("craft-done").status, GuideStatusView::Done);
 
@@ -558,7 +578,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 21);
+    assert_eq!(views.len(), 22);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

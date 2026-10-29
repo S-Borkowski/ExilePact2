@@ -95,7 +95,9 @@ use ch_engine::ch_item::Item;
 use ch_engine::{Engine, Target};
 use ch_watch::ItemKey;
 
-use crate::craft::{CommandResult, Craft, GrabEffect, ScreenEffect, CRAFT_OF_EXILE_URL};
+use crate::craft::{
+    outcome_title, CommandResult, Craft, GrabEffect, ScreenEffect, CRAFT_OF_EXILE_URL,
+};
 use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
 use crate::overlay::{overlay_guide, overlay_origin};
@@ -786,7 +788,10 @@ impl App {
                                 outcome_name(result)
                             ));
                             st.status = Some(Status {
-                                line: StatusLine::info(format!("{summary}. Read from the screen.")),
+                                line: StatusLine::info(format!(
+                                    "{}: {summary}. Read from the screen.",
+                                    outcome_title(result)
+                                )),
                                 about_hotkey: false,
                             });
                             kept = Some(true);
@@ -1519,10 +1524,13 @@ impl App {
                     GrabEffect::Observed {
                         result, summary, ..
                     } => {
+                        // The summary carries no word; the status line,
+                        // which shows it alone, says it.
+                        let line = format!("{}: {summary}.", outcome_title(*result));
                         if *result == OutcomeWord::Unexpected {
-                            StatusLine::error(format!("{summary}."))
+                            StatusLine::error(line)
                         } else {
-                            StatusLine::info(format!("{summary}."))
+                            StatusLine::info(line)
                         }
                     }
                 };

@@ -186,7 +186,7 @@ fn screen_hit_advances_after_two_equal_reads() {
         (OutcomeWord::Hit, OutcomeSource::Screen)
     );
     assert_eq!(last.step, first);
-    assert_eq!(last.summary, "Hit: gained +#% to Fire Resistance (T3)");
+    assert_eq!(last.summary, "gained +#% to Fire Resistance (T3)");
     assert_eq!(g.step.as_ref().unwrap().step.number, 2);
     assert_eq!(g.step.as_ref().unwrap().try_number, 1);
     assert_ne!(g.item, before, "the read item is the item now");
@@ -390,8 +390,9 @@ fn another_item_changes_nothing() {
     assert_eq!(
         watch(&app),
         WatchLineView {
-            text: "Can't read the item (a line it does not know): hover it without Alt, or grab it."
-                .to_string(),
+            text:
+                "Can't read the item (a line it does not know): hover it without Alt, or grab it."
+                    .to_string(),
             warning: true
         }
     );

@@ -351,8 +351,10 @@ pub struct StepLineView {
     pub number: usize,
     /// What to do: for a step that places one of the targets, composed from
     /// its data (the currency, its omens, the side and the target
-    /// modifiers, `crate::craft::step_instruction`); otherwise the
-    /// blueprint's text.
+    /// modifiers, `crate::craft::step_instruction`); for a removal step, the
+    /// currency and the modifier(s) it removes (a whittle-or-annul step as
+    /// the app named it by the modifier levels); otherwise the blueprint's
+    /// text.
     pub instruction: String,
     /// The texts of the target modifiers a hit of this step may place, as
     /// the planning list writes them; empty for a step that places none
@@ -362,7 +364,8 @@ pub struct StepLineView {
     pub uses: Vec<String>,
     /// The odds in words; `None` for a manual step.
     pub odds: Option<String>,
-    /// Set when an earlier alternative was passed over.
+    /// Set when an earlier alternative was passed over; never on a step the
+    /// app named by the modifier levels.
     pub fallback: Option<String>,
 }
 
@@ -476,7 +479,7 @@ pub struct HistoryEntry {
     pub step: String,
     pub instruction: String,
     pub result: OutcomeWord,
-    /// Starts `Hit:`, `Miss:` or `Unexpected:`.
+    /// What changed, without the outcome's word (`result` carries it).
     pub summary: String,
     pub source: OutcomeSource,
 }

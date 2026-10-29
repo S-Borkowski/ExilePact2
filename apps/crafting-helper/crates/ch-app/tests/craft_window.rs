@@ -449,7 +449,8 @@ fn targets_plan_a_route_with_odds_in_words() {
     // The whittling route: chaos, whittle, desecrate, reveal, with known
     // odds for the orbs and unknown odds, in words, for the desecration.
     let view = app.choose_route(WHITTLE);
-    assert_eq!(status(&view).1, "Route: Rings: resistances by whittling.");
+    // The status line names no blueprint (the diag line names its id).
+    assert_eq!(status(&view).1, "Route chosen.");
     let preview = planning(&view).preview.as_ref().unwrap();
     let route = preview.route.as_ref().unwrap();
     assert_eq!(route.name, "Rings: resistances by whittling");
@@ -575,7 +576,7 @@ fn a_targeted_step_says_its_currency_side_and_mods() {
     let whittle = route.steps[1].clone();
     assert_eq!(whittle.id, "whittle");
     assert_eq!(whittle.side, None);
-    let said = step_instruction(&whittle, &item);
+    let said = step_instruction(&whittle, &item, &ring_targets());
     assert_eq!(
         said,
         "Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
@@ -586,7 +587,7 @@ fn a_targeted_step_says_its_currency_side_and_mods() {
     let mut tied = whittle.clone();
     tied.side = Some(Side::Suffix);
     assert_eq!(
-        step_instruction(&tied, &item),
+        step_instruction(&tied, &item, &ring_targets()),
         "Chaos Orb with Omen of Whittling on the suffix side for +#% to Fire Resistance, +#% to Cold Resistance or +#% to Lightning Resistance"
     );
 
@@ -598,14 +599,14 @@ fn a_targeted_step_says_its_currency_side_and_mods() {
     desecrate.targets = last.clone();
     let bone = desecrate.action.as_ref().unwrap().name.clone();
     assert_eq!(
-        step_instruction(&desecrate, &item),
+        step_instruction(&desecrate, &item, &ring_targets()),
         format!("{bone} for +#% to Lightning Resistance (suffix)")
     );
     // The reveal names what it reveals into.
     let mut reveal = route.steps[3].clone();
     reveal.targets = last;
     assert_eq!(
-        step_instruction(&reveal, &item),
+        step_instruction(&reveal, &item, &ring_targets()),
         "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)"
     );
 }
@@ -618,24 +619,34 @@ fn a_step_without_targets_keeps_the_blueprint_text() {
     let chaos = &route.steps[0];
     assert_eq!(chaos.say, "Chaos Orb until one of the targets lands");
     // Positive control: with its targets, the step is composed.
-    assert_eq!(step_instruction(chaos, &item), CHAOS_STEP);
+    let targets = ring_targets();
+    assert_eq!(step_instruction(chaos, &item, &targets), CHAOS_STEP);
 
     // No target left for it: the blueprint's text, and no target line.
     let mut none = chaos.clone();
     none.targets.clear();
-    assert_eq!(step_instruction(&none, &item), chaos.say);
+    assert_eq!(step_instruction(&none, &item, &targets), chaos.say);
     assert!(step_targets(&none, &item).is_empty());
     // A removal step's targets are only what its binding names: a hit takes
-    // a modifier off and places none, so its text stays.
+    // a modifier off and places none, so it has no target line. Its text is
+    // composed too: the currency and the unwanted modifiers it may take
+    // (both of the start's, neither a target), never the blueprint's.
     let mut removal = chaos.clone();
     removal.goal = Goal::RemoveUnwanted;
-    assert_eq!(step_instruction(&removal, &item), chaos.say);
+    let said = step_instruction(&removal, &item, &targets);
+    assert!(said.starts_with("Chaos Orb to remove "), "{said}");
+    assert!(said.contains("+95(90-104) to maximum Mana"), "{said}");
+    assert!(
+        said.ends_with("; it takes one modifier at random"),
+        "{said}"
+    );
+    assert!(!said.contains(&chaos.say), "{said}");
     assert!(step_targets(&removal, &item).is_empty());
     // A manual step has no currency to name.
     let mut manual = chaos.clone();
     manual.goal = Goal::Manual;
     manual.action = None;
-    assert_eq!(step_instruction(&manual, &item), chaos.say);
+    assert_eq!(step_instruction(&manual, &item, &targets), chaos.say);
 }
 
 #[test]
@@ -883,10 +894,7 @@ fn accept_starts_the_guide_on_the_previewed_route() {
     let view = app.accept_craft();
     assert_eq!(
         status(&view),
-        (
-            StatusKind::Info,
-            "Started Rings: resistances by whittling.".to_string()
-        )
+        (StatusKind::Info, "Craft started.".to_string())
     );
     let g = guiding(&view);
     assert_eq!(g.blueprint, WHITTLE);
@@ -899,9 +907,10 @@ fn accept_starts_the_guide_on_the_previewed_route() {
     assert_eq!(step.try_number, 1);
     assert_eq!(step.step.uses, ["Chaos Orb"]);
     assert!(step.step.odds.as_deref().unwrap().starts_with('~'));
+    // The next step by its composed instruction, never the blueprint's text.
     assert_eq!(
         step.on_hit,
-        "On a hit: Whittle (Omen of Whittling with a Chaos Orb) until one target is left"
+        "On a hit: Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
     );
     assert_eq!(step.on_miss, "On a miss: this step again");
 
@@ -939,14 +948,18 @@ fn regrab_hit_advances_the_guide() {
         (1, "chaos", OutcomeWord::Hit)
     );
     assert_eq!(h.instruction, CHAOS_STEP);
-    assert_eq!(h.summary, "Hit: gained +#% to Fire Resistance (T3)");
-    assert_eq!(status(&view), (StatusKind::Info, format!("{}.", h.summary)));
+    // The summary carries no word; the status line says it once.
+    assert_eq!(h.summary, "gained +#% to Fire Resistance (T3)");
+    assert_eq!(
+        status(&view),
+        (StatusKind::Info, format!("Hit: {}.", h.summary))
+    );
     let step = g.step.as_ref().unwrap();
     assert_eq!((step.step.id.as_str(), step.step.number), ("whittle", 2));
     assert_eq!(step.try_number, 1);
     assert_eq!(
         step.on_hit,
-        "On a hit: this step again until its condition holds, then Desecrate for the last target"
+        "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
     );
     // The item now is the one grabbed, its fire resistance a target met.
     let fire = g
@@ -973,10 +986,7 @@ fn regrab_miss_repeats_and_counts_the_try() {
     assert_eq!(g.status, GuideStatusView::Active);
     let h = &g.history[0];
     assert_eq!(h.result, OutcomeWord::Miss);
-    assert_eq!(
-        h.summary,
-        "Miss: +#% to Fire Resistance (T5) below its floor T3"
-    );
+    assert_eq!(h.summary, "+#% to Fire Resistance (T5) below its floor T3");
     let step = g.step.as_ref().unwrap();
     assert_eq!(step.step.id, "chaos");
     assert_eq!(step.try_number, 2);
@@ -1006,7 +1016,8 @@ fn unexpected_change_offers_plan_again() {
     assert!(!g.reasons.is_empty());
     let h = &g.history[0];
     assert_eq!(h.result, OutcomeWord::Unexpected);
-    assert!(h.summary.starts_with("Unexpected: "), "{}", h.summary);
+    assert!(!h.summary.starts_with("Unexpected"), "{}", h.summary);
+    assert_eq!(status(&view).1, format!("Unexpected: {}.", h.summary));
     assert!(
         h.summary.contains(&g.reasons[0]),
         "{} / {:?}",
@@ -1104,7 +1115,7 @@ fn craft_reaches_done() {
     assert_eq!(reveal.on_hit, "On a hit: the craft is done");
     assert_eq!(
         reveal.on_miss,
-        "On a miss: Whittle (Omen of Whittling with a Chaos Orb) until one target is left"
+        "On a miss: Chaos Orb with Omen of Whittling for +#% to Lightning Resistance (suffix)"
     );
     let view = app.grab_text(Some(&ring("05-revealed-lightning")));
     let g = guiding(&view);
@@ -1116,7 +1127,7 @@ fn craft_reaches_done() {
     assert_eq!(numbers, [1, 2, 3, 4]);
     assert_eq!(
         g.history[3].summary,
-        "Hit: gained +#% to Lightning Resistance (T3)"
+        "gained +#% to Lightning Resistance (T3)"
     );
     assert_eq!(
         g.item.modifiers.iter().filter(|m| m.meets_target).count(),

@@ -42,7 +42,21 @@
 //!   the blueprint's `notes`.
 //!   `accept_craft` starts the guide on the previewed route; `end_craft`
 //!   goes back to planning on the latest item, targets and blocked changes
-//!   kept, history cleared.
+//!   kept, history cleared. No status line names the blueprint (the
+//!   recipe is the app's); the diag lines name it by id.
+//! - **Whittle or annul, by level** ([`annulment_by_level`]): a removal
+//!   step that offers Omen of Whittling with a Chaos Orb and then a plain
+//!   Orb of Annulment is shown, wherever a step is shown (the route's list,
+//!   the current step, the overlay, History), as the whittle when the
+//!   engine's whittle is a certain hit (the lowest-level modifier is
+//!   unwanted), and otherwise as the annulment, which the engine takes with
+//!   Omen of Whittling added to the list: its action and odds are the
+//!   engine's, and it has no fallback line. The annulment blocked for the
+//!   craft keeps the whittle. Only in a blueprint in which every step that
+//!   names Whittling is such a step. The result is judged against the way
+//!   the app named, on a copy of the guide with the longer list that gets
+//!   the guide's own list back before anything is kept; the next step is
+//!   decided again on the next item.
 //!
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
 //! "Rust-produced copy" is made here: a step's instruction and target
@@ -50,13 +64,13 @@
 //! [`fallback_line`], [`floor_options`], the branch lines
 //! ([`branch_lines`]) and the history summary ([`summary`]).
 
-use ch_engine::ch_blueprint::catalogue::{bones_for, Currency, ItemGroup, SIDE_OMEN};
+use ch_engine::ch_blueprint::catalogue::{bones_for, Currency, ItemGroup, OmenChange, SIDE_OMEN};
 use ch_engine::ch_blueprint::{Blueprint, Goal, Side, Step, Transition};
-use ch_engine::ch_data::{self, Kind, Odds, Section, ValidMod};
+use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
 use ch_engine::ch_item::{self, Item, Rarity};
 use ch_engine::{
-    catalogue_item, Engine, Guide, Next, Outcome, OutcomeKind, Refusal, Route, Started, Status,
-    StepView, Target, WantedMod,
+    catalogue_item, ChosenAction, Engine, Guide, Next, Outcome, OutcomeKind, Refusal, Route,
+    Started, Status, StepView, Target, WantedMod,
 };
 
 use crate::settings::CatalogueEntry;
@@ -317,13 +331,21 @@ impl Craft {
             return ScreenEffect::Ignored;
         }
         let after = Grabbed { text: None, item };
-        match classify(engine, g, &after) {
+        let shown = shown_step(Some(engine), g);
+        match classify(engine, g, &after, shown.as_ref()) {
             Ok((outcome, _)) if outcome.result == OutcomeKind::Unexpected => {
                 ScreenEffect::Unexpected { step: outcome.step }
             }
             Ok((outcome, guide)) => {
-                let (result, step, summary) =
-                    keep(engine, g, outcome, guide, after, OutcomeSource::Screen);
+                let (result, step, summary) = keep(
+                    engine,
+                    g,
+                    outcome,
+                    guide,
+                    after,
+                    shown.as_ref(),
+                    OutcomeSource::Screen,
+                );
                 ScreenEffect::Kept {
                     result,
                     step,
@@ -411,14 +433,15 @@ impl Craft {
                 &self.effective_blocked(settings),
             )
             .map_err(|why| why.to_string())?;
-        let Some(route) = plan.routes.iter().find(|r| r.blueprint == blueprint) else {
+        if !plan.routes.iter().any(|r| r.blueprint == blueprint) {
             return Err(format!("`{blueprint}` is not a route for this item"));
-        };
-        let name = route.name.clone();
+        }
         self.chosen_route = Some(blueprint.to_string());
+        // The blueprint's name is the app's recipe, not the player's: the
+        // status line says what happened, the diag line names it by id.
         Ok(Done {
             diag: format!("craft: route {blueprint}"),
-            status: format!("Route: {name}."),
+            status: "Route chosen.".to_string(),
         })
     }
 
@@ -440,7 +463,6 @@ impl Craft {
         let Started { guide, route, next } = engine
             .start(&id, &grabbed.item, &self.targets, &blocked)
             .map_err(|e| e.to_string())?;
-        let name = route.name.clone();
         self.mode = Mode::Guiding(Box::new(Guiding {
             guide,
             route,
@@ -450,7 +472,7 @@ impl Craft {
         }));
         Ok(Done {
             diag: format!("craft: accepted {id}"),
-            status: format!("Started {name}."),
+            status: "Craft started.".to_string(),
         })
     }
 
@@ -622,10 +644,18 @@ fn observe(
             }
         ));
     }
-    match classify(engine, g, &after) {
+    let shown = shown_step(Some(engine), g);
+    match classify(engine, g, &after, shown.as_ref()) {
         Ok((outcome, guide)) => {
-            let (result, step, summary) =
-                keep(engine, g, outcome, guide, after, OutcomeSource::Grab);
+            let (result, step, summary) = keep(
+                engine,
+                g,
+                outcome,
+                guide,
+                after,
+                shown.as_ref(),
+                OutcomeSource::Grab,
+            );
             GrabEffect::Observed {
                 result,
                 step,
@@ -651,14 +681,40 @@ fn same_key(a: &Item, b: &Item) -> bool {
 /// screen both are compared in one form: each explicit modifier line
 /// written from its template and values ([`as_read`]). Two grabs are
 /// compared as M5 compared them.
-fn classify(engine: &Engine, g: &Guiding, after: &Grabbed) -> Result<(Outcome, Guide), String> {
+///
+/// A step the app named by level ([`Shown::by_level`]) is judged against the
+/// annulment it named: on a copy of the guide whose blocked list also holds
+/// Omen of Whittling. The copy gets the guide's own list back in every
+/// outcome, and a next step is taken again with it, so what is kept (the
+/// step, its tries, bindings and status, and the step `Guiding::next`
+/// holds) is what the craft's own list gives; [`shown_step`] decides again
+/// on the next item.
+fn classify(
+    engine: &Engine,
+    g: &Guiding,
+    after: &Grabbed,
+    shown: Option<&Shown>,
+) -> Result<(Outcome, Guide), String> {
+    let by_level = shown.is_some_and(|s| s.by_level);
     let mut guide = g.guide.clone();
-    let observed = if g.item.text.is_some() && after.text.is_some() {
-        engine.observe(&mut guide, &g.item.item, &after.item)
+    if by_level {
+        guide.blocked.push(WHITTLING.to_string());
+    }
+    let (before, after) = if g.item.text.is_some() && after.text.is_some() {
+        (g.item.item.clone(), after.item.clone())
     } else {
-        engine.observe(&mut guide, &as_read(&g.item.item), &as_read(&after.item))
+        (as_read(&g.item.item), as_read(&after.item))
     };
-    let outcome = observed.map_err(|e| e.to_string())?;
+    let observed = engine.observe(&mut guide, &before, &after);
+    guide.blocked.clone_from(&g.guide.blocked);
+    let mut outcome = observed.map_err(|e| e.to_string())?;
+    if by_level {
+        if let Next::Step { step } = &mut outcome.next {
+            if let Ok(own) = engine.current(&guide, &after) {
+                **step = own;
+            }
+        }
+    }
     Ok((outcome, guide))
 }
 
@@ -695,21 +751,23 @@ fn as_read(item: &Item) -> Item {
 /// Keeps an outcome: its history entry (with its source), the guide moved
 /// on and `after` as the item the next step is shown on. Returns the result,
 /// the step and the summary.
+#[allow(clippy::too_many_arguments)]
 fn keep(
     engine: &Engine,
     g: &mut Guiding,
     outcome: Outcome,
     guide: Guide,
     after: Grabbed,
+    shown: Option<&Shown>,
     source: OutcomeSource,
 ) -> (OutcomeWord, String, String) {
     let blueprint = engine.blueprint(&guide.blueprint).map(|r| r.blueprint());
-    let (number, mut instruction) = step_place(blueprint, &g.route, &outcome.step, &g.item.item);
+    let targets = &g.guide.targets;
+    let (number, mut instruction) =
+        step_place(blueprint, &g.route, &outcome.step, &g.item.item, targets);
     // The step as it was shown, on the item it was shown on.
-    if let Next::Step { step } = &g.next {
-        if step.id == outcome.step {
-            instruction = step_instruction(step, &g.item.item);
-        }
+    if let Some(shown) = shown.filter(|s| s.step.id == outcome.step) {
+        instruction = step_instruction(&shown.step, &g.item.item, targets);
     }
     let summary = summary(&outcome, &after.item);
     let result = outcome_word(outcome.result);
@@ -771,17 +829,43 @@ fn preview(
         };
     };
     let blueprint = engine.blueprint(&route.blueprint).map(|r| r.blueprint());
+    // The same blueprint's route with Omen of Whittling added to the list,
+    // taken once, the first time a step asks for its annulment.
+    let mut longer: Option<Option<Route>> = None;
+    let mut steps = Vec::new();
+    for (i, s) in route.steps.iter().enumerate() {
+        let named = annulment_by_level(blueprint, s, blocked, |list| {
+            longer
+                .get_or_insert_with(|| {
+                    engine
+                        .start(&route.blueprint, item, targets, list)
+                        .ok()
+                        .map(|started| started.route)
+                })
+                .as_ref()?
+                .steps
+                .iter()
+                .find(|x| x.id == s.id)
+                .cloned()
+        });
+        let shown = match named {
+            Some(step) => Shown {
+                step,
+                by_level: true,
+            },
+            None => Shown {
+                step: s.clone(),
+                by_level: false,
+            },
+        };
+        steps.push(step_line(blueprint, &shown, i + 1, item, blocked, targets));
+    }
     PreviewView {
         route: Some(RouteView {
             blueprint: route.blueprint.clone(),
             name: route.name.clone(),
             source: route.source.clone(),
-            steps: route
-                .steps
-                .iter()
-                .enumerate()
-                .map(|(i, s)| step_line(blueprint, s, i + 1, item, blocked))
-                .collect(),
+            steps,
         }),
         other_routes: plan
             .routes
@@ -810,17 +894,19 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
         }
         _ => Vec::new(),
     };
-    let step = match &g.next {
-        Next::Step { step } if status == GuideStatusView::Active => {
-            let (number, _) = step_place(blueprint, &g.route, &step.id, &g.item.item);
+    let item = &g.item.item;
+    let own = &g.guide.targets;
+    let step = match (&g.next, shown_step(engine, g)) {
+        (Next::Step { .. }, Some(shown)) if status == GuideStatusView::Active => {
+            let (number, _) = step_place(blueprint, &g.route, &shown.step.id, item, own);
             Some(current_step(
                 blueprint,
-                step_line(blueprint, step, number, &g.item.item, &g.guide.blocked),
-                g.guide.tries,
+                g,
+                step_line(blueprint, &shown, number, item, &g.guide.blocked, own),
             ))
         }
-        Next::Stuck { step, .. } => {
-            let (number, instruction) = step_place(blueprint, &g.route, step, &g.item.item);
+        (Next::Stuck { step, .. }, _) => {
+            let (number, instruction) = step_place(blueprint, &g.route, step, item, own);
             let targets = g
                 .route
                 .steps
@@ -830,6 +916,7 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                 .unwrap_or_default();
             Some(current_step(
                 blueprint,
+                g,
                 StepLineView {
                     id: step.clone(),
                     number,
@@ -839,7 +926,6 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                     odds: None,
                     fallback: None,
                 },
-                g.guide.tries,
             ))
         }
         _ => None,
@@ -857,9 +943,9 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
     }
 }
 
-fn current_step(blueprint: Option<&Blueprint>, step: StepLineView, tries: u32) -> CurrentStepView {
+fn current_step(blueprint: Option<&Blueprint>, g: &Guiding, step: StepLineView) -> CurrentStepView {
     let (on_hit, on_miss) = match blueprint {
-        Some(b) => branch_lines(b, &step.id),
+        Some(b) => branch_lines(b, &g.route.steps, &step.id, &g.item.item, &g.guide.targets),
         None => (
             "On a hit: see the blueprint".to_string(),
             "On a miss: see the blueprint".to_string(),
@@ -869,8 +955,113 @@ fn current_step(blueprint: Option<&Blueprint>, step: StepLineView, tries: u32) -
         step,
         on_hit,
         on_miss,
-        try_number: tries + 1,
+        try_number: g.guide.tries + 1,
     }
+}
+
+/// A step as the app shows it: the engine's pick, or the annulment the app
+/// named by level in its place ([`annulment_by_level`]).
+#[derive(Debug, Clone)]
+struct Shown {
+    step: StepView,
+    /// The app named the annulment where the engine picked the whittle.
+    by_level: bool,
+}
+
+/// While guiding an active step: that step as shown, decided on the item it
+/// is shown on (`Guiding.item`, as kept) with the craft's own list.
+fn shown_step(engine: Option<&Engine>, g: &Guiding) -> Option<Shown> {
+    let Next::Step { step } = &g.next else {
+        return None;
+    };
+    let named = engine.and_then(|engine| {
+        let blueprint = engine.blueprint(&g.guide.blueprint).map(|r| r.blueprint());
+        annulment_by_level(blueprint, step, &g.guide.blocked, |list| {
+            let mut copy = g.guide.clone();
+            copy.blocked = list.to_vec();
+            engine.current(&copy, &g.item.item).ok()
+        })
+    });
+    Some(match named {
+        Some(step) => Shown {
+            step,
+            by_level: true,
+        },
+        None => Shown {
+            step: (**step).clone(),
+            by_level: false,
+        },
+    })
+}
+
+/// Omen of Whittling: the first way of a whittle-or-annul step.
+const WHITTLING: &str = "omen-of-whittling";
+/// Orb of Annulment: its later, plain way.
+const ANNULMENT: &str = "orb-of-annulment";
+
+fn names_whittling(action: &ch_engine::ch_blueprint::Action) -> bool {
+    action.omens.iter().any(|o| o.get_ref() == WHITTLING)
+}
+
+/// A removal step one of whose ways names Omen of Whittling and a later one
+/// is a plain Orb of Annulment.
+fn whittle_or_annul(step: &Step) -> bool {
+    if *step.goal.get_ref() != Goal::RemoveUnwanted {
+        return false;
+    }
+    let Some(at) = step
+        .actions
+        .iter()
+        .position(|a| names_whittling(a.get_ref()))
+    else {
+        return false;
+    };
+    step.actions[at + 1..].iter().any(|a| {
+        let a = a.get_ref();
+        a.currency.get_ref() == ANNULMENT && a.omens.is_empty()
+    })
+}
+
+/// The whittle or the annulment of a whittle-or-annul step, by the
+/// modifier levels: `Some` with the annulment's step, as the engine takes
+/// it with Omen of Whittling added to the list (`annul` takes the step with
+/// the list it is given), where the engine picked the whittle and it is not
+/// a certain hit, unless `blocked` (the craft's own list) blocks the
+/// annulment. `None` keeps the engine's pick: a step of another kind, a
+/// whittle that is a certain hit, a step the craft's own list already moved
+/// to the annulment, an annulment that cannot be taken, and any step of a
+/// blueprint in which a step names Omen of Whittling without the annulment
+/// after it (the longer list could leave that one with every way blocked).
+fn annulment_by_level(
+    blueprint: Option<&Blueprint>,
+    step: &StepView,
+    blocked: &[String],
+    annul: impl FnOnce(&[String]) -> Option<StepView>,
+) -> Option<StepView> {
+    let blueprint = blueprint?;
+    let steps = || blueprint.steps.iter().map(|s| s.get_ref());
+    let guard = steps()
+        .filter(|s| s.actions.iter().any(|a| names_whittling(a.get_ref())))
+        .all(whittle_or_annul);
+    let own = steps().find(|s| s.id.get_ref() == &step.id)?;
+    if !guard || !whittle_or_annul(own) {
+        return None;
+    }
+    let action = step.action.as_ref()?;
+    let whittle = action.omens.iter().any(|o| o == WHITTLING);
+    let certain = step
+        .odds
+        .as_ref()
+        .and_then(Odds::percent)
+        .is_some_and(|p| p >= 100.0);
+    if !whittle || certain || blocked.iter().any(|id| id == ANNULMENT) {
+        return None;
+    }
+    let mut list = blocked.to_vec();
+    list.push(WHITTLING.to_string());
+    let taken = annul(&list)?;
+    let a = taken.action.as_ref()?;
+    (taken.id == step.id && a.currency == ANNULMENT && a.omens.is_empty()).then_some(taken)
 }
 
 /// Each target's floor in force on the item.
@@ -912,6 +1103,7 @@ fn step_place(
     route: &Route,
     id: &str,
     item: &Item,
+    targets: &[Target],
 ) -> (usize, String) {
     let in_route = route.steps.iter().position(|s| s.id == id);
     let in_blueprint = blueprint.and_then(|b| {
@@ -927,19 +1119,23 @@ fn step_place(
         .steps
         .iter()
         .find(|s| s.id == id)
-        .map(|s| step_instruction(s, item))
+        .map(|s| step_instruction(s, item, targets))
         .or(in_blueprint.map(|(_, say)| say))
         .unwrap_or_else(|| id.to_string());
     (number, instruction)
 }
 
+/// One step's line. A step the app named by level has no fallback line:
+/// the whittle it passed over is not blocked.
 fn step_line(
     blueprint: Option<&Blueprint>,
-    step: &StepView,
+    shown: &Shown,
     number: usize,
     item: &Item,
     blocked: &[String],
+    targets: &[Target],
 ) -> StepLineView {
+    let step = &shown.step;
     let uses = step
         .action
         .as_ref()
@@ -952,11 +1148,13 @@ fn step_line(
     StepLineView {
         id: step.id.clone(),
         number,
-        instruction: step_instruction(step, item),
+        instruction: step_instruction(step, item, targets),
         targets: step_targets(step, item),
         uses,
         odds: step.odds.as_ref().map(odds_words),
-        fallback: blueprint.and_then(|b| fallback_line(b, step, item, blocked)),
+        fallback: blueprint
+            .filter(|_| !shown.by_level)
+            .and_then(|b| fallback_line(b, step, item, blocked)),
     }
 }
 
@@ -1091,18 +1289,21 @@ pub fn step_targets(step: &StepView, item: &Item) -> Vec<String> {
 /// - `Exalted Orb on the prefix side for +# to maximum Life or +# to
 ///   maximum Mana`: tied to a side, named once.
 ///
-/// Any other step (no target left, a removal, a fill or a manual step)
-/// keeps the blueprint's `say`.
-pub fn step_instruction(step: &StepView, item: &Item) -> String {
+/// A removal step with a currency names the modifiers it removes
+/// ([`removal_instruction`]); `wanted` (the craft's targets) tells which are
+/// unwanted. Any other step (no target left, a fill or a manual step) keeps
+/// the blueprint's `say`.
+pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> String {
+    if step.goal == Goal::RemoveUnwanted {
+        if let Some(action) = &step.action {
+            return removal_instruction(action, item, wanted);
+        }
+    }
     let targets = step_targets(step, item);
     let Some(action) = step.action.as_ref().filter(|_| !targets.is_empty()) else {
         return step.say.clone();
     };
-    let mut uses = action.name.clone();
-    if !action.omen_names.is_empty() {
-        uses.push_str(" with ");
-        uses.push_str(&word_list(&action.omen_names, "and"));
-    }
+    let uses = uses_words(action);
     match step.side {
         Some(side) => format!(
             "{uses} on the {} side for {}",
@@ -1121,6 +1322,101 @@ pub fn step_instruction(step: &StepView, item: &Item) -> String {
                 .collect();
             format!("{uses} for {}", word_list(&each, "or"))
         }
+    }
+}
+
+/// The currency, `with` each omen.
+fn uses_words(action: &ChosenAction) -> String {
+    let mut uses = action.name.clone();
+    if !action.omen_names.is_empty() {
+        uses.push_str(" with ");
+        uses.push_str(&word_list(&action.omen_names, "and"));
+    }
+    uses
+}
+
+/// A removal step's instruction: the currency with its omens and the
+/// modifier it removes, by its text as the item shows it. A whittle (an
+/// omen that removes the lowest-level modifier) names the removable
+/// modifier of the lowest level, or each that shares it; any other removal
+/// names the unwanted removable modifiers and says the orb takes one at
+/// random. Fractured modifiers, and those off the action's side, are not
+/// removable.
+///
+/// - `Chaos Orb with Omen of Whittling to remove +45(33-60) to Accuracy
+///   Rating, the lowest-level modifier`;
+/// - `Orb of Annulment to remove +95(90-104) to maximum Mana or
+///   +200(168-236) to Accuracy Rating; it takes one modifier at random`.
+fn removal_instruction(action: &ChosenAction, item: &Item, wanted: &[Target]) -> String {
+    let uses = uses_words(action);
+    let join = ch_data::join(item);
+    let side = action.side.map(|s| match s {
+        Side::Prefix => Kind::Prefix,
+        Side::Suffix => Kind::Suffix,
+    });
+    let removable: Vec<&JoinedMod> = join
+        .mods
+        .iter()
+        .filter(|m| !m.fractured && side.is_none_or(|s| s == m.kind))
+        .collect();
+    let shown = |m: &JoinedMod| {
+        let lines: Vec<&str> = item.modifiers[m.index]
+            .lines
+            .iter()
+            .map(|l| l.text.as_str())
+            .collect();
+        lines.join(" / ")
+    };
+    let whittle = action.omens.iter().any(|id| {
+        catalogue_item(id)
+            .and_then(|c| c.omen.as_ref())
+            .is_some_and(|o| o.change == OmenChange::RemoveLowestLevel)
+    });
+    if whittle {
+        let levels: Option<Vec<(u32, &JoinedMod)>> = removable
+            .iter()
+            .map(|m| m.matched().map(|found| (found.tier_ilvl, *m)))
+            .collect();
+        let lowest = levels
+            .as_ref()
+            .and_then(|l| l.iter().map(|(level, _)| *level).min());
+        return match (levels, lowest) {
+            (Some(levels), Some(lowest)) => {
+                let at: Vec<String> = levels
+                    .iter()
+                    .filter(|(level, _)| *level == lowest)
+                    .map(|(_, m)| shown(m))
+                    .collect();
+                match at.as_slice() {
+                    [one] => format!("{uses} to remove {one}, the lowest-level modifier"),
+                    _ => format!(
+                        "{uses} to remove the lowest-level modifier: {}",
+                        word_list(&at, "or")
+                    ),
+                }
+            }
+            _ => format!("{uses} to remove the lowest-level modifier"),
+        };
+    }
+    let floors = target_floors(item, wanted);
+    let unwanted: Vec<String> = removable
+        .iter()
+        .filter(|m| {
+            !m.matched().is_some_and(|found| {
+                floors
+                    .iter()
+                    .any(|(id, floor)| *id == found.mod_id && found.tier <= *floor)
+            })
+        })
+        .map(|m| shown(m))
+        .collect();
+    if unwanted.is_empty() {
+        format!("{uses}; it takes one modifier at random")
+    } else {
+        format!(
+            "{uses} to remove {}; it takes one modifier at random",
+            word_list(&unwanted, "or")
+        )
     }
 }
 
@@ -1280,8 +1576,24 @@ fn action_name(written: &str) -> String {
     }
 }
 
-/// The two branch lines of a step: `On a hit: …` and `On a miss: …`.
-pub fn branch_lines(blueprint: &Blueprint, step_id: &str) -> (String, String) {
+/// What a miss branch says when it leads to a removal step: the modifier
+/// the miss brings does not exist yet, so the step says how once it is
+/// shown (whittle or annul, decided then by the modifier levels).
+pub const REMOVED_NEXT: &str =
+    "the new modifier is removed next; the step says how once it is shown";
+
+/// The two branch lines of a step: `On a hit: …` and `On a miss: …`. The
+/// next step is named by its composed instruction ([`step_instruction`] of
+/// the route's step, for the targets still missing on `item`); a step the
+/// route left out by the blueprint's text. A miss that leads to a removal
+/// step says [`REMOVED_NEXT`].
+pub fn branch_lines(
+    blueprint: &Blueprint,
+    route: &[StepView],
+    step_id: &str,
+    item: &Item,
+    targets: &[Target],
+) -> (String, String) {
     let steps: Vec<&Step> = blueprint.steps.iter().map(|s| s.get_ref()).collect();
     let Some(index) = steps.iter().position(|s| s.id.get_ref() == step_id) else {
         return (
@@ -1289,45 +1601,88 @@ pub fn branch_lines(blueprint: &Blueprint, step_id: &str) -> (String, String) {
             "On a miss: see the blueprint".to_string(),
         );
     };
+    let to = Where {
+        steps: &steps,
+        index,
+        route,
+        item,
+        targets,
+    };
     let step = steps[index];
     let hit = match &step.on_hit {
-        Some(t) => where_to(t.get_ref(), &steps, index),
+        Some(t) => to.say(t.get_ref(), false),
         None if step.until.is_some() => format!(
             "this step again until its condition holds, then {}",
-            where_to(&Transition::Next, &steps, index)
+            to.say(&Transition::Next, false)
         ),
-        None => where_to(&Transition::Next, &steps, index),
+        None => to.say(&Transition::Next, false),
     };
-    let miss = where_to(&step.miss_transition(), &steps, index);
+    let miss = to.say(&step.miss_transition(), true);
     (format!("On a hit: {hit}"), format!("On a miss: {miss}"))
 }
 
-fn where_to(t: &Transition, steps: &[&Step], index: usize) -> String {
-    match t {
-        Transition::Next => steps.get(index + 1).map_or_else(
-            || "the craft is done".to_string(),
-            |s| s.say.get_ref().clone(),
-        ),
-        Transition::Repeat => "this step again".to_string(),
-        Transition::Restart => "start over".to_string(),
-        Transition::Abandon => "give the item up".to_string(),
-        Transition::Done => "the craft is done".to_string(),
-        Transition::Goto(id) => steps
+/// Where a branch goes, from the step at `index`.
+struct Where<'a> {
+    steps: &'a [&'a Step],
+    index: usize,
+    route: &'a [StepView],
+    item: &'a Item,
+    targets: &'a [Target],
+}
+
+impl Where<'_> {
+    fn say(&self, t: &Transition, miss: bool) -> String {
+        let to = match t {
+            Transition::Next => self.steps.get(self.index + 1),
+            Transition::Goto(id) => match self.steps.iter().find(|s| s.id.get_ref() == id) {
+                Some(s) => Some(s),
+                None => return id.clone(),
+            },
+            Transition::Repeat => return "this step again".to_string(),
+            Transition::Restart => return "start over".to_string(),
+            Transition::Abandon => return "give the item up".to_string(),
+            Transition::Done => return "the craft is done".to_string(),
+        };
+        match to {
+            Some(step) => self.name(step, miss),
+            None => "the craft is done".to_string(),
+        }
+    }
+
+    /// A step by its composed instruction on the item, for the targets the
+    /// item still misses (all of them when it misses none).
+    fn name(&self, step: &Step, miss: bool) -> String {
+        if miss && *step.goal.get_ref() == Goal::RemoveUnwanted {
+            return REMOVED_NEXT.to_string();
+        }
+        let Some(view) = self.route.iter().find(|s| s.id == *step.id.get_ref()) else {
+            return step.say.get_ref().clone();
+        };
+        let mut view = view.clone();
+        let floors = target_floors(self.item, self.targets);
+        let met: Vec<String> = ch_data::join(self.item)
+            .mods
             .iter()
-            .find(|s| s.id.get_ref() == id)
-            .map_or_else(|| id.clone(), |s| s.say.get_ref().clone()),
+            .filter_map(|m| m.matched())
+            .filter(|found| {
+                floors
+                    .iter()
+                    .any(|(id, floor)| *id == found.mod_id && found.tier <= *floor)
+            })
+            .map(|found| found.mod_id.clone())
+            .collect();
+        if view.targets.iter().any(|id| !met.contains(id)) {
+            view.targets.retain(|id| !met.contains(id));
+        }
+        step_instruction(&view, self.item, self.targets)
     }
 }
 
-/// The history summary of one outcome: `Hit:`, `Miss:` or `Unexpected:`,
-/// then the targets gained or lost with their tier, a roll below its floor,
-/// or the reasons.
+/// The history summary of one outcome: the targets gained or lost with
+/// their tier, a roll below its floor, or the reasons. It carries no
+/// outcome word: the pages show the result's own beside it, and the status
+/// line adds it (`Hit: gained +#% to Fire Resistance (T3).`).
 pub fn summary(outcome: &Outcome, item: &Item) -> String {
-    let word = match outcome.result {
-        OutcomeKind::Hit => "Hit",
-        OutcomeKind::Miss => "Miss",
-        OutcomeKind::Unexpected => "Unexpected",
-    };
     let wanted = |w: &WantedMod| {
         let tier = w
             .tier
@@ -1358,7 +1713,16 @@ pub fn summary(outcome: &Outcome, item: &Item) -> String {
             .to_string(),
         );
     }
-    format!("{word}: {}", parts.join("; "))
+    parts.join("; ")
+}
+
+/// An outcome's word, as the status line leads with it.
+pub fn outcome_title(word: OutcomeWord) -> &'static str {
+    match word {
+        OutcomeWord::Hit => "Hit",
+        OutcomeWord::Miss => "Miss",
+        OutcomeWord::Unexpected => "Unexpected",
+    }
 }
 
 #[cfg(test)]
@@ -1386,6 +1750,84 @@ mod tests {
             odds_words(&Odds::unknown("no weights for this base")),
             "odds unknown: no weights for this base"
         );
+    }
+
+    /// A state of the ring `ch-engine`'s fill walk takes.
+    fn fill_item(name: &str) -> String {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../ch-engine/tests/items/gear/fill-desecrate-exalt")
+            .join(format!("{name}.txt"));
+        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    }
+
+    /// The seed walk's targets: life T3, fire T4, cold T4, chaos T3.
+    fn fill_targets() -> Vec<Target> {
+        [
+            ("prefix-to-maximum-life", 3),
+            ("suffix-to-fire-resistance", 4),
+            ("suffix-to-cold-resistance", 4),
+            ("suffix-to-chaos-resistance", 3),
+        ]
+        .iter()
+        .map(|(id, floor)| Target::new(*id, Some(*floor)))
+        .collect()
+    }
+
+    /// A craft on `engine` started on `03-fill-fire` whose exalt missed
+    /// (`07-fill-miss`): its current step's uses.
+    fn after_the_miss(engine: &Engine) -> Vec<String> {
+        let mut craft = Craft::default();
+        let start = fill_item("03-fill-fire");
+        craft.grab(Some(engine), &start, true);
+        craft
+            .set_targets(Some(engine), &fill_targets(), &[])
+            .unwrap();
+        craft.accept(Some(engine), &[]).unwrap();
+        let effect = craft.grab(Some(engine), &fill_item("07-fill-miss"), true);
+        assert!(
+            matches!(
+                effect,
+                GrabEffect::Observed {
+                    result: OutcomeWord::Miss,
+                    ..
+                }
+            ),
+            "{effect:?}"
+        );
+        let view = craft.view(Some(engine), &[]);
+        let step = view.guiding.unwrap().step.unwrap().step;
+        assert_eq!(step.id, "fill-clean");
+        step.uses
+    }
+
+    #[test]
+    fn a_lone_whittle_elsewhere_keeps_the_whittle() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../blueprints/fill-desecrate-exalt.toml");
+        let shipped = std::fs::read_to_string(&path).unwrap();
+        // Positive control: the shipped blueprint, where only the
+        // whittle-or-annul steps name Whittling: the app names the
+        // annulment (life, a target, is the lowest).
+        let engine = Engine::new(vec![ch_engine::ch_blueprint::check(
+            "blueprints/fill-desecrate-exalt.toml",
+            &shipped,
+        )
+        .unwrap()])
+        .unwrap();
+        assert_eq!(after_the_miss(&engine), ["Orb of Annulment"]);
+
+        // The same blueprint with one more step that names Omen of Whittling
+        // with no annulment after it: the longer list could leave that step
+        // with every alternative blocked, so the whittle stays.
+        let lone = format!(
+            "{shipped}\n[[step]]\nid = \"lone-whittle\"\nsay = \"Whittle the lowest modifier\"\n\
+             goal = \"remove-unwanted\"\nbind = \"last-remaining\"\nwhen = \"bound\"\n\n\
+             [[step.action]]\ncurrency = \"chaos-orb\"\nomens = [\"omen-of-whittling\"]\n"
+        );
+        let checked =
+            ch_engine::ch_blueprint::check("blueprints/fill-desecrate-exalt.toml", &lone).unwrap();
+        let engine = Engine::new(vec![checked]).unwrap();
+        assert_eq!(after_the_miss(&engine), ["Chaos Orb", "Omen of Whittling"]);
     }
 
     #[test]
