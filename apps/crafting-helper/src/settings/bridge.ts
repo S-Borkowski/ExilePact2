@@ -15,7 +15,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { APP_SETTINGS_EVENT, type SettingsCommandArgs as ShellCommandArgs, readCatalogue } from '../bridge';
+import { APP_SETTINGS_EVENT, type SettingsCommandArgs as ShellCommandArgs, readCatalogue, untilManaged } from '../bridge';
 import type { CatalogueGroup } from '../ipc';
 import { type SettingsView, settingsProblems } from './view';
 
@@ -56,7 +56,7 @@ export function tauriSettingsBridge(): SettingsWindowBridge {
       });
       // Subscribed first, so a view sent while this call runs is not lost;
       // the later of the two simply wins.
-      const view = await invoke<SettingsView>('get_app_settings');
+      const view = await untilManaged(() => invoke<SettingsView>('get_app_settings'));
       warnIfOff('get_app_settings', settingsProblems(view));
       onView(view);
       return off;

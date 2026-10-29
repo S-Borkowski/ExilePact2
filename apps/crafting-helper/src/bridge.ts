@@ -1,7 +1,9 @@
 // The one door between a page and the Rust shell. Rust decides, the page
 // renders: the shell pushes a fresh `View` on `ch:view`, to the main window
 // and the overlay, after every change; the page sends a command and waits
-// for the next `ch:view`, never patching its copy of the view.
+// for the next `ch:view`, never patching its copy of the view. A page's
+// start-up commands are asked again while the shell has not finished its
+// setup (`untilManaged`), so no window stays blank on a slow start.
 //
 // Outside Tauri (`npm run dev`), `previewBridge` renders one of the view
 // fixtures under `fixtures/views/`, chosen by the query:
@@ -109,13 +111,51 @@ function warnIfOff(what: string, problems: string[]): void {
   if (problems.length > 0) console.warn(`crafting-helper: ${what} differs from the IPC types`, problems);
 }
 
+/** How often, and for how long, a start-up command is asked again while the app's state is not ready. */
+export interface RetryTiming {
+  /** Milliseconds between tries. */
+  every: number;
+  /** Milliseconds after the first try at which the last rejection is passed on. */
+  giveUpAfter: number;
+}
+
+const START_RETRY: RetryTiming = { every: 150, giveUpAfter: 10_000 };
+
+/**
+ * Tauri's rejection for a command called before the shell has managed the
+ * state it takes (`state not managed for field ...`). The windows load while
+ * the shell's setup still runs, so a page's first commands can meet it.
+ */
+function isNotManaged(error: unknown): boolean {
+  return String(error).includes('state not managed');
+}
+
+/**
+ * Runs a page's start-up command (`get_view`, `get_catalogue`,
+ * `get_app_settings`), asking again while the app's state is not managed
+ * yet, so a window that loaded before the shell finished its setup still
+ * gets its first view. Any other rejection is passed on at once, and so is
+ * that one after `giveUpAfter`.
+ */
+export async function untilManaged<T>(call: () => Promise<T>, timing: RetryTiming = START_RETRY): Promise<T> {
+  const started = Date.now();
+  for (;;) {
+    try {
+      return await call();
+    } catch (error) {
+      if (!isNotManaged(error) || Date.now() - started >= timing.giveUpAfter) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, timing.every));
+  }
+}
+
 /**
  * The catalogue from the app (`get_catalogue`, which both windows may call):
  * every crafting item the blocked list may name, grouped by kind. The
  * Settings window's bridge reads it the same way.
  */
 export async function readCatalogue(): Promise<CatalogueGroup[]> {
-  const groups = await invoke<CatalogueGroup[]>('get_catalogue');
+  const groups = await untilManaged(() => invoke<CatalogueGroup[]>('get_catalogue'));
   warnIfOff('get_catalogue', catalogueProblems(groups));
   return groups;
 }
@@ -142,7 +182,7 @@ export function tauriBridge(): Bridge {
       });
       // Subscribed first, so a view pushed while this call runs is not lost;
       // the later of the two simply wins.
-      const view = await invoke<View>('get_view');
+      const view = await untilManaged(() => invoke<View>('get_view'));
       warnIfOff('get_view', viewProblems(view));
       onView(view);
       return off;

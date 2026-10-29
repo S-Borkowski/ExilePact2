@@ -399,7 +399,11 @@ watch's line. The Settings window's commands are `get_app_settings`,
 position the app does not know is refused whole), `check_for_updates`, `install_update`
 (the only way an install starts) and `cancel_update`; it is sent
 `ch:app-settings`. The overlay listens to `ch:view` and sends nothing but
-`get_view`. The newest release is the highest published, non-prerelease
+`get_view`. The windows load their pages while the app still sets itself
+up, so a page's first `get_view`, `get_app_settings` or `get_catalogue`
+can be refused with Tauri's "state not managed"; the page asks again every
+150 ms, for up to 10 seconds, and passes any other refusal on at once.
+The newest release is the highest published, non-prerelease
 release tagged `crafting-helper-v<major>.<minor>.<patch>`.
 
 ### npm scripts

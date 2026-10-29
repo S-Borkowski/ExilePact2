@@ -10,7 +10,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { emit } from '@tauri-apps/api/event';
-import { DEFAULT_PREVIEW_VIEW, VIEW_EVENT, previewBridge, previewViewName, tauriBridge } from './bridge';
+import {
+  DEFAULT_PREVIEW_VIEW,
+  VIEW_EVENT,
+  previewBridge,
+  previewViewName,
+  tauriBridge,
+  untilManaged,
+} from './bridge';
 import type { View } from './ipc';
 import {
   CATALOGUE,
@@ -45,6 +52,30 @@ afterEach(() => {
   vi.restoreAllMocks();
   clearMocks();
 });
+
+/** Tauri's rejection for a command whose `State` is not managed yet, word for word as the release exe logged it. */
+const notManaged = (cmd: string): string =>
+  `state not managed for field \`app\` on command \`${cmd}\`. You must call \`.manage()\` before using this command`;
+
+/**
+ * Mocks the shell as it answers before `.manage()`: each command in
+ * `answers` rejects twice with Tauri's own message, then answers; the rest
+ * answer nothing. Returns every command asked, in order.
+ */
+function notManagedTwice(answers: Record<string, () => unknown>): string[] {
+  const asked: string[] = [];
+  mockIPC(
+    (cmd) => {
+      asked.push(cmd);
+      const answer = answers[cmd];
+      if (!answer) return undefined;
+      if (asked.filter((c) => c === cmd).length <= 2) throw notManaged(cmd);
+      return answer();
+    },
+    { shouldMockEvents: true },
+  );
+  return asked;
+}
 
 describe('the main window', () => {
   it('placeholder_shows_raw_text_and_line_count', async () => {
@@ -201,6 +232,63 @@ describe('the main window', () => {
     off();
     await emit(VIEW_EVENT, fixtureView('overlay-active'));
     expect(views).toHaveLength(2);
+  });
+
+  it('bridge_retries_until_the_app_state_is_ready', async () => {
+    // The windows load while the shell's setup still runs: until the app's
+    // state is managed, Tauri rejects every command with this message.
+    const asked = notManagedTwice({ get_view: () => fixtureView('empty'), get_catalogue: () => CATALOGUE });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await renderComponent(App, { bridge: tauriBridge() }, (root) => text(root).includes('Nothing grabbed yet'));
+    mounted.push(r);
+    expect(r.root.querySelector('.app')?.getAttribute('data-state')).toBe('empty');
+    expect(text(r.root)).toContain('Nothing grabbed yet');
+    expect(asked.filter((c) => c === 'get_view')).toHaveLength(3);
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('catalogue_retries_until_the_app_state_is_ready', async () => {
+    const asked = notManagedTwice({ get_catalogue: () => CATALOGUE });
+    expect(await tauriBridge().catalogue()).toEqual(CATALOGUE);
+    expect(asked.filter((c) => c === 'get_catalogue')).toHaveLength(3);
+  });
+
+  it('overlay_bridge_retries_until_the_app_state_is_ready', async () => {
+    const asked = notManagedTwice({ get_view: () => fixtureView('overlay-active') });
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await renderComponent(
+      Overlay,
+      { bridge: tauriBridge() },
+      (root) => root.querySelector('.overlay')?.getAttribute('data-visible') === 'true',
+    );
+    mounted.push(r);
+    expect(r.root.querySelector('.overlay')?.getAttribute('data-visible')).toBe('true');
+    expect(asked.filter((c) => c === 'get_view')).toHaveLength(3);
+    expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('bridge_does_not_retry_any_other_error', async () => {
+    const asked: string[] = [];
+    mockIPC(
+      (cmd) => {
+        asked.push(cmd);
+        throw 'the view could not be built';
+      },
+      { shouldMockEvents: true },
+    );
+    await expect(tauriBridge().start(() => {})).rejects.toBe('the view could not be built');
+    await expect(tauriBridge().catalogue()).rejects.toBe('the view could not be built');
+    expect(asked).toEqual(['get_view', 'get_catalogue']);
+  });
+
+  it('bridge_gives_up_on_an_app_state_that_never_comes', async () => {
+    let tries = 0;
+    const call = async () => {
+      tries++;
+      throw notManaged('get_view');
+    };
+    await expect(untilManaged(call, { every: 5, giveUpAfter: 30 })).rejects.toBe(notManaged('get_view'));
+    expect(tries).toBeGreaterThan(1);
   });
 
   it('preview_reads_the_state_from_the_query', async () => {

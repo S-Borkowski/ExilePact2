@@ -794,6 +794,13 @@ pub fn run() {
                     ..UpdateSetup::default()
                 },
             );
+            // Managed the moment it exists: the windows tauri.conf.json
+            // declares are already loading their pages, and every command
+            // they send before this line rejects with "state not managed"
+            // (the pages ask again for their first view; `bridge.ts`'s
+            // `untilManaged`). Nothing before it can wait: the screen
+            // backend only stores the overlay's handle and makes its OCR
+            // engine on first use, and the rest builds the App itself.
             app.manage(Arc::clone(&shell));
             app.manage(Relaunch {
                 exe: exe.clone(),

@@ -789,6 +789,30 @@ describe('the Settings window', () => {
     expect(asked).toContain('get_catalogue');
   });
 
+  it('settings_bridge_retries_until_the_app_state_is_ready', async () => {
+    // The window can load while the shell's setup still runs: until the
+    // app's state is managed, Tauri rejects every command with this message.
+    const asked: string[] = [];
+    mockIPC(
+      (cmd) => {
+        asked.push(cmd);
+        const answer = cmd === 'get_app_settings' ? fixture('idle') : cmd === 'get_catalogue' ? CATALOGUE : undefined;
+        if (answer !== undefined && asked.filter((c) => c === cmd).length <= 2) {
+          throw `state not managed for field \`app\` on command \`${cmd}\`. You must call \`.manage()\` before using this command`;
+        }
+        return answer;
+      },
+      { shouldMockEvents: true },
+    );
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const root = await render(tauriSettingsBridge());
+    expect(root.querySelector('.window')?.getAttribute('data-state')).toBe('idle');
+    expect(root.querySelector('section[aria-labelledby="section-blocked"] input[data-id]')).not.toBeNull();
+    expect(asked.filter((c) => c === 'get_app_settings')).toHaveLength(3);
+    expect(asked.filter((c) => c === 'get_catalogue')).toHaveLength(3);
+    expect(errors).not.toHaveBeenCalled();
+  });
+
   it('preview_reads_the_state_from_the_query', async () => {
     expect(parseSettingsPreviewQuery('')).toEqual({ state: 'idle', scale: null });
     expect(parseSettingsPreviewQuery('?state=install-failed&scale=2')).toEqual({ state: 'install-failed', scale: '2' });
