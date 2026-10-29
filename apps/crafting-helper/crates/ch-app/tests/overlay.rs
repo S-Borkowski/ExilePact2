@@ -217,7 +217,7 @@ fn overlay_hides_when_the_game_is_not_in_front() {
     // A failed call hides it and is logged once until a call succeeds.
     let failed = || {
         Err(WatchFailure {
-            call: "GetForegroundWindow".to_string(),
+            call: "GetClientRect".to_string(),
             error: "Access is denied. (os error 5)".to_string(),
         })
     };
@@ -236,7 +236,7 @@ fn overlay_hides_when_the_game_is_not_in_front() {
     app.shutdown();
 
     let log = overlay_lines(tmp.path());
-    let error = "error: watch: GetForegroundWindow failed: Access is denied. (os error 5)";
+    let error = "error: watch: GetClientRect failed: Access is denied. (os error 5)";
     assert_eq!(
         log.iter()
             .filter(|l| l.as_str() == "watch: idle (minimized)")
