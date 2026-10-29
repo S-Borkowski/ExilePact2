@@ -48,6 +48,9 @@ OWNERS_CRAFTS = [
     "magic-one-good",
     "magic-good-and-bad",
 ]
+# The whittle's positive control and its blocked pair: required cases, so
+# neither can be dropped from the case file silently.
+WHITTLE_CONTROLS = ["rare-whittle-certain", "rare-whittle-blocked"]
 
 GREATER = "omen-of-greater-exaltation"
 SIN_EX, DEX_EX = "omen-of-sinistral-exaltation", "omen-of-dextral-exaltation"
@@ -109,6 +112,12 @@ MUST_HOLD = {
     ], True),
     ("magic-good-and-bad", "magic-augment-essence"): ([
         ("remove-unwanted", "suffix", "orb-of-annulment", [DEX_ANN], True),
+    ], False),
+    ("rare-whittle-certain", "close-a-side"): ([
+        ("remove-unwanted", "prefix", "chaos-orb", ["omen-of-whittling"], True),
+    ], False),
+    ("rare-whittle-blocked", "close-a-side"): ([
+        ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], False),
     ], False),
 }
 
@@ -179,7 +188,7 @@ class Cases(unittest.TestCase):
 
     def test_cases_cover_the_owners_crafts(self):
         cases = {c.id: c for c in load_cases()}
-        self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS))
+        self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS))
         raw = json.loads(CASES.read_text(encoding="utf-8"))
         self.assertIn("crafting-slots-spec.md", raw.get("spec", ""))
 
