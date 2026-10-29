@@ -12,6 +12,7 @@
         "desecrated": [
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -28,6 +29,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -44,6 +46,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -64,6 +67,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -80,6 +84,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -96,6 +101,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -112,6 +118,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -128,6 +135,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -144,6 +152,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -160,6 +169,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -176,6 +186,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -192,6 +203,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -208,6 +220,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -224,6 +237,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -240,6 +254,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -256,6 +271,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -272,6 +288,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -288,6 +305,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -304,6 +322,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -320,6 +339,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -338,6 +358,7 @@
         "prefixes": [
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -378,6 +399,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -410,6 +432,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -446,6 +469,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -482,6 +506,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -534,6 +559,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -586,6 +612,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -636,6 +663,7 @@
         "suffixes": [
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -684,6 +712,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -720,6 +749,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -756,6 +786,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -792,6 +823,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -828,6 +860,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -876,6 +909,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -928,6 +962,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -964,6 +999,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1008,6 +1044,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1052,6 +1089,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,

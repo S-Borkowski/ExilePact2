@@ -49,10 +49,21 @@ lost.`). No status line names the blueprint (`Route chosen.`, `Craft
 started.`). The branch lines name the next step by its composed
 instruction, never the blueprint's text.
 
-Two craft states use the owner's 2P/1S belt (`crates/ch-app/tests/items/`,
+Three craft states use the owner's 2P/1S belt (`crates/ch-app/tests/items/`,
 constructed), with maximum Life T2, maximum Mana T2, Armour T2 (missing)
 and Fire Resistance T3 as the targets and the state-ordered `close-a-side`
 chosen:
+
+- `craft-side-full`: planning on the belt right after those targets are
+  set: Life and Mana on it and Armour chosen fill its three prefixes, so
+  every other prefix choice (the desecrated ones included) carries
+  `disabled`, `Prefixes full: 2 on the item + 1 chosen = 3 of 3`, the
+  row's tooltip; the three chosen prefixes and every suffix choice carry
+  `null`. `craft-close-side` has the same choices. The ring's planning
+  views (`craft-planning`, `craft-fallback`, `craft-no-route`) choose three
+  suffixes, so their other suffix choices carry `Suffixes full: 0 on the
+  item + 3 chosen = 3 of 3`; in `craft-prefilled` no side is full and every
+  `disabled` is `null`.
 
 - `craft-close-side`: planning on the belt: the route closes the finished
   suffix side first, `Exalted Orb with Omen of Greater Exaltation and Omen

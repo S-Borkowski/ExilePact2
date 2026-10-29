@@ -23,6 +23,7 @@
         "desecrated": [
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -39,6 +40,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -55,6 +57,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -71,6 +74,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -87,6 +91,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -103,6 +108,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -119,6 +125,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -135,6 +142,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -151,6 +159,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -167,6 +176,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -183,6 +193,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -199,6 +210,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -215,6 +227,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -231,6 +244,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -247,6 +261,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -263,6 +278,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -279,6 +295,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -295,6 +312,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -311,6 +329,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -327,6 +346,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -343,6 +363,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -359,6 +380,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -377,6 +399,7 @@
         "prefixes": [
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -413,6 +436,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -449,6 +473,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -485,6 +510,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -521,6 +547,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -545,6 +572,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -589,6 +617,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -637,6 +666,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -681,6 +711,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -741,6 +772,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -789,6 +821,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -837,6 +870,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -885,6 +919,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -935,6 +970,7 @@
         "suffixes": [
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -975,6 +1011,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1007,6 +1044,7 @@
           },
           {
             "best_tier": 2,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1039,6 +1077,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1063,6 +1102,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1087,6 +1127,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1115,6 +1156,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1159,6 +1201,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1203,6 +1246,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1247,6 +1291,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1279,6 +1324,7 @@
           },
           {
             "best_tier": 2,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1311,6 +1357,7 @@
           },
           {
             "best_tier": 2,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1351,6 +1398,7 @@
           },
           {
             "best_tier": 2,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1391,6 +1439,7 @@
           },
           {
             "best_tier": 2,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1431,6 +1480,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1467,6 +1517,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1503,6 +1554,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -1523,6 +1575,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Suffixes full: 0 on the item + 3 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,

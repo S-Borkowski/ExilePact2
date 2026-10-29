@@ -282,6 +282,10 @@ pub struct TargetChoice {
     pub best_tier: u32,
     /// The default first, then one per reachable tier, best first.
     pub floors: Vec<FloorOption>,
+    /// `None` when it can be chosen; otherwise why not, the row's tooltip:
+    /// `<Prefixes|Suffixes> full: <a> on the item + <b> chosen = <a+b> of
+    /// <limit>`. A chosen choice is never disabled.
+    pub disabled: Option<String>,
 }
 
 /// The target choices for the item's base, in three groups.

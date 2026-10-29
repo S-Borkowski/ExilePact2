@@ -219,6 +219,13 @@ fn main_views() -> Vec<(&'static str, View)> {
         app.grab_text(Some(&belt("belt-slam-miss"))),
     ));
     app.shutdown();
+    // The belt's prefix side full: Life and Mana on it, Armour chosen
+    // beyond them; every other prefix choice is disabled with the reason.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("side-full"), &shell);
+    app.grab_text(Some(&belt("belt-2p1s")));
+    out.push(("craft-side-full", app.set_targets(&belt_targets())));
+    app.shutdown();
 
     // The overlay: guiding after one hit, the game's window in front (shown)
     // or not (hidden), the watch ticked once by hand.
@@ -494,6 +501,20 @@ fn fixtures_are_current() {
         ]
     );
     assert!(plan("craft-close-side").can_accept);
+    // The belt's prefix side full: the chosen prefixes selectable, every
+    // other prefix disabled with the reason, every suffix selectable.
+    let full = plan("craft-side-full");
+    let chosen = [
+        "prefix-to-maximum-life",
+        "prefix-to-maximum-mana",
+        "prefix-to-armour",
+    ];
+    for c in &full.choices.prefixes {
+        let want = (!chosen.contains(&c.mod_id.as_str()))
+            .then_some("Prefixes full: 2 on the item + 1 chosen = 3 of 3");
+        assert_eq!(c.disabled.as_deref(), want, "{}", c.mod_id);
+    }
+    assert!(full.choices.suffixes.iter().all(|c| c.disabled.is_none()));
     assert_eq!(guide("craft-replan").status, GuideStatusView::Replan);
     assert_eq!(guide("craft-done").status, GuideStatusView::Done);
 
@@ -594,7 +615,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 23);
+    assert_eq!(views.len(), 24);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(
