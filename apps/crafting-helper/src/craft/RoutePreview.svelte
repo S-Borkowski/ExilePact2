@@ -1,0 +1,158 @@
+<script lang="ts">
+  // The route preview (`ui-design.md` § "Mode planning"): nothing but a
+  // prompt with no target; with a route, its name, source and notes, the
+  // route select when other routes apply, and the numbered steps; with no
+  // route, one line per rejected blueprint in Rust's order. The route the
+  // engine previews, and why one does not apply, are Rust's.
+  import type { Send } from '../bridge';
+  import type { PreviewView } from '../ipc';
+  import StepFacts from './StepFacts.svelte';
+
+  let { preview, send }: { preview: PreviewView | null; send: Send } = $props();
+
+  const uid = $props.id();
+
+  function chooseRoute(event: Event, current: string): void {
+    const select = event.currentTarget as HTMLSelectElement;
+    const blueprint = select.value;
+    select.value = current;
+    if (blueprint !== current) send('choose_route', { blueprint });
+  }
+</script>
+
+<section class="route" aria-labelledby="{uid}-title">
+  <h2 class="section-title caps" id="{uid}-title">Route</h2>
+  {#if preview === null}
+    <p class="no-target">Pick a target to see a route.</p>
+  {:else if preview.route}
+    {@const route = preview.route}
+    <div class="head">
+      <p class="route-name">{route.name}</p>
+      {#if preview.other_routes.length > 0}
+        <select class="field" aria-label="Route" value={route.blueprint} onchange={(event) => chooseRoute(event, route.blueprint)}>
+          <option value={route.blueprint}>{route.name}</option>
+          {#each preview.other_routes as other (other.blueprint)}
+            <option value={other.blueprint}>{other.name}</option>
+          {/each}
+        </select>
+      {/if}
+    </div>
+    <p class="route-source">{route.source}</p>
+    {#if route.notes}<p class="route-notes">{route.notes}</p>{/if}
+    <ol class="steps">
+      {#each route.steps as step (step.id)}
+        <li>
+          <span class="number" aria-hidden="true">{step.number}</span>
+          <div class="step-body">
+            <p class="instruction">{step.instruction}</p>
+            <StepFacts {step} />
+          </div>
+        </li>
+      {/each}
+    </ol>
+  {:else}
+    <p class="no-route">No route reaches these targets.</p>
+    <ul class="rejected">
+      {#each preview.rejected as line (line.blueprint)}
+        <li><span class="name">{line.name}</span>: {line.reason}</li>
+      {/each}
+    </ul>
+  {/if}
+</section>
+
+<style>
+  .route {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-unit) * 2);
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--size-step);
+    line-height: var(--line-step);
+  }
+
+  .no-target {
+    color: var(--color-text-muted);
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--space-unit) * 2);
+  }
+
+  .route-name {
+    color: var(--color-text-primary);
+    font-size: var(--size-row);
+    line-height: var(--line-row);
+    font-weight: 700;
+  }
+
+  .route-source {
+    color: var(--color-text-muted);
+  }
+
+  .route-notes {
+    color: var(--color-text-secondary);
+  }
+
+  ol,
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps li {
+    display: flex;
+    gap: calc(var(--space-unit) * 3);
+    padding: calc(var(--space-unit) * 2) 0;
+    border-top: var(--border-width) solid var(--color-panel-divider);
+  }
+
+  /* The step's number, from the view; the ordered list says it to a screen reader. */
+  .number {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: var(--border-width) solid var(--color-panel-border);
+    color: var(--color-text-secondary);
+    font-size: var(--size-caption);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .step-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .instruction {
+    color: var(--color-text-primary);
+  }
+
+  .no-route {
+    color: var(--color-text-primary);
+    font-weight: 700;
+  }
+
+  .rejected li {
+    padding: var(--space-unit) 0;
+    border-top: var(--border-width) solid var(--color-panel-divider);
+    color: var(--color-text-secondary);
+    font-size: var(--size-step);
+    line-height: var(--line-step);
+  }
+
+  .rejected .name {
+    color: var(--color-text-primary);
+  }
+</style>

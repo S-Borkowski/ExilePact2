@@ -10,13 +10,16 @@
 //   http://127.0.0.1:1422/overlay.html?state=overlay-active
 //
 // Commands are logged, not acted on: the preview has no app behind it, so a
-// paste is not shown as a grab. The fixtures are reached only behind
-// `import.meta.env.DEV`, which is false in `vite build`, so the release
-// bundle carries none of them.
+// paste is not shown as a grab, a target change does not re-plan and the
+// Craft of Exile button opens nothing. The currency pickers read the
+// catalogue once, from `get_catalogue` in the app and from
+// `fixtures/catalogue.json` in the preview. The fixtures are reached only
+// behind `import.meta.env.DEV`, which is false in `vite build`, so the
+// release bundle carries none of them.
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { type View, viewProblems } from './ipc';
+import { type CatalogueGroup, type View, catalogueProblems, viewProblems } from './ipc';
 
 export const VIEW_EVENT = 'ch:view';
 
@@ -30,6 +33,31 @@ export interface CommandArgs {
   grab_text: { text: string };
   /** The header's Settings button: opens the Settings window, or brings it up. */
   open_settings: Record<string, never>;
+  /**
+   * The whole list of targets, in the order chosen; `floor` null is "as
+   * high as possible". The app refuses the list whole when an id or a floor
+   * does not fit the item, and drops repeats.
+   */
+  set_targets: { targets: TargetPick[] };
+  /** The whole effective blocked list for this craft, catalogue ids only; Settings is never changed by it. */
+  set_craft_blocked: { blocked: string[] };
+  /** Previews another applicable route. */
+  choose_route: { blueprint: string };
+  /** Starts the guide on the previewed route. */
+  accept_craft: Record<string, never>;
+  /** Back to planning on the latest item, targets and this craft's blocked changes kept, history cleared. */
+  end_craft: Record<string, never>;
+  /**
+   * The header's Craft of Exile button. It takes nothing: the app holds the
+   * one address it opens, and the page names none.
+   */
+  open_craft_of_exile: Record<string, never>;
+}
+
+/** One target as `set_targets` sends it. */
+export interface TargetPick {
+  mod_id: string;
+  floor: number | null;
 }
 export type Command = keyof CommandArgs;
 /** How a component sends a command: fire and forget, the next view answers. */
@@ -71,10 +99,34 @@ export interface Bridge {
   start(onView: (view: View) => void): Promise<() => void>;
   /** Sends one command. A failure is logged; the next `ch:view` shows the state either way. */
   command<C extends Command>(name: C, args: CommandArgs[C]): Promise<void>;
+  /** The catalogue the currency pickers list, read once. */
+  catalogue(): Promise<CatalogueGroup[]>;
 }
 
 function warnIfOff(what: string, problems: string[]): void {
   if (problems.length > 0) console.warn(`crafting-helper: ${what} differs from the IPC types`, problems);
+}
+
+/**
+ * The catalogue from the app (`get_catalogue`, which both windows may call):
+ * every crafting item the blocked list may name, grouped by kind. The
+ * Settings window's bridge reads it the same way.
+ */
+export async function readCatalogue(): Promise<CatalogueGroup[]> {
+  const groups = await invoke<CatalogueGroup[]>('get_catalogue');
+  warnIfOff('get_catalogue', catalogueProblems(groups));
+  return groups;
+}
+
+const PREVIEW_CATALOGUE: Record<string, () => Promise<unknown>> = import.meta.env.DEV
+  ? import.meta.glob('../fixtures/catalogue.json', { import: 'default' })
+  : {};
+
+/** The catalogue in the preview: `fixtures/catalogue.json`, which `ch-app`'s fixtures test writes. */
+export async function previewCatalogue(): Promise<CatalogueGroup[]> {
+  const load = PREVIEW_CATALOGUE['../fixtures/catalogue.json'];
+  if (!load) throw new Error('crafting-helper preview: no catalogue fixture (the preview runs on the dev server only)');
+  return JSON.parse(JSON.stringify(await load())) as CatalogueGroup[];
 }
 
 /** The bridge inside the Tauri app, for the main window and the overlay alike. */
@@ -100,6 +152,7 @@ export function tauriBridge(): Bridge {
         console.error(`crafting-helper: ${name} failed`, error);
       }
     },
+    catalogue: readCatalogue,
   };
 }
 
@@ -140,5 +193,6 @@ export function previewBridge(
       calls.push({ name, args });
       console.info(`crafting-helper preview: ${name}`, args);
     },
+    catalogue: previewCatalogue,
   };
 }

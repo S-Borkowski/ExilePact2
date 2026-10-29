@@ -48,6 +48,12 @@ copied, with these differences:
   with `init`, and calls `.opener()` once; the `open_craft_of_exile`
   command takes nothing but the app state, and no command takes a URL or
   path argument;
+- the pages hold no address and open nothing themselves: no UI source but
+  the tests (`//`, `/* */` and `<!-- -->` comments blanked, strings kept)
+  names an `http://` or `https://` literal, `window.open`, `location.href`,
+  `.assign` or `.replace`, `target="_blank"`, `plugin:opener` or
+  `@tauri-apps/plugin-opener`, and the main window's bridge declares
+  `open_craft_of_exile` once, taking `Record<string, never>`;
 - the windows' CSP is the pinned string; the capabilities are three, the
   `main` window's (`core:event:default`, `core:window:default`), the
   `settings` window's and the `overlay` window's (`core:event:default`
@@ -178,6 +184,26 @@ STATE_TYPE = re.compile(r"^(?:Shared<'_>|(?:tauri\s*::\s*)?State<'_,\s*Arc<App>>
 # A parameter that would carry an address or a file: by its name or its type.
 ADDRESS_PARAM_NAME = re.compile(r"url|uri|href|link|address|path|file|dir|location", re.IGNORECASE)
 ADDRESS_PARAM_TYPE = re.compile(r"\b(?:PathBuf|Path|Url|OsString|Uri)\b")
+# What a page could open a page or a browser with, which no UI source
+# outside the tests names (comments blanked): any web address, `window.open`,
+# a change of `location`, a link to a new window, or the opener plugin's own
+# commands or package. The pages send `open_craft_of_exile` instead.
+UI_OPEN_NAMES = [
+    ("http(s):// literal", re.compile(r"\bhttps?://", re.IGNORECASE)),
+    ("window.open", re.compile(r"\bwindow\s*\??\.\s*open\b")),
+    ("location.href", re.compile(r"\blocation\s*\??\.\s*href\b")),
+    ("location.assign", re.compile(r"\blocation\s*\??\.\s*assign\b")),
+    ("location.replace", re.compile(r"\blocation\s*\??\.\s*replace\b")),
+    ('target="_blank"', re.compile(r"(?<![\w-])_blank\b")),
+    ("plugin:opener", re.compile(r"\bplugin:opener\b")),
+    ("@tauri-apps/plugin-opener", re.compile(r"@tauri-apps/plugin-opener\b")),
+]
+UI_COMMENT_SUFFIXES = {".ts", ".js", ".mjs", ".svelte", ".html", ".css"}
+# The main window's bridge declares each command's arguments in
+# `CommandArgs`; the Craft of Exile command's must be the empty record.
+BRIDGE = APP / "src" / "bridge.ts"
+UI_OPEN_COMMAND = re.compile(r"\bopen_craft_of_exile\s*:\s*([^;]*);")
+UI_OPEN_COMMAND_ARGS = "Record<string, never>"
 # The workspace pins the quest tracker's workspace lacks: `ch-blueprint`'s
 # TOML reader, a package already in its lock (through the Tauri build).
 PINS_OUTSIDE_THE_QUEST_TRACKER = {"toml"}
@@ -276,6 +302,63 @@ def app_manifest_offences(name: str, manifest: dict, opener_table: str | None) -
     nowhere)."""
     allowed = f"{name}: {opener_table}.{OPENER_PLUGIN} (a Tauri plugin)" if opener_table else None
     return [o for o in wr.manifest_offences(name, manifest) if o != allowed]
+
+
+def blank_ui_comments(text: str) -> str:
+    """`text` (TypeScript, JavaScript, a Svelte component, an HTML page or a
+    style sheet) with its `//`, `/* */` and `<!-- -->` comments turned to
+    spaces; newlines are kept. Strings (`'`, `"`, and template literals) are
+    kept, so a name in one is still an offence, and are skipped over, so a
+    `//` inside one is not a comment; a `'` or `"` string ends at its line's
+    end, as an apostrophe in a page's text does. A `//` right after a `:` is
+    an address (`https://`), never a comment, so markup text cannot hide
+    one."""
+    out = list(text)
+    i, n = 0, len(text)
+
+    def blank(a: int, b: int) -> None:
+        for k in range(a, b):
+            if out[k] != "\n":
+                out[k] = " "
+
+    def skip(start: int, close: str, multiline: bool) -> int:
+        j = start + 1
+        while j < n and text[j] != close and (multiline or text[j] != "\n"):
+            j += 2 if text[j] == "\\" else 1
+        return j + 1
+
+    while i < n:
+        if text.startswith("//", i) and (i == 0 or text[i - 1] != ":"):
+            end = text.find("\n", i)
+            end = n if end < 0 else end
+            blank(i, end)
+            i = end
+        elif text.startswith("/*", i) or text.startswith("<!--", i):
+            close = "*/" if text[i] == "/" else "-->"
+            end = text.find(close, i + 2)
+            end = n if end < 0 else end + len(close)
+            blank(i, end)
+            i = end
+        elif text[i] in "'\"":
+            i = skip(i, text[i], False)
+        elif text[i] == "`":
+            i = skip(i, "`", True)
+        else:
+            i += 1
+    return "".join(out)
+
+
+def ui_open_offences(name: str, text: str) -> list[str]:
+    return wr.text_offences(name, blank_ui_comments(text), UI_OPEN_NAMES)
+
+
+def ui_open_command_offences(name: str, text: str) -> list[str]:
+    """The bridge declares `open_craft_of_exile` once, taking the empty record."""
+    found = UI_OPEN_COMMAND.findall(blank_ui_comments(text))
+    if len(found) != 1:
+        return [f"{name}: open_craft_of_exile declared {len(found)} times"]
+    args = re.sub(r"\s+", " ", found[0]).strip()
+    return [] if args == UI_OPEN_COMMAND_ARGS else [f"{name}: open_craft_of_exile takes {args}, not {UI_OPEN_COMMAND_ARGS}"]
 
 
 def is_rust_test(path: Path) -> bool:
@@ -469,6 +552,64 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
         for path in files:
             offences += wr.text_offences(wr.rel(path), wr.read(path), names)
         self.assertEqual(offences, [])
+
+    def test_ui_has_no_free_form_open(self):
+        offender = (
+            "// http://127.0.0.1:1422/?state=x in a comment is fine\n"
+            "const a = 'https://beta.craftofexile.com/?game=poe2';\n"
+            "window.open(a);\n"
+            "location.href = a; window.location.assign(a); location?.replace(a);\n"
+            '<a href="#" target="_blank">x</a>\n'
+            "await invoke('plugin:opener|open_url', { url });\n"
+            "import { openUrl } from '@tauri-apps/plugin-opener';\n"
+            "<!-- <a href=\"http://in.an.html.comment\"> -->\n"
+            "/* window.open(b) in a block comment */\n"
+            "<p>Can't open; see HTTP://markup.text</p>\n"
+            "const s = `${x}//not a comment https://in.a.template`;\n"
+        )
+        self.assertEqual(
+            ui_open_offences("o.svelte", offender),
+            [
+                "o.svelte:2: http(s):// literal",
+                "o.svelte:10: http(s):// literal",
+                "o.svelte:11: http(s):// literal",
+                "o.svelte:3: window.open",
+                "o.svelte:4: location.href",
+                "o.svelte:4: location.assign",
+                "o.svelte:4: location.replace",
+                'o.svelte:5: target="_blank"',
+                "o.svelte:6: plugin:opener",
+                "o.svelte:7: @tauri-apps/plugin-opener",
+            ],
+        )
+        # Negative controls: what the pages do name is no offence.
+        self.assertEqual(
+            ui_open_offences("c.ts", "const q = window.location.search;\nconst t = `a ${b}` // https://x\n"),
+            [],
+        )
+        self.assertEqual(blank_ui_comments("a // b\nc"), "a     \nc")
+        self.assertEqual(
+            ui_open_command_offences("b.ts", "interface C {\n  open_craft_of_exile: { url: string };\n}\n"),
+            ["b.ts: open_craft_of_exile takes { url: string }, not Record<string, never>"],
+        )
+        self.assertEqual(
+            ui_open_command_offences("b.ts", "// open_craft_of_exile: Record<string, never>;\n"),
+            ["b.ts: open_craft_of_exile declared 0 times"],
+        )
+        self.assertEqual(ui_open_command_offences("b.ts", "  open_craft_of_exile: Record<string,  never>;\n"), [])
+
+        files = [p for p in wr.walk(APP / "src", UI_COMMENT_SUFFIXES) if not wr.is_ui_test(p)]
+        pages = sorted(APP.glob("*.html"))
+        self.assertEqual([p.name for p in pages], ["index.html", "overlay.html", "settings.html"])
+        files += pages
+        self.assertIn(BRIDGE, files)
+        self.assertIn(APP / "src" / "App.svelte", files)
+        self.assertGreater(len(files), 10, "the walk found no UI sources")
+        offences = []
+        for path in files:
+            offences += ui_open_offences(wr.rel(path), wr.read(path))
+        self.assertEqual(offences, [])
+        self.assertEqual(ui_open_command_offences(wr.rel(BRIDGE), wr.read(BRIDGE)), [])
 
     def test_no_manifest_depends_on_network_input_or_process_crates(self):
         offender = {

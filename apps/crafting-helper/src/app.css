@@ -138,6 +138,48 @@ select.field option {
   letter-spacing: 0.02em;
 }
 
+/* `hidden` always hides, whatever display a component's rules give the element. */
+[hidden] {
+  display: none !important;
+}
+
+/* A section's small-caps heading (Targets, Route, History, Prefixes ...). */
+.section-title {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--size-act);
+  line-height: var(--line-caption);
+  letter-spacing: 0.03em;
+}
+
+/* A heading that takes the focus when the craft mode changes shows no ring
+   for that programmatic move; it is not a control. */
+[data-mode-heading]:focus {
+  outline: none;
+}
+
+/* A word tag after a row's text: fractured, target, this craft ... */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-unit);
+  border: var(--border-width) solid var(--color-panel-border);
+  color: var(--color-text-secondary);
+  font-size: var(--size-caption);
+  line-height: var(--line-caption);
+  white-space: nowrap;
+}
+
+kbd {
+  padding: 0 var(--space-unit);
+  border: var(--border-width) solid var(--color-panel-border);
+  background: var(--color-panel-raised);
+  color: var(--color-text-primary);
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

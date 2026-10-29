@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { viewProblems } from './ipc';
-import { FIXTURES, FIXTURE_NAMES, fixtureView } from './test-support';
+import { catalogueProblems, viewProblems } from './ipc';
+import { CATALOGUE, FIXTURES, FIXTURE_NAMES, fixtureView } from './test-support';
 
 describe('the TypeScript IPC types', () => {
   it('view_problems_catch_drift', () => {
@@ -14,17 +14,29 @@ describe('the TypeScript IPC types', () => {
     const shape = Object.fromEntries(
       FIXTURE_NAMES.map((n) => {
         const v = fixtureView(n);
-        return [n, [v.grab?.source ?? null, v.grab?.looks_like_item ?? null, v.status?.kind ?? null, v.overlay.visible]];
+        return [n, [v.grab?.source ?? null, v.grab?.looks_like_item ?? null, v.status?.kind ?? null, v.overlay.visible, v.craft.mode]];
       }),
     );
     expect(shape).toEqual({
-      empty: [null, null, null, false],
-      'grabbed-item': ['shortcut', true, 'info', false],
-      'grabbed-not-item': ['paste', false, 'error', false],
-      'grab-refused': ['shortcut', true, 'error', false],
-      'hotkey-taken': [null, null, 'error', false],
-      'overlay-active': ['paste', true, 'info', true],
+      empty: [null, null, null, false, 'none'],
+      'grabbed-item': ['shortcut', true, 'info', false, 'refused'],
+      'grabbed-not-item': ['paste', false, 'error', false, 'refused'],
+      'grab-refused': ['shortcut', true, 'error', false, 'refused'],
+      'hotkey-taken': [null, null, 'error', false, 'none'],
+      'overlay-active': ['paste', true, 'info', true, 'refused'],
+      'craft-planning': ['paste', true, 'info', false, 'planning'],
+      'craft-fallback': ['paste', true, 'info', false, 'planning'],
+      'craft-no-route': ['paste', true, 'info', false, 'planning'],
+      'craft-refused': ['paste', true, 'info', false, 'refused'],
+      'craft-guiding': ['paste', true, 'info', false, 'guiding'],
+      'craft-miss': ['paste', true, 'info', false, 'guiding'],
+      'craft-replan': ['paste', true, 'error', false, 'guiding'],
+      'craft-done': ['paste', true, 'info', false, 'guiding'],
     });
+    // The overlay stays hidden while a craft is guided (M5 leaves it to M6).
+    for (const name of ['craft-guiding', 'craft-miss', 'craft-replan', 'craft-done']) {
+      expect(fixtureView(name).overlay.visible, name).toBe(false);
+    }
     // The line count is the app's count of the normalised text's lines.
     for (const name of FIXTURE_NAMES) {
       const grab = fixtureView(name).grab;
@@ -64,5 +76,63 @@ describe('the TypeScript IPC types', () => {
     badUpdate.update_available = 13;
     expect(viewProblems(badUpdate)).toEqual(['view.update_available: expected a string']);
     expect(viewProblems(null)).toEqual(['view: expected an object']);
+
+    // The craft part: its fields, deep inside, and the mode naming the one part set.
+    const badMode = fixtureView('craft-planning') as unknown as { craft: Record<string, unknown> };
+    badMode.craft.mode = 'browsing';
+    expect(viewProblems(badMode)).toEqual(['view.craft.mode: "browsing" is not one of none|refused|planning|guiding']);
+
+    const twoParts = fixtureView('craft-planning') as unknown as { craft: Record<string, unknown> };
+    twoParts.craft.refusal = 'stale';
+    expect(viewProblems(twoParts)).toEqual(['view.craft.refusal: set in mode planning']);
+
+    const noPart = fixtureView('craft-guiding') as unknown as { craft: Record<string, unknown> };
+    noPart.craft.guiding = null;
+    expect(viewProblems(noPart)).toEqual(['view.craft.guiding: missing in mode guiding']);
+
+    const deep = fixtureView('craft-planning');
+    (deep.craft.planning!.preview!.route!.steps[0] as unknown as Record<string, unknown>).odds = 12;
+    (deep.craft.planning!.targets[0] as unknown as Record<string, unknown>).floor = -3;
+    (deep.craft.planning!.blocked as unknown as Record<string, unknown>).limit = 200;
+    expect(viewProblems(deep)).toEqual([
+      'view.craft.planning.targets[0].floor: expected an unsigned integer',
+      'view.craft.planning.blocked.limit: not in the TypeScript types',
+      'view.craft.planning.preview.route.steps[0].odds: expected a string',
+    ]);
+
+    const badResult = fixtureView('craft-miss');
+    (badResult.craft.guiding!.history[0] as unknown as Record<string, unknown>).result = 'near-miss';
+    (badResult.craft.guiding! as unknown as Record<string, unknown>).status = 'paused';
+    expect(viewProblems(badResult)).toEqual([
+      'view.craft.guiding.status: "paused" is not one of active|stuck|replan|done',
+      'view.craft.guiding.history[0].result: "near-miss" is not one of hit|miss|unexpected',
+    ]);
+
+    const noCraft = fixtureView('empty') as unknown as Record<string, unknown>;
+    delete noCraft.craft;
+    expect(viewProblems(noCraft)).toEqual(['view.craft: missing']);
+  });
+
+  it('catalogue_problems_catch_drift', () => {
+    // The fixture `get_catalogue` answers with: groups with a heading, entries by name.
+    expect(catalogueProblems(CATALOGUE)).toEqual([]);
+    expect(CATALOGUE.length).toBeGreaterThan(1);
+    for (const group of CATALOGUE) {
+      expect(group.entries.length, group.label).toBeGreaterThan(0);
+      const names = group.entries.map((e) => e.name);
+      expect(names, group.label).toEqual([...names].sort((a, b) => a.localeCompare(b, 'en')));
+    }
+
+    // Negative controls.
+    const drifted = JSON.parse(JSON.stringify(CATALOGUE)) as Array<Record<string, unknown>>;
+    drifted[0].heading = drifted[0].label;
+    delete drifted[0].label;
+    (drifted[1].entries as Array<Record<string, unknown>>)[0].id = 7;
+    expect(catalogueProblems(drifted)).toEqual([
+      'catalogue[0].label: missing',
+      'catalogue[0].heading: not in the TypeScript types',
+      'catalogue[1].entries[0].id: expected a string',
+    ]);
+    expect(catalogueProblems({})).toEqual(['catalogue: expected a list']);
   });
 });

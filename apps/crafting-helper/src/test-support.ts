@@ -1,12 +1,13 @@
 // Shared by the pages' tests (`*.test.ts`): the view fixtures under
-// `fixtures/views/` and `fixtures/app-settings/`, fake bridges that deliver
-// them as the shell would and record every command, and mount helpers.
+// `fixtures/views/` and `fixtures/app-settings/`, the catalogue fixture,
+// fake bridges that deliver them as the shell would and record every
+// command, and mount helpers.
 // Never imported by the app.
 
 import { type Component, flushSync, mount, unmount } from 'svelte';
 import App from './App.svelte';
 import type { Bridge, Command, CommandArgs } from './bridge';
-import type { View } from './ipc';
+import type { CatalogueGroup, View } from './ipc';
 import type { SettingsBridge, SettingsCommand, SettingsCommandArgs } from './settings/bridge';
 import type { SettingsView } from './settings/view';
 
@@ -18,8 +19,33 @@ export const FIXTURES: Record<string, unknown> = byName(
   import.meta.glob('../fixtures/views/*.json', { eager: true, import: 'default' }) as Record<string, unknown>,
 );
 
-/** The states the context's Fixtures list names for the main view, one file each. */
-export const FIXTURE_NAMES = ['empty', 'grabbed-item', 'grabbed-not-item', 'grab-refused', 'hotkey-taken', 'overlay-active'] as const;
+/** The craft window's states, one file each (`fixtures/views/README.md`). */
+export const CRAFT_FIXTURE_NAMES = [
+  'craft-planning',
+  'craft-fallback',
+  'craft-no-route',
+  'craft-refused',
+  'craft-guiding',
+  'craft-miss',
+  'craft-replan',
+  'craft-done',
+] as const;
+
+/** Every main-view state, one file each: M3's six, then the craft window's. */
+export const FIXTURE_NAMES = [
+  'empty',
+  'grabbed-item',
+  'grabbed-not-item',
+  'grab-refused',
+  'hotkey-taken',
+  'overlay-active',
+  ...CRAFT_FIXTURE_NAMES,
+] as const;
+
+/** `fixtures/catalogue.json`: what `get_catalogue` answers, written by `ch-app`'s fixtures test. */
+export const CATALOGUE = Object.values(
+  import.meta.glob('../fixtures/catalogue.json', { eager: true, import: 'default' }),
+)[0] as CatalogueGroup[];
 
 /** Each Settings fixture by name (`idle`, `hotkey-refused`, ...), as parsed JSON. */
 export const SETTINGS_FIXTURES: Record<string, unknown> = byName(
@@ -61,6 +87,9 @@ export function fakeBridge(initial: View): FakeBridge {
     },
     async command<C extends Command>(name: C, args: CommandArgs[C]) {
       calls.push({ name, args });
+    },
+    async catalogue() {
+      return JSON.parse(JSON.stringify(CATALOGUE)) as CatalogueGroup[];
     },
     pushView(view) {
       onView?.(view);
@@ -147,6 +176,13 @@ export const button = (root: Element, label: string): HTMLButtonElement | undefi
 export function setValue(el: HTMLInputElement, value: string): void {
   el.value = value;
   el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+  flushSync();
+}
+
+/** Picks a select's option by value as the player would, then fires `change`. */
+export function choose(el: HTMLSelectElement, value: string): void {
+  el.value = value;
   el.dispatchEvent(new Event('change', { bubbles: true }));
   flushSync();
 }
