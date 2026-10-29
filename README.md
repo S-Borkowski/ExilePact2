@@ -1,7 +1,7 @@
 # ExilePact2
 
-Tools and mods for Path of Exile 2: the quest tracker and the waystone
-roller.
+Tools and mods for Path of Exile 2, three apps: the quest tracker, the
+waystone roller and the crafting helper.
 
 ## Quest tracker
 
@@ -96,6 +96,51 @@ npm --prefix apps/waystone-roller run release
 # -> apps/waystone-roller/target/release/waystone-roller.exe
 ```
 
+## Crafting helper
+
+`crafting-helper.exe` helps you craft items. You copy an item in the game
+with the game's own `Ctrl+Alt+C`, then press the app's hotkey
+(`Ctrl+Alt+X`, changeable, never `Ctrl+Alt+C`) or `Ctrl+V` in its window,
+and the window shows the item and its modifiers, lets you pick target
+modifiers and previews the route a crafting blueprint takes to them, with
+each step's currency, omens and rough odds. *Start crafting* guides you:
+take the step in the game and hover the item, and the app reads the item's
+tooltip from the game's window with Windows' own OCR and says whether the
+step hit or missed and what is next; when it cannot read the item, you
+grab it again. While a craft is guided and the game is in front, a
+click-through overlay over the game shows the current step, where a hit
+and a miss go, the last outcome and what the screen watch is doing, at the
+place chosen in Settings. It
+reads the clipboard once per grab and never watches it, keeps its copies
+of the game's window in memory (never saved, logged or sent), uses no
+keyboard hook and sends the game nothing: no keys, no mouse input, no
+memory read. Its *Settings* window holds the hotkey, the overlay's
+position, a switch for reading the screen, a saved list of blocked
+currencies and, like the siblings', an update check that runs only when
+you ask (*Check now*, or *Automatically check for updates*, off by
+default) and an install of a signed newer version on a button press
+([`docs/app-updates.md`](docs/app-updates.md)); otherwise it makes no
+network request.
+
+- Guide (privacy, commands, known limitations, release notes):
+  [`docs/crafting-helper/README.md`](docs/crafting-helper/README.md)
+- Download: the latest Crafting Helper release on the
+  [releases page](https://github.com/S-Borkowski/ExilePact2/releases?q=crafting-helper).
+  Each release has `crafting-helper.exe`, `SHA256SUMS.txt` and the exe's
+  signature `crafting-helper.exe.minisig`; there is no installer, and a
+  newer version installs from the app.
+- Requirements: Windows 10 or 11, 64-bit, with the WebView2 runtime; an
+  English game client; for reading the item from the screen, Windows'
+  English OCR and the game windowed or borderless.
+
+To build it from source, with the same toolchain:
+
+```sh
+npm --prefix apps/crafting-helper ci            # only when apps/crafting-helper/node_modules is missing
+npm --prefix apps/crafting-helper run release
+# -> apps/crafting-helper/target/release/crafting-helper.exe
+```
+
 ## Repository layout
 
 | Path | What it holds |
@@ -104,10 +149,13 @@ npm --prefix apps/waystone-roller run release
 | `tools/quest_tracker/` | Developer-only tools: the release cutter, the poe2db quest data harvester and the outside instruments used for research. |
 | `apps/waystone-roller/` | The waystone roller: the search-string engine and app logic as Rust crates, the Tauri glue, the Svelte UI and the mod data. |
 | `tools/waystone_roller/` | Developer-only: the release cutter and the poe2db Waystones data tool. |
-| `apps/shared/` | The update code both apps share, a Cargo workspace of its own: `ep-net`, the only network code, and `ep-update`, the check, the install and the signature check ([`docs/app-updates.md`](docs/app-updates.md)). |
-| `.github/workflows/` | The two release builds (the quest tracker's and the waystone roller's), and the opt-in AI review. |
+| `apps/crafting-helper/` | The crafting helper: the app logic, the item text parser, the crafting engine and the screen watch as Rust crates (the screen watch takes the quest tracker's `qt-screen` and `qt-capture` by path), the Tauri glue, the Svelte UI, the blueprints and the modifier data. |
+| `tools/crafting_helper/` | Developer-only: the poe2db modifier data extractor, and the release cutter (`release.py`). |
+| `apps/shared/` | The update code the three apps share, a Cargo workspace of its own: `ep-net`, the only network code, and `ep-update`, the check, the install and the signature check ([`docs/app-updates.md`](docs/app-updates.md)). |
+| `.github/workflows/` | The three release builds (the quest tracker's, the waystone roller's and the crafting helper's), and the opt-in AI review. |
 | `docs/quest-tracker/` | The quest tracker's guide, research note and design. |
 | `docs/waystone-roller/` | The waystone roller's guide, research note and UI design. |
+| `docs/crafting-helper/` | The crafting helper's guide, UI design, research note and crafting mechanics. |
 | `docs/RUNTIME_DATA_MODELS.md` | Facts about the game that every mod can use, each labelled measured or read. |
 | `tools/`, `tests/` | The tests for all of the above, and the agent tooling's own tools. |
 | `AGENTS.md`, `.claude/`, `.codex/`, `docs/agents/`, `docs/tools/` | The rules and tooling for coding agents. |
@@ -122,10 +170,14 @@ npm --prefix apps/quest-tracker test                                            
 npm --prefix apps/waystone-roller run build                                      # the same three steps for the waystone roller
 cargo test --manifest-path apps/waystone-roller/Cargo.toml --locked --workspace
 npm --prefix apps/waystone-roller test
+npm --prefix apps/crafting-helper run build                                      # the same three steps for the crafting helper
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked --workspace
+npm --prefix apps/crafting-helper test
 cargo test --manifest-path apps/shared/Cargo.toml --locked --workspace           # the shared update crates
 ```
 
-No test opens a window or reads a real `Client.txt`.
+No test opens a window, reads a real `Client.txt` or reads the real
+clipboard.
 
 ## Releases
 
@@ -134,6 +186,7 @@ Each app is released on its own, from the tip of `main`, by tagging it:
 ```sh
 py -3 -m tools.quest_tracker.release cut --push      # the quest tracker
 py -3 -m tools.waystone_roller.release cut --push    # the waystone roller
+py -3 -m tools.crafting_helper.release cut --push    # the crafting helper
 ```
 
 The tag `quest-tracker-v<version>` starts
@@ -141,7 +194,9 @@ The tag `quest-tracker-v<version>` starts
 which builds both of the quest tracker's executables;
 `waystone-roller-v<version>` starts
 [`.github/workflows/waystone-roller-release.yml`](.github/workflows/waystone-roller-release.yml),
-which builds `waystone-roller.exe`. Each builds on a Windows runner, signs
+which builds `waystone-roller.exe`; `crafting-helper-v<version>` starts
+[`.github/workflows/crafting-helper-release.yml`](.github/workflows/crafting-helper-release.yml),
+which builds `crafting-helper.exe`. Each builds on a Windows runner, signs
 the app's exe with the release key (the repository secret
 `TAURI_SIGNING_PRIVATE_KEY`; without it the run fails and no release is
 made), and attaches its files, `SHA256SUMS.txt` and `<exe>.minisig` to a

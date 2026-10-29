@@ -1,0 +1,21 @@
+Item Class: Body Armours
+Rarity: Rare
+Storm Shell
+Full Plate
+--------
+Armour: 412 (augmented)
+--------
+Requirements:
+Level: 60
+Str: 121
+--------
+Sockets: S S
+--------
+Item Level: 81
+--------
+{ Prefix Modifier "Impregnable" (Tier: 1) — Defences, Armour }
+74(68-79)% increased Armour
+{ Prefix Modifier "Virile" (Tier: 3) — Life }
++101(100-119) to maximum Life
+{ Suffix Modifier "of the Volcano" (Tier: 2) — Elemental, Fire, Resistance }
++34(31-35)% to Fire Resistance

@@ -1,0 +1,11 @@
+Item Class: Foci
+Rarity: Rare
+Crystal Focus
+--------
+Energy Shield: 22
+--------
+Requires: Level 26, 41 Int
+--------
+Item Level: 40
+--------
+Unidentified

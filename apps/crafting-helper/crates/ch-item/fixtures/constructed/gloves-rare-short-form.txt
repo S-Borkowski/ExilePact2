@@ -1,0 +1,24 @@
+Item Class: Gloves
+Rarity: Rare
+Grim Grasp
+Plated Gauntlets
+--------
+Quality: +20% (augmented)
+Armour: 152 (augmented)
+--------
+Requires: Level 45, 63 Str
+--------
+Sockets: S
+--------
+Item Level: 78
+--------
++8% to Fire Resistance (implicit)
+--------
++12% to Cold Resistance (rune)
+--------
++62 to maximum Life (fractured)
++38 to Armour
++11 to maximum Life
++24% to Cold Resistance (desecrated)
++15 to Strength
+Unrevealed Desecrated Modifier

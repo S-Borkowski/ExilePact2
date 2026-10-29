@@ -1,0 +1,25 @@
+{
+  "craft": {
+    "guiding": null,
+    "mode": "refused",
+    "planning": null,
+    "refusal": "the text is not an item copied with Ctrl+Alt+C in the game"
+  },
+  "grab": {
+    "line_count": 3,
+    "looks_like_item": false,
+    "source": "paste",
+    "text": "a shopping list\nmilk\neggs"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": null,
+    "position": "top-center",
+    "visible": false
+  },
+  "status": {
+    "kind": "error",
+    "text": "Grabbed 3 lines, but they do not look like an item copied with Ctrl+Alt+C in the game."
+  },
+  "update_available": null
+}

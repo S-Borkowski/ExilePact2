@@ -1,0 +1,22 @@
+Item Class: Talismans
+Rarity: Rare
+Primal Howl
+Wolf Talisman
+--------
+Physical Damage: 18-30
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.20
+--------
+Requires: Level 30, 25 Str, 25 Int
+--------
+Item Level: 40
+--------
+{ Implicit Modifier }
+Grants Skill: Level 8 Wolf Form
+--------
+{ Prefix Modifier "Serrated" (Tier: 6) — Damage, Physical, Attack }
+Adds 4(3-5) to 8(7-9) Physical Damage
+{ Suffix Modifier "of the Lynx" (Tier: 6) — Attribute }
++14(13-16) to Dexterity
+{ Suffix Modifier "of the Wind" (Tier: 4) — Elemental, Lightning, Resistance }
++18(16-20)% to Lightning Resistance

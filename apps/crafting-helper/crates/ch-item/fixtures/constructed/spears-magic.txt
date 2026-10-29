@@ -1,0 +1,17 @@
+Item Class: Spears
+Rarity: Magic
+Hunting Spear of Skill
+--------
+Physical Damage: 9-17
+Critical Hit Chance: 5.00%
+Attacks per Second: 1.60
+--------
+Requires: Level 8, 14 Str, 14 Dex
+--------
+Item Level: 12
+--------
+{ Implicit Modifier }
+Grants Skill: Spear Throw
+--------
+{ Suffix Modifier "of Skill" (Tier: 8) — Attack, Speed }
+5(5-7)% increased Attack Speed

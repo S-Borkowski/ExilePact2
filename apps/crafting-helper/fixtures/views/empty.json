@@ -1,0 +1,17 @@
+{
+  "craft": {
+    "guiding": null,
+    "mode": "none",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": null,
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": null,
+    "position": "top-center",
+    "visible": false
+  },
+  "status": null,
+  "update_available": null
+}

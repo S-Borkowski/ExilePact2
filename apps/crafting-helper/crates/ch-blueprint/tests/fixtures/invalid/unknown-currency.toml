@@ -1,0 +1,15 @@
+id = "unknown-currency"
+name = "Unknown currency"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Use an Exalted Orb"
+goal = "fill"
+
+[[step.action]]
+currency = "exalted-orbb"

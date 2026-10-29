@@ -1,0 +1,17 @@
+# A test blueprint (engine tests only): exalt a jewel.
+id = "test-jewel"
+name = "Test: exalt a jewel"
+classes = ["Jewels"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt for a remaining target"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "exalted-orb"

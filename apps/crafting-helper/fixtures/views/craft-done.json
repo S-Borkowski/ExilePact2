@@ -1,0 +1,128 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [
+        {
+          "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+          "number": 1,
+          "result": "hit",
+          "source": "grab",
+          "step": "chaos",
+          "summary": "gained +#% to Fire Resistance (T3)"
+        },
+        {
+          "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+          "number": 2,
+          "result": "hit",
+          "source": "grab",
+          "step": "whittle",
+          "summary": "gained +#% to Cold Resistance (T3)"
+        },
+        {
+          "instruction": "Preserved Collarbone for +#% to Lightning Resistance (suffix)",
+          "number": 3,
+          "result": "hit",
+          "source": "grab",
+          "step": "desecrate",
+          "summary": "the step did what it is for, no target gained or lost"
+        },
+        {
+          "instruction": "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)",
+          "number": 4,
+          "result": "hit",
+          "source": "grab",
+          "step": "reveal",
+          "summary": "gained +#% to Lightning Resistance (T3)"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+33(31-35)% to Fire Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+32(31-35)% to Cold Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": true,
+            "fractured": false,
+            "lines": [
+              "+33(31-35)% to Lightning Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Rings: resistances by whittling",
+      "status": "done",
+      "step": null,
+      "watch": null
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 18,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Suffix Modifier \"of the Volcano\" (Tier: 3) — Elemental, Fire, Resistance }\n+33(31-35)% to Fire Resistance\n{ Suffix Modifier \"of the Polar Bear\" (Tier: 3) — Elemental, Cold, Resistance }\n+32(31-35)% to Cold Resistance\n{ Desecrated Suffix Modifier \"of the Maelstrom\" (Tier: 3) — Elemental, Lightning, Resistance }\n+33(31-35)% to Lightning Resistance"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": {
+      "instruction": "The craft is done.",
+      "last": {
+        "instruction": "Reveal at the Well of Souls for +#% to Lightning Resistance (suffix)",
+        "number": 4,
+        "result": "hit",
+        "source": "grab",
+        "step": "reveal",
+        "summary": "gained +#% to Lightning Resistance (T3)"
+      },
+      "odds": null,
+      "on_hit": null,
+      "on_miss": null,
+      "route_name": "Rings: resistances by whittling",
+      "status": "done",
+      "step_number": null,
+      "try_number": null,
+      "uses": [],
+      "watch": null,
+      "why": null
+    },
+    "position": "top-center",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Hit: gained +#% to Lightning Resistance (T3)."
+  },
+  "update_available": null
+}

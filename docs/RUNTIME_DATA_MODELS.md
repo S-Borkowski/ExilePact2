@@ -627,5 +627,169 @@ or (O) the owner.
   fired, and for which of `Ctrl+A`, `Ctrl+V` or the `Ctrl+Alt+W` press
   itself, was not separated.
 - Not established: whether lookahead (`(?=`, `(?!`) works
-  (`"way(?=stone)"` lit every waystone: accepted or ignored); which text
-  form plain `Ctrl+C` copies; any way to count modifiers.
+  (`"way(?=stone)"` lit every waystone: accepted or ignored); any way to
+  count modifiers. Plain `Ctrl+C` copies the same advanced text as
+  `Ctrl+Alt+C` (measured 2026-10-28 on one rare gloves; § "Item text
+  (Ctrl+Alt+C and Ctrl+C)" below).
+
+## Item text (Ctrl+Alt+C and Ctrl+C)
+
+Source: the owner's six in-game copies of equipment, 2026-10-28, kept byte
+for byte in
+[`apps/crafting-helper/crates/ch-item/fixtures/real/`](../apps/crafting-helper/crates/ch-item/fixtures/real/README.md)
+(a rare gloves copied with `Ctrl+Alt+C` and again with `Ctrl+C`; a normal
+ring, a magic boots, a rare crossbow and a corrupted rare jewel, each in the
+advanced form, copy key not stated). The crafting helper's item text parser,
+`ch-item`, reads this layout; its tests assert each file. Everything below
+is measured from those texts (owner's copies, 2026-10-28) unless it says
+otherwise, and adds to the waystone text layout in § "Item search box
+(stash and vendor)" above.
+
+- **Plain `Ctrl+C` gives the advanced form**: the gloves copied with
+  `Ctrl+C` and with `Ctrl+Alt+C` gave identical text, headers and roll
+  ranges included (one item; the owner confirmed which key each copy used).
+- **Class strings**: `Item Class: Gloves`, `Boots`, `Rings`, `Crossbows`,
+  `Jewels` (the plural class name, as `Waystones`).
+- **Requirements are one line**: `Requires: Level 80, 101 Int`,
+  `Requires: Level 79, 89 Str, 89 (unmet) Dex`, or `Requires: Level 20`
+  alone, in their own section. An attribute the copying character does not
+  meet carries `(unmet)` between its number and its name. A jewel's text
+  has no requirements line.
+- **Sockets**: `Sockets: S ` (with a trailing space) for one socket holding
+  a rune, in its own section.
+- **Properties**: armour pieces show their defence (`Energy Shield: 276
+  (augmented)`, `Evasion Rating: 362 (augmented)`); a weapon shows
+  `Physical Damage: 77-304 (augmented)`, an elemental damage line ending in
+  its type, `Fire Damage: 59-104 (fire)`, `Critical Hit Chance: 8.33%
+  (augmented)`, `Attacks per Second: 1.65` and, on a crossbow, `Reload Time:
+  0.75`. `Quality: +20% (augmented)` is a property line too.
+- **A rune's line, an implicit and a corruption's enhancement each have
+  their own section**, after `Item Level` and before the explicit
+  modifiers, which share one section. No text showed two of the three, so
+  their order among themselves is not established. A rune's line ends
+  `(rune)` and has no header.
+- **`{ Implicit Modifier }`** heads an implicit, with family tags
+  (`{ Implicit Modifier — Chaos, Resistance }`) or without; it has no affix
+  name and no tier, and the line under it carries no `(implicit)` marker.
+- **`{ Corruption Enhancement — Elemental, Cold, Resistance }`** heads a
+  modifier on a corrupted jewel: a header without the word `Modifier`, in
+  its own section, with a roll range on its line (`+10(5-10)%`).
+- **Explicit headers carry family tags after an em dash**:
+  `{ Prefix Modifier "Tyrannical" (Tier: 2) — Damage, Physical, Attack }`;
+  a header may carry none (`{ Prefix Modifier "Hummingbird's" (Tier: 1) }`).
+- **A revealed desecrated modifier** has the word `Desecrated` before
+  `Prefix` or `Suffix` in its header (`{ Desecrated Suffix Modifier "of
+  Exile" (Tier: 2) — Chaos, Resistance }`), and no marker on its line.
+- **A modifier with two lines** sits under one header (`Hummingbird's`:
+  evasion and stun threshold); **a line with two values** carries a range
+  after each (`Adds 59(56-70) to 104(84-107) Fire Damage`); **a decimal
+  value** has a decimal range (`+3.33(3.11-3.8)%`).
+- **A jewel's text** ends with its description line, a separator and
+  `Corrupted` when corrupted.
+- **The header's `Tier:` equals poe2db's tier order** (measured, four
+  items: the boots, crossbow, gloves and jewel above; the ring carries only
+  an implicit, which is not joined). Numbering a modifier's tiers on the
+  item's base variant from the highest item level down (tier 1 the best),
+  as the crafting helper's data does, gave the same number as the header on
+  all 18 explicit modifiers the four items carry; test
+  `real_fixture_tiers_equal_game_tiers` in
+  `apps/crafting-helper/crates/ch-data/tests/data.rs`. Rings, the other
+  classes and the other modifiers have not been compared.
+- **A revealed desecrated modifier can be a normal-pool modifier**
+  (measured, five items, two carrying one): the crossbow's `Incinerating`
+  (Tier 4) and the gloves' `of Exile` (Tier 2) join to modifiers in poe2db's
+  normal section, not its desecrated one, at those tiers; test
+  `desecrated_mods_join_to_normal_section` in the same file. So a reveal
+  may yield a normal-pool modifier; how many options a reveal offers is not
+  established.
+- Not established (no real text has shown it): a fractured modifier, a
+  crafted modifier, an enchant, `Mirrored`, `Unidentified`, the class
+  strings of the other equipment classes, a requirements block, negative
+  roll ranges, and any text form without headers and roll ranges (no copy
+  key has been seen to give one). An unrevealed desecrated modifier and a
+  high-to-low range have since been copied: § "Item tooltip (on screen)"
+  below.
+
+## Item tooltip (on screen)
+
+Source: the owner's fourteen screenshots of the game's window with the
+hovered item's `Ctrl+Alt+C` copy beside each, 2026-10-29, and a fifteenth
+after Live 1's first run, shot 13 (2560 x 1440
+fullscreen and 1920 x 1080 windowed, HUD scale middle, UI text size
+medium), read with Windows' OCR (en-US). The images stay on the owner's
+machine; the method, the numbers per shot and the tests are in
+[`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
+§ "Item tooltip on screen". Every fact below is measured from those
+screenshots and copies (2026-10-29) unless it says otherwise; the last
+bullet but one was measured in the game, in the crafting helper's Live 1.
+Nothing here was read from the game's code.
+
+- **Placement**: the tooltip draws beside the hovered item. In ten of the
+  15 measured tooltips it lay flush against the client's left edge and in
+  five within ten pixels of its top, whole each time; a tooltip at the
+  right or bottom edge, or one cut by the window's edge, was not observed.
+  Hovering a weapon once drew the
+  equipped weapon's tooltip beside it as a second box; when the game does
+  that is not established.
+- **Size scales with the client**: 663 to 877 pixels wide and 194 to 631
+  high at 2560 x 1440; the same item's box is the same fraction of a 1920 x
+  1080 client.
+- **Header**: opaque. A frame line along its top (a bright row, two darker
+  rows, two bright rows, even in colour along the line), a dark band with
+  the name lines, a frame line along its bottom about 42 pixels lower for
+  one name line and about 69 for two (at 1440; three quarters of that at
+  1080), and corner ornaments a quarter of that wide. Frame colour by
+  rarity: gold (RGB about 176, 155, 85) for rare, blue-grey for magic, grey
+  for normal, pale brown for currency.
+- **Name colours** (RGB): rare 254, 224, 85; magic 122, 151, 254; normal
+  200, 200, 200; currency 170, 158, 130. Unique: not established.
+- **Body**: no border; it darkens the scene behind it to about a fifth
+  (median 0.19 against the same scene with no tooltip) and draws every line
+  centred.
+- **Plain lines**: the name lines; the item class in the singular
+  (`Amulet`, `Quarterstaff`, `Two Hand Mace`); the properties; the
+  requirements without `(unmet)`; a rune's line; the implicit; each
+  explicit modifier's line with its value, without header or range. No item
+  level, no `Item Class:` or `Rarity:` line.
+- **Alt held**: the ranges appear, the class line becomes `Amulet: Item
+  Level 12`, and the side (`Implicit`, `Prefix`, `Suffix`) and the tier
+  (`T12`) sit at the body's left and right edges. No header lines.
+- **Key hints**: a small separate panel near the item, over the tooltip or
+  below it: `Alt Inspect`, `Shift Compare`, `Ctrl Quick Move`, `Shift Alt
+  Price Check`; `Use` on currency.
+- **An unrevealed desecrated modifier** shows as a row of green glyphs,
+  then the line `Take this item to the Well of Souls to reveal the
+  Desecrated Modifier`; its copy writes `{ Prefix Modifier "Veiled" }` then
+  `Desecrated Prefix` (no tier, no values). A fractured modifier: not
+  established.
+- **A reducing modifier's range runs high to low** in the copy, best to
+  worst: `12(15-10)% reduced Charm Charges used`. A suffix may copy with no
+  `(Tier: n)`: `{ Suffix Modifier "of the Parasite" — Life, Physical, Attack
+  }`.
+- **A belt** (shot 13, a rare `Utility Belt`, measured from the owner's
+  screenshot, 2026-10-29): the plain tooltip names the class `Belt`, then
+  a `Charm Slots` line, the requirement, the flask implicit and each
+  modifier line, as for the other gear. OCR broke the requirement line's
+  first word into two mangled pieces while reading its colon, `Level` and
+  the value intact, so a reader cannot rely on the word before that colon;
+  why OCR broke it on this shot alone is not established. Research:
+  [`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
+  § "Item tooltip on screen", shot 13.
+- **A tier above the item level**: a level 43 item carried `Gleaming`,
+  whose item level in the crafting helper's data (from poe2db) is 46.
+- **In the game** (measured 2026-10-29, Live 1, the crafting helper's
+  release build beside the game, 2560 x 1440, English client; research:
+  [`crafting-helper/crafting-helper-research.md`](crafting-helper/crafting-helper-research.md)
+  § "Live 1"): a GDI copy of the game's client reads at its physical size
+  (2560 x 1440), and Windows' OCR read the hovered tooltip live: a rare
+  belt hovered with nothing used read as unchanged, an item of another
+  kind as another item, the cursor off any item as no tooltip, and the
+  belt after an Exalted Orb as changed, classified as a miss about 1 s
+  later. A copy and its locating cost about 50 ms with no tooltip in view;
+  a minute of hovering cost up to about 8 s of copy and OCR (82 copies and
+  19 OCR reads, or 73 and 13). A global `Ctrl+Alt+X` registered by another
+  app reaches it with the game in front. Not observed: a black copy, and
+  which tooltip state holds while Alt is held (no time was taken for Alt).
+- Not established: whether the plain tooltip sums two modifiers' identical
+  stat lines into one (no item in the shots had two), a unique's tooltip,
+  and how a tooltip looks over a bright scene.

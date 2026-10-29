@@ -1,0 +1,6 @@
+# Build output and installed packages for the crafting-helper app. The root
+# .gitignore has no `target/` line, so the app carries its own.
+target/
+node_modules/
+dist/
+src-tauri/gen/

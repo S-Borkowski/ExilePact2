@@ -1,0 +1,45 @@
+[package]
+name = "crafting-helper"
+description = "The crafting helper's windows: Tauri glue around ch-app."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The library carries the glue; src/main.rs only calls `run`. The `_lib`
+# suffix keeps the library's output name apart from the binary's.
+[lib]
+name = "crafting_helper_lib"
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+ch-app = { path = "../crates/ch-app" }
+# The app's only network code, shared with the quest tracker and the
+# waystone roller (apps/shared): the release list and the two fixed release
+# assets, over WinHTTP. Named by this glue alone, which implements ch-app's
+# update transport over it.
+ep-net = { path = "../../shared/crates/ep-net" }
+tauri = { workspace = true }
+tauri-plugin-global-shortcut = { workspace = true }
+tauri-plugin-single-instance = { workspace = true }
+# Opens Craft of Exile's one fixed address in the default browser, from Rust
+# alone: registered without its link handler, and no capability grants the
+# pages any of its commands.
+tauri-plugin-opener = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# The clipboard reader, the error beep, the overlay's show and hide without
+# activating it and its size, and the window in front (game_window.rs).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true }
+# The screen watch's real backend (src/screen.rs): the quest tracker's
+# Windows capture (the game's client area, a GDI copy of it, the overlay's
+# own rect and Windows' OCR) and its pure screen crate, for the types that
+# capture takes. Both by path and unchanged; each takes its package keys
+# from its own workspace (apps/quest-tracker). This glue is the only
+# manifest that takes `qt-capture` but `ch-watch`'s screenshot tests
+# (tests/test_crafting_helper_guard.py).
+qt-capture = { path = "../../quest-tracker/crates/qt-capture" }
+qt-screen = { path = "../../quest-tracker/crates/qt-screen" }

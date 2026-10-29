@@ -1,0 +1,23 @@
+Item Class: Shields
+Rarity: Rare
+Dread Ward
+Tower Shield
+--------
+Block chance: 26%
+Armour: 120
+--------
+Requires: Level 33, 52 Str
+--------
+Sockets: S
+--------
+Item Level: 44
+--------
+{ Implicit Modifier }
+Grants Skill: Raise Shield
+--------
+{ Prefix Modifier "Studded" (Tier: 5) — Defences, Armour }
++28(25-33) to Armour
+{ Suffix Modifier "of the Storm" (Tier: 4) — Elemental, Lightning, Resistance }
++21(19-24)% to Lightning Resistance
+--------
+Corrupted

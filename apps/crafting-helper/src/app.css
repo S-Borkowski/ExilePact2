@@ -1,0 +1,206 @@
+/*
+ * The pages' base rules, as the waystone roller's: every value from the
+ * quest tracker's tokens (`theme/tokens.css`). Components keep their own
+ * layout in their `<style>` blocks; the shared control looks (buttons,
+ * fields) live here so every control reads the same.
+ */
+:root {
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --focus: var(--color-edit-accent);
+  --want: var(--color-status-available);
+  --error: var(--color-warning);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--color-panel-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--size-row);
+  line-height: var(--line-row);
+  font-weight: 400;
+}
+
+#app {
+  height: 100%;
+}
+
+::selection {
+  background: var(--color-edit-tint);
+  color: var(--color-text-primary);
+}
+
+* {
+  scrollbar-color: var(--color-panel-border) var(--color-panel-sunken);
+  scrollbar-width: thin;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Buttons: square, 28 high, the tracker's action colours. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-unit);
+  min-height: var(--size-button);
+  padding: 0 calc(var(--space-unit) * 3);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-button);
+  background: var(--color-action-secondary-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--size-button-text);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--color-action-secondary-hover);
+  border-color: var(--color-hover-outline);
+}
+
+.btn:active:not(:disabled) {
+  background: var(--color-action-secondary-pressed);
+}
+
+.btn:disabled {
+  background: var(--color-action-disabled-bg);
+  color: var(--color-action-disabled-fg);
+  border-color: var(--color-panel-divider);
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--color-action-primary-bg);
+  color: var(--color-text-on-light);
+  border-color: var(--color-action-primary-bg);
+  font-weight: 700;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--color-action-primary-hover);
+  border-color: var(--color-action-primary-hover);
+}
+
+.btn.primary:active:not(:disabled) {
+  background: var(--color-action-primary-pressed);
+}
+
+.btn.primary:disabled {
+  background: var(--color-action-disabled-bg);
+  color: var(--color-action-disabled-fg);
+  border-color: var(--color-panel-divider);
+}
+
+/* Text fields and selects: sunken, square. */
+.field {
+  min-height: var(--size-button);
+  padding: 0 calc(var(--space-unit) * 2);
+  border: var(--border-width) solid var(--color-panel-border);
+  border-radius: var(--radius-button);
+  background: var(--color-panel-sunken);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--size-step);
+  caret-color: var(--focus);
+}
+
+.field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.field:hover {
+  border-color: var(--color-hover-outline);
+}
+
+select.field option {
+  background: var(--color-panel-sunken);
+  color: var(--color-text-primary);
+}
+
+.caps {
+  font-family: var(--font-family-caps);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* `hidden` always hides, whatever display a component's rules give the element. */
+[hidden] {
+  display: none !important;
+}
+
+/* A section's small-caps heading (Targets, Route, History, Prefixes ...). */
+.section-title {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--size-act);
+  line-height: var(--line-caption);
+  letter-spacing: 0.03em;
+}
+
+/* A section's own heading (Targets, Route, History) is a step brighter than
+   the group labels inside it (Prefixes, Chosen ...), so the column reads as
+   sections, not one run of equal labels. */
+h2.section-title {
+  color: var(--color-text-secondary);
+}
+
+/* A heading that takes the focus when the craft mode changes shows no ring
+   for that programmatic move; it is not a control. */
+[data-mode-heading]:focus {
+  outline: none;
+}
+
+/* A word tag after a row's text: fractured, target, this craft ... */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-unit);
+  border: var(--border-width) solid var(--color-panel-border);
+  color: var(--color-text-secondary);
+  font-size: var(--size-caption);
+  line-height: var(--line-caption);
+  white-space: nowrap;
+}
+
+kbd {
+  padding: 0 var(--space-unit);
+  border: var(--border-width) solid var(--color-panel-border);
+  background: var(--color-panel-raised);
+  color: var(--color-text-primary);
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

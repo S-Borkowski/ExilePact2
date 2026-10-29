@@ -1,0 +1,926 @@
+[
+  {
+    "entries": [
+      {
+        "id": "arcanists-etcher",
+        "name": "Arcanist's Etcher"
+      },
+      {
+        "id": "armourers-scrap",
+        "name": "Armourer's Scrap"
+      },
+      {
+        "id": "artificers-orb",
+        "name": "Artificer's Orb"
+      },
+      {
+        "id": "blacksmiths-whetstone",
+        "name": "Blacksmith's Whetstone"
+      },
+      {
+        "id": "chaos-orb",
+        "name": "Chaos Orb"
+      },
+      {
+        "id": "divine-orb",
+        "name": "Divine Orb"
+      },
+      {
+        "id": "exalted-orb",
+        "name": "Exalted Orb"
+      },
+      {
+        "id": "fracturing-orb",
+        "name": "Fracturing Orb"
+      },
+      {
+        "id": "greater-chaos-orb",
+        "name": "Greater Chaos Orb"
+      },
+      {
+        "id": "greater-exalted-orb",
+        "name": "Greater Exalted Orb"
+      },
+      {
+        "id": "greater-orb-of-augmentation",
+        "name": "Greater Orb of Augmentation"
+      },
+      {
+        "id": "greater-orb-of-transmutation",
+        "name": "Greater Orb of Transmutation"
+      },
+      {
+        "id": "greater-regal-orb",
+        "name": "Greater Regal Orb"
+      },
+      {
+        "id": "hinekoras-lock",
+        "name": "Hinekora's Lock"
+      },
+      {
+        "id": "mirror-of-kalandra",
+        "name": "Mirror of Kalandra"
+      },
+      {
+        "id": "orb-of-alchemy",
+        "name": "Orb of Alchemy"
+      },
+      {
+        "id": "orb-of-annulment",
+        "name": "Orb of Annulment"
+      },
+      {
+        "id": "orb-of-augmentation",
+        "name": "Orb of Augmentation"
+      },
+      {
+        "id": "orb-of-chance",
+        "name": "Orb of Chance"
+      },
+      {
+        "id": "orb-of-transmutation",
+        "name": "Orb of Transmutation"
+      },
+      {
+        "id": "perfect-chaos-orb",
+        "name": "Perfect Chaos Orb"
+      },
+      {
+        "id": "perfect-exalted-orb",
+        "name": "Perfect Exalted Orb"
+      },
+      {
+        "id": "perfect-orb-of-augmentation",
+        "name": "Perfect Orb of Augmentation"
+      },
+      {
+        "id": "perfect-orb-of-transmutation",
+        "name": "Perfect Orb of Transmutation"
+      },
+      {
+        "id": "perfect-regal-orb",
+        "name": "Perfect Regal Orb"
+      },
+      {
+        "id": "regal-orb",
+        "name": "Regal Orb"
+      },
+      {
+        "id": "scroll-of-wisdom",
+        "name": "Scroll of Wisdom"
+      }
+    ],
+    "kind": "currency",
+    "label": "Currency"
+  },
+  {
+    "entries": [
+      {
+        "id": "omen-of-abyssal-echoes",
+        "name": "Omen of Abyssal Echoes"
+      },
+      {
+        "id": "omen-of-catalysing-exaltation",
+        "name": "Omen of Catalysing Exaltation"
+      },
+      {
+        "id": "omen-of-chance",
+        "name": "Omen of Chance"
+      },
+      {
+        "id": "omen-of-dextral-alchemy",
+        "name": "Omen of Dextral Alchemy"
+      },
+      {
+        "id": "omen-of-dextral-annulment",
+        "name": "Omen of Dextral Annulment"
+      },
+      {
+        "id": "omen-of-dextral-coronation",
+        "name": "Omen of Dextral Coronation"
+      },
+      {
+        "id": "omen-of-dextral-crystallisation",
+        "name": "Omen of Dextral Crystallisation"
+      },
+      {
+        "id": "omen-of-dextral-erasure",
+        "name": "Omen of Dextral Erasure"
+      },
+      {
+        "id": "omen-of-dextral-exaltation",
+        "name": "Omen of Dextral Exaltation"
+      },
+      {
+        "id": "omen-of-dextral-necromancy",
+        "name": "Omen of Dextral Necromancy"
+      },
+      {
+        "id": "omen-of-greater-annulment",
+        "name": "Omen of Greater Annulment"
+      },
+      {
+        "id": "omen-of-greater-exaltation",
+        "name": "Omen of Greater Exaltation"
+      },
+      {
+        "id": "omen-of-homogenising-coronation",
+        "name": "Omen of Homogenising Coronation"
+      },
+      {
+        "id": "omen-of-homogenising-exaltation",
+        "name": "Omen of Homogenising Exaltation"
+      },
+      {
+        "id": "omen-of-light",
+        "name": "Omen of Light"
+      },
+      {
+        "id": "omen-of-recombination",
+        "name": "Omen of Recombination"
+      },
+      {
+        "id": "omen-of-sanctification",
+        "name": "Omen of Sanctification"
+      },
+      {
+        "id": "omen-of-sinistral-alchemy",
+        "name": "Omen of Sinistral Alchemy"
+      },
+      {
+        "id": "omen-of-sinistral-annulment",
+        "name": "Omen of Sinistral Annulment"
+      },
+      {
+        "id": "omen-of-sinistral-coronation",
+        "name": "Omen of Sinistral Coronation"
+      },
+      {
+        "id": "omen-of-sinistral-crystallisation",
+        "name": "Omen of Sinistral Crystallisation"
+      },
+      {
+        "id": "omen-of-sinistral-erasure",
+        "name": "Omen of Sinistral Erasure"
+      },
+      {
+        "id": "omen-of-sinistral-exaltation",
+        "name": "Omen of Sinistral Exaltation"
+      },
+      {
+        "id": "omen-of-sinistral-necromancy",
+        "name": "Omen of Sinistral Necromancy"
+      },
+      {
+        "id": "omen-of-the-blackblooded",
+        "name": "Omen of the Blackblooded"
+      },
+      {
+        "id": "omen-of-the-blessed",
+        "name": "Omen of the Blessed"
+      },
+      {
+        "id": "omen-of-the-liege",
+        "name": "Omen of the Liege"
+      },
+      {
+        "id": "omen-of-the-sovereign",
+        "name": "Omen of the Sovereign"
+      },
+      {
+        "id": "omen-of-whittling",
+        "name": "Omen of Whittling"
+      }
+    ],
+    "kind": "omen",
+    "label": "Omens"
+  },
+  {
+    "entries": [
+      {
+        "id": "altered-collarbone",
+        "name": "Altered Collarbone"
+      },
+      {
+        "id": "ancient-collarbone",
+        "name": "Ancient Collarbone"
+      },
+      {
+        "id": "ancient-jawbone",
+        "name": "Ancient Jawbone"
+      },
+      {
+        "id": "ancient-rib",
+        "name": "Ancient Rib"
+      },
+      {
+        "id": "gnawed-collarbone",
+        "name": "Gnawed Collarbone"
+      },
+      {
+        "id": "gnawed-jawbone",
+        "name": "Gnawed Jawbone"
+      },
+      {
+        "id": "gnawed-rib",
+        "name": "Gnawed Rib"
+      },
+      {
+        "id": "preserved-collarbone",
+        "name": "Preserved Collarbone"
+      },
+      {
+        "id": "preserved-cranium",
+        "name": "Preserved Cranium"
+      },
+      {
+        "id": "preserved-jawbone",
+        "name": "Preserved Jawbone"
+      },
+      {
+        "id": "preserved-rib",
+        "name": "Preserved Rib"
+      }
+    ],
+    "kind": "bone",
+    "label": "Bones"
+  },
+  {
+    "entries": [
+      {
+        "id": "blazing-flux",
+        "name": "Blazing Flux"
+      },
+      {
+        "id": "chilling-flux",
+        "name": "Chilling Flux"
+      },
+      {
+        "id": "crackling-flux",
+        "name": "Crackling Flux"
+      },
+      {
+        "id": "perfect-flux",
+        "name": "Perfect Flux"
+      },
+      {
+        "id": "void-flux",
+        "name": "Void Flux"
+      }
+    ],
+    "kind": "flux",
+    "label": "Fluxes"
+  },
+  {
+    "entries": [
+      {
+        "id": "adaptive-catalyst",
+        "name": "Adaptive Catalyst"
+      },
+      {
+        "id": "carapace-catalyst",
+        "name": "Carapace Catalyst"
+      },
+      {
+        "id": "chayulas-catalyst",
+        "name": "Chayula's Catalyst"
+      },
+      {
+        "id": "eshs-catalyst",
+        "name": "Esh's Catalyst"
+      },
+      {
+        "id": "flesh-catalyst",
+        "name": "Flesh Catalyst"
+      },
+      {
+        "id": "necrotic-catalyst",
+        "name": "Necrotic Catalyst"
+      },
+      {
+        "id": "neural-catalyst",
+        "name": "Neural Catalyst"
+      },
+      {
+        "id": "reaver-catalyst",
+        "name": "Reaver Catalyst"
+      },
+      {
+        "id": "refined-adaptive-catalyst",
+        "name": "Refined Adaptive Catalyst"
+      },
+      {
+        "id": "refined-carapace-catalyst",
+        "name": "Refined Carapace Catalyst"
+      },
+      {
+        "id": "refined-chayulas-catalyst",
+        "name": "Refined Chayula's Catalyst"
+      },
+      {
+        "id": "refined-eshs-catalyst",
+        "name": "Refined Esh's Catalyst"
+      },
+      {
+        "id": "refined-flesh-catalyst",
+        "name": "Refined Flesh Catalyst"
+      },
+      {
+        "id": "refined-necrotic-catalyst",
+        "name": "Refined Necrotic Catalyst"
+      },
+      {
+        "id": "refined-neural-catalyst",
+        "name": "Refined Neural Catalyst"
+      },
+      {
+        "id": "refined-reaver-catalyst",
+        "name": "Refined Reaver Catalyst"
+      },
+      {
+        "id": "refined-sibilant-catalyst",
+        "name": "Refined Sibilant Catalyst"
+      },
+      {
+        "id": "refined-skittering-catalyst",
+        "name": "Refined Skittering Catalyst"
+      },
+      {
+        "id": "refined-tuls-catalyst",
+        "name": "Refined Tul's Catalyst"
+      },
+      {
+        "id": "refined-uul-netols-catalyst",
+        "name": "Refined Uul-Netol's Catalyst"
+      },
+      {
+        "id": "refined-xophs-catalyst",
+        "name": "Refined Xoph's Catalyst"
+      },
+      {
+        "id": "sibilant-catalyst",
+        "name": "Sibilant Catalyst"
+      },
+      {
+        "id": "skittering-catalyst",
+        "name": "Skittering Catalyst"
+      },
+      {
+        "id": "tuls-catalyst",
+        "name": "Tul's Catalyst"
+      },
+      {
+        "id": "uul-netols-catalyst",
+        "name": "Uul-Netol's Catalyst"
+      },
+      {
+        "id": "xophs-catalyst",
+        "name": "Xoph's Catalyst"
+      }
+    ],
+    "kind": "catalyst",
+    "label": "Catalysts"
+  },
+  {
+    "entries": [
+      {
+        "id": "essence-of-abrasion",
+        "name": "Essence of Abrasion"
+      },
+      {
+        "id": "essence-of-alacrity",
+        "name": "Essence of Alacrity"
+      },
+      {
+        "id": "essence-of-battle",
+        "name": "Essence of Battle"
+      },
+      {
+        "id": "essence-of-command",
+        "name": "Essence of Command"
+      },
+      {
+        "id": "essence-of-delirium",
+        "name": "Essence of Delirium"
+      },
+      {
+        "id": "essence-of-electricity",
+        "name": "Essence of Electricity"
+      },
+      {
+        "id": "essence-of-enhancement",
+        "name": "Essence of Enhancement"
+      },
+      {
+        "id": "essence-of-flames",
+        "name": "Essence of Flames"
+      },
+      {
+        "id": "essence-of-grounding",
+        "name": "Essence of Grounding"
+      },
+      {
+        "id": "essence-of-haste",
+        "name": "Essence of Haste"
+      },
+      {
+        "id": "essence-of-horror",
+        "name": "Essence of Horror"
+      },
+      {
+        "id": "essence-of-hysteria",
+        "name": "Essence of Hysteria"
+      },
+      {
+        "id": "essence-of-ice",
+        "name": "Essence of Ice"
+      },
+      {
+        "id": "essence-of-insanity",
+        "name": "Essence of Insanity"
+      },
+      {
+        "id": "essence-of-insulation",
+        "name": "Essence of Insulation"
+      },
+      {
+        "id": "essence-of-opulence",
+        "name": "Essence of Opulence"
+      },
+      {
+        "id": "essence-of-ruin",
+        "name": "Essence of Ruin"
+      },
+      {
+        "id": "essence-of-seeking",
+        "name": "Essence of Seeking"
+      },
+      {
+        "id": "essence-of-sorcery",
+        "name": "Essence of Sorcery"
+      },
+      {
+        "id": "essence-of-thawing",
+        "name": "Essence of Thawing"
+      },
+      {
+        "id": "essence-of-the-abyss",
+        "name": "Essence of the Abyss"
+      },
+      {
+        "id": "essence-of-the-body",
+        "name": "Essence of the Body"
+      },
+      {
+        "id": "essence-of-the-breach",
+        "name": "Essence of the Breach"
+      },
+      {
+        "id": "essence-of-the-infinite",
+        "name": "Essence of the Infinite"
+      },
+      {
+        "id": "essence-of-the-mind",
+        "name": "Essence of the Mind"
+      },
+      {
+        "id": "greater-essence-of-abrasion",
+        "name": "Greater Essence of Abrasion"
+      },
+      {
+        "id": "greater-essence-of-alacrity",
+        "name": "Greater Essence of Alacrity"
+      },
+      {
+        "id": "greater-essence-of-battle",
+        "name": "Greater Essence of Battle"
+      },
+      {
+        "id": "greater-essence-of-command",
+        "name": "Greater Essence of Command"
+      },
+      {
+        "id": "greater-essence-of-electricity",
+        "name": "Greater Essence of Electricity"
+      },
+      {
+        "id": "greater-essence-of-enhancement",
+        "name": "Greater Essence of Enhancement"
+      },
+      {
+        "id": "greater-essence-of-flames",
+        "name": "Greater Essence of Flames"
+      },
+      {
+        "id": "greater-essence-of-grounding",
+        "name": "Greater Essence of Grounding"
+      },
+      {
+        "id": "greater-essence-of-haste",
+        "name": "Greater Essence of Haste"
+      },
+      {
+        "id": "greater-essence-of-ice",
+        "name": "Greater Essence of Ice"
+      },
+      {
+        "id": "greater-essence-of-insulation",
+        "name": "Greater Essence of Insulation"
+      },
+      {
+        "id": "greater-essence-of-opulence",
+        "name": "Greater Essence of Opulence"
+      },
+      {
+        "id": "greater-essence-of-ruin",
+        "name": "Greater Essence of Ruin"
+      },
+      {
+        "id": "greater-essence-of-seeking",
+        "name": "Greater Essence of Seeking"
+      },
+      {
+        "id": "greater-essence-of-sorcery",
+        "name": "Greater Essence of Sorcery"
+      },
+      {
+        "id": "greater-essence-of-thawing",
+        "name": "Greater Essence of Thawing"
+      },
+      {
+        "id": "greater-essence-of-the-body",
+        "name": "Greater Essence of the Body"
+      },
+      {
+        "id": "greater-essence-of-the-infinite",
+        "name": "Greater Essence of the Infinite"
+      },
+      {
+        "id": "greater-essence-of-the-mind",
+        "name": "Greater Essence of the Mind"
+      },
+      {
+        "id": "lesser-essence-of-abrasion",
+        "name": "Lesser Essence of Abrasion"
+      },
+      {
+        "id": "lesser-essence-of-alacrity",
+        "name": "Lesser Essence of Alacrity"
+      },
+      {
+        "id": "lesser-essence-of-battle",
+        "name": "Lesser Essence of Battle"
+      },
+      {
+        "id": "lesser-essence-of-command",
+        "name": "Lesser Essence of Command"
+      },
+      {
+        "id": "lesser-essence-of-electricity",
+        "name": "Lesser Essence of Electricity"
+      },
+      {
+        "id": "lesser-essence-of-enhancement",
+        "name": "Lesser Essence of Enhancement"
+      },
+      {
+        "id": "lesser-essence-of-flames",
+        "name": "Lesser Essence of Flames"
+      },
+      {
+        "id": "lesser-essence-of-grounding",
+        "name": "Lesser Essence of Grounding"
+      },
+      {
+        "id": "lesser-essence-of-haste",
+        "name": "Lesser Essence of Haste"
+      },
+      {
+        "id": "lesser-essence-of-ice",
+        "name": "Lesser Essence of Ice"
+      },
+      {
+        "id": "lesser-essence-of-insulation",
+        "name": "Lesser Essence of Insulation"
+      },
+      {
+        "id": "lesser-essence-of-opulence",
+        "name": "Lesser Essence of Opulence"
+      },
+      {
+        "id": "lesser-essence-of-ruin",
+        "name": "Lesser Essence of Ruin"
+      },
+      {
+        "id": "lesser-essence-of-seeking",
+        "name": "Lesser Essence of Seeking"
+      },
+      {
+        "id": "lesser-essence-of-sorcery",
+        "name": "Lesser Essence of Sorcery"
+      },
+      {
+        "id": "lesser-essence-of-thawing",
+        "name": "Lesser Essence of Thawing"
+      },
+      {
+        "id": "lesser-essence-of-the-body",
+        "name": "Lesser Essence of the Body"
+      },
+      {
+        "id": "lesser-essence-of-the-infinite",
+        "name": "Lesser Essence of the Infinite"
+      },
+      {
+        "id": "lesser-essence-of-the-mind",
+        "name": "Lesser Essence of the Mind"
+      },
+      {
+        "id": "perfect-essence-of-abrasion",
+        "name": "Perfect Essence of Abrasion"
+      },
+      {
+        "id": "perfect-essence-of-alacrity",
+        "name": "Perfect Essence of Alacrity"
+      },
+      {
+        "id": "perfect-essence-of-battle",
+        "name": "Perfect Essence of Battle"
+      },
+      {
+        "id": "perfect-essence-of-command",
+        "name": "Perfect Essence of Command"
+      },
+      {
+        "id": "perfect-essence-of-electricity",
+        "name": "Perfect Essence of Electricity"
+      },
+      {
+        "id": "perfect-essence-of-enhancement",
+        "name": "Perfect Essence of Enhancement"
+      },
+      {
+        "id": "perfect-essence-of-flames",
+        "name": "Perfect Essence of Flames"
+      },
+      {
+        "id": "perfect-essence-of-grounding",
+        "name": "Perfect Essence of Grounding"
+      },
+      {
+        "id": "perfect-essence-of-haste",
+        "name": "Perfect Essence of Haste"
+      },
+      {
+        "id": "perfect-essence-of-ice",
+        "name": "Perfect Essence of Ice"
+      },
+      {
+        "id": "perfect-essence-of-insulation",
+        "name": "Perfect Essence of Insulation"
+      },
+      {
+        "id": "perfect-essence-of-opulence",
+        "name": "Perfect Essence of Opulence"
+      },
+      {
+        "id": "perfect-essence-of-ruin",
+        "name": "Perfect Essence of Ruin"
+      },
+      {
+        "id": "perfect-essence-of-seeking",
+        "name": "Perfect Essence of Seeking"
+      },
+      {
+        "id": "perfect-essence-of-sorcery",
+        "name": "Perfect Essence of Sorcery"
+      },
+      {
+        "id": "perfect-essence-of-thawing",
+        "name": "Perfect Essence of Thawing"
+      },
+      {
+        "id": "perfect-essence-of-the-body",
+        "name": "Perfect Essence of the Body"
+      },
+      {
+        "id": "perfect-essence-of-the-infinite",
+        "name": "Perfect Essence of the Infinite"
+      },
+      {
+        "id": "perfect-essence-of-the-mind",
+        "name": "Perfect Essence of the Mind"
+      }
+    ],
+    "kind": "essence",
+    "label": "Essences"
+  },
+  {
+    "entries": [
+      {
+        "id": "adaptive-alloy",
+        "name": "Adaptive Alloy"
+      },
+      {
+        "id": "celestial-alloy",
+        "name": "Celestial Alloy"
+      },
+      {
+        "id": "cyclonic-alloy",
+        "name": "Cyclonic Alloy"
+      },
+      {
+        "id": "expansive-alloy",
+        "name": "Expansive Alloy"
+      },
+      {
+        "id": "mystic-alloy",
+        "name": "Mystic Alloy"
+      },
+      {
+        "id": "prismatic-alloy",
+        "name": "Prismatic Alloy"
+      },
+      {
+        "id": "protective-alloy",
+        "name": "Protective Alloy"
+      },
+      {
+        "id": "runic-alloy",
+        "name": "Runic Alloy"
+      },
+      {
+        "id": "sovereign-alloy",
+        "name": "Sovereign Alloy"
+      },
+      {
+        "id": "swift-alloy",
+        "name": "Swift Alloy"
+      },
+      {
+        "id": "the-runebinders-alloy",
+        "name": "The Runebinder's Alloy"
+      },
+      {
+        "id": "the-runefathers-alloy",
+        "name": "The Runefather's Alloy"
+      },
+      {
+        "id": "transcendent-alloy",
+        "name": "Transcendent Alloy"
+      }
+    ],
+    "kind": "alloy",
+    "label": "Alloys"
+  },
+  {
+    "entries": [
+      {
+        "id": "ancient-concentrated-liquid-fear",
+        "name": "Ancient Concentrated Liquid Fear"
+      },
+      {
+        "id": "ancient-concentrated-liquid-isolation",
+        "name": "Ancient Concentrated Liquid Isolation"
+      },
+      {
+        "id": "ancient-concentrated-liquid-suffering",
+        "name": "Ancient Concentrated Liquid Suffering"
+      },
+      {
+        "id": "ancient-diluted-liquid-greed",
+        "name": "Ancient Diluted Liquid Greed"
+      },
+      {
+        "id": "ancient-diluted-liquid-guilt",
+        "name": "Ancient Diluted Liquid Guilt"
+      },
+      {
+        "id": "ancient-diluted-liquid-ire",
+        "name": "Ancient Diluted Liquid Ire"
+      },
+      {
+        "id": "ancient-liquid-despair",
+        "name": "Ancient Liquid Despair"
+      },
+      {
+        "id": "ancient-liquid-disgust",
+        "name": "Ancient Liquid Disgust"
+      },
+      {
+        "id": "ancient-liquid-envy",
+        "name": "Ancient Liquid Envy"
+      },
+      {
+        "id": "ancient-liquid-paranoia",
+        "name": "Ancient Liquid Paranoia"
+      },
+      {
+        "id": "ancient-potent-liquid-contempt",
+        "name": "Ancient Potent Liquid Contempt"
+      },
+      {
+        "id": "ancient-potent-liquid-ferocity",
+        "name": "Ancient Potent Liquid Ferocity"
+      },
+      {
+        "id": "ancient-potent-liquid-melancholy",
+        "name": "Ancient Potent Liquid Melancholy"
+      },
+      {
+        "id": "concentrated-liquid-fear",
+        "name": "Concentrated Liquid Fear"
+      },
+      {
+        "id": "concentrated-liquid-isolation",
+        "name": "Concentrated Liquid Isolation"
+      },
+      {
+        "id": "concentrated-liquid-suffering",
+        "name": "Concentrated Liquid Suffering"
+      },
+      {
+        "id": "diluted-liquid-greed",
+        "name": "Diluted Liquid Greed"
+      },
+      {
+        "id": "diluted-liquid-guilt",
+        "name": "Diluted Liquid Guilt"
+      },
+      {
+        "id": "diluted-liquid-ire",
+        "name": "Diluted Liquid Ire"
+      },
+      {
+        "id": "liquid-despair",
+        "name": "Liquid Despair"
+      },
+      {
+        "id": "liquid-disgust",
+        "name": "Liquid Disgust"
+      },
+      {
+        "id": "liquid-envy",
+        "name": "Liquid Envy"
+      },
+      {
+        "id": "liquid-paranoia",
+        "name": "Liquid Paranoia"
+      },
+      {
+        "id": "potent-liquid-contempt",
+        "name": "Potent Liquid Contempt"
+      },
+      {
+        "id": "potent-liquid-ferocity",
+        "name": "Potent Liquid Ferocity"
+      },
+      {
+        "id": "potent-liquid-melancholy",
+        "name": "Potent Liquid Melancholy"
+      }
+    ],
+    "kind": "liquid",
+    "label": "Liquid emotions"
+  }
+]

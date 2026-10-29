@@ -1,0 +1,9 @@
+Item Class: Helmets
+Rarity: Normal
+Iron Cap
+--------
+Armour: 34
+--------
+Requires: Level 5
+--------
+Item Level: 8

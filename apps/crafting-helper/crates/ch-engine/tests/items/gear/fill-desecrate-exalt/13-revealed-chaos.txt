@@ -1,0 +1,22 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Prefix Modifier "Gentian" (Tier: 5) — Mana }
++95(90-104) to maximum Mana
+{ Prefix Modifier "Robust" (Tier: 3) — Life }
++75(70-84) to maximum Life
+{ Suffix Modifier "of the Furnace" (Tier: 4) — Elemental, Fire, Resistance }
++28(26-30)% to Fire Resistance
+{ Suffix Modifier "of the Polar Bear" (Tier: 3) — Elemental, Cold, Resistance }
++32(31-35)% to Cold Resistance
+{ Desecrated Suffix Modifier "of Expulsion" (Tier: 3) — Chaos, Resistance }
++17(16-19)% to Chaos Resistance

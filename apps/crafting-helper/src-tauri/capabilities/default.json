@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window: listen for ch:view and use its own window. No http, shell, fs, opener, websocket, upload, process, clipboard or updater permission; a paste reaches the app as the paste event's own text, through the grab_text command.",
+  "windows": ["main"],
+  "permissions": [
+    "core:event:default",
+    "core:window:default"
+  ]
+}

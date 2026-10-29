@@ -1,0 +1,5331 @@
+{
+  "schema": 1,
+  "class": "Rings",
+  "code": "Ring",
+  "source_note": "Item class modifier data from poe2db (poe2db.tw; its wiki content is CC BY-NC-SA 3.0); modifier lines, affix names, base names and essence names are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Values are replaced by # and kept beside each line; hidden stats are left out.",
+  "pages": [
+    {
+      "variant": "all",
+      "url": "https://poe2db.tw/us/Rings",
+      "fetched": "2026-10-28",
+      "weights": {
+        "normal": "spawn",
+        "desecrated": "not-established"
+      },
+      "ignored": {
+        "breach_caster": 49,
+        "breach_minion": 36,
+        "breach_otherworldly": 16,
+        "corrupted": 12,
+        "corruption_upgrade": 19
+      }
+    }
+  ],
+  "bases": [
+    {
+      "name": "Abyssal Signet",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "Inflict Abyssal Wasting on Hit"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Amethyst Ring",
+      "variant": "all",
+      "req_level": 20,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Chaos Resistance"
+          ],
+          "values": [
+            [
+              7,
+              13
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Biostatic Ring",
+      "variant": "all",
+      "req_level": 52,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to all maximum Resistances"
+          ],
+          "values": [
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Breach Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Maximum Quality"
+          ],
+          "values": [
+            [
+              20,
+              20
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Dusk Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "+# Prefix Modifier allowed",
+            "-# Suffix Modifier allowed"
+          ],
+          "values": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Emerald Ring",
+      "variant": "all",
+      "req_level": 26,
+      "implicits": [
+        {
+          "lines": [
+            "+# to Accuracy Rating"
+          ],
+          "values": [
+            [
+              120,
+              160
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gloam Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "-# Prefix Modifier allowed",
+            "+# Suffix Modifier allowed"
+          ],
+          "values": [
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gold Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "#% increased Rarity of Items found"
+          ],
+          "values": [
+            [
+              6,
+              15
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Golden Hoop",
+      "variant": "all",
+      "req_level": 12,
+      "implicits": [
+        {
+          "lines": [
+            "+# to all Attributes"
+          ],
+          "values": [
+            [
+              8,
+              12
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Grasping Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "This item gains bonuses from Socketed Items as though it was Gloves"
+          ],
+          "values": []
+        }
+      ]
+    },
+    {
+      "name": "Iron Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "Adds # to # Physical Damage to Attacks"
+          ],
+          "values": [
+            [
+              1,
+              1
+            ],
+            [
+              4,
+              4
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kinetic Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "Adds # to # Physical Damage to Attacks"
+          ],
+          "values": [
+            [
+              6,
+              9
+            ],
+            [
+              11,
+              15
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lazuli Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "+# to maximum Mana"
+          ],
+          "values": [
+            [
+              20,
+              30
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mnemonic Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "#% increased maximum Mana"
+          ],
+          "values": [
+            [
+              4,
+              6
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Oneiric Ring",
+      "variant": "all",
+      "req_level": 47,
+      "implicits": [
+        {
+          "lines": [
+            "#% increased Chaos Damage"
+          ],
+          "values": [
+            [
+              11,
+              23
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Pearl Ring",
+      "variant": "all",
+      "req_level": 32,
+      "implicits": [
+        {
+          "lines": [
+            "#% increased Cast Speed"
+          ],
+          "values": [
+            [
+              7,
+              10
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Penumbra Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "+# Prefix Modifiers allowed",
+            "-# Suffix Modifiers allowed"
+          ],
+          "values": [
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Prismatic Ring",
+      "variant": "all",
+      "req_level": 35,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to all Elemental Resistances"
+          ],
+          "values": [
+            [
+              7,
+              10
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Refined Breach Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Maximum Quality"
+          ],
+          "values": [
+            [
+              25,
+              25
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": []
+    },
+    {
+      "name": "Ruby Ring",
+      "variant": "all",
+      "req_level": 8,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Fire Resistance"
+          ],
+          "values": [
+            [
+              20,
+              30
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sapphire Ring",
+      "variant": "all",
+      "req_level": 12,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Cold Resistance"
+          ],
+          "values": [
+            [
+              20,
+              30
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tenebrous Ring",
+      "variant": "all",
+      "req_level": null,
+      "implicits": [
+        {
+          "lines": [
+            "-# Prefix Modifiers allowed",
+            "+# Suffix Modifiers allowed"
+          ],
+          "values": [
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Topaz Ring",
+      "variant": "all",
+      "req_level": 16,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Lightning Resistance"
+          ],
+          "values": [
+            [
+              20,
+              30
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Two-Stone Ring",
+      "variant": "all",
+      "req_level": 35,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Cold and Lightning Resistances"
+          ],
+          "values": [
+            [
+              12,
+              16
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Two-Stone Ring",
+      "variant": "all",
+      "req_level": 35,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Fire and Cold Resistances"
+          ],
+          "values": [
+            [
+              12,
+              16
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Two-Stone Ring",
+      "variant": "all",
+      "req_level": 35,
+      "implicits": [
+        {
+          "lines": [
+            "+#% to Fire and Lightning Resistances"
+          ],
+          "values": [
+            [
+              12,
+              16
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Unset Ring",
+      "variant": "all",
+      "req_level": 44,
+      "implicits": [
+        {
+          "lines": [
+            "Grants # additional Skill Slots"
+          ],
+          "values": [
+            [
+              1,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vitalic Ring",
+      "variant": "all",
+      "req_level": 40,
+      "implicits": [
+        {
+          "lines": [
+            "#% increased maximum Life"
+          ],
+          "values": [
+            [
+              4,
+              6
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "mods": [
+    {
+      "id": "prefix-increased-chaos-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "IncreasedChaosDamage"
+      ],
+      "lines": [
+        "#% increased Chaos Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Vile",
+            "ilvl": 75,
+            "weight": 500,
+            "values": [
+              [
+                27,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Malignant",
+            "ilvl": 65,
+            "weight": 500,
+            "values": [
+              [
+                23,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Darkened",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                18,
+                22
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Clouded",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Tainted",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                8,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Impure",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-increased-cold-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "ColdDamagePercentage"
+      ],
+      "lines": [
+        "#% increased Cold Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Crystalline",
+            "ilvl": 75,
+            "weight": 500,
+            "values": [
+              [
+                27,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Hailing",
+            "ilvl": 65,
+            "weight": 500,
+            "values": [
+              [
+                23,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Snowy",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                18,
+                22
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Alpine",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Biting",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                8,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Bitter",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-increased-fire-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "FireDamagePercentage"
+      ],
+      "lines": [
+        "#% increased Fire Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Magmatic",
+            "ilvl": 75,
+            "weight": 500,
+            "values": [
+              [
+                27,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Volcanic",
+            "ilvl": 65,
+            "weight": 500,
+            "values": [
+              [
+                23,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Cauterising",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                18,
+                22
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Blistering",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Sizzling",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                8,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Searing",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-increased-lightning-damage",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "LightningDamagePercentage"
+      ],
+      "lines": [
+        "#% increased Lightning Damage"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Smiting",
+            "ilvl": 75,
+            "weight": 500,
+            "values": [
+              [
+                27,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Striking",
+            "ilvl": 65,
+            "weight": 500,
+            "values": [
+              [
+                23,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Coursing",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                18,
+                22
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Bolting",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Hissing",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                8,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Charged",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-increased-rarity-of-items-found",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "ItemFoundRarityIncreasePrefix"
+      ],
+      "lines": [
+        "#% increased Rarity of Items found"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Hoarder's",
+            "ilvl": 47,
+            "weight": 1000,
+            "values": [
+              [
+                16,
+                19
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Collector's",
+            "ilvl": 29,
+            "weight": 1000,
+            "values": [
+              [
+                12,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Magpie's",
+            "ilvl": 10,
+            "weight": 1000,
+            "values": [
+              [
+                8,
+                11
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-to-accuracy-rating",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "IncreasedAccuracy"
+      ],
+      "lines": [
+        "+# to Accuracy Rating"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Ranger's",
+            "ilvl": 67,
+            "weight": 400,
+            "values": [
+              [
+                347,
+                450
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Hunter's",
+            "ilvl": 58,
+            "weight": 800,
+            "values": [
+              [
+                237,
+                346
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Steady",
+            "ilvl": 48,
+            "weight": 800,
+            "values": [
+              [
+                168,
+                236
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Consistent",
+            "ilvl": 36,
+            "weight": 800,
+            "values": [
+              [
+                124,
+                167
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Deliberate",
+            "ilvl": 26,
+            "weight": 800,
+            "values": [
+              [
+                85,
+                123
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Focused",
+            "ilvl": 18,
+            "weight": 800,
+            "values": [
+              [
+                61,
+                84
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Reliable",
+            "ilvl": 11,
+            "weight": 800,
+            "values": [
+              [
+                33,
+                60
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Precise",
+            "ilvl": 1,
+            "weight": 800,
+            "values": [
+              [
+                11,
+                32
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-to-evasion-rating",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "IncreasedEvasionRating"
+      ],
+      "lines": [
+        "+# to Evasion Rating"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Adroit",
+            "ilvl": 70,
+            "weight": 1000,
+            "values": [
+              [
+                203,
+                233
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Elusory",
+            "ilvl": 65,
+            "weight": 1000,
+            "values": [
+              [
+                175,
+                202
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Vaporous",
+            "ilvl": 54,
+            "weight": 1000,
+            "values": [
+              [
+                142,
+                174
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Phased",
+            "ilvl": 46,
+            "weight": 1000,
+            "values": [
+              [
+                108,
+                141
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Blurred",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                80,
+                107
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Fleet",
+            "ilvl": 25,
+            "weight": 1000,
+            "values": [
+              [
+                52,
+                79
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Acrobat's",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                39,
+                51
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Dancer's",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                18,
+                38
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Agile",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                8,
+                17
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-to-maximum-life",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "IncreasedLife"
+      ],
+      "lines": [
+        "+# to maximum Life"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Virile",
+            "ilvl": 54,
+            "weight": 1000,
+            "values": [
+              [
+                100,
+                119
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Rotund",
+            "ilvl": 46,
+            "weight": 1000,
+            "values": [
+              [
+                85,
+                99
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Robust",
+            "ilvl": 38,
+            "weight": 1000,
+            "values": [
+              [
+                70,
+                84
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Stout",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                60,
+                69
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Stalwart",
+            "ilvl": 24,
+            "weight": 1000,
+            "values": [
+              [
+                40,
+                59
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Sanguine",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                30,
+                39
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Healthy",
+            "ilvl": 6,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                29
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Hale",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                19
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-to-maximum-mana",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "IncreasedMana"
+      ],
+      "lines": [
+        "+# to maximum Mana"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Zaffre",
+            "ilvl": 75,
+            "weight": 1000,
+            "values": [
+              [
+                165,
+                179
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Blue",
+            "ilvl": 70,
+            "weight": 1000,
+            "values": [
+              [
+                150,
+                164
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Mazarine",
+            "ilvl": 65,
+            "weight": 1000,
+            "values": [
+              [
+                125,
+                149
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Chalybeous",
+            "ilvl": 60,
+            "weight": 1000,
+            "values": [
+              [
+                105,
+                124
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Gentian",
+            "ilvl": 54,
+            "weight": 1000,
+            "values": [
+              [
+                90,
+                104
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Opalescent",
+            "ilvl": 46,
+            "weight": 1000,
+            "values": [
+              [
+                80,
+                89
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Aqua",
+            "ilvl": 38,
+            "weight": 1000,
+            "values": [
+              [
+                65,
+                79
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Cerulean",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                55,
+                64
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Teal",
+            "ilvl": 25,
+            "weight": 1000,
+            "values": [
+              [
+                35,
+                54
+              ]
+            ]
+          },
+          {
+            "tier": 10,
+            "name": "Azure",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                34
+              ]
+            ]
+          },
+          {
+            "tier": 11,
+            "name": "Cobalt",
+            "ilvl": 6,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 12,
+            "name": "Beryl",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                14
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-adds-to-cold-damage-to-attacks",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "ColdDamage"
+      ],
+      "lines": [
+        "Adds # to # Cold damage to Attacks"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Entombing",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                21,
+                24
+              ],
+              [
+                32,
+                37
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Polar",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                16,
+                20
+              ],
+              [
+                25,
+                31
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Glaciated",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                14,
+                15
+              ],
+              [
+                22,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Frozen",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                11,
+                13
+              ],
+              [
+                18,
+                21
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Freezing",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                9,
+                10
+              ],
+              [
+                15,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Frigid",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                7,
+                8
+              ],
+              [
+                12,
+                14
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Icy",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                5,
+                6
+              ],
+              [
+                9,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Chilled",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                4
+              ],
+              [
+                5,
+                8
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Frosted",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                3
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-adds-to-fire-damage-to-attacks",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "FireDamage"
+      ],
+      "lines": [
+        "Adds # to # Fire damage to Attacks"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Cremating",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                25,
+                29
+              ],
+              [
+                37,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Blasting",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                20,
+                24
+              ],
+              [
+                33,
+                36
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Incinerating",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                13,
+                19
+              ],
+              [
+                27,
+                32
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Scorching",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                11,
+                16
+              ],
+              [
+                21,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Flaming",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                12,
+                13
+              ],
+              [
+                18,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Burning",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                9,
+                11
+              ],
+              [
+                14,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Smoking",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                6,
+                8
+              ],
+              [
+                10,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Smouldering",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                3,
+                5
+              ],
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Heated",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                3,
+                3
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-adds-to-lightning-damage-to-attacks",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "LightningDamage"
+      ],
+      "lines": [
+        "Adds # to # Lightning damage to Attacks"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Electrocuting",
+            "ilvl": 75,
+            "weight": 200,
+            "values": [
+              [
+                1,
+                4
+              ],
+              [
+                60,
+                71
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Discharging",
+            "ilvl": 65,
+            "weight": 300,
+            "values": [
+              [
+                1,
+                3
+              ],
+              [
+                48,
+                59
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Shocking",
+            "ilvl": 60,
+            "weight": 400,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                41,
+                47
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Arcing",
+            "ilvl": 54,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                33,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Sparking",
+            "ilvl": 46,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                28,
+                32
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Crackling",
+            "ilvl": 33,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                23,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Snapping",
+            "ilvl": 16,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                16,
+                22
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Buzzing",
+            "ilvl": 8,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                10,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Humming",
+            "ilvl": 1,
+            "weight": 500,
+            "values": [
+              [
+                1,
+                1
+              ],
+              [
+                4,
+                6
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "prefix-adds-to-physical-damage-to-attacks",
+      "section": "normal",
+      "kind": "prefix",
+      "family": [
+        "PhysicalDamage"
+      ],
+      "lines": [
+        "Adds # to # Physical Damage to Attacks"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Flaring",
+            "ilvl": 75,
+            "weight": 400,
+            "values": [
+              [
+                12,
+                19
+              ],
+              [
+                22,
+                32
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "Tempered",
+            "ilvl": 65,
+            "weight": 600,
+            "values": [
+              [
+                10,
+                15
+              ],
+              [
+                18,
+                26
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "Razor-sharp",
+            "ilvl": 60,
+            "weight": 800,
+            "values": [
+              [
+                7,
+                11
+              ],
+              [
+                14,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "Annealed",
+            "ilvl": 54,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                10
+              ],
+              [
+                12,
+                17
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "Gleaming",
+            "ilvl": 46,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                7
+              ],
+              [
+                9,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "Honed",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                4,
+                6
+              ],
+              [
+                8,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "Polished",
+            "ilvl": 16,
+            "weight": 1000,
+            "values": [
+              [
+                2,
+                4
+              ],
+              [
+                5,
+                8
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "Burnished",
+            "ilvl": 8,
+            "weight": 1000,
+            "values": [
+              [
+                2,
+                3
+              ],
+              [
+                4,
+                6
+              ]
+            ]
+          },
+          {
+            "tier": 9,
+            "name": "Glinting",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                1,
+                2
+              ],
+              [
+                3,
+                3
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-life-regeneration-per-second",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LifeRegeneration"
+      ],
+      "lines": [
+        "# Life Regeneration per second"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Convalescence",
+            "ilvl": 47,
+            "weight": 1000,
+            "values": [
+              [
+                13.1,
+                18
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Troll",
+            "ilvl": 35,
+            "weight": 1000,
+            "values": [
+              [
+                9.1,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Hydra",
+            "ilvl": 26,
+            "weight": 1000,
+            "values": [
+              [
+                6.1,
+                9
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Starfish",
+            "ilvl": 17,
+            "weight": 1000,
+            "values": [
+              [
+                4.1,
+                6
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Flatworm",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                3.1,
+                4
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Lizard",
+            "ilvl": 5,
+            "weight": 1000,
+            "values": [
+              [
+                2.1,
+                3
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Newt",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                1,
+                2
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-cast-speed",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "IncreasedCastSpeed"
+      ],
+      "lines": [
+        "#% increased Cast Speed"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Legerdemain",
+            "ilvl": 60,
+            "weight": 1,
+            "values": [
+              [
+                22,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Sortilege",
+            "ilvl": 51,
+            "weight": 1,
+            "values": [
+              [
+                19,
+                21
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Expertise",
+            "ilvl": 35,
+            "weight": 1,
+            "values": [
+              [
+                16,
+                18
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Nimbleness",
+            "ilvl": 18,
+            "weight": 1,
+            "values": [
+              [
+                13,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Talent",
+            "ilvl": 1,
+            "weight": 1,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-mana-regeneration-rate",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ManaRegeneration"
+      ],
+      "lines": [
+        "#% increased Mana Regeneration Rate"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Nirvana",
+            "ilvl": 79,
+            "weight": 1000,
+            "values": [
+              [
+                60,
+                69
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Euphoria",
+            "ilvl": 55,
+            "weight": 1000,
+            "values": [
+              [
+                50,
+                59
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Bliss",
+            "ilvl": 42,
+            "weight": 1000,
+            "values": [
+              [
+                40,
+                49
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Elation",
+            "ilvl": 29,
+            "weight": 1000,
+            "values": [
+              [
+                30,
+                39
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Joy",
+            "ilvl": 18,
+            "weight": 1000,
+            "values": [
+              [
+                20,
+                29
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Excitement",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                10,
+                19
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-mana-regeneration-rate-2",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LightRadiusAndManaRegeneration"
+      ],
+      "lines": [
+        "#% increased Mana Regeneration Rate",
+        "#% increased Light Radius"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Hearth",
+            "ilvl": 30,
+            "weight": 1000,
+            "values": [
+              [
+                18,
+                22
+              ],
+              [
+                15,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Kindling",
+            "ilvl": 15,
+            "weight": 1000,
+            "values": [
+              [
+                13,
+                17
+              ],
+              [
+                10,
+                10
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Warmth",
+            "ilvl": 8,
+            "weight": 1000,
+            "values": [
+              [
+                8,
+                12
+              ],
+              [
+                5,
+                5
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-increased-rarity-of-items-found",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ItemFoundRarityIncrease"
+      ],
+      "lines": [
+        "#% increased Rarity of Items found"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Archaeology",
+            "ilvl": 40,
+            "weight": 1000,
+            "values": [
+              [
+                15,
+                18
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Raiding",
+            "ilvl": 24,
+            "weight": 1000,
+            "values": [
+              [
+                11,
+                14
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Plunder",
+            "ilvl": 3,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                10
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-all-attributes",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "AllAttributes"
+      ],
+      "lines": [
+        "+# to all Attributes"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Comet",
+            "ilvl": 33,
+            "weight": 400,
+            "values": [
+              [
+                11,
+                13
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Meteor",
+            "ilvl": 22,
+            "weight": 400,
+            "values": [
+              [
+                8,
+                10
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Sky",
+            "ilvl": 11,
+            "weight": 400,
+            "values": [
+              [
+                5,
+                7
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Clouds",
+            "ilvl": 1,
+            "weight": 400,
+            "values": [
+              [
+                2,
+                4
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-dexterity",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Dexterity"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Phantom",
+            "ilvl": 74,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Jaguar",
+            "ilvl": 66,
+            "weight": 1000,
+            "values": [
+              [
+                28,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Leopard",
+            "ilvl": 55,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Panther",
+            "ilvl": 44,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Falcon",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                17,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Fox",
+            "ilvl": 22,
+            "weight": 1000,
+            "values": [
+              [
+                13,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Lynx",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Mongoose",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                8
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-intelligence",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Intelligence"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Virtuoso",
+            "ilvl": 74,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Savant",
+            "ilvl": 66,
+            "weight": 1000,
+            "values": [
+              [
+                28,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Sage",
+            "ilvl": 55,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Philosopher",
+            "ilvl": 44,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Augur",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                17,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Prodigy",
+            "ilvl": 22,
+            "weight": 1000,
+            "values": [
+              [
+                13,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Student",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Pupil",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                8
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-strength",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Titan",
+            "ilvl": 74,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                33
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Leviathan",
+            "ilvl": 66,
+            "weight": 1000,
+            "values": [
+              [
+                28,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Goliath",
+            "ilvl": 55,
+            "weight": 1000,
+            "values": [
+              [
+                25,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Gorilla",
+            "ilvl": 44,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                24
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Lion",
+            "ilvl": 33,
+            "weight": 1000,
+            "values": [
+              [
+                17,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Bear",
+            "ilvl": 22,
+            "weight": 1000,
+            "values": [
+              [
+                13,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Wrestler",
+            "ilvl": 11,
+            "weight": 1000,
+            "values": [
+              [
+                9,
+                12
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Brute",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                8
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-all-elemental-resistances",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "AllResistances"
+      ],
+      "lines": [
+        "+#% to all Elemental Resistances"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Rainbow",
+            "ilvl": 68,
+            "weight": 800,
+            "values": [
+              [
+                15,
+                16
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Variegation",
+            "ilvl": 54,
+            "weight": 800,
+            "values": [
+              [
+                12,
+                14
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Kaleidoscope",
+            "ilvl": 40,
+            "weight": 800,
+            "values": [
+              [
+                9,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Prism",
+            "ilvl": 26,
+            "weight": 800,
+            "values": [
+              [
+                6,
+                8
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Crystal",
+            "ilvl": 12,
+            "weight": 800,
+            "values": [
+              [
+                3,
+                5
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-chaos-resistance",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ChaosResistance"
+      ],
+      "lines": [
+        "+#% to Chaos Resistance"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Bameth",
+            "ilvl": 81,
+            "weight": 250,
+            "values": [
+              [
+                24,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Exile",
+            "ilvl": 68,
+            "weight": 250,
+            "values": [
+              [
+                20,
+                23
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Expulsion",
+            "ilvl": 56,
+            "weight": 250,
+            "values": [
+              [
+                16,
+                19
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Eviction",
+            "ilvl": 44,
+            "weight": 250,
+            "values": [
+              [
+                12,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Banishment",
+            "ilvl": 30,
+            "weight": 250,
+            "values": [
+              [
+                8,
+                11
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Lost",
+            "ilvl": 16,
+            "weight": 250,
+            "values": [
+              [
+                4,
+                7
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-cold-resistance",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ColdResistance"
+      ],
+      "lines": [
+        "+#% to Cold Resistance"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Haast",
+            "ilvl": 82,
+            "weight": 1000,
+            "values": [
+              [
+                41,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Ice",
+            "ilvl": 71,
+            "weight": 1000,
+            "values": [
+              [
+                36,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Polar Bear",
+            "ilvl": 60,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                35
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Walrus",
+            "ilvl": 50,
+            "weight": 1000,
+            "values": [
+              [
+                26,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Yeti",
+            "ilvl": 38,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                25
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Narwhal",
+            "ilvl": 26,
+            "weight": 1000,
+            "values": [
+              [
+                16,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Penguin",
+            "ilvl": 14,
+            "weight": 1000,
+            "values": [
+              [
+                11,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Seal",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                10
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-fire-resistance",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "FireResistance"
+      ],
+      "lines": [
+        "+#% to Fire Resistance"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Tzteosh",
+            "ilvl": 82,
+            "weight": 1000,
+            "values": [
+              [
+                41,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Magma",
+            "ilvl": 71,
+            "weight": 1000,
+            "values": [
+              [
+                36,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Volcano",
+            "ilvl": 60,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                35
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Furnace",
+            "ilvl": 48,
+            "weight": 1000,
+            "values": [
+              [
+                26,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Kiln",
+            "ilvl": 36,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                25
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Drake",
+            "ilvl": 24,
+            "weight": 1000,
+            "values": [
+              [
+                16,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Salamander",
+            "ilvl": 12,
+            "weight": 1000,
+            "values": [
+              [
+                11,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Whelpling",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                10
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-to-lightning-resistance",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LightningResistance"
+      ],
+      "lines": [
+        "+#% to Lightning Resistance"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Ephij",
+            "ilvl": 82,
+            "weight": 1000,
+            "values": [
+              [
+                41,
+                45
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Lightning",
+            "ilvl": 71,
+            "weight": 1000,
+            "values": [
+              [
+                36,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of the Maelstrom",
+            "ilvl": 60,
+            "weight": 1000,
+            "values": [
+              [
+                31,
+                35
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of the Tempest",
+            "ilvl": 49,
+            "weight": 1000,
+            "values": [
+              [
+                26,
+                30
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of the Thunderhead",
+            "ilvl": 37,
+            "weight": 1000,
+            "values": [
+              [
+                21,
+                25
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of the Storm",
+            "ilvl": 25,
+            "weight": 1000,
+            "values": [
+              [
+                16,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 7,
+            "name": "of the Squall",
+            "ilvl": 13,
+            "weight": 1000,
+            "values": [
+              [
+                11,
+                15
+              ]
+            ]
+          },
+          {
+            "tier": 8,
+            "name": "of the Cloud",
+            "ilvl": 1,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                10
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-gain-life-per-enemy-killed",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LifeGainedFromEnemyDeath"
+      ],
+      "lines": [
+        "Gain # Life per enemy killed"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Valour",
+            "ilvl": 55,
+            "weight": 750,
+            "values": [
+              [
+                41,
+                53
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Vanquishing",
+            "ilvl": 44,
+            "weight": 750,
+            "values": [
+              [
+                29,
+                40
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Conquest",
+            "ilvl": 33,
+            "weight": 750,
+            "values": [
+              [
+                19,
+                28
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Triumph",
+            "ilvl": 22,
+            "weight": 750,
+            "values": [
+              [
+                10,
+                18
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Victory",
+            "ilvl": 11,
+            "weight": 750,
+            "values": [
+              [
+                7,
+                9
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Success",
+            "ilvl": 1,
+            "weight": 750,
+            "values": [
+              [
+                4,
+                6
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-gain-mana-per-enemy-killed",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ManaGainedFromEnemyDeath"
+      ],
+      "lines": [
+        "Gain # Mana per enemy killed"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Siphoning",
+            "ilvl": 56,
+            "weight": 750,
+            "values": [
+              [
+                21,
+                27
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of Consumption",
+            "ilvl": 45,
+            "weight": 750,
+            "values": [
+              [
+                15,
+                20
+              ]
+            ]
+          },
+          {
+            "tier": 3,
+            "name": "of Enveloping",
+            "ilvl": 34,
+            "weight": 750,
+            "values": [
+              [
+                10,
+                14
+              ]
+            ]
+          },
+          {
+            "tier": 4,
+            "name": "of Infusion",
+            "ilvl": 23,
+            "weight": 750,
+            "values": [
+              [
+                6,
+                9
+              ]
+            ]
+          },
+          {
+            "tier": 5,
+            "name": "of Osmosis",
+            "ilvl": 12,
+            "weight": 750,
+            "values": [
+              [
+                4,
+                5
+              ]
+            ]
+          },
+          {
+            "tier": 6,
+            "name": "of Absorption",
+            "ilvl": 1,
+            "weight": 750,
+            "values": [
+              [
+                2,
+                3
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-leech-of-physical-attack-damage-as-life",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "LifeLeech"
+      ],
+      "lines": [
+        "Leech #% of Physical Attack Damage as Life"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Remora",
+            "ilvl": 38,
+            "weight": 1000,
+            "values": [
+              [
+                7,
+                7.9
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Locust",
+            "ilvl": 21,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                6.9
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "suffix-leech-of-physical-attack-damage-as-mana",
+      "section": "normal",
+      "kind": "suffix",
+      "family": [
+        "ManaLeech"
+      ],
+      "lines": [
+        "Leech #% of Physical Attack Damage as Mana"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of the Arid",
+            "ilvl": 38,
+            "weight": 1000,
+            "values": [
+              [
+                6,
+                6.9
+              ]
+            ]
+          },
+          {
+            "tier": 2,
+            "name": "of the Parched",
+            "ilvl": 21,
+            "weight": 1000,
+            "values": [
+              [
+                5,
+                5.9
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-increased-attack-damage-while-on-low-life",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "AttackDamage"
+      ],
+      "lines": [
+        "#% increased Attack Damage while on Low Life"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Ulaman's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                15,
+                25
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-increased-freeze-buildup-if-you-ve-consumed-an-power-charge-recently",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "ElementalAilmentEffect"
+      ],
+      "lines": [
+        "#% increased Freeze Buildup if you've consumed an Power Charge Recently"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Kurgal's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                20,
+                30
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-increased-magnitude-of-ignite-if-you-ve-consumed-an-endurance-charge-recently",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "ElementalAilmentEffect"
+      ],
+      "lines": [
+        "#% increased Magnitude of Ignite if you've consumed an Endurance Charge Recently"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Amanamu's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                20,
+                30
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-increased-magnitude-of-shock-if-you-ve-consumed-a-frenzy-charge-recently",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "ElementalAilmentEffect"
+      ],
+      "lines": [
+        "#% increased Magnitude of Shock if you've consumed a Frenzy Charge Recently"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Ulaman's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                20,
+                30
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-increased-spell-damage-while-on-full-energy-shield",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "IncreasedSpellDamageOnFullEnergyShield"
+      ],
+      "lines": [
+        "#% increased Spell Damage while on Full Energy Shield"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Kurgal's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                15,
+                25
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-minions-deal-increased-damage-if-you-ve-hit-recently",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "IncreasedMinionDamageIfYouHitEnemy"
+      ],
+      "lines": [
+        "Minions deal #% increased Damage if you've Hit Recently"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Amanamu's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                15,
+                25
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-prefix-remnants-you-create-have-increased-effect",
+      "section": "desecrated",
+      "kind": "prefix",
+      "family": [
+        "RemnantEffect"
+      ],
+      "lines": [
+        "Remnants you create have #% increased effect"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "Amanamu's",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                8,
+                15
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-increased-amount-of-life-leeched",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "LifeLeech"
+      ],
+      "lines": [
+        "#% increased amount of Life Leeched"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Amanamu",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                12,
+                20
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-increased-amount-of-mana-leeched",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "ManaLeechAmount"
+      ],
+      "lines": [
+        "#% increased amount of Mana Leeched"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Kurgal",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                12,
+                20
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-increased-cooldown-recovery-rate",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "CooldownRecovery"
+      ],
+      "lines": [
+        "#% increased Cooldown Recovery Rate"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Kurgal",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                8,
+                12
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-increased-exposure-effect",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "ExposureEffect"
+      ],
+      "lines": [
+        "#% increased Exposure Effect"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Kurgal",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                10,
+                15
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-increased-skill-effect-duration",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "SkillEffectDuration"
+      ],
+      "lines": [
+        "#% increased Skill Effect Duration"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Amanamu",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                8,
+                12
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-increased-skill-speed",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "IncreasedSpeed"
+      ],
+      "lines": [
+        "#% increased Skill Speed"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Ulaman",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                3,
+                6
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-to-dexterity-and-intelligence",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "Dexterity",
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Dexterity and Intelligence"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Kurgal",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                9,
+                15
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-to-strength-and-dexterity",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "Strength",
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength and Dexterity"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Ulaman",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                9,
+                15
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-to-strength-and-intelligence",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "Strength",
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength and Intelligence"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Amanamu",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                9,
+                15
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-to-cold-and-chaos-resistances",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "ColdAndChaosDamageResistance"
+      ],
+      "lines": [
+        "+#% to Cold and Chaos Resistances"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Kurgal",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-to-fire-and-chaos-resistances",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "FireAndChaosDamageResistance"
+      ],
+      "lines": [
+        "+#% to Fire and Chaos Resistances"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Amanamu",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-to-lightning-and-chaos-resistances",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "LightningAndChaosDamageResistance"
+      ],
+      "lines": [
+        "+#% to Lightning and Chaos Resistances"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Ulaman",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                13,
+                17
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-recover-of-maximum-life-on-kill",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "RecoverPercentMaxLifeOnKill"
+      ],
+      "lines": [
+        "Recover #% of maximum Life on Kill"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Ulaman",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                2,
+                3
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-recover-of-maximum-mana-on-kill",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "ManaGainedOnKillPercentage"
+      ],
+      "lines": [
+        "Recover #% of maximum Mana on Kill"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Kurgal",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                2,
+                3
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "desecrated-suffix-remnants-can-be-collected-from-further-away",
+      "section": "desecrated",
+      "kind": "suffix",
+      "family": [
+        "RemnantPickupRadius"
+      ],
+      "lines": [
+        "Remnants can be collected from #% further away"
+      ],
+      "tiers": {
+        "all": [
+          {
+            "tier": 1,
+            "name": "of Amanamu",
+            "ilvl": 65,
+            "weight": 1,
+            "values": [
+              [
+                20,
+                30
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "essences": [
+    {
+      "name": "Essence of Grounding",
+      "slug": "Essence_of_Grounding",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 37,
+      "family": [
+        "LightningResistance"
+      ],
+      "lines": [
+        "+#% to Lightning Resistance"
+      ],
+      "values": [
+        [
+          21,
+          25
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-lightning-resistance",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of Hysteria",
+      "slug": "Essence_of_Hysteria",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "ManaRegeneration"
+      ],
+      "lines": [
+        "#% increased Mana Regeneration Rate"
+      ],
+      "values": [
+        [
+          50,
+          59
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-increased-mana-regeneration-rate",
+          "tier": 2
+        }
+      }
+    },
+    {
+      "name": "Essence of Insulation",
+      "slug": "Essence_of_Insulation",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 36,
+      "family": [
+        "FireResistance"
+      ],
+      "lines": [
+        "+#% to Fire Resistance"
+      ],
+      "values": [
+        [
+          21,
+          25
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-fire-resistance",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of Opulence",
+      "slug": "Essence_of_Opulence",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 24,
+      "family": [
+        "ItemFoundRarityIncrease"
+      ],
+      "lines": [
+        "#% increased Rarity of Items found"
+      ],
+      "values": [
+        [
+          11,
+          14
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-increased-rarity-of-items-found",
+          "tier": 2
+        }
+      }
+    },
+    {
+      "name": "Essence of Ruin",
+      "slug": "Essence_of_Ruin",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 30,
+      "family": [
+        "ChaosResistance"
+      ],
+      "lines": [
+        "+#% to Chaos Resistance"
+      ],
+      "values": [
+        [
+          8,
+          11
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-chaos-resistance",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of Thawing",
+      "slug": "Essence_of_Thawing",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 38,
+      "family": [
+        "ColdResistance"
+      ],
+      "lines": [
+        "+#% to Cold Resistance"
+      ],
+      "values": [
+        [
+          21,
+          25
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-cold-resistance",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of the Abyss",
+      "slug": "Essence_of_the_Abyss",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 1,
+      "family": [
+        "EssenceAbyss"
+      ],
+      "lines": [
+        "Mark of the Abyssal Lord"
+      ],
+      "values": [],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of the Abyss",
+      "slug": "Essence_of_the_Abyss",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 1,
+      "family": [
+        "EssenceAbyss"
+      ],
+      "lines": [
+        "Mark of the Abyssal Lord"
+      ],
+      "values": [],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of the Body",
+      "slug": "Essence_of_the_Body",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 38,
+      "family": [
+        "IncreasedLife"
+      ],
+      "lines": [
+        "+# to maximum Life"
+      ],
+      "values": [
+        [
+          70,
+          84
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-to-maximum-life",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Essence of the Breach",
+      "slug": "Essence_of_the_Breach",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 1,
+      "family": [
+        "LocalMaximumQuality"
+      ],
+      "lines": [
+        "+#% to Maximum Quality"
+      ],
+      "values": [
+        [
+          20,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Essence of the Infinite",
+      "slug": "Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 33,
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          17,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-dexterity",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of the Infinite",
+      "slug": "Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 33,
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          17,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-intelligence",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of the Infinite",
+      "slug": "Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 33,
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          17,
+          20
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-strength",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Essence of the Mind",
+      "slug": "Essence_of_the_Mind",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 46,
+      "family": [
+        "IncreasedMana"
+      ],
+      "lines": [
+        "+# to maximum Mana"
+      ],
+      "values": [
+        [
+          80,
+          89
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-to-maximum-mana",
+          "tier": 6
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of Grounding",
+      "slug": "Greater_Essence_of_Grounding",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 60,
+      "family": [
+        "LightningResistance"
+      ],
+      "lines": [
+        "+#% to Lightning Resistance"
+      ],
+      "values": [
+        [
+          31,
+          35
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-lightning-resistance",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of Insulation",
+      "slug": "Greater_Essence_of_Insulation",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 60,
+      "family": [
+        "FireResistance"
+      ],
+      "lines": [
+        "+#% to Fire Resistance"
+      ],
+      "values": [
+        [
+          31,
+          35
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-fire-resistance",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of Opulence",
+      "slug": "Greater_Essence_of_Opulence",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 40,
+      "family": [
+        "ItemFoundRarityIncrease"
+      ],
+      "lines": [
+        "#% increased Rarity of Items found"
+      ],
+      "values": [
+        [
+          15,
+          18
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-increased-rarity-of-items-found",
+          "tier": 1
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of Ruin",
+      "slug": "Greater_Essence_of_Ruin",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 56,
+      "family": [
+        "ChaosResistance"
+      ],
+      "lines": [
+        "+#% to Chaos Resistance"
+      ],
+      "values": [
+        [
+          16,
+          19
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-chaos-resistance",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of Thawing",
+      "slug": "Greater_Essence_of_Thawing",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 60,
+      "family": [
+        "ColdResistance"
+      ],
+      "lines": [
+        "+#% to Cold Resistance"
+      ],
+      "values": [
+        [
+          31,
+          35
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-cold-resistance",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of the Infinite",
+      "slug": "Greater_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          25,
+          27
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-dexterity",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of the Infinite",
+      "slug": "Greater_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          25,
+          27
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-intelligence",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of the Infinite",
+      "slug": "Greater_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 55,
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          25,
+          27
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-strength",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Greater Essence of the Mind",
+      "slug": "Greater_Essence_of_the_Mind",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 54,
+      "family": [
+        "IncreasedMana"
+      ],
+      "lines": [
+        "+# to maximum Mana"
+      ],
+      "values": [
+        [
+          90,
+          104
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-to-maximum-mana",
+          "tier": 5
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of Grounding",
+      "slug": "Lesser_Essence_of_Grounding",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 13,
+      "family": [
+        "LightningResistance"
+      ],
+      "lines": [
+        "+#% to Lightning Resistance"
+      ],
+      "values": [
+        [
+          11,
+          15
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-lightning-resistance",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of Insulation",
+      "slug": "Lesser_Essence_of_Insulation",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 12,
+      "family": [
+        "FireResistance"
+      ],
+      "lines": [
+        "+#% to Fire Resistance"
+      ],
+      "values": [
+        [
+          11,
+          15
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-fire-resistance",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of Opulence",
+      "slug": "Lesser_Essence_of_Opulence",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 3,
+      "family": [
+        "ItemFoundRarityIncrease"
+      ],
+      "lines": [
+        "#% increased Rarity of Items found"
+      ],
+      "values": [
+        [
+          6,
+          10
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-increased-rarity-of-items-found",
+          "tier": 3
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of Ruin",
+      "slug": "Lesser_Essence_of_Ruin",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 16,
+      "family": [
+        "ChaosResistance"
+      ],
+      "lines": [
+        "+#% to Chaos Resistance"
+      ],
+      "values": [
+        [
+          4,
+          7
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-chaos-resistance",
+          "tier": 6
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of Thawing",
+      "slug": "Lesser_Essence_of_Thawing",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 14,
+      "family": [
+        "ColdResistance"
+      ],
+      "lines": [
+        "+#% to Cold Resistance"
+      ],
+      "values": [
+        [
+          11,
+          15
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-cold-resistance",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Body",
+      "slug": "Lesser_Essence_of_the_Body",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 6,
+      "family": [
+        "IncreasedLife"
+      ],
+      "lines": [
+        "+# to maximum Life"
+      ],
+      "values": [
+        [
+          20,
+          29
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-to-maximum-life",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Infinite",
+      "slug": "Lesser_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 11,
+      "family": [
+        "Dexterity"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          9,
+          12
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-dexterity",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Infinite",
+      "slug": "Lesser_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 11,
+      "family": [
+        "Intelligence"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          9,
+          12
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-intelligence",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Infinite",
+      "slug": "Lesser_Essence_of_the_Infinite",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "suffix",
+      "ilvl": 11,
+      "family": [
+        "Strength"
+      ],
+      "lines": [
+        "+# to Strength, Dexterity or Intelligence"
+      ],
+      "values": [
+        [
+          9,
+          12
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "suffix-to-strength",
+          "tier": 7
+        }
+      }
+    },
+    {
+      "name": "Lesser Essence of the Mind",
+      "slug": "Lesser_Essence_of_the_Mind",
+      "group": "essence",
+      "perfect": false,
+      "alloy": false,
+      "removes": false,
+      "kind": "prefix",
+      "ilvl": 16,
+      "family": [
+        "IncreasedMana"
+      ],
+      "lines": [
+        "+# to maximum Mana"
+      ],
+      "values": [
+        [
+          25,
+          34
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": {
+          "mod": "prefix-to-maximum-mana",
+          "tier": 10
+        }
+      }
+    },
+    {
+      "name": "Perfect Essence of the Mind",
+      "slug": "Perfect_Essence_of_the_Mind",
+      "group": "perfect_essence",
+      "perfect": true,
+      "alloy": false,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 72,
+      "family": [
+        "MaximumManaIncreasePercent"
+      ],
+      "lines": [
+        "#% increased maximum Mana"
+      ],
+      "values": [
+        [
+          4,
+          6
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Runic Alloy",
+      "slug": "Runic_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 13,
+      "family": [
+        "BaseRunicWard"
+      ],
+      "lines": [
+        "+# to maximum Runic Ward"
+      ],
+      "values": [
+        [
+          37,
+          49
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Sovereign Alloy",
+      "slug": "Sovereign_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "prefix",
+      "ilvl": 65,
+      "family": [
+        "EnchantmentHeistArmour"
+      ],
+      "lines": [
+        "#% increased Explicit Resistance Modifier magnitudes"
+      ],
+      "values": [
+        [
+          20,
+          30
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    },
+    {
+      "name": "Swift Alloy",
+      "slug": "Swift_Alloy",
+      "group": "perfect_essence",
+      "perfect": false,
+      "alloy": true,
+      "removes": true,
+      "kind": "suffix",
+      "ilvl": 45,
+      "family": [
+        "IncreasedCastSpeed",
+        "IncreasedAttackSpeed"
+      ],
+      "lines": [
+        "#% increased Attack Speed"
+      ],
+      "values": [
+        [
+          7,
+          9
+        ]
+      ],
+      "variants": [
+        "all"
+      ],
+      "matches": {
+        "all": null
+      }
+    }
+  ],
+  "liquid": []
+}

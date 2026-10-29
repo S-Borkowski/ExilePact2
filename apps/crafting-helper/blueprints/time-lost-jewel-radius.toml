@@ -1,0 +1,117 @@
+# Time-Lost jewels: three suffixes, a desecrated prefix and the Very Large
+# radius, with no budget limit. Paraphrased from the owner's Discord post 3.
+id = "time-lost-jewel-radius"
+name = "Time-Lost jewels: suffixes, a desecration and the radius"
+classes = ["Jewels"]
+source = "Discord post 3, owner's paste, 2026-10-28"
+notes = """\
+For a Time-Lost jewel that already carries two wanted suffixes; the Ancient \
+liquids work on Time-Lost jewels only. The Contempt modifier is meant to \
+land as a prefix and allow a third suffix; which side it lands on is not \
+established. A plain Exalted Orb is enough: every jewel modifier is level 1, \
+so Greater and Perfect ones add nothing. Fixing a bad suffix is the costly \
+stage. The Ancient Potent Liquid Melancholy (Very Large radius) adds no \
+modifier the data knows, so its step is manual: confirm it once the radius \
+is Very Large. Jewel odds are unknown."""
+
+[[start]]
+rarity = ["rare"]
+wanted_suffixes_at_least = 2
+
+[[step]]
+id = "contempt"
+say = "Use an Ancient Potent Liquid Contempt for a third suffix slot; if it takes a wanted modifier, start over with another jewel"
+goal = "remove-unwanted"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "ancient-potent-liquid-contempt"
+
+[[step]]
+id = "exalt"
+say = "Exalt a suffix (Dextral Exaltation, plain Exalted Orb)"
+goal = "add-wanted"
+side = "suffix"
+bind = "any-remaining"
+on_miss = "goto:fix-suffix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-dextral-exaltation"]
+
+[[step]]
+id = "fix-suffix"
+say = "Remove the bad suffix (Dextral Annulment, or Dextral Erasure with a Chaos Orb), then exalt again"
+goal = "remove-unwanted"
+side = "suffix"
+on_hit = "goto:exalt"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-dextral-annulment"]
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-dextral-erasure"]
+
+[[step]]
+id = "remove-contempt"
+say = "Remove the Contempt modifier from the prefixes (Sinistral Annulment, or Sinistral Erasure with a Chaos Orb)"
+goal = "remove-unwanted"
+side = "prefix"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-sinistral-annulment"]
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-sinistral-erasure"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate a prefix and leave it unrevealed"
+goal = "desecrate"
+side = "prefix"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "radius"
+say = "Use an Ancient Potent Liquid Melancholy for the Very Large radius (confirm without using one when the radius is already Very Large)"
+goal = "manual"
+
+[[step]]
+id = "redesecrate"
+say = "The liquid took the unrevealed modifier: desecrate a prefix again"
+goal = "desecrate"
+side = "prefix"
+on_hit = "goto:radius"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it with Abyssal Echoes, rerolling the options once if they miss"
+goal = "reveal"
+bind = "last-remaining"
+on_hit = "done"
+on_miss = "goto:unseal"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "unseal"
+say = "Remove the desecrated modifier with Omen of Light, then desecrate again"
+goal = "remove-desecrated"
+on_hit = "goto:redesecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]

@@ -1,0 +1,121 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "rings-resist-whittle",
+      "history": [
+        {
+          "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+          "number": 1,
+          "result": "hit",
+          "source": "grab",
+          "step": "chaos",
+          "summary": "gained +#% to Fire Resistance (T3)"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+95(90-104) to maximum Mana"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 5,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+33(31-35)% to Fire Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 3,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step": {
+        "on_hit": "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+        "on_miss": "On a miss: this step again",
+        "step": {
+          "fallback": null,
+          "id": "whittle",
+          "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+          "number": 2,
+          "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
+          "targets": [
+            "+#% to Cold Resistance",
+            "+#% to Lightning Resistance"
+          ],
+          "uses": [
+            "Chaos Orb",
+            "Omen of Whittling"
+          ]
+        },
+        "try_number": 1
+      },
+      "watch": {
+        "text": "Paused: the game is not in front.",
+        "warning": false
+      }
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 16,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Suffix Modifier \"of the Volcano\" (Tier: 3) — Elemental, Fire, Resistance }\n+33(31-35)% to Fire Resistance"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": {
+      "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+      "last": {
+        "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+        "number": 1,
+        "result": "hit",
+        "source": "grab",
+        "step": "chaos",
+        "summary": "gained +#% to Fire Resistance (T3)"
+      },
+      "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
+      "on_hit": "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+      "on_miss": "On a miss: this step again",
+      "route_name": "Rings: resistances by whittling",
+      "status": "active",
+      "step_number": 2,
+      "try_number": 1,
+      "uses": [
+        "Chaos Orb",
+        "Omen of Whittling"
+      ],
+      "watch": {
+        "text": "Paused: the game is not in front.",
+        "warning": false
+      },
+      "why": null
+    },
+    "position": "top-center",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Hit: gained +#% to Fire Resistance (T3)."
+  },
+  "update_available": null
+}

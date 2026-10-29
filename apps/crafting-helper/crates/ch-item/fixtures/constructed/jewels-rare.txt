@@ -1,0 +1,13 @@
+Item Class: Jewels
+Rarity: Rare
+Gloom Eye
+Ruby
+--------
+Item Level: 70
+--------
+{ Prefix Modifier "Fervent" (Tier: 1) — Damage, Elemental, Fire }
+14(10-15)% increased Fire Damage
+{ Suffix Modifier "of Haste" (Tier: 1) — Attack, Speed }
+3(2-4)% increased Attack Speed
+--------
+Place into an allocated Jewel Socket on the Passive Skill Tree. Right click to remove from the Socket.

@@ -1,0 +1,1677 @@
+{
+  "craft": {
+    "guiding": null,
+    "mode": "planning",
+    "planning": {
+      "blocked": {
+        "allowed": [],
+        "blocked": [
+          {
+            "from": "craft",
+            "id": "chaos-orb",
+            "name": "Chaos Orb"
+          }
+        ]
+      },
+      "can_accept": false,
+      "choices": {
+        "desecrated": [
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-increased-attack-damage-while-on-low-life",
+            "side": "prefix",
+            "text": "#% increased Attack Damage while on Low Life"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-increased-freeze-buildup-if-you-ve-consumed-an-power-charge-recently",
+            "side": "prefix",
+            "text": "#% increased Freeze Buildup if you've consumed an Power Charge Recently"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-increased-magnitude-of-ignite-if-you-ve-consumed-an-endurance-charge-recently",
+            "side": "prefix",
+            "text": "#% increased Magnitude of Ignite if you've consumed an Endurance Charge Recently"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-increased-magnitude-of-shock-if-you-ve-consumed-a-frenzy-charge-recently",
+            "side": "prefix",
+            "text": "#% increased Magnitude of Shock if you've consumed a Frenzy Charge Recently"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-increased-spell-damage-while-on-full-energy-shield",
+            "side": "prefix",
+            "text": "#% increased Spell Damage while on Full Energy Shield"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-minions-deal-increased-damage-if-you-ve-hit-recently",
+            "side": "prefix",
+            "text": "Minions deal #% increased Damage if you've Hit Recently"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-prefix-remnants-you-create-have-increased-effect",
+            "side": "prefix",
+            "text": "Remnants you create have #% increased effect"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-increased-amount-of-life-leeched",
+            "side": "suffix",
+            "text": "#% increased amount of Life Leeched"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-increased-amount-of-mana-leeched",
+            "side": "suffix",
+            "text": "#% increased amount of Mana Leeched"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-increased-cooldown-recovery-rate",
+            "side": "suffix",
+            "text": "#% increased Cooldown Recovery Rate"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-increased-exposure-effect",
+            "side": "suffix",
+            "text": "#% increased Exposure Effect"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-increased-skill-effect-duration",
+            "side": "suffix",
+            "text": "#% increased Skill Effect Duration"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-increased-skill-speed",
+            "side": "suffix",
+            "text": "#% increased Skill Speed"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-to-dexterity-and-intelligence",
+            "side": "suffix",
+            "text": "+# to Dexterity and Intelligence"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-to-strength-and-dexterity",
+            "side": "suffix",
+            "text": "+# to Strength and Dexterity"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-to-strength-and-intelligence",
+            "side": "suffix",
+            "text": "+# to Strength and Intelligence"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-to-cold-and-chaos-resistances",
+            "side": "suffix",
+            "text": "+#% to Cold and Chaos Resistances"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-to-fire-and-chaos-resistances",
+            "side": "suffix",
+            "text": "+#% to Fire and Chaos Resistances"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-to-lightning-and-chaos-resistances",
+            "side": "suffix",
+            "text": "+#% to Lightning and Chaos Resistances"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-recover-of-maximum-life-on-kill",
+            "side": "suffix",
+            "text": "Recover #% of maximum Life on Kill"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-recover-of-maximum-mana-on-kill",
+            "side": "suffix",
+            "text": "Recover #% of maximum Mana on Kill"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              }
+            ],
+            "mod_id": "desecrated-suffix-remnants-can-be-collected-from-further-away",
+            "side": "suffix",
+            "text": "Remnants can be collected from #% further away"
+          }
+        ],
+        "prefixes": [
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "prefix-increased-chaos-damage",
+            "side": "prefix",
+            "text": "#% increased Chaos Damage"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "prefix-increased-cold-damage",
+            "side": "prefix",
+            "text": "#% increased Cold Damage"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "prefix-increased-fire-damage",
+            "side": "prefix",
+            "text": "#% increased Fire Damage"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "prefix-increased-lightning-damage",
+            "side": "prefix",
+            "text": "#% increased Lightning Damage"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              }
+            ],
+            "mod_id": "prefix-increased-rarity-of-items-found",
+            "side": "prefix",
+            "text": "#% increased Rarity of Items found"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "prefix-to-accuracy-rating",
+            "side": "prefix",
+            "text": "+# to Accuracy Rating"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              },
+              {
+                "floor": 9,
+                "label": "At least T9"
+              }
+            ],
+            "mod_id": "prefix-to-evasion-rating",
+            "side": "prefix",
+            "text": "+# to Evasion Rating"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "prefix-to-maximum-life",
+            "side": "prefix",
+            "text": "+# to maximum Life"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              },
+              {
+                "floor": 9,
+                "label": "At least T9"
+              },
+              {
+                "floor": 10,
+                "label": "At least T10"
+              },
+              {
+                "floor": 11,
+                "label": "At least T11"
+              },
+              {
+                "floor": 12,
+                "label": "At least T12"
+              }
+            ],
+            "mod_id": "prefix-to-maximum-mana",
+            "side": "prefix",
+            "text": "+# to maximum Mana"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              },
+              {
+                "floor": 9,
+                "label": "At least T9"
+              }
+            ],
+            "mod_id": "prefix-adds-to-cold-damage-to-attacks",
+            "side": "prefix",
+            "text": "Adds # to # Cold damage to Attacks"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              },
+              {
+                "floor": 9,
+                "label": "At least T9"
+              }
+            ],
+            "mod_id": "prefix-adds-to-fire-damage-to-attacks",
+            "side": "prefix",
+            "text": "Adds # to # Fire damage to Attacks"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              },
+              {
+                "floor": 9,
+                "label": "At least T9"
+              }
+            ],
+            "mod_id": "prefix-adds-to-lightning-damage-to-attacks",
+            "side": "prefix",
+            "text": "Adds # to # Lightning damage to Attacks"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              },
+              {
+                "floor": 9,
+                "label": "At least T9"
+              }
+            ],
+            "mod_id": "prefix-adds-to-physical-damage-to-attacks",
+            "side": "prefix",
+            "text": "Adds # to # Physical Damage to Attacks"
+          }
+        ],
+        "suffixes": [
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              }
+            ],
+            "mod_id": "suffix-life-regeneration-per-second",
+            "side": "suffix",
+            "text": "# Life Regeneration per second"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              }
+            ],
+            "mod_id": "suffix-increased-cast-speed",
+            "side": "suffix",
+            "text": "#% increased Cast Speed"
+          },
+          {
+            "best_tier": 2,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T2)"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "suffix-increased-mana-regeneration-rate",
+            "side": "suffix",
+            "text": "#% increased Mana Regeneration Rate"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              }
+            ],
+            "mod_id": "suffix-increased-mana-regeneration-rate-2",
+            "side": "suffix",
+            "text": "#% increased Mana Regeneration Rate / #% increased Light Radius"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              }
+            ],
+            "mod_id": "suffix-increased-rarity-of-items-found",
+            "side": "suffix",
+            "text": "#% increased Rarity of Items found"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              }
+            ],
+            "mod_id": "suffix-to-all-attributes",
+            "side": "suffix",
+            "text": "+# to all Attributes"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "suffix-to-dexterity",
+            "side": "suffix",
+            "text": "+# to Dexterity"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "suffix-to-intelligence",
+            "side": "suffix",
+            "text": "+# to Intelligence"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "suffix-to-strength",
+            "side": "suffix",
+            "text": "+# to Strength"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              }
+            ],
+            "mod_id": "suffix-to-all-elemental-resistances",
+            "side": "suffix",
+            "text": "+#% to all Elemental Resistances"
+          },
+          {
+            "best_tier": 2,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T2)"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "suffix-to-chaos-resistance",
+            "side": "suffix",
+            "text": "+#% to Chaos Resistance"
+          },
+          {
+            "best_tier": 2,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T2)"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "suffix-to-cold-resistance",
+            "side": "suffix",
+            "text": "+#% to Cold Resistance"
+          },
+          {
+            "best_tier": 2,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T2)"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "suffix-to-fire-resistance",
+            "side": "suffix",
+            "text": "+#% to Fire Resistance"
+          },
+          {
+            "best_tier": 2,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T2)"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              },
+              {
+                "floor": 7,
+                "label": "At least T7"
+              },
+              {
+                "floor": 8,
+                "label": "At least T8"
+              }
+            ],
+            "mod_id": "suffix-to-lightning-resistance",
+            "side": "suffix",
+            "text": "+#% to Lightning Resistance"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "suffix-gain-life-per-enemy-killed",
+            "side": "suffix",
+            "text": "Gain # Life per enemy killed"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              },
+              {
+                "floor": 3,
+                "label": "At least T3"
+              },
+              {
+                "floor": 4,
+                "label": "At least T4"
+              },
+              {
+                "floor": 5,
+                "label": "At least T5"
+              },
+              {
+                "floor": 6,
+                "label": "At least T6"
+              }
+            ],
+            "mod_id": "suffix-gain-mana-per-enemy-killed",
+            "side": "suffix",
+            "text": "Gain # Mana per enemy killed"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              }
+            ],
+            "mod_id": "suffix-leech-of-physical-attack-damage-as-life",
+            "side": "suffix",
+            "text": "Leech #% of Physical Attack Damage as Life"
+          },
+          {
+            "best_tier": 1,
+            "floors": [
+              {
+                "floor": null,
+                "label": "As high as possible (T1)"
+              },
+              {
+                "floor": 1,
+                "label": "At least T1"
+              },
+              {
+                "floor": 2,
+                "label": "At least T2"
+              }
+            ],
+            "mod_id": "suffix-leech-of-physical-attack-damage-as-mana",
+            "side": "suffix",
+            "text": "Leech #% of Physical Attack Damage as Mana"
+          }
+        ]
+      },
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+95(90-104) to maximum Mana"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 5,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+18(17-20) to Strength"
+            ],
+            "meets_target": false,
+            "side": "suffix",
+            "tier": 5,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "preview": {
+        "other_routes": [],
+        "rejected": [
+          {
+            "blueprint": "amulets-resist-spirit",
+            "name": "Amulets: resistances, prefixes and a desecrated Spirit",
+            "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "boots-runic-ward",
+            "name": "Boots: Runic Ward and both attributes",
+            "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "caster-cast-speed",
+            "name": "Caster weapons: cast speed by alloy",
+            "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "fill-desecrate-exalt",
+            "name": "Fill, desecrate the hardest, slam the last",
+            "reason": "no start fits the item (0 wanted modifiers, at least 3 needed; no fractured modifier | 0 wanted modifiers, at least 2 needed | the item is rare, not magic; no unblocked essence adds a remaining target at its floor)"
+          },
+          {
+            "blueprint": "gloves-crit-melee",
+            "name": "Gloves: critical damage, melee levels and attack speed",
+            "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "jewels-three-one-side",
+            "name": "Jewels: three on one side",
+            "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "rings-flat-attack",
+            "name": "Rings: flat attack damage and resistances",
+            "reason": "step `chaos`: every alternative is blocked"
+          },
+          {
+            "blueprint": "rings-resist-whittle",
+            "name": "Rings: resistances by whittling",
+            "reason": "step `chaos`: every alternative is blocked"
+          },
+          {
+            "blueprint": "time-lost-jewel-radius",
+            "name": "Time-Lost jewels: suffixes, a desecration and the radius",
+            "reason": "not a blueprint for Rings"
+          },
+          {
+            "blueprint": "weapons-alloy-budget",
+            "name": "Weapons: the alloy budget route",
+            "reason": "not a blueprint for Rings"
+          }
+        ],
+        "route": null
+      },
+      "targets": [
+        {
+          "best_tier": 2,
+          "desecrated": false,
+          "floor": 3,
+          "floor_in_force": 3,
+          "mod_id": "suffix-to-fire-resistance",
+          "side": "suffix",
+          "text": "+#% to Fire Resistance"
+        },
+        {
+          "best_tier": 2,
+          "desecrated": false,
+          "floor": 3,
+          "floor_in_force": 3,
+          "mod_id": "suffix-to-cold-resistance",
+          "side": "suffix",
+          "text": "+#% to Cold Resistance"
+        },
+        {
+          "best_tier": 2,
+          "desecrated": false,
+          "floor": 3,
+          "floor_in_force": 3,
+          "mod_id": "suffix-to-lightning-resistance",
+          "side": "suffix",
+          "text": "+#% to Lightning Resistance"
+        }
+      ]
+    },
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 16,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Suffix Modifier \"of the Lion\" (Tier: 5) — Attribute }\n+18(17-20) to Strength"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": null,
+    "position": "top-center",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Blocked for this craft: 1."
+  },
+  "update_available": null
+}

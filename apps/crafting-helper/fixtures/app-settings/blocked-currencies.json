@@ -1,0 +1,23 @@
+{
+  "blocked_currencies": [
+    "divine-orb",
+    "chaos-orb",
+    "exalted-orb"
+  ],
+  "check_updates": false,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": null,
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
+  "overlay_position": "top-center",
+  "screen_watch": true,
+  "update": {
+    "newer": null,
+    "state": "idle",
+    "text": "Not checked yet."
+  },
+  "version": "1.2.0"
+}

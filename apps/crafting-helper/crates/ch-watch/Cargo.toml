@@ -1,0 +1,20 @@
+[package]
+name = "ch-watch"
+description = "The crafting helper's screen watch, pure part: finds the item tooltips in a copy of the game's window, reads them with the OCR it is given, and matches the lines to the item a craft step was shown on (no tooltip, covered, another item, unreadable, unchanged or changed)."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The item model, the modifier data and the join, through the engine's
+# re-exports.
+ch-engine = { path = "../ch-engine" }
+# The quest tracker's pure screen crate, by path and unchanged: the image,
+# the boxes, the OCR line, the backend trait and the fuzzy match. It takes
+# its package keys from its own workspace (apps/quest-tracker).
+qt-screen = { path = "../../../quest-tracker/crates/qt-screen" }
+
+# Windows only, tests alone: the real copy, decode and OCR, for the tests
+# that read the owner's screenshots. Nothing in the library takes it.
+[target.'cfg(windows)'.dev-dependencies]
+qt-capture = { path = "../../../quest-tracker/crates/qt-capture" }

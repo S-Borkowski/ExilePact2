@@ -1,0 +1,138 @@
+{
+  "craft": {
+    "guiding": {
+      "blueprint": "fill-desecrate-exalt",
+      "history": [
+        {
+          "instruction": "Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
+          "number": 1,
+          "result": "miss",
+          "source": "grab",
+          "step": "fill",
+          "summary": "no target gained or lost"
+        }
+      ],
+      "item": {
+        "base_type": "Amethyst Ring",
+        "class": "Rings",
+        "item_level": 76,
+        "modifiers": [
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+95(90-104) to maximum Mana"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 5,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+75(70-84) to maximum Life"
+            ],
+            "meets_target": true,
+            "side": "prefix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+200(168-236) to Accuracy Rating"
+            ],
+            "meets_target": false,
+            "side": "prefix",
+            "tier": 3,
+            "unrevealed": false
+          },
+          {
+            "desecrated": false,
+            "fractured": false,
+            "lines": [
+              "+28(26-30)% to Fire Resistance"
+            ],
+            "meets_target": true,
+            "side": "suffix",
+            "tier": 4,
+            "unrevealed": false
+          }
+        ],
+        "name": "Doom Loop",
+        "rarity": "Rare"
+      },
+      "reasons": [],
+      "route_name": "Fill, desecrate the hardest, slam the last",
+      "status": "active",
+      "step": {
+        "on_hit": "On a hit: Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
+        "on_miss": "On a miss: this step again",
+        "step": {
+          "fallback": null,
+          "id": "fill-clean",
+          "instruction": "Orb of Annulment to remove +95(90-104) to maximum Mana or +200(168-236) to Accuracy Rating; it takes one modifier at random",
+          "number": 5,
+          "odds": "~50% (2 of 4 removable modifiers are not wanted)",
+          "targets": [],
+          "uses": [
+            "Orb of Annulment"
+          ]
+        },
+        "try_number": 1
+      },
+      "watch": {
+        "text": "Screen reading is not available: grab the item after each step.",
+        "warning": false
+      }
+    },
+    "mode": "guiding",
+    "planning": null,
+    "refusal": null
+  },
+  "grab": {
+    "line_count": 20,
+    "looks_like_item": true,
+    "source": "paste",
+    "text": "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nRequires: Level 20\n--------\nItem Level: 76\n--------\n{ Implicit Modifier — Chaos, Resistance }\n+7(7-13)% to Chaos Resistance\n--------\n{ Prefix Modifier \"Gentian\" (Tier: 5) — Mana }\n+95(90-104) to maximum Mana\n{ Prefix Modifier \"Robust\" (Tier: 3) — Life }\n+75(70-84) to maximum Life\n{ Prefix Modifier \"Steady\" (Tier: 3) — Attack }\n+200(168-236) to Accuracy Rating\n{ Suffix Modifier \"of the Furnace\" (Tier: 4) — Elemental, Fire, Resistance }\n+28(26-30)% to Fire Resistance"
+  },
+  "hotkey": "Ctrl+Alt+X",
+  "overlay": {
+    "guide": {
+      "instruction": "Orb of Annulment to remove +95(90-104) to maximum Mana or +200(168-236) to Accuracy Rating; it takes one modifier at random",
+      "last": {
+        "instruction": "Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
+        "number": 1,
+        "result": "miss",
+        "source": "grab",
+        "step": "fill",
+        "summary": "no target gained or lost"
+      },
+      "odds": "~50% (2 of 4 removable modifiers are not wanted)",
+      "on_hit": "On a hit: Exalted Orb for +#% to Cold Resistance (suffix) or +#% to Chaos Resistance (suffix)",
+      "on_miss": "On a miss: this step again",
+      "route_name": "Fill, desecrate the hardest, slam the last",
+      "status": "active",
+      "step_number": 5,
+      "try_number": 1,
+      "uses": [
+        "Orb of Annulment"
+      ],
+      "watch": {
+        "text": "Screen reading is not available: grab the item after each step.",
+        "warning": false
+      },
+      "why": null
+    },
+    "position": "top-center",
+    "visible": false
+  },
+  "status": {
+    "kind": "info",
+    "text": "Miss: no target gained or lost."
+  },
+  "update_available": null
+}

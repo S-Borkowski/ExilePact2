@@ -1,0 +1,16 @@
+Item Class: Belts
+Rarity: Rare
+Cord Snare
+Heavy Belt
+--------
+Requires: Level 40
+--------
+Item Level: 58
+--------
+{ Implicit Modifier }
+Has 2 Charm Slots — Unscalable Value
+--------
+{ Prefix Modifier "Robust" (Tier: 5) — Life }
++64(60-69) to maximum Life
+{ Suffix Modifier "of the Ox" (Tier: 4) — Attribute }
++22(21-24) to Strength

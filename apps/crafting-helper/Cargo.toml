@@ -1,0 +1,62 @@
+# The crafting-helper Cargo workspace: every crate under `crates/` (the
+# app's logic, `ch-app`, and the item text parser, `ch-item`) as library
+# crates, plus the Tauri shell in `src-tauri/`. Every external dependency is
+# pinned here with `=` and taken by `ch-app` and `src-tauri` with
+# `workspace = true`; those two never name a version of their own. The
+# versions are the quest tracker's (apps/quest-tracker), so the lock holds no
+# package that one does not already hold. `ch-item` is std-only and writes
+# its package keys literally.
+
+[workspace]
+resolver = "2"
+members = [
+    "crates/*",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+tauri = { version = "=2.12.3", features = [] }
+tauri-build = { version = "=2.7.2", features = [] }
+tauri-plugin-global-shortcut = "=2.4.1"
+tauri-plugin-single-instance = "=2.5.3"
+# `src-tauri` alone, from Rust only: opens Craft of Exile's one fixed address
+# (`ch_app::CRAFT_OF_EXILE_URL`) in the default browser. It adds four
+# registry packages to the lock (it, `open`, `is-wsl`, `is-docker`), each
+# already in the quest tracker's lock at this version.
+tauri-plugin-opener = "=2.7.1"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.152"
+# Pinned for `ch-item`, should it take it; `ch-app` does not.
+regex = "=1.13.1"
+# `ch-blueprint` alone: the hand-edited blueprint files, with `Spanned` values
+# so every validation error names a line and column. The one pin the quest
+# tracker's workspace lacks, so the guard checks it differently: this version
+# and every package it pulls are already in both apps' locks, through the
+# Tauri build, so no registry package is added. Cargo ignores the build
+# metadata (`1.1.8+spec-1.1.0` in the lock) when matching.
+toml = "=1.1.8"
+# Windows-only, `src-tauri` alone: the clipboard read (CF_UNICODETEXT through
+# OpenClipboard), the refusal beep and the overlay's show and hide without
+# activating it. The feature set is the waystone roller's, which the guard
+# pins (tests/test_crafting_helper_guard.py).
+windows-sys = { version = "=0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_UI_Input_KeyboardAndMouse",
+] }
+# Dev-only: temporary directories for tests.
+tempfile = "=3.27.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true

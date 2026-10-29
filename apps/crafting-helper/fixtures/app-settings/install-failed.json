@@ -1,0 +1,19 @@
+{
+  "blocked_currencies": [],
+  "check_updates": false,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": null,
+  "install": {
+    "progress": null,
+    "state": "failed",
+    "text": "Could not install Crafting Helper 1.3.0: the update is signed with another key."
+  },
+  "overlay_position": "top-center",
+  "screen_watch": true,
+  "update": {
+    "newer": "1.3.0",
+    "state": "available",
+    "text": "Crafting Helper 1.3.0 is available. You have 1.2.0."
+  },
+  "version": "1.2.0"
+}

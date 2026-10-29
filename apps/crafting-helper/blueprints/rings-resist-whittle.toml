@@ -1,0 +1,62 @@
+# Rings: brute-force a ring with Chaos Orbs and the Omen of Whittling, then
+# desecrate the last target. Paraphrased from the owner's paste; see
+# docs/crafting-helper/crafting-mechanics.md § "Crafting patterns seen".
+id = "rings-resist-whittle"
+name = "Rings: resistances by whittling"
+classes = ["Rings"]
+source = "Discord post 10, owner's paste, 2026-10-28"
+notes = """
+The poster's ring aimed at three top-tier resistances and flat damage, and \
+said a different set of suffixes works the same way. No omen but Whittling \
+is used: every slot after the first is brute-forced. A reveal that misses \
+goes back to whittling. Whether a Chaos Orb can take off a desecrated \
+modifier is not established in the docs."""
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "chaos"
+say = "Chaos Orb until one of the targets lands"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "chaos-orb"
+
+# Whittling takes off the lowest-level modifier; a fresh bad roll usually
+# is one. A Perfect Exalted Orb is the poster's other way to the second.
+[[step]]
+id = "whittle"
+say = "Whittle (Omen of Whittling with a Chaos Orb) until one target is left"
+goal = "add-wanted"
+bind = "any-remaining"
+until = { wanted_remaining_at_most = 1 }
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+
+[[step]]
+id = "desecrate"
+say = "Desecrate for the last target"
+goal = "desecrate"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+
+[[step]]
+id = "reveal"
+say = "Reveal it at the Well of Souls"
+goal = "reveal"
+bind = "last-remaining"
+when = "bound"
+on_miss = "goto:whittle"
+
+[[step.action]]
+currency = "reveal"

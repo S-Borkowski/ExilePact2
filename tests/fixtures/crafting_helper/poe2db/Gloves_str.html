@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!-- Synthetic Gloves (str) page for tests/test_crafting_helper_poe2db.py. It has
+     the shape of a poe2db item-class page (a div.tab-pane#GlovesBaseItem
+     whose card header carries the base count, base cards with two
+     a.whiteitem links, div.requirements, and one ModsView constructor call
+     whose argument is JSON with row groups) but every base, modifier,
+     family and essence in it is invented. Never a saved page. -->
+<html lang="en"><head><meta charset="utf-8"><title>Gloves str - synthetic</title></head><body>
+<div class="tab-content">
+<div id="ModifiersCalc" class="tab-pane fade active show"><div id="ModifiersCalcRoot"></div></div>
+<div id="GlovesBaseItem" class="tab-pane fade"><div class="card mb-2">
+<h5 class="card-header">Gloves BaseItem /2 </h5>
+<div class="row row-cols-1 g-2">
+<div class="col"><div class="d-flex border-top rounded"><div class="flex-shrink-0"><a class="whiteitem Gloves" href="Tinplate_Mitts"><img src="https://cdn.example.invalid/m1.webp" alt="Mitts01" /></a></div><div class="flex-grow-1 ms-2"><a class="whiteitem Gloves" href="Tinplate_Mitts">Tinplate Mitts</a><div><div class="property">Armour: <span class='colourDefault'>11</span></div></div></div></div></div>
+<div class="col"><div class="d-flex border-top rounded"><div class="flex-shrink-0"><a class="whiteitem Gloves" href="Lanternguard_Mitts"><img src="https://cdn.example.invalid/m2.webp" alt="Mitts02" /></a></div><div class="flex-grow-1 ms-2"><a class="whiteitem Gloves" href="Lanternguard_Mitts">Lanternguard Mitts</a><div><div class="property">Armour: <span class='colourDefault'>40</span></div><div class="separator"></div><div class="requirements">Requires:  <span class="colourDefault">Level 33</span>, <span class="colourDefault">52 Str</span></div><div class="separator"></div><div class="implicitMod"><span class='mod-value'>(4<span class="ndash">—</span>6)</span>% increased Lantern Glow</div></div></div></div></div>
+</div></div></div>
+</div>
+<script>
+$(document).ready(function () {
+    new ModsView({
+"baseitem": {"href": "Gloves", "cn": "Gloves", "attr": [40], "tags": "Str", "opts": {"str": "str", "int": "int"}},
+"config": {"lang": "us"},
+"gen": {"1": "Prefix", "2": "Suffix"},
+"opt": {"ModDomainsID": 1, "ids": [0, 7], "attr": [40], "ItemClassesCode": "Gloves", "ItemClassesID": 22, "tags": "str_armour"},
+"normal": [
+{"Name": "Sturdy", "Level": "1", "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "DropChance": "1000", "str": "<span class='mod-value'>+(5<span class=\"ndash\">—</span>9)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>", "spawn_no": ["str_armour"]},
+{"Name": "Stalwart", "Level": "40", "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "DropChance": "1000", "str": "<span class='mod-value'>+(15<span class=\"ndash\">—</span>19)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>"},
+{"Name": "Hardy", "Level": "20", "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "DropChance": "1000", "str": "<span class='mod-value'>+(10<span class=\"ndash\">—</span>14)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>"},
+{"Name": "Glinting", "Level": "10", "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerWardPercent"], "DropChance": "500", "str": "<span class='mod-value'>(4<span class=\"ndash\">—</span>6)</span>% increased Glimmer Ward"},
+{"Name": "Glowing", "Level": "30", "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerWardPercent"], "DropChance": "500", "str": "<span class='mod-value'>(10<span class=\"ndash\">—</span>12)</span>% increased Glimmer Ward"},
+{"Name": "Gleaming", "Level": "10", "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerWardPercent"], "DropChance": "500", "str": "<span class='mod-value'>(7<span class=\"ndash\">—</span>9)</span>% increased Glimmer Ward"},
+{"Name": "of Lanterns", "Level": "25", "ModGenerationTypeID": "2", "ModFamilyList": ["GlimmerSkillLevel"], "DropChance": 500, "str": "<span class='mod-value'>+1</span> to Level of all Lantern Skills"},
+{"Name": "of Moths", "Level": "25", "ModGenerationTypeID": "2", "ModFamilyList": ["GlimmerSkillLevel"], "DropChance": "250", "str": "<span class='mod-value'>+2</span> to Level of all Moth Skills"},
+{"Name": "of the Swarm", "Level": "12", "ModGenerationTypeID": "2", "ModFamilyList": ["MothLight"], "DropChance": "750", "str": "<span class='mod-value'>(0.5<span class=\"ndash\">—</span>1.5)</span> Lanternmoths circle you<br>Lanternmoths deal <span class='mod-value'>(-10<span class=\"ndash\">–</span>-5)</span>% less Damage<br><span class=\"secondary\">hidden moth orbit radius [20]</span>"},
+{"Name": "Sparking", "Level": "8", "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerDamage"], "DropChance": "800", "str": "Adds <span class='mod-value'>1</span> to <span class='mod-value'>4</span> <a data-keyword=\"Glimmer\" href=\"Glimmer_Damage\" class=\"KeywordPopups\">Glimmer</a> Damage to Attacks"}
+],
+"corrupted": [
+{"Name": "", "Level": "1", "ModGenerationTypeID": "5", "ModFamilyList": ["Implicit"], "str": "invented corruption outcome one"},
+{"Name": "", "Level": "1", "ModGenerationTypeID": "5", "ModFamilyList": ["Implicit"], "str": "invented corruption outcome two"}
+],
+"desecrated": [
+{"Name": "of Ulmaru", "Level": "65", "ModGenerationTypeID": "2", "ModFamilyList": ["Vigour", "Resolve"], "type": "Desecrated", "DropChance": 1, "str": "<span class='mod-value'>+(9<span class=\"ndash\">—</span>15)</span> to <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a> and <a data-keyword=\"Resolve\" href=\"Resolve\" class=\"KeywordPopups\">Resolve</a>"}
+],
+"breach_otherworldly": [],
+"master": [],
+"delve": [],
+"essence": [
+{"type": "essence", "Code": "MaximumVigour2", "Level": "20", "DropChance": 0, "ModGenerationTypeID": "1", "ModFamilyList": ["MaximumVigour"], "IsPerfect": 0, "IsAlloy": false, "Removes": false, "reqlvl": 16, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Lesser_Essence_of_Vigour\"><img src=\"https://cdn.example.invalid/e1.webp\" alt=\"VigourEssenceLesser\" height=\"16\" />Lesser Essence of Vigour</a>", "str": "<span class='mod-value'>+(10<span class=\"ndash\">—</span>14)</span> to maximum <a data-keyword=\"Vigour\" href=\"Vigour\" class=\"KeywordPopups\">Vigour</a>"},
+{"type": "essence", "Code": "LocalGlimmerWardPercent2", "Level": "10", "DropChance": 0, "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerWardPercent"], "IsPerfect": 0, "IsAlloy": false, "Removes": false, "reqlvl": 8, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Lesser_Essence_of_Warding\">Lesser Essence of Warding</a>", "str": "<span class='mod-value'>(7<span class=\"ndash\">—</span>9)</span>% increased Glimmer Ward"},
+{"type": "essence", "Code": "GlobalGlimmerWardPercent2", "Level": "10", "DropChance": 0, "ModGenerationTypeID": "1", "ModFamilyList": ["GlimmerWardPercent"], "IsPerfect": 0, "IsAlloy": false, "Removes": false, "reqlvl": 8, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Lesser_Essence_of_Warding\">Lesser Essence of Warding</a>", "str": "<span class='mod-value'>(7<span class=\"ndash\">—</span>9)</span>% increased Glimmer Ward"},
+{"type": "essence", "Code": "MothSkillLevel1", "Level": "25", "DropChance": 0, "ModGenerationTypeID": "2", "ModFamilyList": ["GlimmerSkillLevel"], "IsPerfect": 0, "IsAlloy": false, "Removes": false, "reqlvl": 20, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Essence_of_Moths\">Essence of Moths</a>", "str": "<span class='mod-value'>+2</span> to Level of all Moth Skills"}
+],
+"perfect_essence": [
+{"type": "essence", "Code": "EssenceHollowPrefix", "Level": "1", "DropChance": 0, "ModGenerationTypeID": "1", "ModFamilyList": ["EssenceHollow"], "IsPerfect": 0, "IsAlloy": false, "Removes": true, "reqlvl": 0, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Essence_of_the_Hollow\">Essence of the Hollow</a>", "str": "Mark of the Hollow Lord"},
+{"type": "essence", "Code": "AlloyMothSpeed1", "Level": "25", "DropChance": 0, "ModGenerationTypeID": "2", "ModFamilyList": ["MothSpeed"], "IsPerfect": 0, "IsAlloy": true, "Removes": true, "reqlvl": 20, "Name": "<a class=\"item_currency StackableCurrency\" href=\"Fluttering_Alloy\">Fluttering Alloy</a>", "str": "<span class='mod-value'>(3<span class=\"ndash\">—</span>5)</span>% increased Lanternmoth Speed"}
+],
+"liquid": [],
+"marksman": [],
+"socketable": [
+{"Name": "Invented Rune", "Level": "1", "ModGenerationTypeID": "3", "ModFamilyList": [], "str": "invented augment line"}
+],
+"bonded": []
+});
+});
+</script>
+</body></html>

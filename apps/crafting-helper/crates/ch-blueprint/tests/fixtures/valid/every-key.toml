@@ -1,0 +1,135 @@
+# Uses every key the format has, so the shape pass and the model are
+# checked to agree on all of them.
+id = "every-key"
+name = "Every key"
+classes = ["Rings", "Amulets"]
+source = "Discord post 10, owner's paste, 2026-10-28"
+notes = "A test blueprint, not a technique."
+
+[[start]]
+rarity = ["normal", "magic"]
+essence_binds = true
+
+[[start]]
+rarity = ["rare"]
+wanted_at_least = 3
+wanted_prefixes_at_least = 1
+wanted_suffixes_at_least = 1
+fractured_wanted = true
+unwanted_at_most = 2
+
+[[step]]
+id = "essence"
+say = "Use the essence"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+requires = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "greater-essence-of-the-body"
+
+[[step]]
+id = "fill"
+say = "Exalt the open side"
+goal = "add-wanted"
+side = "prefix"
+bind = "any-remaining"
+until = { wanted_remaining_at_most = 2 }
+on_hit = "next"
+on_miss = "goto:whittle"
+requires = { free_prefixes_at_least = 1, free_suffixes_at_least = 0, wanted_remaining_exactly = 3 }
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen", "omen-of-greater-exaltation"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "whittle"
+say = "Chaos away the lowest modifier"
+goal = "remove-unwanted"
+on_hit = "goto:fill"
+on_miss = "repeat"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-sinistral-annulment"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side"
+goal = "desecrate"
+bind = "hardest"
+requires = { no_desecrated = true }
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen", "omen-of-the-sovereign"]
+
+[[step]]
+id = "reveal"
+say = "Reveal at the Well of Souls"
+goal = "reveal"
+bind = "hardest"
+requires = { unrevealed = true }
+on_miss = "goto:unseal"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "unseal"
+say = "Remove the desecrated modifier"
+goal = "remove-desecrated"
+on_hit = "goto:desecrate"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "flux"
+say = "Turn the resistance into chaos resistance"
+goal = "convert"
+bind = "last-remaining"
+
+[[step.action]]
+currency = "void-flux"
+
+[[step]]
+id = "alloy"
+say = "Use the alloy, removing a suffix"
+goal = "add-wanted"
+bind = "last-remaining"
+
+[[step.action]]
+currency = "swift-alloy"
+omens = ["omen-of-dextral-crystallisation"]
+
+[[step.action]]
+currency = "potent-liquid-contempt"
+
+[[step]]
+id = "quality"
+say = "Add catalyst quality"
+goal = "manual"
+on_hit = "done"
+
+[[step.action]]
+currency = "flesh-catalyst"
+
+[[step]]
+id = "socket"
+say = "Socket the runes you want"
+goal = "manual"
+on_hit = "restart"

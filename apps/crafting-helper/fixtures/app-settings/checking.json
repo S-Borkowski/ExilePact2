@@ -1,0 +1,19 @@
+{
+  "blocked_currencies": [],
+  "check_updates": false,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": null,
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
+  "overlay_position": "top-center",
+  "screen_watch": true,
+  "update": {
+    "newer": null,
+    "state": "checking",
+    "text": "Checking for updates…"
+  },
+  "version": "1.2.0"
+}

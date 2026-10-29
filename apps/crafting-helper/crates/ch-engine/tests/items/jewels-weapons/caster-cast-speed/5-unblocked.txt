@@ -1,0 +1,16 @@
+Item Class: Wands
+Rarity: Rare
+Gloom Song
+Volatile Wand
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Incanter's" (Tier: 3) — Damage, Caster }
+80(75-89)% increased Spell Damage
+{ Suffix Modifier }
+28(26-31)% increased Cast Speed
+Gain 9(7-11)% of Elemental Damage as Extra Cold Damage
+{ Suffix Modifier "of Ruin" (Tier: 2) — Caster, Critical }
+56(54-59)% increased Critical Hit Chance for Spells
+{ Suffix Modifier "of Euphoria" (Tier: 2) — Mana }
+55(50-59)% increased Mana Regeneration Rate

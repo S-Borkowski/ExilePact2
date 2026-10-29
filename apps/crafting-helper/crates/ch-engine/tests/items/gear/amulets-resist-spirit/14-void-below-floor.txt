@@ -1,0 +1,14 @@
+Item Class: Amulets
+Rarity: Rare
+Storm Beads
+Jade Amulet
+--------
+Requires: Level 8
+--------
+Item Level: 82
+--------
+{ Implicit Modifier — Attribute }
++12(10-15) to Dexterity
+--------
+{ Suffix Modifier "of Banishment" (Tier: 5) — Chaos, Resistance }
++9(8-11)% to Chaos Resistance

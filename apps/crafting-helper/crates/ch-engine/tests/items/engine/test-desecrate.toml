@@ -1,0 +1,30 @@
+# A test blueprint (engine tests only): desecrate on the hardest target's
+# side, then reveal it.
+id = "test-desecrate"
+name = "Test: desecrate the hardest target"
+classes = ["Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side"
+goal = "desecrate"
+bind = "hardest"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it at the Well of Souls"
+goal = "reveal"
+bind = "hardest"
+on_miss = "goto:desecrate"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]

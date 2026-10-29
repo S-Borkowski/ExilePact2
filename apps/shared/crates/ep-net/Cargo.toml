@@ -1,6 +1,6 @@
 [package]
 name = "ep-net"
-description = "Both apps' only network code: the repository's GitHub release list and a fixed release asset, fetched over HTTPS through Windows' own WinHTTP."
+description = "The apps' only network code: the repository's GitHub release list and a fixed release asset, fetched over HTTPS through Windows' own WinHTTP."
 version.workspace = true
 edition.workspace = true
 publish.workspace = true

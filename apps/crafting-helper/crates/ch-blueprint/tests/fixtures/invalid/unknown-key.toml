@@ -1,0 +1,17 @@
+id = "unknown-key"
+name = "Unknown key"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Use an Exalted Orb"
+goal = "fill"
+colour = "red"
+
+[[step.action]]
+currency = "exalted-orb"
+omen = ["omen-of-greater-exaltation"]

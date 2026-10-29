@@ -1,4 +1,4 @@
-//! Both apps' update logic, kept once: whether a newer release of the app
+//! The apps' update logic, kept once: whether a newer release of the app
 //! is published, and installing it in the app when the user presses the
 //! button.
 //!
@@ -8,8 +8,8 @@
 //! [`Updater::new`] in an [`UpdateConfig`]; this crate decides when they are
 //! called and what their answers mean, and calls them only on a thread of
 //! its own. The product (its display name, tag prefix and exe asset name) is
-//! data ([`QUEST_TRACKER`], [`WAYSTONE_ROLLER`]); nothing here depends on
-//! either app.
+//! data ([`QUEST_TRACKER`], [`WAYSTONE_ROLLER`], [`CRAFTING_HELPER`]);
+//! nothing here depends on any app.
 //!
 //! - [`check`]: the transport, the release-list parse (the newest published
 //!   release of the product, with its exe and `.minisig` assets) and what a
@@ -50,7 +50,9 @@ pub use updater::{
     Begin, InstallEvents, InstallRefused, Updater, CHECK_INTERVAL_MS, PROGRESS_EVERY,
     RETRY_AFTER_FAILURE_MS,
 };
-pub use version::{Product, Version, QUEST_TRACKER, SIGNATURE_SUFFIX, WAYSTONE_ROLLER};
+pub use version::{
+    Product, Version, CRAFTING_HELPER, QUEST_TRACKER, SIGNATURE_SUFFIX, WAYSTONE_ROLLER,
+};
 pub use view::{
     app_settings_view, install_view, outcome_line, started_line, turned_line, unsigned_text,
     AppSettingsView, InstallPhase, InstallProgress, InstallState, InstallView, UpdateState,

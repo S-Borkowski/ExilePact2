@@ -1,0 +1,10 @@
+Item Class: Rings
+Rarity: Normal
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance

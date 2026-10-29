@@ -1,4 +1,4 @@
-//! The release-list parse, for either product, and the view's texts.
+//! The release-list parse, for each product, and the view's texts.
 
 mod common;
 
@@ -6,22 +6,26 @@ use common::release_entry;
 use ep_update::{
     app_settings_view, newest_release, read_answer, Answer, InstallPhase, InstallState, Outcome,
     Product, Release, ReleaseAsset, TransportError, Unreadable, UpdateState, Version,
-    QUEST_TRACKER, WAYSTONE_ROLLER,
+    CRAFTING_HELPER, QUEST_TRACKER, WAYSTONE_ROLLER,
 };
 use serde_json::{json, Value};
 
-const PRODUCTS: [Product; 2] = [QUEST_TRACKER, WAYSTONE_ROLLER];
+const PRODUCTS: [Product; 3] = [QUEST_TRACKER, WAYSTONE_ROLLER, CRAFTING_HELPER];
 
 fn list(entries: Vec<Value>) -> Vec<u8> {
     serde_json::to_vec(&Value::Array(entries)).unwrap()
 }
 
+/// The next product in [`PRODUCTS`], round the end: each product is some
+/// other product's `other`, so every pairing a test makes runs both ways.
 fn other(p: &Product) -> Product {
-    if *p == QUEST_TRACKER {
-        WAYSTONE_ROLLER
-    } else {
-        QUEST_TRACKER
-    }
+    let i = PRODUCTS.iter().position(|q| q == p).unwrap();
+    PRODUCTS[(i + 1) % PRODUCTS.len()]
+}
+
+/// Every product but `p`.
+fn others(p: &Product) -> Vec<Product> {
+    PRODUCTS.into_iter().filter(|q| q != p).collect()
 }
 
 fn newest(p: &Product, body: &[u8]) -> Result<Option<Version>, Unreadable> {
@@ -88,6 +92,16 @@ fn releases_pick_the_newest_published_tag_of_the_product() {
         WAYSTONE_ROLLER.tag(Version::new(0, 2, 0)),
         "waystone-roller-v0.2.0"
     );
+    assert_eq!(
+        CRAFTING_HELPER.tag(Version::new(0, 1, 0)),
+        "crafting-helper-v0.1.0"
+    );
+    assert_eq!(CRAFTING_HELPER.name, "Crafting Helper");
+    assert_eq!(CRAFTING_HELPER.exe_name, "crafting-helper.exe");
+    assert_eq!(
+        CRAFTING_HELPER.signature_name(),
+        "crafting-helper.exe.minisig"
+    );
     // An app's own package version, read up to a suffix.
     assert_eq!(Version::of_package("0.2.0"), Version::new(0, 2, 0));
     assert_eq!(Version::of_package("0.2.0-dev+abc"), Version::new(0, 2, 0));
@@ -110,6 +124,7 @@ fn releases_ignore_drafts_prereleases_other_tools_and_bad_tags() {
         json!({ "tag_name": "quest-tracker-v2.0.0", "prerelease": false }),
         json!({ "tag_name": "quest-tracker-v2.0.0", "draft": "false", "prerelease": false }),
         published("waystone-roller-v2.0.0"),
+        published("crafting-helper-v2.0.0"),
         published("log-reader-v2.0.0"),
         published("v2.0.0"),
         published("Quest-Tracker-v2.0.0"),
@@ -138,10 +153,27 @@ fn releases_ignore_drafts_prereleases_other_tools_and_bad_tags() {
     );
     for tag in [
         "quest-tracker-v0.3.1",
+        "crafting-helper-v0.3.1",
         "waystone-roller-v0.3",
         "Waystone-Roller-v0.3.1",
     ] {
         assert_eq!(wl(tag), Ok(None), "{tag}");
+    }
+    // And for the crafting helper's.
+    let c = CRAFTING_HELPER;
+    let cl = |tag: &str| newest(&c, &list(vec![published(tag)]));
+    assert_eq!(
+        cl("crafting-helper-v0.1.0"),
+        Ok(Some(Version::new(0, 1, 0)))
+    );
+    for tag in [
+        "quest-tracker-v0.1.0",
+        "waystone-roller-v0.1.0",
+        "crafting-helper-v0.1",
+        "Crafting-Helper-v0.1.0",
+        "crafting-helper-0.1.0",
+    ] {
+        assert_eq!(cl(tag), Ok(None), "{tag}");
     }
 }
 
@@ -324,7 +356,7 @@ fn app_settings_view_texts_name_the_product() {
     let newer = Version::new(1, 3, 0);
     for p in PRODUCTS {
         let name = p.name;
-        let o = other(&p).name;
+        let others = others(&p);
         let signed = Release {
             version: newer,
             exe: Some(ReleaseAsset {
@@ -430,11 +462,13 @@ fn app_settings_view_texts_name_the_product() {
                 v.install.progress.is_some(),
                 state == InstallState::Downloading
             );
-            // Every text names this product, never the other, and no part
-            // of the view carries an address.
+            // Every text names this product, never another, and no part of
+            // the view carries an address.
             assert!(v.install.text.contains(name), "{text}");
             let json = serde_json::to_string(&v).unwrap();
-            assert!(!json.contains(o), "{json}");
+            for o in &others {
+                assert!(!json.contains(o.name), "{json}");
+            }
             assert!(
                 !json.contains("http") && !json.contains("github.com"),
                 "{json}"

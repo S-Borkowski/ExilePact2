@@ -1,0 +1,134 @@
+# Weapons on a budget: a damage modifier by Chaos Orb, two alloys placed
+# with Dextral Crystallisation over exalted filler suffixes, then a
+# side-restricted Perfect Exalted Orb and a desecration. Paraphrased from
+# the owner's Discord post 12.
+id = "weapons-alloy-budget"
+name = "Weapons: the alloy budget route"
+classes = [
+    "Staves",
+    "Wands",
+    "Bows",
+    "Crossbows",
+    "One Hand Maces",
+    "Two Hand Maces",
+    "Quarterstaves",
+    "Spears",
+    "Talismans",
+]
+source = "Discord post 12, owner's paste, 2026-10-28"
+notes = """\
+For the weapon classes where both the Celestial and the Transcendent Alloy \
+exist in the data: caster weapons (staves, wands) and the physical ones. \
+Make the damage modifier (spell or physical damage at a top-two tier) your \
+hardest target, so the Chaos Orb aims at it. Each exalted suffix is filler \
+the next alloy removes: the post relies on Dextral Crystallisation working \
+with alloys, which the docs mark not established, and the alloys' modifiers \
+are not ones a target can name, so the alloy steps are manual. If the second \
+filler suffix is cast speed, annul it (Dextral Annulment) and exalt again \
+before the Transcendent Alloy. The post does not say what to do when the \
+Perfect Exalted Orb misses; the route moves on. It stops at the desecration; \
+the reveal and the Omen of Light retry are this blueprint's."""
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "chaos"
+say = "Chaos Orb until the damage modifier lands at its floor"
+goal = "add-wanted"
+bind = "hardest"
+
+[[step.action]]
+currency = "chaos-orb"
+
+[[step]]
+id = "filler-one"
+say = "Exalt a suffix (Dextral Exaltation) for the alloy to take"
+goal = "fill"
+side = "suffix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-dextral-exaltation"]
+
+[[step]]
+id = "celestial"
+say = "Celestial Alloy with Dextral Crystallisation, so it takes the filler suffix"
+goal = "manual"
+
+[[step.action]]
+currency = "celestial-alloy"
+omens = ["omen-of-dextral-crystallisation"]
+
+[[step]]
+id = "filler-two"
+say = "Exalt another suffix (Dextral Exaltation); if it is cast speed, annul it and exalt again"
+goal = "fill"
+side = "suffix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-dextral-exaltation"]
+
+[[step]]
+id = "transcendent"
+say = "Transcendent Alloy with Dextral Crystallisation, so it takes the filler suffix"
+goal = "manual"
+
+[[step.action]]
+currency = "transcendent-alloy"
+omens = ["omen-of-dextral-crystallisation"]
+
+[[step]]
+id = "slam"
+say = "Side-restricted Perfect Exalted Orb on the side of the hardest remaining target"
+goal = "add-wanted"
+bind = "hardest"
+when = "bound"
+on_miss = "next"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the side of the remaining target"
+goal = "desecrate"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it with Abyssal Echoes, rerolling the options once if they miss"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+on_hit = "done"
+on_miss = "goto:unseal"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step]]
+id = "unseal"
+say = "Remove the desecrated modifier with Omen of Light, then desecrate again"
+goal = "remove-desecrated"
+on_hit = "goto:desecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]

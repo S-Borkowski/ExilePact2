@@ -1,0 +1,11 @@
+Item Class: Boots
+Rarity: Rare
+Storm Trail
+Frayed Shoes
+--------
+Item Level: 81
+--------
+{ Fractured Prefix Modifier "Cheetah's" (Tier: 2) — Speed }
+30% increased Movement Speed (fractured)
+{ Suffix Modifier "of Curvation" (Tier: 3) — Defences, Evasion }
+Gain Deflection Rating equal to 16(15-17)% of Evasion Rating
