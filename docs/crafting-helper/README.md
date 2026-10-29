@@ -65,11 +65,27 @@ browser for the crafting this app does not cover.
     high as possible" by default or "At least T<n>"), **Blocked for this
     craft** (the Settings list, which this craft can add to or allow
     from, without changing Settings), and the **route** the engine chose:
-    the blueprint, each step's instruction, currency and omens, its rough
-    odds or "odds unknown" with the reason, a fallback line where a
-    blocked item made it take another, and other applicable routes to
-    choose from. With no route, one line per blueprint says why it does
-    not apply. *Start crafting* starts the guide.
+    the blueprint's name and source, the chosen targets with their floors,
+    then each step's instruction, the target modifiers a hit of it may
+    place, its currency and omens, its rough odds or "odds unknown" with
+    the reason, a fallback line where a blocked item made it take another,
+    and other applicable routes to choose from. A step that places a
+    target says so in the app's own words, naming the currency, its omens,
+    the side and the modifiers (`Chaos Orb for +#% to Fire Resistance
+    (suffix) or +#% to Cold Resistance (suffix)`); a step that places none
+    (a removal, a quality or a manual step) keeps the blueprint's text.
+    The blueprint's notes, the reasoning behind its technique, are not
+    shown. With no route, one line per blueprint says why it does not
+    apply. *Start crafting* starts the guide.
+
+    A grab that enters planning arrives with the item's own explicit
+    prefixes and suffixes already ticked as targets, each with its floor
+    at the tier it has, so you only add the modifier you want next; one
+    the craft cannot keep at that tier is left unticked, without a
+    message, and an item with no explicit modifier starts with none.
+    After another grab while planning, the list is the targets chosen
+    before that still fit the new item, then the new item's own modifiers
+    not already in it. Untick any of them as you would any target.
   - **Guiding**: the current step with its odds and two lines, where a
     hit and where a miss go, and the screen watch's line (below); the item
     as last grabbed or read; and the history of each step's outcome, each
@@ -258,7 +274,9 @@ Takes no arguments.
       first read;
     - `watch: idle (<reason>)`: `not guiding`, `guide not active` (stuck,
       replan or done), `screen watch off`, `game not in front` or
-      `minimized`;
+      `minimized`; `watch: idle (not guiding)` is also written once at
+      start, before any craft, when the app has a screen backend (on
+      Windows);
     - `watch: game window <w>x<h>`, the game's client area in physical
       pixels, when the game comes to the front or its size changes;
     - `watch: tooltip <state>`: `none`, `unchanged`, `another item`,
@@ -563,8 +581,11 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   `overlay_hides_when_the_game_is_not_in_front`), its lines
   (`overlay_lines_follow_the_step_and_the_last_outcome`), its place at
   each position (`overlay_is_placed_at_the_chosen_position`), no backend
-  call unless guiding (`no_backend_call_unless_guiding`) and the watch
-  ended at shutdown (`shutdown_stops_the_watch`).
+  call unless guiding (`no_backend_call_unless_guiding`), the watch
+  ended at shutdown (`shutdown_stops_the_watch`), the overlay's step
+  naming its target modifiers (`overlay_step_names_the_mods_it_targets`)
+  and one `watch: idle (not guiding)` at start
+  (`watch_idle_is_logged_once_at_start`).
 - `ch-app`'s `tests/watch.rs` drives the screen watch over the whittled
   ring with a fake screen backend and ticks driven by the test: a hit read
   twice alike advances (`screen_hit_advances_after_two_equal_reads`), a
@@ -574,14 +595,19 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   read is not an outcome, the backend is called without the app's lock
   held, no English OCR stops the watch with a reason, a tooltip under the
   overlay is reported, the watch line follows the game and the guide, the
-  black and minute lines are logged, and with `screen_watch` off nothing
-  is read and a grab still advances
+  black and minute lines are logged, an unreadable reason that lies in the
+  item says to grab after each step while another keeps the hover line
+  (`an_unreadable_item_says_to_grab_after_each_step`), and with
+  `screen_watch` off nothing is read and a grab still advances
   (`screen_watch_off_reads_nothing_and_a_grab_still_advances`).
 - `ch-watch`'s tests: `tests/matcher.rs` over tooltip lines built in the
   test from the ring texts (the plain and Alt forms, OCR confusions,
   hybrid lines, unchanged, another base, an unaccounted line or an
-  ambiguous tier read as unreadable, rarity, the join, and the lines
-  measured on the screenshots); `tests/reader.rs` over synthetic tooltips
+  ambiguous tier read as unreadable, rarity, the join, the lines
+  measured on the screenshots, and a rare belt with a charm slot line, a
+  flask implicit and the requirement line as OCR broke it on shot 13,
+  `a_belt_with_charm_slots_and_a_flask_implicit_reads_unchanged`);
+  `tests/reader.rs` over synthetic tooltips
   drawn in the test (the locator finds one and nothing on a plain scene,
   a box under the overlay is covered, an unchanged crop is OCR read once);
   no image file is committed. `tests/shots.rs` reads the owner's
@@ -589,8 +615,9 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   names (the command above): the set is whole, whole-image OCR reads the
   copied modifier lines (the positive control), the located boxes match
   the hand-measured ones in `tests/shots.txt`, each plain read gives its
-  copy or says unreadable, never another item, and a shot without a
-  tooltip finds none. Its tests are `#[ignore]`d, so they run only on a
+  copy or says unreadable, never another item, the belt Live 1 could not
+  read (shot 13) reads as its copy (`the_belt_shot_reads_unchanged`), and
+  a shot without a tooltip finds none. Its tests are `#[ignore]`d, so they run only on a
   machine that holds the shots; the images and copies stay there, outside
   every repository. The research note's
   [Item tooltip on screen](crafting-helper-research.md#item-tooltip-on-screen)
@@ -603,8 +630,15 @@ py -3 -m unittest tests.test_app_updates_guard                                  
 - `ch-app`'s `tests/craft_window.rs` drives the craft window over the
   whittled ring of `ch-engine`'s tests
   (`crates/ch-engine/tests/items/gear/rings-resist-whittle/`, read by
-  path): the targets a base offers and their floors, refusals, a route
-  with odds in words, a blocked currency's fallback and a craft's own
+  path): the targets a base offers and their floors, the item's own
+  modifiers ticked as targets after a grab
+  (`a_grab_ticks_the_items_own_mods_as_targets`, none for an item without
+  explicit modifiers, the list after a re-grab), refusals, a route with
+  odds in words and without the blueprint's notes
+  (`the_route_view_drops_the_blueprint_notes`), each step naming its
+  target modifiers in an instruction of the app's own
+  (`a_targeted_step_says_its_currency_side_and_mods`; a step with none
+  keeps the blueprint's text), a blocked currency's fallback and a craft's own
   blocked list, no route, accepting, a hit, a miss, an unexpected change,
   an unchanged re-grab and the walk to done; and that
   `open_craft_of_exile` asks the shell for the one fixed address
@@ -719,7 +753,8 @@ release already exists, only its assets are replaced.
   [Item tooltip on screen](crafting-helper-research.md#item-tooltip-on-screen)).
   Whether the app's own copy of the window, its client size at other
   display scales, its time from hover to outcome and its cost a minute
-  match them is for Live 1, the live session still to come; until then
+  match them is for Live 1, the live session, whose first run stopped on
+  an unreadable belt (below) and which runs again; until then
   the `watch: game window` and `watch: minute:` lines are what to read.
   Another resolution, HUD scale or text size has not been tried.
 - **What the watch cannot read** it calls unreadable and asks for a grab:
@@ -731,8 +766,21 @@ release already exists, only its assets are replaced.
   type, and a tooltip reaching the bottom edge of the game's window, where
   it may be cut off (only the bottom edge is checked). A unique item is in
   no shot. With Alt held, OCR lost some values in the shots: hover without
-  Alt, as the watch line says. Seven of the nine plain equipment shots read
-  as their item's copy and the rest unreadable, never another item.
+  Alt, as the watch line says. When the reason lies in the item being
+  crafted (a modifier the data does not know, or a tier that cannot be
+  told on an item whose own copy has an unrevealed or fractured modifier),
+  hovering differently cannot help, and the line says `Can't read the item
+  (<reason>): grab the item after each step.` instead. Eight of the ten
+  plain equipment shots read as their item's copy and the rest unreadable,
+  never another item.
+- **The belt Live 1 could not read now reads, on its screenshot.** In the
+  first run of Live 1 (2026-10-29), a rare Utility Belt read as unreadable
+  on every hover: OCR had broken the first word of its requirement line.
+  The watch now places a requirement line by what follows its colon
+  (`Level` and its value, then attributes), and the owner's screenshot of
+  that hover (shot 13) reads as the belt's copy; it has not yet been
+  hovered in the game again, which Live 1's next run does. Why OCR broke
+  the word on that shot alone is not established.
 - **Another item of the same base** with the same modifiers and tiers
   looks like the item being crafted: the watch tells items by base type,
   rarity and explicit modifiers (ids and tiers), not by the values it
@@ -774,7 +822,8 @@ release already exists, only its assets are replaced.
   - **A blueprint cannot branch into another**, and steps resting on a
     mechanic not established (alloys with Crystallisation omens, flux tier
     mapping, catalyst quality, rune sockets) are kept and said so in the
-    blueprint's `notes`; catalyst and rune steps are manual.
+    blueprint file's `notes`, which the craft window does not show;
+    catalyst and rune steps are manual.
 - **The "looks like an item" check is the first line only.** A text is
   taken for an item when its first line starts with `Item Class: `; every
   item text the owner copied for the parser (`ch-item`'s
@@ -894,13 +943,15 @@ release already exists, only its assets are replaced.
 - The crafting helper's first version: copy an item in the game with
   `Ctrl+Alt+C`, then press `Ctrl+Alt+X` (changeable, never `Ctrl+Alt+C`)
   or `Ctrl+V` in the window, and the window becomes the craft window.
-- The craft window shows the item and its modifiers with their tiers. Pick
-  the modifiers you want as a target, from the prefixes, suffixes and
-  desecrated modifiers the item's base can roll, each "as high as
-  possible" or "at least" a tier, and it previews the route a blueprint
-  takes: each step's currency and omens, its rough odds or "odds unknown"
-  and why, the fallbacks taken because something is blocked, or why no
-  blueprint applies.
+- The craft window shows the item and its modifiers with their tiers. The
+  item's own prefixes and suffixes start ticked as targets at the tier
+  they have, so you only add the modifier you want next; pick it from the
+  prefixes, suffixes and desecrated modifiers the item's base can roll,
+  each "as high as possible" or "at least" a tier, and it previews the
+  route a blueprint takes: the targets, then each step naming the
+  modifiers it aims for with its currency and omens, its rough odds or
+  "odds unknown" and why, the fallbacks taken because something is
+  blocked, or why no blueprint applies.
 - *Start crafting* guides you step by step: take the step in the game and
   hover the item, and the app reads the item's tooltip from the screen with
   Windows' own OCR, says whether it was a hit or a miss, moves to the next
@@ -929,7 +980,9 @@ release already exists, only its assets are replaced.
   newer version, the version and "Created by ST4H".
 - Reading the screen needs Windows' English OCR and the game windowed or
   borderless in English; it was measured on screenshots, not yet in a live
-  session (Known limitations).
+  session (Known limitations). A rare belt whose tooltip the first live
+  try could not read, because OCR broke the first word of its requirement
+  line, now reads on its screenshot.
 - Download `crafting-helper.exe` from the repository's
   [crafting helper releases](https://github.com/S-Borkowski/ExilePact2/releases?q=crafting-helper)
   and run it; there is no installer.
