@@ -201,6 +201,22 @@ have liquid emotions and no essences; Sceptres have no desecrated rows.
 
 ## Not established and negatives
 
+Measured since (M4, the owner's five real item texts of 2026-10-28):
+
+- **The derived tier number equals the game's `Tier:`.** The tier number
+  the data files carry (derived by the extractor from poe2db's levels, tier
+  1 the best on the variant), on the tier `ch-data` joins each modifier to
+  by its affix name or its values, matched the `Tier:` in the header
+  on all 18 explicit modifiers the five real items carry (2, 6, 6, 4 and 0
+  per item), `ch-data`'s `real_fixture_tiers_equal_game_tiers`. Five items
+  of five classes; a class none of them is has not been compared.
+- **Revealed desecrated modifiers join to the normal section.** The
+  crossbow's `Incinerating` and the gloves' `of Exile`, both marked
+  `Desecrated` in their headers, are normal-pool modifiers at tiers 4 and 2
+  (`desecrated_mods_join_to_normal_section`), so a reveal may offer
+  normal-pool modifiers as well as the desecrated pool's; the engine counts
+  both and gives a reveal unknown odds.
+
 Not established:
 
 - **Desecrated and jewel weights.** The pages show 1 or nothing; shipped as
@@ -214,8 +230,6 @@ Not established:
   under "Weights"). Shipped as the number 1, which may be a real low weight
   or the same placeholder; M4 should treat those odds as unknown until a
   second source agrees.
-- **Whether the derived tier number equals the game's `Tier:`** in the
-  Ctrl+Alt+C item text. M2 and M4 compare against a captured item fixture.
 - **Base drop level.** Not on these pages; it would take one request per
   base. Only the required level ships.
 - **Unmatched essences.** Many essence entries match no modifier tier on

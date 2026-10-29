@@ -686,6 +686,21 @@ otherwise, and adds to the waystone text layout in § "Item search box
   value** has a decimal range (`+3.33(3.11-3.8)%`).
 - **A jewel's text** ends with its description line, a separator and
   `Corrupted` when corrupted.
+- **The header's `Tier:` equals poe2db's tier order** (measured, five
+  items: the boots, crossbow, gloves, jewel and ring above). Numbering a
+  modifier's tiers on the item's base variant from the highest item level
+  down (tier 1 the best), as the crafting helper's data does, gave the same
+  number as the header on all 18 explicit modifiers the five items carry;
+  test `real_fixture_tiers_equal_game_tiers` in
+  `apps/crafting-helper/crates/ch-data/tests/data.rs`. Other classes and
+  modifiers have not been compared.
+- **A revealed desecrated modifier can be a normal-pool modifier**
+  (measured, five items, two carrying one): the crossbow's `Incinerating`
+  (Tier 4) and the gloves' `of Exile` (Tier 2) join to modifiers in poe2db's
+  normal section, not its desecrated one, at those tiers; test
+  `desecrated_mods_join_to_normal_section` in the same file. So a reveal
+  may yield a normal-pool modifier; how many options a reveal offers is not
+  established.
 - Not established (no real text has shown it): a fractured modifier, an
   unrevealed desecrated modifier, a crafted modifier, an enchant, `Mirrored`,
   `Unidentified`, the class strings of the other equipment classes, a

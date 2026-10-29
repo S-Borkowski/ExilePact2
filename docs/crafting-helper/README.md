@@ -14,6 +14,7 @@ later versions' work.
   [`crafting-mechanics.md`](crafting-mechanics.md)
 - Research note (poe2db's modifier pages, the data extractor, the data
   files): [`crafting-helper-research.md`](crafting-helper-research.md)
+- Writing and checking a crafting blueprint: [`blueprints.md`](blueprints.md)
 - The item text parser the app will use:
   [`apps/crafting-helper/crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md)
 - How the app updates itself, shared with the quest tracker and the
@@ -75,6 +76,13 @@ later versions' work.
 - **An overlay**, a click-through, always-on-top window for the next step of
   a craft. It shows only while a craft is active, and 0.1.0 has no craft, so
   it never shows yet (Known limitations).
+- **The crafting engine exists, but no window uses it yet.** In the source
+  tree, without a UI: the modifier data's lookups and odds (`ch-data`),
+  the hand-edited blueprints under `apps/crafting-helper/blueprints/` and
+  their format ([`blueprints.md`](blueprints.md)), and the engine that
+  picks a blueprint route for an item and classifies each step as hit,
+  miss or unexpected (`ch-engine`). The craft window that shows it is a
+  later version's.
 
 ## Platforms and prerequisites
 
@@ -279,10 +287,14 @@ the research note:
 |---|---|
 | `apps/crafting-helper/crates/ch-app/` | The app's logic without Tauri: the store, the grab's checks and normalisation (`grab.rs`), the hotkey's rules (`hotkey.rs`), the saved settings and blocked currencies (`settings.rs`), the views (`view.rs`, the IPC contract `src/ipc.ts` mirrors), the commands, the overlay's state (`App::set_craft_active`), and the update commands and ticker (`updates.rs`, over the shared `ep-update`). Tested through a recording fake shell, a fake transport and a temporary store. |
 | `apps/crafting-helper/crates/ch-item/` | The item text parser, a std-only crate the shell does not call yet: [`crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md). |
+| `apps/crafting-helper/crates/ch-data/` | The modifier data under `data/`, embedded at build time: an item's variant from its base type, what it can roll at its item level, the join of each parsed modifier to its data modifier and tier, the affix limits (`AFFIX_LIMITS`), and one step's add and removal odds, or `unknown` with the reason. |
+| `apps/crafting-helper/crates/ch-blueprint/` | The blueprint format: the model (`model.rs`), the static catalogue of currencies, omens, bones, fluxes and catalysts with their ids (`catalogue.rs`), the structural validator whose every error is `<path>:<line>:<col>: <message>` (`validate.rs`), and the shipped blueprints, embedded by `build.rs`. |
+| `apps/crafting-helper/crates/ch-engine/` | The engine: blueprints resolved against the data, route choice for an item, its targets and the blocked currencies (`route.rs`), the guide's outcomes (`guide.rs`), the full catalogue with the data-backed essences, alloys and liquids, and the `check_blueprints` example. `ch-app` re-exports it for the craft window; no command or view uses it yet. |
+| `apps/crafting-helper/blueprints/` | The shipped blueprints, one TOML file each: how to write one is [`blueprints.md`](blueprints.md). |
 | `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start and shown without taking focus), each with its capability under `capabilities/`, the update transport over the shared `ep-net`, and the restart into an installed update. |
 | `apps/crafting-helper/src/` | The main page (`App.svelte`, `components/GrabPanel.svelte`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`) and the overlay's under `src/overlay/` (`overlay.html`). |
 | `apps/crafting-helper/theme/` | The quest tracker's theme, copied byte for byte (`theme.test.ts`). |
-| `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)); not read by 0.1.0. |
+| `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), read by `ch-data`; not read by the 0.1.0 app. |
 | `apps/crafting-helper/fixtures/` | `views/`, one main window view per state, and `app-settings/`, one Settings window view per update, install and settings state, shared by the page's tests and `ch-app`'s. |
 | `apps/shared/` | The update code the three apps share, its own Cargo workspace: `ep-net` (the only network code) and `ep-update`: [`docs/app-updates.md`](../app-updates.md). |
 | `tools/crafting_helper/` | The poe2db data extractor (`poe2db.py`) and the release cutter (`release.py`). |
@@ -296,6 +308,10 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --workspace --locked 
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test grab     # the grab, fake shell
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test hotkey   # the hotkey's rules
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test updates  # the update commands, fake transport
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked         # the data: join, valid modifiers, odds
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-blueprint --locked    # the format, the catalogue, the validator
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths
+cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
 npm --prefix apps/crafting-helper test                                                  # the pages, in jsdom
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
 py -3 -m unittest tests.test_crafting_helper_release                                    # the release cutter and workflow
@@ -323,10 +339,26 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   shared `ep-net`, reached only from `src-tauri`; no Tauri plugin but the
   global shortcut and single instance; the pinned CSP, the three windows'
   capabilities and the overlay window's settings; one version everywhere
-  (`ch-item`'s included); and every package already in the quest tracker's
-  locks but `minisign-verify`.
+  (`ch-item`'s included); every member crate but `ch-item` taking its
+  package keys and external dependencies from the workspace; and every
+  package already in the quest tracker's locks but `minisign-verify`. The
+  one workspace pin the quest tracker's workspace lacks, `toml` (for the
+  blueprint files), must be a version its `Cargo.lock` already holds.
 - The item parser's own tests and fixtures are described in
   [`crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md).
+- `ch-data`'s `tests/data.rs` joins the owner's five real items (the
+  parser's `fixtures/real/`) to the data and checks the anchored odds
+  (`ring_life_exalt_odds_match_the_weights`); the rest of its items are
+  constructed in the test. `ch-blueprint`'s `tests/format.rs` reads the
+  files under `tests/fixtures/valid/` and `tests/fixtures/invalid/` and
+  checks each error's line and column. `ch-engine`'s `tests/engine.rs`
+  covers route choice and outcomes; `tests/seeds_gear.rs` and
+  `tests/seeds_jewels_weapons.rs` walk each shipped blueprint on a hit and
+  a miss path, over the item texts under `tests/items/` (each folder's
+  `README.md` says which are real and which constructed); and
+  `tests/shipped.rs` validates and resolves every file under
+  `blueprints/`. After editing a blueprint, run `check_blueprints` (above)
+  and the `ch-engine` tests: [`blueprints.md`](blueprints.md).
 
 **Refreshing the modifier data**: see the research note's
 [Data extractor](crafting-helper-research.md#data-extractor).
@@ -384,6 +416,32 @@ release already exists, only its assets are replaced.
 - **0.1.0 crafts nothing.** It grabs and shows an item's text; it does not
   parse it in the app, choose a craft or suggest a step. The blocked
   currencies are saved but nothing reads them yet.
+- **The crafting engine is not in any window.** `ch-data`, `ch-blueprint`
+  and `ch-engine` are built and tested, and `ch-app` re-exports the engine,
+  but no command, view or setting uses it, and the blocked list is not
+  passed to it. Its limits, for the craft window to come:
+  - **Odds are often unknown.** Every jewel (poe2db shows no spawn weights
+    for jewels), every desecration and reveal (no established weights; a
+    reveal may also offer normal-pool modifiers, whose share is not
+    established), every flux (how it maps tiers is not established), and a
+    target whose weight is the site's placeholder 1 give `unknown` with the
+    reason. Known odds are one step's rough chance, never a simulation or
+    an expected cost.
+  - **The affix limits are assumed**: Magic 1 prefix and 1 suffix, Rare 3
+    and 3, Rare jewel 2 and 2, one more on the other side with a Contempt
+    liquid emotion. The owner's figures, not measured from the game.
+  - **The tier join is measured on five items.** The tier the engine
+    derives from poe2db's levels equalled the game's `Tier:` on all 18
+    joined modifiers of the owner's five real items
+    (`real_fixture_tiers_equal_game_tiers`); a class or modifier none of
+    them carries has not been compared.
+  - **The catalogue is larger than the blocked list.** About 220 currency,
+    omen, bone, essence and liquid ids exist, and a saved blocked list holds
+    at most 200 (`MAX_BLOCKED`); blocking everything is not possible yet.
+  - **A blueprint cannot branch into another**, and steps resting on a
+    mechanic not established (alloys with Crystallisation omens, flux tier
+    mapping, catalyst quality, rune sockets) are kept and said so in the
+    blueprint's `notes`; catalyst and rune steps are manual.
 - **The overlay never shows in 0.1.0.** It appears only while a craft is
   active, and no command or setting starts one yet. It is not placed over
   the game and does not hide by itself when the game is not in front.
@@ -442,6 +500,12 @@ release already exists, only its assets are replaced.
 - **A game patch** that adds, removes or rewords modifiers or crafting
   items: refresh the data with the extractor and update
   [`crafting-mechanics.md`](crafting-mechanics.md).
+- **A data refresh**: an essence, alloy or liquid emotion renamed or
+  removed breaks every blueprint that names its id, and a new crafting item
+  needs a catalogue entry in `ch-blueprint`'s `catalogue.rs`. Run
+  `check_blueprints` on `apps/crafting-helper/blueprints/` and the
+  `ch-data` and `ch-engine` tests ([`blueprints.md`](blueprints.md)); the
+  odds anchors in `ch-data`'s tests change with the weights.
 - **poe2db's pages changing**: the extractor stops with an error naming the
   page; see the research note.
 - **A dependency bump**: keep the versions equal to the quest tracker's
