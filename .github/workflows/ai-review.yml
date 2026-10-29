@@ -313,7 +313,9 @@ jobs:
       # stop that still posted a comment reads as one and not as a skip. It
       # is red all the same, like the check above: a review was requested.
       # tests/test_ai_review_workflow.py checks ADMITTED against the recorded
-      # last messages of those runs, and against a real review's.
+      # last messages of those runs, and against real reviews'. A bare
+      # "command" once matched "did not run the tests or the model's check
+      # command" on ExilePact2 #31, a review that had run 8 agents.
       #
       # The time floor scales with the diff: MIN_SECONDS plus one second per
       # LINES_PER_SECOND changed lines, capped at MAX_SECONDS. A flat 60 s
@@ -330,7 +332,7 @@ jobs:
           MIN_SECONDS: "30"
           MAX_SECONDS: "60"
           LINES_PER_SECOND: "10"
-          ADMITTED: "(did not|didn't) (run|launch|use|follow)[^.]*(multi-agent|agents|recipe|command)|not the (four|4) |single pass|(reviewed|read) the (code )?diff (myself|in a single pass)"
+          ADMITTED: "(did not|didn't) (run|launch|use|follow)[^.]*(multi-agent|agents|recipe|review command)|not the (four|4) |single pass|(reviewed|read) the (code )?diff (myself|in a single pass)"
         run: |
           agents=$(jq '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and (.name == "Agent" or .name == "Task"))] | length' "$RESULT_FILE")
           result=$(jq -c '[.[] | select(.type == "result")] | last // {}' "$RESULT_FILE")
