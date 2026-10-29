@@ -62,9 +62,17 @@ derived tier equals the game's `Tier:`; the two revealed desecrated ones
 
 - **Affix limits** (`AFFIX_LIMITS`, one table): Normal 0 and 0, Magic 1
   prefix and 1 suffix, Rare 3 and 3, Rare jewels 2 and 2. Not established
-  in the docs; the owner's default (2026-10-29). A Contempt liquid emotion
-  on the item (`+# Suffix Modifier allowed` as a prefix, or the reverse)
-  adds its value on the other side.
+  in the docs; the owner's default (2026-10-29). `item_affix_limits` then
+  counts every `Prefix Modifier allowed` / `Suffix Modifier allowed` line
+  on the item, implicit or explicit, with its sign: a Contempt liquid
+  emotion (`+# Suffix Modifier allowed` as a prefix, or the reverse) adds
+  one on the other side; a base implicit raises or lowers a side (Dusk
+  Amulet and Dusk Ring `+1` prefix and `-1` suffix, Gloam the reverse,
+  Distorted Amulet `-1` suffix, Twisted Amulet `-1` prefix, so a rare Dusk
+  Ring has 4 and 2). A side never goes below 0. `ch-item` reads a leading
+  `-` as the value's sign and keeps a leading `+` in the template; both
+  are counted. How the game writes a base's limit implicit in a copy is
+  not measured: `tests/limits.rs` builds its items from the data's lines.
 - **The add pool**: `normal`-section modifiers on the variant, of the sides
   with a free slot (narrowed by a side omen), minus any sharing a family
   with a modifier already on the item; each with its tiers at or below the
