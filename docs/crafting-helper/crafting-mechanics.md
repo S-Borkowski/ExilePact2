@@ -44,7 +44,26 @@ pages were kept on the fetching machine only.
 - `https://poe2db.tw/us/Minimum_Modifier_Level`: what the "Minimum Modifier
   Level" line on Greater and Perfect currency means.
 - `https://poe2db.tw/us/Modifiers`: fetched to look for the affix limits of a
-  rare item; it is an index page and does not state them (see Gaps).
+  rare item; it is an index page and does not state them (they are answered
+  from the 2026-10-29 sources below).
+
+Fetched 2026-10-29, for the 0.5 availability and slot facts (game version
+0.5.5; facts paraphrased, nothing pasted):
+
+- `https://www.pathofexile.com/forum/view-thread/3932540`: the official 0.5.0
+  patch notes (one crafted and one desecrated modifier per item, the
+  Standard-only Currency Exchange listings).
+- `https://pathofexile2.wiki.fextralife.com/Patch_Notes_040`: a summary of the
+  0.4.0 and older patch notes (the omens made unobtainable in 0.3.0, the
+  Homogenising drops disabled in 0.4.0).
+- `https://poe2db.tw/us/Greater_Orb_of_Augmentation`: a Magic item holds up
+  to two random modifiers.
+- `https://maxroll.gg/poe2/resources/path-of-exile-2-crafting-overview`: a
+  community guide, for the one-and-one and three-and-three split.
+
+The slot rules the crafting helper plans with, and the omen-stacking
+questions no page settles, are written down and labelled in
+[`docs/models/crafting-slots-spec.md`](../models/crafting-slots-spec.md).
 
 Not read: poe2wiki (behind a bot wall agents cannot pass) and craftofexile
 (serves no data in its HTML). Both are listed under Gaps.
@@ -61,10 +80,16 @@ currency's own description, that currency's entry carries the source.
   four. Unique items are out of scope for the helper.
 - **Prefixes and suffixes.** Every explicit modifier is either a prefix or a
   suffix (the extractor records which). Many omens restrict a currency to one
-  side: "Sinistral" means prefixes, "Dextral" means suffixes. How many of each
-  side a Magic and a Rare item may carry is not stated on the pages read (see
-  Gaps); the liquid emotions that grant "+1 prefix/suffix modifier allowed"
-  show that a per-side limit exists.
+  side: "Sinistral" means prefixes, "Dextral" means suffixes. A Magic item
+  carries at most one prefix and one suffix, a Rare at most three of each
+  (poe2db gives a Magic item two modifiers; maxroll's crafting overview gives
+  the per-side split; both fetched 2026-10-29). The liquid emotions that
+  grant "+1 prefix/suffix modifier allowed" are the way past those limits.
+- **Crafted and desecrated modifiers.** Since 0.5 an item may carry one
+  crafted modifier (an essence's modifier is one) and one desecrated
+  modifier, and a desecrated modifier no longer counts as crafted (0.5.0
+  patch notes, https://www.pathofexile.com/forum/view-thread/3932540,
+  fetched 2026-10-29).
 - **Item level and modifier level.** Each modifier tier has a level, and an
   item can only roll a tier whose level is at or below the item's level. The
   Greater and Perfect currencies raise a floor instead: they add only modifiers
@@ -104,18 +129,22 @@ Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
 Makes a Magic item Rare and adds one random modifier, keeping the modifiers it
 had. Omens of Sinistral and Dextral Coronation restrict the added modifier to
-one side; Omen of Homogenising Coronation makes it share a type with an
-existing modifier. Greater and Perfect versions exist.
+one side, but are no longer obtainable since 0.3.0; Omen of Homogenising
+Coronation makes it share a type with an existing modifier, and since 0.5 is
+on the Currency Exchange only in Standard. Greater and Perfect versions exist.
 
-Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
+Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28;
+https://www.pathofexile.com/forum/view-thread/3932540 and
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Orb of Alchemy
 
 Makes a Normal or Magic item Rare with four random modifiers. Omens of
 Sinistral and Dextral Alchemy push the result to the most prefixes or the
-most suffixes it can have.
+most suffixes it can have; they are no longer obtainable since 0.3.0.
 
-Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
+Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28;
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Exalted Orb
 
@@ -124,8 +153,15 @@ the game: Sinistral or Dextral Exaltation pick the side, Greater Exaltation
 adds two modifiers, Homogenising Exaltation matches an existing modifier's
 type and Catalysing Exaltation spends catalyst quality to favour a modifier
 kind. Players call a plain use a "slam". Greater and Perfect versions exist.
+It needs a free slot: it cannot be used on a Rare that already has six
+modifiers. Homogenising Exaltation is on the Currency Exchange only in
+Standard since 0.5. Which side a plain slam lands on when one side is full,
+and how the omens stack, are labelled in
+`docs/models/crafting-slots-spec.md`.
 
-Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
+Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28;
+https://poe2db.tw/us/Greater_Exalted_Orb and
+https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29
 
 ### Chaos Orb
 
@@ -341,9 +377,11 @@ family's guaranteed modifier. The perfect modifier is usually a different,
 stronger stat than the lower tiers add, and is often limited to one item kind
 (for example Perfect Essence of the Body only on body armour). Omens of
 Sinistral and Dextral Crystallisation choose which side the removal comes
-from.
+from. Since 0.5 the essence's modifier is the item's one crafted modifier, and
+it is always added.
 
-Source: https://poe2db.tw/us/Essence, fetched 2026-10-28
+Source: https://poe2db.tw/us/Essence, fetched 2026-10-28;
+https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29
 
 ### Essence of Hysteria
 
@@ -410,11 +448,17 @@ Level 40).
 ### Desecration and reveal
 
 The mechanism above: hidden modifier added, revealed later from a choice of
-options, one desecrated modifier per item. Omen of Abyssal Echoes allows one
-reroll of the offered options at reveal; Sinistral and Dextral Necromancy
-pick the side; Sovereign, Liege and Blackblooded force the lord.
+options, one desecrated modifier per item. A desecration needs no free slot:
+on a full item it removes a random existing modifier first. Since 0.5 the
+limit is one desecrated modifier per item, and that modifier no longer
+counts as the item's crafted one, so an item can carry one of each. The
+offered options can include ordinary modifiers unless an omen forces a lord.
+Omen of Abyssal Echoes allows one reroll of the offered options at reveal;
+Sinistral and Dextral Necromancy pick the side; Sovereign, Liege and
+Blackblooded force the lord.
 
-Source: https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-28
+Source: https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-28 and 2026-10-29;
+https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29
 
 ### Gnawed Jawbone
 
@@ -513,38 +557,51 @@ Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
 ### Omen of Sinistral Alchemy
 
-The next Orb of Alchemy gives the item as many prefixes as it can hold.
+The next Orb of Alchemy gives the item as many prefixes as it can hold. No
+longer obtainable since 0.3.0.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Dextral Alchemy
 
-The next Orb of Alchemy gives the item as many suffixes as it can hold.
+The next Orb of Alchemy gives the item as many suffixes as it can hold. No
+longer obtainable since 0.3.0.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Sinistral Coronation
 
-The next Regal Orb adds only a prefix.
+The next Regal Orb adds only a prefix. No longer obtainable since 0.3.0.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Dextral Coronation
 
-The next Regal Orb adds only a suffix.
+The next Regal Orb adds only a suffix. No longer obtainable since 0.3.0.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Homogenising Coronation
 
 The next Regal Orb adds a modifier of the same type as one already on the
-item. What "type" means here (family, tag) is not stated (see Gaps).
+item. What "type" means here (family, tag) is not stated (see Gaps). Its
+drops were disabled in 0.4.0; since 0.5 it is on the Currency Exchange only
+in Standard, and copies already owned still work.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://www.pathofexile.com/forum/view-thread/3932540 and
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Greater Exaltation
 
-The next Exalted Orb adds two random modifiers instead of one.
+The next Exalted Orb adds two random modifiers instead of one. Whether it
+needs two free slots, and whether with a Sinistral or Dextral Exaltation omen
+both modifiers land on that side, are not established; both are labelled in
+`docs/models/crafting-slots-spec.md`.
 
 Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
@@ -563,9 +620,12 @@ Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 ### Omen of Homogenising Exaltation
 
 The next Exalted Orb adds a modifier of the same type as one already on the
-item.
+item. Its drops were disabled in 0.4.0; since 0.5 it is on the Currency
+Exchange only in Standard, and copies already owned still work.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://www.pathofexile.com/forum/view-thread/3932540 and
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Catalysing Exaltation
 
@@ -577,9 +637,12 @@ Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
 ### Omen of Greater Annulment
 
-The next Orb of Annulment removes two modifiers.
+The next Orb of Annulment removes two modifiers. No longer obtainable since
+0.3.0, per the old patch notes; poe2db carries no legacy note and one
+community reference still lists it, so treat it as a legacy item.
 
-Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
+Source: https://poe2db.tw/us/Omen, fetched 2026-10-28;
+https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
 ### Omen of Sinistral Annulment
 
@@ -686,7 +749,10 @@ Source: not established
 An alloy works like a Perfect Essence: on a Rare item it removes one random
 modifier and adds a guaranteed one, chosen by the item kind. The modifiers are
 ones the ordinary pools do not offer (many about Runic Ward). Each entry names
-the item kinds and what the alloy adds there, in short.
+the item kinds and what the alloy adds there, in short. Whether an alloy's
+modifier is the item's one crafted modifier (the 0.5 limit, see Item basics)
+is not established: the 0.5.0 notes liken alloys to Perfect Essences without
+saying so, and only community guides state it (see Gaps).
 
 ### Runic Alloy
 
@@ -1258,9 +1324,21 @@ a better source or measures it in the game.
   that agents cannot pass; they need a browser. Reading them and filling the
   gaps below is the owner's to do (or a later workorder's), as an edit to
   this doc. craftofexile was not read either: its pages serve no data in HTML.
-- **Affix limits.** How many prefixes and suffixes a Magic and a Rare item
-  may carry. Players work with one of each on Magic and three of each on
-  Rare; no page read states it.
+- **Affix limits** (answered 2026-10-29). A Magic item carries one prefix
+  and one suffix, a Rare three and three: poe2db's Greater Orb of
+  Augmentation page (https://poe2db.tw/us/Greater_Orb_of_Augmentation) gives
+  a Magic item two modifiers, and maxroll's crafting overview
+  (https://maxroll.gg/poe2/resources/path-of-exile-2-crafting-overview)
+  gives the split. See Item basics.
+- **Omen stacking and slot edge cases.** Whether Omen of Greater Exaltation
+  with a Sinistral or Dextral Exaltation omen adds two modifiers of that
+  side, whether Greater Exaltation needs two free slots, whether an Exalted
+  Orb lands on the open side when the other is full, whether whittling
+  picks by modifier level, and whether a fractured modifier is ever removed
+  are not established (community guides or inference only). They are
+  labelled, with their sources, in `docs/models/crafting-slots-spec.md`.
+- **Alloys and the crafted limit.** Whether an alloy's modifier counts as the
+  item's one crafted modifier since 0.5; only community guides say so.
 - **Omen of Recombination**: listed with no effect text.
 - **Crystallisation on alloys.** The omen text names Perfect or corrupted
   essences only; posts 8, 12 and 13 use it with alloys. Not established

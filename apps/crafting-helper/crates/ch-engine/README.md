@@ -71,12 +71,72 @@ unknown with the reason.
   there).
 - **Actions**: the first alternative none of whose ids is blocked, with
   `desecrate` resolved to the bones that fit the class and item level
-  (Preserved, Ancient, Gnawed) and `side-omen` to the Sinistral or Dextral
-  omen of the bound target's side (or the step's `side`). Every alternative
-  blocked rejects the blueprint (`EveryAlternativeBlocked`); none usable,
-  `NoAlternativeFits`.
+  (Preserved, Ancient, Gnawed), `side-omen` to the Sinistral or Dextral
+  omen of the bound target's side (or the step's `side`), and
+  `greater-omen` to Omen of Greater Exaltation where two fit (below) or to
+  nothing. Every alternative blocked rejects the blueprint
+  (`EveryAlternativeBlocked`); none usable, `NoAlternativeFits`.
 - **Order**: fewer classes first, then load order. No cost, no expected
   number of tries.
+
+That is listed order, what a blueprint without `order` keeps. A
+state-ordered blueprint (`order = "state"`) is planned and guided by the
+rules below instead.
+
+## State order in brief
+
+The mechanism is written down in
+[docs/models/crafting-slots-spec.md](../../../../docs/models/crafting-slots-spec.md)
+and modelled in stdlib Python (`tools/crafting_helper/slot_model.py`); the
+engine computes the same numbers and picks the same steps.
+
+- **Slot accounting** (`src/slots.rs`, the one module the conditions, the
+  side rules, the placeholders and the projection all read): per side its
+  cap for the rarity (`ch-data`'s affix limits), its modifiers, `free`, the
+  targets it still `need`s (less one an unrevealed modifier there waits
+  for; on a Magic item at most the cap less the targets there) and
+  `spare = free - need`. A side is **blocked** when spare < 0 and it holds
+  a removable non-target (never fractured, unrevealed or desecrated),
+  **reserved** when every free slot is needed, **closable** when it needs
+  nothing and the other side does, **open** with a free slot. The
+  conditions `blocked_side`, `closable_side`, `one_side_open` and
+  `desecrated_unwanted` read these (in listed blueprints too).
+- **Next step**: the first step in file order that is a candidate on the
+  item as it stands: its `guard` holds, its binding is made, its goal is not
+  met, its side rule (`target`, `close`, `blocked`) finds a side and an
+  alternative fits (a free slot where an add, fill or essence lands, one on
+  a desecration's side). Bindings are made once, as soon as the item allows
+  (`essence` on a Magic item, `hardest` while a target is missing), shared
+  by every step with that binding and kept by the guide. No transitions:
+  the guide picks again after every change (`Outcome::transition` is
+  `picked`), is done when no target is missing, and stuck with every step's
+  reason otherwise.
+- **Fitting**: an Exalted Orb without a side omen is passed over while both
+  sides are open and one is reserved; `greater-omen` resolves to Omen of
+  Greater Exaltation only where the side has two free slots the step can
+  use (two placeable targets, or a fill) and the omen is not blocked; a
+  removal takes Omen of Whittling only when the whittle is certain (one
+  lowest-level modifier, a removable non-target on its side, every level
+  known) and the first annulment that would otherwise fit could take a
+  target, and a Sinistral or Dextral Annulment only when the other side
+  holds a target. The engine's pick is final.
+- **The projection** (`Route::steps`): the steps the craft takes if each
+  one hits, from the item: an add places its targets (two with Greater), a
+  fill adds fillers (non-targets of unknown level), an essence makes the
+  item Rare with its target, a desecration leaves an unrevealed modifier
+  waiting for its target, a reveal places it, a removal takes the
+  non-target its action would. A step may come twice. The first step's
+  odds are read off the item as in listed order; a later one's off the
+  projected item, saying "if the earlier steps hit".
+- **Rejections**, in order after the class and the start:
+  `TargetsExceedSlots` (a side's targets alone exceed its Rare cap),
+  `DesecratedTargetUnplaced` (no desecrate step), and `RouteCannotFinish`
+  with `why` = `no-candidate` (with each step's reason), `no-change` (a
+  step's hit changes nothing) or `step-cap` (the projection reaches
+  `STEP_CAP`, 16 steps).
+- **Hit, miss, unexpected** as in listed order; a `side = "blocked"`
+  removal hits when a non-target went from a side that was blocked before
+  it.
 
 ## Outcomes in brief
 
@@ -128,11 +188,29 @@ per valid file, and exits 1 on any error (2 with no argument).
 
 ```text
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test engine
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test state_order
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
 
 `tests/engine.rs` covers route choice and outcomes over the test
 blueprints and constructed items in `tests/items/engine/` (its README lists
-them) and `ch-item`'s real fixtures; `tests/common/` holds the helpers every
-engine test file shares. A `-p` build does not need the npm build.
+them) and `ch-item`'s real fixtures, and holds the listed-order baseline:
+the listed `fill-desecrate-exalt` (retired from the shipped set in 0.1.1),
+kept as a test copy in
+`tests/items/gear/fill-desecrate-exalt/`, still names a plain Exalted Orb on
+two prefixes and a suffix and still rejects a rare with one target.
+`tests/state_order.rs` covers state order over the `test-state-*`
+blueprints and `ring-state-*` items there: the guide's pick, the
+projection, the passed-over exalt, `greater-omen`, the removals, the
+desecration's free slot and the rejections. `tests/common/` holds the
+helpers every engine test file shares. A `-p` build does not need the npm
+build.
+
+`tests/items/slots/cases.json` is the contract between the model and the
+engine: each case's abstract item and targets and what each shipped
+state-ordered blueprint must preview on it. The model owns it
+(`tests/test_crafting_helper_slot_model.py`); the engine's parity test,
+`tests/slots.rs`, builds a constructed item per case and asserts every
+expectation. A disagreement is settled by the spec, never by editing the
+case file from the engine's side.

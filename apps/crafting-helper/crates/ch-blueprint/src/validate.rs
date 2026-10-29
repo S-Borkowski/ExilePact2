@@ -12,7 +12,9 @@
 //!    at the first problem.
 //! 3. The meaning, on the model: the id against the file stem, classes,
 //!    currency and omen ids, omens against their currency, goals against
-//!    what the action can produce, step ids and go-tos, empty lists.
+//!    what the action can produce, step ids and go-tos, empty lists, the
+//!    keys only one order takes, `relies_on` against the known facts, and a
+//!    step's `say` against the omens its actions carry.
 //!
 //! What needs the modifier data (an essence, alloy or liquid that exists
 //! for none of the blueprint's classes) is `ch-engine`'s check.
@@ -24,8 +26,10 @@ use std::path::Path;
 use serde::Deserialize;
 use toml::de::{DeTable, DeValue};
 
-use crate::catalogue::{self, Currency, Kind, CLASSES, SIDE_OMEN};
-use crate::model::{Binding, Blueprint, Goal, Rarity, Side, Span, Spanned, Transition, When};
+use crate::catalogue::{
+    self, Currency, Kind, CLASSES, EXALTED_ORBS, GREATER_EXALTATION, GREATER_OMEN, NOT_ESTABLISHED, SIDE_OMEN,
+};
+use crate::model::{Binding, Blueprint, Goal, Order, Rarity, Side, Span, Spanned, Step, Transition, When};
 
 /// One validation error.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -204,9 +208,13 @@ const START: &[Field] = &[
     opt("fractured_wanted", Ty::Bool),
     opt("unwanted_at_most", Ty::Uint),
     opt("essence_binds", Ty::Bool),
+    opt("blocked_side", Ty::Bool),
+    opt("closable_side", Ty::Bool),
+    opt("one_side_open", Ty::Bool),
+    opt("desecrated_unwanted", Ty::Bool),
 ];
 
-/// The keys of a step's `requires` and `until`: a start's and more.
+/// The keys of a step's `requires`, `until` and `guard`: a start's and more.
 const STEP_CONDITION: &[Field] = &[
     opt("rarity", Ty::Words(Rarity::NAMES)),
     opt("wanted_at_least", Ty::Uint),
@@ -215,6 +223,10 @@ const STEP_CONDITION: &[Field] = &[
     opt("fractured_wanted", Ty::Bool),
     opt("unwanted_at_most", Ty::Uint),
     opt("essence_binds", Ty::Bool),
+    opt("blocked_side", Ty::Bool),
+    opt("closable_side", Ty::Bool),
+    opt("one_side_open", Ty::Bool),
+    opt("desecrated_unwanted", Ty::Bool),
     opt("free_prefixes_at_least", Ty::Uint),
     opt("free_suffixes_at_least", Ty::Uint),
     opt("no_desecrated", Ty::Bool),
@@ -231,7 +243,7 @@ const STEP: &[Field] = &[
     req("id", Ty::Str),
     req("say", Ty::Str),
     req("goal", Ty::Word(Goal::NAMES)),
-    opt("side", Ty::Word(Side::NAMES)),
+    opt("side", Ty::Word(Step::SIDE_WORDS)),
     opt("bind", Ty::Word(Binding::NAMES)),
     opt("requires", Ty::Table(STEP_CONDITION, "a step's `requires`")),
     opt("when", Ty::Word(When::NAMES)),
@@ -239,6 +251,7 @@ const STEP: &[Field] = &[
     opt("action", Ty::Tables(ACTION, "[[step.action]]")),
     opt("on_hit", Ty::Transition),
     opt("on_miss", Ty::Transition),
+    opt("guard", Ty::Table(STEP_CONDITION, "a step's `guard`")),
 ];
 
 /// The keys of a blueprint file.
@@ -248,6 +261,8 @@ const TOP: &[Field] = &[
     req("classes", Ty::StrList),
     req("source", Ty::Str),
     opt("notes", Ty::Str),
+    opt("order", Ty::Word(Order::NAMES)),
+    opt("relies_on", Ty::StrList),
     opt("start", Ty::Tables(START, "[[start]]")),
     opt("step", Ty::Tables(STEP, "[[step]]")),
 ];
@@ -260,7 +275,7 @@ fn walk(errors: &mut Errors<'_>, table: &DeTable<'_>, span: Span, fields: &[Fiel
             None if std::ptr::eq(fields, START) && STEP_CONDITION.iter().any(|f| f.key == name) => {
                 errors.push(
                     key.span(),
-                    format!("`{name}` is a step condition (`requires`, `until`), not a start one"),
+                    format!("`{name}` is a step condition (`requires`, `until`, `guard`), not a start one"),
                 );
             }
             None => {
@@ -372,6 +387,34 @@ fn meaning(errors: &mut Errors<'_>, b: &Blueprint) {
         }
     }
 
+    let order = b.order();
+    if let (Order::State, Some(word), None) = (order, &b.order, &b.relies_on) {
+        errors.push(
+            word.span(),
+            "`order = \"state\"` needs `relies_on`: the not-established facts the route relies on, `[]` for none",
+        );
+    }
+    if let Some(relies) = &b.relies_on {
+        let mut named: Vec<&str> = Vec::new();
+        for fact in relies.get_ref() {
+            let fact_id = fact.get_ref().as_str();
+            if named.contains(&fact_id) {
+                errors.push(fact.span(), format!("`relies_on`: `{fact_id}` is named twice"));
+                continue;
+            }
+            named.push(fact_id);
+            if !NOT_ESTABLISHED.contains(&fact_id) {
+                errors.push(
+                    fact.span(),
+                    format!(
+                        "`relies_on`: `{fact_id}` is not a not-established fact (known: {})",
+                        NOT_ESTABLISHED.join(", ")
+                    ),
+                );
+            }
+        }
+    }
+
     if b.starts.is_empty() {
         errors.push(0..0, "no [[start]]: a blueprint needs at least one start alternative");
     }
@@ -395,11 +438,11 @@ fn meaning(errors: &mut Errors<'_>, b: &Blueprint) {
     }
 
     for step in &b.steps {
-        check_step(errors, step, &first);
+        check_step(errors, step, &first, order);
     }
 }
 
-fn check_step(errors: &mut Errors<'_>, step: &Spanned<crate::model::Step>, ids: &HashMap<&str, Span>) {
+fn check_step(errors: &mut Errors<'_>, step: &Spanned<Step>, ids: &HashMap<&str, Span>, order: Order) {
     let s = step.get_ref();
     let goal = *s.goal.get_ref();
     let id = s.id.get_ref();
@@ -408,6 +451,37 @@ fn check_step(errors: &mut Errors<'_>, step: &Spanned<crate::model::Step>, ids: 
     }
     if s.say.get_ref().trim().is_empty() {
         errors.push(s.say.span(), format!("step `{id}`: `say` is empty"));
+    }
+    match order {
+        Order::State => {
+            let listed_only = [
+                ("requires", s.requires.as_ref().map(Spanned::span)),
+                ("until", s.until.as_ref().map(Spanned::span)),
+                ("on_hit", s.on_hit.as_ref().map(Spanned::span)),
+                ("on_miss", s.on_miss.as_ref().map(Spanned::span)),
+            ];
+            for (key, span) in listed_only {
+                if let Some(span) = span {
+                    errors.push(
+                        span,
+                        format!(
+                            "step `{id}`: `{key}` has no place in a state-ordered blueprint, whose next step is the first one whose `guard` holds"
+                        ),
+                    );
+                }
+            }
+        }
+        Order::Listed => {
+            if let Some(rule) = &s.side_rule {
+                errors.push(
+                    rule.span(),
+                    format!("step `{id}`: `side = \"{}\"` needs `order = \"state\"`", rule.get_ref()),
+                );
+            }
+            if let Some(guard) = &s.guard {
+                errors.push(guard.span(), format!("step `{id}`: `guard` needs `order = \"state\"`"));
+            }
+        }
     }
     for t in [&s.on_hit, &s.on_miss].into_iter().flatten() {
         if let Transition::Goto(target) = t.get_ref() {
@@ -437,9 +511,89 @@ fn check_step(errors: &mut Errors<'_>, step: &Spanned<crate::model::Step>, ids: 
     for action in &s.actions {
         check_action(errors, s, action.get_ref());
     }
+    check_say(errors, s);
 }
 
-fn check_action(errors: &mut Errors<'_>, step: &crate::model::Step, action: &crate::model::Action) {
+/// A step's `say` promises no omen its actions lack: when it names an omen
+/// (by its English name, or without the leading "Omen of" where two or more
+/// words are left, "Dextral Exaltation"), an action carries that omen; when
+/// it mentions an omen at all (the word, or a name), an action carries one.
+/// `side-omen` counts as both of its currency's side omens, `greater-omen`
+/// as Omen of Greater Exaltation.
+fn check_say(errors: &mut Errors<'_>, step: &Step) {
+    let id = step.id.get_ref();
+    let say = step.say.get_ref().to_lowercase();
+
+    let mut carries_one = false;
+    let mut carried: Vec<&str> = Vec::new();
+    for action in &step.actions {
+        let action = action.get_ref();
+        let currency = Currency::of(action.currency.get_ref());
+        for omen in &action.omens {
+            carries_one = true;
+            match omen.get_ref().as_str() {
+                SIDE_OMEN => {
+                    for side in [Side::Prefix, Side::Suffix] {
+                        if let Some(e) = currency.and_then(|c| c.side_omen(side)) {
+                            carried.push(e.id);
+                        }
+                    }
+                }
+                GREATER_OMEN => carried.push(GREATER_EXALTATION),
+                other => carried.push(other),
+            }
+        }
+    }
+
+    let mut mentions = say
+        .split(|c: char| !c.is_alphanumeric())
+        .any(|word| word == "omen" || word == "omens");
+    let mut lacking = false;
+    for entry in catalogue::CATALOGUE.iter().filter(|e| e.kind == Kind::Omen) {
+        if !omen_phrases(entry.name).iter().any(|p| has_phrase(&say, p)) {
+            continue;
+        }
+        mentions = true;
+        if !carried.contains(&entry.id) {
+            lacking = true;
+            errors.push(
+                step.say.span(),
+                format!("step `{id}`: `say` names {}, which no action of the step carries", entry.name),
+            );
+        }
+    }
+    if mentions && !carries_one && !lacking {
+        errors.push(
+            step.say.span(),
+            format!("step `{id}`: `say` mentions an omen, but no action of the step carries one"),
+        );
+    }
+}
+
+/// The lowercase phrases that name an omen in a step's text: its English
+/// name, and the name without "Omen of" (and "the") when two or more words
+/// are left. "Light" or "Whittling" alone name nothing.
+fn omen_phrases(name: &str) -> Vec<String> {
+    let full = name.to_lowercase();
+    let mut phrases = vec![full.clone()];
+    let short = full.strip_prefix("omen of ").unwrap_or(&full);
+    let short = short.strip_prefix("the ").unwrap_or(short);
+    if short.split_whitespace().count() >= 2 {
+        phrases.push(short.to_string());
+    }
+    phrases
+}
+
+/// Whether `phrase` is in `text` as whole words.
+fn has_phrase(text: &str, phrase: &str) -> bool {
+    text.match_indices(phrase).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + phrase.len()..].chars().next();
+        !before.is_some_and(char::is_alphanumeric) && !after.is_some_and(char::is_alphanumeric)
+    })
+}
+
+fn check_action(errors: &mut Errors<'_>, step: &Step, action: &crate::model::Action) {
     let id = step.id.get_ref();
     let goal = *step.goal.get_ref();
     let currency_id = action.currency.get_ref().as_str();
@@ -474,8 +628,23 @@ fn check_action(errors: &mut Errors<'_>, step: &crate::model::Step, action: &cra
         }
         seen.push(omen_id);
 
+        if omen_id == GREATER_OMEN {
+            let on_an_exalt = matches!(currency, Some(Currency::Static(e)) if EXALTED_ORBS.contains(&e.id));
+            // An unknown currency has had its error.
+            if currency.is_some() && !on_an_exalt {
+                errors.push(
+                    span,
+                    format!(
+                        "step `{id}`: `{GREATER_OMEN}` on `{currency_id}`; it is for an Exalted Orb ({})",
+                        EXALTED_ORBS.join(", ")
+                    ),
+                );
+            }
+            continue;
+        }
+
         if omen_id == SIDE_OMEN {
-            if step.bind.is_none() && step.side.is_none() {
+            if step.bind.is_none() && step.side.is_none() && step.side_rule.is_none() {
                 errors.push(
                     span.clone(),
                     format!("step `{id}`: `{SIDE_OMEN}` needs the step's `bind` or `side` to pick a side"),
@@ -527,6 +696,12 @@ fn check_action(errors: &mut Errors<'_>, step: &crate::model::Step, action: &cra
             format!("step `{id}`: `{SIDE_OMEN}` beside `{}` on one action", sides[0].1),
         );
     }
+    if seen.contains(&GREATER_OMEN) && seen.contains(&GREATER_EXALTATION) {
+        errors.push(
+            action.currency.span(),
+            format!("step `{id}`: `{GREATER_OMEN}` beside `{GREATER_EXALTATION}` on one action"),
+        );
+    }
 }
 
 fn effect_words(effect: catalogue::Effect) -> &'static str {
@@ -563,7 +738,7 @@ fn fits_words(fits: catalogue::OmenFits) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::Condition;
+    use crate::model::{Condition, SideRule};
 
     #[test]
     fn the_shape_pass_knows_the_models_condition_keys() {
@@ -576,6 +751,24 @@ mod tests {
             .copied()
             .collect();
         assert_eq!(step, both);
+        let guard = STEP.iter().find(|f| f.key == "guard").map(|f| f.ty);
+        assert!(matches!(guard, Some(Ty::Table(fields, _)) if std::ptr::eq(fields, STEP_CONDITION)));
+    }
+
+    #[test]
+    fn a_steps_side_takes_the_sides_then_the_rules() {
+        let words: Vec<&str> = Side::NAMES.iter().chain(SideRule::NAMES).copied().collect();
+        assert_eq!(words, Step::SIDE_WORDS);
+    }
+
+    #[test]
+    fn omens_are_named_by_whole_phrases() {
+        assert_eq!(omen_phrases("Omen of Light"), ["omen of light"]);
+        assert_eq!(omen_phrases("Omen of Dextral Exaltation"), ["omen of dextral exaltation", "dextral exaltation"]);
+        assert_eq!(omen_phrases("Omen of the Sovereign"), ["omen of the sovereign"]);
+        assert!(has_phrase("exalt (dextral exaltation)", "dextral exaltation"));
+        assert!(!has_phrase("sinistral or dextral exaltations", "dextral exaltation"));
+        assert!(!has_phrase("omen of lights", "omen of light"));
     }
 
     #[test]

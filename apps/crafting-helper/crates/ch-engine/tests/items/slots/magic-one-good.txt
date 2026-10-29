@@ -1,0 +1,13 @@
+Item Class: Amulets
+Rarity: Magic
+Gentian Jade Amulet
+--------
+Requires: Level 8
+--------
+Item Level: 82
+--------
+{ Implicit Modifier — Attribute }
++12(10-15) to Dexterity
+--------
+{ Prefix Modifier "Gentian" (Tier: 6) — Mana }
++95(90-104) to maximum Mana

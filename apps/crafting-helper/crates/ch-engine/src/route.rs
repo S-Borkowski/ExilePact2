@@ -6,10 +6,12 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use ch_blueprint::catalogue::{self, bones_for, Currency, Effect, ItemGroup, SIDE_OMEN};
-use ch_blueprint::{Action, Binding, Goal, Rarity as BpRarity, Side, Spanned, Step};
+use ch_blueprint::catalogue::{
+    self, bones_for, Currency, Effect, ItemGroup, GREATER_EXALTATION, GREATER_OMEN, SIDE_OMEN,
+};
+use ch_blueprint::{Action, Binding, Goal, Order, Rarity as BpRarity, Side, Spanned, Step};
 use ch_data::{Kind, Odds, Section};
-use ch_item::Item;
+use ch_item::{Item, Rarity};
 use serde::Serialize;
 
 use crate::catalogue::data_entries;
@@ -18,6 +20,8 @@ use crate::context::{
 };
 use crate::engine::{Engine, Resolved};
 use crate::odds::{step_odds, target_difficulty};
+use crate::slots::SIDES;
+use crate::state_order;
 
 /// The way a step is taken: the first alternative none of whose ids is
 /// blocked, with its placeholders resolved.
@@ -50,6 +54,8 @@ pub struct StepView {
     pub id: String,
     pub say: String,
     pub goal: Goal,
+    /// The side the blueprint names; in a state-ordered route, the side its
+    /// side rule resolved to on the item.
     pub side: Option<Side>,
     pub binding: Option<Binding>,
     /// The bound target, when the binding names one.
@@ -78,13 +84,40 @@ pub struct Route {
     pub source: String,
     pub notes: Option<String>,
     pub classes: Vec<String>,
+    /// How the guide picks the next step: by transitions (`listed`) or from
+    /// the item (`state`).
+    pub order: Order,
     /// The `[[start]]` alternative the item met, from 0.
     pub start: usize,
-    /// The steps taken, in blueprint order.
+    /// Listed order: the steps taken, in blueprint order. State order: the
+    /// projection, the steps the craft takes if each one hits (a step may
+    /// come more than once), each on the item as the earlier ones leave it.
     pub steps: Vec<StepView>,
     pub skipped: Vec<Skipped>,
     /// Step id to the target an `essence` or `hardest` binding chose.
     pub bindings: BTreeMap<String, String>,
+}
+
+/// Why a state-ordered route's hit path cannot finish.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Stall {
+    /// A target is missing and no step is a candidate.
+    NoCandidate,
+    /// A step's hit would leave the item as it was.
+    NoChange,
+    /// The projection reached its step cap without finishing.
+    StepCap,
+}
+
+impl fmt::Display for Stall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Stall::NoCandidate => "no-candidate",
+            Stall::NoChange => "no-change",
+            Stall::StepCap => "step-cap",
+        })
+    }
 }
 
 /// Why a blueprint does not apply to the item.
@@ -103,6 +136,20 @@ pub enum Rejection {
     CannotBind { step: String, why: String },
     /// A `desecrated`-section target no desecrate or reveal step can place.
     DesecratedTargetUnplaced { target: String },
+    /// State order: a side's targets alone are more than its Rare cap.
+    TargetsExceedSlots {
+        side: Side,
+        targets: usize,
+        slots: usize,
+    },
+    /// State order: the projection does not reach an item with every
+    /// target. `step` is the step concerned (the one that changes nothing);
+    /// `reasons` says, for no candidate, why each step is not one.
+    RouteCannotFinish {
+        why: Stall,
+        step: Option<String>,
+        reasons: Vec<String>,
+    },
 }
 
 impl fmt::Display for Rejection {
@@ -128,6 +175,36 @@ impl fmt::Display for Rejection {
                 f,
                 "`{target}` is a desecrated modifier and no desecrate step can place it"
             ),
+            Rejection::TargetsExceedSlots {
+                side,
+                targets,
+                slots,
+            } => write!(
+                f,
+                "{targets} {} targets, and a rare item has {slots} {} slots",
+                side.name(),
+                side.name()
+            ),
+            Rejection::RouteCannotFinish { why, step, reasons } => {
+                match why {
+                    Stall::NoCandidate => {
+                        f.write_str("no step can be taken while a target is missing")?
+                    }
+                    Stall::NoChange => f.write_str("a step's hit would leave the item as it is")?,
+                    Stall::StepCap => write!(
+                        f,
+                        "the route does not finish within {} steps",
+                        state_order::STEP_CAP
+                    )?,
+                }
+                if let Some(step) = step {
+                    write!(f, " (step `{step}`)")?;
+                }
+                if !reasons.is_empty() {
+                    write!(f, " ({})", reasons.join("; "))?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -213,6 +290,56 @@ pub(crate) fn route_for(ctx: &Ctx, resolved: &Resolved) -> Result<Route, Rejecti
     let Some(start) = start else {
         return Err(Rejection::NoStartFits { failed });
     };
+    let route = |steps, skipped, bindings| Route {
+        blueprint: resolved.id().to_string(),
+        name: b.name.get_ref().clone(),
+        source: b.source.get_ref().clone(),
+        notes: b.notes.as_ref().map(|n| n.get_ref().clone()),
+        classes: classes.clone(),
+        order: b.order(),
+        start,
+        steps,
+        skipped,
+        bindings,
+    };
+
+    if b.order() == Order::State {
+        // A side's targets alone must fit its Rare cap.
+        if let Some(rare) = ch_data::item_affix_limits(ctx.item, &Rarity::Rare) {
+            for side in SIDES {
+                let targets = ctx.targets.iter().filter(|t| t.side == side).count();
+                if targets > rare.on(side) {
+                    return Err(Rejection::TargetsExceedSlots {
+                        side: side_of(side),
+                        targets,
+                        slots: rare.on(side),
+                    });
+                }
+            }
+        }
+        // Only a desecration places a desecrated-section target.
+        let desecrates = b
+            .steps
+            .iter()
+            .any(|s| *s.get_ref().goal.get_ref() == Goal::Desecrate);
+        if let Some(t) = st
+            .missing(ctx.targets.len())
+            .into_iter()
+            .find(|&t| ctx.targets[t].section == Section::Desecrated)
+        {
+            if !desecrates {
+                return Err(Rejection::DesecratedTargetUnplaced {
+                    target: ctx.targets[t].mod_id.clone(),
+                });
+            }
+        }
+        let projection = state_order::project(ctx, &b.steps, &st)?;
+        return Ok(route(
+            projection.steps,
+            projection.skipped,
+            projection.bindings,
+        ));
+    }
 
     let mut bindings = BTreeMap::new();
     let mut steps = Vec::new();
@@ -251,17 +378,7 @@ pub(crate) fn route_for(ctx: &Ctx, resolved: &Resolved) -> Result<Route, Rejecti
         }
     }
 
-    Ok(Route {
-        blueprint: resolved.id().to_string(),
-        name: b.name.get_ref().clone(),
-        source: b.source.get_ref().clone(),
-        notes: b.notes.as_ref().map(|n| n.get_ref().clone()),
-        classes,
-        start,
-        steps,
-        skipped,
-        bindings,
-    })
+    Ok(route(steps, skipped, bindings))
 }
 
 /// What a step is on the item.
@@ -302,7 +419,12 @@ pub(crate) fn pick_step(
         let essence = (binding == Some(Binding::Essence))
             .then_some(target)
             .flatten();
-        match choose_action(ctx, st, step, target, essence) {
+        let side = target
+            .map(|t| side_of(ctx.targets[t].side))
+            .or_else(|| step.side.as_ref().map(|s| *s.get_ref()));
+        let placeable = target.map_or_else(|| eligible.clone(), |t| vec![t]);
+        let greater = greater_fits(ctx, st, goal, side.map(kind_of), &placeable);
+        match choose_action(ctx, st, step, side, greater, essence) {
             Ok(a) => Some(a),
             Err(ActionProblem::AllBlocked) => {
                 return StepPick::Reject(Rejection::EveryAlternativeBlocked { step: id })
@@ -428,7 +550,7 @@ fn bind(
 
 /// The target with the lowest add odds; unknown odds count as hardest,
 /// ties go to target order.
-fn hardest(ctx: &Ctx, st: &State, candidates: &[usize]) -> Option<usize> {
+pub(crate) fn hardest(ctx: &Ctx, st: &State, candidates: &[usize]) -> Option<usize> {
     let mut best: Option<(usize, Option<f64>)> = None;
     for &t in candidates {
         let p = target_difficulty(ctx, st, t);
@@ -450,7 +572,7 @@ fn hardest(ctx: &Ctx, st: &State, candidates: &[usize]) -> Option<usize> {
 /// alloys and liquid emotions work on a Rare one. `lenient` lets a Normal
 /// item count as Magic (a start condition, before the blueprint's own
 /// transmute).
-fn essence_fits_rarity(effect: Effect, rarity: Option<BpRarity>, lenient: bool) -> bool {
+pub(crate) fn essence_fits_rarity(effect: Effect, rarity: Option<BpRarity>, lenient: bool) -> bool {
     match effect {
         Effect::Upgrade => {
             rarity == Some(BpRarity::Magic) || (lenient && rarity == Some(BpRarity::Normal))
@@ -463,7 +585,7 @@ fn essence_fits_rarity(effect: Effect, rarity: Option<BpRarity>, lenient: bool) 
 /// The tier at which one of `entries` adds target `t` on the item, at its
 /// floor or better. An upgrading essence cannot add a modifier whose family
 /// is already on the item.
-fn essence_adds(
+pub(crate) fn essence_adds(
     ctx: &Ctx,
     st: &State,
     entries: &[crate::catalogue::DataEntry],
@@ -603,9 +725,44 @@ enum ActionProblem {
     NoneFits(Vec<String>),
 }
 
-enum AltProblem {
+pub(crate) enum AltProblem {
     Blocked,
     Unfit(String),
+}
+
+/// Whether `greater-omen` resolves to Omen of Greater Exaltation
+/// (docs/models/crafting-slots-spec.md, "`greater-omen`"): the step's side
+/// (the item, with none) has two free slots, the step can use two (a fill
+/// always; an add when two of `placeable` are on that side), and the omen
+/// is not blocked.
+pub(crate) fn greater_fits(
+    ctx: &Ctx,
+    st: &State,
+    goal: Goal,
+    side: Option<Kind>,
+    placeable: &[usize],
+) -> bool {
+    if ctx.is_blocked(GREATER_EXALTATION) {
+        return false;
+    }
+    let free = match side {
+        Some(s) => st.free(s),
+        None => st.free(Kind::Prefix) + st.free(Kind::Suffix),
+    };
+    if free < 2 {
+        return false;
+    }
+    match goal {
+        Goal::Fill => true,
+        Goal::AddWanted => {
+            placeable
+                .iter()
+                .filter(|&&t| side.is_none_or(|s| ctx.targets[t].side == s))
+                .count()
+                >= 2
+        }
+        _ => false,
+    }
 }
 
 /// The first alternative none of whose ids (placeholders resolved) is
@@ -614,13 +771,14 @@ fn choose_action(
     ctx: &Ctx,
     st: &State,
     step: &Step,
-    target: Option<usize>,
+    side: Option<Side>,
+    greater: bool,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, ActionProblem> {
     let mut blocked = 0;
     let mut reasons = Vec::new();
     for (i, action) in step.actions.iter().enumerate() {
-        match try_alternative(ctx, st, step, i, action.get_ref(), target, essence_for) {
+        match try_alternative(ctx, st, i, action.get_ref(), side, greater, essence_for) {
             Ok(chosen) => return Ok(chosen),
             Err(AltProblem::Blocked) => blocked += 1,
             Err(AltProblem::Unfit(why)) => reasons.push(why),
@@ -633,13 +791,17 @@ fn choose_action(
     }
 }
 
-fn try_alternative(
+/// One alternative with its placeholders resolved: `side-omen` to the
+/// currency's omen for `side` (the bound target's, or the step's), and
+/// `greater-omen` to Omen of Greater Exaltation when `greater` says it
+/// fits, else to nothing. `Blocked` when an id it uses is blocked.
+pub(crate) fn try_alternative(
     ctx: &Ctx,
     st: &State,
-    step: &Step,
     alternative: usize,
     action: &Action,
-    target: Option<usize>,
+    side: Option<Side>,
+    greater: bool,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, AltProblem> {
     let written = action.currency.get_ref().as_str();
@@ -737,15 +899,18 @@ fn try_alternative(
         ),
     };
 
-    let side = target
-        .map(|t| side_of(ctx.targets[t].side))
-        .or_else(|| step.side.as_ref().map(|s| *s.get_ref()));
     let mut omens = Vec::new();
     let mut omen_names = Vec::new();
     let mut omen_side = None;
     for omen in &action.omens {
         let id = omen.get_ref().as_str();
-        let entry = if id == SIDE_OMEN {
+        if id == GREATER_OMEN && !greater {
+            continue;
+        }
+        let entry = if id == GREATER_OMEN {
+            catalogue::entry(GREATER_EXALTATION)
+                .ok_or_else(|| AltProblem::Unfit(format!("unknown omen `{GREATER_EXALTATION}`")))?
+        } else if id == SIDE_OMEN {
             let Some(s) = side else {
                 return Err(AltProblem::Unfit(
                     "`side-omen` with no bound target or side".to_string(),

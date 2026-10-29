@@ -1,0 +1,94 @@
+# A state-ordered blueprint using every key the state order adds, so the
+# shape pass and the model are checked to agree on them.
+id = "state-every-key"
+name = "State order, every key"
+classes = ["Rings", "Amulets"]
+source = "roadmap"
+order = "state"
+relies_on = ["greater-with-side-omen", "greater-needs-two-free", "whittling-mod-level"]
+
+[[start]]
+rarity = ["rare"]
+blocked_side = false
+closable_side = true
+one_side_open = false
+desecrated_unwanted = false
+
+[[start]]
+rarity = ["magic"]
+essence_binds = true
+
+[[step]]
+id = "unseal"
+say = "Omen of Light with an Orb of Annulment: the desecrated modifier goes"
+goal = "remove-desecrated"
+guard = { desecrated_unwanted = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "clean"
+say = "Whittle the blocker when it is the lowest level, else annul it (Sinistral or Dextral Annulment)"
+goal = "remove-unwanted"
+side = "blocked"
+guard = { blocked_side = true }
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "essence"
+say = "Use the essence that adds a target"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+guard = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "greater-essence-of-the-body"
+
+[[step]]
+id = "close"
+say = "Close the side: an Exalted Orb with its side omen, and Omen of Greater Exaltation when two slots are free"
+goal = "fill"
+side = "close"
+guard = { closable_side = true, one_side_open = false }
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen", "greater-omen"]
+
+[[step]]
+id = "slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+guard = { rarity = ["rare"], free_prefixes_at_least = 0, unwanted_at_most = 3 }
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen", "greater-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["greater-omen", "side-omen"]
+
+[[step]]
+id = "last"
+say = "Exalt the one open side"
+goal = "add-wanted"
+side = "prefix"
+guard = { one_side_open = true }
+
+[[step.action]]
+currency = "exalted-orb"

@@ -1,0 +1,37 @@
+id = "listed-guard"
+name = "Listed order with state order's keys"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+one_side_open = true
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "add-wanted"
+side = "target"
+guard = { blocked_side = false }
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "clean"
+say = "Annul"
+goal = "remove-unwanted"
+side = "blocked"
+requires = { blocked_side = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "close"
+say = "Exalt"
+goal = "fill"
+side = "close"
+
+[[step.action]]
+currency = "exalted-orb"

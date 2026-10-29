@@ -1,0 +1,69 @@
+# Any equipment, state-ordered: a rare with few or no wanted modifiers
+# (issue #28). Take the modifiers that are not targets off a side that has
+# too few free slots, then slam each target's side. Paraphrased from the
+# guides `source` names; the rules are docs/models/crafting-slots-spec.md.
+id = "rare-clean-then-slam"
+name = "Clean a rare, then side slams"
+classes = [
+    "Gloves", "Boots", "Helmets", "Body Armours", "Shields", "Quivers",
+    "Bucklers", "Foci", "Wands", "One Hand Maces", "Sceptres", "Spears",
+    "Bows", "Staves", "Two Hand Maces", "Quarterstaves", "Crossbows",
+    "Talismans", "Belts", "Amulets", "Rings",
+]
+source = "issue #28 (a rare with one or no wanted modifier); maxroll, How to Craft in Path of Exile 2, methods 2 and 3 (https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2) and the domistae PoE2 Crafting Codex (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html), fetched 2026-10-29"
+notes = """
+For a rare that holds few or none of the targets, such as a dropped item: \
+the guides' clean-up step (a certain whittle, else an Orb of Annulment), \
+confined with Omen of Sinistral or Dextral Annulment to the blocked side \
+when the other side holds a target worth keeping, until each side has a \
+free slot per missing target; then Perfect Exalted Orbs restricted to each \
+target's side, with Omen of Greater Exaltation where two free slots take \
+two targets. An uncertain removal may take a target; the guide then plans \
+again from the item. Greater Exaltation with a side omen is a community \
+reading the route relies on (relies_on). The preview assumes every step \
+hits."""
+order = "state"
+relies_on = [
+    "greater-with-side-omen",
+    "greater-needs-two-free",
+    "whittling-mod-level",
+    "fractured-not-removed",
+]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "remove"
+say = "Whittle the blocker when that is certain, else annul it (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+
+[[step.action]]
+currency = "chaos-orb"
+omens = ["omen-of-whittling"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["greater-omen", "side-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["greater-omen", "side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["greater-omen", "side-omen"]

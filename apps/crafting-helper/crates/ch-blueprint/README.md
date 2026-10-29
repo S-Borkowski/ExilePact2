@@ -19,18 +19,41 @@ it does not know.
 
 - **Top level**: `id` (the file stem), `name`, `classes` (data `class`
   strings), `source` (where the technique came from), optional `notes`,
-  one or more `[[start]]` alternatives and the ordered `[[step]]`s.
+  optional `order` and `relies_on` (below), one or more `[[start]]`
+  alternatives and the `[[step]]`s.
+- **`order`**: `listed` (the default; `Blueprint::order`) or `state`. A
+  listed blueprint runs its steps in file order, moved between by
+  transitions. A state-ordered one takes the first step whose `guard`
+  holds and whose goal is not met on the item as it stands, so a mid-way
+  item starts where it is; the rules are
+  [crafting-slots-spec.md](../../../../docs/models/crafting-slots-spec.md),
+  "Route rules", and `ch-engine` runs them.
+- **`relies_on`**: the not-established facts the route relies on, by their
+  id in the spec's facts table. Required, possibly `[]`, when `order =
+  "state"`; allowed, and checked, otherwise.
 - **`[[start]]`**: a condition on the item. `rarity` (list of `normal`,
   `magic`, `rare`), `wanted_at_least`, `wanted_prefixes_at_least`,
   `wanted_suffixes_at_least`, `fractured_wanted` (true: a fractured
   modifier is present and every one is wanted; false: none is present),
-  `unwanted_at_most`, `essence_binds`.
+  `unwanted_at_most`, `essence_binds`, and the four slot keys, each a bool
+  (`false` asks for the opposite): `blocked_side` (some side is blocked),
+  `closable_side` (some side is closable), `one_side_open` (exactly one
+  side is open), `desecrated_unwanted` (a revealed desecrated modifier is
+  not a target). Blocked, closable and open are the spec's "Slot
+  accounting".
 - **`[[step]]`**: `id`, `say` (the instruction shown), `goal`, optional
-  `side`, `bind`, `requires` and `until` (conditions: the start keys plus
-  `free_prefixes_at_least`, `free_suffixes_at_least`, `no_desecrated`,
-  `unrevealed`, `wanted_remaining_at_most`, `wanted_remaining_exactly`),
-  `when = "bound"`, `on_hit`, `on_miss`, and its `[[step.action]]`
-  alternatives in preference order.
+  `side`, `bind`, `requires`, `until` and `guard` (conditions: the start
+  keys plus `free_prefixes_at_least`, `free_suffixes_at_least`,
+  `no_desecrated`, `unrevealed`, `wanted_remaining_at_most`,
+  `wanted_remaining_exactly`), `when = "bound"`, `on_hit`, `on_miss`, and
+  its `[[step.action]]` alternatives in preference order.
+- **Which order takes which step key**: `requires`, `until`, `on_hit` and
+  `on_miss` are listed order's, and refused in a state-ordered blueprint;
+  `guard` and the side rules are state order's, and refused in a listed
+  one. `side` is `prefix` or `suffix` in either (`Step::side`), or, in
+  state order, a rule word (`Step::side_rule`): `target` (the bound
+  target's side, or the open side with the most targets the step can
+  place), `close` (the closable side), `blocked` (the blocked side).
 - **`goal`**: `add-wanted`, `remove-unwanted`, `fill`, `desecrate`,
   `reveal`, `remove-desecrated`, `convert`, `manual`.
 - **`bind`**: `essence`, `hardest`, `any-remaining`, `last-remaining`. A
@@ -69,7 +92,15 @@ omen, the currency it modifies, its side and its change.
   item, tried Preserved, Ancient, Gnawed (`bones_for`); `reveal` is the
   reveal at the Well of Souls, which nothing blocks; `side-omen` among the
   omens is the Sinistral or Dextral omen of the action's currency for the
-  bound target's side (`Currency::side_omen`).
+  bound target's side (`Currency::side_omen`); `greater-omen`, on an
+  Exalted Orb of any grade only, is Omen of Greater Exaltation where the
+  step's side has two free slots and it can use two, and nothing
+  otherwise (the spec's "`greater-omen`"). Both may go on one action.
+- **Fact ids**: `NOT_ESTABLISHED` lists exactly the ids of the rows
+  labelled not established in the spec's facts table, in its order; these
+  are what `relies_on` may name. `facts_match_the_spec_table` reads the
+  table and fails when the two differ, so a relabelled or added row means
+  editing this list.
 - **Readings, not measurements**: which group Sceptres, Foci and Bucklers
   belong to for the bones, the Refined catalysts' spelling, and
   Crystallisation fitting alloys (the doc marks it not established; the
@@ -93,7 +124,18 @@ next starts:
    action, `side-omen` on a currency with no side omens or on a step with
    no `bind` or `side`, a goal the action cannot produce (an annul for an
    add), a `reveal` or `convert` step with no `bind`, duplicate step ids, a
-   `goto:` to a missing step, a step with no action, no start, no step.
+   `goto:` to a missing step, a step with no action, no start, no step;
+   a key the blueprint's order does not take (each at its own line and
+   column), `order = "state"` with no `relies_on`, a `relies_on` id that
+   is not a known not-established fact or is named twice, `greater-omen`
+   on anything but an Exalted Orb or beside Omen of Greater Exaltation;
+   and, in every blueprint, a `say` that promises an omen no action of
+   the step carries. A `say` that names an omen (its English name, or the
+   name without "Omen of" where two or more words are left, such as
+   "Dextral Exaltation") needs an action carrying that omen, and one that
+   mentions an omen at all (the word "omen" too) needs an action carrying
+   one; `side-omen` counts as its currency's two side omens and
+   `greater-omen` as Omen of Greater Exaltation.
 
 ```text
 tests/fixtures/invalid/unknown-currency.toml:15:12: step `slam`: unknown currency `exalted-orbb`
@@ -119,5 +161,9 @@ cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-blue
 ```
 
 `tests/format.rs` checks the test blueprints under `tests/fixtures/`:
-`valid/` ones it must take (`every-key.toml` uses every key), and `invalid/`
-ones whose every error it pins to its `file:line:col`.
+`valid/` ones it must take (`every-key.toml` uses every key of a listed
+blueprint, `state-every-key.toml` every key state order adds), and
+`invalid/` ones whose every error it pins to its `file:line:col`
+(`say-omen.toml` holds the listed `fill-desecrate-exalt`'s old fill step,
+whose text promised an Exaltation omen its action did not carry). It also
+reads the spec's facts table against `NOT_ESTABLISHED`.

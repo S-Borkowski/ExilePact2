@@ -9,7 +9,9 @@ use std::collections::HashSet;
 use std::path::Path;
 
 use ch_blueprint::catalogue::{self, data_backed, id_from_name, is_kebab, ItemGroup, Kind, OmenFits};
-use ch_blueprint::{check, Binding, Checked, Currency, Diagnostic, Goal, Rarity, Side, Transition, CATALOGUE};
+use ch_blueprint::{
+    check, Binding, Checked, Currency, Diagnostic, Goal, Order, Rarity, Side, SideRule, Spanned, Transition, CATALOGUE,
+};
 
 /// Checks a fixture, read as the path its errors name.
 fn fixture(rel: &str) -> (String, Result<Checked, Vec<Diagnostic>>) {
@@ -143,7 +145,7 @@ fn unknown_key_names_its_line() {
         list,
         [
             format!(
-                "{shown}:13:1: unknown key `colour` in [[step]] (known: id, say, goal, side, bind, requires, when, until, action, on_hit, on_miss)"
+                "{shown}:13:1: unknown key `colour` in [[step]] (known: id, say, goal, side, bind, requires, when, until, action, on_hit, on_miss, guard)"
             ),
             format!("{shown}:17:1: unknown key `omen` in [[step.action]] (known: currency, omens)"),
         ]
@@ -227,7 +229,7 @@ fn every_shape_error_is_reported() {
         "1:1: missing key `name` in the top level",
         "2:11: `classes` must be a list",
         "6:19: `rarity` is `unique`, not one of normal, magic, rare",
-        "7:1: `free_prefixes_at_least` is a step condition (`requires`, `until`), not a start one",
+        "7:1: `free_prefixes_at_least` is a step condition (`requires`, `until`, `guard`), not a start one",
         "9:1: missing key `say` in [[step]]",
         "11:8: `goal` is `slam`, not one of add-wanted,",
         "12:10: `on_hit`: `onward` is not one of next, repeat, restart, abandon, done, or `goto:<step id>`",
@@ -424,4 +426,275 @@ fn shipped_list_matches_the_folder() {
     assert_eq!(names(&shipped), names(&on_disk), "rebuild after adding or removing a blueprint");
     assert_eq!(shipped, on_disk, "an embedded text differs from its file");
     assert_eq!(ch_blueprint::check_shipped().len(), shipped.len());
+}
+
+// ---------------------------------------------------------------------------
+// State order (docs/models/crafting-slots-spec.md, "Route rules").
+
+#[test]
+fn a_state_ordered_blueprint_with_every_new_key_is_valid() {
+    let c = valid("valid/state-every-key.toml");
+    let b = &c.blueprint;
+    assert_eq!(b.order(), Order::State);
+    let relies: Vec<&str> = b
+        .relies_on
+        .as_ref()
+        .unwrap()
+        .get_ref()
+        .iter()
+        .map(|f| f.get_ref().as_str())
+        .collect();
+    assert_eq!(relies, ["greater-with-side-omen", "greater-needs-two-free", "whittling-mod-level"]);
+
+    // The four new condition keys, in a start and in guards.
+    let flag = |f: &Option<Spanned<bool>>| f.as_ref().map(|v| *v.get_ref());
+    let start = b.starts[0].get_ref();
+    assert_eq!(flag(&start.blocked_side), Some(false));
+    assert_eq!(flag(&start.closable_side), Some(true));
+    assert_eq!(flag(&start.one_side_open), Some(false));
+    assert_eq!(flag(&start.desecrated_unwanted), Some(false));
+
+    let ids: Vec<&str> = b.steps.iter().map(|s| s.get_ref().id.get_ref().as_str()).collect();
+    assert_eq!(ids, ["unseal", "clean", "essence", "close", "slam", "last"]);
+    let step = |i: usize| b.steps[i].get_ref();
+    let guard = |i: usize| step(i).guard.as_ref().unwrap().get_ref().clone();
+    assert_eq!(flag(&guard(0).desecrated_unwanted), Some(true));
+    assert_eq!(flag(&guard(1).blocked_side), Some(true));
+    assert_eq!(flag(&guard(3).closable_side), Some(true));
+    assert_eq!(flag(&guard(3).one_side_open), Some(false));
+    assert_eq!(guard(4).free_prefixes_at_least.as_ref().map(|n| *n.get_ref()), Some(0));
+    assert_eq!(flag(&guard(5).one_side_open), Some(true));
+
+    // `side` takes a side or a rule word; a step has at most one of the two.
+    let sides: Vec<(Option<Side>, Option<SideRule>)> = b
+        .steps
+        .iter()
+        .map(|s| {
+            let s = s.get_ref();
+            (s.side.as_ref().map(|v| *v.get_ref()), s.side_rule.as_ref().map(|v| *v.get_ref()))
+        })
+        .collect();
+    assert_eq!(
+        sides,
+        [
+            (None, None),
+            (None, Some(SideRule::Blocked)),
+            (None, None),
+            (None, Some(SideRule::Close)),
+            (None, Some(SideRule::Target)),
+            (Some(Side::Prefix), None),
+        ]
+    );
+    // A rule word keeps its span, so the engine's errors can point at it.
+    let close = step(3).side_rule.as_ref().unwrap().span();
+    assert_eq!(ch_blueprint::line_col(&c.text, close.start), (64, 8));
+
+    // `greater-omen` beside `side-omen`, in either order.
+    let omens: Vec<&str> = step(4).actions[1].get_ref().omens.iter().map(|o| o.get_ref().as_str()).collect();
+    assert_eq!(omens, ["greater-omen", "side-omen"]);
+
+    // A file without `order` is listed, as every blueprint was before.
+    let minimal = valid("valid/minimal.toml").blueprint;
+    assert_eq!(minimal.order(), Order::Listed);
+    assert!(minimal.relies_on.is_none());
+    assert!(minimal.steps[0].get_ref().guard.is_none());
+    assert_eq!(valid("valid/every-key.toml").blueprint.order(), Order::Listed);
+}
+
+#[test]
+fn transitions_are_refused_in_a_state_ordered_blueprint() {
+    let (shown, list) = errors("invalid/state-transitions.toml");
+    let state = "has no place in a state-ordered blueprint, whose next step is the first one whose `guard` holds";
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:15:12: step `slam`: `requires` {state}"),
+            format!("{shown}:16:9: step `slam`: `until` {state}"),
+            format!("{shown}:17:10: step `slam`: `on_hit` {state}"),
+            format!("{shown}:18:11: step `slam`: `on_miss` {state}"),
+            format!("{shown}:28:10: step `clean`: `on_hit` {state}"),
+        ]
+    );
+}
+
+#[test]
+fn guards_and_side_rules_are_refused_in_a_listed_blueprint() {
+    let (shown, list) = errors("invalid/listed-guard.toml");
+    let listed = "needs `order = \"state\"`";
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:14:8: step `slam`: `side = \"target\"` {listed}"),
+            format!("{shown}:15:9: step `slam`: `guard` {listed}"),
+            format!("{shown}:24:8: step `clean`: `side = \"blocked\"` {listed}"),
+            format!("{shown}:34:8: step `close`: `side = \"close\"` {listed}"),
+        ]
+    );
+    // The new condition keys are not state order's alone: the start's
+    // `one_side_open` and the `requires` with `blocked_side` above drew no
+    // error. A word that is neither a side nor a rule is a shape error, in
+    // either order.
+    let list = step_errors("id = \"s\"\nsay = \"Exalt\"\ngoal = \"fill\"\nside = \"open\"\n[[step.action]]\ncurrency = \"exalted-orb\"");
+    assert_eq!(
+        list,
+        ["case.toml:13:8: `side` is `open`, not one of prefix, suffix, target, close, blocked"]
+    );
+}
+
+#[test]
+fn relies_on_names_only_known_facts() {
+    let (shown, list) = errors("invalid/relies-on.toml");
+    assert_eq!(list.len(), 3, "{list:#?}");
+    // A documented fact needs no naming; only the not-established ones are
+    // known.
+    let known = "is not a not-established fact (known: greater-with-side-omen, ";
+    assert!(list[0].starts_with(&format!("{shown}:6:40: `relies_on`: `magic-slots` {known}")), "{list:#?}");
+    assert!(list[1].starts_with(&format!("{shown}:6:55: `relies_on`: `no-such-fact` {known}")), "{list:#?}");
+    assert_eq!(list[2], format!("{shown}:6:71: `relies_on`: `greater-with-side-omen` is named twice"));
+
+    // Required, possibly empty, in a state-ordered blueprint.
+    let state = |relies: &str| {
+        let text = format!(
+            "id = \"case\"\nname = \"Case\"\nclasses = [\"Rings\"]\nsource = \"roadmap\"\norder = \"state\"\n{relies}\n[[start]]\nrarity = [\"rare\"]\n\n[[step]]\nid = \"s\"\nsay = \"Exalt\"\ngoal = \"add-wanted\"\nside = \"target\"\n[[step.action]]\ncurrency = \"exalted-orb\"\n"
+        );
+        match check("case.toml", &text) {
+            Ok(_) => Vec::new(),
+            Err(list) => list.iter().map(|d| d.to_string()).collect(),
+        }
+    };
+    assert_eq!(state("relies_on = []"), Vec::<String>::new());
+    assert_eq!(state("relies_on = [\"open-side-landing\"]"), Vec::<String>::new());
+    assert_eq!(
+        state(""),
+        ["case.toml:5:9: `order = \"state\"` needs `relies_on`: the not-established facts the route relies on, `[]` for none"]
+    );
+    // Allowed, and checked, in a listed one.
+    let listed = |relies: &str| {
+        let text = format!(
+            "id = \"case\"\nname = \"Case\"\nclasses = [\"Rings\"]\nsource = \"roadmap\"\n{relies}\n[[start]]\nrarity = [\"rare\"]\n\n[[step]]\nid = \"s\"\nsay = \"Exalt\"\ngoal = \"fill\"\n[[step.action]]\ncurrency = \"exalted-orb\"\n"
+        );
+        check("case.toml", &text).map(|_| ()).map_err(|l| l.len())
+    };
+    assert_eq!(listed("relies_on = [\"fractured-not-removed\"]"), Ok(()));
+    assert_eq!(listed("relies_on = [\"rare-slots\"]"), Err(1));
+    // Every id the crate knows is kebab case and listed once.
+    let mut seen = HashSet::new();
+    for id in catalogue::NOT_ESTABLISHED {
+        assert!(is_kebab(id), "{id}");
+        assert!(seen.insert(id), "{id} twice");
+    }
+}
+
+#[test]
+fn greater_omen_needs_an_exalted_orb() {
+    let (shown, list) = errors("invalid/greater-omen.toml");
+    let exalts = "it is for an Exalted Orb (exalted-orb, greater-exalted-orb, perfect-exalted-orb)";
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:18:10: step `chaos`: `greater-omen` on `chaos-orb`; {exalts}"),
+            format!("{shown}:27:10: step `slam`: `greater-omen` on `regal-orb`; {exalts}"),
+            format!("{shown}:30:12: step `slam`: `greater-omen` beside `omen-of-greater-exaltation` on one action"),
+        ]
+    );
+    // Every grade takes it, alone or beside `side-omen`.
+    let case = |currency: &str, omens: &str| {
+        step_errors(&format!(
+            "id = \"s\"\nsay = \"Exalt\"\ngoal = \"add-wanted\"\nbind = \"hardest\"\n[[step.action]]\ncurrency = \"{currency}\"\nomens = [{omens}]"
+        ))
+    };
+    for grade in ["exalted-orb", "greater-exalted-orb", "perfect-exalted-orb"] {
+        assert_eq!(case(grade, "\"greater-omen\""), Vec::<String>::new(), "{grade}");
+        assert_eq!(case(grade, "\"side-omen\", \"greater-omen\""), Vec::<String>::new(), "{grade}");
+    }
+    assert_eq!(case("exalted-orb", "\"greater-omen\", \"greater-omen\"").len(), 1);
+    // An annulment can neither add nor take the omen: two errors.
+    assert_eq!(case("orb-of-annulment", "\"greater-omen\"").len(), 2);
+    // A placeholder, not a catalogue omen: there is nothing to block by
+    // this id.
+    assert!(catalogue::entry(catalogue::GREATER_OMEN).is_none());
+    assert!(is_kebab(catalogue::GREATER_OMEN));
+}
+
+#[test]
+fn a_say_naming_an_omen_its_actions_lack_is_refused() {
+    let (shown, list) = errors("invalid/say-omen.toml");
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:13:7: step `fill`: `say` mentions an omen, but no action of the step carries one"),
+            format!("{shown}:23:7: step `unseal`: `say` names Omen of Light, which no action of the step carries"),
+            format!(
+                "{shown}:31:7: step `slam`: `say` names Omen of Sinistral Exaltation, which no action of the step carries"
+            ),
+        ]
+    );
+    let case = |say: &str, currency: &str, omens: &str| {
+        step_errors(&format!(
+            "id = \"s\"\nsay = \"{say}\"\ngoal = \"add-wanted\"\nbind = \"hardest\"\n[[step.action]]\ncurrency = \"{currency}\"\nomens = [{omens}]\n[[step.action]]\ncurrency = \"{currency}\""
+        ))
+    };
+    let none = Vec::<String>::new();
+    // `side-omen` counts as both of its currency's side omens, and one
+    // action carrying the omen is enough.
+    assert_eq!(case("Exalt (Sinistral or Dextral Exaltation)", "exalted-orb", "\"side-omen\""), none);
+    assert_eq!(case("Exalt with its side's Exaltation omen", "exalted-orb", "\"side-omen\""), none);
+    // ... but not as another currency's.
+    assert_eq!(case("Exalt (Sinistral Annulment)", "exalted-orb", "\"side-omen\"").len(), 1);
+    // `greater-omen` counts as Omen of Greater Exaltation.
+    assert_eq!(
+        case("Exalt, Omen of Greater Exaltation when two are free", "perfect-exalted-orb", "\"greater-omen\""),
+        none
+    );
+    assert_eq!(case("Exalt, Greater Exaltation when two are free", "perfect-exalted-orb", "\"side-omen\"").len(), 1);
+    // A name is matched whatever its case, as a whole phrase.
+    assert_eq!(case("omen of greater exaltation", "exalted-orb", "").len(), 1);
+    assert_eq!(case("An OMEN helps", "exalted-orb", "").len(), 1);
+    assert_eq!(case("Exalt the open side", "exalted-orb", ""), none);
+    assert_eq!(case("Exalt like the Homogenising guides", "exalted-orb", ""), none);
+}
+
+#[test]
+fn facts_match_the_spec_table() {
+    let spec = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../../docs/models/crafting-slots-spec.md");
+    let text = std::fs::read_to_string(&spec).unwrap_or_else(|e| panic!("{}: {e}", spec.display()));
+    let text = text.replace("\r\n", "\n");
+    let start = text.find("\n## Facts\n").expect("the spec has a `## Facts` section") + 1;
+    let section = &text[start..];
+    let section = &section[..section[1..].find("\n#").map_or(section.len(), |i| i + 1)];
+    let mut rows = section
+        .lines()
+        .filter(|l| l.starts_with('|'))
+        .map(|l| l.trim().trim_matches('|').split('|').map(str::trim).collect::<Vec<&str>>());
+    assert_eq!(rows.next().expect("a header row"), ["id", "label", "fact", "source"]);
+    let separator = rows.next().expect("a separator row");
+    assert!(separator.iter().all(|c| !c.is_empty() && c.chars().all(|ch| ch == '-' || ch == ':')));
+
+    let mut not_established = Vec::new();
+    let mut all = HashSet::new();
+    for row in rows {
+        assert_eq!(row.len(), 4, "{row:?}");
+        let id = row[0]
+            .strip_prefix('`')
+            .and_then(|s| s.strip_suffix('`'))
+            .unwrap_or_else(|| panic!("the id is not backticked: {row:?}"));
+        assert!(is_kebab(id), "{id}");
+        assert!(all.insert(id), "{id} twice in the table");
+        let label = row[1];
+        assert!(["measured", "documented", "not established"].contains(&label), "{id}: label `{label}`");
+        let source = row[3];
+        assert!(
+            source.contains("https://") && source.contains("fetched 2026-10-29"),
+            "{id}: source `{source}`"
+        );
+        if label == "not established" {
+            not_established.push(id);
+        }
+    }
+    assert!(!not_established.is_empty(), "the table has no not-established row");
+    assert_eq!(
+        catalogue::NOT_ESTABLISHED,
+        not_established.as_slice(),
+        "the crate's fact ids differ from the spec's not-established rows"
+    );
 }

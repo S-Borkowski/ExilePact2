@@ -1,0 +1,30 @@
+# A state-ordered test blueprint (engine tests only) whose hit path loops:
+# a fill on the prefix side blocks it, and the annulment takes the filler.
+id = "test-state-loop"
+name = "Test: fill and annul for ever"
+classes = ["Rings"]
+source = "ch-engine tests"
+order = "state"
+relies_on = []
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "remove"
+say = "Annul the blocker"
+goal = "remove-unwanted"
+side = "blocked"
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "fill-prefix"
+say = "Fill a prefix (Sinistral Exaltation)"
+goal = "fill"
+side = "prefix"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]

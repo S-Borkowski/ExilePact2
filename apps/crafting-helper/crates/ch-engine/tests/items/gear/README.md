@@ -1,8 +1,9 @@
 # Equipment seed walks
 
 The item states `tests/seeds_gear.rs` walks the five equipment seed
-blueprints over (`apps/crafting-helper/blueprints/`), one folder per
-blueprint id. **Every file here is constructed**, not copied from the game:
+blueprints over (four shipped in `apps/crafting-helper/blueprints/`, and
+`fill-desecrate-exalt`, now a test blueprint), one folder per blueprint
+id. **Every file here is constructed**, not copied from the game:
 it is written in the measured advanced layout (docs/RUNTIME_DATA_MODELS.md
 § "Item text"), with affix names, tiers and value ranges taken from
 `apps/crafting-helper/data/` so each modifier joins its data modifier.
@@ -24,6 +25,18 @@ A file used twice in a walk is the same item reached again (a miss loop
 that lands where it started).
 
 ## fill-desecrate-exalt (Amethyst Ring, item level 76)
+
+`fill-desecrate-exalt` is retired from the shipped set: its fixed order
+was the reported defect, and the state-ordered blueprints cover its
+classes. Its file is kept here, `fill-desecrate-exalt.toml` (the same text
+it shipped with, file stem equal to its id), as the listed-order baseline:
+`seeds_gear.rs` walks it, `engine.rs` holds it to naming a plain Exalted
+Orb on the owner's craft and rejecting a rare with one target
+(`legacy-two-prefixes-one-suffix.txt`, `legacy-one-target.txt`),
+`slots.rs` keeps it as the listed baseline on the slot cases, and
+`ch-app`'s unit tests drive its whittle-or-annul steps. To ship it
+again, move the file back to `apps/crafting-helper/blueprints/` and add it
+to `tests/shipped.rs`'s list.
 
 Targets: maximum Life T3, fire and cold resistance T4, chaos resistance T3.
 

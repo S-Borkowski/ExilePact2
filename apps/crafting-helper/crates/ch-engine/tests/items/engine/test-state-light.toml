@@ -1,0 +1,21 @@
+# A state-ordered test blueprint (engine tests only): Omen of Light whenever
+# a desecrated modifier is on the item, so its hit changes nothing when that
+# modifier is a target.
+id = "test-state-light"
+name = "Test: Omen of Light, unguarded"
+classes = ["Rings"]
+source = "ch-engine tests"
+order = "state"
+relies_on = []
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the desecrated modifier goes"
+goal = "remove-desecrated"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]

@@ -1,0 +1,31 @@
+id = "state-transitions"
+name = "State order with listed order's keys"
+classes = ["Rings"]
+source = "roadmap"
+order = "state"
+relies_on = []
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "add-wanted"
+requires = { free_prefixes_at_least = 1 }
+until = { wanted_remaining_at_most = 0 }
+on_hit = "next"
+on_miss = "goto:clean"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "clean"
+say = "Annul"
+goal = "remove-unwanted"
+side = "blocked"
+on_hit = "goto:slam"
+
+[[step.action]]
+currency = "orb-of-annulment"

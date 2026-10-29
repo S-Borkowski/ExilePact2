@@ -9,6 +9,8 @@ use ch_data::{AffixLimits, ClassData, Join, Kind, Section, VariantUnknown};
 use ch_item::{Form, Item, Rarity};
 use serde::{Deserialize, Serialize};
 
+use crate::slots::Slots;
+
 /// A modifier the player wants: a data modifier id and the worst tier that
 /// still counts (1 is the best). No floor means the best tier the item's
 /// level reaches.
@@ -282,6 +284,15 @@ pub(crate) struct ModInfo {
     pub texts: Vec<String>,
     pub templates: Vec<String>,
     pub role: Role,
+    /// Its modifier level (the joined tier's item level); `None` when it
+    /// did not join, is unrevealed, or was placed by the projection.
+    pub level: Option<u32>,
+    /// A projected filler: a non-target of unknown level that only takes
+    /// a slot (docs/models/crafting-slots-spec.md, "Projection").
+    pub filler: bool,
+    /// An unrevealed modifier: the target its desecration was bound to,
+    /// when the route knows it.
+    pub waits_for: Option<usize>,
 }
 
 impl ModInfo {
@@ -303,12 +314,16 @@ impl ModInfo {
     }
 }
 
-/// The joined item.
+/// The joined item, or the item as a state-ordered route's projection
+/// would leave it.
+#[derive(Clone)]
 pub(crate) struct State {
     pub join: Join,
     pub mods: Vec<ModInfo>,
     pub limits: AffixLimits,
     pub rarity: Option<BpRarity>,
+    /// Changed by the projection: `join` no longer describes `mods`.
+    pub projected: bool,
 }
 
 impl State {
@@ -343,6 +358,9 @@ impl State {
                     texts: m.lines.iter().map(|l| l.text.clone()).collect(),
                     templates: m.lines.iter().map(|l| l.template.clone()).collect(),
                     role,
+                    level: matched.map(|f| f.tier_ilvl),
+                    filler: false,
+                    waits_for: None,
                 }
             })
             .collect();
@@ -355,6 +373,7 @@ impl State {
             mods,
             limits,
             rarity: bp_rarity(&item.rarity),
+            projected: false,
         }
     }
 
@@ -512,6 +531,47 @@ pub(crate) fn condition_failures(
     if let Some(exactly) = num(&cond.wanted_remaining_exactly) {
         if remaining != exactly {
             failed.push(format!("{remaining} targets remain, not {exactly}"));
+        }
+    }
+
+    // The slot conditions (docs/models/crafting-slots-spec.md,
+    // "Conditions"); `false` asks for the opposite.
+    let slots = Slots::new(st, targets);
+    let open = slots.open_count();
+    let one_open = format!("{open} sides are open, not one");
+    let checks: [(&Option<ch_blueprint::Spanned<bool>>, bool, &str, &str); 4] = [
+        (
+            &cond.blocked_side,
+            slots.any(|s| s.blocked),
+            "no side is blocked",
+            "a side is blocked",
+        ),
+        (
+            &cond.closable_side,
+            slots.any(|s| s.closable),
+            "no side is closable",
+            "a side is closable",
+        ),
+        (
+            &cond.one_side_open,
+            open == 1,
+            &one_open,
+            "exactly one side is open",
+        ),
+        (
+            &cond.desecrated_unwanted,
+            st.mods
+                .iter()
+                .any(|m| m.desecrated && !m.unrevealed && !matches!(m.role, Role::Wanted(_))),
+            "no revealed desecrated modifier is unwanted",
+            "a revealed desecrated modifier is not a target",
+        ),
+    ];
+    for (key, holds, when_wanted, when_not) in checks {
+        match flag(key) {
+            Some(true) if !holds => failed.push(when_wanted.to_string()),
+            Some(false) if holds => failed.push(when_not.to_string()),
+            _ => {}
         }
     }
     failed

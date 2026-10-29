@@ -1,0 +1,36 @@
+# The first step is the listed fill-desecrate-exalt's fill step as it was:
+# its text promises an Exaltation omen its action does not carry.
+id = "say-omen"
+name = "Text that names an omen the step lacks"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "fill"
+say = "Exalt a side that still has a target (with its Exaltation omen) until two targets are left"
+goal = "add-wanted"
+bind = "any-remaining"
+until = { wanted_remaining_at_most = 2 }
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "unseal"
+say = "Omen of Light with an Orb of Annulment"
+goal = "remove-desecrated"
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "slam"
+say = "Perfect Exalted Orb with Sinistral Exaltation"
+goal = "add-wanted"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["omen-of-dextral-exaltation"]

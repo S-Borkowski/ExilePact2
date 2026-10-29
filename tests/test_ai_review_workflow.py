@@ -368,6 +368,12 @@ REAL_REVIEW_MESSAGE = (
     "test suite, and I did not build anything."
 )
 
+# The last line of ExilePact2 #31's review, which ran 8 agents (2026-10-29).
+REAL_REVIEW_MESSAGE_31 = (
+    "The reviewers only read the code; they did not run the tests or the model's "
+    "check command."
+)
+
 PROCESS_GATE = "Fail if the review skipped the command's agents"
 SUMMARY_STEP = "Summarize the review run"
 
@@ -436,6 +442,11 @@ class TheReviewFollowsTheCommand(unittest.TestCase):
     def test_negative_control_admitted_spares_a_real_review(self):
         pattern = re.compile(step_env(step_body(workflow_text(), PROCESS_GATE), "ADMITTED"), re.I)
         self.assertIsNone(pattern.search(REAL_REVIEW_MESSAGE))
+
+    def test_negative_control_admitted_spares_a_review_that_ran_no_check_command(self):
+        # ExilePact2 #31: 8 agents, 246 s, failed on a bare "command".
+        pattern = re.compile(step_env(step_body(workflow_text(), PROCESS_GATE), "ADMITTED"), re.I)
+        self.assertIsNone(pattern.search(REAL_REVIEW_MESSAGE_31))
 
     def test_the_summary_points_at_the_artifact_whatever_happened(self):
         text = workflow_text()

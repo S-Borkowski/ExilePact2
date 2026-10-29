@@ -13,8 +13,21 @@ guides a craft through it ([`README.md`](README.md) § "Overview"). A
 blueprint is checked with `check_blueprints` (below) and walked in
 `ch-engine`'s tests.
 
+A blueprint runs in one of two orders. A **listed** blueprint (the
+default) takes its steps in file order and moves between them by
+transitions. A **state-ordered** blueprint (`order = "state"`, since
+0.1.1) takes, after every change, the first step whose `guard` holds on the
+item as it stands, so an item already part-way through the craft (a rare
+with mods, a fractured mod, a magic item with one good mod) starts where it
+is; § "State-ordered blueprints" below.
+
 - What each currency, omen and bone does:
   [`crafting-mechanics.md`](crafting-mechanics.md)
+- The rules a state-ordered route follows on an item's free slots, and the
+  facts they rest on with their labels:
+  [`docs/models/crafting-slots-spec.md`](../models/crafting-slots-spec.md);
+  why routes are planned that way:
+  [ADR 0001](../adr/0001-crafting-helper-route-design.md)
 - The guide, the crates and their tests: [`README.md`](README.md)
 
 ## A short example
@@ -84,8 +97,10 @@ silently ignored. A `[[step.action]]` list may also be written inline,
 | `classes` | yes | The item classes the blueprint is for, as the data spells them: `Gloves`, `Boots`, `Helmets`, `Body Armours`, `Shields`, `Quivers`, `Bucklers`, `Foci`, `Wands`, `One Hand Maces`, `Sceptres`, `Spears`, `Bows`, `Staves`, `Two Hand Maces`, `Quarterstaves`, `Crossbows`, `Talismans`, `Belts`, `Amulets`, `Rings`, `Jewels`. At least one. |
 | `source` | yes | Where the technique came from: `"Discord post 10, owner's paste, 2026-10-28"`, or `"roadmap"` for the owner's own description. Not empty. |
 | `notes` | no | Free text: caveats, and every mechanic the route rests on that the docs mark not established. The craft window does not show it, so these caveats live in the blueprint file and in this guide (§ "The seed blueprints"). |
+| `order` | no | `"listed"` (the default) or `"state"` (§ "State-ordered blueprints"). A blueprint without it reads and runs as before 0.1.1. |
+| `relies_on` | when `order = "state"` | The not-established facts the route relies on, by their id in the spec's facts table ([`crafting-slots-spec.md`](../models/crafting-slots-spec.md) § "Facts"), such as `greater-with-side-omen`. Required, possibly `[]`, in a state-ordered blueprint; allowed, and checked, in a listed one. An id that is not a not-established fact of that table, or one named twice, is an error. Like `notes`, the craft window does not show it. |
 | `[[start]]` | at least one | A start alternative (below). |
-| `[[step]]` | at least one | The steps, in order (below). |
+| `[[step]]` | at least one | The steps: in order for a listed blueprint, in priority order for a state-ordered one (below). |
 
 A blueprint whose classes name one class is offered before one naming many;
 among equals, file order (the file name) decides.
@@ -93,8 +108,8 @@ among equals, file order (the file name) decides.
 ## Start alternatives and conditions
 
 A `[[start]]` table is a predicate on the item; the route may start when any
-one of them holds. Every key left out holds. A step's `requires` and
-`until` take the same keys plus the step-only ones.
+one of them holds. Every key left out holds. A step's `requires`, `until`
+and `guard` take the same keys plus the step-only ones.
 
 | Key | Where | Holds when |
 |---|---|---|
@@ -104,6 +119,10 @@ one of them holds. Every key left out holds. A step's `requires` and
 | `fractured_wanted` | start, step | `true`: a fractured modifier is present and every fractured one is a target. `false`: none is fractured. |
 | `unwanted_at_most` | start, step | At most n modifiers on the item are not targets. |
 | `essence_binds` | start, step | An unblocked essence, alloy or liquid emotion adds one of the targets at its floor on this item. |
+| `blocked_side` | start, step | `true`: some side is blocked (below). `false`: none is. |
+| `closable_side` | start, step | `true`: some side is closable. |
+| `one_side_open` | start, step | `true`: exactly one side is open. |
+| `desecrated_unwanted` | start, step | `true`: a revealed desecrated modifier on the item is not a target. |
 | `free_prefixes_at_least`, `free_suffixes_at_least` | step only | At least n open prefix (suffix) slots. |
 | `no_desecrated` | step only | `true`: no desecrated modifier, revealed or not. |
 | `unrevealed` | step only | `true`: an unrevealed desecrated modifier is present. |
@@ -117,26 +136,44 @@ Typical starts: "Rare with two targets", `rarity = ["rare"]` and
 
 Slots: a Magic item has 1 prefix and 1 suffix, a Rare 3 and 3, a Rare jewel
 2 and 2; a Contempt liquid emotion's modifier adds one slot on the other
-side. These limits are the owner's, not measured.
+side. The Magic and Rare limits are documented (poe2db's item text; the
+spec's facts `magic-slots` and `rare-slots`); the jewel and Contempt ones
+are the owner's; none is measured.
+
+The four slot keys read the spec's slot accounting
+([`crafting-slots-spec.md`](../models/crafting-slots-spec.md) § "Slot
+accounting"), per side: its **free** slots, the targets it still
+**needs** (a target waiting on an unrevealed modifier there not counted),
+and spare = free - need. A side is **blocked** when it has fewer free
+slots than missing targets and holds a modifier a removal may take (a
+non-target that is not fractured, desecrated or unrevealed); **reserved**
+when every free slot is needed; **closable** when it has a free slot and
+needs nothing while the other side needs something; **open** when it has a
+free slot. They work in listed blueprints too.
 
 ## Steps
 
 | Key | Required | What it holds |
 |---|---|---|
 | `id` | yes | Unique in the blueprint; `goto:` names it. |
-| `say` | yes | The blueprint's own short instruction. The player sees it only where the app does not compose the instruction from the step's data: a `fill`, `remove-desecrated` or `manual` step, a step that places a target when no target is left for it, and a branch line naming a step the route left out. Everywhere else the craft window names the currency, its omens and the modifiers the step places or removes, and for a step that may whittle or annul, which of the two the modifier levels call for ([`README.md`](README.md) § "Overview"). |
+| `say` | yes | The blueprint's own short instruction. The player sees it only where the app does not compose the instruction from the step's data: a `fill`, `remove-desecrated` or `manual` step, a step that places a target when no target is left for it, and a branch line naming a step the route left out. Everywhere else the craft window names the currency, its omens and the modifiers the step places or removes, and for a step that may whittle or annul, which of the two the modifier levels call for ([`README.md`](README.md) § "Overview"; in a state-ordered blueprint, the alternative the engine's removal rule took). Whatever omen the text promises, an action of the step must carry (§ "Actions, ids and placeholders"). |
 | `goal` | yes | What the step is for, and so what the engine checks after it (below). |
-| `side` | no | `prefix` or `suffix`: the side an add or remove goal is about. |
+| `side` | no | `prefix` or `suffix`: the side an add or remove goal is about. A state-ordered step may give a side rule instead: `target`, `close` or `blocked` (§ "State-ordered blueprints"). |
 | `bind` | no | Which target the step aims at (below). A `reveal` or `convert` step needs one. |
-| `requires` | no | A condition that must hold before the step is taken. When it does not, the guide says which part failed and stops ("stuck"); it never picks another step by itself. |
+| `requires` | no, listed only | A condition that must hold before the step is taken. When it does not, the guide says which part failed and stops ("stuck"); it never picks another step by itself. |
+| `guard` | no, state-ordered only | A condition: the step is a candidate only while it holds (`guard = { one_side_open = true }`). |
 | `when` | no | `"bound"`: the step is part of the route only when its binding resolved (an essence step with no essence for any target is skipped). Needs `bind`. |
-| `until` | no | On a hit, repeat the step until this condition holds (`{ wanted_remaining_at_most = 2 }`: fill until two targets are left). |
+| `until` | no, listed only | On a hit, repeat the step until this condition holds (`{ wanted_remaining_at_most = 2 }`: fill until two targets are left). |
 | `[[step.action]]` | yes, but a `manual` step may have none | The ways to take the step, preferred first. |
-| `on_hit` | no | Where to go on a hit. Default: `next`, or `repeat` while `until` does not hold. |
-| `on_miss` | no | Where to go on a miss. Default: `repeat`. |
+| `on_hit` | no, listed only | Where to go on a hit. Default: `next`, or `repeat` while `until` does not hold. |
+| `on_miss` | no, listed only | Where to go on a miss. Default: `repeat`. |
 
-A step whose goal is already met on the item, or whose `when` did not
-resolve, is skipped, and the guide says so.
+A key the blueprint's order does not take is an error at its own line and
+column: `requires`, `until`, `on_hit` and `on_miss` in a state-ordered
+blueprint; `guard` and the side rules in a listed one.
+
+In a listed blueprint, a step whose goal is already met on the item, or
+whose `when` did not resolve, is skipped, and the guide says so.
 
 ### Goals
 
@@ -173,7 +210,9 @@ A target from the desecrated pool can only be placed by a `desecrate` or
 (this step again), `restart` (the first step), `abandon` (give the item
 up), `done` (the craft is finished), or `goto:<step id>`. A go-to to a step
 the blueprint does not have is an error. An unexpected outcome (below)
-never takes a transition: it stops the guide and asks for a re-plan.
+never takes a transition: it stops the guide and asks for a re-plan. A
+state-ordered blueprint has no transitions: after a hit or a miss the
+guide picks the next step from the item again.
 
 ## Actions, ids and placeholders
 
@@ -205,16 +244,95 @@ not an Exalted Orb), and one action may not carry both a Sinistral and a
 Dextral omen. A goal the action cannot produce is an error (an Orb of
 Annulment, which only removes, for an `add-wanted` step).
 
-Three placeholders stand for a choice the engine makes on the item:
+**The `say` and omen check**, in every blueprint: a step's `say` that names
+an omen (by its English name, or by the name without "Omen of" when two or
+more words are left, such as "Dextral Exaltation") needs an action of the
+step that carries that omen, and a `say` that mentions an omen at all (the
+word "omen" too) needs an action that carries one. `side-omen` counts as
+its currency's Sinistral and Dextral omens, `greater-omen` as Omen of
+Greater Exaltation. It catches a step whose text says "with an Exaltation
+omen" while its action has none, which is how the retired
+`fill-desecrate-exalt` came to offer a plain Exalted Orb.
+
+Four placeholders stand for a choice the engine makes on the item:
 
 | Placeholder | Where | Means |
 |---|---|---|
 | `desecrate` | `currency` | The bones that fit the item's class and level, tried Preserved, Ancient, Gnawed (Gnawed only up to item level 64). |
 | `reveal` | `currency` | The reveal at the Well of Souls. It names no crafting item, so nothing blocks it. |
-| `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`). Needs a `bind` or a `side`, and a currency that has side omens. |
+| `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`, or the side its side rule resolved): Sinistral for a prefix, Dextral for a suffix. Needs a `bind` or a `side`, and a currency that has side omens. |
+| `greater-omen` | `omens` | Omen of Greater Exaltation, on an Exalted Orb of any grade only, where the step's side (the item, with no side) has two free slots and the step can use two (an add: two missing targets it can place there; a fill: always), and the omen is not blocked; otherwise nothing, with no fallback line. It may sit beside `side-omen`, and is an error beside an explicit `omen-of-greater-exaltation`. Whether Greater with a side omen adds both to that side, and whether Greater needs two free slots, are not established (`greater-with-side-omen`, `greater-needs-two-free`). |
 
 Blocking applies to what a placeholder resolves to: block
 `preserved-jawbone` and the next bones that fit are offered.
+
+## State-ordered blueprints
+
+A blueprint with `order = "state"` lists its steps in priority order, each
+with an optional `guard`, and has no transitions. The rules are the spec's
+([`crafting-slots-spec.md`](../models/crafting-slots-spec.md) § "Route
+rules"); the stdlib model and `ch-engine` both follow them, held together
+by one case file (`apps/crafting-helper/crates/ch-engine/tests/items/slots/cases.json`).
+
+**The next step** is the first step, in file order, that is a candidate on
+the item as it stands: its `guard` holds, its `when` resolves, its goal is
+not yet met, its side rule finds a side, an alternative fits, and there is
+room for it (a free slot where an add, a fill or an essence lands; a free
+slot on a desecration's side, so a bone never takes a random modifier off a
+full item). With no candidate the craft is done when no target is missing,
+and otherwise stuck, with every step's reason. The guide picks again after
+every hit and every miss, so the same step may come several times.
+Bindings (`essence`, `hardest`) are made once, as soon as the item allows,
+and kept for the craft; an `any-remaining` add leaves out the target the
+route's essence binding claims.
+
+**Side rules** (`side = ...`):
+
+| Rule | The side |
+|---|---|
+| `target` | The bound target's side; unbound, the open side with the most missing targets the step can place there, ties to the side of the first such target in the target list. |
+| `close` | The closable side. |
+| `blocked` | The blocked side; with two, the larger shortfall first, ties as for `target`. |
+
+**No unrestricted exalt next to a reserved side.** While both sides are
+open and one is reserved, an Exalted Orb of any grade with no side omen
+does not fit: it could take the slot the reserved side's target needs, so
+the step falls to its next alternative.
+
+**Removals.** A `remove-unwanted` step (usually `side = "blocked"`) tries
+its alternatives in order: Chaos Orb with Omen of Whittling only when the
+whittle is certain to take a non-target on that side (exactly one
+modifier at the lowest modifier level, every level known) and the
+annulment it would otherwise take could take a target; an Orb of
+Annulment with `side-omen` (Sinistral or Dextral Annulment) only when the
+other side holds a target; otherwise a plain annulment. A Magic item's
+removal has no whittle. A `side = "blocked"` removal is a hit when a
+non-target went from a side that was blocked.
+
+**The preview** is the route the craft takes if each step hits, from the
+item as it stands: an add places its target (two with Greater), a fill
+adds fillers to its side, an essence makes the Magic item Rare with its
+target, a desecration leaves an unrevealed modifier waiting for its
+target, a reveal places it, and a removal takes the non-target its action
+would (a whittle's added modifier is not projected). It stops when no
+target is missing. A step may appear twice. The first step's odds are read
+off the item; a later step's off the projected item, saying "if the
+earlier steps hit".
+
+**Rejections**, after the class and the start: a side whose targets
+alone exceed a Rare's three (`TargetsExceedSlots`), a desecrated target and
+no desecrate step, and a route whose hit path cannot finish
+(`RouteCannotFinish`: no candidate, a step whose hit changes nothing, or
+16 steps without finishing).
+
+**What the guide does.** The craft window numbers a state-ordered route's
+steps in the order this craft takes them; its hit line names the next step
+of the preview (or says the craft is done, or, with no preview to read,
+that the next step is picked from the item), and its miss line always says
+the next step is picked from the item ([`ui-design.md`](ui-design.md)
+§ "Rust-produced copy"). The engine's pick is final: the app does not re-decide a whittle or
+an annulment by the modifier levels, as it does for a listed blueprint.
+Outcomes (hit, miss, unexpected) classify as in listed order.
 
 ## Checking a blueprint: `check_blueprints`
 
@@ -287,15 +405,27 @@ liquid's add is certain.
 
 ## The seed blueprints
 
-Ten blueprints ship, each a paraphrase in our own words of the source it
-names (the owner's Discord paste of 2026-10-28, or the roadmap); see
+Thirteen blueprints ship, each a paraphrase in our own words of the source
+it names: four state-ordered ones from published 0.5 crafting guides
+(their URLs and "fetched 2026-10-29" are in each `source`), and nine
+listed ones from the owner's Discord paste of 2026-10-28; see
 [`crafting-mechanics.md`](crafting-mechanics.md) § "Crafting patterns
 seen". Each is walked on a hit path and a miss path in `ch-engine`'s tests
-(`tests/seeds_gear.rs`, `tests/seeds_jewels_weapons.rs`).
+(`tests/seeds_v2.rs` for the state-ordered four, `tests/seeds_gear.rs` and
+`tests/seeds_jewels_weapons.rs` for the rest), and the four state-ordered
+ones are held to the slot model on the spec's representative crafts by the
+parity test (`tests/slots.rs`, over `tests/items/slots/cases.json`).
+
+The state-ordered four cover every equipment class with spawn weights
+(not jewels). None names a Homogenising omen, Omen of Greater Annulment,
+an Erasure omen, a Perfect essence, an alloy or a Fracturing Orb.
 
 | id | source | classes | the route |
 |---|---|---|---|
-| `fill-desecrate-exalt` | roadmap | every equipment class with spawn weights | An essence when one meets a target's floor, side-restricted exalts until two targets are left (a miss whittled or annulled), a desecration for the hardest target revealed with Abyssal Echoes (a miss cleared with Omen of Light), and a last side-restricted Perfect, Greater or plain exalt. |
+| `close-a-side` | maxroll's "How to Craft", method 3; the domistae codex | every equipment class with spawn weights | From a rare with a closable side, or with one side open: remove a blocker (a certain whittle, else an annulment, side-restricted when the other side holds a target); close the finished side with cheap side-restricted exalts (two at a time with Greater Exaltation where two slots are free); slam the one open side with no side omen; otherwise a side-restricted slam per target. |
+| `essence-desecrate-double-slam` | timesaver's 0.5 guide; the domistae codex; maxroll and Mobalytics (methods 2 and 4) | every equipment class with spawn weights | From a magic item an essence binds on, or a rare: the essence; a desecration for the hardest target on its side (Sinistral or Dextral Necromancy), revealed with Abyssal Echoes; a wrong reveal taken off with Omen of Light; a removal when a side is blocked; then side-restricted Perfect exalts, with Greater Exaltation where two fit. |
+| `magic-augment-essence` | maxroll's "How to Craft", method 1 | every equipment class with spawn weights | From a normal or magic item: transmute; annul a wrong modifier on the magic item (side-restricted when the other side holds a target); augment; an essence that makes it rare with a third target; then removals and side-restricted slams. |
+| `rare-clean-then-slam` | issue #28; maxroll and the domistae codex (method 2's clean-up, method 3's side restriction) | every equipment class with spawn weights | From a rare with any number of targets, a dropped one included: clean the blocked side (a certain whittle, else an annulment, side-restricted when the other side holds a target) until each side has a free slot per missing target, then side-restricted slams. |
 | `rings-resist-whittle` | post 10 | Rings | Chaos Orbs, then whittling until one target is left, then a desecration for the last. |
 | `rings-flat-attack` | post 11 | Rings | Attack quality raised first (manual), flat attack damage prefixes over resistance suffixes. |
 | `gloves-crit-melee` | post 9 | Gloves | Critical damage from Essence of Hysteria, a desecrated prefix that blocks a common family while the prefixes are slammed, then desecrated suffixes until attack speed. |
@@ -312,6 +442,33 @@ another's, catalyst quality, rune sockets, which side a Contempt modifier
 lands on) are kept, and their catalyst and rune steps are `manual`. Each
 blueprint's `notes` names what it rests on, but the craft window does not
 show `notes`: the caveats live in the blueprint file and in this guide.
+
+What each state-ordered blueprint relies on (`relies_on`; each fact is
+labelled not established in the spec's facts table, which names its
+source):
+
+| Fact | What the route assumes | Relied on by |
+|---|---|---|
+| `greater-with-side-omen` | Greater Exaltation with a Sinistral or Dextral Exaltation omen adds two modifiers, both on that side. | all four |
+| `greater-needs-two-free` | Greater Exaltation needs two free slots (on the restricted side, with a side omen). | all four |
+| `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side. | `close-a-side`, `magic-augment-essence` |
+| `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | all four |
+| `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | all four |
+| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | `essence-desecrate-double-slam` |
+| `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes. | `essence-desecrate-double-slam` |
+
+`ch-blueprint`'s list of these ids is read against the spec's table by a
+test, so a fact relabelled there means editing the list, and a blueprint
+naming an id that is no longer not established fails its check.
+
+**Retired in 0.1.1**: the roadmap's fill, desecrate, slam route
+(`fill-desecrate-exalt`) no longer ships. Its fill step's text promised a
+side omen its action did not carry, so on a rare with two target prefixes
+and one target suffix it offered a plain Exalted Orb that could take the
+prefix slot the last target needed, and it refused a rare with one target
+(issue #28). `close-a-side` and `rare-clean-then-slam` cover those crafts.
+Its file stays in `ch-engine`'s tests
+(`tests/items/gear/fill-desecrate-exalt/`) as the listed-order baseline.
 
 Posts not made into a blueprint:
 

@@ -19,8 +19,7 @@ fn amethyst_ring_made_rare() -> ch_item::Item {
         .join("fixtures")
         .join("real")
         .join("rings-normal-implicit-advanced.txt");
-    let text =
-        std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     assert!(text.contains("Rarity: Normal\nAmethyst Ring\n"), "{text}");
     let rare = text.replace(
         "Rarity: Normal\nAmethyst Ring\n",
@@ -35,7 +34,8 @@ fn engine_is_reexported_with_the_shipped_blueprints() {
         let lines: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
         panic!("shipped blueprints do not load:\n{}", lines.join("\n"))
     });
-    assert_eq!(engine.blueprints().len(), 10);
+    // The nine seeds still shipped and the four state-ordered blueprints.
+    assert_eq!(engine.blueprints().len(), 13);
 
     let ring = amethyst_ring_made_rare();
     let targets = [

@@ -1,0 +1,393 @@
+{
+  "spec": "docs/models/crafting-slots-spec.md",
+  "about": "The contract between the slot model (tools/crafting_helper/slot_model.py) and the engine's parity test (tests/slots.rs). Each case is an abstract item, its ordered targets and what each v2 blueprint must preview on it, as the model computes it from the spec. A modifier's alias is the engine table's key; 'junk' is a modifier that is not a target; a level is the modifier level. A step is goal, resolved side (null when the step has none), currency as written and omens resolved in the order the action lists them; a removal also says whether it is certain to take a non-target. A rejection is its kind as the engine serialises it. Never edit an expectation to match the engine: a difference is settled by the spec.",
+  "cases": [
+    {
+      "id": "rare-2p1s-prefix-missing",
+      "about": "The owner's craft of 2026-10-29: two target prefixes and one target suffix, a third prefix target missing. The prefix side is reserved, the suffix side closable.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "p2", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 52}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p3", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p3",
+      "listed": {"step": "fill", "currency": "exalted-orb", "omens": []},
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "fill", "side": "suffix", "currency": "exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "magic-two-good",
+      "about": "A magic item with a target prefix and a target suffix; missing a prefix an essence adds, a desecrated-pool prefix and two more suffixes.",
+      "class": "Amulets",
+      "rarity": "magic",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 35}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": "lesser-essence-of-the-body"},
+        {"alias": "p3", "side": "prefix", "pool": "desecrated", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s3", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p3",
+      "expect": {
+        "close-a-side": {"rejected": {"kind": "no-start-fits"}},
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "desecrated-target-unplaced"}},
+        "rare-clean-then-slam": {"rejected": {"kind": "no-start-fits"}}
+      }
+    },
+    {
+      "id": "rare-fractured",
+      "about": "A rare whose prefixes are a fractured target and two junk, whose one suffix is a target and the item's lowest-level modifier; a prefix target missing. The prefix side is blocked; the fractured target cannot go and a whittle would take the suffix target.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": true, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 50},
+        {"alias": "junk-p2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 45}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 20}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": true},
+            {"goal": "fill", "side": "suffix", "currency": "exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": true},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": true},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-one-target",
+      "about": "Issue #28: a rare whose prefixes are a target and a junk and whose suffixes are two junk, the lowest-level modifier a junk suffix; missing two prefixes and a suffix. The prefix side is blocked, the suffix side reserved.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 58},
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 44}
+      ],
+      "suffixes": [
+        {"alias": "junk-s1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 36},
+        {"alias": "junk-s2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 12}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p3", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "s1",
+      "listed": {"rejected": {"kind": "no-start-fits"}},
+      "expect": {
+        "close-a-side": {"rejected": {"kind": "no-start-fits"}},
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": [], "certain": false},
+            {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-sinistral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": [], "certain": false},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-sinistral-exaltation"]},
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-dextral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-no-target",
+      "about": "Issue #28's belt: a rare with two junk prefixes and two junk suffixes, the lowest-level modifier a junk prefix; two prefix and two suffix targets. Both sides are blocked; a whittle would be certain but no annulment could take a target.",
+      "class": "Belts",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40},
+        {"alias": "junk-p2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 12}
+      ],
+      "suffixes": [
+        {"alias": "junk-s1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 35},
+        {"alias": "junk-s2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 25}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p1",
+      "expect": {
+        "close-a-side": {"rejected": {"kind": "no-start-fits"}},
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": [], "certain": true},
+            {"goal": "remove-unwanted", "side": "suffix", "currency": "orb-of-annulment", "omens": [], "certain": true},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": [], "certain": true},
+            {"goal": "remove-unwanted", "side": "suffix", "currency": "orb-of-annulment", "omens": [], "certain": true},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-sinistral-exaltation"]},
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "magic-one-good",
+      "about": "A magic item with a target prefix and an open suffix; missing a suffix and a prefix an essence adds.",
+      "class": "Amulets",
+      "rarity": "magic",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40}
+      ],
+      "suffixes": [],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": "lesser-essence-of-the-body"},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "s1",
+      "expect": {
+        "close-a-side": {"rejected": {"kind": "no-start-fits"}},
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
+            {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "magic-augment-essence": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": null, "currency": "perfect-orb-of-augmentation", "omens": []},
+            {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []}
+          ]
+        },
+        "rare-clean-then-slam": {"rejected": {"kind": "no-start-fits"}}
+      }
+    },
+    {
+      "id": "magic-good-and-bad",
+      "about": "A magic item with a target prefix and a junk suffix; missing a suffix and a prefix an essence adds. The suffix side is blocked.",
+      "class": "Amulets",
+      "rarity": "magic",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40}
+      ],
+      "suffixes": [
+        {"alias": "junk-s1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 30}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": "lesser-essence-of-the-body"},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "s1",
+      "expect": {
+        "close-a-side": {"rejected": {"kind": "no-start-fits"}},
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
+            {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "magic-augment-essence": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "suffix", "currency": "orb-of-annulment", "omens": ["omen-of-dextral-annulment"], "certain": true},
+            {"goal": "add-wanted", "side": null, "currency": "perfect-orb-of-augmentation", "omens": []},
+            {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []}
+          ]
+        },
+        "rare-clean-then-slam": {"rejected": {"kind": "no-start-fits"}}
+      }
+    },
+    {
+      "id": "rare-whittle-certain",
+      "about": "The whittle's positive control: a rare whose prefixes are a target and two junk, the lowest-level modifier a lone junk prefix, and whose one suffix is a target; a prefix target missing. The prefix side is blocked; a whittle is certain to take the junk, and the Sinistral Annulment that would otherwise fit could take the target prefix, so every applicable route removes with Chaos Orb and Omen of Whittling.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 5},
+        {"alias": "junk-p2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 50}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "chaos-orb", "omens": ["omen-of-whittling"], "certain": true},
+            {"goal": "fill", "side": "suffix", "currency": "exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "chaos-orb", "omens": ["omen-of-whittling"], "certain": true},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "chaos-orb", "omens": ["omen-of-whittling"], "certain": true},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-whittle-blocked",
+      "about": "rare-whittle-certain with Omen of Whittling blocked: the removal falls to the next alternative, Orb of Annulment with Omen of Sinistral Annulment (the suffix side holds a target), no longer certain because the target prefix can go.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 5},
+        {"alias": "junk-p2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 50}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": ["omen-of-whittling"],
+      "hardest": "p2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
+            {"goal": "fill", "side": "suffix", "currency": "exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        }
+      }
+    }
+  ]
+}

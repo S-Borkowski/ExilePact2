@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use ch_blueprint::catalogue::{Effect, OmenChange};
-use ch_blueprint::{Goal, Rarity as BpRarity, Spanned, Step, Transition};
+use ch_blueprint::{Goal, Order, Rarity as BpRarity, SideRule, Spanned, Step, Transition};
 use ch_data::Kind;
 use ch_item::Item;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,12 @@ use crate::route::{
     essence_binds_any, pick_step, route_for, ChosenAction, Rejection, Route, Skipped, StepPick,
     StepView,
 };
+use crate::slots::Slots;
+use crate::state_order;
+
+/// [`Outcome::transition`] in a state-ordered route: no transition, the
+/// next step was picked from the item.
+pub const PICKED: &str = "picked";
 
 /// Where a guide stands. Serialisable both ways.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,27 +195,39 @@ impl Engine {
         let route =
             route_for(&ctx, resolved).map_err(|rejection| GuideError::Rejected { rejection })?;
         let st = State::new(item, &ctx.targets);
+        let steps = &resolved.blueprint().steps;
+        let state = resolved.blueprint().order() == Order::State;
         let mut guide = Guide {
             blueprint: blueprint.to_string(),
             targets: targets.to_vec(),
             blocked: blocked.to_vec(),
             step: String::new(),
             tries: 0,
-            bindings: route.bindings.clone(),
+            // A state-ordered route's bindings are made on the item itself,
+            // never on the projection's.
+            bindings: if state {
+                BTreeMap::new()
+            } else {
+                route.bindings.clone()
+            },
             status: Status::Active,
         };
-        let (next, _) = walk_from(&mut guide, &ctx, &st, &resolved.blueprint().steps, 0, None);
+        let next = if state {
+            walk_state(&mut guide, &ctx, &st, steps, None)
+        } else {
+            walk_from(&mut guide, &ctx, &st, steps, 0, None).0
+        };
         Ok(Started { guide, route, next })
     }
 
     /// The guide's current step on the item: its action and odds.
     pub fn current(&self, guide: &Guide, item: &Item) -> Result<StepView, GuideError> {
-        let (steps, index) = self.locate(guide)?;
+        let (steps, index, order) = self.locate(guide)?;
         let ctx = Ctx::new(item, &guide.targets, &guide.blocked)
             .map_err(|refusal| GuideError::Refused { refusal })?;
         let st = State::new(item, &ctx.targets);
         let mut bindings = guide.bindings.clone();
-        take(&ctx, &st, steps, index, &mut bindings)
+        take(&ctx, &st, steps, index, order, &mut bindings)
     }
 
     /// Classifies the change from `before` (the item the guide's step was
@@ -225,7 +243,8 @@ impl Engine {
                 status: guide.status.clone(),
             });
         }
-        let (steps, index) = self.locate(guide)?;
+        let (steps, index, order) = self.locate(guide)?;
+        let state = order == Order::State;
         let step = steps[index].get_ref();
         // The contexts borrow these while the guide moves on.
         let (targets, blocked) = (guide.targets.clone(), guide.blocked.clone());
@@ -233,7 +252,7 @@ impl Engine {
             .map_err(|refusal| GuideError::Refused { refusal })?;
         let st_before = State::new(before, &ctx.targets);
         let mut bindings = guide.bindings.clone();
-        let view = take(&ctx, &st_before, steps, index, &mut bindings)?;
+        let view = take(&ctx, &st_before, steps, index, order, &mut bindings)?;
 
         let st_after = State::new(after, &ctx.targets);
         let (removed, added) = diff(&st_before.mods, &st_after.mods);
@@ -304,13 +323,31 @@ impl Engine {
             .iter()
             .filter_map(|m| ctx.target_index(m))
             .collect();
-        let side = step.side.as_ref().map(|s| kind_of(*s.get_ref()));
+        // In state order the side is the one the step's rule resolved to; a
+        // `side = "blocked"` removal hits when a non-target went from a side
+        // that was blocked before it.
+        let side = if state {
+            view.side.map(kind_of)
+        } else {
+            step.side.as_ref().map(|s| kind_of(*s.get_ref()))
+        };
+        let from_blocked = state
+            && step
+                .side_rule
+                .as_ref()
+                .is_some_and(|r| *r.get_ref() == SideRule::Blocked);
+        let slots_before = Slots::new(&st_before, &ctx.targets);
         let kept = lost.is_empty();
         let hit = match view.goal {
             Goal::AddWanted | Goal::Convert | Goal::Reveal => {
                 kept && aims
                     .iter()
                     .any(|&t| !st_before.present(t) && st_after.present(t))
+            }
+            Goal::RemoveUnwanted if from_blocked => {
+                kept && removed
+                    .iter()
+                    .any(|m| m.is_unwanted() && slots_before.on(m.side).blocked)
             }
             Goal::RemoveUnwanted => {
                 kept && removed
@@ -322,6 +359,26 @@ impl Engine {
             Goal::RemoveDesecrated => kept && removed.iter().any(|m| m.desecrated),
             Goal::Manual => true,
         };
+        if state {
+            // No transitions: the next step is picked from the item.
+            guide.bindings = bindings;
+            let next = walk_state(guide, &ctx_after, &st_after, steps, Some(&view.id));
+            return Ok(Outcome {
+                step: view.id,
+                result: if hit {
+                    OutcomeKind::Hit
+                } else {
+                    OutcomeKind::Miss
+                },
+                reasons: Vec::new(),
+                gained,
+                lost,
+                below_floor,
+                transition: Some(PICKED.to_string()),
+                skipped: Vec::new(),
+                next,
+            });
+        }
         let transition = if hit {
             let until_holds = step.until.as_ref().is_none_or(|u| {
                 let binds = || essence_binds_any(&ctx_after, &st_after, true);
@@ -412,7 +469,7 @@ impl Engine {
         }
     }
 
-    fn locate(&self, guide: &Guide) -> Result<(&[Spanned<Step>], usize), GuideError> {
+    fn locate(&self, guide: &Guide) -> Result<(&[Spanned<Step>], usize, Order), GuideError> {
         let resolved =
             self.blueprint(&guide.blueprint)
                 .ok_or_else(|| GuideError::UnknownBlueprint {
@@ -425,19 +482,33 @@ impl Engine {
             .ok_or_else(|| GuideError::UnknownStep {
                 step: guide.step.clone(),
             })?;
-        Ok((steps, index))
+        Ok((steps, index, resolved.blueprint().order()))
     }
 }
 
-/// The step at `index` as taken on the item, or why it cannot be.
+/// The step at `index` as taken on the item, or why it cannot be. In state
+/// order the step must be a candidate on the item.
 fn take(
     ctx: &Ctx,
     st: &State,
     steps: &[Spanned<Step>],
     index: usize,
+    order: Order,
     bindings: &mut BTreeMap<String, String>,
 ) -> Result<StepView, GuideError> {
     let step = steps[index].get_ref();
+    if order == Order::State {
+        state_order::ensure_bindings(ctx, st, steps, bindings);
+        let mut st = st.clone();
+        state_order::mark_waiting(ctx, &mut st, steps, bindings);
+        let slots = Slots::new(&st, &ctx.targets);
+        return state_order::evaluate(ctx, &st, &slots, steps, index, bindings)
+            .map(|pick| state_order::view(ctx, &st, steps, pick))
+            .map_err(|why| GuideError::StepNotTakeable {
+                step: step.id.get_ref().clone(),
+                why,
+            });
+    }
     match pick_step(ctx, st, step, steps, bindings) {
         StepPick::Take(view) => Ok(*view),
         StepPick::Skip(why) => Err(GuideError::StepNotTakeable {
@@ -495,6 +566,47 @@ fn walk_from(
                 guide.status = Status::Active;
                 return (Next::Step { step: view }, skipped);
             }
+        }
+    }
+}
+
+/// State order: the first candidate on the item, or done when no target is
+/// missing, or stuck with every step's reason (naming the step the guide
+/// was on). `came_from` is the step just taken (a repeat counts a try).
+fn walk_state(
+    guide: &mut Guide,
+    ctx: &Ctx,
+    st: &State,
+    steps: &[Spanned<Step>],
+    came_from: Option<&str>,
+) -> Next {
+    state_order::ensure_bindings(ctx, st, steps, &mut guide.bindings);
+    let mut st = st.clone();
+    state_order::mark_waiting(ctx, &mut st, steps, &guide.bindings);
+    if st.missing(ctx.targets.len()).is_empty() {
+        guide.status = Status::Done;
+        return Next::Done;
+    }
+    match state_order::next_step(ctx, &st, steps, &guide.bindings) {
+        Ok(pick) => {
+            let view = state_order::view(ctx, &st, steps, pick);
+            guide.tries = if came_from == Some(view.id.as_str()) {
+                guide.tries + 1
+            } else {
+                0
+            };
+            guide.step = view.id.clone();
+            guide.status = Status::Active;
+            Next::Step {
+                step: Box::new(view),
+            }
+        }
+        Err(reasons) => {
+            let step = match (guide.step.is_empty(), steps.first()) {
+                (true, Some(first)) => first.get_ref().id.get_ref().clone(),
+                _ => guide.step.clone(),
+            };
+            stuck(guide, step, reasons)
         }
     }
 }

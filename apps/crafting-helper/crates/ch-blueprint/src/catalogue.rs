@@ -476,6 +476,31 @@ pub const REVEAL: &str = "reveal";
 /// The placeholder omen for the Sinistral or Dextral omen of the action's
 /// currency for the bound target's side.
 pub const SIDE_OMEN: &str = "side-omen";
+/// The placeholder omen for Omen of Greater Exaltation where the step can
+/// use two modifiers and its side has two free slots, and for nothing
+/// otherwise (docs/models/crafting-slots-spec.md, "`greater-omen`"). Only
+/// an Exalted Orb, of any grade, takes it ([`EXALTED_ORBS`]).
+pub const GREATER_OMEN: &str = "greater-omen";
+/// The omen `greater-omen` resolves to.
+pub const GREATER_EXALTATION: &str = "omen-of-greater-exaltation";
+/// Every grade of Exalted Orb: the currencies `greater-omen` may go on.
+pub const EXALTED_ORBS: &[&str] = EXALT;
+
+/// The facts a blueprint may name in `relies_on`: exactly the ids of the
+/// rows labelled not established in docs/models/crafting-slots-spec.md's
+/// facts table, in its order. A documented fact needs no naming. A test
+/// reads the table and fails when the two lists differ; a live session that
+/// measures one of these relabels its row, and its id leaves this list.
+pub const NOT_ESTABLISHED: &[&str] = &[
+    "greater-with-side-omen",
+    "greater-needs-two-free",
+    "open-side-landing",
+    "whittling-mod-level",
+    "fractured-not-removed",
+    "omens-active-before-use",
+    "necromancy-without-pool",
+    "removal-equally-likely",
+];
 
 /// The catalogue entry for an id.
 pub fn entry(id: &str) -> Option<&'static Entry> {
