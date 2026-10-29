@@ -2549,6 +2549,17 @@ Revisit this feature when:
 - **poe2db changes its page structure**: `extract` fails loudly naming the
   slug; fix the extractor and its synthetic fixture under
   `tests/fixtures/quest_tracker/poe2db/`.
+- **`qt-screen` or `qt-capture` changes** (a type, a call's shape, the
+  capture, the OCR or a dependency): both are built into the crafting
+  helper by path, unchanged (`apps/crafting-helper/crates/ch-watch` takes
+  `qt-screen`, and `qt-capture` for its screenshot tests; the crafting
+  helper's glue takes both). Run its `ch-watch` tests and their real-shot
+  run, its `ch-app` `watch` and `overlay` tests and its guard
+  (`tests.test_crafting_helper_guard`, which walks both crates), with
+  `qt-capture`'s own tests and OCR self-test (`-- --include-ignored`), as
+  the crafting helper's guide says
+  ([`docs/crafting-helper/README.md`](../crafting-helper/README.md) §
+  "Maintenance triggers").
 - **A Rust type behind `View` or `RowChange` changes**: regenerate the view
   fixtures, update `src/ipc.ts`, and update the brief if a frame, icon or
   status changes.

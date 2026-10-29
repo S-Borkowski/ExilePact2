@@ -98,19 +98,28 @@ npm --prefix apps/waystone-roller run release
 
 ## Crafting helper
 
-`crafting-helper.exe` will help you craft items; 0.1.0 is its shell. You
-copy an item in the game with the game's own `Ctrl+Alt+C`, then press the
-app's hotkey (`Ctrl+Alt+X`, changeable, never `Ctrl+Alt+C`) or `Ctrl+V` in
-its window, and the window shows the item's text and its line count. It
-reads the clipboard once per grab and never watches it, uses no keyboard
-hook and sends the game nothing: no keys, no mouse input, no memory read.
-Its *Settings* window holds the hotkey, a saved list of blocked currencies
-and, like the siblings', an update check that runs only when you ask
-(*Check now*, or *Automatically check for updates*, off by default) and an
-install of a signed newer version on a button press
+`crafting-helper.exe` helps you craft items. You copy an item in the game
+with the game's own `Ctrl+Alt+C`, then press the app's hotkey
+(`Ctrl+Alt+X`, changeable, never `Ctrl+Alt+C`) or `Ctrl+V` in its window,
+and the window shows the item and its modifiers, lets you pick target
+modifiers and previews the route a crafting blueprint takes to them, with
+each step's currency, omens and rough odds. *Start crafting* guides you:
+take the step in the game and hover the item, and the app reads the item's
+tooltip from the game's window with Windows' own OCR and says whether the
+step hit or missed and what is next; when it cannot read the item, you
+grab it again. While a craft is guided and the game is in front, a
+click-through overlay over the game shows the current step, where a hit
+and a miss go and the last outcome, at the place chosen in Settings. It
+reads the clipboard once per grab and never watches it, keeps its copies
+of the game's window in memory (never saved, logged or sent), uses no
+keyboard hook and sends the game nothing: no keys, no mouse input, no
+memory read. Its *Settings* window holds the hotkey, the overlay's
+position, a switch for reading the screen, a saved list of blocked
+currencies and, like the siblings', an update check that runs only when
+you ask (*Check now*, or *Automatically check for updates*, off by
+default) and an install of a signed newer version on a button press
 ([`docs/app-updates.md`](docs/app-updates.md)); otherwise it makes no
-network request. A click-through overlay for a craft's next step is in
-place but stays hidden in 0.1.0.
+network request.
 
 - Guide (privacy, commands, known limitations, release notes):
   [`docs/crafting-helper/README.md`](docs/crafting-helper/README.md)
@@ -120,7 +129,8 @@ place but stays hidden in 0.1.0.
   signature `crafting-helper.exe.minisig`; there is no installer, and a
   newer version installs from the app.
 - Requirements: Windows 10 or 11, 64-bit, with the WebView2 runtime; an
-  English game client.
+  English game client; for reading the item from the screen, Windows'
+  English OCR and the game windowed or borderless.
 
 To build it from source, with the same toolchain:
 
@@ -138,7 +148,7 @@ npm --prefix apps/crafting-helper run release
 | `tools/quest_tracker/` | Developer-only tools: the release cutter, the poe2db quest data harvester and the outside instruments used for research. |
 | `apps/waystone-roller/` | The waystone roller: the search-string engine and app logic as Rust crates, the Tauri glue, the Svelte UI and the mod data. |
 | `tools/waystone_roller/` | Developer-only: the release cutter and the poe2db Waystones data tool. |
-| `apps/crafting-helper/` | The crafting helper: the app logic and the item text parser as Rust crates, the Tauri glue, the Svelte UI and the modifier data. |
+| `apps/crafting-helper/` | The crafting helper: the app logic, the item text parser, the crafting engine and the screen watch as Rust crates (the screen watch takes the quest tracker's `qt-screen` and `qt-capture` by path), the Tauri glue, the Svelte UI, the blueprints and the modifier data. |
 | `tools/crafting_helper/` | Developer-only: the poe2db modifier data extractor, and the release cutter (`release.py`). |
 | `apps/shared/` | The update code the three apps share, a Cargo workspace of its own: `ep-net`, the only network code, and `ep-update`, the check, the install and the signature check ([`docs/app-updates.md`](docs/app-updates.md)). |
 | `.github/workflows/` | The three release builds (the quest tracker's, the waystone roller's and the crafting helper's), and the opt-in AI review. |
