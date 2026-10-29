@@ -193,6 +193,13 @@ only by a desecration and its reveal), and not the target the route's
 Bindings (`essence`, `hardest`) are made once and kept across items, as in
 listed order.
 
+When a binding is made (a gap the model met; added 2026-10-29): before each
+pick, each binding the blueprint uses that is not yet made is made as soon
+as the item allows it: `essence` on a magic item, to the first missing
+target in target order that an unblocked essence adds; `hardest` while a
+target is missing. A binding whose target is later placed stays made, and
+the step it binds then has its goal met.
+
 `hardest` in the model: a missing desecrated-pool target first (its odds
 are unknown, so it counts as hardest), the first in target order; else the
 case's `hardest` alias when the case gives one; else the first missing
@@ -256,7 +263,9 @@ alternatives in file order:
   by exactly one, that one is a removable non-target on the resolved side,
   no fractured modifier is at or below its level (whether Whittling skips a
   fractured one is not established), and the item holds no unrevealed
-  modifier and no projected filler (their levels are not known).
+  modifier and no projected filler (their levels are not known). A target
+  the projection placed has an unknown level too (added 2026-10-29), so a
+  whittle is never certain after a projected add.
 - **Annulment with `side-omen`** fits only when the other side holds a
   target an Orb of Annulment could take (a non-fractured target); a side
   omen that protects nothing is not worth naming.
@@ -306,8 +315,9 @@ omen).
 The route preview of a state-ordered blueprint lists the steps the craft
 takes if each one hits, starting from the item as it stands:
 
-1. Pick the next step by the rules above; with none, stop (done, or the
-   route is rejected `route-cannot-finish`, `no-candidate`).
+1. Stop when no target is missing (done; checked before the pick, added
+   2026-10-29). Otherwise pick the next step by the rules above; with none,
+   the route is rejected `route-cannot-finish`, `no-candidate`.
 2. Record it: its goal, its resolved side (or none), its currency as
    written, and its omens resolved, in the order the action lists them
    (the v2 blueprints write `greater-omen` before `side-omen`).
@@ -356,7 +366,11 @@ unrevealed, and its level), its ordered targets (alias, side, pool, the
 essence that adds it or none) and what must hold for each v2 blueprint.
 "Junk" is a modifier that is not a target. `cases.json` writes the full
 expected step lists, or only the first steps where spawn weights decide,
-and each rejection's `kind`. A difference between this list and the model
+and each rejection's `kind`. A removal step there also records `certain`,
+whether every modifier it may take is a non-target. Every case names its
+`hardest` target, so a route that desecrates does not depend on odds the
+model does not have; a target's essence is the essence id the engine's
+floor picks, which the model takes as given (added 2026-10-29). A difference between this list and the model
 is a spec or model defect, never a reason to change the expectation.
 
 - **`rare-2p1s-prefix-missing`** (the owner's craft of 2026-10-29): a rare
