@@ -207,10 +207,14 @@ fn main_views() -> Vec<(&'static str, View)> {
     // then started, the suffix side closed and the slam on the open prefix
     // side missed: on `remove`, the engine's annulment kept to the prefix
     // side (mana, a target, is the lowest, so a whittle would take it).
+    // Omen of Sinistral Necromancy is blocked for the craft, so the last
+    // prefix is slammed rather than desecrated: the close and the clean-up
+    // are these views' subject.
     let shell = FakeShell::default();
     let app = start(&tmp.path().join("close-side"), &shell);
     app.grab_text(Some(&belt("belt-2p1s")));
     app.set_targets(&belt_targets());
+    app.set_craft_blocked(&lines(&["omen-of-sinistral-necromancy"]));
     out.push(("craft-close-side", app.choose_route(CLOSE)));
     app.accept_craft();
     app.grab_text(Some(&belt("belt-closed")));

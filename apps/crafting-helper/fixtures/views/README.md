@@ -65,7 +65,9 @@ chosen:
   item + 3 chosen = 3 of 3`; in `craft-prefilled` no side is full and every
   `disabled` is `null`.
 
-- `craft-close-side`: planning on the belt: the route closes the finished
+- `craft-close-side`: planning on the belt with Omen of Sinistral
+  Necromancy blocked for the craft (its `blocked` list), so the last
+  prefix is slammed rather than desecrated: the route closes the finished
   suffix side first, `Exalted Orb with Omen of Greater Exaltation and Omen
   of Dextral Exaltation on the suffix side, for any modifier` (a fill step's
   instruction, composed from its data), then slams the one open prefix side

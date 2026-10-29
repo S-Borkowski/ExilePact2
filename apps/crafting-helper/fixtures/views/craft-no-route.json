@@ -1648,12 +1648,12 @@
           {
             "blueprint": "close-a-side",
             "name": "Close the finished side, then slam the open one",
-            "reason": "no step can be taken while a target is missing (`remove`: every alternative is blocked; `close`: no side is closable; `slam-open-side`: its guard does not hold (0 sides are open, not one); `side-slam`: no open side has a target it can place)"
+            "reason": "no step can be taken while a target is missing (`reveal-last`: no unrevealed modifier; `light-last`: its guard does not hold (no revealed desecrated modifier is unwanted); `remove`: every alternative is blocked; `desecrate-last`: no alternative fits (`desecrate`: no free slot on its side); `close`: no side is closable; `slam-open-side`: its guard does not hold (0 sides are open, not one); `side-slam`: no open side has a target it can place)"
           },
           {
             "blueprint": "essence-desecrate-double-slam",
             "name": "Essence, desecrate the hardest, then side slams",
-            "reason": "no step can be taken while a target is missing (`essence`: its guard does not hold (the item is rare, not magic); `reveal`: no unrevealed modifier; `light`: its guard does not hold (no revealed desecrated modifier is unwanted); `remove`: every alternative is blocked; `desecrate`: a desecrated modifier is already on the item; `side-slam`: no open side has a target it can place)"
+            "reason": "no step can be taken while a target is missing (`essence`: its guard does not hold (the item is rare, not magic); `reveal`: no unrevealed modifier; `light`: its guard does not hold (no revealed desecrated modifier is unwanted); `remove`: every alternative is blocked; `desecrate`: a desecrated modifier is already on the item; `desecrate-last`: a desecrated modifier is already on the item; `side-slam`: no open side has a target it can place)"
           },
           {
             "blueprint": "gloves-crit-melee",
@@ -1673,7 +1673,7 @@
           {
             "blueprint": "rare-clean-then-slam",
             "name": "Clean a rare, then side slams",
-            "reason": "no step can be taken while a target is missing (`remove`: every alternative is blocked; `side-slam`: no open side has a target it can place)"
+            "reason": "no step can be taken while a target is missing (`reveal-last`: no unrevealed modifier; `light-last`: its guard does not hold (no revealed desecrated modifier is unwanted); `remove`: every alternative is blocked; `desecrate-last`: no alternative fits (`desecrate`: no free slot on its side); `side-slam`: no open side has a target it can place)"
           },
           {
             "blueprint": "rings-flat-attack",

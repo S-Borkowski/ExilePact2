@@ -5,7 +5,13 @@
     "planning": {
       "blocked": {
         "allowed": [],
-        "blocked": []
+        "blocked": [
+          {
+            "from": "craft",
+            "id": "omen-of-sinistral-necromancy",
+            "name": "Omen of Sinistral Necromancy"
+          }
+        ]
       },
       "can_accept": true,
       "choices": {

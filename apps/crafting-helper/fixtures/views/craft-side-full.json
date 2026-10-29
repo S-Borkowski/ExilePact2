@@ -1195,28 +1195,30 @@
           "steps": [
             {
               "fallback": null,
-              "id": "close",
-              "instruction": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier",
+              "id": "desecrate-last",
+              "instruction": "Preserved Collarbone with Omen of Sinistral Necromancy on the prefix side for +# to Armour",
               "number": 1,
-              "odds": "certain (any modifier fills a free slot)",
-              "targets": [],
-              "uses": [
-                "Exalted Orb",
-                "Omen of Greater Exaltation",
-                "Omen of Dextral Exaltation"
-              ]
-            },
-            {
-              "fallback": null,
-              "id": "slam-open-side",
-              "instruction": "Perfect Exalted Orb on the prefix side for +# to Armour",
-              "number": 2,
-              "odds": "~19% (2000 of 10800 weight, if the earlier steps hit)",
+              "odds": "odds unknown: desecration and reveals have no established weights",
               "targets": [
                 "+# to Armour"
               ],
               "uses": [
-                "Perfect Exalted Orb"
+                "Preserved Collarbone",
+                "Omen of Sinistral Necromancy"
+              ]
+            },
+            {
+              "fallback": null,
+              "id": "reveal-last",
+              "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +# to Armour (prefix)",
+              "number": 2,
+              "odds": "odds unknown: desecration and reveals have no established weights",
+              "targets": [
+                "+# to Armour"
+              ],
+              "uses": [
+                "Reveal at the Well of Souls",
+                "Omen of Abyssal Echoes"
               ]
             }
           ]
