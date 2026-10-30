@@ -95,6 +95,23 @@ chosen:
   picked from the item (no route's start fits the full belt, and a step
   missed).
 
+Two craft states use the magic Heavy Belt of `ch-engine`'s relaxation
+tests (`crates/ch-engine/tests/items/relax/belt-magic-life.txt`,
+constructed: maximum Life T2, no suffix), with Fire, Cold and Lightning
+Resistance as the targets:
+
+- `craft-relaxation`: all three at T2: no route, and the preview's
+  `relaxation` proposes lowering fire to T3, the tier Greater Essence of
+  Insulation adds.
+- `craft-blocker`: the relaxation accepted (fire at T3) and
+  `essence-desecrate-double-slam` chosen: the essence, the suffix
+  desecration for cold, its reveal, then a Perfect Exalted Orb on the
+  suffix side. The reveal's line alone carries `blocker`: if cold is not
+  offered, take `+# to Strength and Dexterity` or `+# to Strength and
+  Intelligence`, which keep the ordinary `+# to Strength` out of the
+  exalt's pool, and that exalt's chance of a target before and after.
+  Every other step line of every view carries `blocker: null`.
+
 Every guiding view carries the overlay's content (`overlay.guide`: the
 current step, both branch lines, the last outcome and the screen watch's
 line), and no other view does; each history entry carries its source

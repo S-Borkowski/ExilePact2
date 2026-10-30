@@ -23,6 +23,17 @@ Fire Resistance T3 (on it).
 | `belt-slam-miss-low.txt` | The closed belt plus Flask Mana Recovery T4 (26): the slam missed, at the lowest level. |
 | `belt-done.txt` | The closed belt plus Armour T2: every target on it. |
 
+`tests/craft_window.rs` also walks `essence-desecrate-double-slam` on the
+magic Heavy Belt of `ch-engine`'s relaxation tests
+(`crates/ch-engine/tests/items/relax/belt-magic-life.txt`: maximum Life
+T2), with Fire Resistance T3, Cold and Lightning Resistance T2 as the
+targets, through two more constructed states:
+
+| File | State |
+|---|---|
+| `belt-magic-essence.txt` | Rare after Greater Essence of Insulation: Life T2; Fire Resistance T3. |
+| `belt-magic-desecrated.txt` | The same plus an unrevealed desecrated suffix: the reveal is the current step. |
+
 The tests also read `ch-engine`'s slot case items and walk states by path
 (`crates/ch-engine/tests/items/slots/`, constructed): issue #28's ring
 (`rare-one-target`) and the magic amulet's augment and essence walk.

@@ -102,6 +102,7 @@
         "on_hit": "On a hit: the next step is picked from the item after the hit",
         "on_miss": "On a miss: the next step is picked from the item after the miss",
         "step": {
+          "blocker": null,
           "fallback": null,
           "id": "remove",
           "instruction": "Orb of Annulment with Omen of Sinistral Annulment to remove 38(35-40)% increased Flask Life Recovery rate; it takes one modifier at random",

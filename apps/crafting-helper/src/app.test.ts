@@ -391,6 +391,7 @@ describe('the craft window', () => {
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
       'craft-relaxation': 'Heavy Belt',
+      'craft-blocker': 'Heavy Belt',
       'craft-close-side': 'Cord Snare',
       'craft-last-desecration': 'Cord Snare',
       'craft-side-full': 'Cord Snare',
@@ -1329,6 +1330,41 @@ describe('the craft window', () => {
       const r = await render(view);
       expect(r.root.querySelector('.watch'), name).toBeNull();
     }
+  });
+
+  it('reveal_step_shows_the_blocker_line', async () => {
+    // The reveal before the suffix exalt: Rust's blocker line under the
+    // odds, labelled; no other step shows one.
+    const view = fixtureView('craft-blocker');
+    const steps = view.craft.planning!.preview!.route!.steps;
+    expect(steps.map((s) => s.id)).toEqual(['essence', 'desecrate', 'reveal', 'side-slam']);
+    const blocker = steps[2].blocker!;
+    expect(blocker.startsWith('If +#% to Cold Resistance is not offered, take +# to Strength and Dexterity or +# to Strength and Intelligence (keeps out +# to Strength)')).toBe(true);
+    expect(blocker).toMatch(/goes from ~\d+(\.\d)?% to ~\d+(\.\d)?%$/);
+    expect(steps.filter((s) => s.blocker !== null)).toHaveLength(1);
+    const { root } = await render(view);
+    const shown = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(shown).toHaveLength(steps.length);
+    const reveal = shown[2];
+    expect(text(reveal.querySelector('.blocker .label'))).toBe('Blocker');
+    expect(text(reveal.querySelector('.blocker .line'))).toBe(blocker);
+    const facts = [...reveal.querySelectorAll('.odds, .blocker')].map((el) => el.className.split(' ')[0]);
+    expect(facts).toEqual(['odds', 'blocker']);
+    shown.forEach((li, i) => {
+      if (i !== 2) expect(li.querySelector('.blocker'), steps[i].id).toBeNull();
+    });
+
+    // Negative control: a route whose steps carry none shows none.
+    const plain = await render(fixtureView('craft-planning'));
+    expect(plain.root.querySelector('.blocker')).toBeNull();
+
+    // The guide's card draws the current step's line the same way.
+    const guiding = fixtureView('craft-guiding');
+    expect(guiding.craft.guiding!.step!.step.blocker).toBeNull();
+    guiding.craft.guiding!.step!.step.blocker = blocker;
+    const gr = await render(guiding);
+    const card = gr.root.querySelector('.guide .card')!;
+    expect(text(card.querySelector('.blocker .line'))).toBe(blocker);
   });
 
   it('unknown_odds_are_said_in_words', async () => {

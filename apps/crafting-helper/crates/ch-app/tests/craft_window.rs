@@ -1244,6 +1244,108 @@ fn accepting_the_relaxation_previews_a_route() {
     app.shutdown();
 }
 
+/// The state-ordered route whose reveal comes before a same-side exalt on
+/// the relaxed magic belt: the essence (fire), a suffix desecration (cold),
+/// its reveal, then a Perfect Exalted Orb on the suffix side.
+const DOUBLE_SLAM: &str = "essence-desecrate-double-slam";
+
+/// The relaxed magic belt's preview of `blueprint`: its step lines.
+fn magic_belt_steps(blueprint: &str) -> Vec<ch_app::StepLineView> {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(MAGIC_BELT));
+    app.set_targets(&belt_resistances(3));
+    let view = app.choose_route(blueprint);
+    let route = planning(&view)
+        .preview
+        .as_ref()
+        .unwrap()
+        .route
+        .clone()
+        .expect("a route for the relaxed belt");
+    assert_eq!(route.blueprint, blueprint);
+    app.shutdown();
+    route.steps
+}
+
+#[test]
+fn no_blocker_line_on_a_last_desecration_baseline() {
+    // `magic-augment-essence` desecrates last: its reveal is followed by
+    // nothing on that side, so no step names a blocker.
+    let steps = magic_belt_steps("magic-augment-essence");
+    assert!(
+        steps.iter().any(|s| s.id.contains("reveal")),
+        "a reveal: {steps:?}"
+    );
+    for s in &steps {
+        assert_eq!(s.blocker, None, "{}", s.id);
+    }
+}
+
+#[test]
+fn reveal_step_names_the_blocker_with_before_and_after() {
+    use ch_app::craft::{blocker_line, odds_percent};
+    let steps = magic_belt_steps(DOUBLE_SLAM);
+    let ids: Vec<&str> = steps.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(ids, ["essence", "desecrate", "reveal", "side-slam"]);
+
+    // The engine's advice, in the step odds' percent forms.
+    let engine = Engine::shipped().unwrap();
+    let magic = ch_app::ch_item::parse(MAGIC_BELT).unwrap();
+    let advice = engine
+        .blocker_advice(&magic, &belt_resistances(3), &[], DOUBLE_SLAM)
+        .unwrap()
+        .expect("advice at the reveal");
+    let before = odds_percent(&advice.before);
+    let after = odds_percent(&advice.picks[0].after);
+    assert!(
+        before.starts_with('~') && after.starts_with('~'),
+        "{before} {after}"
+    );
+    assert_ne!(before, after);
+
+    let line = steps[2]
+        .blocker
+        .as_deref()
+        .expect("the reveal's blocker line");
+    assert_eq!(line, blocker_line(&advice));
+    assert_eq!(
+        line,
+        format!(
+            "If {COLD_TEXT} is not offered, take +# to Strength and Dexterity or +# to Strength and Intelligence (keeps out +# to Strength): the suffix exalt's chance of a target goes from {before} to {after}"
+        )
+    );
+    // Every other step has none.
+    for s in steps.iter().filter(|s| s.id != "reveal") {
+        assert_eq!(s.blocker, None, "{}", s.id);
+    }
+
+    // Guiding: the essence lands fire, the desecration leaves an unrevealed
+    // suffix; the reveal, now the current step, carries the same line, and
+    // the steps before it none.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(MAGIC_BELT));
+    app.set_targets(&belt_resistances(3));
+    app.choose_route(DOUBLE_SLAM);
+    let view = app.accept_craft();
+    let current = |view: &View| guiding(view).step.clone().expect("a current step").step;
+    let step = current(&view);
+    assert_eq!(step.id, "essence");
+    assert_eq!(step.blocker, None);
+    let view = app.grab_text(Some(&belt("belt-magic-essence")));
+    let step = current(&view);
+    assert_eq!(step.id, "desecrate", "{:?}", guiding(&view).history);
+    assert_eq!(step.blocker, None);
+    let view = app.grab_text(Some(&belt("belt-magic-desecrated")));
+    let step = current(&view);
+    assert_eq!(step.id, "reveal", "{:?}", guiding(&view).history);
+    assert_eq!(step.blocker.as_deref(), Some(line));
+    app.shutdown();
+}
+
 #[test]
 fn refused_item_says_why() {
     let tmp = tempfile::tempdir().unwrap();

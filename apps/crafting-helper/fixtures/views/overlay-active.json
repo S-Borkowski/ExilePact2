@@ -50,6 +50,7 @@
         "on_hit": "On a hit: this step again until its condition holds, then use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance or +#% to Lightning Resistance",
         "on_miss": "On a miss: this step again",
         "step": {
+          "blocker": null,
           "fallback": null,
           "id": "whittle",
           "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",

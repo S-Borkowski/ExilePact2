@@ -383,6 +383,12 @@ pub struct StepLineView {
     /// taken in place of the last target's desecration, saying why; both
     /// joined by `; `, the desecration's first.
     pub fallback: Option<String>,
+    /// On a state-ordered route's reveal followed by a same-side exalt
+    /// (`ch_engine::Engine::blocker_advice`), which desecrated modifier to
+    /// take if the target is not offered, what it keeps out of the exalt's
+    /// pool and the exalt's chance of a target before and after
+    /// (`crate::craft::blocker_line`); `None` on every other step.
+    pub blocker: Option<String>,
 }
 
 /// The route the preview shows: what it targets and what to do, never the

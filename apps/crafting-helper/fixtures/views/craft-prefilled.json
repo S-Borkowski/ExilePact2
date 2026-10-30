@@ -1642,6 +1642,7 @@
           "source": "Discord post 11, owner's paste, 2026-10-28",
           "steps": [
             {
+              "blocker": null,
               "fallback": null,
               "id": "breach",
               "instruction": "Essence of the Breach, for a higher quality cap",
@@ -1653,6 +1654,7 @@
               ]
             },
             {
+              "blocker": null,
               "fallback": null,
               "id": "catalyst",
               "instruction": "Reaver Catalysts up to 40% attack quality",

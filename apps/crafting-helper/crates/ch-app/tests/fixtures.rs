@@ -261,6 +261,19 @@ fn main_views() -> Vec<(&'static str, View)> {
         .collect();
     out.push(("craft-relaxation", app.set_targets(&resistances)));
     app.shutdown();
+    // The relaxation accepted (fire at T3) on the route whose reveal comes
+    // before the suffix exalt: the reveal step names the blocker.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("blocker"), &shell);
+    app.grab_text(Some(&relax_belt()));
+    let mut relaxed = resistances.clone();
+    relaxed[0].floor = Some(3);
+    app.set_targets(&relaxed);
+    out.push((
+        "craft-blocker",
+        app.choose_route("essence-desecrate-double-slam"),
+    ));
+    app.shutdown();
 
     let shell = FakeShell::default();
     let app = start(&tmp.path().join("refused"), &shell);
@@ -693,6 +706,28 @@ fn fixtures_are_current() {
         .text
         .starts_with("Lower +#% to Fire Resistance from T2 to T3"));
     assert_eq!((relax.from, relax.to), (2, 3));
+    // The reveal names the blocker; no other step of any route does.
+    let blocker = preview("craft-blocker").route.as_ref().unwrap();
+    assert_eq!(blocker.blueprint, "essence-desecrate-double-slam");
+    for (name, v) in &views {
+        let steps = v
+            .craft
+            .planning
+            .as_ref()
+            .and_then(|p| p.preview.as_ref())
+            .and_then(|p| p.route.as_ref())
+            .map(|r| r.steps.clone())
+            .unwrap_or_default();
+        for s in steps {
+            let named = *name == "craft-blocker" && s.id == "reveal";
+            assert_eq!(s.blocker.is_some(), named, "{name} {}", s.id);
+        }
+    }
+    assert!(blocker.steps[2]
+        .blocker
+        .as_deref()
+        .unwrap()
+        .starts_with("If +#% to Cold Resistance is not offered, take +# to Strength and Dexterity or +# to Strength and Intelligence (keeps out +# to Strength)"));
     assert_eq!(view("craft-refused").craft.mode, CraftMode::Refused);
     let guide = |n: &str| view(n).craft.guiding.as_ref().unwrap();
     assert_eq!(guide("craft-guiding").status, GuideStatusView::Active);
@@ -938,7 +973,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 17);
-    assert_eq!(views.len(), 32);
+    assert_eq!(views.len(), 33);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

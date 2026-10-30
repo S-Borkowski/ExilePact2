@@ -233,6 +233,12 @@ export interface StepLineView {
   odds: string | null;
   /** Set when an earlier alternative was passed over. */
   fallback: string | null;
+  /**
+   * On a reveal followed by a same-side exalt: which desecrated modifier to
+   * take if the target is not offered, what it keeps out and the exalt's
+   * chance before and after, in Rust's words; null on every other step.
+   */
+  blocker: string | null;
 }
 
 /** The route the preview shows: what it targets and what to do, never the blueprint's notes. */
@@ -546,6 +552,7 @@ const stepLine = record<StepLineView>({
   uses: list(str),
   odds: nullable(str),
   fallback: nullable(str),
+  blocker: nullable(str),
 });
 const routeChoice = record<RouteChoice>({ number: uint, blueprint: str, name: str });
 const planning = record<PlanningView>({

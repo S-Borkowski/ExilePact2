@@ -82,7 +82,7 @@
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
 //! "Rust-produced copy" is made here: a step's instruction and target
 //! modifiers ([`step_instruction`], [`step_targets`]), [`odds_words`],
-//! [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
+//! a reveal step's [`blocker_line`], [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
 //! ([`branch_lines`], [`state_branch_lines`]) and the history summary
 //! ([`summary`]).
 
@@ -93,8 +93,8 @@ use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
 use ch_engine::ch_item::{self, Item, Rarity};
 use ch_engine::{
-    catalogue_item, ChosenAction, Engine, Guide, Next, Outcome, OutcomeKind, Refusal, Route,
-    Started, Status, StepView, Target, WantedMod,
+    catalogue_item, BlockerAdvice, BlockerMod, BlockerPick, ChosenAction, Engine, Guide, Next,
+    Outcome, OutcomeKind, Refusal, Route, Started, Status, StepView, Target, WantedMod,
 };
 
 use crate::settings::CatalogueEntry;
@@ -1039,6 +1039,11 @@ fn preview(
     // The same blueprint's route with Omen of Whittling added to the list,
     // taken once, the first time a step asks for its annulment.
     let mut longer: Option<Option<Route>> = None;
+    // The reveal that names a blocker, if the route has one.
+    let advice = engine
+        .blocker_advice(item, targets, blocked, &route.blueprint)
+        .ok()
+        .flatten();
     let mut steps = Vec::new();
     for (i, s) in route.steps.iter().enumerate() {
         let named = annulment_by_level(blueprint, s, blocked, |list| {
@@ -1073,15 +1078,12 @@ fn preview(
                 .ok()
                 .and_then(|started| started.route.steps.get(i).cloned())
         };
-        steps.push(step_line(
-            blueprint,
-            &shown,
-            i + 1,
-            item,
-            blocked,
-            targets,
-            without,
-        ));
+        let mut line = step_line(blueprint, &shown, i + 1, item, blocked, targets, without);
+        line.blocker = advice
+            .as_ref()
+            .filter(|a| a.position == i && a.step == s.id)
+            .map(blocker_line);
+        steps.push(line);
     }
     let routes: Vec<RouteChoice> = plan
         .routes
@@ -1164,20 +1166,29 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                 copy.blocked = list.to_vec();
                 engine?.current(&copy, item).ok()
             };
-            Some(current_step(
-                engine,
+            let mut line = step_line(
                 blueprint,
-                g,
-                step_line(
-                    blueprint,
-                    &shown,
-                    number,
+                &shown,
+                number,
+                item,
+                &g.guide.blocked,
+                own,
+                without,
+            );
+            // The current step is the first of the projection made on the
+            // item it is shown on.
+            line.blocker = engine.and_then(|engine| {
+                blocker_at(
+                    engine,
                     item,
-                    &g.guide.blocked,
                     own,
-                    without,
-                ),
-            ))
+                    &g.guide.blocked,
+                    &g.guide.blueprint,
+                    &shown.step.id,
+                    0,
+                )
+            });
+            Some(current_step(engine, blueprint, g, line))
         }
         (Next::Stuck { step, .. }, _) => {
             let (number, instruction) = guide_place(blueprint, g, step);
@@ -1200,6 +1211,7 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                     uses: Vec::new(),
                     odds: None,
                     fallback: None,
+                    blocker: None,
                 },
             ))
         }
@@ -1473,7 +1485,27 @@ fn step_line(
                     Order::Listed => fallback_line(b, step, item, blocked),
                 }),
         ),
+        // The caller's: it knows where the step stands in the projection.
+        blocker: None,
     }
+}
+
+/// The blocker line of the step `id` at `position` in the projection the
+/// engine makes for `blueprint` on `item` ([`Engine::blocker_advice`]):
+/// `Some` only on the reveal it advises.
+fn blocker_at(
+    engine: &Engine,
+    item: &Item,
+    targets: &[Target],
+    blocked: &[String],
+    blueprint: &str,
+    id: &str,
+    position: usize,
+) -> Option<String> {
+    let advice = engine
+        .blocker_advice(item, targets, blocked, blueprint)
+        .ok()??;
+    (advice.step == id && advice.position == position).then(|| blocker_line(&advice))
 }
 
 /// The fallback line of a state-ordered step taken in place of the last
@@ -1933,21 +1965,70 @@ fn word_list(items: &[String], last: &str) -> String {
 pub fn odds_words(odds: &Odds) -> String {
     match odds {
         Odds::Unknown { reason } => format!("odds unknown: {reason}"),
-        Odds::Known { percent, basis, .. } => {
+        Odds::Known { basis, .. } => format!("{} ({basis})", odds_percent(odds)),
+    }
+}
+
+/// The odds' percent form, as [`odds_words`] writes it before the basis:
+/// `~12%`, `~5.0%`, `under 1%`, `certain`, `no chance`; `odds unknown`
+/// for unknown odds.
+pub fn odds_percent(odds: &Odds) -> String {
+    match odds {
+        Odds::Unknown { .. } => "odds unknown".to_string(),
+        Odds::Known { percent, .. } => {
             let p = *percent;
             if p >= 100.0 {
-                format!("certain ({basis})")
+                "certain".to_string()
             } else if p <= 0.0 {
-                format!("no chance ({basis})")
+                "no chance".to_string()
             } else if p < 1.0 {
-                format!("under 1% ({basis})")
+                "under 1%".to_string()
             } else if p < 10.0 {
-                format!("~{p:.1}% ({basis})")
+                format!("~{p:.1}%")
             } else {
-                format!("~{p:.0}% ({basis})")
+                format!("~{p:.0}%")
             }
         }
     }
+}
+
+/// A reveal step's blocker line ([`Engine::blocker_advice`]): `If <target>
+/// is not offered, take <modifiers> (keeps out <competitors>): the <side>
+/// exalt's chance of a target goes from <before> to <after>`, then `; else
+/// <modifiers> (keeps out …): from <before> to <after>` for each further
+/// pick, best first, in [`odds_percent`]'s forms.
+pub fn blocker_line(advice: &BlockerAdvice) -> String {
+    let target = advice
+        .target
+        .as_ref()
+        .map(|t| mod_text(&t.lines))
+        .unwrap_or_else(|| "the target".to_string());
+    let before = odds_percent(&advice.before);
+    let texts =
+        |mods: &[BlockerMod]| -> Vec<String> { mods.iter().map(|m| mod_text(&m.lines)).collect() };
+    let pick = |p: &BlockerPick| {
+        let keeps = texts(&p.keeps_out);
+        let mods = word_list(&texts(&p.mods), "or");
+        if keeps.is_empty() {
+            mods
+        } else {
+            format!("{mods} (keeps out {})", word_list(&keeps, "and"))
+        }
+    };
+    let mut line = format!("If {target} is not offered, take ");
+    for (i, p) in advice.picks.iter().enumerate() {
+        let after = odds_percent(&p.after);
+        if i == 0 {
+            line.push_str(&format!(
+                "{}: the {} exalt's chance of a target goes from {before} to {after}",
+                pick(p),
+                side_word(advice.side)
+            ));
+        } else {
+            line.push_str(&format!("; else {}: from {before} to {after}", pick(p)));
+        }
+    }
+    line
 }
 
 /// A target's floor options: `As high as possible (T<best>)`, then

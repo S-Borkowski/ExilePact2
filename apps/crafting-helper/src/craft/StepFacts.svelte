@@ -4,8 +4,11 @@
   // step may place, as Rust sent them; none for a step that places none),
   // the "Uses" line (currency, then omens), the odds as
   // Rust wrote them (`odds unknown: <reason>` kept whole, never a blank or a
-  // dash), and the fallback line when an earlier alternative was passed
-  // over. A manual step has neither uses nor odds, so shows no such line.
+  // dash), on a reveal before a same-side exalt the blocker line under the
+  // odds (which desecrated modifier to take if the target is not offered,
+  // as Rust wrote it), and the fallback line when an earlier alternative
+  // was passed over. A manual step has neither uses nor odds, so shows no
+  // such line.
   import type { StepLineView } from '../ipc';
 
   let { step }: { step: StepLineView } = $props();
@@ -22,6 +25,9 @@
 {/if}
 {#if step.odds !== null}
   <p class="odds" data-known={step.odds.startsWith('odds unknown') ? 'false' : 'true'}>{step.odds}</p>
+{/if}
+{#if step.blocker !== null}
+  <p class="blocker"><span class="label caps">Blocker</span> <span class="line">{step.blocker}</span></p>
 {/if}
 {#if step.fallback !== null}
   <p class="fallback"><span class="label caps">Fallback</span> <span class="line">{step.fallback}</span></p>
@@ -56,7 +62,8 @@
     color: var(--color-text-muted);
   }
 
-  .fallback .label {
+  .fallback .label,
+  .blocker .label {
     font-size: var(--size-caption);
     letter-spacing: 0.03em;
   }

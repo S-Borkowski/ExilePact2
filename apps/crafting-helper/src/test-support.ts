@@ -26,6 +26,7 @@ export const CRAFT_FIXTURE_NAMES = [
   'craft-fallback',
   'craft-no-route',
   'craft-relaxation',
+  'craft-blocker',
   'craft-close-side',
   'craft-last-desecration',
   'craft-side-full',

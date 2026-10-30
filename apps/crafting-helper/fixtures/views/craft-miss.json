@@ -50,6 +50,7 @@
         "on_hit": "On a hit: Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
         "on_miss": "On a miss: this step again",
         "step": {
+          "blocker": null,
           "fallback": null,
           "id": "chaos",
           "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
