@@ -1693,5 +1693,27 @@
     "kind": "info",
     "text": "Blocked for this craft: 2."
   },
+  "trade": {
+    "bases": [],
+    "can_pick": true,
+    "can_search": false,
+    "classes": [],
+    "count_line": null,
+    "league": "Forbidden Rites",
+    "link": null,
+    "not_searchable": [],
+    "pick_limit": null,
+    "prefixes": [],
+    "selection": {
+      "base": null,
+      "both_slots": true,
+      "class": null,
+      "item_level": null,
+      "open": false,
+      "picks": []
+    },
+    "suffixes": [],
+    "why_not": null
+  },
   "update_available": null
 }

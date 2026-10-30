@@ -42,15 +42,15 @@ use windows_sys::Win32::Networking::WinHttp::{
 };
 
 use crate::{
-    is_redirect, redirect_leg, DownloadError, FetchError, Response, Target, ACCEPT, API_VERSION,
-    DOWNLOAD_ACCEPT, MAX_BODY, MAX_LOCATION, PATH,
+    is_redirect, redirect_leg, DownloadError, FetchError, Request, Response, Target, MAX_LOCATION,
 };
 
 /// The read buffer: 64 KiB per `WinHttpReadData`.
 const CHUNK: usize = 64 * 1024;
 
-/// The release-list request on a thread of its own, waited for until the
-/// total deadline.
+/// A list request (the release list, or the trade site's league list) on a
+/// thread of its own, waited for until the total deadline: the target's
+/// path and headers, its body read up to the target's cap.
 ///
 /// WinHTTP enforces a receive bound in coarse steps (measured on Windows 11:
 /// a 1 s, 2 s or 3 s bound ended after 4 s, a 6 s one after 8 s), so the
@@ -89,7 +89,7 @@ where
 
 fn request(target: &Target, deadline: Deadline) -> Result<Response, FetchError> {
     let session = open_session(target)?;
-    let headers = format!("Accept: {ACCEPT}\r\nX-GitHub-Api-Version: {API_VERSION}\r\n");
+    let headers = target.request.headers();
     let answer = send(
         &session,
         target,
@@ -97,19 +97,20 @@ fn request(target: &Target, deadline: Deadline) -> Result<Response, FetchError> 
             host: target.host,
             port: target.port,
             secure: target.secure,
-            path: PATH,
+            path: target.request.path,
         },
         &headers,
         &deadline,
     )?;
 
+    let cap = target.request.max_body;
     let mut body = Vec::new();
     read_body(
         &answer.request,
         target.timeouts.receive,
         &deadline,
         |chunk| {
-            if body.len() + chunk.len() > MAX_BODY {
+            if body.len() + chunk.len() > cap {
                 return Err(FetchError::TooLarge.into());
             }
             body.extend_from_slice(chunk);
@@ -139,7 +140,9 @@ pub(crate) fn download(
     cancel: &AtomicBool,
 ) -> Result<u64, DownloadError> {
     let deadline = Deadline(Instant::now() + target.timeouts.total);
-    let headers = format!("Accept: {DOWNLOAD_ACCEPT}\r\n");
+    // Always the download's own header, whatever list request the target
+    // carries for `get`.
+    let headers = Request::DOWNLOAD.headers();
     let cancelled = || cancel.load(Ordering::SeqCst);
     if cancelled() {
         return Err(DownloadError::Cancelled);

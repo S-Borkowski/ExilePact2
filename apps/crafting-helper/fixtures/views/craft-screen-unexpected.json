@@ -100,5 +100,27 @@
     "kind": "error",
     "text": "Read from the screen: the item changed in a way the guide did not expect. Grab it to check; the craft is unchanged."
   },
+  "trade": {
+    "bases": [],
+    "can_pick": true,
+    "can_search": false,
+    "classes": [],
+    "count_line": null,
+    "league": "Forbidden Rites",
+    "link": null,
+    "not_searchable": [],
+    "pick_limit": null,
+    "prefixes": [],
+    "selection": {
+      "base": null,
+      "both_slots": true,
+      "class": null,
+      "item_level": null,
+      "open": false,
+      "picks": []
+    },
+    "suffixes": [],
+    "why_not": null
+  },
   "update_available": null
 }

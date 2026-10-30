@@ -62,8 +62,30 @@
 //! the overlay carry the same watch line ([`WatchLineView`]): what the
 //! watch sees and what to do.
 //!
-//! The hotkey, `check_updates`, the blocked currencies, `overlay_position`
-//! and `screen_watch` are saved to
+//! The trade panel ([`crate::trade`]): `set_trade_search` takes the panel's
+//! whole selection (never an address) and returns the [`View`];
+//! `open_trade_search`, which takes nothing, asks the shell to open the link
+//! the app builds from its own state ([`crate::trade::TRADE_SEARCH_URL`],
+//! the `trade_league` setting and the query) and nothing else. Neither
+//! touches the craft, the guide, the watch or the overlay. A refusal changes
+//! nothing and says why in the status line; `diag.log` gets `trade: opened,
+//! <n> modifiers, at least <k>`, `trade: refused: <reason>` or `trade: open
+//! failed: <error>`, counts and kinds only, never a league, base or
+//! modifier. The selection is in memory only.
+//!
+//! The league list ([`crate::league`]): `refresh_trade_leagues` returns the
+//! Settings view at once, marked refreshing, and asks the shell for the
+//! trade site's list ([`Shell::fetch_trade_leagues`]) on a thread of its own
+//! that holds the app weakly; a second call while one runs sends nothing.
+//! Its end replaces the offered list for this run (never saved) or keeps
+//! it and says why, logs `trade: leagues refreshed, <n> leagues, <s>
+//! skipped` or `trade: league refresh refused: <reason>`, and sends the
+//! Settings window its view; an answer after shutdown began is dropped.
+//! Nothing else sends the request: not the start, a timer, opening a
+//! window, a patch or an update check.
+//!
+//! The hotkey, `check_updates`, the blocked currencies, `overlay_position`,
+//! `screen_watch` and `trade_league` are saved to
 //! `settings.json` by a saver thread, [`SAVE_DELAY`] after the last change
 //! (debounced), and at once on [`App::flush`] and [`App::shutdown`].
 //!
@@ -79,7 +101,7 @@
 //! app's own quit path, whose shutdown saves; the glue then starts the new
 //! exe ([`App::restart_requested`]).
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::thread::JoinHandle;
@@ -100,6 +122,7 @@ use crate::craft::{
 };
 use crate::grab::{self, Refusal};
 use crate::hotkey::{is_game_item_copy, DEFAULT_HOTKEY};
+use crate::league::{self, load_league, TRADE_LEAGUE_KEY};
 use crate::overlay::{overlay_guide, overlay_origin};
 use crate::screen::{
     self, item_unreadable_line, unreadable_line, ClientRect, Demand, GameWindow, OcrReadiness,
@@ -114,6 +137,7 @@ use crate::settings::{
     SCREEN_WATCH_KEY,
 };
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
+use crate::trade::{Trade, TradeSelection};
 use crate::updates::{Clock, UpdateSetup};
 use crate::view::{
     CraftMode, GrabSource, GrabView, GuideStatusView, OutcomeWord, OverlayPosition, OverlayView,
@@ -215,10 +239,18 @@ pub trait Shell: Send + Sync {
         Err("this shell has no Settings window".to_string())
     }
     /// Opens `address` in the default browser. Called from
-    /// [`App::open_craft_of_exile`] alone, always with
-    /// [`CRAFT_OF_EXILE_URL`]; no command takes an address.
+    /// [`App::open_craft_of_exile`], always with [`CRAFT_OF_EXILE_URL`], and
+    /// from [`App::open_trade_search`], always with a link the app built from
+    /// [`crate::trade::TRADE_SEARCH_URL`]; no command takes an address.
     fn open_in_browser(&self, _address: &str) -> Result<(), String> {
         Err("this shell cannot open a web browser".to_string())
+    }
+    /// Fetches the trade site's league list (`ep-net`'s one fixed request)
+    /// and returns the answer's status and body, or the error's text, which
+    /// names no address. Blocks; called from [`App::refresh_trade_leagues`]'s
+    /// own thread alone, with no lock of the app held.
+    fn fetch_trade_leagues(&self) -> Result<Answer, String> {
+        Err("this shell cannot reach the trade site".to_string())
     }
     /// A new exe is in place: quit through the app's own quit path (whose
     /// shutdown calls [`App::shutdown`]); the shell starts the new exe once
@@ -343,6 +375,20 @@ struct State {
     craft: Craft,
     /// The overlay window and the watch.
     screen: ScreenState,
+    /// The trade panel's selection, in memory only.
+    trade: Trade,
+    /// The status line the trade panel last set: a later change that has
+    /// nothing to say clears it, and nothing else's.
+    trade_line: Option<StatusLine>,
+    /// The league the trade search opens in; saved.
+    trade_league: String,
+    /// The trade site's list from this run's last refresh; `None`: the
+    /// shipped list. Never saved.
+    trade_leagues: Option<Vec<String>>,
+    /// A refresh of the league list is running.
+    leagues_refreshing: bool,
+    /// The Settings window's Trade note.
+    league_note: Option<StatusLine>,
 }
 
 impl State {
@@ -392,7 +438,8 @@ struct Saver {
 pub struct App {
     /// The app itself, for the threads it starts (which never keep it alive).
     me: Weak<App>,
-    shell: Box<dyn Shell>,
+    /// Shared with the league refresh's thread, which holds the app weakly.
+    shell: Arc<dyn Shell>,
     store: Option<Arc<Store>>,
     state: Mutex<State>,
     saver: Mutex<Option<Saver>>,
@@ -420,8 +467,13 @@ pub struct App {
     /// Keeps the overlay's shell calls in the order their decisions were
     /// made; never taken with the state's lock held.
     overlay_order: Mutex<()>,
-    /// [`App::shutdown`] began: a report from the watch changes nothing.
+    /// [`App::shutdown`] began: a report from the watch, or a league list,
+    /// changes nothing.
     stopped: AtomicBool,
+    /// Raised after each change of the Settings view's league part, so
+    /// [`App::emit_app_settings`] sends the newest view last (as the
+    /// updater's own number does for its part).
+    settings_seq: AtomicU64,
 }
 
 impl App {
@@ -471,6 +523,7 @@ impl App {
         let mut blocked_currencies = Vec::new();
         let mut overlay_position = OverlayPosition::default();
         let mut screen_watch = true;
+        let mut trade_league = load_league(None);
         let store = match store {
             Ok(s) => Some(Arc::new(s)),
             Err(e) => {
@@ -507,6 +560,7 @@ impl App {
                     }
                     overlay_position = load_overlay_position(saved.get(OVERLAY_POSITION_KEY));
                     screen_watch = load_screen_watch(saved.get(SCREEN_WATCH_KEY));
+                    trade_league = load_league(saved.get(TRADE_LEAGUE_KEY));
                     let (ids, dropped) = load_blocked(saved.get(BLOCKED_CURRENCIES_KEY));
                     blocked_currencies = ids;
                     if dropped > 0 {
@@ -549,7 +603,7 @@ impl App {
         let has_screen = screen.is_some();
         let app = Arc::new_cyclic(|me| App {
             me: me.clone(),
-            shell,
+            shell: Arc::from(shell),
             store,
             state: Mutex::new(State {
                 hotkey,
@@ -565,6 +619,12 @@ impl App {
                     has_screen,
                     ..ScreenState::default()
                 },
+                trade: Trade::default(),
+                trade_line: None,
+                trade_league,
+                trade_leagues: None,
+                leagues_refreshing: false,
+                league_note: None,
             }),
             saver: Mutex::new(saver),
             hotkey_replaced,
@@ -579,6 +639,7 @@ impl App {
             watch: Mutex::new(None),
             overlay_order: Mutex::new(()),
             stopped: AtomicBool::new(false),
+            settings_seq: AtomicU64::new(0),
         });
         for n in notes {
             app.diag(&format!("settings: {n}"));
@@ -1081,7 +1142,7 @@ impl App {
 
     /// `get_app_settings`: what the Settings window shows.
     pub fn get_app_settings(&self) -> SettingsView {
-        let (on, hotkey, hotkey_status, blocked_currencies, overlay_position, screen_watch) = {
+        let (on, hotkey, hotkey_status, blocked_currencies, overlay_position, screen_watch, trade) = {
             let st = self.lock();
             (
                 st.check_updates,
@@ -1090,8 +1151,15 @@ impl App {
                 st.blocked_currencies.clone(),
                 st.overlay_position,
                 st.screen_watch,
+                (
+                    st.trade_league.clone(),
+                    league::offered(st.trade_leagues.as_deref(), &st.trade_league),
+                    st.leagues_refreshing,
+                    st.league_note.clone(),
+                ),
             )
         };
+        let (trade_league, trade_leagues, trade_leagues_refreshing, trade_league_note) = trade;
         SettingsView {
             updates: self.updater.view(on),
             hotkey,
@@ -1099,6 +1167,10 @@ impl App {
             blocked_currencies,
             overlay_position,
             screen_watch,
+            trade_league,
+            trade_leagues,
+            trade_leagues_refreshing,
+            trade_league_note,
         }
     }
 
@@ -1111,21 +1183,30 @@ impl App {
     }
 
     /// `update_settings`: `check_updates`, `blocked_currencies`,
-    /// `overlay_position` and `screen_watch`, any of them (see
-    /// [`crate::settings`]). Anything else, a value of the wrong shape, a
-    /// blocked id outside the catalogue or an unknown position, is refused
-    /// whole with nothing changed. Turning the check on ticks at once, so a
-    /// first check starts now when one is due; a new position places the
-    /// overlay again while it shows. Sends both views.
+    /// `overlay_position`, `screen_watch` and `trade_league`, any of them
+    /// (see [`crate::settings`]). Anything else, a value of the wrong shape, a
+    /// blocked id outside the catalogue, an unknown position or a league
+    /// that is not a league name, is refused whole with nothing changed (a
+    /// refused patch naming the league also says why in the Trade note).
+    /// Turning the check on ticks at once, so a first check starts now when
+    /// one is due; a new position places the overlay again while it shows.
+    /// Never asks the trade site for its leagues. Sends both views.
     pub fn update_settings(&self, patch: &Value) -> Result<SettingsView, String> {
+        let names_league = patch.get(TRADE_LEAGUE_KEY).is_some();
         let patch = match read_patch(patch) {
             Ok(p) => p,
             Err(reason) => {
                 self.diag(&format!("settings refused: {reason}"));
+                if names_league {
+                    self.lock().league_note =
+                        Some(StatusLine::error(format!("League not saved: {reason}.")));
+                    self.settings_seq.fetch_add(1, Ordering::AcqRel);
+                    self.emit_app_settings();
+                }
                 return Err(reason);
             }
         };
-        let (turned, blocked, moved, watch) = {
+        let (turned, blocked, moved, watch, league) = {
             let mut st = self.lock();
             let turned = patch.check_updates.filter(|on| *on != st.check_updates);
             if let Some(on) = turned {
@@ -1145,11 +1226,41 @@ impl App {
             if let Some(on) = watch {
                 st.screen_watch = on;
             }
-            if turned.is_some() || blocked.is_some() || moved.is_some() || watch.is_some() {
+            let named_league = patch.trade_league.is_some();
+            let league = patch.trade_league.filter(|l| *l != st.trade_league);
+            if let Some(l) = &league {
+                st.trade_league = l.clone();
+            }
+            if named_league {
+                // A league taken clears an earlier refusal's note.
+                if st
+                    .league_note
+                    .as_ref()
+                    .is_some_and(|n| n.text.starts_with("League not saved"))
+                {
+                    st.league_note = None;
+                }
+            }
+            if turned.is_some()
+                || blocked.is_some()
+                || moved.is_some()
+                || watch.is_some()
+                || league.is_some()
+            {
                 self.save(&st);
             }
-            (turned, blocked.map(|ids| ids.len()), moved, watch)
+            (
+                turned,
+                blocked.map(|ids| ids.len()),
+                moved,
+                watch,
+                league.is_some(),
+            )
         };
+        if league {
+            // Logged nowhere: a league's name never reaches the log.
+            self.settings_seq.fetch_add(1, Ordering::AcqRel);
+        }
         if let Some(p) = moved {
             self.diag(&format!("overlay position: {}", p.name()));
         }
@@ -1187,6 +1298,83 @@ impl App {
         let now = self.clock.now_ms();
         self.run_check(true, self.updater.begin_manual(now));
         self.get_app_settings()
+    }
+
+    /// `refresh_trade_leagues`: asks the trade site for its league list on a
+    /// thread of its own and returns the Settings view at once, marked
+    /// refreshing. While one runs it starts nothing and returns the view as
+    /// it is. The only way the league request is sent.
+    pub fn refresh_trade_leagues(&self) -> SettingsView {
+        {
+            let mut st = self.lock();
+            if st.leagues_refreshing {
+                drop(st);
+                return self.get_app_settings();
+            }
+            st.leagues_refreshing = true;
+            st.league_note = None;
+        }
+        self.settings_seq.fetch_add(1, Ordering::AcqRel);
+        self.emit_app_settings();
+        let shell = Arc::clone(&self.shell);
+        let app = self.me.clone();
+        let spawned = std::thread::Builder::new()
+            .name("ch-trade-leagues".to_string())
+            .spawn(move || {
+                let answer = shell.fetch_trade_leagues();
+                drop(shell);
+                // A closed app is not kept alive for its answer.
+                if let Some(app) = app.upgrade() {
+                    app.finish_refresh(answer);
+                }
+            });
+        if let Err(e) = spawned {
+            self.finish_refresh(Err(format!("the request's thread did not start ({e})")));
+        }
+        self.get_app_settings()
+    }
+
+    /// A league refresh ended: its list replaces the offered one for this
+    /// run, or the refusal is noted, keeping the list and the league; logged,
+    /// then the Settings window hears it. Dropped once shutdown began.
+    fn finish_refresh(&self, answer: Result<Answer, String>) {
+        if self.stopped.load(Ordering::Acquire) {
+            return;
+        }
+        let result = answer.and_then(|a| league::read_answer(a.status, &a.body));
+        let line = {
+            let mut st = self.lock();
+            st.leagues_refreshing = false;
+            match &result {
+                Ok(list) => {
+                    let n = list.leagues.len();
+                    let mut note = format!(
+                        "Refreshed: {n} league{} from the trade site",
+                        if n == 1 { "" } else { "s" }
+                    );
+                    if list.skipped > 0 {
+                        note.push_str(&format!("; {} skipped", list.skipped));
+                    }
+                    note.push('.');
+                    st.trade_leagues = Some(list.leagues.clone());
+                    st.league_note = Some(StatusLine::info(note));
+                    format!(
+                        "trade: leagues refreshed, {n} league{}, {} skipped",
+                        if n == 1 { "" } else { "s" },
+                        list.skipped
+                    )
+                }
+                Err(why) => {
+                    st.league_note = Some(StatusLine::error(format!(
+                        "Not refreshed: {why}. The list and your league are unchanged."
+                    )));
+                    format!("trade: league refresh refused: {why}")
+                }
+            }
+        };
+        self.settings_seq.fetch_add(1, Ordering::AcqRel);
+        self.diag(&line);
+        self.emit_app_settings();
     }
 
     /// The ticker's tick at `now_ms` (the app's clock): with `check_updates`
@@ -1286,6 +1474,100 @@ impl App {
         self.get_view()
     }
 
+    // -- the trade panel (see `crate::trade`) ---------------------------------
+
+    /// `set_trade_search`: the panel's whole selection (open or closed, the
+    /// class, base type, minimum item level, picks with their floors and
+    /// *Both slots*). A refusal changes nothing, says why in the status line
+    /// and logs `trade: refused: <reason>`; something dropped says how many.
+    /// Never touches the craft, opens nothing and sends nothing.
+    pub fn set_trade_search(&self, selection: &TradeSelection) -> View {
+        let refused = {
+            let mut st = self.lock();
+            let line = match st.trade.set(selection) {
+                Ok(note) => Ok(note.map(StatusLine::info)),
+                Err(r) => Err(r),
+            };
+            match line {
+                Ok(Some(line)) => {
+                    self.set_trade_status(&mut st, line);
+                    None
+                }
+                Ok(None) => {
+                    // Nothing to say: an earlier trade line goes.
+                    if st.trade_line.is_some()
+                        && st.status.as_ref().map(|s| &s.line) == st.trade_line.as_ref()
+                    {
+                        st.status = None;
+                    }
+                    st.trade_line = None;
+                    None
+                }
+                Err(r) => {
+                    let line = StatusLine::error(format!("Trade search not changed: {}.", r.text));
+                    self.set_trade_status(&mut st, line);
+                    Some(r.log)
+                }
+            }
+        };
+        if let Some(reason) = refused {
+            self.diag(&format!("trade: refused: {reason}"));
+        }
+        self.emit();
+        self.get_view()
+    }
+
+    /// `open_trade_search`: asks the shell to open the trade search link the
+    /// app builds from its own state (the selection, the league and the
+    /// query) in the default browser. Takes no address. Without a link (no
+    /// class, base type or pick, or a link over the cap) nothing is opened
+    /// and the status line says why.
+    pub fn open_trade_search(&self) -> View {
+        let built = {
+            let st = self.lock();
+            st.trade.link(&st.trade_league)
+        };
+        let line = match built {
+            Err(r) => {
+                self.diag(&format!("trade: refused: {}", r.log));
+                StatusLine::error(format!("Trade search not opened: {}.", r.text))
+            }
+            Ok(search) => match self.shell.open_in_browser(&search.link) {
+                Ok(()) => {
+                    self.diag(&format!(
+                        "trade: opened, {} modifier{}, at least {}",
+                        search.picks,
+                        if search.picks == 1 { "" } else { "s" },
+                        search.at_least
+                    ));
+                    StatusLine::info("Opened the trade search in your browser.")
+                }
+                Err(e) => {
+                    // The error may quote the link; neither the log nor the
+                    // status line repeats it.
+                    let e = e.replace(&search.link, "the trade search");
+                    self.diag(&format!("trade: open failed: {e}"));
+                    StatusLine::error(format!("Couldn't open the browser: {e}."))
+                }
+            },
+        };
+        {
+            let mut st = self.lock();
+            self.set_trade_status(&mut st, line);
+        }
+        self.emit();
+        self.get_view()
+    }
+
+    /// Sets the status line to a trade panel's line, remembered as one.
+    fn set_trade_status(&self, st: &mut State, line: StatusLine) {
+        st.trade_line = Some(line.clone());
+        st.status = Some(Status {
+            line,
+            about_hotkey: false,
+        });
+    }
+
     /// Runs one craft command on the state: a refusal changes nothing and
     /// says why (`<what>: <reason>.`); either way one `diag.log` line, the
     /// status line and both views.
@@ -1377,10 +1659,17 @@ impl App {
             if self.updater.is_stopped() {
                 return;
             }
-            let seq = self.updater.seq();
+            let seq = (
+                self.updater.seq(),
+                self.settings_seq.load(Ordering::Acquire),
+            );
             let view = self.get_app_settings();
             self.shell.emit_app_settings(&view);
-            if self.updater.seq() == seq {
+            if (
+                self.updater.seq(),
+                self.settings_seq.load(Ordering::Acquire),
+            ) == seq
+            {
                 return;
             }
         }
@@ -1599,6 +1888,7 @@ impl App {
             "blocked_currencies": st.blocked_currencies,
             "overlay_position": st.overlay_position.name(),
             "screen_watch": st.screen_watch,
+            "trade_league": st.trade_league,
         });
         let guard = self.saver.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(saver) = guard.as_ref() {
@@ -1631,6 +1921,7 @@ fn view_of(st: &State, engine: Option<&Engine>, update_available: Option<String>
             guide,
         },
         update_available,
+        trade: st.trade.view(&st.trade_league),
     }
 }
 

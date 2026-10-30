@@ -3,12 +3,17 @@
 //! currencies saved, normalised, refused whole when bad (an id outside the
 //! catalogue included) and read back by a new app on the same store, and
 //! the catalogue the blocked list picks from; the overlay's position and the
-//! screen watch, saved and read back, an unknown position refused.
+//! screen watch, saved and read back, an unknown position refused; the trade
+//! search's league, trimmed, saved and read back, a name that is not one
+//! refused with the Trade note saying why.
 
 mod common;
 
 use ch_app::ch_engine::catalogue;
-use ch_app::{App, AppConfig, OverlayPosition, Store, StoreError};
+use ch_app::{
+    App, AppConfig, OverlayPosition, StatusKind, Store, StoreError, DEFAULT_TRADE_LEAGUE,
+    MAX_TRADE_LEAGUE_CHARS, SHIPPED_TRADE_LEAGUES,
+};
 use common::*;
 use serde_json::{json, Value};
 
@@ -478,4 +483,127 @@ fn overlay_position_and_screen_watch_are_saved() {
     ] {
         assert!(log.contains(&line.to_string()), "{line}: {log:?}");
     }
+}
+
+#[test]
+fn trade_league_defaults_and_is_patched_as_a_trimmed_string() {
+    // The default: a first launch, a file without the key, and saved values
+    // that are not a league name.
+    for saved in [
+        None,
+        Some(json!({ "schema": 1, "hotkey": "Ctrl+Alt+X" })),
+        Some(json!({ "schema": 1, "trade_league": "" })),
+        Some(json!({ "schema": 1, "trade_league": "   " })),
+        Some(json!({ "schema": 1, "trade_league": 7 })),
+        Some(json!({ "schema": 1, "trade_league": "x".repeat(65) })),
+        Some(json!({ "schema": 1, "trade_league": "a\tb" })),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        if let Some(s) = &saved {
+            save_settings(tmp.path(), s);
+        }
+        let app = start(tmp.path(), &FakeShell::default());
+        let view = app.get_app_settings();
+        assert_eq!(view.trade_league, DEFAULT_TRADE_LEAGUE, "{saved:?}");
+        assert_eq!(DEFAULT_TRADE_LEAGUE, "Forbidden Rites");
+        assert_eq!(view.trade_leagues, SHIPPED_TRADE_LEAGUES, "{saved:?}");
+        assert!(!view.trade_leagues_refreshing);
+        assert_eq!(view.trade_league_note, None);
+        assert_eq!(app.get_view().trade.league, DEFAULT_TRADE_LEAGUE);
+        app.shutdown();
+    }
+
+    // Patched, trimmed, saved with the rest and read back; the main view's
+    // league follows.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    let view = app
+        .update_settings(&json!({ "trade_league": "  Runes of Aldur  " }))
+        .unwrap();
+    assert_eq!(view.trade_league, "Runes of Aldur");
+    assert_eq!(view.trade_leagues, SHIPPED_TRADE_LEAGUES);
+    assert_eq!(shell.rec().app_settings.last(), Some(&view));
+    assert_eq!(shell.last_view().trade.league, "Runes of Aldur");
+    // Any valid name is taken, not only one the list offers; it is then
+    // offered too, last.
+    let view = app
+        .update_settings(&json!({ "trade_league": "Some Older League" }))
+        .unwrap();
+    assert_eq!(view.trade_league, "Some Older League");
+    assert_eq!(view.trade_leagues.len(), SHIPPED_TRADE_LEAGUES.len() + 1);
+    assert_eq!(view.trade_leagues.last().unwrap(), "Some Older League");
+    // A league beside another setting, and 64 characters exactly.
+    let long = "L".repeat(MAX_TRADE_LEAGUE_CHARS);
+    let view = app
+        .update_settings(&json!({ "trade_league": long, "screen_watch": false }))
+        .unwrap();
+    assert_eq!(view.trade_league, long);
+    assert!(!view.screen_watch);
+    app.update_settings(&json!({ "trade_league": "HC Runes of Aldur" }))
+        .unwrap();
+    app.shutdown();
+    assert_eq!(
+        saved_settings(tmp.path())["trade_league"],
+        "HC Runes of Aldur"
+    );
+    let again = start(tmp.path(), &FakeShell::default());
+    assert_eq!(again.get_app_settings().trade_league, "HC Runes of Aldur");
+    assert_eq!(again.get_view().trade.league, "HC Runes of Aldur");
+    again.shutdown();
+    // The league never reaches the log.
+    let log = diag_lines(tmp.path()).join("\n");
+    assert!(!log.contains("Aldur") && !log.contains("Older"), "{log}");
+}
+
+#[test]
+fn trade_league_refuses_an_empty_or_overlong_name() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.update_settings(&json!({ "trade_league": "Standard" }))
+        .unwrap();
+    for (bad, why) in [
+        (json!(""), "the league name is empty"),
+        (json!("   "), "the league name is empty"),
+        (
+            json!("x".repeat(MAX_TRADE_LEAGUE_CHARS + 1)),
+            "the league name is longer than 64 characters",
+        ),
+        (
+            json!("a\u{7}b"),
+            "the league name holds a control character",
+        ),
+        (
+            json!("line\nbreak"),
+            "the league name holds a control character",
+        ),
+        (json!(3), "trade_league is not text"),
+        (json!(null), "trade_league is not text"),
+    ] {
+        let err = app
+            .update_settings(&json!({ "trade_league": bad }))
+            .unwrap_err();
+        assert_eq!(err, why, "{bad}");
+        // The saved league stays, and the Trade note says why.
+        let view = app.get_app_settings();
+        assert_eq!(view.trade_league, "Standard", "{bad}");
+        let note = view.trade_league_note.clone().expect("a note");
+        assert_eq!(note.kind, StatusKind::Error);
+        assert_eq!(note.text, format!("League not saved: {why}."));
+        assert_eq!(shell.rec().app_settings.last(), Some(&view));
+    }
+    // Refused whole beside another setting.
+    assert!(app
+        .update_settings(&json!({ "trade_league": "", "screen_watch": false }))
+        .is_err());
+    assert!(app.get_app_settings().screen_watch);
+    // A league taken clears the refusal's note.
+    let view = app
+        .update_settings(&json!({ "trade_league": "Hardcore" }))
+        .unwrap();
+    assert_eq!(view.trade_league, "Hardcore");
+    assert_eq!(view.trade_league_note, None);
+    app.shutdown();
+    assert_eq!(saved_settings(tmp.path())["trade_league"], "Hardcore");
 }

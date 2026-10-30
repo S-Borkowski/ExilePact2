@@ -105,6 +105,31 @@ screenshots):
 - `craft-watch-unavailable`: no English OCR: `Can't read the screen (no
   English OCR): …` (warning).
 
+Every view carries the trade panel's part (`trade`), closed in all of them
+but the `trade-*` ones (a closed part carries the selection and the league
+alone). The trade views open the panel over the ring's planning craft,
+which stays as `craft-planning` shows it, each through `set_trade_search`
+as the page sends it (the whole selection), with the default league
+`Forbidden Rites`:
+
+- `trade-empty`: the panel just opened: no class chosen, every class
+  offered, no rows, no link; the search disabled beside `Choose an item
+  class.`
+- `trade-picking`: Rings, Sapphire Ring, item level 75, `+# to maximum
+  Life` (prefix) and `+#% to Fire Resistance` (suffix) picked at Any tier,
+  Both slots: every row with its weight from the spawn weights, the hybrid
+  in the not-searchable list, the count line asking for two, the link built
+  and the search enabled.
+- `trade-one-side`: the same base with two suffixes picked (fire and cold
+  resistance): the count line says the search asks for one and why; the
+  link built.
+- `trade-default-weight`: a jewel base (Sapphire), whose page has no
+  established spawn weights: every weight is the default (1.0) with its
+  reason, the first prefix and the first suffix picked.
+- `trade-refused`: after `trade-picking`, a `set_trade_search` naming a
+  base type Rings does not have (Iron Mitts): the error status line, the
+  selection and the link as they were.
+
 Nothing else may be here: `fixtures_are_current` fails on any other JSON
 file. The views are made by `crates/ch-app/tests/fixtures.rs` by driving the
 app with a recording fake shell (and, for the overlay and screen watch

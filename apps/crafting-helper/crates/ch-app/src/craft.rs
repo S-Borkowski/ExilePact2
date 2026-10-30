@@ -92,8 +92,9 @@ use crate::view::{
     RouteChoice, RouteView, StepLineView, TargetChoice, TargetChoices,
 };
 
-/// The one address the app opens: Craft of Exile's Path of Exile 2
-/// calculator, in the default browser. No other address is ever opened.
+/// Craft of Exile's Path of Exile 2 calculator, opened in the default
+/// browser by `open_craft_of_exile` alone. The only other address the app
+/// opens is the trade search link (`crate::trade::TRADE_SEARCH_URL`).
 pub const CRAFT_OF_EXILE_URL: &str = "https://beta.craftofexile.com/?game=poe2";
 
 /// An item the engine plans for: grabbed (its text and the item parsed from

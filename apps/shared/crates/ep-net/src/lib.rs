@@ -1,14 +1,17 @@
 //! The apps' only network code: the repository's GitHub release list and
-//! a release's fixed assets, fetched over HTTPS through Windows' own WinHTTP.
+//! a release's fixed assets, and the trade site's league list for the
+//! crafting helper, fetched over HTTPS through Windows' own WinHTTP.
 //!
 //! No other crate of any app talks to the network. The public API reaches
-//! two places only, [`fetch_release_list`] and [`download_asset`]; the hosts,
-//! ports, paths and headers are this crate's constants, and no caller can
-//! pass a host, a path or a URL. A caller names its [`Product`], and for a
-//! download a [`ReleaseTag`] (the product's tag prefix and three numbers)
-//! and an [`Asset`] (the product's exe or its `.minisig`). The update code
-//! in `ep-update` decides when a request happens and what the answer means;
-//! this crate only carries the request.
+//! three places only, [`fetch_release_list`], [`download_asset`] and
+//! [`fetch_trade_leagues`]; the hosts, ports, paths and headers are this
+//! crate's constants, and no caller can pass a host, a path or a URL. A
+//! caller names its [`Product`], and for a download a [`ReleaseTag`] (the
+//! product's tag prefix and three numbers) and an [`Asset`] (the product's
+//! exe or its `.minisig`); the league list takes nothing. The update code in
+//! `ep-update`, and for the league list the crafting helper's `ch-app`,
+//! decides when a request happens and what the answer means; this crate only
+//! carries the request.
 //!
 //! What a request sends, and nothing else:
 //!
@@ -18,6 +21,12 @@
 //!   product's ([`QUEST_TRACKER_USER_AGENT`], [`WAYSTONE_ROLLER_USER_AGENT`]
 //!   or [`CRAFTING_HELPER_USER_AGENT`]; GitHub refuses a request without one;
 //!   it names no version and no machine detail).
+//! - The trade site's league list: `GET` [`TRADE_LEAGUES_PATH`] on
+//!   [`TRADE_LEAGUES_HOST`], port [`PORT`], over TLS, with two headers:
+//!   `Accept: `[`TRADE_LEAGUES_ACCEPT`] and `User-Agent: `
+//!   [`CRAFTING_HELPER_USER_AGENT`]. Only the crafting helper sends it, and
+//!   only when the player asks for the list; the trade site sees the
+//!   machine's IP address and those two headers.
 //! - A release asset: `GET https://`[`DOWNLOAD_HOST`][`DOWNLOAD_PATH_PREFIX`]
 //!   `<tag>/<asset>`, port 443, with two headers: `Accept: `
 //!   [`DOWNLOAD_ACCEPT`] and the product's `User-Agent`. GitHub answers that
@@ -31,8 +40,9 @@
 //!   with cookies turned off, and closes it, so a cookie a server set is gone
 //!   with it (tested: a fetch after an answer that set one sends no
 //!   `Cookie`). No credential is sent (WinHTTP's autologon policy is set
-//!   high), and WinHTTP itself follows no redirect: the release list returns
-//!   a 3xx as the answer, and the download checks its one redirect here.
+//!   high), and WinHTTP itself follows no redirect: the release list and the
+//!   league list return a 3xx as the answer, and the download checks its one
+//!   redirect here.
 //! - The proxy is the system's. TLS and the certificate checks are Windows'
 //!   own.
 //!
@@ -40,6 +50,10 @@
 //! 10 s, and the whole request ends within [`TOTAL_DEADLINE`] whatever the
 //! server does (the remaining time bounds every wait and is checked between
 //! reads). The body is read up to [`MAX_BODY`] bytes and refused past it.
+//! The league list has the same bounds, and its body is read up to
+//! [`MAX_TRADE_LEAGUES_BODY`] bytes and refused past it. Each request's path,
+//! headers and body cap are its target's own ([`Target`]), so neither sends
+//! anything of the other's.
 //!
 //! Bounds of a download: resolve, connect and send 5 s each, then at most
 //! [`DOWNLOAD_INACTIVITY`] without a byte arriving, and both legs together
@@ -78,6 +92,15 @@ pub const MAX_BODY: usize = 2 * 1024 * 1024;
 /// The bound on a whole release-list request, from the first call to the
 /// last read.
 pub const TOTAL_DEADLINE: Duration = Duration::from_secs(20);
+
+/// The only host the trade site's league list is fetched from.
+pub const TRADE_LEAGUES_HOST: &str = "www.pathofexile.com";
+/// The trade site's public list of Path of Exile 2's leagues.
+pub const TRADE_LEAGUES_PATH: &str = "/api/trade2/data/leagues";
+/// The league list's `Accept` header.
+pub const TRADE_LEAGUES_ACCEPT: &str = "application/json";
+/// The largest league-list body read; one byte more is refused.
+pub const MAX_TRADE_LEAGUES_BODY: usize = 64 * 1024;
 
 /// The quest tracker's `User-Agent`: the app's name, no version, no
 /// machine detail.
@@ -324,6 +347,15 @@ pub fn fetch_release_list(product: Product) -> Result<Response, FetchError> {
     get(&Target::release_list(product))
 }
 
+/// Fetches the trade site's league list: one `GET` of [`TRADE_LEAGUES_PATH`]
+/// on [`TRADE_LEAGUES_HOST`] with the crafting helper's `User-Agent`,
+/// blocking the calling thread for at most [`TOTAL_DEADLINE`]. Any status is
+/// an answer (a 3xx included, which is not followed); only a failure to get
+/// one is an error. Takes nothing: no caller names a place.
+pub fn fetch_trade_leagues() -> Result<Response, FetchError> {
+    get(&Target::trade_leagues())
+}
+
 /// Downloads one asset of `release` into `sink`, blocking the calling
 /// thread (run it on a thread of its own) for at most [`DOWNLOAD_DEADLINE`]
 /// plus WinHTTP's coarse last wait. Reads at most `limit` bytes, or the
@@ -372,11 +404,64 @@ pub(crate) struct Redirects {
     pub(crate) hosts: &'static [&'static str],
 }
 
-/// Where a request goes. Only [`Target::release_list`] and
-/// [`Target::download`] are reachable from outside the crate; the tests
-/// build their own, plain HTTP to a loopback port they opened, with no
-/// proxy, shorter bounds and a redirect allowlist of their own. The path
-/// and the headers are never part of it.
+/// What a request sends besides its place and its `User-Agent`, and how
+/// much of the answer it reads: the path, the `Accept` header, GitHub's
+/// API version header when it has one, and the body's cap. A target's
+/// request is what `get` sends; a download always sends
+/// [`Request::DOWNLOAD`]'s header with the caller's path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Request {
+    /// The path asked for; for a download, the prefix the caller's path
+    /// starts with.
+    pub(crate) path: &'static str,
+    pub(crate) accept: &'static str,
+    /// `X-GitHub-Api-Version`, sent only when set.
+    pub(crate) api_version: Option<&'static str>,
+    /// The largest body `get` reads; a download's cap is the asset's and
+    /// the caller's instead.
+    pub(crate) max_body: usize,
+}
+
+impl Request {
+    /// The release list's request, as it has always been sent.
+    pub(crate) const RELEASE_LIST: Request = Request {
+        path: PATH,
+        accept: ACCEPT,
+        api_version: Some(API_VERSION),
+        max_body: MAX_BODY,
+    };
+    /// The trade site's league list: its path and `Accept`, nothing of
+    /// GitHub's.
+    pub(crate) const TRADE_LEAGUES: Request = Request {
+        path: TRADE_LEAGUES_PATH,
+        accept: TRADE_LEAGUES_ACCEPT,
+        api_version: None,
+        max_body: MAX_TRADE_LEAGUES_BODY,
+    };
+    /// A release asset's download.
+    pub(crate) const DOWNLOAD: Request = Request {
+        path: DOWNLOAD_PATH_PREFIX,
+        accept: DOWNLOAD_ACCEPT,
+        api_version: None,
+        max_body: 0,
+    };
+
+    /// The headers this request adds to the `User-Agent` and `Host`, as
+    /// CRLF-ended lines.
+    pub(crate) fn headers(&self) -> String {
+        let mut headers = format!("Accept: {}\r\n", self.accept);
+        if let Some(version) = self.api_version {
+            headers.push_str(&format!("X-GitHub-Api-Version: {version}\r\n"));
+        }
+        headers
+    }
+}
+
+/// Where a request goes and what it sends. Only [`Target::release_list`],
+/// [`Target::download`] and [`Target::trade_leagues`] are reachable from
+/// outside the crate; the tests build their own, plain HTTP to a loopback
+/// port they opened, with no proxy, shorter bounds and a redirect allowlist
+/// of their own, and one of the requests above.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Target {
     pub(crate) host: &'static str,
@@ -386,7 +471,24 @@ pub(crate) struct Target {
     pub(crate) user_agent: &'static str,
     pub(crate) timeouts: Timeouts,
     pub(crate) redirects: Redirects,
+    pub(crate) request: Request,
 }
+
+/// The bounds of the release list and the league list.
+const LIST_TIMEOUTS: Timeouts = Timeouts {
+    resolve: Duration::from_secs(5),
+    connect: Duration::from_secs(5),
+    send: Duration::from_secs(5),
+    receive: Duration::from_secs(10),
+    total: TOTAL_DEADLINE,
+};
+
+/// No redirect is followed at all.
+const NO_REDIRECT: Redirects = Redirects {
+    secure: true,
+    port: PORT,
+    hosts: &[],
+};
 
 impl Target {
     pub(crate) fn release_list(product: Product) -> Self {
@@ -396,19 +498,24 @@ impl Target {
             secure: SCHEME == "https",
             system_proxy: true,
             user_agent: product.user_agent(),
-            timeouts: Timeouts {
-                resolve: Duration::from_secs(5),
-                connect: Duration::from_secs(5),
-                send: Duration::from_secs(5),
-                receive: Duration::from_secs(10),
-                total: TOTAL_DEADLINE,
-            },
+            timeouts: LIST_TIMEOUTS,
             // The release list follows no redirect at all.
-            redirects: Redirects {
-                secure: true,
-                port: PORT,
-                hosts: &[],
-            },
+            redirects: NO_REDIRECT,
+            request: Request::RELEASE_LIST,
+        }
+    }
+
+    pub(crate) fn trade_leagues() -> Self {
+        Target {
+            host: TRADE_LEAGUES_HOST,
+            port: PORT,
+            secure: SCHEME == "https",
+            system_proxy: true,
+            user_agent: CRAFTING_HELPER_USER_AGENT,
+            timeouts: LIST_TIMEOUTS,
+            // Nor does the league list.
+            redirects: NO_REDIRECT,
+            request: Request::TRADE_LEAGUES,
         }
     }
 
@@ -431,6 +538,7 @@ impl Target {
                 port: PORT,
                 hosts: &REDIRECT_HOSTS,
             },
+            request: Request::DOWNLOAD,
         }
     }
 }
@@ -555,6 +663,57 @@ mod tests {
                 "the release list follows no redirect"
             );
         }
+    }
+
+    #[test]
+    fn trade_leagues_endpoint_is_fixed() {
+        assert_eq!(TRADE_LEAGUES_HOST, "www.pathofexile.com");
+        assert_eq!(TRADE_LEAGUES_PATH, "/api/trade2/data/leagues");
+        assert_eq!(TRADE_LEAGUES_ACCEPT, "application/json");
+        assert_eq!(MAX_TRADE_LEAGUES_BODY, 64 * 1024);
+        let t = Target::trade_leagues();
+        assert_eq!(t.host, TRADE_LEAGUES_HOST);
+        assert_eq!(t.port, 443);
+        assert!(t.secure, "the league list is fetched over TLS only");
+        assert!(t.system_proxy);
+        assert_eq!(t.user_agent, CRAFTING_HELPER_USER_AGENT);
+        // The release list's bounds, and no redirect followed.
+        assert_eq!(
+            t.timeouts,
+            Target::release_list(Product::CraftingHelper).timeouts
+        );
+        assert_eq!(t.timeouts.total, Duration::from_secs(20));
+        assert!(
+            t.redirects.hosts.is_empty(),
+            "the league list follows no redirect"
+        );
+        assert_eq!(
+            t.request,
+            Request {
+                path: TRADE_LEAGUES_PATH,
+                accept: TRADE_LEAGUES_ACCEPT,
+                api_version: None,
+                max_body: MAX_TRADE_LEAGUES_BODY,
+            }
+        );
+        assert_eq!(t.request.headers(), "Accept: application/json\r\n");
+        // Each request is its own: the release list's is unchanged, and
+        // neither carries the other's path or headers.
+        assert_eq!(
+            Request::RELEASE_LIST.headers(),
+            format!("Accept: {ACCEPT}\r\nX-GitHub-Api-Version: {API_VERSION}\r\n")
+        );
+        for product in [
+            Product::QuestTracker,
+            Product::WaystoneRoller,
+            Product::CraftingHelper,
+        ] {
+            assert_eq!(Target::release_list(product).request, Request::RELEASE_LIST);
+        }
+        assert_eq!(
+            Request::DOWNLOAD.headers(),
+            format!("Accept: {DOWNLOAD_ACCEPT}\r\n")
+        );
     }
 
     #[test]
@@ -810,6 +969,17 @@ mod tests {
                     port,
                     hosts: &["127.0.0.1"],
                 },
+                request: Request::RELEASE_LIST,
+            }
+        }
+
+        /// The league list's request to the loopback server, as the
+        /// crafting helper sends it.
+        fn leagues_target(port: u16) -> Target {
+            Target {
+                user_agent: CRAFTING_HELPER_USER_AGENT,
+                request: Request::TRADE_LEAGUES,
+                ..target(port)
             }
         }
 
@@ -1121,6 +1291,117 @@ mod tests {
             let listener = server.join().unwrap();
 
             assert_eq!(answer.status, 301);
+            assert!(answer.body.is_empty());
+            assert_no_more_connections(&listener);
+        }
+
+        #[test]
+        fn loopback_trade_leagues_sends_its_path_and_two_headers_only() {
+            let (listener, port) = listen();
+            let body: &[u8] = br#"{"result":[{"id":"Standard","realm":"poe2","text":"Standard"}]}"#;
+            let server = thread::spawn(move || {
+                let mut stream = accept(&listener);
+                let head = read_head(&mut stream);
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                )
+                .unwrap();
+                stream.write_all(body).unwrap();
+                head
+            });
+
+            let answer = get(&leagues_target(port)).expect("an answer");
+            let head = server.join().unwrap();
+
+            assert_eq!(answer.status, 200);
+            assert_eq!(answer.body, body);
+            assert_eq!(
+                request_line(&head),
+                format!("GET {TRADE_LEAGUES_PATH} HTTP/1.1")
+            );
+            assert_eq!(header(&head, "Accept"), vec![TRADE_LEAGUES_ACCEPT]);
+            assert_eq!(
+                header(&head, "User-Agent"),
+                vec![CRAFTING_HELPER_USER_AGENT]
+            );
+            assert!(header(&head, "X-GitHub-Api-Version").is_empty(), "{head}");
+            assert_sends_nothing_private(&head);
+            // Besides the two, only what HTTP itself needs (WinHTTP's own
+            // `Host` and `Connection`).
+            let mut names: Vec<String> = head
+                .split("\r\n")
+                .skip(1)
+                .filter_map(|line| line.split_once(':'))
+                .map(|(n, _)| n.trim().to_ascii_lowercase())
+                .filter(|n| n != "host" && n != "connection")
+                .collect();
+            names.sort();
+            assert_eq!(names, ["accept", "user-agent"], "{head}");
+        }
+
+        #[test]
+        fn loopback_trade_leagues_answer_over_its_cap_is_refused() {
+            // One byte past the league list's own cap, far under the
+            // release list's: refused.
+            let (listener, port) = listen();
+            let server = thread::spawn(move || {
+                let mut stream = accept(&listener);
+                read_head(&mut stream);
+                let len = MAX_TRADE_LEAGUES_BODY + 1;
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {len}\r\nConnection: close\r\n\r\n"
+                );
+                let _ = stream.write_all(&vec![b'a'; len]);
+            });
+            let result = get(&leagues_target(port));
+            server.join().unwrap();
+            assert_eq!(result, Err(FetchError::TooLarge));
+            assert!(MAX_TRADE_LEAGUES_BODY + 1 < MAX_BODY);
+
+            // Control: an answer at the cap is read whole.
+            let (listener, port) = listen();
+            let server = thread::spawn(move || {
+                let mut stream = accept(&listener);
+                read_head(&mut stream);
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {MAX_TRADE_LEAGUES_BODY}\r\nConnection: close\r\n\r\n"
+                )
+                .unwrap();
+                stream
+                    .write_all(&vec![b'a'; MAX_TRADE_LEAGUES_BODY])
+                    .unwrap();
+            });
+            let answer = get(&leagues_target(port)).expect("an answer");
+            server.join().unwrap();
+            assert_eq!(answer.status, 200);
+            assert_eq!(answer.body.len(), MAX_TRADE_LEAGUES_BODY);
+        }
+
+        #[test]
+        fn loopback_trade_leagues_redirect_is_not_followed() {
+            let (listener, port) = listen();
+            let server = thread::spawn(move || {
+                let mut stream = accept(&listener);
+                read_head(&mut stream);
+                write!(
+                    stream,
+                    "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:{port}/followed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+                )
+                .unwrap();
+                drop(stream);
+                listener
+            });
+
+            // The test target allows this very redirect for a download; the
+            // league list returns it as the answer.
+            let answer = get(&leagues_target(port)).expect("the 3xx is the answer");
+            let listener = server.join().unwrap();
+
+            assert_eq!(answer.status, 302);
             assert!(answer.body.is_empty());
             assert_no_more_connections(&listener);
         }

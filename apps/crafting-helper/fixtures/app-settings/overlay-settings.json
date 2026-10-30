@@ -10,6 +10,17 @@
   },
   "overlay_position": "bottom-right",
   "screen_watch": false,
+  "trade_league": "Forbidden Rites",
+  "trade_league_note": null,
+  "trade_leagues": [
+    "Forbidden Rites",
+    "HC Forbidden Rites",
+    "Runes of Aldur",
+    "HC Runes of Aldur",
+    "Standard",
+    "Hardcore"
+  ],
+  "trade_leagues_refreshing": false,
   "update": {
     "newer": null,
     "state": "idle",
