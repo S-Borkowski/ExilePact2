@@ -59,11 +59,18 @@ fn route(view: &View) -> &ch_app::RouteView {
         .expect("a route")
 }
 
-/// A started app planning the belt with its targets on `close-a-side`.
+/// Blocked for the belt's craft: Armour, its last target missing, would
+/// otherwise be desecrated (issue #32, `tests/last_desecration.rs`); the
+/// close, the slam and the clean-up are these tests' subject.
+const NECRO: &str = "omen-of-sinistral-necromancy";
+
+/// A started app planning the belt with its targets on `close-a-side`,
+/// Omen of Sinistral Necromancy blocked for the craft.
 fn belt_planned(dir: &std::path::Path, shell: &FakeShell) -> std::sync::Arc<ch_app::App> {
     let app = start(dir, shell);
     app.grab_text(Some(&belt("belt-2p1s")));
     app.set_targets(&belt_targets());
+    app.set_craft_blocked(&lines(&[NECRO]));
     app.choose_route(CLOSE);
     app
 }
@@ -381,6 +388,7 @@ fn an_annulment_read_from_the_screen_is_judged_as_an_annulment() {
     let (app, ms) = start_watching(tmp.path(), &shell, &screen);
     app.grab_text(Some(&belt("belt-2p1s")));
     app.set_targets(&belt_targets());
+    app.set_craft_blocked(&lines(&[NECRO]));
     app.choose_route(CLOSE);
     app.accept_craft();
     app.grab_text(Some(&belt("belt-closed")));
@@ -436,7 +444,8 @@ fn a_missed_annulment_shows_the_step_again_without_a_fallback() {
     // Picked again on the new item: mana, a target, is now the lowest, so
     // the whittle is not certain: the Sinistral annulment again, with no
     // fallback line (the engine passed the whittle over by its own rule;
-    // nothing is blocked).
+    // only the Necromancy omen is blocked, which no way of the removal
+    // names, and the removal comes before the desecration).
     assert_eq!(current.step.uses, [ANNUL, SINISTRAL]);
     assert_eq!(current.step.fallback, None);
     app.shutdown();

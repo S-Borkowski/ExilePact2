@@ -387,6 +387,7 @@ describe('the craft window', () => {
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
       'craft-close-side': 'Cord Snare',
+      'craft-last-desecration': 'Cord Snare',
       'craft-side-full': 'Cord Snare',
       'craft-refused': "Can't plan this item",
       'craft-guiding': 'Doom Loop',
@@ -623,6 +624,47 @@ describe('the craft window', () => {
     for (const box of free.root.querySelectorAll<HTMLInputElement>('.targets input[type="checkbox"]')) {
       expect(box.disabled).toBe(false);
     }
+  });
+
+  it('the_last_target_is_desecrated_or_the_fallback_says_why', async () => {
+    // `craft-last-desecration`: the belt's last target missing (Armour) on
+    // a rare with no desecrated modifier: the route's steps are the bone on
+    // the prefix side with Omen of Sinistral Necromancy, then the reveal
+    // with Omen of Abyssal Echoes, each with its odds unknown, in words,
+    // and no Fallback line.
+    const view = fixtureView('craft-last-desecration');
+    const previewed = view.craft.planning!.preview!.route!;
+    const { root } = await render(view);
+    const steps = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(steps).toHaveLength(2);
+    const [desecrate, reveal] = steps;
+    expect(text(desecrate.querySelector('.instruction'))).toBe(previewed.steps[0].instruction);
+    expect(text(desecrate.querySelector('.instruction'))).toContain('Omen of Sinistral Necromancy on the prefix side');
+    expect(text(desecrate.querySelector('.uses'))).toMatch(/^Uses .*Collarbone, Omen of Sinistral Necromancy$/);
+    expect(text(reveal.querySelector('.uses'))).toBe('Uses Reveal at the Well of Souls, Omen of Abyssal Echoes');
+    for (const li of steps) {
+      const odds = li.querySelector('.odds')!;
+      expect(text(odds)).toMatch(/^odds unknown: /);
+      expect(odds.getAttribute('data-known')).toBe('false');
+    }
+    expect(root.querySelector('.route .fallback')).toBeNull();
+
+    // `craft-close-side`: Omen of Sinistral Necromancy blocked, the close
+    // and the slam taken in the desecration's place, each saying why under
+    // its Fallback label; the blocked-list disclosure open.
+    const close = await render(fixtureView('craft-close-side'));
+    const closeSteps = [...close.root.querySelectorAll('.route ol.steps > li')];
+    expect(closeSteps).toHaveLength(2);
+    for (const li of closeSteps) {
+      expect(text(li.querySelector('.fallback .label'))).toBe('Fallback');
+      const line = text(li.querySelector('.fallback .line'));
+      expect(line).toContain('instead of a desecration');
+      expect(line).toMatch(/: Omen of Sinistral Necromancy blocked$/);
+    }
+    expect(text(closeSteps[0].querySelector('.fallback .line'))).toBe(
+      'Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation instead of a desecration: Omen of Sinistral Necromancy blocked',
+    );
+    expect(close.root.querySelector<HTMLDetailsElement>('details.blocked')!.open).toBe(true);
   });
 
   it('route_preview_lists_targets_and_the_craft_not_the_notes', async () => {

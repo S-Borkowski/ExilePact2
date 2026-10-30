@@ -368,8 +368,10 @@ pub struct StepLineView {
     pub uses: Vec<String>,
     /// The odds in words; `None` for a manual step.
     pub odds: Option<String>,
-    /// Set when an earlier alternative was passed over; never on a step the
-    /// app named by the modifier levels.
+    /// Set when an earlier alternative was passed over (never on a step the
+    /// app named by the modifier levels), or when a state-ordered step was
+    /// taken in place of the last target's desecration, saying why; both
+    /// joined by `; `, the desecration's first.
     pub fallback: Option<String>,
 }
 

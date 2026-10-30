@@ -75,12 +75,14 @@
 //!   them ([`state_step_number`]). The hit line names the projection's next
 //!   step, on the item now, and the miss line says the item picks the next
 //!   step ([`state_branch_lines`]). A fallback line shows only when a
-//!   blocked id passed an earlier alternative over ([`fallback_line`]).
+//!   blocked id passed an earlier alternative over ([`fallback_line`]), or
+//!   when the step was taken in place of the last target's desecration,
+//!   saying why ([`desecration_fallback_line`]).
 //!
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
 //! "Rust-produced copy" is made here: a step's instruction and target
 //! modifiers ([`step_instruction`], [`step_targets`]), [`odds_words`],
-//! [`fallback_line`], [`floor_options`], the branch lines
+//! [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
 //! ([`branch_lines`], [`state_branch_lines`]) and the history summary
 //! ([`summary`]).
 
@@ -1375,7 +1377,8 @@ pub fn state_step_number(history: &[HistoryEntry], id: &str) -> usize {
 /// One step's line. A step the app named by level has no fallback line:
 /// the whittle it passed over is not blocked. A state-ordered step's
 /// fallback line asks `without` for the engine's pick of the step with
-/// another list ([`state_fallback_line`]).
+/// another list ([`state_fallback_line`]), after the line of a desecration
+/// it was taken in place of ([`desecration_fallback_line`]).
 fn step_line(
     blueprint: Option<&Blueprint>,
     shown: &Shown,
@@ -1402,12 +1405,39 @@ fn step_line(
         targets: step_targets(step, item),
         uses,
         odds: step.odds.as_ref().map(odds_words),
-        fallback: blueprint
-            .filter(|_| !shown.by_level)
-            .and_then(|b| match b.order() {
-                Order::State => state_fallback_line(b, step, item, blocked, without),
-                Order::Listed => fallback_line(b, step, item, blocked),
-            }),
+        fallback: joined_fallback(
+            desecration_fallback_line(step),
+            blueprint
+                .filter(|_| !shown.by_level)
+                .and_then(|b| match b.order() {
+                    Order::State => state_fallback_line(b, step, item, blocked, without),
+                    Order::Listed => fallback_line(b, step, item, blocked),
+                }),
+        ),
+    }
+}
+
+/// The fallback line of a state-ordered step taken in place of the last
+/// target's desecration (docs/models/crafting-slots-spec.md, "The
+/// last-target desecration"): `<used, with its omens> instead of a
+/// desecration: <reason>`, the reason the engine's
+/// (`StepView::instead_of_desecration`). `None` when the step replaced no
+/// desecration.
+pub fn desecration_fallback_line(step: &StepView) -> Option<String> {
+    let why = step.instead_of_desecration.as_deref()?;
+    let used = step
+        .action
+        .as_ref()
+        .map_or_else(|| "this step".to_string(), uses_words);
+    Some(format!("{used} instead of a desecration: {why}"))
+}
+
+/// A step's one fallback line: the desecration's first, then the passed-over
+/// alternative's, joined by `; `.
+fn joined_fallback(desecration: Option<String>, alternative: Option<String>) -> Option<String> {
+    match (desecration, alternative) {
+        (Some(d), Some(a)) => Some(format!("{d}; {a}")),
+        (d, a) => d.or(a),
     }
 }
 
