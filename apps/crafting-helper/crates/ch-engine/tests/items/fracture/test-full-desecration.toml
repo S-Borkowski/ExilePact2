@@ -1,0 +1,21 @@
+# A test blueprint (engine tests only): desecrate on the missing target's
+# side, full or not.
+id = "test-full-desecration"
+name = "Test: desecrate on the missing target's side"
+classes = ["Boots"]
+source = "ch-engine tests"
+relies_on = ["full-desecration-same-side"]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the missing target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+bind = "last-remaining"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]

@@ -18,7 +18,7 @@ say = "Use the essence that adds a target"
 goal = "add-wanted"
 bind = "essence"
 when = "bound"
-
+on_miss = "next"
 [[step.action]]
 currency = "essence-of-enhancement"
 

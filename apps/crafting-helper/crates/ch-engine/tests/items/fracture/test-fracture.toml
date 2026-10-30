@@ -1,0 +1,21 @@
+# A test blueprint (engine tests only): fracture a target on a rare with
+# exactly four modifiers.
+id = "test-fracture"
+name = "Test: fracture a target"
+classes = ["Boots"]
+source = "ch-engine tests"
+relies_on = ["abyss-mark-unfracturable", "desecrated-unfracturable"]
+
+[[start]]
+rarity = ["rare"]
+modifiers_at_least = 4
+modifiers_at_most = 4
+
+[[step]]
+id = "fracture"
+say = "Fracture a target"
+goal = "fracture"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "fracturing-orb"

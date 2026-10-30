@@ -13,8 +13,11 @@
 //! 3. The meaning, on the model: the id against the file stem, classes,
 //!    currency and omen ids, omens against their currency, goals against
 //!    what the action can produce, step ids and go-tos, empty lists, the
-//!    keys only one order takes, `relies_on` against the known facts, and a
-//!    step's `say` against the omens its actions carry.
+//!    keys only one order takes, `relies_on` against the known facts, a
+//!    step's `say` against the omens its actions carry, and the one-crafted
+//!    rules (two crafted steps with no removal between them, a crafted step
+//!    a miss repeats) and the jewel one (no Greater or Perfect currency on a
+//!    jewel blueprint).
 //!
 //! What needs the modifier data (an essence, alloy or liquid that exists
 //! for none of the blueprint's classes) is `ch-engine`'s check.
@@ -27,9 +30,10 @@ use serde::Deserialize;
 use toml::de::{DeTable, DeValue};
 
 use crate::catalogue::{
-    self, Currency, Kind, CLASSES, EXALTED_ORBS, GREATER_EXALTATION, GREATER_OMEN, NOT_ESTABLISHED, SIDE_OMEN,
+    self, Currency, Kind, ANNULMENT, CHAOS_ORBS, CLASSES, EXALTED_ORBS, GREATER_EXALTATION, GREATER_OMEN,
+    NOT_ESTABLISHED, SIDE_OMEN,
 };
-use crate::model::{Binding, Blueprint, Goal, Order, Rarity, Side, Span, Spanned, Step, Transition, When};
+use crate::model::{Action, Binding, Blueprint, Goal, Order, Rarity, Side, Span, Spanned, Step, Transition, When};
 
 /// One validation error.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -212,6 +216,8 @@ const START: &[Field] = &[
     opt("closable_side", Ty::Bool),
     opt("one_side_open", Ty::Bool),
     opt("desecrated_unwanted", Ty::Bool),
+    opt("modifiers_at_least", Ty::Uint),
+    opt("modifiers_at_most", Ty::Uint),
 ];
 
 /// The keys of a step's `requires`, `until` and `guard`: a start's and more.
@@ -227,6 +233,8 @@ const STEP_CONDITION: &[Field] = &[
     opt("closable_side", Ty::Bool),
     opt("one_side_open", Ty::Bool),
     opt("desecrated_unwanted", Ty::Bool),
+    opt("modifiers_at_least", Ty::Uint),
+    opt("modifiers_at_most", Ty::Uint),
     opt("free_prefixes_at_least", Ty::Uint),
     opt("free_suffixes_at_least", Ty::Uint),
     opt("no_desecrated", Ty::Bool),
@@ -439,6 +447,109 @@ fn meaning(errors: &mut Errors<'_>, b: &Blueprint) {
 
     for step in &b.steps {
         check_step(errors, step, &first, order);
+    }
+    check_crafted(errors, b, order);
+    check_jewel_grades(errors, b);
+}
+
+/// The first action of a step that places a crafted modifier: an essence
+/// of any grade (the special ones too), an alloy or a liquid emotion. Since
+/// 0.5 an item holds one crafted modifier (the spec's
+/// `one-crafted-one-desecrated` and `alloy-counts-as-crafted`).
+fn crafted_action(step: &Step) -> Option<&Spanned<Action>> {
+    step.actions
+        .iter()
+        .find(|a| matches!(Currency::of(a.get_ref().currency.get_ref()), Some(Currency::DataBacked(_))))
+}
+
+/// Whether an action of the step can take a modifier off: an Orb of
+/// Annulment or a Chaos Orb of any grade.
+fn has_removal(step: &Step) -> bool {
+    step.actions.iter().any(|a| {
+        let id = a.get_ref().currency.get_ref().as_str();
+        id == ANNULMENT || CHAOS_ORBS.contains(&id)
+    })
+}
+
+/// The one-crafted rules. Two steps that place a crafted modifier need a
+/// step that can remove one between them, in file order; that removal may
+/// still miss the first one, so this is a plausibility check, not a proof.
+/// In listed order a crafted step that is not `manual` may not repeat:
+/// neither a miss that goes to `repeat` (written or by default) nor an
+/// `until`, since the second use finds the first one's modifier on the item.
+fn check_crafted(errors: &mut Errors<'_>, b: &Blueprint, order: Order) {
+    let mut previous: Option<&str> = None;
+    let mut removal_since = false;
+    for step in &b.steps {
+        let s = step.get_ref();
+        let id = s.id.get_ref();
+        let Some(crafted) = crafted_action(s) else {
+            removal_since |= has_removal(s);
+            continue;
+        };
+        let currency = &crafted.get_ref().currency;
+        if let (Some(before), false) = (previous, removal_since) {
+            errors.push(
+                currency.span(),
+                format!(
+                    "step `{id}`: `{}` places a second crafted modifier after step `{before}`, with no annulment or Chaos Orb between them; an item holds one crafted modifier",
+                    currency.get_ref()
+                ),
+            );
+        }
+        previous = Some(id.as_str());
+        removal_since = false;
+
+        if order != Order::Listed || *s.goal.get_ref() == Goal::Manual {
+            continue;
+        }
+        if let Some(until) = &s.until {
+            errors.push(
+                until.span(),
+                format!("step `{id}`: `until` repeats a step that places a crafted modifier; an item holds one"),
+            );
+        }
+        if s.miss_transition() == Transition::Repeat {
+            let (span, how) = match &s.on_miss {
+                Some(t) => (t.span(), ""),
+                None => (currency.span(), " by default"),
+            };
+            errors.push(
+                span,
+                format!(
+                    "step `{id}`: a miss repeats{how} a step that places a crafted modifier; an item holds one, so say where a miss goes (`on_miss`)"
+                ),
+            );
+        }
+    }
+}
+
+/// On a blueprint for jewels alone, no currency with a Minimum Modifier
+/// Level (the Greater and Perfect orbs): a jewel's modifiers have one level
+/// each, so such an orb only costs more than the plain one.
+fn check_jewel_grades(errors: &mut Errors<'_>, b: &Blueprint) {
+    let classes = b.classes.get_ref();
+    if classes.is_empty() || classes.iter().any(|c| c.get_ref() != "Jewels") {
+        return;
+    }
+    for step in &b.steps {
+        let s = step.get_ref();
+        for action in &s.actions {
+            let currency = &action.get_ref().currency;
+            let Some(Currency::Static(e)) = Currency::of(currency.get_ref()) else {
+                continue;
+            };
+            if e.kind == Kind::Currency && e.min_modifier_level.is_some() {
+                errors.push(
+                    currency.span(),
+                    format!(
+                        "step `{}`: `{}` on a jewel blueprint; a jewel's modifiers have one level each, so a Minimum Modifier Level only adds cost (use the plain orb)",
+                        s.id.get_ref(),
+                        e.id
+                    ),
+                );
+            }
+        }
     }
 }
 

@@ -44,6 +44,7 @@ say = "Use the essence that adds a target"
 goal = "add-wanted"
 bind = "essence"
 when = "bound"
+on_miss = "next"
 action = [
     { currency = "lesser-essence-of-the-body" },
     { currency = "essence-of-the-body" },

@@ -10,6 +10,10 @@ use crate::catalogue::data_entries;
 use crate::context::{item_rarity, kind_of, Ctx, ModInfo, Role, State};
 use crate::route::ChosenAction;
 
+/// The data-backed id of Essence of the Abyss, whose modifier (the Mark of
+/// the Abyssal Lord) a Fracturing Orb does not pick.
+const ABYSS_ESSENCE: &str = "essence-of-the-abyss";
+
 /// The odds of the step's goal on its first try, or `None` for a manual
 /// step (no check, no odds).
 pub(crate) fn step_odds(
@@ -23,6 +27,14 @@ pub(crate) fn step_odds(
         return None;
     }
     match action.effect {
+        Effect::Desecrate if goal == Goal::Desecrate => {
+            if let Some(odds) = full_side_desecration_odds(st, action) {
+                return Some(odds);
+            }
+            return Some(Odds::unknown(
+                "desecration and reveals have no established weights",
+            ));
+        }
         Effect::Desecrate | Effect::Reveal => {
             return Some(Odds::unknown(
                 "desecration and reveals have no established weights",
@@ -45,8 +57,64 @@ pub(crate) fn step_odds(
         Goal::Desecrate | Goal::Reveal | Goal::Convert => {
             Odds::unknown("desecration, reveals and fluxes have no established weights")
         }
+        Goal::Fracture => fracture_odds(ctx, st),
         Goal::Manual => return None,
     })
+}
+
+/// A Fracturing Orb's odds: the share of targets among the modifiers it
+/// may pick. It never picks a fractured modifier, and (not established) a
+/// desecrated one, revealed or not, or the Mark of the Abyssal Lord, the
+/// modifier Essence of the Abyss adds (read from the data's lines for it).
+fn fracture_odds(ctx: &Ctx, st: &State) -> Odds {
+    let mark: Vec<Vec<String>> = data_entries(ctx.data, ABYSS_ESSENCE)
+        .iter()
+        .map(|e| e.essence.lines.clone())
+        .collect();
+    let pool: Vec<&ModInfo> = st
+        .mods
+        .iter()
+        .filter(|m| !m.fractured && !m.desecrated && !m.unrevealed && !mark.contains(&m.templates))
+        .collect();
+    let left_out = "the Mark of the Abyssal Lord and desecrated modifiers left out, \
+                    not established: abyss-mark-unfracturable, desecrated-unfracturable";
+    if pool.is_empty() {
+        return Odds::unknown(format!("no modifier the orb can fracture ({left_out})"));
+    }
+    let hits = pool
+        .iter()
+        .filter(|m| matches!(m.role, Role::Wanted(_)))
+        .count() as u64;
+    let total = pool.len() as u64;
+    if hits == total {
+        return Odds::certain(
+            true,
+            format!("every modifier the orb can fracture is a target ({left_out})"),
+        );
+    }
+    Odds::known(
+        hits,
+        total,
+        &format!("modifiers the orb can fracture are targets ({left_out})"),
+    )
+}
+
+/// A desecration with a Necromancy omen on an item whose omen side is full
+/// first removes a modifier, from that side (not established:
+/// `full-desecration-same-side`). Its odds are the removal's: the share of
+/// non-targets among that side's modifiers a removal may take. The reveal's
+/// own chance is not in them. `None` when the side has a free slot.
+fn full_side_desecration_odds(st: &State, action: &ChosenAction) -> Option<Odds> {
+    let side = action.side.map(kind_of)?;
+    if st.free(side) > 0 || st.count(side) == 0 {
+        return None;
+    }
+    let removal = removal_odds(st, Some(side), Removal::Random);
+    Some(with_basis_note(
+        removal,
+        "the desecration's removal on the full side only, the reveal's chance not included \
+         (not established: full-desecration-same-side)",
+    ))
 }
 
 /// How the action's omens choose the removed modifier.

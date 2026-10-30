@@ -520,7 +520,7 @@ fn guide_state_round_trips_through_json() {
 
 #[test]
 fn data_backed_id_unknown_for_every_class_is_refused_with_its_line() {
-    let text = "id = \"no-essence\"\nname = \"No essence\"\nclasses = [\"Rings\"]\nsource = \"tests\"\n\n[[start]]\nrarity = [\"magic\"]\n\n[[step]]\nid = \"essence\"\nsay = \"Use it\"\ngoal = \"add-wanted\"\n\n[[step.action]]\ncurrency = \"essence-of-enhancement\"\n";
+    let text = "id = \"no-essence\"\nname = \"No essence\"\nclasses = [\"Rings\"]\nsource = \"tests\"\n\n[[start]]\nrarity = [\"magic\"]\n\n[[step]]\nid = \"essence\"\nsay = \"Use it\"\ngoal = \"add-wanted\"\non_miss = \"next\"\n[[step.action]]\ncurrency = \"essence-of-enhancement\"\n";
     // Essence of Enhancement exists for gloves, not for rings.
     let checked = ch_blueprint::check("blueprints/no-essence.toml", text).unwrap();
     let errors = ch_engine::resolve(checked).unwrap_err();

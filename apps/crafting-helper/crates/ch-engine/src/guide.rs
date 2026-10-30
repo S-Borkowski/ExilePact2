@@ -357,6 +357,13 @@ impl Engine {
             Goal::Fill => kept && !added.is_empty(),
             Goal::Desecrate => kept && added.iter().any(|m| m.unrevealed),
             Goal::RemoveDesecrated => kept && removed.iter().any(|m| m.desecrated),
+            // A target became fractured; another modifier fractured is a
+            // miss.
+            Goal::Fracture => {
+                kept && added
+                    .iter()
+                    .any(|m| m.fractured && matches!(m.role, Role::Wanted(_)))
+            }
             Goal::Manual => true,
         };
         if state {

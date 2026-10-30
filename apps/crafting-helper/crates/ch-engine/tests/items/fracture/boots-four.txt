@@ -1,0 +1,15 @@
+Item Class: Boots
+Rarity: Rare
+Storm Trail
+Cavalry Boots
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Cheetah's" (Tier: 2) — Speed }
+30% increased Movement Speed
+{ Prefix Modifier "Rotund" (Tier: 3) — Life }
++90(85-99) to maximum Life
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++33(31-35)% to Fire Resistance
+{ Suffix Modifier "of the Leopard" (Tier: 3) — Attribute }
++26(25-27) to Dexterity

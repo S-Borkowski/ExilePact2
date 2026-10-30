@@ -16,7 +16,7 @@ use serde::Serialize;
 
 use crate::catalogue::data_entries;
 use crate::context::{
-    condition_failures, kind_of, side_of, side_word, Ctx, Refusal, State, Target, TargetInfo,
+    condition_failures, kind_of, side_of, side_word, Ctx, Refusal, Role, State, Target, TargetInfo,
 };
 use crate::engine::{Engine, Resolved};
 use crate::odds::{step_odds, target_difficulty};
@@ -447,6 +447,8 @@ pub(crate) fn pick_step(
     }
     let aims: Vec<usize> = match target {
         Some(t) => vec![t],
+        // A fracture's hit is a target already on the item.
+        None if goal == Goal::Fracture => fracturable_targets(st),
         None => eligible,
     };
     let odds = action
@@ -467,6 +469,19 @@ pub(crate) fn pick_step(
         odds,
         instead_of_desecration: None,
     }))
+}
+
+/// The targets on the item a Fracturing Orb could fracture: present, not
+/// fractured, not desecrated (revealed or not).
+pub(crate) fn fracturable_targets(st: &State) -> Vec<usize> {
+    st.mods
+        .iter()
+        .filter(|m| !m.fractured && !m.desecrated && !m.unrevealed)
+        .filter_map(|m| match m.role {
+            Role::Wanted(t) => Some(t),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The missing targets a step with this goal may place: every one for a
@@ -717,6 +732,15 @@ fn goal_met(
         }
         Goal::RemoveDesecrated => {
             (!st.has_desecrated()).then(|| "no desecrated modifier".to_string())
+        }
+        Goal::Fracture => {
+            if st.mods.iter().any(|m| m.fractured) {
+                Some("a fractured modifier is already on the item".to_string())
+            } else if fracturable_targets(st).is_empty() {
+                Some("no target is on the item to fracture".to_string())
+            } else {
+                None
+            }
         }
         Goal::Fill => {
             let free = [Kind::Prefix, Kind::Suffix]

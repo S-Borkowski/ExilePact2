@@ -1,0 +1,51 @@
+id = "crafted-twice"
+name = "Two crafted steps with no removal between"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["magic"]
+
+[[step]]
+id = "essence"
+say = "Use the essence"
+goal = "add-wanted"
+bind = "essence"
+on_miss = "next"
+
+[[step.action]]
+currency = "greater-essence-of-the-body"
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "fill"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "alloy"
+say = "Use the alloy"
+goal = "add-wanted"
+bind = "last-remaining"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "swift-alloy"
+
+[[step]]
+id = "clean"
+say = "Annul"
+goal = "remove-unwanted"
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "liquid"
+say = "Use the liquid"
+goal = "manual"
+
+[[step.action]]
+currency = "potent-liquid-contempt"

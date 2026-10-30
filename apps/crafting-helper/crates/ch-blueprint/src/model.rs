@@ -186,6 +186,9 @@ named_enum! {
         RemoveDesecrated = "remove-desecrated",
         /// A flux turns one modifier into the bound target.
         Convert = "convert",
+        /// A Fracturing Orb fractures a target: a hit when a target became
+        /// fractured and none was lost, a miss when another modifier did.
+        Fracture = "fracture",
         /// The player does it and confirms: no check, no odds.
         Manual = "manual",
     }
@@ -364,6 +367,14 @@ pub struct Condition {
     /// A revealed desecrated modifier on the item is not a target.
     #[serde(default)]
     pub desecrated_unwanted: Option<Spanned<bool>>,
+    /// At least this many explicit modifiers are on the item, fractured,
+    /// desecrated and unrevealed ones counted.
+    #[serde(default)]
+    pub modifiers_at_least: Option<Spanned<u32>>,
+    /// At most this many explicit modifiers are on the item, counted the
+    /// same way.
+    #[serde(default)]
+    pub modifiers_at_most: Option<Spanned<u32>>,
     /// Step conditions only: at least this many free prefix slots.
     #[serde(default)]
     pub free_prefixes_at_least: Option<Spanned<u32>>,
@@ -400,6 +411,8 @@ impl Condition {
         "closable_side",
         "one_side_open",
         "desecrated_unwanted",
+        "modifiers_at_least",
+        "modifiers_at_most",
     ];
     /// The keys only a step's `requires`, `until` and `guard` may use.
     pub const STEP_ONLY_KEYS: &'static [&'static str] = &[

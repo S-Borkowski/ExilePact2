@@ -1,0 +1,68 @@
+id = "crafted-repeat"
+name = "Crafted steps that repeat"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["magic"]
+
+[[step]]
+id = "breach"
+say = "Use the Breach essence"
+goal = "manual"
+
+[[step.action]]
+currency = "essence-of-the-breach"
+
+[[step]]
+id = "clean"
+say = "Annul"
+goal = "remove-unwanted"
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "essence"
+say = "Use the essence"
+goal = "add-wanted"
+bind = "essence"
+
+[[step.action]]
+currency = "greater-essence-of-the-body"
+
+[[step]]
+id = "chaos"
+say = "Chaos"
+goal = "remove-unwanted"
+
+[[step.action]]
+currency = "chaos-orb"
+
+[[step]]
+id = "hysteria"
+say = "Use Essence of Hysteria"
+goal = "add-wanted"
+bind = "last-remaining"
+on_miss = "repeat"
+
+[[step.action]]
+currency = "essence-of-hysteria"
+
+[[step]]
+id = "chaos-again"
+say = "Chaos"
+goal = "remove-unwanted"
+
+[[step.action]]
+currency = "perfect-chaos-orb"
+
+[[step]]
+id = "alloy"
+say = "Use the alloy until two targets remain"
+goal = "add-wanted"
+until = { wanted_remaining_at_most = 2 }
+on_miss = "next"
+
+[[step.action]]
+currency = "swift-alloy"
