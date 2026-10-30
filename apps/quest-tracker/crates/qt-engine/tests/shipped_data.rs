@@ -1244,8 +1244,9 @@ fn done_inferred_matches_notes() {
 /// The owner's find-it tips (after Live 3, 2026-10-25, with the two tidied
 /// texts the owner chose), as quest, step, the step's title and the tip. The
 /// titles are poe2db's except Beira's "Find ...", which is ours; pinning them
-/// keeps a tip from drifting onto another step unnoticed.
-const OWNER_TIPS: [(&str, &str, &str, &str); 5] = [
+/// keeps a tip from drifting onto another step unnoticed. "Search the
+/// Grelwood"'s tip moved to [`GUIDE_TIPS`] in 0.2.0 (owner, issue #39).
+const OWNER_TIPS: [(&str, &str, &str, &str); 4] = [
     ("reaching-clearfell", "step-2", "Slay the Bloated Miller", "Follow up river."),
     ("treacherous-ground", "step-2", "Find the Mud Burrow", "Follow the burrow."),
     (
@@ -1255,8 +1256,113 @@ const OWNER_TIPS: [(&str, &str, &str, &str); 5] = [
         "More wolves means you are closer to Beira.",
     ),
     ("secrets-in-the-dark", "step-1", "Travel to the Grelwood", "Follow up river again."),
-    ("secrets-in-the-dark", "step-2", "Search the Grelwood", "Should be close to entrance."),
 ];
+
+/// The 0.2.0 find-it tips: the Visual Cue notes of the community Act 1 to 3
+/// leveling guides, in our own words (issue #39), as quest, step, the step's
+/// title and the tip. "Find The Crowbell" is ours; the other titles are
+/// poe2db's. Cues 2a and 11 each sit on two steps.
+const GUIDE_TIPS: [(&str, &str, &str, &str); 15] = [
+    (
+        "secrets-in-the-dark",
+        "step-2",
+        "Search the Grelwood",
+        "Follow the faintly glowing roots; they all lead to the Tree of Souls.",
+    ),
+    (
+        "secrets-in-the-dark",
+        "step-4",
+        "Find the Red Vale",
+        "Follow the river upstream to reach the Red Vale entrance.",
+    ),
+    (
+        "the-mysterious-shade",
+        "step-2",
+        "Find the Grim Tangle",
+        "Mushroom clusters on the ground mark the way to the Grim Tangle.",
+    ),
+    (
+        "the-mysterious-shade",
+        "step-3",
+        "Travel to the Grim Tangle",
+        "Mushroom clusters on the ground mark the way to the Grim Tangle.",
+    ),
+    (
+        "the-mysterious-shade",
+        "step-8",
+        "Search for the Count's grave past the Memorial Gate",
+        "Follow the trail of caskets to the Cemetery of the Eternals.",
+    ),
+    (
+        "ominous-altars",
+        "step-1",
+        "Find Freythorn",
+        "Finish the small ritual here; its locust trail runs to the Freythorn entrance.",
+    ),
+    (
+        "the-crowbell",
+        "find",
+        "Find The Crowbell",
+        "Follow the blood trails from pecked livestock to The Crowbell.",
+    ),
+    (
+        "the-trail-of-corruption",
+        "step-2",
+        "Find the entrance to the Village",
+        "A road signpost points to Ogham Farmlands; Ogham Village comes after it.",
+    ),
+    (
+        "ominous-altars",
+        "step-2",
+        "Cleanse the Ritual Altars",
+        "Smoke from the big central altar reaches toward each small altar; follow it.",
+    ),
+    (
+        "finding-the-forge",
+        "step-3",
+        "Find Renly's tools",
+        "Stay on the cobble road; it leads directly to the smithing house.",
+    ),
+    (
+        "ascent-to-power",
+        "step-4",
+        "Obtain another Balbala's Barya",
+        "At the one fork, the branch hung with parchment goes to Balbala; the other is the exit.",
+    ),
+    (
+        "the-well-of-souls",
+        "step-1",
+        "Find the source of the Abyssal fissures",
+        "Follow the ground cracks to the Lightless Passage.",
+    ),
+    (
+        "a-crown-of-stone",
+        "step-2",
+        "Find a way into the Titan Grotto",
+        "Each giant titan head has an entrance nearby; its short canyon ends at a seal.",
+    ),
+    (
+        "a-crown-of-stone",
+        "step-3",
+        "Find and activate additional Ancient Seals",
+        "Each giant titan head has an entrance nearby; its short canyon ends at a seal.",
+    ),
+    (
+        "legacy-of-the-vaal",
+        "step-6",
+        "Search for The Matlan Waterways",
+        "Talk to the explorers at camps; they mark the next area on your minimap.",
+    ),
+];
+
+/// The guide tip on `quest`'s `step`, from [`GUIDE_TIPS`].
+fn guide_tip(quest: &str, step: &str) -> &'static str {
+    GUIDE_TIPS
+        .iter()
+        .find(|t| t.0 == quest && t.1 == step)
+        .map(|t| t.3)
+        .unwrap_or_else(|| panic!("no guide tip for {quest} {step}"))
+}
 
 /// The tip of the step the row shows next, as [`next_title`] finds it.
 fn next_tip<'a>(data: &'a QuestData, state: &QuestState) -> Option<&'a str> {
@@ -1287,7 +1393,8 @@ fn owner_tips_are_on_their_steps() {
     assert_eq!(defeat.expect("fight").tip, None);
 
     // In play: The Riverbank shows the Miller's tip, Clearfell the burrow's,
-    // Beira's and the way to the Grelwood, and the Grelwood the tree's.
+    // Beira's and the way to the Grelwood, and the Grelwood the tree's (the
+    // guide's glowing roots since 0.2.0).
     let tip = |quest: &str, step: &str| {
         OWNER_TIPS
             .iter()
@@ -1312,7 +1419,46 @@ fn owner_tips_are_on_their_steps() {
     r.enter("G1_town");
     r.enter("G1_4");
     let s = r.state("secrets-in-the-dark");
-    assert_eq!(next_tip(&data, &s), Some(tip("secrets-in-the-dark", "step-2")));
+    assert_eq!(next_tip(&data, &s), Some(guide_tip("secrets-in-the-dark", "step-2")));
+}
+
+/// Each 0.2.0 guide tip is on its step, by title, and the row shows the
+/// ones whose cue is in the area the player is in.
+#[test]
+fn guide_tips_are_on_their_steps() {
+    let data = Arc::new(data());
+    for (quest, step, title, tip) in GUIDE_TIPS {
+        let q = data.quest(quest).unwrap_or_else(|| panic!("no quest {quest}"));
+        let s = q
+            .steps
+            .iter()
+            .find(|s| s.id == step)
+            .unwrap_or_else(|| panic!("quest {quest}: no step {step}"));
+        assert_eq!(s.title, title, "quest {quest}: step {step}");
+        assert_eq!(s.tip.as_deref(), Some(tip), "quest {quest}: step {step}");
+    }
+    // Negative control: "Travel through the Grim Tangle" shares the Find and
+    // Travel to steps' text but not their tip, and the King in the Mists'
+    // step after the altars carries none.
+    for (quest, step) in [("the-mysterious-shade", "step-4"), ("ominous-altars", "step-3")] {
+        let s = data.quest(quest).and_then(|q| q.steps.iter().find(|s| s.id == step));
+        assert_eq!(s.unwrap_or_else(|| panic!("{quest} {step}")).tip, None, "{quest} {step}");
+    }
+
+    // In play: the Grelwood shows the glowing roots, and once the Grim
+    // Tangle is entered the Shade's next step shows the mushrooms.
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    for code in ["G1_town", "G1_2", "G1_town", "G1_4"] {
+        r.enter(code);
+    }
+    let s = r.state("secrets-in-the-dark");
+    assert_eq!(next_tip(&data, &s), Some(guide_tip("secrets-in-the-dark", "step-2")));
+
+    let mut r = Replay::start(&data, GRELWOOD_CHARACTER);
+    r.to_the_grim_tangle();
+    let s = r.state("the-mysterious-shade");
+    assert_eq!(next_title(&data, &s), "Find the Grim Tangle");
+    assert_eq!(next_tip(&data, &s), Some(guide_tip("the-mysterious-shade", "step-2")));
 }
 
 /// Live 3: the owner took Treacherous Ground from Renly in Clearfell
@@ -2341,4 +2487,57 @@ fn boss_kill_remark_ticks_nothing_outside_its_area_or_open_step() {
     let got = r.engine.apply_screen(&ScreenEvent::bar_gone(LYTHARA));
     assert_eq!(got.outcome, ScreenOutcome::Ticked { quest_id: KRIAR.into(), step_id: "fight".into() });
     nothing(&mut r, LYTHARA, "her bar reached it");
+}
+
+const CROWBELL: &str = "the-crowbell";
+const HUNTING_GROUNDS: [(&str, &str); 1] = [("G1_11", "Hunting Grounds")];
+
+/// The passive points line, a few seconds after the last line.
+fn passive_points(r: &mut Replay) -> Vec<Transition> {
+    r.clock += 3;
+    let l = format!("{} [INFO Client 6200] : You have received 2 Passive Skill Points.", stamp(r.clock));
+    r.feed(&[l])
+}
+
+/// The Crowbell's statuses on a replay, the same before and after its find
+/// step (0.2.0): available before Hunting Grounds, in progress at `enter`
+/// once it is entered, and done on the passive points line there.
+#[test]
+fn crowbell_replay_status_unchanged() {
+    let data = Arc::new(data());
+    let mut r = stored_through(&data, &[]);
+    assert_eq!(r.state(CROWBELL).status, Status::Available);
+    assert_eq!(r.state(CROWBELL).current_step, None);
+
+    let lines = entry_lines(&mut r.clock, HUNTING_GROUNDS[0].0, 20, 1_000, HUNTING_GROUNDS[0].1);
+    r.feed(&lines);
+    let s = r.state(CROWBELL);
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(s.current_step.as_deref(), Some("enter"));
+
+    let moved = passive_points(&mut r);
+    assert_eq!(r.state(CROWBELL).status, Status::Done);
+    assert!(
+        moved.iter().any(|t| t.quest_id == CROWBELL && t.to == Status::Done),
+        "no transition to done: {moved:?}"
+    );
+}
+
+/// Since 0.2.0 the Hunting Grounds entry leaves "Find The Crowbell", with
+/// its tip, as the row's next step; its done stays the points line.
+#[test]
+fn crowbell_find_step_shows_in_hunting_grounds() {
+    let data = Arc::new(data());
+    let mut r = stored_through(&data, &HUNTING_GROUNDS);
+    let s = r.state(CROWBELL);
+    assert_eq!(s.status, Status::InProgress);
+    assert_eq!(next_title(&data, &s), "Find The Crowbell");
+    assert_eq!(next_tip(&data, &s), Some(guide_tip(CROWBELL, "find")));
+
+    // The find step has no signal, so the points line finishes the quest
+    // from `enter`, with no tick needed.
+    let q = data.quest(CROWBELL).expect("quest");
+    assert!(q.steps.iter().any(|st| st.id == "find" && st.signals.is_empty()));
+    passive_points(&mut r);
+    assert_eq!(r.state(CROWBELL).status, Status::Done);
 }

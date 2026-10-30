@@ -93,10 +93,15 @@ jobs:
           npm --prefix apps/quest-tracker ci
           npm --prefix apps/quest-tracker run release
 
+      # The build is `Quest Tracker.exe` (tauri.conf.json's mainBinaryName).
+      # The copy renames it to quest-tracker.exe, the asset name every
+      # installed copy's update asks for and the one the sign step writes into
+      # the signature's trusted comment, which the app checks against the
+      # asset's name. Signing the spaced name would break every update.
       - name: Collect the assets
         run: |
           mkdir -p dist-release
-          cp apps/quest-tracker/target/release/quest-tracker.exe dist-release/
+          cp "apps/quest-tracker/target/release/Quest Tracker.exe" dist-release/quest-tracker.exe
           cp apps/quest-tracker/target/release/quest-tracker-replay.exe dist-release/
           (cd dist-release && sha256sum quest-tracker.exe quest-tracker-replay.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python -m tools.quest_tracker.release notes "$VERSION" --out release-notes.md

@@ -17,7 +17,9 @@
 //! shutdown. An install happens only from the `install_update` command, even
 //! with the automatic check on for 48 simulated hours; a verified one swaps
 //! the exe and restarts through the quit path; a failed one shows its reason
-//! and *Try again*, with the running exe untouched.
+//! and *Try again*, with the running exe untouched. An install keeps the
+//! running exe's own name (`Quest Tracker.exe` for a build since 0.2.0)
+//! while it downloads the release's `quest-tracker.exe`.
 //!
 //! The install's signature fixtures are `fixtures/updates/signing/`, made
 //! with a throwaway key for the file name `quest-tracker.exe` and version
@@ -319,6 +321,9 @@ struct Setup {
     transport: bool,
     /// The gate starts open.
     open: bool,
+    /// The file name of the exe the app runs from. A release's asset is
+    /// always `quest-tracker.exe`; a build since 0.2.0 is `Quest Tracker.exe`.
+    exe_name: &'static str,
 }
 
 impl Default for Setup {
@@ -327,6 +332,7 @@ impl Default for Setup {
             saved: Saved::Nothing,
             transport: true,
             open: true,
+            exe_name: "quest-tracker.exe",
         }
     }
 }
@@ -363,7 +369,7 @@ fn harness(setup: Setup) -> Harness {
             Store::open(&store_dir).map_err(|e| e.to_string())
         }
     };
-    let exe = root.join("app").join("quest-tracker.exe");
+    let exe = root.join("app").join(setup.exe_name);
     fs::create_dir_all(exe.parent().unwrap()).expect("app folder");
     fs::write(&exe, RUNNING_BYTES).expect("running exe written");
     let wire = Arc::new(Wire {
@@ -588,7 +594,8 @@ impl Harness {
     /// The running exe is as it was, alone in its folder.
     fn assert_untouched(&self) {
         assert_eq!(fs::read(&self.exe).unwrap(), RUNNING_BYTES, "the running exe changed");
-        assert_eq!(self.app_folder(), lines(&["quest-tracker.exe"]));
+        let name = self.exe.file_name().unwrap().to_string_lossy().into_owned();
+        assert_eq!(self.app_folder(), vec![name]);
         assert_eq!(self.restarts(), 0, "a restart was asked for");
         assert!(!self.app.restart_requested());
     }
@@ -1196,6 +1203,41 @@ fn updates_install_restarts_through_the_quit_path_target() {
     assert_eq!(h.saved_settings()["opacity"], 0.5);
     assert_eq!(h.restarts(), 1);
     assert_eq!(h.lines_from("quit: ").len(), 1);
+}
+
+/// Baseline, before and after the build was renamed: an install keeps the
+/// running exe's own name. A build since 0.2.0 runs as `Quest Tracker.exe`
+/// while every release's asset stays `quest-tracker.exe`, signed under that
+/// name; the update downloads the asset and swaps it in at the running path.
+#[test]
+fn updates_install_keeps_the_running_exe_name() {
+    let h = harness(Setup {
+        exe_name: "Quest Tracker.exe",
+        ..Setup::default()
+    });
+    h.app.start();
+    let ready = h.manual(releases(&["1.3.0"]));
+    assert_eq!(ready.install.state, InstallState::Ready);
+    h.app.install_update();
+    h.wait_install(InstallState::Restarting);
+    // The download asked for the release's asset and its signature, by the
+    // product's asset name, not the running exe's.
+    assert_eq!(
+        h.downloads(),
+        vec![(NEWER, AssetKind::Signature), (NEWER, AssetKind::Exe)]
+    );
+    assert_eq!(PRODUCT.exe_name, "quest-tracker.exe");
+    assert_eq!(PRODUCT.signature_name(), "quest-tracker.exe.minisig");
+    // The new bytes sit under the installed name, the old ones beside it.
+    assert_eq!(h.exe.file_name().unwrap(), "Quest Tracker.exe");
+    assert_eq!(fs::read(&h.exe).unwrap(), payload());
+    assert_eq!(
+        fs::read(h.exe.with_file_name("Quest Tracker.exe.old")).unwrap(),
+        RUNNING_BYTES
+    );
+    assert_eq!(h.app_folder(), lines(&["Quest Tracker.exe", "Quest Tracker.exe.old"]));
+    wait_until("the restart is asked for", || h.restarts() == 1);
+    assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }
 
 #[test]

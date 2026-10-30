@@ -15,9 +15,17 @@ path package in `Cargo.lock` that is not a member of the app's workspace
 `Workflow` reads `.github/workflows/quest-tracker-release.yml` as text (no
 YAML parser is installed) and checks the properties the release path relies
 on, signing included, with a mutated copy of the file as each check's
-negative control.
+negative control. `CollectStep` runs the workflow's "Collect the assets"
+lines with bash on a fake build, `Quest Tracker.exe` since 0.2.0, and
+checks that the release still gets `quest-tracker.exe`; its negative
+control is the copy line from before 0.2.0. `TauriConf` pins the build's
+name and the identifier that must not follow it.
 """
+import hashlib
 import json
+import os
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -262,6 +270,13 @@ class Cut(unittest.TestCase):
 
 SIGN_STEP = "Sign the exe"
 RELEASE_STEP = "Create or update the draft release"
+COLLECT_STEP = "Collect the assets"
+# The build is `Quest Tracker.exe` (tauri.conf.json's `mainBinaryName`); the
+# release asset stays `quest-tracker.exe`, the name every install asks for
+# and the one its signature names, so the Collect step copies it under that.
+COLLECT_GUI = 'cp "apps/quest-tracker/target/release/Quest Tracker.exe" dist-release/quest-tracker.exe'
+# What the Collect step copied before 0.2.0, when the build had the asset's name.
+COLLECT_GUI_BEFORE = "cp apps/quest-tracker/target/release/quest-tracker.exe dist-release/"
 
 
 def workflow_steps(text: str) -> list[tuple[str, list[str]]]:
@@ -313,7 +328,7 @@ def workflow_problems(text: str) -> list[str]:
         "windows runner": "runs-on: windows-latest" in lines,
         "checks the tag": 'python -m tools.quest_tracker.release check "$version"' in lines,
         "builds the app": "npm --prefix apps/quest-tracker run release" in lines,
-        "takes both exes": "cp apps/quest-tracker/target/release/quest-tracker.exe dist-release/" in lines
+        "takes both exes": COLLECT_GUI in lines
                            and "cp apps/quest-tracker/target/release/quest-tracker-replay.exe dist-release/" in lines,
         "hashes them": any(line.startswith("(cd dist-release && sha256sum quest-tracker.exe "
                                            "quest-tracker-replay.exe > SHA256SUMS.txt") for line in lines),
@@ -375,6 +390,99 @@ class Workflow(unittest.TestCase):
         end = self.text.index("      - name: " + RELEASE_STEP)
         moved = self.text[:start] + self.text[end:] + "\n" + self.text[start:end]
         self.assertIn("signs before the release", workflow_problems(moved))
+
+
+class TauriConf(unittest.TestCase):
+    def test_tauri_conf_names_the_build_quest_tracker(self):
+        # `mainBinaryName` names the built exe, `Quest Tracker.exe`. The
+        # identifier keys the WebView2 data folder and the single instance,
+        # so it must not follow the product name.
+        conf = json.loads((ROOT / "apps" / "quest-tracker" / "src-tauri" / "tauri.conf.json")
+                          .read_text(encoding="utf-8"))
+        overlay = [w for w in conf["app"]["windows"] if w["label"] == "overlay"]
+        self.assertEqual(len(overlay), 1)
+        self.assertEqual(
+            (conf["productName"], conf["mainBinaryName"], conf["identifier"], overlay[0]["title"]),
+            ("Quest Tracker", "Quest Tracker", "net.exilepact2.quest-tracker", "Quest Tracker"))
+
+
+def find_bash() -> str:
+    """Git for Windows' bash on Windows (never WSL's System32 one), else `bash` on PATH."""
+    if os.name != "nt":
+        found = shutil.which("bash")
+        if not found:
+            raise AssertionError("no bash on PATH: the Collect-step dry run needs one")
+        return found
+    roots = []
+    exec_path = subprocess.run(["git", "--exec-path"], capture_output=True, text=True).stdout.strip()
+    if exec_path:
+        roots += list(Path(exec_path).parents)
+    git_exe = shutil.which("git")
+    if git_exe:
+        roots += list(Path(git_exe).resolve().parents)
+    for root in roots:
+        for candidate in (root / "bin" / "bash.exe", root / "usr" / "bin" / "bash.exe"):
+            if candidate.is_file() and "system32" not in str(candidate).lower():
+                return str(candidate)
+    raise AssertionError("no Git for Windows bash found from `git --exec-path` or the git on PATH: "
+                         "the Collect-step dry run needs one")
+
+
+def collect_script(text: str) -> list[str]:
+    """The Collect step's run lines, without the release-notes line (`Notes` covers it)."""
+    body = next((body for name, body in workflow_steps(text) if name == COLLECT_STEP), [])
+    run = body[body.index("run: |") + 1:] if "run: |" in body else []
+    return [line for line in run if not line.startswith("python -m tools.quest_tracker.release notes")]
+
+
+class CollectStep(unittest.TestCase):
+    """The Collect step run with bash on fake build outputs.
+
+    The `.minisig` cannot be made here (it needs the release key);
+    `signing_problems` pins that the sign step signs
+    `dist-release/quest-tracker.exe`.
+    """
+    GUI = b"the built Quest Tracker.exe of the test"
+    REPLAY = b"the built quest-tracker-replay.exe of the test"
+
+    def run_collect(self, lines: list[str], root: Path) -> subprocess.CompletedProcess:
+        release_dir = root / "apps" / "quest-tracker" / "target" / "release"
+        release_dir.mkdir(parents=True)
+        (release_dir / "Quest Tracker.exe").write_bytes(self.GUI)
+        (release_dir / "quest-tracker-replay.exe").write_bytes(self.REPLAY)
+        script = "\n".join(lines) + "\n"
+        if os.name == "nt":
+            script = 'export PATH="/usr/bin:$PATH"\n' + script
+        # The flags GitHub Actions runs a `shell: bash` step with.
+        return subprocess.run([find_bash(), "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
+                              cwd=root, capture_output=True, text=True)
+
+    def test_collect_step_dry_run(self):
+        lines = collect_script(WORKFLOW.read_text(encoding="utf-8"))
+        self.assertIn(COLLECT_GUI, lines)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            done = self.run_collect(lines, root)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            dist = root / "dist-release"
+            self.assertEqual(sorted(p.name for p in dist.iterdir()),
+                             ["SHA256SUMS.txt", "quest-tracker-replay.exe", "quest-tracker.exe"])
+            self.assertEqual((dist / "quest-tracker.exe").read_bytes(), self.GUI)
+            self.assertEqual((dist / "quest-tracker-replay.exe").read_bytes(), self.REPLAY)
+            sums = [re.fullmatch(r"([0-9a-f]{64}) [ *](.+)", line)
+                    for line in (dist / "SHA256SUMS.txt").read_text(encoding="utf-8").splitlines()]
+            self.assertTrue(all(sums), (dist / "SHA256SUMS.txt").read_text(encoding="utf-8"))
+            self.assertEqual([(m.group(1), m.group(2)) for m in sums],
+                             [(hashlib.sha256(self.GUI).hexdigest(), "quest-tracker.exe"),
+                              (hashlib.sha256(self.REPLAY).hexdigest(), "quest-tracker-replay.exe")])
+        # Negative control: the copy from before 0.2.0 finds no
+        # `quest-tracker.exe` in a build that is `Quest Tracker.exe`.
+        before = [COLLECT_GUI_BEFORE if line == COLLECT_GUI else line for line in lines]
+        self.assertNotEqual(before, lines)
+        with tempfile.TemporaryDirectory() as d:
+            done = self.run_collect(before, Path(d))
+            self.assertNotEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertFalse((Path(d) / "dist-release" / "SHA256SUMS.txt").exists())
 
 
 if __name__ == "__main__":

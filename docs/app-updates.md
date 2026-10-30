@@ -48,6 +48,10 @@ replaces the running file under its own name, so an updated 0.1.x copy
 stays `crafting-helper.exe` (and then looks up `Crafting.Helper.exe` like
 any 0.2.0). The quest tracker's and waystone roller's names are unchanged.
 
+Since 0.2.0 the quest tracker's build is `Quest Tracker.exe`; its release
+workflow publishes and signs it as `quest-tracker.exe`, and an update keeps
+the installed file's own name, whichever of the two it is.
+
 The other assets (`SHA256SUMS.txt`, the quest tracker's
 `quest-tracker-replay.exe`, which is not updated in the app) stay as they
 were. A release with no exe or no `.minisig` is shown as "<version> is

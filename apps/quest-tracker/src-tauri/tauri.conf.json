@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "quest-tracker",
-  "mainBinaryName": "quest-tracker",
-  "version": "0.1.3",
+  "productName": "Quest Tracker",
+  "mainBinaryName": "Quest Tracker",
+  "version": "0.2.0",
   "identifier": "net.exilepact2.quest-tracker",
   "build": {
     "frontendDist": "../dist",
