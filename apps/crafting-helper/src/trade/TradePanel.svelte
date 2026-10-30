@@ -419,9 +419,12 @@
     line-height: var(--line-step);
   }
 
+  /* A small button keeps the inner padding's minimum too: a 16 px line in
+     it, 26 high. */
   .small {
     min-height: var(--size-control);
-    padding: 0 calc(var(--space-unit) * 2);
+    padding: var(--space-unit) calc(var(--space-unit) * 2);
+    line-height: var(--line-caption);
   }
 
   /* The link as text: a sunken read-only field in the system monospace,

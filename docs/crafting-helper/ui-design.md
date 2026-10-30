@@ -1164,3 +1164,46 @@ none.
   the tokens at the panel's 0.92 opacity).
 - No motion beyond transitions of 120 ms (colours, the switch, the
   download bar), and none under `prefers-reduced-motion`.
+
+### Spacing and alignment
+
+The UI review of 2026-10-30 (the `impeccable` audit and polish, and
+`taste-skill`'s app-screen review, over the main window, the overlay and
+the Settings window) set two rules, each pinned by a page test in
+`src/ui-spacing.test.ts`:
+
+- **Minimum inner padding.** Every button and text control (`.btn`,
+  `.field`: text and search fields, selects, the trade link's text area)
+  keeps at least one space unit (4 px) above and below its text and two
+  (8 px) at each side, so no letter meets an edge, the lines of a wrapped
+  label included. A button that shows only an icon (the Trade section's
+  refresh) keeps 4 px on every side. A standard control stays 28 px high:
+  its one 18 px line (`--line-step`), the padding and its two borders make
+  the 28. The trade panel's small Change button holds a 16 px line and is
+  26 px high.
+- **A checkbox lines up with its label.** The box sits inside its label
+  row, which centres it on the text's line (`align-items: center`); the
+  box drops the browser's own margins, so it starts on the group heading's
+  edge, and its name starts two space units (8 px) after it. The currency
+  picker's entries, its "Blocked only" toggle, the target choices and the
+  trade panel's modifier rows all follow it.
+
+Fixed by the review:
+
+- The currency picker (Settings' Blocked currencies and the craft
+  window's Blocked for this craft): the boxes kept the browser's margins,
+  so they sat 4 px in from the group heading, the entries' text aligned
+  by baseline while the box was centred, and "Blocked only" had a 6 px
+  gap against the entries' 8 px. Now the shared row above
+  (`currency_filter_checkboxes_align_with_their_labels`).
+- The target choices: the same baseline row and native margins (`target_checkboxes_align_with_their_labels`).
+- Buttons and text controls had no padding above and below their text, so
+  a label that wrapped (the header's buttons beside an update notice, a
+  larger system text size) put its lines on the top and bottom border; the
+  trade panel's Change button and the refresh icon likewise
+  (`button_text_keeps_its_inner_padding`).
+
+The tests read the declarations jsdom receives from the shipped styles
+(`vite.config.ts` keeps the components' styles and `app.css` under
+Vitest) and resolve them against the shared tokens; jsdom does no layout,
+so a box is never measured.

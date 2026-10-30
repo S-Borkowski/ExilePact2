@@ -246,10 +246,13 @@
     padding: 2px 0;
   }
 
+  /* The currency picker's checkbox row: the box in the middle of the text's
+     line, with no native margins, so it starts on the group heading's edge
+     (`ui-design.md` § "Spacing and alignment"). */
   label {
     display: flex;
     flex: 1 1 200px;
-    align-items: baseline;
+    align-items: center;
     gap: calc(var(--space-unit) * 2);
     min-width: 0;
     font-size: var(--size-step);
@@ -258,7 +261,8 @@
   }
 
   label input {
-    align-self: center;
+    flex: none;
+    margin: 0;
   }
 
   .name {

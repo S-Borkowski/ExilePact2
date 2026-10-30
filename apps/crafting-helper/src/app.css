@@ -49,14 +49,17 @@ body {
   outline-offset: 2px;
 }
 
-/* Buttons: square, 28 high, the tracker's action colours. */
+/* Buttons: square, 28 high, the tracker's action colours. The padding keeps
+   a letter off every edge, a wrapped label's lines included (`ui-design.md`
+   § "Spacing and alignment"); one 18 px line, the padding and the borders
+   make the 28. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-unit);
   min-height: var(--size-button);
-  padding: 0 calc(var(--space-unit) * 3);
+  padding: var(--space-unit) calc(var(--space-unit) * 3);
   border: var(--border-width) solid var(--color-panel-border);
   border-radius: var(--radius-button);
   background: var(--color-action-secondary-bg);
@@ -64,6 +67,7 @@ body {
   font: inherit;
   font-size: var(--size-button-text);
   font-weight: 500;
+  line-height: var(--line-step);
   cursor: pointer;
   transition: background-color 120ms ease-out, border-color 120ms ease-out;
 }
@@ -106,16 +110,18 @@ body {
   border-color: var(--color-panel-divider);
 }
 
-/* Text fields and selects: sunken, square. */
+/* Text fields and selects: sunken, square, 28 high, with the buttons' inner
+   padding rule. */
 .field {
   min-height: var(--size-button);
-  padding: 0 calc(var(--space-unit) * 2);
+  padding: var(--space-unit) calc(var(--space-unit) * 2);
   border: var(--border-width) solid var(--color-panel-border);
   border-radius: var(--radius-button);
   background: var(--color-panel-sunken);
   color: var(--color-text-primary);
   font: inherit;
   font-size: var(--size-step);
+  line-height: var(--line-step);
   caret-color: var(--focus);
 }
 
