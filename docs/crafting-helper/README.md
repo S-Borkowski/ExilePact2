@@ -100,7 +100,8 @@ from a bought base.
     technique, are not shown. With no route, one line per blueprint says
     why it does not apply. *Start crafting* starts the guide.
 
-    Four of the blueprints are **state-ordered** (since 0.1.1): the
+    Six of the sixteen blueprints are **state-ordered** (four since
+    0.1.1, two more since 0.1.4): the
     engine plans them from each side's free slots rather than a fixed
     order, taking the first step whose condition holds on the item as it
     stands, so an item part-way through a craft (a rare with some of the
@@ -140,6 +141,30 @@ from a bought base.
     offered in its place, since it could land on the other side. An item
     that already has its desecrated modifier, two or more missing
     targets, and a magic or normal item keep the route as before.
+
+    **What the crafting guides teach** (since 0.1.4, issue #35). The
+    maxroll and Mobalytics crafting guides add four routes: a physical
+    weapon built on a good magic prefix and Greater Essence of Abrasion
+    (Bows, Crossbows, One Hand Maces, Quarterstaves, Spears, Talismans,
+    Two Hand Maces), a body armour with one top defence prefix whose other
+    prefixes are added together once only that side is open, a rare with
+    four modifiers whose target is fractured first, after Essence of the
+    Abyss, and the rescue of a full rare that lacks one target, by a
+    desecration on that target's side. Every route keeps to 0.5's one
+    crafted modifier per item (an essence's, an alloy's or a liquid
+    emotion's), so `weapons-alloy-budget`, which used two alloys, no
+    longer ships. And every route follows the guides' good practice:
+    - a step whose odds its exclusions settle says so, 100% or 0%, even
+      where the weights are unknown (a jewel's isolation);
+    - on a state-ordered route, a removal certain to take only modifiers
+      you do not want comes before a step that gambles;
+    - a magic item whose target prefix is below the two best tiers it can
+      roll at its item level is not upgraded to rare: the route is
+      refused, and the reason says a new base is worth more;
+    - a jewel is never offered a Greater or Perfect currency, which only
+      costs more there: the plain orb is offered instead.
+    How they work: [`blueprints.md`](blueprints.md) § "The seed
+    blueprints".
 
     **Target choices respect the item's prefix and suffix limits** (since
     0.1.2, issue #32). The limit is the item's as a rare, read from the
@@ -215,7 +240,11 @@ from a bought base.
   from a bought base. Pick an **item class**, a **base type**, an optional
   **minimum item level** (1 to 100; a higher level reaches better tiers)
   and up to 8 **modifiers** from the base's ordinary-pool prefixes and
-  suffixes, each "Any tier" or "At least T<n>". Each modifier shows its
+  suffixes, each "Any tier" or "At least T<n>". Once a modifier has a
+  floor, the blank item-level field suggests the level the most demanding
+  floor tier needs (since 0.1.4; at least T2 movement speed on boots
+  needs 65), the help line says the search uses it, and the search asks
+  for that level and up; a level you type replaces it. Each modifier shows its
   **weight**, higher the rarer it is to roll on that base (12.0: about 1
   in 12 modifiers added to that side of the base is this one, at the floor
   or better), from the modifier data's spawn weights; where the data has
@@ -780,7 +809,11 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked -
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-blueprint --locked    # the format, the catalogue, the validator
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths, state order, the parity test
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test slots  # the parity test: the engine against the slot model's cases
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test seeds_guides  # the four blueprints from the guides: hit, miss, refused start
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test rules  # jewels, weak-magic-start, certain removals first, essence swaps
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test fracture  # the fracture goal, the count conditions, a full-side desecration
 py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
+py -3 -m unittest tests.test_crafting_helper_mechanics_doc                             # crafting-mechanics.md: headings, sources, labels
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
 npm --prefix apps/crafting-helper test                                                  # the pages, in jsdom
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
@@ -830,7 +863,16 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   ambiguous tier read as unreadable, rarity, the join, the lines
   measured on the screenshots, and a rare belt with a charm slot line, a
   flask implicit and the requirement line as OCR broke it on shot 13,
-  `a_belt_with_charm_slots_and_a_flask_implicit_reads_unchanged`);
+  `a_belt_with_charm_slots_and_a_flask_implicit_reads_unchanged`; since
+  0.1.4, over `ch-item`'s constructed crossbow with a hybrid increased
+  Physical Damage and Accuracy prefix beside the plain one, a tooltip
+  showing the summed line is never read as another item
+  (`a_summed_hybrid_line_never_reads_as_another_item`), and an item that
+  already held a plain pair carrying a hybrid's lines still reads as a
+  change, the guard looking at the item before the step
+  (`a_held_plain_pair_with_a_hybrids_lines_reads_as_a_change`);
+  `ch-item`'s `constructed_crossbow_hybrid_beside_plain_physical` parses
+  that crossbow);
   `tests/reader.rs` over synthetic tooltips
   drawn in the test (the locator finds one and nothing on a plain scene,
   a box under the overlay is covered, an unchanged crop is OCR read once);
@@ -970,7 +1012,13 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   (`open_trade_search_opens_only_the_trade_address_built_from_the_state`),
   the league percent-encoded into one path segment, refusals that keep
   the state, no link past 2,000 characters, the craft untouched
-  underneath, and log lines with counts only. `tests/trade_leagues.rs`
+  underneath, and log lines with counts only; since 0.1.4 a blank item
+  level searches the suggested one
+  (`trade_search_with_a_blank_item_level_uses_the_suggestion`) and a typed
+  one wins (`trade_search_keeps_a_typed_item_level`), and `ch-data`'s
+  `trade_suggested_item_level_is_none_without_floors_baseline` and
+  `trade_suggested_item_level_is_the_highest_floor_tier_level` hold the
+  suggestion itself. `tests/trade_leagues.rs`
   holds the league list: nothing asked for at start or by default
   (`trade_leagues_are_not_requested_at_startup_or_by_default_baseline`),
   a refresh fills the list for this run, a failed, malformed or oversized
@@ -984,7 +1032,25 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   list and class files, each with a negative control, with no network.
   The page's `src/trade/trade-panel.test.ts` and the Settings window's
   tests render the trade fixtures (`fixtures/views/trade-*.json`,
-  `fixtures/app-settings/trade-league*.json`).
+  `fixtures/app-settings/trade-league*.json`); `trade-floor` (0.1.4) shows
+  the suggestion in the blank field and the help line
+  (`trade_item_level_suggestion_shows_in_the_blank_field`).
+- **Spacing and alignment** (0.1.4's UI review). `src/ui-spacing.test.ts`
+  reads the declarations jsdom receives from the shipped styles
+  (`vite.config.ts` keeps the components' styles and `app.css` under
+  Vitest) and pins each fix: a checkbox centred in its label row with no
+  native margin, in the currency picker
+  (`currency_filter_checkboxes_align_with_their_labels`) and the target
+  choices (`target_checkboxes_align_with_their_labels`), and buttons and
+  text controls keeping their inner padding
+  (`button_text_keeps_its_inner_padding`), beside a control that the
+  style reader sees what a rule sets. jsdom does no layout, so no box is
+  measured ([`ui-design.md`](ui-design.md) § "Spacing and alignment").
+- `tests.test_crafting_helper_mechanics_doc` reads
+  [`crafting-mechanics.md`](crafting-mechanics.md): its headings, a
+  source for every entry, and since 0.1.4 every guide fact labelled
+  community guide, documented or not established
+  (`test_guide_facts_are_labelled`).
 - `ch-app`'s `tests/fixtures.rs` (`fixtures_are_current`) writes the
   views under `fixtures/views/` and `fixtures/app-settings/` and
   `fixtures/catalogue.json`, the overlay's and the screen watch's views
@@ -1037,18 +1103,40 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   (`an_implicit_raises_or_lowers_a_side`), over items whose implicit
   lines come from the data's base rows. `ch-blueprint`'s `tests/format.rs` reads the
   files under `tests/fixtures/valid/` and `tests/fixtures/invalid/` and
-  checks each error's line and column, and reads the spec's facts table
-  against the fact ids `relies_on` may name (`facts_match_the_spec_table`).
+  checks each error's line and column, the one-crafted and jewel rules
+  among them (0.1.4: `crafted-twice.toml`, `crafted-repeat.toml`,
+  `jewel-grades.toml`, `fracture-currency.toml`), and reads the spec's
+  facts table against the fact ids `relies_on` may name
+  (`facts_match_the_spec_table`). `ch-data`'s `tests/isolation.rs` (0.1.4)
+  holds an add its exclusions make certain, or certain not to hit, without
+  weights, beside a weighed pool that keeps its percent
+  (`a_weighed_pool_keeps_its_percent_baseline`), and `tests/hybrid.rs`
+  (0.1.4) a hybrid prefix beside its plain family on `ch-item`'s
+  constructed crossbow (`crossbows-rare-hybrid-physical.txt`): one
+  modifier, one prefix slot.
   `ch-engine`'s `tests/engine.rs`
   covers route choice and outcomes, and the listed-order baseline: the
   retired `fill-desecrate-exalt`, kept as a test blueprint under
   `tests/items/gear/fill-desecrate-exalt/`, still names a plain Exalted
   Orb and still rejects a rare with one target; `tests/state_order.rs`
   covers state order over its `test-state-*` blueprints; `tests/seeds_gear.rs`,
-  `tests/seeds_jewels_weapons.rs` and `tests/seeds_v2.rs` walk each shipped
-  blueprint on a hit and
-  a miss path, over the item texts under `tests/items/` (each folder's
-  `README.md` says which are real and which constructed);
+  `tests/seeds_jewels_weapons.rs`, `tests/seeds_v2.rs` and (0.1.4)
+  `tests/seeds_guides.rs` walk each shipped blueprint on a hit and a miss
+  path, over the item texts under `tests/items/` (each folder's
+  `README.md` says which are real and which constructed), and
+  `seeds_guides.rs` each guide blueprint on a start it refuses too
+  (`<id>_start_refuses`: a weak magic prefix, or a rare with the wrong
+  modifier count); `seeds_gear.rs`'s
+  `gloves_crit_melee_essence_miss_goes_on` holds that the gloves' essence
+  is used once; `tests/rules.rs` (0.1.4) holds the guides' route rules
+  over test blueprints under `tests/items/rules/`, each beside a
+  baseline: a jewel offered the plain Exalted Orb where a ring keeps the
+  Perfect one, `weak-magic-start` on magic boots with T3 movement speed at
+  item level 82 and not with T2, a certain removal before a gamble, and an
+  essence swap's odds, side and order; `tests/fracture.rs` (0.1.4) the
+  Fracturing Orb's odds and outcome, the modifier count conditions and a
+  desecration on a full side, over constructed boots in
+  `tests/items/fracture/`;
   `tests/last_desecration.rs` holds the last-target desecration on the
   shipped state-ordered blueprints, over the owner's belt and its later
   states under `tests/items/last-desecration/`: the last target on a
@@ -1072,8 +1160,11 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   `tests/test_crafting_helper_slot_model.py` holds the model's baselines
   (an Exalted Orb with no side omen can take the prefix slot a 2P/1S craft
   still needs; the listed `fill-desecrate-exalt` names a plain one there
-  and rejects a rare with one target) and its targets (every case projects
-  as recorded, and the spec's invariants hold, each with a control). The
+  and rejects a rare with one target; an uncertain removal keeps its
+  file-order place, `test_uncertain_removal_keeps_file_order`) and its
+  targets (every case projects as recorded, the spec's invariants hold,
+  each with a control, and a certain removal goes first,
+  `test_certain_removal_goes_first`, since 0.1.4). The
   model owns
   `apps/crafting-helper/crates/ch-engine/tests/items/slots/cases.json`,
   each case an abstract item, its targets and what each state-ordered
@@ -1084,7 +1175,12 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   spec, never by editing `cases.json` to match the engine. A new
   state-ordered blueprint is held to the model only once the model's
   `BLUEPRINTS`, an expectation in every case and `tests/slots.rs`'s list
-  of the four (`V2`) name it. The last-target desecration (0.1.2) is in
+  of the four (`V2`) name it; the two from the guides (0.1.4) are not
+  among them, since they use only rules the cases already pin, and
+  `ch-engine`'s `tests/seeds_guides.rs` pins them instead. Two cases
+  (0.1.4) cover Certain removals first: `rare-certain-removal-first` and
+  its control, `rare-uncertain-removal-keeps-order`. The last-target
+  desecration (0.1.2) is in
   the spec's § "The last-target desecration" and the model's
   `BLUEPRINTS`; a case may name the sides with a desecration pool
   (`desecration_pool`, both when absent), and four cases cover it beside
@@ -1202,7 +1298,23 @@ release already exists, only its assets are replaced.
   crafted (a modifier the data does not know, or a tier that cannot be
   told on an item whose own copy has an unrevealed or fractured modifier),
   hovering differently cannot help, and the line says `Can't read the item
-  (<reason>): grab the item after each step.` instead. Eight of the ten
+  (<reason>): grab the item after each step.` instead.
+  **A hybrid modifier's summed line** cannot be read either. Where a
+  hybrid (two lines under one modifier, such as increased Physical Damage
+  with Accuracy) shares a line with a plain modifier on the item, the
+  plain tooltip shows one line with the two values added up, which no
+  tier accounts for. Since 0.1.4 the watch refuses a read (unreadable, as
+  for a value that fits two tiers) when two different modifiers on the
+  read carry two lines of a hybrid the base can roll and at least one of
+  them is new since the item before the step, or at a new tier: only then
+  can a summed line hide in it. It never reads one as another item. An
+  item that already held such a plain pair (an attack weapon with
+  increased Physical Damage and an Accuracy prefix, an armour with a
+  defence and Life or Mana, a caster with spell damage and Mana) reads as
+  before. The narrow case where both sums stay inside their tiers reads
+  as unchanged, and the refusal reuses the ambiguous-tier wording rather
+  than naming the hybrid; grab the item after a step that may have added
+  one. Eight of the ten
   plain equipment shots read as their item's copy and the rest unreadable,
   never another item.
 - **A requirement line whose first word OCR breaks** is placed by what
@@ -1269,7 +1381,7 @@ release already exists, only its assets are replaced.
     share of a reveal's options a normal-pool target gets, which is why
     the rule offers any target on a side with a pool and its odds are
     unknown. The Necromancy and Abyssal Echoes omens are assumed active
-    before use (`omens-active-before-use`, now all four state-ordered
+    before use (`omens-active-before-use`, now all six state-ordered
     routes').
   - **The tier join is measured on five items.** The tier the engine
     derives from poe2db's levels equalled the game's `Tier:` on all 18
@@ -1281,26 +1393,72 @@ release already exists, only its assets are replaced.
     mapping, catalyst quality, rune sockets) are kept and said so in the
     blueprint file's `notes`, which the craft window does not show;
     catalyst and rune steps are manual.
+  - **One crafted modifier per item is checked on the blueprints, not
+    on the item.** Since 0.5 an item holds at most one crafted modifier
+    (an essence's of any grade, a special essence's, a liquid emotion's
+    or an alloy's). Every shipped blueprint places at most one, and the
+    check refuses one that places two with no annulment or Chaos Orb
+    step between them, or repeats a crafted step on a miss. That is a
+    plausibility check: the removal between two crafted steps may take
+    another modifier. The app cannot see a crafted modifier the item
+    already had before the craft (whether a `Ctrl+Alt+C` copy marks one
+    is not measured), so a route may still offer an essence on such an
+    item. What the game does then was not tried here; the outcome is
+    classified from the item as usual.
+  - **Alloys count as the crafted modifier.** The 0.5.0 patch notes have
+    an alloy add a crafted modifier by replacing one already on the item,
+    and an item holds one, so an alloy's modifier is the item's one
+    (`alloy-counts-as-crafted`, documented). `boots-runic-ward` keeps its
+    Sovereign Alloy and drops the post's Essence of Horror for it, and
+    `weapons-alloy-budget`, built on two alloys, was retired.
+  - **The Fracturing Orb's odds rest on two community readings.** The
+    odds count the explicit modifiers that are not fractured, not
+    desecrated (revealed or not) and not the Mark of the Abyssal Lord
+    (Essence of the Abyss's modifier), and take each as equally likely.
+    That the orb never picks the mark (`abyss-mark-unfracturable`) or a
+    desecrated modifier (`desecrated-unfracturable`; that it skips an
+    unrevealed one too is our reading) is what the Mobalytics guides say,
+    not established and not measured; the step's basis names both. If
+    either is false, `fracture-first`'s one in three is one in four.
+    `fracture-first` uses no Crystallisation omen on its Essence of the
+    Abyss, so the essence can take the target off; that ends the craft.
+  - **A desecration on a full side** (`full-rare-desecration-rescue`)
+    assumes the Necromancy omen makes the desecration take its random
+    modifier from that side (`full-desecration-same-side`, not
+    established), each one equally likely (`removal-equally-likely`); its
+    odds are that removal's and leave out the reveal's own chance.
   - **The state-ordered routes rely on facts that are not established.**
-    Each of the four names them in its `relies_on`, by their id in the
+    Each of the six names them in its `relies_on`, by their id in the
     spec's facts table
     ([`crafting-slots-spec.md`](../models/crafting-slots-spec.md)
     § "Facts"); community guides state them or they are inferred, and
-    none was measured in the game: Omen of Greater Exaltation with a
-    Sinistral or Dextral Exaltation omen adding both modifiers on that
-    side (`greater-with-side-omen`, all four), Greater Exaltation needing
-    two free slots (`greater-needs-two-free`, all four), an exalt or
-    augment with no side omen landing on the open side when the other is
-    full (`open-side-landing`, `close-a-side` and `magic-augment-essence`),
-    Whittling taking the lowest modifier level (`whittling-mod-level`,
-    all four), a fractured modifier never being annulled or chaosed
-    (`fractured-not-removed`, all four), the Necromancy and Abyssal
+    none was measured in the game. "The first four" below are
+    `close-a-side`, `essence-desecrate-double-slam`,
+    `magic-augment-essence` and `rare-clean-then-slam`: Omen of Greater
+    Exaltation with a Sinistral or Dextral Exaltation omen adding both
+    modifiers on that side (`greater-with-side-omen`, the first four and
+    `weapons-physical-generic`), Greater Exaltation needing two free
+    slots (`greater-needs-two-free`, the same and
+    `body-armours-single-prefix`), an exalt or augment with no side omen
+    landing on the open side when the other is full
+    (`open-side-landing`, `close-a-side`, `magic-augment-essence`,
+    `weapons-physical-generic`'s augment and
+    `body-armours-single-prefix`'s isolating Greater exalt), Whittling
+    taking the lowest modifier level (`whittling-mod-level`, the first
+    four), a fractured modifier never being annulled or chaosed
+    (`fractured-not-removed`, the first four), the Necromancy and Abyssal
     Echoes omens needing to be active before use
-    (`omens-active-before-use`, all four since 0.1.2's last-target
-    desecration), and what Sinistral Necromancy does on a class with no
-    desecrated prefixes (`necromancy-without-pool`,
-    `essence-desecrate-double-slam`'s alone: the last-target desecration
-    is never offered without a pool, so it does not rely on it). The craft window does
+    (`omens-active-before-use`, all six since 0.1.2's last-target
+    desecration and 0.1.4), and what Sinistral Necromancy does on a class
+    with no desecrated prefixes (`necromancy-without-pool`,
+    `essence-desecrate-double-slam`'s alone among them: the last-target
+    desecration is never offered without a pool, so it does not rely on
+    it). The two listed guide blueprints of 0.1.4 name theirs too:
+    `fracture-first` relies on `fractured-not-removed`,
+    `omens-active-before-use`, `abyss-mark-unfracturable` and
+    `desecrated-unfracturable`, and `full-rare-desecration-rescue` on
+    `omens-active-before-use`, `necromancy-without-pool`,
+    `removal-equally-likely` and `full-desecration-same-side`. The craft window does
     not show `relies_on`: the blueprint files and
     [`blueprints.md`](blueprints.md) § "The seed blueprints" carry it. If
     one of them is false in the game, the step is still shown as the
@@ -1373,7 +1531,12 @@ release already exists, only its assets are replaced.
   items, with no craft taken in the game. 0.1.2's last-target desecration
   and greyed target choices are proven the same way; the page's tests
   prove a greyed choice's disabled state and tooltip, not how it looks,
-  which is for a look in the browser preview (`craft-side-full`).
+  which is for a look in the browser preview (`craft-side-full`). 0.1.4's
+  four guide routes, its route rules, the trade suggestion and the hybrid
+  guard are proven the same way, by the engine's walks and tests over
+  constructed items and the page's tests, with no craft taken in the game;
+  its spacing fixes are pinned by the declarations the page's tests read,
+  not by a measured layout.
 - **Craft of Exile's page is outside this project.** The button opens its
   beta address with `?game=poe2`; if the site moves or drops that address,
   the button opens whatever the site serves there until the app is
@@ -1522,6 +1685,58 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.1.4
+
+What the maxroll and Mobalytics crafting guides teach (#35).
+
+- **Four new routes:**
+  - a physical weapon (bows, crossbows, maces, quarterstaves, spears,
+    talismans): roll a magic weapon until its increased Physical Damage is
+    one of its two best tiers, then Greater Essence of Abrasion for flat
+    physical damage, a Greater Exalted Orb with the Greater and Dextral
+    Exaltation omens for two suffixes, and a desecration for the last
+    target;
+  - a body armour with one top defence prefix: a Greater resistance
+    essence, a desecration that fills the suffixes and stays unrevealed,
+    then one Greater Exalted Orb with Omen of Greater Exaltation that can
+    only land on the prefixes;
+  - fracture first: on a rare with four modifiers, Essence of the Abyss,
+    then a Fracturing Orb with one chance in three to fix a target, then
+    annulments, Chaos Orbs, a desecration and side-restricted Perfect
+    exalts;
+  - the rescue of a full rare that lacks one target: a desecration on
+    that target's side, revealed with Abyssal Echoes, and Omen of Light
+    and another bone for a wrong reveal.
+- **One crafted modifier per item**, as 0.5 has it: no route places a
+  second essence, alloy or liquid emotion on an item. The weapon alloy
+  route that used two alloys is retired; the Runic Ward boots route no
+  longer uses Essence of Horror (the Sovereign Alloy's Runic Ward is its
+  one crafted modifier); the critical gloves route uses its Essence of
+  Hysteria once and moves on after a miss.
+- **A weak magic start is sent back.** A magic item whose wanted prefix
+  is below the two best tiers it can have at its item level is not turned
+  rare: the route says a new base is worth more than an upgrade.
+- **Certain steps say so.** A step whose result is settled shows 100% (or
+  0%) even where the odds would otherwise be unknown, such as an exalt
+  that can roll nothing but the target, on a jewel too. On the routes that pick their
+  steps from the item, a removal that can only take modifiers you do not
+  want now comes before a step that gambles.
+- **Jewels are never offered a Greater or Perfect currency**, which only
+  costs more there: the plain orb instead.
+- **Find a base on trade suggests an item level.** Once a modifier has a
+  tier floor, the empty item-level field shows the level that floor needs
+  (65 for at least T2 movement speed on boots), the search asks for that
+  level and up, and the help line says so. Type a level to use your own.
+- **The screen watch reads armour and weapons with a plain pair.** A
+  hybrid modifier's line added up with a plain modifier's on the tooltip
+  is never read as another item: the watch asks for a grab only where a
+  step could have brought one in, and an item that already held, say,
+  increased Physical Damage and an Accuracy prefix is read as before.
+- **Spacing fixes**: the checkboxes of the currency filter (Settings and
+  *Blocked for this craft*) and of the target choices line up with their
+  labels, and button and field text no longer touches their edges.
+- The app still sends the game nothing.
 
 ### 0.1.3
 

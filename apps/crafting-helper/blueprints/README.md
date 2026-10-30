@@ -15,18 +15,25 @@ The crafting helper's crafting techniques, one TOML file each, named
   Each error is one `<path>:<line>:<col>: <message>` line. Then run
   `cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test shipped`.
 
-The thirteen files here are paraphrases, in our own words, of the source
+The sixteen files here are paraphrases, in our own words, of the source
 each names in its `source` key; never paste a post's or a guide's text into
-one.
+one. Each places at most one crafted modifier (an essence, alloy or
+liquid emotion) on the item, as 0.5 allows, and the check refuses one
+that places two with no removal between them.
 
-Four of them are state-ordered (`order = "state"`): `close-a-side`,
+Six of them are state-ordered (`order = "state"`): `close-a-side`,
 `essence-desecrate-double-slam`, `magic-augment-essence` and
-`rare-clean-then-slam`. The engine takes the first step whose guard holds
-on the item as it stands, so a craft can start mid-way, and the route
-preview is the path the craft takes if each step hits. Each paraphrases
-published 0.5 crafting guides (the URL and "fetched 2026-10-29" are in its
-`source`), and names in `relies_on` the facts its route leans on that no
-official source states. Each places the last missing target on a rare
+`rare-clean-then-slam` (since 0.1.1), and `weapons-physical-generic` and
+`body-armours-single-prefix` (since 0.1.4). The engine takes the first
+step whose guard holds on the item as it stands, so a craft can start
+mid-way, and the route preview is the path the craft takes if each step
+hits. Each paraphrases published 0.5 crafting guides (the URL and its
+fetch date are in its `source`), and names in `relies_on` the facts its
+route leans on that no official source states. The other ten are listed:
+eight from the owner's Discord paste of 2026-10-28, and `fracture-first`
+and `full-rare-desecration-rescue` from the guides (0.1.4), which name
+their not-established facts in `relies_on` too. Each state-ordered one
+places the last missing target on a rare
 with no desecrated modifier by a desecration on its side and a reveal
 (`desecrate-last`, and `reveal-last` and `light-last` where the blueprint
 has no reveal of its own, all bound to `last-remaining`), where the class has a desecrated modifier on that side
@@ -35,5 +42,7 @@ blocked; otherwise the step taken instead says why. The rules they follow
 and the facts table are
 [`docs/models/crafting-slots-spec.md`](../../../docs/models/crafting-slots-spec.md);
 `crates/ch-engine/tests/slots.rs` holds the engine to the slot model on
-the spec's representative crafts, and `crates/ch-engine/tests/seeds_v2.rs`
-walks each one through a hit and a miss.
+the spec's representative crafts for the first four, and
+`crates/ch-engine/tests/seeds_v2.rs` walks each of them through a hit and
+a miss; `crates/ch-engine/tests/seeds_guides.rs` walks the four from the
+guides through a hit, a miss and a start they refuse.
