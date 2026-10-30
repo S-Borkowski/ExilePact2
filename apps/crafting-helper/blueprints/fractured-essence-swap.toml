@@ -1,0 +1,114 @@
+# A rare whose side is full and holds a fractured modifier, state-ordered:
+# Essence of Hysteria swaps one of that side's other modifiers for its own,
+# so its target is added for certain when none of them is a target. An
+# unrevealed desecrated modifier there may go too; the route says what to do
+# on each outcome. Paraphrased from the owner's statement `source` names;
+# the rules are docs/models/crafting-slots-spec.md.
+id = "fractured-essence-swap"
+name = "Fractured essence swap"
+classes = [
+    "Amulets", "Belts", "Body Armours", "Boots", "Bucklers", "Foci",
+    "Gloves", "Helmets", "Quivers", "Rings", "Shields",
+]
+source = "the owner's statement of 2026-10-30 (issue #37): a Perfect or special essence on an item whose side is full removes from that side, never a fractured modifier, so a fractured modifier narrows the removal to the side's others"
+notes = """
+For a rare whose side is full, one of its modifiers fractured: Essence of \
+Hysteria adds its modifier to that side, and with no Crystallisation omen \
+it removes one of the side's modifiers first, never the fractured one \
+(essence-full-side-removal and fractured-not-removed, both not \
+established). With only throwaways left to take, the essence's target is \
+certain; a Dusk or Gloam Ring, which holds one fewer modifier on a side, \
+needs only one throwaway beside the fractured one. An unrevealed \
+desecrated modifier on that side may be the one taken (owner-stated, not \
+established): with n non-fractured modifiers there, it survives (n-1) in \
+n. If it stays, reveal it with Omen of Abyssal Echoes and take a wrong \
+reveal off with Omen of Light. If it goes, the side is full again: an \
+Orb of Annulment confined to that side with Omen of Sinistral or Dextral \
+Annulment frees a slot first (it may take the essence's modifier, and the \
+route then plans again from the item), then the last target is \
+desecrated on its side with Omen of Sinistral or Dextral Necromancy and \
+revealed. The essences whose modifier can be a target are Essence of \
+Hysteria's; no Perfect essence adds a class modifier. The preview \
+assumes every step hits."""
+order = "state"
+relies_on = [
+    "essence-full-side-removal",
+    "fractured-not-removed",
+    "removal-equally-likely",
+    "omens-active-before-use",
+]
+
+[[start]]
+rarity = ["rare"]
+
+# The last target's unrevealed modifier is revealed before anything else
+# touches the item: after the swap when it survived, after the desecration
+# otherwise.
+[[step]]
+id = "reveal-last"
+say = "Reveal the last target's modifier; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+# A reveal that offered no target: the wrong modifier goes, the bone again.
+[[step]]
+id = "light-last"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+bind = "last-remaining"
+when = "bound"
+guard = { desecrated_unwanted = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+# The swap. Listed before the removal: on the full side both are certain
+# removals, and the first certain one in file order is taken.
+[[step]]
+id = "essence"
+say = "Essence of Hysteria: it swaps one of the full side's modifiers, never the fractured one, for its own"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+
+[[step.action]]
+currency = "essence-of-hysteria"
+
+# After the swap took the unrevealed modifier the side is full again: free
+# a slot on it before the desecration. Listed before the desecration, so
+# the removal is not reported as taken in its place.
+[[step]]
+id = "remove"
+say = "Annul a throwaway on the full side (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+# One target left on a rare with no desecrated modifier: desecrate its side.
+[[step]]
+id = "desecrate-last"
+say = "Desecrate on the last target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "last-remaining"
+when = "bound"
+guard = { rarity = ["rare"] }
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]

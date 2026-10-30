@@ -30,6 +30,7 @@ use crate::route::{
     AltProblem, ChosenAction, Rejection, Skipped, Stall, StepView,
 };
 use crate::slots::{at_risk, removable, whittle_certain, Slots, Takes, SIDES};
+use crate::swap;
 
 /// A projection that reaches this many steps without finishing is looping
 /// (the spec's "Step cap").
@@ -786,7 +787,9 @@ pub(crate) fn next_step(
 
 /// The step as the player sees it. On an item the projection changed, the
 /// odds are read off it and say "if the earlier steps hit". Taken in place
-/// of the last-target desecration, it carries why.
+/// of the last-target desecration, it carries why; an essence swap carries
+/// its removal and, when that may take an unrevealed modifier, the step
+/// taken next on each outcome ([`swap::essence_swap`]).
 pub(crate) fn view(
     ctx: &Ctx,
     st: &State,
@@ -794,6 +797,20 @@ pub(crate) fn view(
     bindings: &Bindings,
     pick: Pick,
 ) -> StepView {
+    view_with(ctx, st, steps, bindings, pick, true)
+}
+
+/// [`view`]; `outcomes` false leaves an essence swap's outcomes out (the
+/// view of a step an outcome leads to).
+pub(crate) fn view_with(
+    ctx: &Ctx,
+    st: &State,
+    steps: &[Spanned<Step>],
+    bindings: &Bindings,
+    pick: Pick,
+    outcomes: bool,
+) -> StepView {
+    let swap = swap::essence_swap(ctx, st, steps, bindings, &pick, outcomes);
     let step = steps[pick.index].get_ref();
     let goal = *step.goal.get_ref();
     let odds = step_odds(ctx, st, goal, &pick.aims, &pick.action).map(|o| {
@@ -819,6 +836,7 @@ pub(crate) fn view(
         action: Some(pick.action),
         odds,
         instead_of_desecration,
+        swap,
     }
 }
 
@@ -850,7 +868,7 @@ fn projected_mod(side: Kind, role: Role) -> ModInfo {
     }
 }
 
-fn place(ctx: &Ctx, st: &mut State, t: usize) {
+pub(crate) fn place(ctx: &Ctx, st: &mut State, t: usize) {
     let target = &ctx.targets[t];
     st.mods.push(ModInfo {
         mod_id: Some(target.mod_id.clone()),
@@ -924,7 +942,7 @@ fn certain_removal(ctx: &Ctx, st: &State, goal: Goal, pick: &Pick) -> bool {
 
 /// The item as the step's hit would leave it (the spec's "Projection",
 /// step 3).
-fn apply_hit(
+pub(crate) fn apply_hit(
     ctx: &Ctx,
     st: &State,
     steps: &[Spanned<Step>],

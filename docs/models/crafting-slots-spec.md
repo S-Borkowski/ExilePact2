@@ -79,7 +79,7 @@ the session; it does not change the id.
 | `abyss-mark-unfracturable` | not established | The Mark of the Abyssal Lord, the modifier Essence of the Abyss adds, is never the one a Fracturing Orb picks, so on a four-modifier rare holding it the orb picks among the other three: one chance in three for a given wanted one instead of one in four (Mobalytics' SSF and Lightning Arrow crafting guides; its essences guide also says the mark seems to raise the tier of a later reveal, which nothing here relies on). | https://mobalytics.gg/poe-2/guides/ssf-crafting, https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting and https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
 | `desecrated-unfracturable` | not established | A Fracturing Orb never picks a desecrated modifier (Mobalytics' SSF crafting guide); that an unrevealed one is skipped too is our reading. | https://mobalytics.gg/poe-2/guides/ssf-crafting, fetched 2026-10-30 |
 | `full-desecration-same-side` | not established | On an item whose side is full, a desecration with that side's Necromancy omen removes its random modifier from that side (inferred from `desecrate-no-free-slot` and `side-necromancy`; maxroll's rescue of a full rare relies on it). | https://poe2db.tw/us/Desecrated_Modifiers and https://poe2db.tw/us/Omen, fetched 2026-10-29; https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2, reviewed 2026-10-30 (issue #35) |
-| `essence-full-side-removal` | not established | With no Crystallisation omen, when the side a Perfect or corrupted essence's modifier belongs to is full, the modifier the essence removes comes from that side (Mobalytics' essences guide). | https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
+| `essence-full-side-removal` | not established | With no Crystallisation omen, when the side a Perfect or corrupted essence's modifier belongs to is full, the modifier the essence removes comes from that side (Mobalytics' essences guide; the owner states it too, 2026-10-30). | https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
 
 ### Which blueprint relies on which not-established fact
 
@@ -89,14 +89,14 @@ the session; it does not change the id.
 | `greater-needs-two-free` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic`, `body-armours-single-prefix` | `greater-omen` resolves only where two slots are free; the two listed blueprints name Omen of Greater Exaltation where two are. |
 | `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix`, `weapons-physical-generic` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full; `weapons-physical-generic`'s augment lands on the magic weapon's free side. |
 | `whittling-mod-level` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The removal step's whittle alternative is certain only by this reading of "lowest level". |
-| `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first` | A removal's odds and the blocked-side test leave fractured modifiers out; `fracture-first` annuls and Chaos-rolls around its fractured target. |
-| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
+| `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `fractured-essence-swap` | A removal's odds and the blocked-side test leave fractured modifiers out; `fracture-first` annuls and Chaos-rolls around its fractured target; `fractured-essence-swap`'s essence removes from the side's other modifiers. |
+| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue`, `fractured-essence-swap` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
 | `necromancy-without-pool` | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` | Desecrating for an ordinary prefix target on an armour class. |
-| `removal-equally-likely` | `full-rare-desecration-rescue` | The odds shown for an uncertain removal assume it, and so do the rescue's odds of keeping its targets on a full side. |
+| `removal-equally-likely` | `full-rare-desecration-rescue`, `fractured-essence-swap` | The odds shown for an uncertain removal assume it, and so do the rescue's odds of keeping its targets on a full side and the essence swap's chance that an unrevealed modifier survives. |
 | `abyss-mark-unfracturable` | `fracture-first` | The Fracturing Orb's odds after Essence of the Abyss leave the mark out. |
 | `desecrated-unfracturable` | `fracture-first` | The Fracturing Orb's odds leave a desecrated modifier out. |
 | `full-desecration-same-side` | `full-rare-desecration-rescue` | The rescue desecrates a full side; its random removal is taken from that side. |
-| `essence-full-side-removal` | none | Only an essence swap's removal side with no Crystallisation omen assumes it (§ "What each crafting item does to the slots"); no shipped blueprint takes such a swap. |
+| `essence-full-side-removal` | `fractured-essence-swap` | An essence swap's removal side with no Crystallisation omen (§ "What each crafting item does to the slots"): `fractured-essence-swap`'s Essence of Hysteria removes from its modifier's full side. |
 
 ## Slot accounting
 
@@ -168,6 +168,35 @@ of the rarity the item has after the currency.
 | `chaos-orb` + `omen-of-whittling` | A rare item. | The lowest-level modifier goes, then one random modifier is added, on a side not established. | `whittling-lowest`, `whittling-mod-level` |
 | `fracturing-orb` (listed blueprints only) | A rare item with at least four modifiers. | No slot changes: one modifier, picked at random among the explicit ones that are not fractured, not desecrated (revealed or not) and not the Mark of the Abyssal Lord, becomes fractured. | `fracture-four-mods`, `abyss-mark-unfracturable`, `desecrated-unfracturable`, `fractured-not-removed` |
 | Perfect and special essences (Hysteria, Delirium, Horror, Insanity, the Abyss, the Breach): the essence swap (engine-only in state order) | A rare item, a modifier the removal may take, and room on the added modifier's side once the removal is made. | Like a Chaos Orb whose added modifier is chosen: one modifier goes, then the essence's modifier is added on its side. The removal is taken from the Crystallisation omen's side; with no omen, from the side the essence's modifier belongs to when that side is full; otherwise from either side. It may take any modifier that is not fractured, the Abyss mark and desecrated ones included (they are exclusions of a Fracturing Orb only). Certain when every modifier it may take is a non-target. | `essence-magic-to-rare`, `one-crafted-one-desecrated`, `side-crystallisation`, `essence-full-side-removal`, `fractured-not-removed`, `removal-equally-likely` |
+
+**The essence swap and an unrevealed modifier** (since 0.2.0, the shipped
+`fractured-essence-swap`). The removal in the row above may take an
+unrevealed desecrated modifier too. That is owner-stated (2026-10-30), not
+established: no source in the facts table says so, and nothing here is
+measured. When the removal's side holds one (typically a full side with a
+fractured modifier, which `fractured-not-removed` keeps out of the
+removal), the route shows the chance that it survives the swap: with n the
+non-fractured modifiers on the removal's side, (n-1) in n, by
+`removal-equally-likely`. On a ring whose full suffixes are one fractured,
+one unrevealed and one ordinary modifier it survives 1 in 2. The add stays
+certain when every modifier the removal may take is a non-target, the
+unrevealed one counted as one. For each outcome the route names the step
+state order takes next on the item that outcome leaves (§ "Candidates and
+the next step"; no rule of its own):
+
+- **It stays**: the projection's own hit (§ "Projection" never takes an
+  unrevealed modifier); its reveal comes next.
+- **It goes**: the essence's modifier took the freed slot, so the side is
+  full again and a desecration there is unfit (the `desecrate` row). An
+  annulment confined to that side comes first, at the share of non-targets
+  among the side's non-fractured modifiers: on that ring 1 in 2, because it
+  may take the essence's modifier. If it does, the route plans again when
+  the item is read again (state order keeps no miss branch). Otherwise the
+  last-target desecration and its reveal follow.
+
+The `desecrate` row and § "The last-target desecration" are unchanged by
+this: the swap's route frees the slot before it desecrates. The Python
+model has no essence swap (§ "Not covered").
 
 No v2 route uses a Homogenising omen (`homogenising-standard-only`),
 Greater Annulment (`legacy-omens`), the Erasure omens, a Perfect or
@@ -345,8 +374,9 @@ the next step.
   side has room once the removal is made. Its projection takes the
   non-target the removal would take (§ "Projection", a removal's order)
   and places the target. The model has no Perfect essence, Crystallisation
-  omen or crafted-modifier rule, and no state-ordered shipped blueprint
-  takes a swap, so no case covers it.
+  omen or crafted-modifier rule, so no case covers it. Since 0.2.0 one
+  shipped state-ordered blueprint takes a swap, `fractured-essence-swap`;
+  `ch-engine`'s `tests/essence_swap.rs` pins it.
 - Nothing else moves: the other candidates keep file order, and the rule
   is applied afresh before every pick.
 
@@ -756,7 +786,8 @@ Invariants over every case and every route:
 - The essence swap: the model has no Perfect or special essence and no
   Crystallisation omen, so no case covers the swap or its place under
   § "Certain removals first" (engine-only, tested over the engine's own
-  test blueprints).
+  test blueprints and, since 0.2.0, over the shipped
+  `fractured-essence-swap` with the survival of an unrevealed modifier).
 - What a whittle adds, where a Chaos Orb's replacement lands, and ties
   between equal-level modifiers: a whittle is taken only when certain, and
   its added modifier is not projected.

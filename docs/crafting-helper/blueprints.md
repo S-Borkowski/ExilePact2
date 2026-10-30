@@ -449,8 +449,13 @@ essence's modifier belongs to when that side is full
 (`essence-full-side-removal`, not established); otherwise either side.
 The preview takes the first removable non-target on that side and places
 the target, and a swap whose removal is certain counts as a certain
-removal above. No shipped blueprint takes one; the engine's
-`tests/rules.rs` pins the rule over test blueprints. Alloys and liquid
+removal above. The engine's `tests/rules.rs` pins the rule over test
+blueprints; since 0.2.0 the shipped `fractured-essence-swap` takes one
+(`tests/essence_swap.rs`). When the removal may take an unrevealed
+desecrated modifier (owner-stated, not established), the step also
+carries that modifier's survival, (n-1) in n over the n modifiers the
+removal may take, and the step the route takes next if it stays and if it
+goes (spec, "The essence swap and an unrevealed modifier"). Alloys and liquid
 emotions swap too, but stay listed-order only.
 
 **The preview** is the route the craft takes if each step hits, from the
@@ -613,8 +618,8 @@ Since 0.1.4:
 
 ## The seed blueprints
 
-Sixteen blueprints ship, each a paraphrase in our own words of the source
-it names, never a sentence of it:
+Seventeen blueprints ship, each a paraphrase in our own words of the
+source it names, never a sentence of it:
 
 - four state-ordered ones from published 0.5 crafting guides (their URLs
   and "fetched 2026-10-29" are in each `source`);
@@ -627,7 +632,10 @@ it names, never a sentence of it:
   and two listed, `fracture-first` and `full-rare-desecration-rescue`,
   which start from a rare. The Mobalytics pages' URLs and "fetched
   2026-10-30" are in each `source`; maxroll's page is "reviewed
-  2026-10-30 (issue #35)".
+  2026-10-30 (issue #35)";
+- since 0.2.0, one state-ordered from the owner's statement of 2026-10-30,
+  `fractured-essence-swap`, which starts from a rare whose full side holds
+  a fractured modifier.
 
 Each is walked on a hit path and a miss path in `ch-engine`'s tests
 (`tests/seeds_v2.rs` for the first state-ordered four,
@@ -638,7 +646,9 @@ The first four state-ordered ones are also held to the slot model on the
 spec's representative crafts by the parity test (`tests/slots.rs`, over
 `tests/items/slots/cases.json`). The two state-ordered guide blueprints
 are not in the model's cases: they use only rules the cases already pin,
-and `tests/seeds_guides.rs` pins them (the spec's § "Not covered").
+and `tests/seeds_guides.rs` pins them (the spec's § "Not covered");
+`fractured-essence-swap` is not in them either, and `tests/essence_swap.rs`
+plans it on a ring, a quiver and a Dusk Ring.
 
 The first state-ordered four cover every equipment class with spawn
 weights (not jewels). None names a Homogenising omen, Omen of Greater
@@ -664,6 +674,7 @@ repeats its Essence of Hysteria on a miss.
 | `rings-flat-attack` | post 11 | Rings | Attack quality raised first (manual), flat attack damage prefixes over resistance suffixes. |
 | `weapons-physical-generic` | Mobalytics' SSF crafting guide, "Generic Phys Weapon" | Bows, Crossbows, One Hand Maces, Quarterstaves, Spears, Talismans, Two Hand Maces (the classes with both increased Physical Damage and a Greater Essence of Abrasion for flat physical damage) | State-ordered, from a normal or magic weapon: transmute and augment (Perfect first), annulling a wrong modifier, until the increased Physical Damage prefix is a top-two tier (a weaker one is sent back, `weak-magic-start`); Greater Essence of Abrasion as it turns rare, its one crafted modifier; a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and the side omen for two suffixes; the last target by desecration. The guide's closing Perfect Essence of Battle would be a second crafted modifier and is left out. A weapon whose targets give Abrasion nothing to add cannot finish here; `magic-augment-essence` takes any essence. |
 | `body-armours-single-prefix` | Mobalytics' Lightning Arrow crafting guide, the body armour, without Homogenising | Body Armours | State-ordered, from a normal or magic armour: a top single-stat defence prefix by transmute and augment (a weaker one is sent back, `weak-magic-start`); a Greater Essence of Insulation, Thawing or Grounding; a desecration on the hardest target's side (the suffixes), left unrevealed; with only the prefixes open, a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and no side omen lands two prefixes (the isolation); the reveal, Omen of Light for a wrong one, a removal, the last target's desecration and side slams. |
+| `fractured-essence-swap` | the owner's statement of 2026-10-30 | Amulets, Belts, Body Armours, Boots, Bucklers, Foci, Gloves, Helmets, Quivers, Rings, Shields (the classes with an Essence of Hysteria) | State-ordered, from a rare whose side is full and holds a fractured modifier: Essence of Hysteria adds its target to that side, removing one of the side's other modifiers (never the fractured one), so the add is certain when only throwaways are left to take; a Dusk or Gloam Ring needs only one. When an unrevealed desecrated modifier is there, the step gives its survival ((n-1) in n) and the next step on each outcome: if it stays, the reveal (Abyssal Echoes; Omen of Light for a wrong one); if it goes, an annulment confined to the full side (Sinistral or Dextral Annulment; it may take the essence's modifier, and the route then plans again), the last target's desecration with its side's Necromancy omen, and the reveal. |
 | `fracture-first` | Mobalytics' SSF crafting guide (Fracturing Orb with Essence of the Abyss) and its Fracturing Orbs guide | every equipment class with spawn weights | Listed, from a rare with exactly four modifiers, none fractured, at least one a target: Essence of the Abyss (losing a target to it gives the item up), so the Fracturing Orb picks among three; the orb (fracturing anything else gives it up); annulments down to the fractured target and one more; Chaos Orbs until a second target; a desecration for the hardest target on its side, revealed with Abyssal Echoes, a wrong reveal lit off and the bone used again; side-restricted Perfect exalts. The guides' Crystallisation omen to guard the target, and their closing filler and Perfect essence, are left out (§ "What a blueprint cannot say"). |
 | `full-rare-desecration-rescue` | maxroll's "How to Craft", its rescue of boots with no movement speed | every equipment class with spawn weights | Listed, from a rare with six modifiers and exactly one target missing, no desecrated modifier: a bone with the missing target's side Necromancy omen takes a random modifier off that full side (losing a target gives the item up); the reveal with Abyssal Echoes; a wrong reveal taken off with Omen of Light and the bone used again. |
 | `gloves-crit-melee` | post 9 | Gloves | Critical damage from Essence of Hysteria, used once (a miss goes on: an item holds one crafted modifier), a desecrated prefix that blocks a common family while the prefixes are slammed, then desecrated suffixes until attack speed. |
@@ -693,14 +704,14 @@ list). "The first four" are `close-a-side`,
 | `greater-needs-two-free` | Greater Exaltation needs two free slots (on the restricted side, with a side omen). | the first four, `weapons-physical-generic`, `body-armours-single-prefix` |
 | `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side. | `close-a-side`, `magic-augment-essence`, `weapons-physical-generic` (its augment), `body-armours-single-prefix` (its isolating Greater exalt) |
 | `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | the first four |
-| `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | the first four, `fracture-first` |
-| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), and the four of 0.1.4 |
+| `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | the first four, `fracture-first`, `fractured-essence-swap` (its essence's removal too) |
+| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), the four of 0.1.4, and `fractured-essence-swap` |
 | `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes. | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` |
-| `removal-equally-likely` | Each modifier a random removal may take is equally likely to go. | `full-rare-desecration-rescue` |
+| `removal-equally-likely` | Each modifier a random removal may take is equally likely to go. | `full-rare-desecration-rescue`, `fractured-essence-swap` (the unrevealed modifier's survival and the annulment's odds) |
 | `abyss-mark-unfracturable` | A Fracturing Orb never picks the Mark of the Abyssal Lord (Essence of the Abyss's modifier). | `fracture-first` |
 | `desecrated-unfracturable` | A Fracturing Orb never picks a desecrated modifier, revealed or not. | `fracture-first` |
 | `full-desecration-same-side` | A desecration with a side's Necromancy omen, on an item whose side is full, removes its random modifier from that side. | `full-rare-desecration-rescue` |
-| `essence-full-side-removal` | A Perfect or corrupted essence with no Crystallisation omen, whose modifier's side is full, removes from that side. | none (only the engine's essence swap reads it) |
+| `essence-full-side-removal` | A Perfect or corrupted essence with no Crystallisation omen, whose modifier's side is full, removes from that side. | `fractured-essence-swap` |
 
 `ch-blueprint`'s list of these ids is read against the spec's table by a
 test, so a fact relabelled there means editing the list, and a blueprint

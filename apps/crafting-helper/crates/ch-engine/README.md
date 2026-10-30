@@ -36,6 +36,11 @@ the data, the join and the add and removal odds are `ch-data`'s
   desecrated modifiers to take if the target is not offered, with that
   exalt's chance of a target before and after. See "Blocker advice in
   brief" below.
+- **`StepView::swap: Option<EssenceSwap>`** (0.2.0): on a state-ordered
+  essence swap step, what its removal may take, the fractured modifiers it
+  leaves and, when it may take an unrevealed desecrated modifier, that
+  modifier's survival (`Survival`) with the step taken next on each
+  outcome. See "The essence swap's survival in brief" below.
 - **`Engine::start(blueprint, item, targets, blocked) -> Started`**: the
   route, the `Guide` and the first `Next` step.
 - **`Engine::observe(&mut guide, before, after) -> Outcome`**: the verdict on
@@ -313,6 +318,32 @@ double slam's reveal names `desecrated-suffix-to-strength-and-dexterity`
 and `desecrated-suffix-to-strength-and-intelligence`, keeping
 `suffix-to-strength` out of the suffix exalt's pool.
 
+## The essence swap's survival in brief
+
+Since 0.2.0 (the shipped `fractured-essence-swap`; spec, "The essence swap
+and an unrevealed modifier"). A state-ordered step whose action is a
+Perfect or special essence carries `StepView::swap`, an `EssenceSwap`: the
+side its removal takes from (the Crystallisation omen's, else the target's
+side when it is full, else either), the modifiers it may take (`removes`,
+every one there that is not fractured) and the fractured ones it leaves.
+When one it may take is unrevealed, `survival` gives that modifier's
+survival chance as known odds, (n-1) in n over the n modifiers it may take
+(`removal-equally-likely`; that an unrevealed modifier is in the pool is
+owner-stated), and for each outcome the step state order takes next on the
+item that outcome leaves, by its own `next_step` (no rule of its own):
+`stays` on the projection's own hit (which never takes an unrevealed
+modifier), `goes` on the item with the unrevealed modifier removed and the
+essence's modifier added. The step's own odds and its place under Certain
+removals first are not changed. On the test ring (fractured, unrevealed and
+ordinary suffixes, all three slots taken) the survival is 1 in 2; if it
+stays the reveal is next, and if it goes the suffixes are full again, so
+`remove` annuls with Omen of Dextral Annulment at 1 in 2 (it may take the
+essence's modifier), then `desecrate-last` with Dextral Necromancy and
+`reveal-last`. State order keeps no miss branch: an annulment that took the
+essence's modifier re-plans from the item when it is read again, and the
+essence step comes back bound to that modifier. The listed order sets no
+`swap`.
+
 ## The CLI
 
 ```text
@@ -335,6 +366,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_guides
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test relax
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test blocker
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test essence_swap
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -405,7 +437,23 @@ relaxed magic belt in `tests/items/blocker/`: the double slam's reveal
 names both Strength-sharing desecrated suffixes, after above before
 (`blocker_advice_ranks_the_strength_blockers`), and
 `magic-augment-essence`, whose desecration is its last add, gets none
-(`no_blocker_advice_for_a_last_desecration`).
+(`no_blocker_advice_for_a_last_desecration`). `tests/essence_swap.rs`
+(0.2.0) covers the essence swap's survival over the shipped
+`fractured-essence-swap` and the constructed items in
+`tests/items/essence-swap/` (its README lists them): the issue #28 ring
+with the listed test swap keeps 2 in 4 and carries no survival
+(`no_survival_without_an_unrevealed_modifier_baseline`); the ring with a
+fractured, an unrevealed and an ordinary suffix gets a certain add and a
+survival of 1 in 2, the reveal if it stays and the Dextral annulment at
+1 in 2 if it goes (`a_ring_swap_gives_the_unrevealed_suffix_one_in_two`);
+that ring after "goes" annuls, desecrates and reveals
+(`a_ring_swap_goes_annuls_then_desecrates`); after an annulment that took
+the essence's modifier it re-plans with the essence again
+(`a_ring_swap_annulment_miss_replans`); the quiver is the prefix case with
+Sinistral Annulment
+(`a_quiver_swap_gives_the_unrevealed_prefix_one_in_two`); and a Dusk Ring's
+one ordinary suffix goes for certain with no survival
+(`a_dusk_ring_swap_removes_its_one_throwaway`).
 `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 

@@ -22,6 +22,7 @@ use crate::engine::{Engine, Resolved};
 use crate::odds::{step_odds, target_difficulty};
 use crate::slots::SIDES;
 use crate::state_order;
+use crate::swap::EssenceSwap;
 
 /// The jewel class's name in the data.
 const JEWELS: &str = "Jewels";
@@ -84,6 +85,14 @@ pub struct StepView {
     /// last-target desecration"). The app's Fallback line.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instead_of_desecration: Option<String>,
+    /// State order: an essence swap's removal, what it may take and, when
+    /// that includes an unrevealed desecrated modifier, the chance it
+    /// survives and the step the route takes next if it stays and if it
+    /// goes (docs/models/crafting-slots-spec.md, "The essence swap and an
+    /// unrevealed modifier"). `None` on every other step, and in a listed
+    /// route.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap: Option<EssenceSwap>,
 }
 
 /// A step left out of the route on this item.
@@ -558,6 +567,7 @@ pub(crate) fn pick_step(
         action,
         odds,
         instead_of_desecration: None,
+        swap: None,
     }))
 }
 

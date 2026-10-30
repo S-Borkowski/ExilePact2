@@ -35,6 +35,11 @@
 //!   if the target is not offered, each with the exalt's chance of a target
 //!   before and after ([`BlockerAdvice`]); the route keeps that modifier
 //!   through the exalt (Omen of Light waits for it).
+//! - State order's essence swap: a [`StepView`] whose action is a Perfect or
+//!   special essence carries its removal ([`EssenceSwap`]): what it may take
+//!   and, when that includes an unrevealed desecrated modifier, the chance
+//!   it survives and the step the route takes next if it stays and if it
+//!   goes ([`Survival`]).
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!
@@ -91,6 +96,7 @@ mod relax;
 mod route;
 mod slots;
 mod state_order;
+mod swap;
 
 pub use blocker::{BlockerAdvice, BlockerMod, BlockerPick, BLOCKER_LIMIT};
 pub use catalogue::{catalogue, catalogue_item, CatalogueItem};
@@ -103,3 +109,4 @@ pub use guide::{
 pub use relax::Relaxation;
 pub use route::{ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView};
 pub use state_order::STEP_CAP;
+pub use swap::{EssenceSwap, SwapMod, Survival};
