@@ -218,3 +218,16 @@ one (different families, so they share an item): the hybrid joins as one
 modifier (`a_hybrid_prefix_joins_as_one_modifier_beside_its_plain_family`)
 and takes one prefix slot, leaving none free
 (`a_hybrid_prefix_takes_one_prefix_slot`).
+
+`tests/codex_breakpoints.rs` (0.2.0, issue #40) holds the item-level
+breakpoints the community PoE2 Crafting Codex gives against the data:
+the five that agree sit at the codex's level on every variant of their
+class (`codex_breakpoints_agree_with_the_data`), movement speed's second
+tier keeps the data's 65 on every boots variant where the codex says 70
+(`movement_speed_second_tier_keeps_the_data_level`), and
+`suggested_item_level` gives each breakpoint's level as the trade floor
+for a single pick at that tier, on one base of every variant
+(`the_trade_floor_follows_the_codex_breakpoints`). A data refresh that
+moves one of these tiers fails here; record the new level, and any new
+disagreement with the codex, in the "Item-level breakpoints" entry of
+[`crafting-mechanics.md`](../../../../docs/crafting-helper/crafting-mechanics.md).

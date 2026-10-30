@@ -498,7 +498,8 @@ BLUEPRINTS = {
                  actions=(Action(ANNUL, (LIGHT,)),)),
             REMOVE,
             Step("desecrate", "desecrate", side="target", bind="hardest", when="bound",
-                 actions=(Action(DESECRATE, ("side-omen", "lord-omen")), Action(DESECRATE))),
+                 actions=(Action(DESECRATE, ("side-omen", "lord-omen")),
+                          Action(DESECRATE, ("lord-omen",)))),
             DESECRATE_LAST,
             SIDE_SLAM,
         ],
@@ -1067,10 +1068,9 @@ def omen_problems(pstep):
             and SIDE_OMENS["desecrate"][side] not in pstep.before.blocked):
         problems.append(f"a {side} desecration without its Necromancy omen")
     lords = [o for o in omens if o in LORD_OMENS.values()]
-    # the v2 blueprints write `lord-omen` beside `side-omen` only: the plain
-    # bone, taken when the Necromancy omen is blocked, carries none
-    necromancy = k == "desecrate" and any(o in SIDE_OMENS["desecrate"].values() for o in omens)
-    want = lord_omen(pstep.before, pstep.step) if necromancy else None
+    # every v2 desecration carries `lord-omen`, the plain bone taken when
+    # the Necromancy omen is blocked included
+    want = lord_omen(pstep.before, pstep.step) if k == "desecrate" else None
     if lords != ([want] if want else []):
         problems.append(f"lord omens {lords}, the bound target asks {want or 'none'}")
     if k == "reveal" and ECHOES not in omens and ECHOES not in pstep.before.blocked:

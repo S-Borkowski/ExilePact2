@@ -1720,8 +1720,9 @@ a better source or measures it in the game.
   established. The codex
   (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#caveats,
   read 2026-10-30) says 0.5 removed the omen, deleting the copies players
-  held, and switched the Recombinators off for the Runes of Aldur league,
-  so the question no longer matters to a 0.5 craft.
+  held, and switched the Recombinators off for the Runes of Aldur league;
+  if so, the question would not matter to a 0.5 craft (community guide;
+  not established).
 - **Crystallisation on alloys.** The omen text names Perfect or corrupted
   essences only; posts 8, 12 and 13 use it with alloys. Not established
   whether alloys count.

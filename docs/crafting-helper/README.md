@@ -898,6 +898,7 @@ cargo run --release --manifest-path apps/crafting-helper/Cargo.toml -p ch-watch 
 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p qt-capture --locked -- --include-ignored  # reads OCR: qt-capture's own tests and its OCR self-test
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked         # the data: join, valid modifiers, odds
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked --test trade  # start weights, the offer, the trade query
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked --test codex_breakpoints  # the codex's item-level breakpoints against the data
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-blueprint --locked    # the format, the catalogue, the validator
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths, state order, the parity test
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test slots  # the parity test: the engine against the slot model's cases
@@ -907,6 +908,8 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test relax  # the one-target tier relaxation when no route exists
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test blocker  # the reveal step's blocker advice
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test essence_swap  # the fractured essence swap: survival, both outcomes, the Dusk Ring
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test lord_omen  # the lord omens: which desecrations name one, and which do not
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test seeds_codex  # jewellery-catalyst-exalt: hit, miss, refused start
 py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
 py -3 -m unittest tests.test_crafting_helper_mechanics_doc                             # crafting-mechanics.md: headings, sources, labels
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
@@ -1183,6 +1186,15 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   `craft-blocker` (`relaxation_proposal_offers_lower_and_keep`,
   `reveal_step_shows_the_blocker_line`) and keeps each route's number in
   the select (`route_select_keeps_each_routes_number`).
+- **0.2.0's codex changes (#40).** `ch-app`'s `tests/craft_window.rs`
+  names the lord omen in a desecration step
+  (`desecration_step_names_the_lord_omen`: beside the Necromancy omen,
+  alone on the plain bone when the Necromancy omens are blocked, waiting
+  on the whittle). `ch-engine`'s `tests/lord_omen.rs` covers which
+  desecrations take a lord omen and which do not (an ordinary target, an
+  armour, a belt, a blocked omen); `tests/seeds_codex.rs` walks
+  `jewellery-catalyst-exalt`; `ch-data`'s `tests/codex_breakpoints.rs`
+  holds the codex's item-level breakpoints against the modifier data.
 - `tests.test_crafting_helper_mechanics_doc` reads
   [`crafting-mechanics.md`](crafting-mechanics.md): its headings, a
   source for every entry, and since 0.1.4 every guide fact labelled
@@ -1973,25 +1985,24 @@ route for rings and amulets, and a review of the PoE2 Crafting Codex
   for Amanamu's, Omen of the Blackblooded for Kurgal's). While the ring
   whittle's desecration has no single target yet, the step says which
   lord omen to add if it is that target. If the lord omen is blocked, the
-  step keeps the Necromancy omen alone.
+  step keeps the Necromancy omen alone; if the Necromancy omen is
+  blocked, the plain bone the ring whittle and the essence route fall
+  back to still names the lord omen.
 - **A catalyst route for rings and amulets.** A new route,
   `jewellery-catalyst-exalt`, starts from a rare with no modifier you do
   not want: put catalysts of the target's kind on the item, then exalt
   with a Greater Exalted Orb, Omen of Catalysing Exaltation and the
   target side's Exaltation omen (the plain Exalted Orb the same way if
   the Greater is blocked; the Greater Exalted Orb with the side omen
-  alone if Catalysing is), and annul on that side after a miss. The chance shown is the plain exalt's; the
-  catalyst's favour is not counted, and the step says so. The route aims
-  at the hardest missing target and ends when it lands: plan again for
-  the next one.
-- **The Crafting Codex was reviewed.** The community PoE2 Crafting Codex
-  (domistae) was read section by section: its short facts are in the
-  crafting-mechanics notes, each labelled as a community guide, with
-  every place it disagrees with what the app uses noted beside it rather
-  than changing the data. Its item-level breakpoints were checked against
+  alone if Catalysing is), and annul on that side after a miss. The
+  chance shown is the exalt's without the catalyst's favour, and the
+  step says so. The route aims at the hardest missing target and ends
+  when it lands: plan again for the next one.
+- **Item-level breakpoints checked.** The item levels the community
+  PoE2 Crafting Codex gives for each modifier tier were checked against
   the modifier data the tier choices and the trade link use: five agree,
-  and the second movement-speed tier keeps the data's level 65 (the
-  codex says 70).
+  and the second movement-speed tier stays at item level 65 (the codex
+  says 70).
 - **The main window no longer scrolls past its content.** With long
   lists the window could scroll far below the last line into empty
   space.

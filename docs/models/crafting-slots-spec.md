@@ -100,7 +100,7 @@ the session; it does not change the id.
 | `desecrated-unfracturable` | `fracture-first` | The Fracturing Orb's odds leave a desecrated modifier out. |
 | `full-desecration-same-side` | `full-rare-desecration-rescue` | The rescue desecrates a full side; its random removal is taken from that side. |
 | `essence-full-side-removal` | `fractured-essence-swap` | An essence swap's removal side with no Crystallisation omen (§ "What each crafting item does to the slots"): `fractured-essence-swap`'s Essence of Hysteria removes from its modifier's full side. |
-| `lord-with-side-omen` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | Each desecration that carries `side-omen` also carries `lord-omen` (§ "`lord-omen`"): for one lord's desecrated target it names that lord's omen beside the Necromancy omen. |
+| `lord-with-side-omen` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | Each desecration that carries `side-omen` also carries `lord-omen` (§ "`lord-omen`"): for one lord's desecrated target it names that lord's omen beside the Necromancy omen. The plain bone `rings-resist-whittle` and `essence-desecrate-double-slam` fall back to when the Necromancy omen is blocked carries `lord-omen` alone, so it names the lord's omen alone (added 2026-10-30). |
 | `lord-omen-classes` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | `lord-omen` resolves only on the lord classes; on the blueprints' armour classes, Belts and Quivers it resolves to nothing. |
 | `catalysing-with-side-omen` | `jewellery-catalyst-exalt` | Each slam names Omen of Catalysing Exaltation beside the side's Exaltation omen. |
 
@@ -166,7 +166,7 @@ of the rarity the item has after the currency.
 | Lesser, plain or Greater essence | A magic item with no crafted modifier. | The item turns rare with its modifiers kept, plus the essence's modifier on that modifier's side. | `essence-magic-to-rare`, `one-crafted-one-desecrated` |
 | `desecrate` (a bone that fits the class) | A rare item with no desecrated modifier. The routes also ask a free slot on the resolved side, so the game never removes a random modifier for it; a `last-remaining` desecration also asks the class's desecration pool on that side (§ "The last-target desecration"). | One unrevealed desecrated modifier, on the side its omen names. | `desecrate-adds-unrevealed`, `desecrate-no-free-slot`, `one-crafted-one-desecrated` |
 | + `omen-of-sinistral-necromancy` / `omen-of-dextral-necromancy` | Active before the bone. | The unrevealed modifier is a prefix (suffix). | `side-necromancy`, `omens-active-before-use`, `necromancy-without-pool` |
-| + `omen-of-the-sovereign` / `omen-of-the-liege` / `omen-of-the-blackblooded` (`lord-omen`) | A lord class; active before the bone, beside the Necromancy omen. | No slot changes: the unrevealed modifier is Ulaman's (Amanamu's, Kurgal's). | `reveal-offers-base`, `lord-with-side-omen`, `lord-omen-classes`, `omens-active-before-use` |
+| + `omen-of-the-sovereign` / `omen-of-the-liege` / `omen-of-the-blackblooded` (`lord-omen`) | A lord class; active before the bone, beside the Necromancy omen (alone on a plain bone, the Necromancy omen blocked). | No slot changes: the unrevealed modifier is Ulaman's (Amanamu's, Kurgal's). | `reveal-offers-base`, `lord-with-side-omen`, `lord-omen-classes`, `omens-active-before-use` |
 | `reveal` | An unrevealed modifier on the item. | It becomes the chosen one of the offered modifiers, in place: no slot changes. | `desecrate-adds-unrevealed`, `reveal-offers-base` |
 | + `omen-of-abyssal-echoes` | Active before the reveal. | One reroll of the offer; no slot changes. | `abyssal-echoes`, `omens-active-before-use` |
 | `orb-of-annulment` | A magic or rare item with a modifier at risk. | One modifier at risk goes; its slot frees. | `annulment-removes-one`, `fractured-not-removed`, `removal-equally-likely` |
@@ -346,6 +346,15 @@ The lord omens: Ulaman's is `omen-of-the-sovereign`, Amanamu's
 `omen-of-the-liege`, Kurgal's `omen-of-the-blackblooded`. The resolved
 omen is recorded where the action lists `lord-omen` (the blueprints write
 it after `side-omen`).
+
+**Without the Necromancy omen.** `lord-omen` needs no `side-omen` beside
+it. The plain-bone alternative that `rings-resist-whittle`'s and
+`essence-desecrate-double-slam`'s desecrations take when the Necromancy
+omen is blocked carries `lord-omen` alone (added 2026-10-30), so a lord's
+target still gets its lord's omen there, as the step's only omen; with
+the lord omen blocked too, the plain bone has no omen. The single
+alternatives (`desecrate-last` and the rest) are unchanged: with the
+Necromancy omen blocked they are not taken at all.
 
 **Waiting.** A listed desecration bound to the last target
 (`last-remaining`, `when = "bound"`, no `side`: the whittle's) is planned
@@ -810,7 +819,9 @@ Invariants over every case and every route:
 - every omen a step needs is in its list (the side omen with Greater, the
   Necromancy omen with a side desecration), unless the player blocked it
   and the step took its plain alternative (a reveal without Abyssal
-  Echoes, `essence-desecrate-double-slam`'s plain bone);
+  Echoes, `essence-desecrate-double-slam`'s plain bone); a desecration
+  bound to a lord's target lists the lord omen `lord-omen` gives it, on
+  the plain bone too, and no other lord omen;
 - the last target is desecrated when it can be: on a rare with no
   desecrated modifier and exactly one target missing, whose side has a
   free slot and a desecration pool, with neither the bone nor that side's

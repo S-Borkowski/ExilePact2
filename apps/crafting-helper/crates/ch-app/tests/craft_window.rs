@@ -1028,6 +1028,34 @@ fn desecration_step_names_the_lord_omen() {
     );
     assert!(!said.contains("Sovereign"), "{said}");
 
+    // Both Necromancy omens blocked: essence-desecrate-double-slam's plain
+    // bone still names the Sovereign, alone, in the ordinary form.
+    let necromancy = [
+        "omen-of-sinistral-necromancy".to_string(),
+        "omen-of-dextral-necromancy".to_string(),
+    ];
+    let plan = engine.plan(&item, &ulaman, &necromancy).unwrap();
+    let route = plan
+        .routes
+        .iter()
+        .find(|r| r.blueprint == "essence-desecrate-double-slam")
+        .expect("the ring plans essence-desecrate-double-slam");
+    let step = route
+        .steps
+        .iter()
+        .find(|s| s.goal == Goal::Desecrate)
+        .unwrap();
+    let action = step.action.as_ref().unwrap();
+    assert_eq!(action.omens, ["omen-of-the-sovereign"]);
+    let text = step_targets(step, &item);
+    assert_eq!(
+        step_instruction(step, &item, &ulaman),
+        format!(
+            "{} with Omen of the Sovereign on the prefix side for {}",
+            action.name, text[0]
+        )
+    );
+
     // The whittle's desecration with a suffix and Ulaman's prefix missing:
     // both Necromancy omens wait for the last target, and the Sovereign
     // waits with Ulaman's prefix.

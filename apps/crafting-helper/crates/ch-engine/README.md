@@ -105,7 +105,10 @@ unknown with the reason.
   a desecrated modifier every tier of which, on the item's variant, names
   that one lord in its name (`Ulaman's`, `of Ulaman`), the class is in
   `LORD_CLASSES` and the omen is not blocked; otherwise to nothing, with
-  no fallback line (`LordOmen`). On the whittle's desecration, unbound
+  no fallback line (`LordOmen`). It needs no `side-omen` beside it: the
+  plain bone the whittle and `essence-desecrate-double-slam` fall back to
+  when the Necromancy omen is blocked carries `lord-omen` alone and names
+  the lord omen alone. On the whittle's desecration, unbound
   while several targets are missing, it waits too:
   `ChosenAction::lord_omens_waiting` lists each remaining target that
   would take one, with its omen. Every alternative blocked rejects the blueprint
@@ -481,8 +484,15 @@ Ulaman prefix takes Omen of the Sovereign beside it
 body armour and a belt take none (`an_armour_desecration_takes_no_lord_omen`,
 `a_belt_desecration_takes_no_lord_omen`), a blocked lord omen leaves the
 Necromancy omen and no fallback
-(`a_blocked_lord_omen_keeps_the_necromancy_omen`), and the whittle's
-waiting desecration lists which target would take which lord omen
+(`a_blocked_lord_omen_keeps_the_necromancy_omen`), both Necromancy omens
+blocked leave an ordinary target the plain bone with no omen
+(`a_blocked_necromancy_omen_takes_the_plain_bone_baseline`) and a lord's
+target the plain bone with its lord omen alone, in the whittle and in
+`essence-desecrate-double-slam`
+(`a_blocked_necromancy_omen_keeps_the_lord_omen`), a Bow's Ulaman prefix
+takes the Sovereign in `weapons-physical-generic`'s preview
+(`a_bow_desecration_for_an_ulaman_target_takes_the_sovereign_omen`),
+and the whittle's waiting desecration lists which target would take which lord omen
 (`a_waiting_whittle_desecration_waits_for_its_lord_omen`); `route.rs`'s
 unit test reads a lord from tier names, two lords or none giving nothing.
 `tests/seeds_codex.rs` (0.2.0) walks `jewellery-catalyst-exalt` through

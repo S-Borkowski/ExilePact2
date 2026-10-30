@@ -3,8 +3,10 @@
 //! at one lord's desecrated modifier on a weapon, ring or amulet names that
 //! lord's omen beside the Necromancy omen, and nothing anywhere else: not
 //! for a base-pool target, not on an armour class or a belt, not when the
-//! omen is blocked. A whittle's desecration, whose side omen waits for the
-//! last target, lets its lord omen wait too. Over the shipped blueprints and
+//! omen is blocked. With the Necromancy omen blocked, the plain bone a
+//! blueprint falls back to names the lord's omen alone. A whittle's
+//! desecration, whose side omen waits for the last target, lets its lord
+//! omen wait too. Over the shipped blueprints and
 //! the constructed items in `tests/items/lord-omen/` (see its README).
 
 mod common;
@@ -24,9 +26,20 @@ const LOW_LIFE_ATTACK: &str = "desecrated-prefix-increased-attack-damage-while-o
 /// `of Ulaman` on a belt and on a str body armour, its one tier.
 const STR_DEX: &str = "desecrated-suffix-to-strength-and-dexterity";
 
+const PHYS: &str = "prefix-increased-physical-damage";
+const FLAT_PHYS: &str = "prefix-adds-to-physical-damage";
+/// `Ulaman's` on a bow, its one tier.
+const LIGHTNING_PEN: &str =
+    "desecrated-prefix-attacks-with-this-weapon-penetrate-lightning-resistance";
+const ATTACK_SPEED: &str = "suffix-increased-attack-speed";
+const CRIT_DAMAGE: &str = "suffix-to-critical-damage-bonus";
+const DEXTERITY: &str = "suffix-to-dexterity";
+
 const CLOSE: &str = "close-a-side";
 const CLEAN: &str = "rare-clean-then-slam";
 const WHITTLE: &str = "rings-resist-whittle";
+const DOUBLE_SLAM: &str = "essence-desecrate-double-slam";
+const WEAPON: &str = "weapons-physical-generic";
 
 const SINISTRAL: &str = "omen-of-sinistral-necromancy";
 const DEXTRAL: &str = "omen-of-dextral-necromancy";
@@ -250,4 +263,74 @@ fn a_waiting_whittle_desecration_waits_for_its_lord_omen() {
     let action = step.action.as_ref().unwrap();
     assert!(!action.side_omen_waits);
     assert!(action.lord_omens_waiting.is_empty());
+}
+
+/// Baseline: both Necromancy omens blocked, the whittle's desecration for
+/// an ordinary last target falls to its second alternative, the plain
+/// bone, with no omen at all.
+#[test]
+fn a_blocked_necromancy_omen_takes_the_plain_bone_baseline() {
+    let list = targets(&[(FIRE, Some(3)), (ACC, None)]);
+    let step = whittle_desecration(&lord_item("whittle-fire"), &list, &[SINISTRAL, DEXTRAL]);
+    assert_eq!(step.target.as_deref(), Some(ACC));
+    assert_eq!(taken(&step), (1, Vec::new()));
+}
+
+/// Both Necromancy omens blocked, the last target Ulaman's prefix: the
+/// fallback bone still names Omen of the Sovereign, alone, in the whittle
+/// and in `essence-desecrate-double-slam`'s hardest desecration. With the
+/// Sovereign blocked too, the plain bone has no omen.
+#[test]
+fn a_blocked_necromancy_omen_keeps_the_lord_omen() {
+    let necromancy = [SINISTRAL, DEXTRAL];
+    let list = targets(&[(FIRE, Some(3)), (LOW_LIFE_ATTACK, Some(1))]);
+    let fire_ring = lord_item("whittle-fire");
+    let step = whittle_desecration(&fire_ring, &list, &necromancy);
+    assert_eq!(step.target.as_deref(), Some(LOW_LIFE_ATTACK));
+    assert_eq!(taken(&step), (1, omens(&[SOVEREIGN])));
+    let action = step.action.as_ref().unwrap();
+    assert_eq!(action.omen_names, ["Omen of the Sovereign"]);
+    // Negative control: the Sovereign blocked as well.
+    let step = whittle_desecration(&fire_ring, &list, &[SINISTRAL, DEXTRAL, SOVEREIGN]);
+    assert_eq!(taken(&step), (1, Vec::new()));
+
+    let engine = shipped();
+    let ring = lord_item("ring-2p1s");
+    let list = ring_targets((LOW_LIFE_ATTACK, Some(1)));
+    let step = desecration(&route(&engine, DOUBLE_SLAM, &ring, &list, &necromancy));
+    assert_eq!(step.target.as_deref(), Some(LOW_LIFE_ATTACK));
+    assert_eq!(taken(&step), (1, omens(&[SOVEREIGN])));
+}
+
+/// A weapon: a Bow whose last target is Ulaman's lightning penetration
+/// prefix desecrates, in `weapons-physical-generic`, with Omen of Sinistral
+/// Necromancy and Omen of the Sovereign, in the preview from the magic bow
+/// (augment, essence, double slam, then the last target's desecration).
+#[test]
+fn a_bow_desecration_for_an_ulaman_target_takes_the_sovereign_omen() {
+    let engine = shipped();
+    let magic = lord_item("bow-magic");
+    let list = targets(&[
+        (PHYS, Some(2)),
+        (FLAT_PHYS, Some(3)),
+        (LIGHTNING_PEN, Some(1)),
+        (ATTACK_SPEED, Some(3)),
+        (CRIT_DAMAGE, Some(3)),
+        (DEXTERITY, Some(3)),
+    ]);
+    let step = desecration(&route(&engine, WEAPON, &magic, &list, &[]));
+    assert_eq!(step.side, Some(Side::Prefix));
+    assert_eq!(step.target.as_deref(), Some(LIGHTNING_PEN));
+    assert_eq!(taken(&step), (0, omens(&[SINISTRAL, SOVEREIGN])));
+    let action = step.action.as_ref().unwrap();
+    assert_eq!(
+        action.omen_names,
+        ["Omen of Sinistral Necromancy", "Omen of the Sovereign"]
+    );
+    // Negative control: an ordinary prefix in its place takes no lord omen.
+    let mut plain = list.clone();
+    plain[2] = targets(&[(ACC, Some(3))]).remove(0);
+    let step = desecration(&route(&engine, WEAPON, &magic, &plain, &[]));
+    assert_eq!(step.target.as_deref(), Some(ACC));
+    assert_eq!(taken(&step), (0, omens(&[SINISTRAL])));
 }

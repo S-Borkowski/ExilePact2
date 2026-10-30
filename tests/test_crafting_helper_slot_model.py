@@ -844,6 +844,12 @@ class Invariants(unittest.TestCase):
         # another lord's omen blocked changes nothing
         c = with_changes(two_good, blocked=frozenset({SOVEREIGN}))
         self.assertEqual(desecration(c)[3], [SIN_NEC, LIEGE])
+        # the Necromancy omen blocked: the fallback bone still names the
+        # lord omen, alone; with the lord omen blocked too, no omen at all
+        c = with_changes(two_good, blocked=frozenset({SIN_NEC}))
+        self.assertEqual(desecration(c), ("desecrate", "prefix", "desecrate", [LIEGE]))
+        c = with_changes(two_good, blocked=frozenset({SIN_NEC, LIEGE}))
+        self.assertEqual(desecration(c), ("desecrate", "prefix", "desecrate", []))
         # a base-pool target on a ring never takes one (the owner's craft)
         owner = sm.plan(sm.BLUEPRINTS["close-a-side"], case("rare-2p1s-prefix-missing")).record()
         self.assertEqual(steps_of(owner), DESECRATE_PREFIX)
