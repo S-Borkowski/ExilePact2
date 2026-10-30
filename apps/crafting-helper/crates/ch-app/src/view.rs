@@ -435,6 +435,28 @@ pub struct PreviewView {
     pub other_routes: Vec<RouteChoice>,
     /// Filled only when there is no route.
     pub rejected: Vec<RejectedLine>,
+    /// With no route, the one target floor that, lowered to the tier a
+    /// currency guarantees, lets a route exist; `None` otherwise.
+    pub relaxation: Option<RelaxationView>,
+}
+
+/// A tier relaxation the preview proposes when no route reaches the targets
+/// (`ch_engine::Engine::relax`). Accepting it is an ordinary `set_targets`
+/// with the one floor changed to `to`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RelaxationView {
+    /// `Lower <target text> from T<from> to T<to>: <currency> adds it at
+    /// T<to>, which unlocks a route.`
+    pub text: String,
+    /// The target whose floor moves.
+    pub mod_id: String,
+    /// The floor in force now.
+    pub from: u32,
+    /// The floor `set_targets` sends for it.
+    pub to: u32,
+    /// The essence, alloy or liquid emotion's name.
+    pub currency: String,
 }
 
 /// Mode planning.

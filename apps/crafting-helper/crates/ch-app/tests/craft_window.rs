@@ -1129,6 +1129,8 @@ fn no_route_says_why_each_blueprint_was_rejected() {
     assert!(preview.route.is_none());
     assert!(preview.other_routes.is_empty());
     assert!(!p.can_accept);
+    // Blocked currencies, not a floor an essence misses: nothing to lower.
+    assert!(preview.relaxation.is_none(), "{:?}", preview.relaxation);
     let engine = Engine::shipped().unwrap();
     assert_eq!(preview.rejected.len(), engine.blueprints().len());
     for r in &preview.rejected {
@@ -1165,6 +1167,79 @@ fn no_route_says_why_each_blueprint_was_rejected() {
             StatusKind::Error,
             "Craft not started: no route reaches these targets.".to_string()
         )
+    );
+    app.shutdown();
+}
+
+/// Fire, Cold and Lightning Resistance on the magic belt, fire at `fire`,
+/// the others at T2.
+fn belt_resistances(fire: u32) -> Vec<Target> {
+    let mut list = magic_belt_targets();
+    list[0].floor = Some(fire);
+    list[1].floor = Some(2);
+    list[2].floor = Some(2);
+    list
+}
+
+#[test]
+fn no_route_shows_the_tier_relaxation() {
+    // The magic belt with its three resistances at T2: no route, since the
+    // belt's best fire essence (Greater Essence of Insulation) adds T3. The
+    // planning view proposes lowering fire to T3, and nothing starts yet.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(MAGIC_BELT));
+    let view = app.set_targets(&belt_resistances(2));
+    let p = planning(&view);
+    let preview = p.preview.as_ref().unwrap();
+    assert!(preview.route.is_none());
+    assert!(!preview.rejected.is_empty());
+    assert!(!p.can_accept);
+    let relax = preview.relaxation.as_ref().expect("a relaxation");
+    assert!(
+        relax
+            .text
+            .starts_with(&format!("Lower {FIRE_TEXT} from T2 to T3")),
+        "{}",
+        relax.text
+    );
+    assert!(
+        relax.text.contains("Greater Essence of Insulation"),
+        "{}",
+        relax.text
+    );
+    assert!(relax.text.contains("unlocks a route"), "{}", relax.text);
+    assert_eq!(relax.mod_id, FIRE);
+    assert_eq!((relax.from, relax.to), (2, 3));
+    assert_eq!(relax.currency, "Greater Essence of Insulation");
+    // The targets are untouched until the player accepts.
+    assert_eq!(chosen(p)[0], (FIRE.to_string(), Some(2)));
+    app.shutdown();
+}
+
+#[test]
+fn accepting_the_relaxation_previews_a_route() {
+    // Accepting is an ordinary `set_targets` with fire at T3: a route
+    // through the essence, and no proposal any more.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(MAGIC_BELT));
+    app.set_targets(&belt_resistances(2));
+    let view = app.set_targets(&belt_resistances(3));
+    let p = planning(&view);
+    let preview = p.preview.as_ref().unwrap();
+    assert!(preview.relaxation.is_none(), "{:?}", preview.relaxation);
+    assert!(p.can_accept);
+    let route = preview.route.as_ref().expect("a route");
+    assert!(
+        route
+            .steps
+            .iter()
+            .any(|s| s.uses.iter().any(|u| u == "Greater Essence of Insulation")),
+        "{:?}",
+        route.steps
     );
     app.shutdown();
 }

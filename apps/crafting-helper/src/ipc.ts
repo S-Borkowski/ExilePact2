@@ -268,6 +268,21 @@ export interface PreviewView {
   other_routes: RouteChoice[];
   /** Filled only when there is no route. */
   rejected: RejectedLine[];
+  /** With no route, the one target floor that, lowered, lets a route exist; null otherwise. */
+  relaxation: RelaxationView | null;
+}
+
+/** A tier relaxation: accepting it sends `set_targets` with `mod_id`'s floor changed to `to`. */
+export interface RelaxationView {
+  /** Rust's words: `Lower <target> from T<from> to T<to>: <currency> adds it at T<to>, which unlocks a route.` */
+  text: string;
+  mod_id: string;
+  /** The floor in force now. */
+  from: number;
+  /** The floor to send. */
+  to: number;
+  /** The essence, alloy or liquid emotion's name. */
+  currency: string;
 }
 
 export interface PlanningView {
@@ -548,6 +563,7 @@ const planning = record<PlanningView>({
       routes: list(routeChoice),
       other_routes: list(routeChoice),
       rejected: list(record<RejectedLine>({ blueprint: str, name: str, reason: str })),
+      relaxation: nullable(record<RelaxationView>({ text: str, mod_id: str, from: uint, to: uint, currency: str })),
     }),
   ),
   can_accept: bool,

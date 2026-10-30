@@ -102,7 +102,7 @@ use crate::view::{
     BlockedFrom, ChosenTarget, CraftBlockedEntry, CraftBlockedView, CraftItemView, CraftMode,
     CraftView, CurrentStepView, FloorOption, GuideStatusView, GuidingView, HistoryEntry,
     ItemModView, ModSide, OutcomeSource, OutcomeWord, PlanningView, PreviewView, RejectedLine,
-    RouteChoice, RouteView, StepLineView, TargetChoice, TargetChoices,
+    RelaxationView, RouteChoice, RouteView, StepLineView, TargetChoice, TargetChoices,
 };
 
 /// Craft of Exile's Path of Exile 2 calculator, opened in the default
@@ -1013,6 +1013,7 @@ fn preview(
                     name: "Every blueprint".to_string(),
                     reason: why.to_string(),
                 }],
+                relaxation: None,
             }
         }
     };
@@ -1031,6 +1032,7 @@ fn preview(
                     reason: r.reason.to_string(),
                 })
                 .collect(),
+            relaxation: relaxation(engine, item, targets, blocked),
         };
     };
     let blueprint = engine.blueprint(&route.blueprint).map(|r| r.blueprint());
@@ -1111,7 +1113,30 @@ fn preview(
             .collect(),
         routes,
         rejected: Vec::new(),
+        relaxation: None,
     }
+}
+
+/// With no route, the engine's one-target tier relaxation in words: which
+/// floor to lower, to what, and the currency that then adds it.
+fn relaxation(
+    engine: &Engine,
+    item: &Item,
+    targets: &[Target],
+    blocked: &[String],
+) -> Option<RelaxationView> {
+    let relax = engine.relax(item, targets, blocked).ok()??;
+    let text = mod_text(&relax.lines);
+    Some(RelaxationView {
+        text: format!(
+            "Lower {text} from T{} to T{}: {} adds it at T{}, which unlocks a route.",
+            relax.from, relax.to, relax.name, relax.to
+        ),
+        mod_id: relax.mod_id,
+        from: relax.from,
+        to: relax.to,
+        currency: relax.name,
+    })
 }
 
 fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {

@@ -1640,6 +1640,7 @@
           }
         ],
         "rejected": [],
+        "relaxation": null,
         "route": {
           "blueprint": "rings-resist-whittle",
           "name": "Rings: resistances by whittling",

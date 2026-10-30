@@ -1190,6 +1190,7 @@
           }
         ],
         "rejected": [],
+        "relaxation": null,
         "route": {
           "blueprint": "close-a-side",
           "name": "Close the finished side, then slam the open one",

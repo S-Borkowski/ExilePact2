@@ -1635,6 +1635,7 @@
           }
         ],
         "rejected": [],
+        "relaxation": null,
         "route": {
           "blueprint": "rings-flat-attack",
           "name": "Rings: flat attack damage and resistances",

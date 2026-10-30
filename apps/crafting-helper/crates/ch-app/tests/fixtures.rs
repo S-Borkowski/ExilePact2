@@ -186,6 +186,16 @@ fn trade_selection(
     vec![class_only, with_base, with_picks]
 }
 
+/// The magic Heavy Belt `ch-engine`'s relaxation tests read
+/// (`crates/ch-engine/tests/items/relax/belt-magic-life.txt`, constructed):
+/// maximum Life T2, no suffix.
+fn relax_belt() -> String {
+    let path = app_root().join("crates/ch-engine/tests/items/relax/belt-magic-life.txt");
+    fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .replace("\r\n", "\n")
+}
+
 /// One main view per state the main window and the overlay render.
 fn main_views() -> Vec<(&'static str, View)> {
     let mut out = Vec::new();
@@ -238,6 +248,18 @@ fn main_views() -> Vec<(&'static str, View)> {
         "craft-no-route",
         app.set_craft_blocked(&lines(&["chaos-orb", "orb-of-annulment"])),
     ));
+    app.shutdown();
+    // No route for another reason: the magic belt's three resistances at
+    // T2, one tier past its Greater essences, so the preview proposes
+    // lowering fire to T3.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("relaxation"), &shell);
+    app.grab_text(Some(&relax_belt()));
+    let resistances: Vec<_> = RING_TARGETS
+        .iter()
+        .map(|id| ch_app::ch_engine::Target::new(*id, Some(2)))
+        .collect();
+    out.push(("craft-relaxation", app.set_targets(&resistances)));
     app.shutdown();
 
     let shell = FakeShell::default();
@@ -661,6 +683,16 @@ fn fixtures_are_current() {
     assert!(preview("craft-no-route").route.is_none());
     assert!(!preview("craft-no-route").rejected.is_empty());
     assert!(!plan("craft-no-route").can_accept);
+    assert!(preview("craft-no-route").relaxation.is_none());
+    // No route on the magic belt's T2 resistances, and the one floor to
+    // lower in its place.
+    assert!(preview("craft-relaxation").route.is_none());
+    assert!(!plan("craft-relaxation").can_accept);
+    let relax = preview("craft-relaxation").relaxation.as_ref().unwrap();
+    assert!(relax
+        .text
+        .starts_with("Lower +#% to Fire Resistance from T2 to T3"));
+    assert_eq!((relax.from, relax.to), (2, 3));
     assert_eq!(view("craft-refused").craft.mode, CraftMode::Refused);
     let guide = |n: &str| view(n).craft.guiding.as_ref().unwrap();
     assert_eq!(guide("craft-guiding").status, GuideStatusView::Active);
@@ -906,7 +938,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 17);
-    assert_eq!(views.len(), 31);
+    assert_eq!(views.len(), 32);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

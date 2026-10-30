@@ -390,6 +390,7 @@ describe('the craft window', () => {
       'craft-planning': 'Doom Loop',
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
+      'craft-relaxation': 'Heavy Belt',
       'craft-close-side': 'Cord Snare',
       'craft-last-desecration': 'Cord Snare',
       'craft-side-full': 'Cord Snare',
@@ -760,6 +761,70 @@ describe('the craft window', () => {
     expect(rejected.length).toBeGreaterThan(0);
     const noRoute = await renderPreview('craft-no-route');
     expect(texts(noRoute.root, 'ul.rejected li')).toEqual(rejected.map((r) => r.reason));
+  });
+
+  it('relaxation_proposal_offers_lower_and_keep', async () => {
+    // Negative control: a no-route view without a proposal shows none.
+    expect(fixtureView('craft-no-route').craft.planning!.preview!.relaxation).toBeNull();
+    const plain = await render(fixtureView('craft-no-route'));
+    expect(plain.root.querySelector('.relaxation')).toBeNull();
+    expect(button(plain.root, 'Keep T2')).toBeUndefined();
+
+    // With one: Rust's words, below the no-route line and above the
+    // rejections, and its two buttons.
+    const view = fixtureView('craft-relaxation');
+    const planning = view.craft.planning!;
+    const relax = planning.preview!.relaxation!;
+    expect(relax.text.startsWith('Lower +#% to Fire Resistance from T2 to T3')).toBe(true);
+    expect(relax.text).toContain('Greater Essence of Insulation');
+    const { root, bridge } = await render(view);
+    const route = root.querySelector('.route')!;
+    const proposal = route.querySelector('.relaxation')!;
+    expect(text(proposal.querySelector('.relaxation-text'))).toBe(relax.text);
+    const order = [...route.querySelectorAll('.no-route, .relaxation, ul.rejected')].map((el) => el.className.split(' ')[0]);
+    expect(order).toEqual(['no-route', 'relaxation', 'rejected']);
+    expect(button(root, 'Start crafting')!.disabled).toBe(true);
+
+    // Lower sends the whole list with that one floor changed.
+    click(button(proposal, 'Lower to T3'));
+    expect(bridge.calls).toEqual([
+      {
+        name: 'set_targets',
+        args: {
+          targets: planning.targets.map((t) => ({ mod_id: t.mod_id, floor: t.mod_id === relax.mod_id ? relax.to : t.floor })),
+        },
+      },
+    ]);
+    expect(bridge.calls[0].args).toEqual({
+      targets: [
+        { mod_id: 'suffix-to-fire-resistance', floor: 3 },
+        { mod_id: 'suffix-to-cold-resistance', floor: 2 },
+        { mod_id: 'suffix-to-lightning-resistance', floor: 2 },
+      ],
+    });
+
+    // Keep sends nothing and hides it, while the view's proposal stays the same.
+    bridge.calls.length = 0;
+    click(button(root, 'Keep T2'));
+    expect(bridge.calls).toEqual([]);
+    expect(root.querySelector('.relaxation')).toBeNull();
+    expect(text(root.querySelector('.no-route'))).toBe('No route reaches these targets.');
+    bridge.pushView(fixtureView('craft-relaxation'));
+    await settle();
+    expect(root.querySelector('.relaxation')).toBeNull();
+
+    // A different proposal shows again.
+    const changed = fixtureView('craft-relaxation');
+    changed.craft.planning!.preview!.relaxation = {
+      ...relax,
+      mod_id: 'suffix-to-cold-resistance',
+      text: 'Lower +#% to Cold Resistance from T2 to T3: Greater Essence of Thawing adds it at T3, which unlocks a route.',
+      currency: 'Greater Essence of Thawing',
+    };
+    bridge.pushView(changed);
+    await settle();
+    expect(text(root.querySelector('.relaxation-text'))).toContain('Cold Resistance');
+    expect(button(root, 'Lower to T3')).toBeDefined();
   });
 
   it('route_select_keeps_each_routes_number', async () => {
