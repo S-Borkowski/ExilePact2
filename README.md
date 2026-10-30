@@ -116,11 +116,14 @@ of the game's window in memory (never saved, logged or sent), uses no
 keyboard hook and sends the game nothing: no keys, no mouse input, no
 memory read. Its *Settings* window holds the hotkey, the overlay's
 position, a switch for reading the screen, a saved list of blocked
-currencies and, like the siblings', an update check that runs only when
-you ask (*Check now*, or *Automatically check for updates*, off by
-default) and an install of a signed newer version on a button press
-([`docs/app-updates.md`](docs/app-updates.md)); otherwise it makes no
-network request.
+currencies, the trade League (with a refresh icon that asks the trade
+site for its league list, only when clicked) and, like the siblings', an
+update check that runs only when you ask (*Check now*, or *Automatically
+check for updates*, off by default) and an install of a signed newer
+version on a button press ([`docs/app-updates.md`](docs/app-updates.md));
+otherwise it makes no network request. *Find a base on trade* builds an
+official trade-site search for a base with the modifiers you pick and
+opens it in your browser; the app sends that search nothing itself.
 
 - Guide (privacy, commands, known limitations, release notes):
   [`docs/crafting-helper/README.md`](docs/crafting-helper/README.md)
@@ -150,7 +153,7 @@ npm --prefix apps/crafting-helper run release
 | `apps/waystone-roller/` | The waystone roller: the search-string engine and app logic as Rust crates, the Tauri glue, the Svelte UI and the mod data. |
 | `tools/waystone_roller/` | Developer-only: the release cutter and the poe2db Waystones data tool. |
 | `apps/crafting-helper/` | The crafting helper: the app logic, the item text parser, the crafting engine and the screen watch as Rust crates (the screen watch takes the quest tracker's `qt-screen` and `qt-capture` by path), the Tauri glue, the Svelte UI, the blueprints and the modifier data. |
-| `tools/crafting_helper/` | Developer-only: the poe2db modifier data extractor, and the release cutter (`release.py`). |
+| `tools/crafting_helper/` | Developer-only: the poe2db modifier data extractor, the trade stat mapper (`trade_stats.py`, which writes `data/trade-stats.json`), the slot model (`slot_model.py`, a stdlib model of how crafting routes use an item's free slots, checked against the engine's case file), and the release cutter (`release.py`). |
 | `apps/shared/` | The update code the three apps share, a Cargo workspace of its own: `ep-net`, the only network code, and `ep-update`, the check, the install and the signature check ([`docs/app-updates.md`](docs/app-updates.md)). |
 | `.github/workflows/` | The three release builds (the quest tracker's, the waystone roller's and the crafting helper's), and the opt-in AI review. |
 | `docs/quest-tracker/` | The quest tracker's guide, research note and design. |

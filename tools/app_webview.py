@@ -48,6 +48,8 @@ def print_pages(found: list[dict]) -> None:
 
 
 def launch(exe: str) -> int:
+    # Absolute, because the child's cwd is the exe's own directory.
+    exe = os.path.abspath(exe)
     if not (os.path.isfile(exe) and exe.lower().endswith(".exe")):
         print(f"refused: not an .exe file: {exe}")
         return 2

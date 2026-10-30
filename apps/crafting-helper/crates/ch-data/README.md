@@ -140,20 +140,27 @@ or `searchable: false` with the reason (`hybrid`, `no trade stat`).
   *Both slots* is on, else 1 (with `count_line` saying why; a magic item
   holds one prefix and one suffix), whose filters carry `value.min` only
   for a pick whose floor is a chosen tier; and a `weight` group whose
-  weight per stat is the trade weight, sorted by `statgroup.1`. The trade
-  weight is the rarity weight over the reference value, the floor tier's
-  minimum roll (the mean of the two minimums on an `Adds # to #` line), to
-  four significant digits: the site sums value times weight, so without it
-  a large-valued modifier would outrank a rarer one by its value alone.
+  weight per stat is the trade weight, asking for the sort
+  `{"statgroup.1":"desc"}` (in Live 3, 2026-10-30, the site opened the
+  search sorted by price instead: the guide's Known limitations). The
+  trade weight is the rarity weight over the top value: the maximum roll,
+  as the site values it, of the best tier the pick can have at the item
+  level (tier 1 with none; the mean of the two maximums on an
+  `Adds # to #` line), to four significant digits, so a pick adds at most
+  its rarity weight. The reference value (the floor tier's minimum roll)
+  is only the count group's `value.min`.
   Refused, with the reason, for an unknown class or base, no pick, more
   than `MAX_TRADE_PICKS` (8), a modifier picked twice or outside the
   ordinary pool, an unreachable floor, or a modifier the site has no stat
   for. Each entry of the report carries the weight, its source, the
-  reference value and the stat ids.
+  reference value, the top value and the stat ids.
 
-The site's query keys come from its public filter list (2026-10-29); the
-`?q=` link form, the `count` and `weight` group types and the `statgroup`
-sort are not confirmed statically and are checked live.
+The site's query keys come from its public filter list (2026-10-29). Live 3
+(2026-10-30) confirmed that the `?q=` link loads with the Count group
+(min 2) and the Weighted Sum group holding the chosen stats and their
+weights, as the owner read them on the page; the `statgroup` sort did not
+take (the page opened sorted by price), and anything else about how the
+site applies the query is not established.
 
 ## Tests
 

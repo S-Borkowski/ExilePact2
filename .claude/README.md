@@ -142,6 +142,13 @@ positive control first, hardware logging breakpoints only, verified with
 has not loaded those tools reaches the same eight, through the same gates, as
 `py -3 -m tools.x64dbg_mcp tool <name> '<json>'`.
 
+It also carries the `app-webview` server's tools (tabs, snapshot, click,
+type, select, key press, hover, wait, screenshot, evaluate, console) to
+drive one of our own apps started by `tools/app_webview.py launch`, and
+read-only `mcp__playwright__*` tools for pages an app opens in the browser
+([`docs/tools/app-webview-mcp.md`](../docs/tools/app-webview-mcp.md)); no
+test pins these, unlike the x64dbg set.
+
 There is no game-driving MCP server here (the sister project's launched,
 screenshotted and sent input to its game). The lease is taken by hand or by
 the live operator with `py -3 -m tools.game_lease acquire --label
