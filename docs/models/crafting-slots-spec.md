@@ -80,6 +80,9 @@ the session; it does not change the id.
 | `desecrated-unfracturable` | not established | A Fracturing Orb never picks a desecrated modifier (Mobalytics' SSF crafting guide); that an unrevealed one is skipped too is our reading. | https://mobalytics.gg/poe-2/guides/ssf-crafting, fetched 2026-10-30 |
 | `full-desecration-same-side` | not established | On an item whose side is full, a desecration with that side's Necromancy omen removes its random modifier from that side (inferred from `desecrate-no-free-slot` and `side-necromancy`; maxroll's rescue of a full rare relies on it). | https://poe2db.tw/us/Desecrated_Modifiers and https://poe2db.tw/us/Omen, fetched 2026-10-29; https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2, reviewed 2026-10-30 (issue #35) |
 | `essence-full-side-removal` | not established | With no Crystallisation omen, when the side a Perfect or corrupted essence's modifier belongs to is full, the modifier the essence removes comes from that side (Mobalytics' essences guide; the owner states it too, 2026-10-30). | https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
+| `lord-with-side-omen` | not established | A lord's omen (Omen of the Sovereign for Ulaman, the Liege for Amanamu, the Blackblooded for Kurgal) and a Sinistral or Dextral Necromancy omen used on one desecration both apply: the desecrated modifier is that lord's, on that side (the domistae codex; poe2db documents each omen alone, a lord's omen guaranteeing that lord's modifier on a weapon or jewellery desecration). | https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tricks and https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#abyss, fetched 2026-10-30; https://poe2db.tw/us/Omen, fetched 2026-10-28 |
+| `lord-omen-classes` | not established | The classes a lord's omen works on (poe2db names weapons and jewellery): the jawbone classes but Quivers, and Amulets and Rings. Whether a Belt or a Quiver counts is not stated, so neither takes one (the owner's default, 2026-10-30). | https://poe2db.tw/us/Omen, fetched 2026-10-28 |
+| `catalysing-with-side-omen` | not established | Omen of Catalysing Exaltation and a Sinistral or Dextral Exaltation omen used on one Exalted Orb both apply: the catalyst's favour and the side restriction (the domistae codex says omens of different kinds stack; no source tests these two together). | https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#omens, fetched 2026-10-30 |
 
 ### Which blueprint relies on which not-established fact
 
@@ -90,13 +93,16 @@ the session; it does not change the id.
 | `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix`, `weapons-physical-generic` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full; `weapons-physical-generic`'s augment lands on the magic weapon's free side. |
 | `whittling-mod-level` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The removal step's whittle alternative is certain only by this reading of "lowest level". |
 | `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `fractured-essence-swap` | A removal's odds and the blocked-side test leave fractured modifiers out; `fracture-first` annuls and Chaos-rolls around its fractured target; `fractured-essence-swap`'s essence removes from the side's other modifiers. |
-| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue`, `fractured-essence-swap` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
+| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue`, `fractured-essence-swap`, `jewellery-catalyst-exalt` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. `jewellery-catalyst-exalt`'s Catalysing and side omens are active before each slam. |
 | `necromancy-without-pool` | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` | Desecrating for an ordinary prefix target on an armour class. |
 | `removal-equally-likely` | `full-rare-desecration-rescue`, `fractured-essence-swap` | The odds shown for an uncertain removal assume it, and so do the rescue's odds of keeping its targets on a full side and the essence swap's chance that an unrevealed modifier survives. |
 | `abyss-mark-unfracturable` | `fracture-first` | The Fracturing Orb's odds after Essence of the Abyss leave the mark out. |
 | `desecrated-unfracturable` | `fracture-first` | The Fracturing Orb's odds leave a desecrated modifier out. |
 | `full-desecration-same-side` | `full-rare-desecration-rescue` | The rescue desecrates a full side; its random removal is taken from that side. |
 | `essence-full-side-removal` | `fractured-essence-swap` | An essence swap's removal side with no Crystallisation omen (§ "What each crafting item does to the slots"): `fractured-essence-swap`'s Essence of Hysteria removes from its modifier's full side. |
+| `lord-with-side-omen` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | Each desecration that carries `side-omen` also carries `lord-omen` (§ "`lord-omen`"): for one lord's desecrated target it names that lord's omen beside the Necromancy omen. |
+| `lord-omen-classes` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | `lord-omen` resolves only on the lord classes; on the blueprints' armour classes, Belts and Quivers it resolves to nothing. |
+| `catalysing-with-side-omen` | `jewellery-catalyst-exalt` | Each slam names Omen of Catalysing Exaltation beside the side's Exaltation omen. |
 
 ## Slot accounting
 
@@ -160,6 +166,7 @@ of the rarity the item has after the currency.
 | Lesser, plain or Greater essence | A magic item with no crafted modifier. | The item turns rare with its modifiers kept, plus the essence's modifier on that modifier's side. | `essence-magic-to-rare`, `one-crafted-one-desecrated` |
 | `desecrate` (a bone that fits the class) | A rare item with no desecrated modifier. The routes also ask a free slot on the resolved side, so the game never removes a random modifier for it; a `last-remaining` desecration also asks the class's desecration pool on that side (§ "The last-target desecration"). | One unrevealed desecrated modifier, on the side its omen names. | `desecrate-adds-unrevealed`, `desecrate-no-free-slot`, `one-crafted-one-desecrated` |
 | + `omen-of-sinistral-necromancy` / `omen-of-dextral-necromancy` | Active before the bone. | The unrevealed modifier is a prefix (suffix). | `side-necromancy`, `omens-active-before-use`, `necromancy-without-pool` |
+| + `omen-of-the-sovereign` / `omen-of-the-liege` / `omen-of-the-blackblooded` (`lord-omen`) | A lord class; active before the bone, beside the Necromancy omen. | No slot changes: the unrevealed modifier is Ulaman's (Amanamu's, Kurgal's). | `reveal-offers-base`, `lord-with-side-omen`, `lord-omen-classes`, `omens-active-before-use` |
 | `reveal` | An unrevealed modifier on the item. | It becomes the chosen one of the offered modifiers, in place: no slot changes. | `desecrate-adds-unrevealed`, `reveal-offers-base` |
 | + `omen-of-abyssal-echoes` | Active before the reveal. | One reroll of the offer; no slot changes. | `abyssal-echoes`, `omens-active-before-use` |
 | `orb-of-annulment` | A magic or rare item with a modifier at risk. | One modifier at risk goes; its slot frees. | `annulment-removes-one`, `fractured-not-removed`, `removal-equally-likely` |
@@ -314,6 +321,44 @@ fallback line):
 - the step can use two: an add has two missing targets there it can place;
   a fill always can;
 - `omen-of-greater-exaltation` is not blocked.
+
+### `lord-omen`
+
+Added 2026-10-30 (issue #40, the codex's Trick II). Allowed on a
+`desecrate` action only, and not beside an explicit lord omen on the same
+action. It resolves to the lord omen of the step's bound target when all
+of these hold, and otherwise to nothing (no omen, no fallback line; the
+alternative is taken without it):
+
+- the step has a bound target, and that target is from the desecrated
+  pool (a base-pool target never gets one: the omen would rule it out of
+  the offer, `reveal-offers-base`);
+- every tier of that modifier on the item's variant names the same lord
+  (`Ulaman's` or `of Ulaman`, `Amanamu's` or `of Amanamu`, `Kurgal's` or
+  `of Kurgal`); a modifier whose tiers name two lords, or none, gets
+  nothing;
+- the item's class is a lord class (`lord-omen-classes`): Wands, One Hand
+  Maces, Sceptres, Spears, Bows, Staves, Two Hand Maces, Quarterstaves,
+  Crossbows, Talismans, Amulets and Rings;
+- the omen is not blocked.
+
+The lord omens: Ulaman's is `omen-of-the-sovereign`, Amanamu's
+`omen-of-the-liege`, Kurgal's `omen-of-the-blackblooded`. The resolved
+omen is recorded where the action lists `lord-omen` (the blueprints write
+it after `side-omen`).
+
+**Waiting.** A listed desecration bound to the last target
+(`last-remaining`, `when = "bound"`, no `side`: the whittle's) is planned
+while several targets are still missing, so it has no bound target yet.
+Its `lord-omen` then waits, as its `side-omen` does when those targets lie
+on both sides: no omen is named yet, and each remaining target the rule
+above would give a lord omen is listed with that omen, for the guide to
+name once one target is left. With no such target, nothing waits. (Even
+when the remaining targets share a side, so the Necromancy omen is known,
+which lord omen applies depends on which target is left.)
+
+The model reads a target's lord from the case (`lord`, absent for a
+base-pool target); the engine reads it from the class data's tier names.
 
 ### Removals
 
@@ -542,7 +587,8 @@ takes if each one hits, starting from the item as it stands:
    the route is rejected `route-cannot-finish`, `no-candidate`.
 2. Record it: its goal, its resolved side (or none), its currency as
    written, and its omens resolved, in the order the action lists them
-   (the v2 blueprints write `greater-omen` before `side-omen`).
+   (the v2 blueprints write `greater-omen` before `side-omen`, and
+   `side-omen` before `lord-omen`).
 3. Apply its hit to a copy of the item:
    - an add places the first missing target it can place on its resolved
      side, two with Greater, in target order (a transmute first makes the
@@ -596,7 +642,11 @@ floor picks, which the model takes as given (added 2026-10-29). A case
 may name the sides on which its class has a desecrated modifier at the
 item's level (`desecration_pool`, a list of `prefix` and `suffix`; absent,
 both), for the last-target desecration's pool condition (added
-2026-10-30). A difference between this list and the model
+2026-10-30). A desecrated-pool target may name its lord (`lord`:
+`ulaman`, `amanamu` or `kurgal`, the lord every tier of the real modifier
+its constructed item holds names), for the `lord-omen` rule, and the
+class is then read for `lord-omen-classes` (added 2026-10-30, issue #40).
+A difference between this list and the model
 is a spec or model defect, never a reason to change the expectation.
 
 - **`rare-2p1s-prefix-missing`** (the owner's craft of 2026-10-29): a rare
@@ -669,18 +719,19 @@ is a spec or model defect, never a reason to change the expectation.
     Orb, Greater and Dextral Exaltation; then add the prefix with a Perfect
     Exalted Orb and no omen (one side open). Done; Light never comes.
   - `magic-augment-essence`: rejected, `no-start-fits`.
-- **`magic-two-good`**: a magic item with a target prefix and a target
-  suffix; missing a prefix an essence adds, a desecrated-pool prefix and
-  two more suffixes.
+- **`magic-two-good`**: a magic amulet with a target prefix and a target
+  suffix; missing a prefix an essence adds, a desecrated-pool prefix
+  (Amanamu's) and two more suffixes.
   - `essence-desecrate-double-slam`: the essence; desecrate on the prefix
-    side with Sinistral Necromancy; reveal with Abyssal Echoes; add the two
-    suffixes with a Perfect Exalted Orb, Greater and Dextral Exaltation.
-    Done.
+    side with Sinistral Necromancy and Omen of the Liege (`lord-omen`);
+    reveal with Abyssal Echoes; add the two suffixes with a Perfect
+    Exalted Orb, Greater and Dextral Exaltation. Done.
   - `magic-augment-essence`: the essence; add the two suffixes with a
     Perfect Exalted Orb, Greater and Dextral Exaltation; the desecrated
     prefix is then the last target, so desecrate on the prefix side with
-    Sinistral Necromancy and reveal with Abyssal Echoes. Done (it used to
-    be rejected `desecrated-target-unplaced`).
+    Sinistral Necromancy and Omen of the Liege and reveal with Abyssal
+    Echoes. Done (it used to be rejected `desecrated-target-unplaced`; the
+    Liege added 2026-10-30).
   - `close-a-side`, `rare-clean-then-slam`: rejected, `no-start-fits`.
 - **`rare-fractured`**: a rare whose prefixes are a fractured target and
   two junk, whose one suffix is a target and the item's lowest-level

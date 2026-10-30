@@ -447,9 +447,11 @@ fn caster_cast_speed_hit_path() {
     );
     let last = next_step(&next);
     assert_eq!(last.target.as_deref(), Some(C_ELEMENTAL));
+    // Amanamu's prefix on a wand: Omen of the Liege beside the Necromancy
+    // omen (the `lord-omen` rule).
     assert_eq!(
         last.action.as_ref().unwrap().omens,
-        ["omen-of-sinistral-necromancy"]
+        ["omen-of-sinistral-necromancy", "omen-of-the-liege"]
     );
 
     let next = walk(

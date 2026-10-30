@@ -1,0 +1,28 @@
+id = "lord-omen"
+name = "lord-omen off a desecration"
+classes = ["Rings"]
+source = "roadmap"
+order = "state"
+relies_on = ["lord-with-side-omen"]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "fill"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["lord-omen"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate for the hardest target"
+goal = "desecrate"
+bind = "hardest"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen", "lord-omen", "omen-of-the-sovereign"]

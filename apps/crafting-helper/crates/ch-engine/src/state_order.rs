@@ -27,7 +27,7 @@ use crate::odds::{
 };
 use crate::route::{
     essence_adds, essence_binds_any, essence_fits_rarity, greater_fits, hardest, try_alternative,
-    AltProblem, ChosenAction, Rejection, Skipped, Stall, StepView,
+    AltProblem, ChosenAction, LordOmen, Rejection, Skipped, Stall, StepView,
 };
 use crate::slots::{at_risk, removable, whittle_certain, Slots, Takes, SIDES};
 use crate::swap;
@@ -475,12 +475,16 @@ fn fit(
     step: &Step,
     index: usize,
     side: Option<Kind>,
+    target: Option<usize>,
     essence_for: Option<usize>,
     can: &[usize],
 ) -> Result<ChosenAction, AltProblem> {
     let goal = *step.goal.get_ref();
     let action = step.actions[index].get_ref();
     let greater = greater_fits(ctx, st, goal, side, can);
+    // A state-ordered desecration is bound (`hardest`, `last-remaining`);
+    // its lord omen never waits.
+    let lord = target.map_or(LordOmen::Nothing, |t| LordOmen::of_target(ctx, t));
     let chosen = try_alternative(
         ctx,
         st,
@@ -488,6 +492,7 @@ fn fit(
         action,
         side.map(side_of),
         greater,
+        &lord,
         essence_for,
     )?;
     let unfit = |why: &str| Err(AltProblem::Unfit(format!("`{}`: {why}", chosen.currency)));
@@ -610,7 +615,8 @@ fn fit(
                 {
                     continue;
                 }
-                let Ok(annul) = fit(ctx, st, slots, step, later, side, essence_for, can) else {
+                let Ok(annul) = fit(ctx, st, slots, step, later, side, target, essence_for, can)
+                else {
                     continue;
                 };
                 let risks = at_risk(st, takes(&annul))
@@ -665,7 +671,7 @@ pub(crate) fn evaluate(
     let mut blocked = 0;
     let mut reasons = Vec::new();
     for i in 0..step.actions.len() {
-        match fit(ctx, st, slots, step, i, side, essence_for, &can) {
+        match fit(ctx, st, slots, step, i, side, target, essence_for, &can) {
             Ok(action) => {
                 let aims = target.map_or(can, |t| vec![t]);
                 return Ok(Pick {

@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use ch_blueprint::catalogue::{
-    self, bones_for, Currency, Effect, ItemGroup, GREATER_EXALTATION, GREATER_OMEN, SIDE_OMEN,
+    self, bones_for, Currency, Effect, Entry, ItemGroup, GREATER_EXALTATION, GREATER_OMEN,
+    LORD_CLASSES, LORD_OMEN, LORD_OMENS, SIDE_OMEN,
 };
 use ch_blueprint::{Action, Binding, Goal, Order, Rarity as BpRarity, Side, Spanned, Step, When};
 use ch_data::{Kind, Odds, Section};
@@ -56,6 +57,23 @@ pub struct ChosenAction {
     /// the omen once one target is left.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub side_omen_waits: bool,
+    /// Its `lord-omen` waits for the last target too, beside a waiting
+    /// `side-omen` (docs/models/crafting-slots-spec.md, "`lord-omen`"):
+    /// each remaining target that would take a lord omen, with that omen.
+    /// Empty otherwise; no omen id stands for it in `omens`.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub lord_omens_waiting: Vec<WaitingLordOmen>,
+}
+
+/// A lord omen a desecration names once `target` is the last one left.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct WaitingLordOmen {
+    /// The target's data modifier id.
+    pub target: String,
+    /// The omen id.
+    pub omen: String,
+    /// Its English name.
+    pub name: String,
 }
 
 /// One step as the player sees it, on a given item.
@@ -526,12 +544,18 @@ pub(crate) fn pick_step(
             .or_else(|| step.side.as_ref().map(|s| *s.get_ref()));
         let placeable = target.map_or_else(|| eligible.clone(), |t| vec![t]);
         let greater = greater_fits(ctx, st, goal, side.map(kind_of), &placeable);
+        let waits = target.is_none() && waits_for_last_target(step, binding);
         let omen_side = match side {
             Some(s) => OmenSide::Known(s),
-            None if waits_for_last_target(step, binding) => shared_side(ctx, &eligible),
+            None if waits => shared_side(ctx, &eligible),
             None => OmenSide::Unknown,
         };
-        match choose_action(ctx, st, step, omen_side, greater, essence) {
+        let lord = match target {
+            Some(t) => LordOmen::of_target(ctx, t),
+            None if waits => LordOmen::waiting(ctx, &eligible),
+            None => LordOmen::Nothing,
+        };
+        match choose_action(ctx, st, step, omen_side, greater, &lord, essence) {
             Ok(a) => Some(a),
             Err(ActionProblem::AllBlocked) => {
                 return StepPick::Reject(Rejection::EveryAlternativeBlocked { step: id })
@@ -934,6 +958,89 @@ fn shared_side(ctx: &Ctx, eligible: &[usize]) -> OmenSide {
     }
 }
 
+/// What `lord-omen` resolves to on a step
+/// (docs/models/crafting-slots-spec.md, "`lord-omen`").
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum LordOmen {
+    /// Nothing: no omen, no fallback line.
+    Nothing,
+    /// The bound target's lord omen.
+    Omen(&'static Entry),
+    /// The last target's, not known yet: each remaining target that would
+    /// take one, with its omen.
+    Waits(Vec<WaitingLordOmen>),
+}
+
+impl LordOmen {
+    /// For a desecration bound to target `t`: its lord's omen when `t` is
+    /// from the desecrated pool and every tier of it on the item's variant
+    /// names that one lord, the class is a lord class and the omen is not
+    /// blocked; nothing otherwise.
+    pub(crate) fn of_target(ctx: &Ctx, t: usize) -> Self {
+        lord_omen_of(ctx, t).map_or(Self::Nothing, Self::Omen)
+    }
+
+    /// For a desecration waiting for the last of `eligible`: what each
+    /// would take. Nothing when none would take one.
+    fn waiting(ctx: &Ctx, eligible: &[usize]) -> Self {
+        let each: Vec<WaitingLordOmen> = eligible
+            .iter()
+            .filter_map(|&t| {
+                lord_omen_of(ctx, t).map(|e| WaitingLordOmen {
+                    target: ctx.targets[t].mod_id.clone(),
+                    omen: e.id.to_string(),
+                    name: e.name.to_string(),
+                })
+            })
+            .collect();
+        if each.is_empty() {
+            Self::Nothing
+        } else {
+            Self::Waits(each)
+        }
+    }
+}
+
+/// The lord omen a desecration bound to target `t` takes, or `None`.
+fn lord_omen_of(ctx: &Ctx, t: usize) -> Option<&'static Entry> {
+    let target = &ctx.targets[t];
+    if target.section != Section::Desecrated || !LORD_CLASSES.contains(&ctx.data.class.as_str()) {
+        return None;
+    }
+    let tiers = ctx.data.mod_tiers(&target.mod_id, ctx.variant)?;
+    let omen = single_lord(tiers.iter().map(|tier| tier.name.as_str()))?;
+    catalogue::entry(omen).filter(|e| !ctx.is_blocked(e.id))
+}
+
+/// The omen of the one lord every name names (`Ulaman's`, `of Ulaman`), or
+/// `None` when a name names no lord, two names name different lords, or
+/// there is no name.
+fn single_lord<'a>(names: impl IntoIterator<Item = &'a str>) -> Option<&'static str> {
+    let mut lord = None;
+    for name in names {
+        let omen = tier_lord(name)?;
+        if lord.is_some_and(|l| l != omen) {
+            return None;
+        }
+        lord = Some(omen);
+    }
+    lord
+}
+
+/// The lord omen a desecrated tier's name names: its last word, without a
+/// possessive `'s`, is the lord.
+fn tier_lord(name: &str) -> Option<&'static str> {
+    let word = name.split_whitespace().last()?;
+    let word = word
+        .strip_suffix("'s")
+        .or_else(|| word.strip_suffix("\u{2019}s"))
+        .unwrap_or(word);
+    LORD_OMENS
+        .iter()
+        .find(|(lord, _)| *lord == word)
+        .map(|(_, omen)| *omen)
+}
+
 /// The first alternative none of whose ids (placeholders resolved) is
 /// blocked and that fits the item.
 fn choose_action(
@@ -942,12 +1049,22 @@ fn choose_action(
     step: &Step,
     side: OmenSide,
     greater: bool,
+    lord: &LordOmen,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, ActionProblem> {
     let mut blocked = 0;
     let mut reasons = Vec::new();
     for (i, action) in step.actions.iter().enumerate() {
-        match alternative_on(ctx, st, i, action.get_ref(), side, greater, essence_for) {
+        match alternative_on(
+            ctx,
+            st,
+            i,
+            action.get_ref(),
+            side,
+            greater,
+            lord,
+            essence_for,
+        ) {
             Ok(chosen) => return Ok(chosen),
             Err(AltProblem::Blocked) => blocked += 1,
             Err(AltProblem::Unfit(why)) => reasons.push(why),
@@ -963,7 +1080,9 @@ fn choose_action(
 /// One alternative with its placeholders resolved: `side-omen` to the
 /// currency's omen for `side` (the bound target's, or the step's), and
 /// `greater-omen` to Omen of Greater Exaltation when `greater` says it
-/// fits, else to nothing. `Blocked` when an id it uses is blocked.
+/// fits, else to nothing, and `lord-omen` to `lord`. `Blocked` when an id
+/// it uses is blocked.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn try_alternative(
     ctx: &Ctx,
     st: &State,
@@ -971,16 +1090,28 @@ pub(crate) fn try_alternative(
     action: &Action,
     side: Option<Side>,
     greater: bool,
+    lord: &LordOmen,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, AltProblem> {
     let side = side.map_or(OmenSide::Unknown, OmenSide::Known);
-    alternative_on(ctx, st, alternative, action, side, greater, essence_for)
+    alternative_on(
+        ctx,
+        st,
+        alternative,
+        action,
+        side,
+        greater,
+        lord,
+        essence_for,
+    )
 }
 
 /// [`try_alternative`] with `side-omen`'s side as [`OmenSide`]: when it
 /// waits for the last target, the alternative is taken with no omen id for
 /// it and `side_omen_waits` set, and is blocked when either of the
-/// currency's two side omens is.
+/// currency's two side omens is. A lord omen never blocks an alternative:
+/// a blocked one resolves to nothing ([`LordOmen`]).
+#[allow(clippy::too_many_arguments)]
 fn alternative_on(
     ctx: &Ctx,
     st: &State,
@@ -988,6 +1119,7 @@ fn alternative_on(
     action: &Action,
     side: OmenSide,
     greater: bool,
+    lord: &LordOmen,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, AltProblem> {
     let written = action.currency.get_ref().as_str();
@@ -1097,6 +1229,7 @@ fn alternative_on(
     let mut omen_names = Vec::new();
     let mut omen_side = None;
     let mut side_omen_waits = false;
+    let mut lord_omens_waiting = Vec::new();
     let side_omen = |s: Side| {
         currency.side_omen(s).ok_or_else(|| {
             AltProblem::Unfit(format!("`{written}` has no {} omen", side_word(kind_of(s))))
@@ -1105,6 +1238,17 @@ fn alternative_on(
     for omen in &action.omens {
         let id = omen.get_ref().as_str();
         if id == GREATER_OMEN && !greater {
+            continue;
+        }
+        if id == LORD_OMEN {
+            match lord {
+                LordOmen::Omen(entry) => {
+                    omens.push(entry.id.to_string());
+                    omen_names.push(entry.name.to_string());
+                }
+                LordOmen::Waits(each) => lord_omens_waiting = each.clone(),
+                LordOmen::Nothing => {}
+            }
             continue;
         }
         let entry = if id == GREATER_OMEN {
@@ -1154,5 +1298,30 @@ fn alternative_on(
         data_backed,
         removes,
         side_omen_waits,
+        lord_omens_waiting,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_lord_is_read_from_every_tier_name() {
+        assert_eq!(single_lord(["Ulaman's"]), Some("omen-of-the-sovereign"));
+        assert_eq!(
+            single_lord(["of Amanamu", "Amanamu's"]),
+            Some("omen-of-the-liege")
+        );
+        assert_eq!(single_lord(["of Kurgal"]), Some("omen-of-the-blackblooded"));
+        // Two lords (the Belt's flask charges prefix), no lord (a jewel's
+        // `Lightless`, the Abyss mark's `of the Abyss`), no tier: nothing.
+        assert_eq!(single_lord(["Ulaman's", "Kurgal's"]), None);
+        assert_eq!(single_lord(["Lightless"]), None);
+        assert_eq!(single_lord(["of the Abyss"]), None);
+        assert_eq!(single_lord(["Ulaman's", "Lightless"]), None);
+        assert_eq!(single_lord(std::iter::empty::<&str>()), None);
+        // A lord's name inside another word is not that lord.
+        assert_eq!(single_lord(["Ulamanic"]), None);
+    }
 }

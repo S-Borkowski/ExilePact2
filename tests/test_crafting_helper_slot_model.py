@@ -81,7 +81,23 @@ SIN_ANN, DEX_ANN = "omen-of-sinistral-annulment", "omen-of-dextral-annulment"
 SIN_NEC, DEX_NEC = "omen-of-sinistral-necromancy", "omen-of-dextral-necromancy"
 ECHOES = "omen-of-abyssal-echoes"
 LIGHT = "omen-of-light"
+SOVEREIGN, LIEGE = "omen-of-the-sovereign", "omen-of-the-liege"
 ESSENCE = "<the case's essence>"
+# The lord omens and the classes they work on, written from the spec's
+# § "`lord-omen`" apart from the model's own tables.
+LORD_OMEN = {"ulaman": SOVEREIGN, "amanamu": LIEGE, "kurgal": "omen-of-the-blackblooded"}
+LORD_CLASSES = {
+    "Wands", "One Hand Maces", "Sceptres", "Spears", "Bows", "Staves", "Two Hand Maces",
+    "Quarterstaves", "Crossbows", "Talismans", "Amulets", "Rings",
+}
+# The cases whose targets include a desecrated-pool one, each with its lord
+# (the lord every tier of the real modifier the case's item text holds names).
+LORD_TARGETS = {
+    "rare-desecrated-target": ("p1", "ulaman"),
+    "magic-two-good": ("p3", "amanamu"),
+    "rare-certain-removal-first": ("s2", "ulaman"),
+    "rare-uncertain-removal-keeps-order": ("s2", "ulaman"),
+}
 
 # The steps the last-target desecration takes on a prefix (suffix).
 DESECRATE_PREFIX = [("desecrate", "prefix", "desecrate", [SIN_NEC]), ("reveal", None, "reveal", [ECHOES])]
@@ -127,7 +143,8 @@ MUST_HOLD = {
     ("rare-wrong-reveal-same-side-exalt", "magic-augment-essence"): "no-start-fits",
     ("magic-two-good", "essence-desecrate-double-slam"): ([
         ("add-wanted", None, ESSENCE, []),
-        ("desecrate", "prefix", "desecrate", [SIN_NEC]),
+        # the desecrated prefix is Amanamu's, on an amulet: Omen of the Liege
+        ("desecrate", "prefix", "desecrate", [SIN_NEC, LIEGE]),
         ("reveal", None, "reveal", [ECHOES]),
         ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER, DEX_EX]),
     ], True),
@@ -136,7 +153,9 @@ MUST_HOLD = {
     ("magic-two-good", "magic-augment-essence"): ([
         ("add-wanted", None, ESSENCE, []),
         ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER, DEX_EX]),
-    ] + DESECRATE_PREFIX, True),
+        ("desecrate", "prefix", "desecrate", [SIN_NEC, LIEGE]),
+        ("reveal", None, "reveal", [ECHOES]),
+    ], True),
     ("rare-fractured", "close-a-side"): ([
         ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], True),
     ] + DESECRATE_PREFIX, True),
@@ -242,6 +261,17 @@ def last_target_to_desecrate(state, acc):
     if {"desecrate", sm.SIDE_OMENS["desecrate"][t.side]} & state.blocked:
         return None
     return t
+
+
+def lord_omen_for(state, t):
+    """The lord omen the spec's `lord-omen` gives a desecration bound to
+    target `t` on this item, written from the spec apart from the model:
+    a desecrated-pool target with one lord, a lord class, the omen not
+    blocked. None otherwise."""
+    if t.pool != "desecrated" or t.lord is None or state.cls not in LORD_CLASSES:
+        return None
+    omen = LORD_OMEN[t.lord]
+    return None if omen in state.blocked else omen
 
 
 class Baseline(unittest.TestCase):
@@ -707,9 +737,10 @@ class Invariants(unittest.TestCase):
                     continue
                 applied += 1
                 with self.subTest(case=c.id, blueprint=bp_id, step=step.record):
+                    lord = lord_omen_for(step.before, t)
                     self.assertEqual(
                         (step.record["goal"], step.record["side"], step.record["omens"]),
-                        ("desecrate", t.side, [sm.SIDE_OMENS["desecrate"][t.side]]),
+                        ("desecrate", t.side, [sm.SIDE_OMENS["desecrate"][t.side]] + ([lord] if lord else [])),
                     )
                     # its unrevealed modifier waits for that target, and the
                     # route's next step reveals it
@@ -757,6 +788,82 @@ class Invariants(unittest.TestCase):
         record = sm.plan(close, case("rare-wrong-reveal")).record()
         self.assertEqual(record["steps"][0]["certain"], True)
         self.assertEqual(steps_of(record), [LIGHT_OFF[:4]] + DESECRATE_PREFIX)
+
+    def test_lord_omen_for_a_desecrated_target(self):
+        # the case file names each desecrated-pool target's lord, and no
+        # base-pool target has one
+        for case_id, (alias, lord) in LORD_TARGETS.items():
+            with self.subTest(case=case_id):
+                c = case(case_id)
+                self.assertEqual({t.alias: t.lord for t in c.targets if t.pool == "desecrated"}, {alias: lord})
+        for c in load_cases():
+            self.assertEqual([t.alias for t in c.targets if t.pool == "base" and t.lord], [], c.id)
+
+        # every projected desecration carries exactly the lord omen the spec
+        # gives its bound target, after the Necromancy omen
+        lorded = 0
+        for c, bp_id, route in every_route():
+            for step in route.steps:
+                if step.record["goal"] != "desecrate":
+                    continue
+                bound = step.before.bindings.get(step.step.bind)
+                t = sm.target_by_alias(step.before, bound) if bound else None
+                lord = lord_omen_for(step.before, t) if t else None
+                lorded += lord is not None
+                with self.subTest(case=c.id, blueprint=bp_id, step=step.record):
+                    lords = [o for o in step.record["omens"] if o in LORD_OMEN.values()]
+                    self.assertEqual(lords, [lord] if lord else [])
+                    if lord:
+                        self.assertEqual(step.record["omens"][-1], lord)
+                    self.assertEqual(sm.omen_problems(step), [])
+        self.assertGreater(lorded, 0)
+
+        two_good = case("magic-two-good")
+        edds = sm.BLUEPRINTS["essence-desecrate-double-slam"]
+
+        def desecration(c, bp=edds):
+            steps = [s for s in steps_of(sm.plan(bp, c).record()) if s[0] == "desecrate"]
+            self.assertEqual(len(steps), 1, c.id)
+            return steps[0]
+
+        self.assertEqual(desecration(two_good), ("desecrate", "prefix", "desecrate", [SIN_NEC, LIEGE]))
+        self.assertEqual(desecration(two_good, sm.BLUEPRINTS["magic-augment-essence"])[3], [SIN_NEC, LIEGE])
+        # controls: the omen blocked, a class outside the lord classes (a
+        # belt, a body armour), a target whose tiers name no single lord:
+        # the Necromancy omen alone, the step itself unchanged
+        controls = {
+            "liege blocked": with_changes(two_good, blocked=frozenset({LIEGE})),
+            "belt": with_changes(two_good, cls="Belts"),
+            "body armour": with_changes(two_good, cls="Body Armours"),
+            "mixed lords": with_changes(two_good, targets=tuple(
+                sm.Target(t.alias, t.side, t.pool, t.essence, None) for t in two_good.targets)),
+        }
+        for name, c in controls.items():
+            with self.subTest(control=name):
+                self.assertEqual(desecration(c), ("desecrate", "prefix", "desecrate", [SIN_NEC]))
+        # another lord's omen blocked changes nothing
+        c = with_changes(two_good, blocked=frozenset({SOVEREIGN}))
+        self.assertEqual(desecration(c)[3], [SIN_NEC, LIEGE])
+        # a base-pool target on a ring never takes one (the owner's craft)
+        owner = sm.plan(sm.BLUEPRINTS["close-a-side"], case("rare-2p1s-prefix-missing")).record()
+        self.assertEqual(steps_of(owner), DESECRATE_PREFIX)
+
+        # the checker refuses a lord omen dropped or added
+        route = sm.plan(edds, two_good)
+        step = next(s for s in route.steps if s.record["goal"] == "desecrate")
+        for omens in ([SIN_NEC], [SIN_NEC, LIEGE, SOVEREIGN], [SIN_NEC, SOVEREIGN]):
+            mutated = copy.deepcopy(step)
+            mutated.record["omens"] = omens
+            self.assertTrue(sm.omen_problems(mutated), omens)
+        # and the case reader refuses a lord on a base-pool target or an
+        # unknown lord
+        raw = json.loads(CASES.read_text(encoding="utf-8"))["cases"]
+        good = next(d for d in raw if d["id"] == "rare-2p1s-prefix-missing")
+        for lord in ("ulaman", "xesht"):
+            bad = copy.deepcopy(good)
+            bad["targets"][0]["lord"] = lord
+            with self.assertRaises(ValueError):
+                sm.case_from_dict(bad)
 
 
 class Spec(unittest.TestCase):

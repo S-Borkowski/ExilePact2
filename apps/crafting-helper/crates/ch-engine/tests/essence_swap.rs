@@ -176,7 +176,12 @@ fn a_ring_swap_goes_annuls_then_desecrates() {
     assert_eq!(known(remove.odds.as_ref()), (1, 2));
     let desecrate = &route.steps[1];
     assert_eq!(desecrate.target.as_deref(), Some(COLD_CHAOS));
-    assert_eq!(omens(desecrate), ["omen-of-dextral-necromancy"]);
+    // The target is Kurgal's (`of Kurgal`), on a ring: Omen of the
+    // Blackblooded beside the Necromancy omen (the `lord-omen` rule).
+    assert_eq!(
+        omens(desecrate),
+        ["omen-of-dextral-necromancy", "omen-of-the-blackblooded"]
+    );
     assert!(route.steps.iter().all(|s| s.swap.is_none()));
 }
 

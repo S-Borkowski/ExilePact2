@@ -101,6 +101,12 @@ omen, the currency it modifies, its side and its change.
   Exalted Orb of any grade only, is Omen of Greater Exaltation where the
   step's side has two free slots and it can use two, and nothing
   otherwise (the spec's "`greater-omen`"). Both may go on one action.
+  `lord-omen` (0.2.0, issue #40), on the `desecrate` placeholder only and
+  never beside an explicit lord omen, is the lord omen of the step's
+  bound target (`LORD_OMENS`: Sovereign for Ulaman, Liege for Amanamu,
+  Blackblooded for Kurgal) where that target is a one-lord desecrated
+  modifier on a `LORD_CLASSES` class and the omen is not blocked, and
+  nothing otherwise (the spec's "`lord-omen`"; the engine resolves it).
 - **Fact ids**: `NOT_ESTABLISHED` lists exactly the ids of the rows
   labelled not established in the spec's facts table, in its order; these
   are what `relies_on` may name. `facts_match_the_spec_table` reads the
@@ -108,7 +114,8 @@ omen, the currency it modifies, its side and its change.
   editing this list. 0.1.4 added `abyss-mark-unfracturable`,
   `desecrated-unfracturable`, `full-desecration-same-side` and
   `essence-full-side-removal`; `alloy-counts-as-crafted` is documented,
-  so it is not among them.
+  so it is not among them. 0.2.0 added `lord-with-side-omen`,
+  `lord-omen-classes` and `catalysing-with-side-omen` (issue #40).
 - **Readings, not measurements**: which group Sceptres, Foci and Bucklers
   belong to for the bones, the Refined catalysts' spelling, and
   Crystallisation fitting alloys (the doc marks it not established; the
@@ -136,14 +143,16 @@ next starts:
    a key the blueprint's order does not take (each at its own line and
    column), `order = "state"` with no `relies_on`, a `relies_on` id that
    is not a known not-established fact or is named twice, `greater-omen`
-   on anything but an Exalted Orb or beside Omen of Greater Exaltation;
+   on anything but an Exalted Orb or beside Omen of Greater Exaltation,
+   `lord-omen` on anything but `desecrate` or beside an explicit lord omen;
    and, in every blueprint, a `say` that promises an omen no action of
    the step carries. A `say` that names an omen (its English name, or the
    name without "Omen of" where two or more words are left, such as
    "Dextral Exaltation") needs an action carrying that omen, and one that
    mentions an omen at all (the word "omen" too) needs an action carrying
    one; `side-omen` counts as its currency's two side omens and
-   `greater-omen` as Omen of Greater Exaltation. Since 0.2.0 a
+   `greater-omen` as Omen of Greater Exaltation (and `lord-omen` as each
+   lord omen). Since 0.2.0 a
    `desecrate` step with a `side`, a side rule or a `bind` needs
    `side-omen` or a Necromancy omen on its first alternative
    (`check_side_desecration`, at that alternative's currency), so the

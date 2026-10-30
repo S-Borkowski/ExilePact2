@@ -950,6 +950,102 @@ fn a_mixed_side_whittle_names_both_necromancy_omens() {
     assert_eq!(line.fallback, None);
 }
 
+/// `Ulaman's` increased Attack Damage while on Low Life, a desecrated ring
+/// prefix with one tier.
+const ULAMAN_PREFIX: &str = "desecrated-prefix-increased-attack-damage-while-on-low-life";
+
+#[test]
+fn desecration_step_names_the_lord_omen() {
+    use ch_app::ch_engine::ch_blueprint::Goal;
+    use ch_app::craft::{step_instruction, step_targets};
+    // The 2P/1S ring (Mana T5, Life T4; Fire Resistance T5) with Ulaman's
+    // prefix the one target missing: the last-target desecration names
+    // Omen of the Sovereign beside Omen of Sinistral Necromancy, both
+    // before the bone.
+    let engine = Engine::shipped().unwrap();
+    let path = app_root().join("crates/ch-engine/tests/items/lord-omen/ring-2p1s.txt");
+    let text = std::fs::read_to_string(&path)
+        .unwrap()
+        .replace("\r\n", "\n");
+    let item = ch_app::ch_item::parse(&text).unwrap();
+    let ulaman: Vec<Target> = [
+        ("prefix-to-maximum-mana", Some(5)),
+        ("prefix-to-maximum-life", Some(4)),
+        (ULAMAN_PREFIX, Some(1)),
+        (FIRE, Some(5)),
+    ]
+    .iter()
+    .map(|(id, floor)| Target::new(*id, *floor))
+    .collect();
+    let plan = engine.plan(&item, &ulaman, &[]).unwrap();
+    let route = plan
+        .routes
+        .iter()
+        .find(|r| r.blueprint == "rare-clean-then-slam")
+        .expect("the ring plans rare-clean-then-slam");
+    let step = route
+        .steps
+        .iter()
+        .find(|s| s.goal == Goal::Desecrate)
+        .expect("the last target is desecrated");
+    let action = step.action.as_ref().unwrap();
+    let text = step_targets(step, &item);
+    assert_eq!(text.len(), 1, "{text:?}");
+    assert_eq!(
+        step_instruction(step, &item, &ulaman),
+        format!(
+            "Use Omen of Sinistral Necromancy and Omen of the Sovereign, then apply the {}; the desecrated modifier will be a prefix, for {}",
+            action.name, text[0]
+        )
+    );
+
+    // Baseline: an ordinary prefix in its place takes no lord omen, and the
+    // instruction names the Necromancy omen alone.
+    let ordinary: Vec<Target> = [
+        ("prefix-to-maximum-mana", Some(5)),
+        ("prefix-to-maximum-life", Some(4)),
+        ("prefix-to-accuracy-rating", Some(3)),
+        (FIRE, Some(5)),
+    ]
+    .iter()
+    .map(|(id, floor)| Target::new(*id, *floor))
+    .collect();
+    let plan = engine.plan(&item, &ordinary, &[]).unwrap();
+    let route = plan
+        .routes
+        .iter()
+        .find(|r| r.blueprint == "rare-clean-then-slam")
+        .unwrap();
+    let step = route
+        .steps
+        .iter()
+        .find(|s| s.goal == Goal::Desecrate)
+        .unwrap();
+    let said = step_instruction(step, &item, &ordinary);
+    assert!(
+        said.starts_with("Use Omen of Sinistral Necromancy, then apply the "),
+        "{said}"
+    );
+    assert!(!said.contains("Sovereign"), "{said}");
+
+    // The whittle's desecration with a suffix and Ulaman's prefix missing:
+    // both Necromancy omens wait for the last target, and the Sovereign
+    // waits with Ulaman's prefix.
+    let targets = vec![Target::new(FIRE, Some(3)), Target::new(ULAMAN_PREFIX, None)];
+    let line = whittle_desecration_line(&targets, &[]);
+    assert!(
+        line.instruction.starts_with("Use Omen of Sinistral Necromancy if the last target is a prefix, or Omen of Dextral Necromancy if it is a suffix, with Omen of the Sovereign if it is "),
+        "{}",
+        line.instruction
+    );
+    assert!(
+        line.instruction
+            .contains(", then apply the Preserved Collarbone"),
+        "{}",
+        line.instruction
+    );
+}
+
 #[test]
 fn a_blocked_necromancy_omen_names_itself_in_the_fallback() {
     // The ring's targets are suffixes: Dextral Necromancy blocked, the

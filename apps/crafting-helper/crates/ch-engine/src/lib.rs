@@ -106,7 +106,10 @@ pub use engine::{check_path, resolve, toml_files, Engine, Resolved};
 pub use guide::{
     Guide, GuideError, Next, Outcome, OutcomeKind, Started, Status, WantedMod, PICKED,
 };
+pub use odds::CATALYST_NOTE;
 pub use relax::Relaxation;
-pub use route::{ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView};
+pub use route::{
+    ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView, WaitingLordOmen,
+};
 pub use state_order::STEP_CAP;
 pub use swap::{EssenceSwap, SwapMod, Survival};

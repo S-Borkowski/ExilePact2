@@ -17,7 +17,7 @@ use ch_engine::{resolve, Engine};
 
 /// The shipped blueprint ids, sorted (the embedded list is in file-name
 /// order).
-const SEEDS: [&str; 17] = [
+const SEEDS: [&str; 18] = [
     "amulets-resist-spirit",
     "body-armours-single-prefix",
     "boots-runic-ward",
@@ -28,6 +28,7 @@ const SEEDS: [&str; 17] = [
     "fractured-essence-swap",
     "full-rare-desecration-rescue",
     "gloves-crit-melee",
+    "jewellery-catalyst-exalt",
     "jewels-three-one-side",
     "magic-augment-essence",
     "rare-clean-then-slam",

@@ -99,7 +99,16 @@ unknown with the reason.
   step again once one target is left and names that side's omen. A
   `last-remaining` step without `when` (the rescue, which requires one
   target missing) keeps an unbound `side-omen` unfit, so it is still
-  rejected with two targets missing. Every alternative blocked rejects the blueprint
+  rejected with two targets missing. Since 0.2.0 (issue #40), `lord-omen`
+  on a desecration resolves to the bound target's lord omen (Sovereign for
+  Ulaman, Liege for Amanamu, Blackblooded for Kurgal) where the target is
+  a desecrated modifier every tier of which, on the item's variant, names
+  that one lord in its name (`Ulaman's`, `of Ulaman`), the class is in
+  `LORD_CLASSES` and the omen is not blocked; otherwise to nothing, with
+  no fallback line (`LordOmen`). On the whittle's desecration, unbound
+  while several targets are missing, it waits too:
+  `ChosenAction::lord_omens_waiting` lists each remaining target that
+  would take one, with its omen. Every alternative blocked rejects the blueprint
   (`EveryAlternativeBlocked`); none usable, `NoAlternativeFits`. On class
   `Jewels`, a currency with a Minimum Modifier Level (the Greater and
   Perfect orbs) is unfit in either order (since 0.1.4: a jewel's modifiers
@@ -115,7 +124,9 @@ unknown with the reason.
   an unknown tier or one reachable tier (the top two are that one) never
   rejects. Engine-only: the slot model has no tiers.
 - **Order**: fewer classes first, then load order. No cost, no expected
-  number of tries.
+  number of tries. Since 0.2.0 the two-class `jewellery-catalyst-exalt`
+  (Amulets, Rings) is therefore offered before the many-class routes on a clean
+  rare ring or amulet, which renumbers their routes.
 
 That is listed order, what a blueprint without `order` keeps. A
 state-ordered blueprint (`order = "state"`) is planned and guided by the
@@ -273,6 +284,11 @@ desecrated (revealed or not) and not the Mark of the Abyssal Lord
 Necromancy omen on a full side is its removal's share of non-targets on
 that side, not counting the reveal (`full-desecration-same-side`).
 
+Since 0.2.0: an exalt with Omen of Catalysing Exaltation has the plain
+slam's odds, its basis ending with `CATALYST_NOTE` ("the catalyst's favour
+is not counted"): the favour's size is not established and the helper
+does not read catalyst quality.
+
 ## Tier relaxation in brief
 
 Since 0.2.0. An essence binds a target only at its floor or better, and a
@@ -367,6 +383,8 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test relax
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test blocker
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test essence_swap
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test lord_omen
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_codex
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -454,6 +472,27 @@ Sinistral Annulment
 (`a_quiver_swap_gives_the_unrevealed_prefix_one_in_two`); and a Dusk Ring's
 one ordinary suffix goes for certain with no survival
 (`a_dusk_ring_swap_removes_its_one_throwaway`).
+`tests/lord_omen.rs` (0.2.0, issue #40) covers `lord-omen` over the
+shipped blueprints and the constructed items in `tests/items/lord-omen/`
+(its README lists them): an ordinary target takes the Necromancy omen
+alone (`a_base_pool_target_takes_no_lord_omen_baseline`), a ring's
+Ulaman prefix takes Omen of the Sovereign beside it
+(`a_ring_desecration_for_an_ulaman_target_takes_the_sovereign_omen`), a
+body armour and a belt take none (`an_armour_desecration_takes_no_lord_omen`,
+`a_belt_desecration_takes_no_lord_omen`), a blocked lord omen leaves the
+Necromancy omen and no fallback
+(`a_blocked_lord_omen_keeps_the_necromancy_omen`), and the whittle's
+waiting desecration lists which target would take which lord omen
+(`a_waiting_whittle_desecration_waits_for_its_lord_omen`); `route.rs`'s
+unit test reads a lord from tier names, two lords or none giving nothing.
+`tests/seeds_codex.rs` (0.2.0) walks `jewellery-catalyst-exalt` through
+`jewellery_catalyst_exalt_hit_path`, `_miss_path` (a missed suffix
+annulled with Dextral Annulment, then the catalysts again) and
+`_start_refuses` (a modifier that is not a target, a magic item) over the
+constructed ring in `tests/items/codex/` (its README lists them), and its
+slam's odds: the plain slam's numbers with the catalyst note
+(`a_catalysing_slam_says_the_favour_is_not_counted`), and no note on a
+slam without Catalysing (`a_plain_slam_carries_no_catalyst_note_baseline`).
 `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 
@@ -461,7 +500,11 @@ build.
 engine: each case's abstract item and targets and what each of the four
 modelled state-ordered blueprints (`V2`; not the two from the guides)
 must preview on it. 0.1.4 added two cases, `rare-certain-removal-first`
-and `rare-uncertain-removal-keeps-order`, for Certain removals first. The model owns it
+and `rare-uncertain-removal-keeps-order`, for Certain removals first.
+0.2.0 gave each desecrated-pool target its `lord` (issue #40, the
+`lord-omen` rule), which `tests/slots.rs` checks against the tier names of
+the real modifier behind its alias; `magic-two-good`'s desecrations now
+record Omen of the Liege, from the model's side. The model owns it
 (`tests/test_crafting_helper_slot_model.py`); the engine's parity test,
 `tests/slots.rs`, builds a constructed item per case and asserts every
 expectation. A disagreement is settled by the spec, never by editing the

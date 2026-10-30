@@ -257,7 +257,7 @@ more words are left, such as "Dextral Exaltation") needs an action of the
 step that carries that omen, and a `say` that mentions an omen at all (the
 word "omen" too) needs an action that carries one. `side-omen` counts as
 its currency's Sinistral and Dextral omens, `greater-omen` as Omen of
-Greater Exaltation. It catches a step whose text says "with an Exaltation
+Greater Exaltation, `lord-omen` as each of the three lord omens. It catches a step whose text says "with an Exaltation
 omen" while its action has none, which is how the retired
 `fill-desecrate-exalt` came to offer a plain Exalted Orb.
 
@@ -313,7 +313,7 @@ Exalted Orb on a ring and offers the plain one on a jewel.
 
 ### Placeholders
 
-Four placeholders stand for a choice the engine makes on the item:
+Five placeholders stand for a choice the engine makes on the item:
 
 | Placeholder | Where | Means |
 |---|---|---|
@@ -321,6 +321,7 @@ Four placeholders stand for a choice the engine makes on the item:
 | `reveal` | `currency` | The reveal at the Well of Souls. It names no crafting item, so nothing blocks it. |
 | `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`, or the side its side rule resolved): Sinistral for a prefix, Dextral for a suffix. Needs a `bind` or a `side`, and a currency that has side omens. A listed step with `when = "bound"`, `bind = "last-remaining"` and no `side`, planned while several targets are missing, takes the side they all share; with targets on both sides its omen waits for the last target's side (the preview names both omens, and either one blocked passes the alternative over), and the guide names the one omen once a single target is left. |
 | `greater-omen` | `omens` | Omen of Greater Exaltation, on an Exalted Orb of any grade only, where the step's side (the item, with no side) has two free slots and the step can use two (an add: two missing targets it can place there; a fill: always), and the omen is not blocked; otherwise nothing, with no fallback line. It may sit beside `side-omen`, and is an error beside an explicit `omen-of-greater-exaltation`. Whether Greater with a side omen adds both to that side, and whether Greater needs two free slots, are not established (`greater-with-side-omen`, `greater-needs-two-free`). |
+| `lord-omen` | `omens` | Since 0.2.0 (issue #40): the lord omen of the desecration's bound target, on the `desecrate` placeholder only: Omen of the Sovereign for an Ulaman modifier, the Liege for Amanamu, the Blackblooded for Kurgal, where the target is a desecrated modifier every tier of which names that one lord (`Ulaman's`, `of Ulaman`), the class is a weapon (a jawbone class but Quivers), an Amulet or a Ring, and the omen is not blocked; otherwise nothing, with no fallback line (an ordinary target never takes one: the omen would rule it out of the offer). The instruction names it beside the Necromancy omen, both before the bone. On a listed `last-remaining` desecration planned while several targets are missing, it waits for the last one with the side omen, and the preview names which target would take which lord omen. It is an error on any other currency and beside an explicit lord omen. That a lord omen and a Necromancy omen both apply, and which classes count, are not established (`lord-with-side-omen`, `lord-omen-classes`). |
 
 Blocking applies to what a placeholder resolves to: block
 `preserved-jawbone` and the next bones that fit are offered.
@@ -540,12 +541,20 @@ Since 0.1.4 it also refuses, each at the value at fault:
   check of a goal the action cannot produce;
 - a `relies_on` id outside the spec's table, which since 0.1.4 also
   holds `abyss-mark-unfracturable`, `desecrated-unfracturable`,
-  `full-desecration-same-side` and `essence-full-side-removal`
-  (§ "The seed blueprints").
+  `full-desecration-same-side` and `essence-full-side-removal`, and since
+  0.2.0 `lord-with-side-omen`, `lord-omen-classes` and
+  `catalysing-with-side-omen` (§ "The seed blueprints").
+
+Since 0.2.0 (issue #40) it also refuses **lord-omen**: `lord-omen` on a
+currency other than the `desecrate` placeholder, at the omen
+(``step `<id>`: `lord-omen` on `<currency>`; it is for `desecrate` ``),
+or beside an explicit lord omen on one action, at the action's currency
+(``step `<id>`: `lord-omen` beside `omen-of-the-sovereign` on one
+action``).
 
 The test blueprints under `ch-blueprint`'s `tests/fixtures/invalid/`
 (`crafted-twice.toml`, `crafted-repeat.toml`, `jewel-grades.toml`,
-`fracture-currency.toml`) pin each line and column.
+`fracture-currency.toml`, `lord-omen.toml`) pin each line and column.
 
 It exits 0 when every file is valid, 1 on any error and 2 with no argument.
 The shipped blueprints are embedded in the app at build time, so a new or
@@ -618,7 +627,7 @@ Since 0.1.4:
 
 ## The seed blueprints
 
-Seventeen blueprints ship, each a paraphrase in our own words of the
+Eighteen blueprints ship, each a paraphrase in our own words of the
 source it names, never a sentence of it:
 
 - four state-ordered ones from published 0.5 crafting guides (their URLs
@@ -635,13 +644,24 @@ source it names, never a sentence of it:
   2026-10-30 (issue #35)";
 - since 0.2.0, one state-ordered from the owner's statement of 2026-10-30,
   `fractured-essence-swap`, which starts from a rare whose full side holds
-  a fractured modifier.
+  a fractured modifier;
+- since 0.2.0 (issue #40), one listed from the domistae PoE2 Crafting
+  Codex, `jewellery-catalyst-exalt`, for rings and amulets (its URL with
+  `#tricks` and "fetched 2026-10-30" are in its `source`).
+
+Since 0.2.0 every shipped desecration that carries `side-omen`, on a
+blueprint with a weapon class, Amulets or Rings, carries `lord-omen` too
+(§ "Placeholders"), and those blueprints rely on `lord-with-side-omen` and
+`lord-omen-classes`.
 
 Each is walked on a hit path and a miss path in `ch-engine`'s tests
 (`tests/seeds_v2.rs` for the first state-ordered four,
 `tests/seeds_guides.rs` for the four from the guides, with a third walk
 each, `<id>_start_refuses`, for the item it turns away;
-`tests/seeds_gear.rs` and `tests/seeds_jewels_weapons.rs` for the rest).
+`tests/seeds_codex.rs` for `jewellery-catalyst-exalt`, also with its
+`_start_refuses`; `tests/seeds_gear.rs` and `tests/seeds_jewels_weapons.rs`
+for the rest). `tests/lord_omen.rs` pins `lord-omen` on the shipped
+desecrations.
 The first four state-ordered ones are also held to the slot model on the
 spec's representative crafts by the parity test (`tests/slots.rs`, over
 `tests/items/slots/cases.json`). The two state-ordered guide blueprints
@@ -675,6 +695,7 @@ repeats its Essence of Hysteria on a miss.
 | `weapons-physical-generic` | Mobalytics' SSF crafting guide, "Generic Phys Weapon" | Bows, Crossbows, One Hand Maces, Quarterstaves, Spears, Talismans, Two Hand Maces (the classes with both increased Physical Damage and a Greater Essence of Abrasion for flat physical damage) | State-ordered, from a normal or magic weapon: transmute and augment (Perfect first), annulling a wrong modifier, until the increased Physical Damage prefix is a top-two tier (a weaker one is sent back, `weak-magic-start`); Greater Essence of Abrasion as it turns rare, its one crafted modifier; a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and the side omen for two suffixes; the last target by desecration. The guide's closing Perfect Essence of Battle would be a second crafted modifier and is left out. A weapon whose targets give Abrasion nothing to add cannot finish here; `magic-augment-essence` takes any essence. |
 | `body-armours-single-prefix` | Mobalytics' Lightning Arrow crafting guide, the body armour, without Homogenising | Body Armours | State-ordered, from a normal or magic armour: a top single-stat defence prefix by transmute and augment (a weaker one is sent back, `weak-magic-start`); a Greater Essence of Insulation, Thawing or Grounding; a desecration on the hardest target's side (the suffixes), left unrevealed; with only the prefixes open, a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and no side omen lands two prefixes (the isolation); the reveal, Omen of Light for a wrong one, a removal, the last target's desecration and side slams. |
 | `fractured-essence-swap` | the owner's statement of 2026-10-30 | Amulets, Belts, Body Armours, Boots, Bucklers, Foci, Gloves, Helmets, Quivers, Rings, Shields (the classes with an Essence of Hysteria) | State-ordered, from a rare whose side is full and holds a fractured modifier: Essence of Hysteria adds its target to that side, removing one of the side's other modifiers (never the fractured one), so the add is certain when only throwaways are left to take; a Dusk or Gloam Ring needs only one. When an unrevealed desecrated modifier is there, the step gives its survival ((n-1) in n) and the next step on each outcome: if it stays, the reveal (Abyssal Echoes; Omen of Light for a wrong one); if it goes, an annulment confined to the full side (Sinistral or Dextral Annulment; it may take the essence's modifier, and the route then plans again), the last target's desecration with its side's Necromancy omen, and the reveal. |
+| `jewellery-catalyst-exalt` | the domistae PoE2 Crafting Codex (its catalyst section, workflow note and fourth trick) | Amulets, Rings | Listed, from a rare whose every modifier is a target, no side blocked: the catalysts of the kind the hardest missing target is, up to the quality cap (manual: the helper reads no quality); a Greater Exalted Orb with Omen of Catalysing Exaltation and that target's side Exaltation omen (the plain Exalted Orb the same way when the Greater is blocked, the Greater with the side omen alone when Catalysing is); a miss is annulled on its side (Sinistral or Dextral Annulment) and the catalysts come again. It ends when that target lands; plan again for the next. Its odds are the plain slam's, with a note that the catalyst's favour is not counted. As a two-class blueprint it is offered before the many-class routes. |
 | `fracture-first` | Mobalytics' SSF crafting guide (Fracturing Orb with Essence of the Abyss) and its Fracturing Orbs guide | every equipment class with spawn weights | Listed, from a rare with exactly four modifiers, none fractured, at least one a target: Essence of the Abyss (losing a target to it gives the item up), so the Fracturing Orb picks among three; the orb (fracturing anything else gives it up); annulments down to the fractured target and one more; Chaos Orbs until a second target; a desecration for the hardest target on its side, revealed with Abyssal Echoes, a wrong reveal lit off and the bone used again; side-restricted Perfect exalts. The guides' Crystallisation omen to guard the target, and their closing filler and Perfect essence, are left out (§ "What a blueprint cannot say"). |
 | `full-rare-desecration-rescue` | maxroll's "How to Craft", its rescue of boots with no movement speed | every equipment class with spawn weights | Listed, from a rare with six modifiers and exactly one target missing, no desecrated modifier: a bone with the missing target's side Necromancy omen takes a random modifier off that full side (losing a target gives the item up); the reveal with Abyssal Echoes; a wrong reveal taken off with Omen of Light and the bone used again. |
 | `gloves-crit-melee` | post 9 | Gloves | Critical damage from Essence of Hysteria, used once (a miss goes on: an item holds one crafted modifier), a desecrated prefix that blocks a common family while the prefixes are slammed, then desecrated suffixes until attack speed. |
@@ -705,13 +726,16 @@ list). "The first four" are `close-a-side`,
 | `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side. | `close-a-side`, `magic-augment-essence`, `weapons-physical-generic` (its augment), `body-armours-single-prefix` (its isolating Greater exalt) |
 | `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | the first four |
 | `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | the first four, `fracture-first`, `fractured-essence-swap` (its essence's removal too) |
-| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), the four of 0.1.4, and `fractured-essence-swap` |
+| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), the four of 0.1.4, `fractured-essence-swap`, and `jewellery-catalyst-exalt` (its Catalysing and side omens before each slam) |
 | `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes. | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` |
 | `removal-equally-likely` | Each modifier a random removal may take is equally likely to go. | `full-rare-desecration-rescue`, `fractured-essence-swap` (the unrevealed modifier's survival and the annulment's odds) |
 | `abyss-mark-unfracturable` | A Fracturing Orb never picks the Mark of the Abyssal Lord (Essence of the Abyss's modifier). | `fracture-first` |
 | `desecrated-unfracturable` | A Fracturing Orb never picks a desecrated modifier, revealed or not. | `fracture-first` |
 | `full-desecration-same-side` | A desecration with a side's Necromancy omen, on an item whose side is full, removes its random modifier from that side. | `full-rare-desecration-rescue` |
 | `essence-full-side-removal` | A Perfect or corrupted essence with no Crystallisation omen, whose modifier's side is full, removes from that side. | `fractured-essence-swap` |
+| `lord-with-side-omen` | A lord omen and a Necromancy omen on one desecration both apply: the modifier is that lord's, on that side. | every blueprint whose desecration carries `lord-omen`: the first four, `amulets-resist-spirit`, `caster-cast-speed`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `rings-resist-whittle`, `weapons-physical-generic` |
+| `lord-omen-classes` | The lord omens work on the jawbone classes but Quivers, Amulets and Rings; Belts and Quivers take none. | the same eleven |
+| `catalysing-with-side-omen` | Omen of Catalysing Exaltation and a side Exaltation omen on one exalt both apply. | `jewellery-catalyst-exalt` |
 
 `ch-blueprint`'s list of these ids is read against the spec's table by a
 test, so a fact relabelled there means editing the list, and a blueprint

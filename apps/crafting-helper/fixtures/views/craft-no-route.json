@@ -1681,6 +1681,11 @@
             "reason": "not a blueprint for Rings"
           },
           {
+            "blueprint": "jewellery-catalyst-exalt",
+            "name": "Rings and amulets: catalyst-biased exalt",
+            "reason": "no start fits the item (2 unwanted modifiers, at most 0 allowed; a side is blocked)"
+          },
+          {
             "blueprint": "jewels-three-one-side",
             "name": "Jewels: three on one side",
             "reason": "not a blueprint for Rings"

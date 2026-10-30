@@ -485,6 +485,37 @@ pub const SIDE_OMEN: &str = "side-omen";
 pub const GREATER_OMEN: &str = "greater-omen";
 /// The omen `greater-omen` resolves to.
 pub const GREATER_EXALTATION: &str = "omen-of-greater-exaltation";
+/// The placeholder omen for the lord omen of a desecration's bound target:
+/// that lord's omen when the target is a desecrated modifier every tier of
+/// which names one lord, on a lord class ([`LORD_CLASSES`]), the omen not
+/// blocked; nothing otherwise (docs/models/crafting-slots-spec.md,
+/// "`lord-omen`"). Only the `desecrate` placeholder takes it.
+pub const LORD_OMEN: &str = "lord-omen";
+/// Each lord, as its desecrated modifiers' tier names spell it (`Ulaman's`,
+/// `of Ulaman`), with the omen that guarantees one of its modifiers.
+pub const LORD_OMENS: &[(&str, &str)] = &[
+    ("Ulaman", "omen-of-the-sovereign"),
+    ("Amanamu", "omen-of-the-liege"),
+    ("Kurgal", "omen-of-the-blackblooded"),
+];
+/// The classes a lord omen works on (not established,
+/// `lord-omen-classes`): poe2db names weapons and jewellery, read as the
+/// jawbone classes but Quivers, and Amulets and Rings; Belts and Quivers
+/// are left out (the owner's default, 2026-10-30).
+pub const LORD_CLASSES: &[&str] = &[
+    "Wands",
+    "One Hand Maces",
+    "Sceptres",
+    "Spears",
+    "Bows",
+    "Staves",
+    "Two Hand Maces",
+    "Quarterstaves",
+    "Crossbows",
+    "Talismans",
+    "Amulets",
+    "Rings",
+];
 /// Every grade of Exalted Orb: the currencies `greater-omen` may go on.
 pub const EXALTED_ORBS: &[&str] = EXALT;
 /// Every grade of Chaos Orb.
@@ -510,6 +541,9 @@ pub const NOT_ESTABLISHED: &[&str] = &[
     "desecrated-unfracturable",
     "full-desecration-same-side",
     "essence-full-side-removal",
+    "lord-with-side-omen",
+    "lord-omen-classes",
+    "catalysing-with-side-omen",
 ];
 
 /// The catalogue entry for an id.

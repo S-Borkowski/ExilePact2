@@ -1624,19 +1624,24 @@
             "number": 2
           },
           {
+            "blueprint": "jewellery-catalyst-exalt",
+            "name": "Rings and amulets: catalyst-biased exalt",
+            "number": 3
+          },
+          {
             "blueprint": "fractured-essence-swap",
             "name": "Fractured essence swap",
-            "number": 3
+            "number": 4
           },
           {
             "blueprint": "essence-desecrate-double-slam",
             "name": "Essence, desecrate the hardest, then side slams",
-            "number": 4
+            "number": 5
           },
           {
             "blueprint": "rare-clean-then-slam",
             "name": "Clean a rare, then side slams",
-            "number": 5
+            "number": 6
           }
         ],
         "rejected": [],
@@ -1687,19 +1692,24 @@
             "number": 2
           },
           {
+            "blueprint": "jewellery-catalyst-exalt",
+            "name": "Rings and amulets: catalyst-biased exalt",
+            "number": 3
+          },
+          {
             "blueprint": "fractured-essence-swap",
             "name": "Fractured essence swap",
-            "number": 3
+            "number": 4
           },
           {
             "blueprint": "essence-desecrate-double-slam",
             "name": "Essence, desecrate the hardest, then side slams",
-            "number": 4
+            "number": 5
           },
           {
             "blueprint": "rare-clean-then-slam",
             "name": "Clean a rare, then side slams",
-            "number": 5
+            "number": 6
           }
         ]
       },

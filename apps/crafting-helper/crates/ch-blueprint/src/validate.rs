@@ -31,7 +31,7 @@ use toml::de::{DeTable, DeValue};
 
 use crate::catalogue::{
     self, Currency, Kind, ANNULMENT, CHAOS_ORBS, CLASSES, EXALTED_ORBS, GREATER_EXALTATION, GREATER_OMEN,
-    NOT_ESTABLISHED, SIDE_OMEN,
+    LORD_OMEN, LORD_OMENS, NOT_ESTABLISHED, SIDE_OMEN,
 };
 use crate::model::{Action, Binding, Blueprint, Goal, Order, Rarity, Side, Span, Spanned, Step, Transition, When};
 
@@ -663,7 +663,7 @@ fn check_side_desecration(errors: &mut Errors<'_>, step: &Step) {
 /// words are left, "Dextral Exaltation"), an action carries that omen; when
 /// it mentions an omen at all (the word, or a name), an action carries one.
 /// `side-omen` counts as both of its currency's side omens, `greater-omen`
-/// as Omen of Greater Exaltation.
+/// as Omen of Greater Exaltation, `lord-omen` as each lord omen.
 fn check_say(errors: &mut Errors<'_>, step: &Step) {
     let id = step.id.get_ref();
     let say = step.say.get_ref().to_lowercase();
@@ -684,6 +684,7 @@ fn check_say(errors: &mut Errors<'_>, step: &Step) {
                     }
                 }
                 GREATER_OMEN => carried.push(GREATER_EXALTATION),
+                LORD_OMEN => carried.extend(LORD_OMENS.iter().map(|(_, omen)| *omen)),
                 other => carried.push(other),
             }
         }
@@ -787,6 +788,17 @@ fn check_action(errors: &mut Errors<'_>, step: &Step, action: &crate::model::Act
             continue;
         }
 
+        if omen_id == LORD_OMEN {
+            // An unknown currency has had its error.
+            if currency.is_some() && currency != Some(Currency::Desecrate) {
+                errors.push(
+                    span,
+                    format!("step `{id}`: `{LORD_OMEN}` on `{currency_id}`; it is for `{}`", catalogue::DESECRATE),
+                );
+            }
+            continue;
+        }
+
         if omen_id == SIDE_OMEN {
             if step.bind.is_none() && step.side.is_none() && step.side_rule.is_none() {
                 errors.push(
@@ -845,6 +857,14 @@ fn check_action(errors: &mut Errors<'_>, step: &Step, action: &crate::model::Act
             action.currency.span(),
             format!("step `{id}`: `{GREATER_OMEN}` beside `{GREATER_EXALTATION}` on one action"),
         );
+    }
+    if seen.contains(&LORD_OMEN) {
+        if let Some((_, lord)) = LORD_OMENS.iter().find(|(_, omen)| seen.contains(omen)) {
+            errors.push(
+                action.currency.span(),
+                format!("step `{id}`: `{LORD_OMEN}` beside `{lord}` on one action"),
+            );
+        }
     }
 }
 

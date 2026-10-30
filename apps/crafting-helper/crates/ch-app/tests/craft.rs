@@ -38,9 +38,9 @@ fn engine_is_reexported_with_the_shipped_blueprints() {
         panic!("shipped blueprints do not load:\n{}", lines.join("\n"))
     });
     // The eight seeds still shipped, the four state-ordered blueprints, the
-    // four from the guides (issue #35) and the fractured essence swap
-    // (issue #37).
-    assert_eq!(engine.blueprints().len(), 17);
+    // four from the guides (issue #35), the fractured essence swap
+    // (issue #37) and the codex's catalyst-biased exalt (issue #40).
+    assert_eq!(engine.blueprints().len(), 18);
 
     let ring = amethyst_ring_made_rare();
     let targets = [

@@ -13,6 +13,9 @@ desecration takes the Necromancy omen of the last target's side, so the \
 desecrated modifier lands on that side. A reveal that misses \
 goes back to whittling. Whether a Chaos Orb can take off a desecrated \
 modifier is not established in the docs."""
+# The desecration names the last target lord's omen beside the Necromancy
+# omen (docs/models/crafting-slots-spec.md, "`lord-omen`").
+relies_on = ["lord-with-side-omen", "lord-omen-classes"]
 
 [[start]]
 rarity = ["rare"]
@@ -53,7 +56,7 @@ when = "bound"
 # modifier land there; without it, the plain bone.
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step.action]]
 currency = "desecrate"

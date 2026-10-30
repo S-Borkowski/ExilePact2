@@ -87,7 +87,7 @@
 //! ([`summary`]).
 
 use ch_engine::ch_blueprint::catalogue::{
-    bones_for, Currency, ItemGroup, OmenChange, OmenFits, GREATER_OMEN, SIDE_OMEN,
+    bones_for, Currency, ItemGroup, OmenChange, OmenFits, GREATER_OMEN, LORD_OMEN, SIDE_OMEN,
 };
 use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
@@ -1925,6 +1925,18 @@ fn without_modifier(item: &Item, which: impl Fn(&ch_item::Modifier) -> bool) -> 
 /// - `Use Omen of Sinistral Necromancy if the last target is a prefix, or
 ///   Omen of Dextral Necromancy if it is a suffix, then apply the Preserved
 ///   Collarbone, for +#% to Fire Resistance (suffix) or …(prefix)`.
+///
+/// A lord omen (Sovereign, Liege, Blackblooded: the `lord-omen` rule) is
+/// named beside the Necromancy omen, both before the bone; one that waits
+/// for the last target says which target takes it:
+///
+/// - `Use Omen of Sinistral Necromancy and Omen of the Sovereign, then
+///   apply the Preserved Collarbone; the desecrated modifier will be a
+///   prefix, for #% increased Attack Damage while on Low Life`;
+/// - `Use Omen of Sinistral Necromancy if the last target is a prefix, or
+///   Omen of Dextral Necromancy if it is a suffix, with Omen of the
+///   Sovereign if it is #% increased Attack Damage while on Low Life, then
+///   apply …`.
 fn necromancy_instruction(step: &StepView, action: &ChosenAction, item: &Item) -> Option<String> {
     let necromancy = action.omens.iter().enumerate().find_map(|(at, id)| {
         let omen = catalogue_item(id)?.omen.as_ref()?;
@@ -1934,26 +1946,45 @@ fn necromancy_instruction(step: &StepView, action: &ChosenAction, item: &Item) -
             .flatten()
             .map(|side| (at, side))
     });
+    let lord = action.omens.iter().position(|id| {
+        catalogue_item(id)
+            .and_then(|c| c.omen.as_ref())
+            .is_some_and(|o| o.change == OmenChange::Lord)
+    });
+    let name_at = |at: usize| {
+        action
+            .omen_names
+            .get(at)
+            .cloned()
+            .unwrap_or_else(|| currency_name(&action.omens[at]))
+    };
     let (lead, side) = match necromancy {
         Some((at, side)) => {
-            let omen = action
-                .omen_names
-                .get(at)
-                .cloned()
-                .unwrap_or_else(|| currency_name(&action.omens[at]));
-            (format!("Use {omen}"), Some((at, side)))
+            let mut lead = format!("Use {}", name_at(at));
+            if let Some(l) = lord {
+                lead.push_str(&format!(" and {}", name_at(l)));
+            }
+            (lead, Some((at, side)))
         }
         None if action.side_omen_waits => {
             let currency = Currency::of(&action.currency)?;
             let name = |side: Side| currency.side_omen(side).map(|e| currency_name(e.id));
-            (
-                format!(
-                    "Use {} if the last target is a prefix, or {} if it is a suffix",
-                    name(Side::Prefix)?,
-                    name(Side::Suffix)?
-                ),
-                None,
-            )
+            let mut lead = format!(
+                "Use {} if the last target is a prefix, or {} if it is a suffix",
+                name(Side::Prefix)?,
+                name(Side::Suffix)?
+            );
+            let texts = step_targets(step, item);
+            for waiting in &action.lord_omens_waiting {
+                let text = step
+                    .targets
+                    .iter()
+                    .position(|id| *id == waiting.target)
+                    .and_then(|at| texts.get(at).cloned())
+                    .unwrap_or_else(|| waiting.target.clone());
+                lead.push_str(&format!(", with {} if it is {text}", waiting.name));
+            }
+            (lead, None)
         }
         None => return None,
     };
@@ -1962,6 +1993,7 @@ fn necromancy_instruction(step: &StepView, action: &ChosenAction, item: &Item) -
         .iter()
         .enumerate()
         .filter(|(i, _)| side.is_none_or(|(at, _)| *i != at))
+        .filter(|(i, _)| side.is_none() || lord != Some(*i))
         .map(|(_, name)| name.clone())
         .collect();
     let mut said = format!("{lead}, then apply the {}", action.name);
@@ -2333,7 +2365,8 @@ fn blueprint_step<'a>(blueprint: &'a Blueprint, id: &str) -> Option<&'a Step> {
 
 /// A blueprint action in words: its currency, `with` each omen it names,
 /// the side omen resolved for `side`. Omen of Greater Exaltation's
-/// placeholder is left out: it names the omen only where two slots are free.
+/// placeholder is left out: it names the omen only where two slots are free;
+/// so is the lord omen's, which names one only for a lord's target.
 fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side>) -> String {
     let written = action.currency.get_ref().as_str();
     let currency = Currency::of(written);
@@ -2345,7 +2378,7 @@ fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side
                 .zip(side)
                 .and_then(|(c, s)| c.side_omen(s))
                 .map(|e| currency_name(e.id)),
-            GREATER_OMEN => None,
+            GREATER_OMEN | LORD_OMEN => None,
             id => Some(currency_name(id)),
         })
         .collect();
@@ -2408,6 +2441,9 @@ fn action_ids(
         if id == SIDE_OMEN {
             let resolved = currency.zip(side).and_then(|(c, s)| c.side_omen(s));
             ids.extend(resolved.map(|e| e.id.to_string()));
+        } else if id == LORD_OMEN {
+            // A blocked lord omen resolves to nothing and never passes an
+            // alternative over, so it names no id here.
         } else {
             ids.push(id.to_string());
         }
