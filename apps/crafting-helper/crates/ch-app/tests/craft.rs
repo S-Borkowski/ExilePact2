@@ -19,6 +19,7 @@ fn amethyst_ring_made_rare() -> ch_item::Item {
         .join("fixtures")
         .join("real")
         .join("rings-normal-implicit-advanced.txt");
+    // CRLF read as LF: a checkout with `core.autocrlf` writes it CRLF.
     let text = std::fs::read_to_string(&path)
         .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
         .replace("\r\n", "\n");

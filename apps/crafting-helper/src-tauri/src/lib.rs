@@ -19,9 +19,11 @@
 //!   the one file that reads the window in front) and its client area, the
 //!   OCR's readiness and the hovered item's tooltips. `ch-app` runs it on
 //!   its own watch thread while a craft is guiding.
-//! - **Browser**: `tauri-plugin-opener`, from Rust alone, opens the one
-//!   address `ch_app::App::open_craft_of_exile` passes,
-//!   `ch_app::CRAFT_OF_EXILE_URL`; no command takes an address. The plugin
+//! - **Browser**: `tauri-plugin-opener`, from Rust alone, opens the two
+//!   addresses `ch-app` passes: `ch_app::CRAFT_OF_EXILE_URL`, from
+//!   `ch_app::App::open_craft_of_exile`, and the trade search link
+//!   `ch_app::App::open_trade_search` builds from `ch_app::TRADE_SEARCH_URL`,
+//!   the league and the query; no command takes an address. The plugin
 //!   is registered with `open_js_links_on_click(false)`, so it injects no
 //!   link handler into the pages, and no capability grants an `opener:`
 //!   permission, so the pages cannot reach its own commands.
@@ -30,12 +32,18 @@
 //!   (the release list and the two fixed assets of a crafting helper
 //!   release; no caller names a host or a URL). `ch-app` calls it only on a
 //!   check's or an install's own thread.
+//! - **League list**: the shell's league fetch is `ep-net`'s fixed request
+//!   for the trade site's league list (its host and path are `ep-net`'s
+//!   constants), which `ch-app` makes only on the `refresh_trade_leagues`
+//!   command's own thread.
 //! - **Commands**: `get_view`, `get_app_settings` and `get_catalogue`
 //!   (sync) and the async `grab_text`, `open_settings`, `update_settings`,
 //!   `set_hotkey`, `check_for_updates`, `install_update`, `cancel_update`,
-//!   and the craft window's `set_targets`, `set_craft_blocked`,
-//!   `choose_route`, `accept_craft`, `end_craft` and `open_craft_of_exile`,
-//!   each forwarded to the `App` method of the same name.
+//!   `refresh_trade_leagues`, the craft window's `set_targets`,
+//!   `set_craft_blocked`, `choose_route`, `accept_craft`, `end_craft` and
+//!   `open_craft_of_exile`, and the trade panel's `set_trade_search` and
+//!   `open_trade_search`, each forwarded to the `App` method of the same
+//!   name.
 //! - **Single instance**: a second launch exits and brings this window up.
 //! - **Windows**: `main`, ordinary, titled "Crafting Helper", resizable, in
 //!   the taskbar; closing it quits the app (even with the Settings window or
@@ -72,9 +80,10 @@
 //! copies the game's client area and reads its item tooltips with Windows'
 //! OCR, in memory: no copy, crop or OCR line is written or logged. Its
 //! other effects outside its windows are the beep, the update check's
-//! requests to GitHub, opening Craft of Exile's one address in the default
-//! browser when the user presses its button and, when the user presses the
-//! install button, replacing its own exe.
+//! requests to GitHub, the trade site's league list when the user presses
+//! the refresh icon, opening Craft of Exile's one address or the trade
+//! search link in the default browser when the user presses its button and,
+//! when the user presses the install button, replacing its own exe.
 
 mod game_window;
 mod screen;
@@ -88,8 +97,8 @@ use ch_app::ch_engine::Target;
 use ch_app::ep_update::spawn_cleanup;
 use ch_app::{
     Answer, App, AppConfig, AssetKind, BeepAttempt, CatalogueGroup, DownloadError, HotkeyError,
-    SettingsView, Store, TransportError, UpdateConfig, UpdateSetup, UpdateTransport, Version,
-    View,
+    SettingsView, Store, TradeSelection, TransportError, UpdateConfig, UpdateSetup,
+    UpdateTransport, Version, View,
 };
 use serde_json::Value;
 use tauri::{
@@ -230,13 +239,26 @@ impl ch_app::Shell for TauriShell {
         Ok(())
     }
 
-    /// Called by `App::open_craft_of_exile` alone, with its one fixed
-    /// address; the default browser opens it, as the quest tracker opens a
-    /// source page.
+    /// Called by `App::open_craft_of_exile`, with its one fixed address, and
+    /// by `App::open_trade_search`, with the link it built from
+    /// `ch_app::TRADE_SEARCH_URL`; the default browser opens it, as the quest
+    /// tracker opens a source page.
     fn open_in_browser(&self, address: &str) -> Result<(), String> {
         self.app
             .opener()
             .open_url(address, None::<&str>)
+            .map_err(|e| e.to_string())
+    }
+
+    /// The trade site's league list, through `ep-net`'s one fixed request
+    /// for it (no address is passed or logged here); called on the
+    /// refresh's own thread.
+    fn fetch_trade_leagues(&self) -> Result<Answer, String> {
+        ep_net::fetch_trade_leagues()
+            .map(|r| Answer {
+                status: r.status,
+                body: r.body,
+            })
             .map_err(|e| e.to_string())
     }
 
@@ -703,6 +725,20 @@ fn open_craft_of_exile(app: Shared<'_>) -> View {
     app.open_craft_of_exile()
 }
 
+// The trade panel's commands.
+
+/// The panel's whole selection; no field names an address.
+#[tauri::command(async)]
+fn set_trade_search(app: Shared<'_>, search: TradeSelection) -> View {
+    app.set_trade_search(&search)
+}
+
+/// Takes no address: `ch-app` opens the link it builds from its own state.
+#[tauri::command(async)]
+fn open_trade_search(app: Shared<'_>) -> View {
+    app.open_trade_search()
+}
+
 // Both windows' command.
 
 /// Every crafting item the blocked list may name, grouped by kind.
@@ -741,6 +777,13 @@ fn install_update(app: Shared<'_>) -> Result<SettingsView, String> {
 #[tauri::command(async)]
 fn cancel_update(app: Shared<'_>) -> SettingsView {
     app.cancel_update()
+}
+
+/// The refresh icon: returns at once, refreshing; `ch-app` asks the trade
+/// site for its league list on a thread of its own. Takes no address.
+#[tauri::command(async)]
+fn refresh_trade_leagues(app: Shared<'_>) -> SettingsView {
+    app.refresh_trade_leagues()
 }
 
 // ---------------------------------------------------------------------------
@@ -853,6 +896,8 @@ pub fn run() {
             accept_craft,
             end_craft,
             open_craft_of_exile,
+            set_trade_search,
+            open_trade_search,
             get_catalogue,
             get_app_settings,
             update_settings,
@@ -860,6 +905,7 @@ pub fn run() {
             check_for_updates,
             install_update,
             cancel_update,
+            refresh_trade_leagues,
         ])
         .build(tauri::generate_context!())
         .expect("crafting-helper: the Tauri application failed to start");

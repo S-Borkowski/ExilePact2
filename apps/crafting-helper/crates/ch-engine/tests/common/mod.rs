@@ -18,10 +18,14 @@ pub fn items_path(rel: &str) -> PathBuf {
     crate_dir().join("tests").join("items").join(rel)
 }
 
-/// The text of `tests/items/<rel>`.
+/// The text of `tests/items/<rel>`, with CRLF read as LF: a checkout with
+/// `core.autocrlf` writes the fixtures CRLF, and a test that edits across a
+/// line break searches for `\n`.
 pub fn item_text(rel: &str) -> String {
     let path = items_path(rel);
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .replace("\r\n", "\n")
 }
 
 /// Parses item text; panics on a text that is not one.

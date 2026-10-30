@@ -17,7 +17,8 @@ use std::sync::atomic::Ordering;
 
 use ch_app::{
     CatalogueGroup, CraftMode, GameWindow, GuideStatusView, InstallState, OcrReadiness,
-    OutcomeSource, OutcomeWord, OverlayPosition, SettingsView, StatusKind, Version, View,
+    OutcomeSource, OutcomeWord, OverlayPosition, SettingsView, StatusKind, TradePickChoice,
+    TradeSelection, TradeWeightSource, Version, View, DEFAULT_TRADE_LEAGUE, SHIPPED_TRADE_LEAGUES,
 };
 use common::*;
 use serde_json::{json, Value};
@@ -112,7 +113,77 @@ fn app_settings_views() -> Vec<(&'static str, SettingsView)> {
             .unwrap(),
     ));
     h.app.shutdown();
+
+    // The Trade section: a league other than the default, the shipped list;
+    // a refresh running (held in flight); a refresh refused (the site
+    // answered 503), the list and the league kept.
+    let h = harness(Setup::default());
+    h.app.start();
+    out.push((
+        "trade-league",
+        h.app
+            .update_settings(&json!({ "trade_league": "Runes of Aldur" }))
+            .unwrap(),
+    ));
+    h.app.shutdown();
+    let shell = FakeShell::default();
+    shell.answer_leagues(Ok(site_leagues()));
+    shell.hold_leagues(true);
+    let h = harness(Setup {
+        shell: Some(shell.clone()),
+        ..Setup::default()
+    });
+    h.app.start();
+    out.push(("trade-league-refreshing", h.app.refresh_trade_leagues()));
+    shell.hold_leagues(false);
+    wait_refreshed(&h.app, &shell);
+    h.app.shutdown();
+    let shell = FakeShell::default();
+    let mut answer = site_leagues();
+    answer.status = 503;
+    shell.answer_leagues(Ok(answer));
+    let h = harness(Setup {
+        shell: Some(shell.clone()),
+        ..Setup::default()
+    });
+    h.app.start();
+    h.app.refresh_trade_leagues();
+    out.push((
+        "trade-league-refresh-refused",
+        wait_refreshed(&h.app, &shell),
+    ));
+    h.app.shutdown();
     out
+}
+
+/// The trade panel's selection, open, as the page sends it.
+fn trade_selection(
+    class: &str,
+    base: &str,
+    item_level: Option<u32>,
+    picks: &[&str],
+) -> Vec<TradeSelection> {
+    let class_only = TradeSelection {
+        open: true,
+        class: Some(class.to_string()),
+        ..TradeSelection::default()
+    };
+    let with_base = TradeSelection {
+        base: Some(base.to_string()),
+        item_level,
+        ..class_only.clone()
+    };
+    let with_picks = TradeSelection {
+        picks: picks
+            .iter()
+            .map(|id| TradePickChoice {
+                mod_id: id.to_string(),
+                floor: None,
+            })
+            .collect(),
+        ..with_base.clone()
+    };
+    vec![class_only, with_base, with_picks]
 }
 
 /// One main view per state the main window and the overlay render.
@@ -312,6 +383,63 @@ fn main_views() -> Vec<(&'static str, View)> {
         "craft-watch-unavailable",
         watching("watch-unavailable", &screen, None, 1),
     ));
+
+    // The trade panel, opened over the planning ring craft.
+    let trade = |dir: &str, steps: &[TradeSelection]| {
+        let app = planned(dir);
+        let mut view = app.get_view();
+        for sel in steps {
+            view = app.set_trade_search(sel);
+        }
+        (app, view)
+    };
+    let (app, view) = trade(
+        "trade-empty",
+        &[TradeSelection {
+            open: true,
+            ..TradeSelection::default()
+        }],
+    );
+    out.push(("trade-empty", view));
+    app.shutdown();
+    let picking = trade_selection(
+        "Rings",
+        "Sapphire Ring",
+        Some(75),
+        &["prefix-to-maximum-life", "suffix-to-fire-resistance"],
+    );
+    let (app, view) = trade("trade-picking", &picking);
+    out.push(("trade-picking", view));
+    // A base the class does not have: refused, the selection kept.
+    let mut wrong = picking[2].clone();
+    wrong.base = Some("Iron Mitts".to_string());
+    out.push(("trade-refused", app.set_trade_search(&wrong)));
+    app.shutdown();
+    let (app, view) = trade(
+        "trade-one-side",
+        &trade_selection(
+            "Rings",
+            "Sapphire Ring",
+            Some(75),
+            &["suffix-to-fire-resistance", "suffix-to-cold-resistance"],
+        ),
+    );
+    out.push(("trade-one-side", view));
+    app.shutdown();
+    // A jewel: no spawn weights, so every weight is the default.
+    let jewel = trade_selection("Jewels", "Sapphire", None, &[]);
+    let (app, view) = trade("trade-default-weight", &jewel);
+    let first = |rows: &[ch_app::TradeModView]| rows[0].mod_id.clone();
+    let mut sel = jewel[2].clone();
+    sel.picks = [first(&view.trade.prefixes), first(&view.trade.suffixes)]
+        .iter()
+        .map(|id| TradePickChoice {
+            mod_id: id.clone(),
+            floor: None,
+        })
+        .collect();
+    out.push(("trade-default-weight", app.set_trade_search(&sel)));
+    app.shutdown();
     out
 }
 
@@ -380,7 +508,12 @@ fn fixtures_are_current() {
         };
         if !matches!(
             *name,
-            "hotkey-refused" | "blocked-currencies" | "overlay-settings"
+            "hotkey-refused"
+                | "blocked-currencies"
+                | "overlay-settings"
+                | "trade-league"
+                | "trade-league-refreshing"
+                | "trade-league-refresh-refused"
         ) {
             assert_eq!(part, json!(state), "{name}");
         }
@@ -412,6 +545,31 @@ fn fixtures_are_current() {
         .iter()
         .filter(|(n, _)| *n != "overlay-settings")
         .all(|(_, v)| v.screen_watch && v.overlay_position == OverlayPosition::TopCenter));
+    // The Trade section: the default league and the shipped list everywhere
+    // but its own states.
+    assert_eq!(by("trade-league").trade_league, "Runes of Aldur");
+    assert_eq!(by("trade-league").trade_leagues, SHIPPED_TRADE_LEAGUES);
+    assert!(by("trade-league").trade_league_note.is_none());
+    assert!(by("trade-league-refreshing").trade_leagues_refreshing);
+    let refused = by("trade-league-refresh-refused");
+    assert!(!refused.trade_leagues_refreshing);
+    assert_eq!(refused.trade_leagues, SHIPPED_TRADE_LEAGUES);
+    assert_eq!(
+        refused.trade_league_note.as_ref().unwrap().kind,
+        StatusKind::Error
+    );
+    for (name, v) in &settings {
+        if *name != "trade-league" {
+            assert_eq!(v.trade_league, DEFAULT_TRADE_LEAGUE, "{name}");
+            assert_eq!(v.trade_leagues, SHIPPED_TRADE_LEAGUES, "{name}");
+        }
+        if !name.starts_with("trade-league-") {
+            assert!(
+                !v.trade_leagues_refreshing && v.trade_league_note.is_none(),
+                "{name}"
+            );
+        }
+    }
 
     // Each main view shows what it is named for.
     let view = |n: &str| &views.iter().find(|(name, _)| *name == n).unwrap().1;
@@ -616,6 +774,61 @@ fn fixtures_are_current() {
         assert!(!text.contains("://"), "{name}: {text}");
     }
 
+    // The trade panel: closed in every view but its own, each of which is
+    // the state it is named for; the craft underneath is the planning ring.
+    for (name, v) in &views {
+        assert_eq!(v.trade.selection.open, name.starts_with("trade-"), "{name}");
+        if !v.trade.selection.open {
+            assert!(
+                v.trade.classes.is_empty() && v.trade.link.is_none(),
+                "{name}"
+            );
+        }
+    }
+    let trade = |n: &str| &view(n).trade;
+    for n in [
+        "trade-empty",
+        "trade-picking",
+        "trade-one-side",
+        "trade-default-weight",
+        "trade-refused",
+    ] {
+        assert_eq!(view(n).craft.mode, CraftMode::Planning, "{n}");
+    }
+    assert_eq!(trade("trade-empty").selection.class, None);
+    assert!(!trade("trade-empty").can_search);
+    assert_eq!(
+        trade("trade-empty").why_not.as_ref().unwrap().text,
+        "Choose an item class."
+    );
+    let picking = trade("trade-picking");
+    assert!(picking.can_search && picking.link.is_some());
+    assert_eq!(
+        picking.count_line.as_deref(),
+        Some("The search asks for two: one prefix and one suffix.")
+    );
+    assert!(!picking.not_searchable.is_empty());
+    let one_side = trade("trade-one-side");
+    assert!(one_side.link.is_some());
+    assert_eq!(
+        one_side.count_line.as_deref(),
+        Some("Your picks are all suffixes and a magic item holds one, so the search asks for one.")
+    );
+    let jewel = trade("trade-default-weight");
+    assert!(jewel
+        .prefixes
+        .iter()
+        .chain(&jewel.suffixes)
+        .all(|r| r.weight_source == TradeWeightSource::Default && r.default_reason.is_some()));
+    assert_eq!(jewel.selection.picks.len(), 2);
+    let refused_trade = trade("trade-refused");
+    assert_eq!(refused_trade.selection, picking.selection);
+    assert_eq!(refused_trade.link, picking.link);
+    assert_eq!(
+        view("trade-refused").status.as_ref().unwrap().kind,
+        StatusKind::Error
+    );
+
     // Every view reads back into its type and writes the same JSON; the
     // main view refuses an added and a dropped field.
     for (name, v) in &views {
@@ -633,6 +846,9 @@ fn fixtures_are_current() {
         assert!(serde_json::from_value::<View>(dropped).is_err(), "{name}");
         let mut extra = value.clone();
         extra["craft"]["extra"] = Value::Bool(true);
+        assert!(serde_json::from_value::<View>(extra).is_err(), "{name}");
+        let mut extra = value.clone();
+        extra["trade"]["selection"]["extra"] = Value::Bool(true);
         assert!(serde_json::from_value::<View>(extra).is_err(), "{name}");
     }
     for (name, v) in &settings {
@@ -658,8 +874,8 @@ fn fixtures_are_current() {
         .iter()
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
-    assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 25);
+    assert_eq!(settings.len(), 17);
+    assert_eq!(views.len(), 30);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

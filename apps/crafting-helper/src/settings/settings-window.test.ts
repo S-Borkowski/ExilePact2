@@ -110,6 +110,17 @@ const toggle = (root: HTMLElement): HTMLInputElement =>
   root.querySelector('section[aria-labelledby="section-updates"] input[role="switch"]') as HTMLInputElement;
 /** The Overlay section's region. */
 const overlaySection = (root: HTMLElement): HTMLElement => root.querySelector('section[aria-labelledby="section-overlay"]') as HTMLElement;
+/** The Trade section's region. */
+const tradeSection = (root: HTMLElement): HTMLElement => root.querySelector('section[aria-labelledby="section-trade"]') as HTMLElement;
+/** The Trade section's League select. */
+const leagueSelect = (root: HTMLElement): HTMLSelectElement => tradeSection(root).querySelector('select') as HTMLSelectElement;
+/** The Trade section's refresh icon, by its accessible name. */
+const refreshButton = (root: HTMLElement): HTMLButtonElement =>
+  tradeSection(root).querySelector('button[aria-label="Refresh the league list from the trade site"]') as HTMLButtonElement;
+/** The Trade section's note line. */
+const leagueNote = (root: HTMLElement): HTMLElement => tradeSection(root).querySelector('[role="status"]') as HTMLElement;
+/** The leagues the app shipped with, offered before any refresh (`SHIPPED_TRADE_LEAGUES`). */
+const SHIPPED_LEAGUES = ['Forbidden Rites', 'HC Forbidden Rites', 'Runes of Aldur', 'HC Runes of Aldur', 'Standard', 'Hardcore'];
 
 /** The install states that write their own status line (all but `none` and `ready`). */
 const INSTALL_LINE_STATES = ['unsigned', 'downloading', 'verifying', 'restarting', 'failed'];
@@ -191,6 +202,13 @@ describe('the Settings window', () => {
       const overlay = overlaySection(root);
       expect(overlay.querySelector<HTMLSelectElement>('select')!.value, name).toBe(view.overlay_position);
       expect(overlay.querySelector<HTMLInputElement>('input[role="switch"]')!.checked, name).toBe(view.screen_watch);
+
+      // The Trade section offers the view's leagues, the saved one selected,
+      // the refresh icon disabled exactly while a refresh runs.
+      const league = leagueSelect(root);
+      expect([...league.options].map((o) => o.value), name).toEqual(view.trade_leagues);
+      expect(league.value, name).toBe(view.trade_league);
+      expect(refreshButton(root).disabled, name).toBe(view.trade_leagues_refreshing);
     }
     // The fixtures cover every state the types declare.
     expect([...seenUpdate].sort()).toEqual([...UPDATE_STATES].sort());
@@ -388,7 +406,11 @@ describe('the Settings window', () => {
       for (const b of page.querySelectorAll('button')) {
         expect(text(b), name).not.toMatch(/release page|browser|github|download page|open/i);
       }
-      expect(page.innerHTML, name).not.toMatch(/https?:|www\.|\.com\b/i);
+      expect(page.innerHTML, name).not.toMatch(/https?:|www\./i);
+      // The one domain named is the trade site's, in plain words in the Trade
+      // section's help line, which says what the refresh icon asks: no link.
+      expect(page.innerHTML.match(/[\w.-]+\.com\b/gi), name).toEqual(['pathofexile.com']);
+      expect(page.querySelector('#trade-league-help')?.textContent, name).toContain('(pathofexile.com)');
     }
   });
 
@@ -537,6 +559,26 @@ describe('the Settings window', () => {
     const noWatch = fixture('idle') as unknown as Record<string, unknown>;
     delete noWatch.screen_watch;
     expect(settingsProblems(noWatch)).toEqual(['app_settings.screen_watch: missing']);
+
+    // The trade league, the offered list, the refresh mark and the note.
+    const badTrade = fixture('trade-league-refresh-refused') as unknown as Record<string, unknown>;
+    badTrade.trade_league = null;
+    (badTrade.trade_leagues as unknown[])[2] = 3;
+    badTrade.trade_leagues_refreshing = 'no';
+    (badTrade.trade_league_note as Record<string, unknown>).kind = 'warn';
+    expect(settingsProblems(badTrade)).toEqual([
+      'app_settings.trade_league: expected a string',
+      'app_settings.trade_leagues[2]: expected a string',
+      'app_settings.trade_leagues_refreshing: expected a boolean',
+      'app_settings.trade_league_note.kind: "warn" is not one of info|error',
+    ]);
+    const noLeagues = fixture('trade-league') as unknown as Record<string, unknown>;
+    delete noLeagues.trade_leagues;
+    noLeagues.trade_league_url = 'x';
+    expect(settingsProblems(noLeagues)).toEqual([
+      'app_settings.trade_leagues: missing',
+      'app_settings.trade_league_url: not in the TypeScript types',
+    ]);
   });
 
   it('hotkey_form_sends_set_hotkey', async () => {
@@ -604,8 +646,8 @@ describe('the Settings window', () => {
     const bridge = fakeBridge(saved);
     const root = await render(bridge);
 
-    // After Grab, before the blocked list and Updates.
-    expect(SECTIONS.map((s) => s.id)).toEqual(['grab', 'overlay', 'blocked', 'updates']);
+    // After Grab, before the blocked list, Trade and Updates.
+    expect(SECTIONS.map((s) => s.id)).toEqual(['grab', 'overlay', 'blocked', 'trade', 'updates']);
     const region = overlaySection(root);
     expect(text(region.querySelector('h2'))).toBe('Overlay');
 
@@ -747,6 +789,190 @@ describe('the Settings window', () => {
     expect(text(emptyRegion.querySelector('.count'))).toBe('1 blocked');
     click(emptyRegion.querySelector('input[data-id="chaos-orb"]'));
     expect(empty.calls[1]).toEqual({ name: 'update_settings', args: { patch: { blocked_currencies: [] } } });
+  });
+
+  it('trade_league_field_sends_update_settings', async () => {
+    // Every view but the Trade section's own has the default league, the
+    // shipped list, no refresh running and no note.
+    for (const name of PREVIEW_STATES.filter((n) => !n.startsWith('trade-league'))) {
+      const v = fixture(name);
+      expect([v.trade_league, v.trade_leagues, v.trade_leagues_refreshing, v.trade_league_note], name).toEqual([
+        'Forbidden Rites',
+        SHIPPED_LEAGUES,
+        false,
+        null,
+      ]);
+    }
+    const saved = fixture('trade-league');
+    expect(saved.trade_league).toBe('Runes of Aldur');
+    const bridge = fakeBridge(saved);
+    const root = await render(bridge);
+
+    // After the blocked list, before Updates, which stays last.
+    expect(SECTIONS.map((s) => s.id)).toEqual(['grab', 'overlay', 'blocked', 'trade', 'updates']);
+    const region = tradeSection(root);
+    expect(text(region.querySelector('h2'))).toBe('Trade');
+
+    // A native select, labelled "League", described by its help and the note line.
+    const select = leagueSelect(root);
+    expect(select.tagName).toBe('SELECT');
+    expect(text(document.querySelector(`label[for="${select.id}"]`))).toBe('League');
+    expect(select.value).toBe('Runes of Aldur');
+    const describedBy = select.getAttribute('aria-describedby')!.split(' ');
+    expect(text(document.getElementById(describedBy[0]))).toBe(
+      'The league the trade search opens in. The refresh button asks the trade site (pathofexile.com) for its current leagues; nothing is sent until you click it, and the new list lasts until the app closes.',
+    );
+    expect(document.getElementById(describedBy[1])).toBe(leagueNote(root));
+
+    // A change sends the one key, and the select shows the saved league until the next view.
+    choose(select, 'Standard');
+    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { trade_league: 'Standard' } } }]);
+    expect(select.value).toBe('Runes of Aldur');
+    bridge.push({ ...saved, trade_league: 'Standard' });
+    expect(select.value).toBe('Standard');
+
+    // A refused name keeps the saved league selected and says why.
+    bridge.push({ ...saved, trade_league_note: { kind: 'error', text: 'League not saved: the league name is empty.' } });
+    expect(select.value).toBe('Runes of Aldur');
+    expect(text(leagueNote(root))).toBe('!League not saved: the league name is empty.');
+    expect(bridge.calls).toHaveLength(1);
+
+    // Inside the app, the patch goes out as the bridge declares it.
+    const asked: Array<[string, unknown]> = [];
+    mockIPC((cmd, payload) => {
+      asked.push([cmd, payload]);
+      return undefined;
+    });
+    await tauriSettingsBridge().command('update_settings', { patch: { trade_league: 'Standard' } });
+    expect(asked).toEqual([['update_settings', { patch: { trade_league: 'Standard' } }]]);
+  });
+
+  it('trade_league_dropdown_lists_the_offered_leagues', async () => {
+    // Before any refresh: the shipped six, in the site's order, each option's
+    // text and value the league's id.
+    const view = fixture('trade-league');
+    expect(view.trade_leagues).toEqual(SHIPPED_LEAGUES);
+    const bridge = fakeBridge(view);
+    const root = await render(bridge);
+    const select = leagueSelect(root);
+    expect([...select.options].map((o) => [o.value, o.textContent])).toEqual(SHIPPED_LEAGUES.map((l) => [l, l]));
+    expect(select.selectedOptions[0].textContent).toBe('Runes of Aldur');
+
+    // A saved league the list lacks is offered last, and selected.
+    bridge.push({ ...view, trade_league: 'Settlers', trade_leagues: [...SHIPPED_LEAGUES, 'Settlers'] });
+    expect([...select.options].map((o) => o.value)).toEqual([...SHIPPED_LEAGUES, 'Settlers']);
+    expect(select.value).toBe('Settlers');
+
+    // After a refresh: the list the view now offers replaces the old one.
+    const refreshed = ['Dawn of the Hunt', 'HC Dawn of the Hunt', 'Standard', 'Hardcore', 'Runes of Aldur'];
+    bridge.push({
+      ...view,
+      trade_leagues: refreshed,
+      trade_league_note: { kind: 'info', text: 'Refreshed: 4 leagues from the trade site.' },
+    });
+    expect([...select.options].map((o) => o.value)).toEqual(refreshed);
+    expect(select.value).toBe('Runes of Aldur');
+    choose(select, 'Dawn of the Hunt');
+    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { trade_league: 'Dawn of the Hunt' } } }]);
+  });
+
+  it('trade_league_refresh_icon_sends_its_command', async () => {
+    const bridge = fakeBridge(fixture('trade-league'));
+    const root = await render(bridge);
+    const refresh = refreshButton(root);
+
+    // An icon button beside the select: its name and title say what it does,
+    // the mark is hidden from screen readers, there is no visible text.
+    expect(refresh.tagName).toBe('BUTTON');
+    expect(refresh.getAttribute('type')).toBe('button');
+    expect(refresh.getAttribute('title')).toBe('Refresh the league list from the trade site');
+    expect(text(refresh)).toBe('');
+    expect(refresh.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(refresh.parentElement).toBe(leagueSelect(root).parentElement);
+    expect(refresh.outerHTML).not.toMatch(/https?:|href|pathofexile/i);
+    expect(refresh.disabled).toBe(false);
+    expect(refresh.getAttribute('aria-busy')).toBeNull();
+
+    // A click sends the command with no arguments, and nothing else.
+    click(refresh);
+    expect(bridge.calls).toEqual([{ name: 'refresh_trade_leagues', args: {} }]);
+
+    // Opening the window, changing a setting or a new view sends no refresh.
+    const quiet = fakeBridge(fixture('idle'));
+    const quietRoot = await render(quiet);
+    choose(overlaySection(quietRoot).querySelector('select')!, 'top-left');
+    quiet.push(fixture('trade-league'));
+    expect(quiet.calls.map((c) => c.name)).toEqual(['update_settings']);
+
+    // Inside the app, the command goes out with no argument at all.
+    const asked: Array<[string, unknown]> = [];
+    mockIPC((cmd, payload) => {
+      asked.push([cmd, payload]);
+      return undefined;
+    });
+    await tauriSettingsBridge().command('refresh_trade_leagues', {});
+    expect(asked).toEqual([['refresh_trade_leagues', {}]]);
+  });
+
+  it('trade_league_refresh_is_busy_while_running', async () => {
+    const running = fixture('trade-league-refreshing');
+    expect(running.trade_leagues_refreshing).toBe(true);
+    const bridge = fakeBridge(running);
+    const root = await render(bridge);
+    const refresh = refreshButton(root);
+
+    // Disabled and busy, the mark still; the note says a refresh runs.
+    expect(refresh.disabled).toBe(true);
+    expect(refresh.getAttribute('aria-busy')).toBe('true');
+    expect(text(leagueNote(root))).toBe('Refreshing the league list…');
+    click(refresh);
+    expect(bridge.calls).toEqual([]);
+
+    // The select stays usable meanwhile, the list as it was.
+    const select = leagueSelect(root);
+    expect(select.disabled).toBe(false);
+    expect([...select.options].map((o) => o.value)).toEqual(running.trade_leagues);
+    choose(select, 'Standard');
+    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { trade_league: 'Standard' } } }]);
+
+    // The answer's view ends it: the button usable again, the note Rust's.
+    bridge.push({
+      ...running,
+      trade_leagues_refreshing: false,
+      trade_league_note: { kind: 'info', text: 'Refreshed: 6 leagues from the trade site.' },
+    });
+    expect(refresh.disabled).toBe(false);
+    expect(refresh.getAttribute('aria-busy')).toBeNull();
+    expect(text(leagueNote(root))).toBe('Refreshed: 6 leagues from the trade site.');
+    click(refresh);
+    expect(bridge.calls.at(-1)).toEqual({ name: 'refresh_trade_leagues', args: {} });
+  });
+
+  it('trade_league_refresh_note_is_shown', async () => {
+    // Empty until something happens this run; a polite live region.
+    const bridge = fakeBridge(fixture('trade-league'));
+    const root = await render(bridge);
+    const note = leagueNote(root);
+    expect(note.getAttribute('aria-live')).toBe('polite');
+    expect(text(note)).toBe('');
+    expect(note.getAttribute('data-kind')).toBe('none');
+
+    // A refused refresh: Rust's reason marked "!", in the warning colour,
+    // the list and the saved league kept.
+    const refused = fixture('trade-league-refresh-refused');
+    bridge.push(refused);
+    expect(note.getAttribute('data-kind')).toBe('error');
+    expect(text(note)).toBe(`!${refused.trade_league_note!.text}`);
+    expect(note.querySelector('.mark')?.getAttribute('aria-hidden')).toBe('true');
+    expect(leagueSelect(root).value).toBe(refused.trade_league);
+    expect([...leagueSelect(root).options].map((o) => o.value)).toEqual(SHIPPED_LEAGUES);
+
+    // A refresh that skipped entries says so, as Rust words it, with no mark.
+    bridge.push({ ...refused, trade_league_note: { kind: 'info', text: 'Refreshed: 5 leagues from the trade site; 1 skipped.' } });
+    expect(note.getAttribute('data-kind')).toBe('info');
+    expect(text(note)).toBe('Refreshed: 5 leagues from the trade site; 1 skipped.');
+    expect(note.querySelector('.mark')).toBeNull();
+    expect(bridge.calls).toEqual([]);
   });
 
   it('tauri_bridge_subscribes_then_asks', async () => {

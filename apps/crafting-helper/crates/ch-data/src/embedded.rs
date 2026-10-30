@@ -6,6 +6,7 @@ use std::sync::OnceLock;
 use ch_item::ItemClass;
 
 use crate::model::{ClassData, Index};
+use crate::trade::TradeStats;
 
 macro_rules! class_file {
     ($file:literal) => {
@@ -17,6 +18,10 @@ macro_rules! class_file {
 }
 
 const INDEX_JSON: &str = include_str!("../../../data/index.json");
+
+/// `data/trade-stats.json`: the trade site's stat ids for the class files'
+/// modifiers (`tools/crafting_helper/trade_stats.py`).
+pub const TRADE_STATS_JSON: &str = include_str!("../../../data/trade-stats.json");
 
 /// Every embedded class file: its path relative to `data/` and its text, in
 /// `index.json`'s order.
@@ -46,6 +51,7 @@ pub const EMBEDDED_CLASSES: [(&str, &str); 22] = [
 ];
 
 static INDEX: OnceLock<Index> = OnceLock::new();
+static TRADE_STATS: OnceLock<TradeStats> = OnceLock::new();
 static CLASSES: [OnceLock<ClassData>; 22] = [const { OnceLock::new() }; 22];
 
 /// The parsed `data/index.json`.
@@ -56,6 +62,17 @@ pub fn index() -> &'static Index {
     INDEX.get_or_init(|| {
         serde_json::from_str(INDEX_JSON)
             .unwrap_or_else(|e| panic!("embedded data/index.json does not parse: {e}"))
+    })
+}
+
+/// The parsed `data/trade-stats.json`.
+///
+/// Panics if the embedded file does not parse: it is fixed at build time
+/// and the trade tests parse it.
+pub fn trade_stats() -> &'static TradeStats {
+    TRADE_STATS.get_or_init(|| {
+        serde_json::from_str(TRADE_STATS_JSON)
+            .unwrap_or_else(|e| panic!("embedded data/trade-stats.json does not parse: {e}"))
     })
 }
 

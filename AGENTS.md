@@ -90,7 +90,9 @@ subagent and workflow tools.
   or overwrite `.codex/hooks.json`. `impeccable` also adds a design-detector
   hook under Claude Code; set `IMPECCABLE_HOOK_DISABLED=1` to switch it off
   for yourself. Under Codex, run `$impeccable audit` on changed UI instead.
-- **MCP servers**: `ghidra`, `x64dbg`, `context7`, `github` and `playwright`.
+- **MCP servers**: `ghidra`, `x64dbg`, `context7`, `github`, `playwright`
+  and `app-webview` (Playwright attached to one of our apps' WebView2, started
+  by `tools/app_webview.py`; [docs/tools/app-webview-mcp.md](docs/tools/app-webview-mcp.md)).
   `ghidra` reads the local Ghidra project (§ "Check for a Named Ghidra Project"
   below). `x64dbg` attaches a headless debugger to the running game for
   `live-operator` alone, with non-breaking hardware logging breakpoints, under

@@ -18,8 +18,9 @@
 //! and `src-tauri` split it): it implements [`Shell`] (the global hotkey,
 //! the Win32 clipboard read, the error beep, the `ch:view` and
 //! `ch:app-settings` events, the overlay's size, placement, show and hide,
-//! the Settings window, opening [`CRAFT_OF_EXILE_URL`] in the default
-//! browser and the quit that restarts into an installed update) and
+//! the Settings window, opening [`CRAFT_OF_EXILE_URL`] and the trade search
+//! link in the default browser, the trade site's league list over `ep-net`
+//! and the quit that restarts into an installed update) and
 //! [`ScreenBackend`] (the game's window when it is in front, by
 //! [`GAME_WINDOW_TITLE`], and its client area; whether Windows' OCR reads
 //! English; the item tooltips read from that client area by `ch-watch`'s
@@ -35,7 +36,9 @@
 //!   `get_catalogue`, `check_for_updates`, `install_update`,
 //!   `cancel_update`, and the craft window's `set_targets`,
 //!   `set_craft_blocked`, `choose_route`, `accept_craft`, `end_craft` and
-//!   `open_craft_of_exile`), the hotkey press, the overlay's visibility and
+//!   `open_craft_of_exile`, the trade panel's `set_trade_search` and
+//!   `open_trade_search`, and the Settings window's
+//!   `refresh_trade_leagues`), the hotkey press, the overlay's visibility and
 //!   placement from the watch thread's reports, a hit or a miss the watch
 //!   read from the screen kept as a grab's would be, and the watch line
 //!   ([`WatchLineView`]) ([`App::tick_watch`] ticks the thread by hand for
@@ -80,17 +83,32 @@
 //!   window plans with the shipped blueprints, loaded once; the blocked
 //!   list and `get_catalogue` read its catalogue.
 //!
-//! The one address the app opens is [`CRAFT_OF_EXILE_URL`], from
-//! `open_craft_of_exile`, which takes no address.
+//! - [`trade`]: the *Find a base on trade* panel's selection (in memory
+//!   only), its view ([`TradeView`]) and the trade site's search link built
+//!   from [`TRADE_SEARCH_URL`], the league and `ch-data`'s query, each
+//!   percent-encoded.
+//! - [`league`]: the `trade_league` setting's rules and the league list the
+//!   Settings window offers ([`SHIPPED_TRADE_LEAGUES`] until a refresh),
+//!   and the trade site's answer to a refresh, read and filtered.
+//!
+//! The app opens two addresses, each from a command that takes no address:
+//! [`CRAFT_OF_EXILE_URL`], from `open_craft_of_exile`, and the trade search
+//! link, [`TRADE_SEARCH_URL`] with the league and the query, from
+//! `open_trade_search`, which builds it from the app's own state. Its one
+//! request of its own besides the update check is the trade site's league
+//! list, through [`Shell::fetch_trade_leagues`], sent only by the
+//! `refresh_trade_leagues` command.
 
 pub mod app;
 pub mod craft;
 pub mod grab;
 pub mod hotkey;
+pub mod league;
 pub mod overlay;
 pub mod screen;
 pub mod settings;
 pub mod store;
+pub mod trade;
 pub mod updates;
 pub mod view;
 
@@ -98,6 +116,10 @@ pub use app::{App, AppConfig, BeepAttempt, HotkeyError, Shell, SAVE_DELAY};
 pub use craft::CRAFT_OF_EXILE_URL;
 pub use grab::{ITEM_FIRST_LINE, MAX_GRAB_BYTES};
 pub use hotkey::{is_game_item_copy, DEFAULT_HOTKEY, GAME_ITEM_COPY};
+pub use league::{
+    DEFAULT_TRADE_LEAGUE, MAX_TRADE_LEAGUES, MAX_TRADE_LEAGUES_BODY, MAX_TRADE_LEAGUE_CHARS,
+    SHIPPED_TRADE_LEAGUES, TRADE_LEAGUE_KEY,
+};
 pub use overlay::{overlay_origin, OVERLAY_INSET};
 pub use screen::{
     ClientRect, GameWindow, OcrReadiness, ScreenBackend, ScreenSetup, WatchFailure, BLACK_IN_A_ROW,
@@ -105,6 +127,11 @@ pub use screen::{
 };
 pub use settings::{CatalogueEntry, CatalogueGroup, MAX_ID_CHARS};
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
+pub use trade::{
+    percent_encode, trade_link, TradeModView, TradePickChoice, TradeSelection,
+    TradeUnsearchableView, TradeView, TradeWeightSource, MAX_TRADE_ITEM_LEVEL,
+    MAX_TRADE_LINK_CHARS, TRADE_SEARCH_URL,
+};
 pub use updates::{Clock, SteadyClock, UpdateSetup, TICK_EVERY};
 pub use view::{
     BlockedFrom, ChosenTarget, CraftBlockedEntry, CraftBlockedView, CraftItemView, CraftMode,

@@ -365,7 +365,7 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 | `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, `UpdatesSection.svelte`, `sections.ts`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
 | `apps/waystone-roller/data/` | The mod data file. |
 | `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, the view fixtures shared by the page's tests and `wr-app`'s, and `app-settings/`, one Settings window view per update and install state. |
-| `apps/shared/` | The update code both apps share, its own Cargo workspace: `ep-net` (the only network code) and `ep-update` (the check, the install, the signature check, the swap): [`docs/app-updates.md`](../app-updates.md). |
+| `apps/shared/` | The update code both apps share, its own Cargo workspace: `ep-net` (the only network code, and a trade-leagues request only the crafting helper calls) and `ep-update` (the check, the install, the signature check, the swap): [`docs/app-updates.md`](../app-updates.md). |
 | `tools/waystone_roller/` | The poe2db data tool (`poe2db.py`) and the release cutter (`release.py`). |
 | `.github/workflows/waystone-roller-release.yml` | The release build: from a pushed tag to a draft release. |
 

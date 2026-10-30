@@ -362,15 +362,18 @@ const outcomeWords = (line: string): number => line.match(/\b(hit|miss|unexpecte
 
 describe('the craft window', () => {
   it('renders_every_craft_fixture', async () => {
-    // Every fixture renders its mode, with the mode's first heading marked,
-    // the header's two buttons, and sends nothing on its own.
+    // Every fixture renders its mode, with the mode's first heading marked
+    // (the trade panel's own while it is open in the craft area's place),
+    // the header's three buttons, and sends nothing on its own.
     const headings: Record<string, string> = {};
     for (const name of FIXTURE_NAMES) {
       const view = fixtureView(name);
       const r = await render(view);
       expect(r.root.querySelector('.app')!.getAttribute('data-mode'), name).toBe(view.craft.mode);
-      headings[name] = text(r.root.querySelector('.craft [data-mode-heading]'));
+      expect(r.root.querySelectorAll('[data-mode-heading]'), name).toHaveLength(1);
+      headings[name] = text(r.root.querySelector(view.trade.selection.open ? '.trade [data-mode-heading]' : '.craft [data-mode-heading]'));
       expect(r.bridge.calls, name).toEqual([]);
+      expect(button(r.root, 'Find a base on trade'), name).toBeDefined();
       expect(button(r.root, 'Explore more crafting on Craft of Exile'), name).toBeDefined();
       expect(r.root.querySelector('button.settings'), name).not.toBeNull();
     }
@@ -400,6 +403,11 @@ describe('the craft window', () => {
       'craft-screen-unexpected': 'Doom Loop',
       'craft-watch-off': 'Doom Loop',
       'craft-watch-unavailable': 'Doom Loop',
+      'trade-empty': 'Find a base on trade',
+      'trade-picking': 'Find a base on trade',
+      'trade-one-side': 'Find a base on trade',
+      'trade-default-weight': 'Find a base on trade',
+      'trade-refused': 'Find a base on trade',
     });
 
     // Refused: the reason as sent, how to grab another, the grabbed text open.

@@ -1,0 +1,30 @@
+{
+  "blocked_currencies": [],
+  "check_updates": false,
+  "hotkey": "Ctrl+Alt+X",
+  "hotkey_status": null,
+  "install": {
+    "progress": null,
+    "state": "none",
+    "text": ""
+  },
+  "overlay_position": "top-center",
+  "screen_watch": true,
+  "trade_league": "Forbidden Rites",
+  "trade_league_note": null,
+  "trade_leagues": [
+    "Forbidden Rites",
+    "HC Forbidden Rites",
+    "Runes of Aldur",
+    "HC Runes of Aldur",
+    "Standard",
+    "Hardcore"
+  ],
+  "trade_leagues_refreshing": true,
+  "update": {
+    "newer": null,
+    "state": "idle",
+    "text": "Not checked yet."
+  },
+  "version": "1.2.0"
+}

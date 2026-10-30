@@ -1,8 +1,10 @@
 """The crafting helper touches nothing but its windows, one clipboard read per
 grab and, through the shared `ep-net` alone, GitHub's release list and
-assets. It sends no input, watches nothing but, while a craft is guiding,
-the game's window (which window is in front, and a copy of the game's own
-in memory, read with Windows' OCR) and reaches no game file.
+assets and the trade site's league list: that list is the one request
+beside GitHub's, sent only when the player clicks the League refresh icon.
+It sends no input, watches nothing but, while a craft is guiding, the
+game's window (which window is in front, and a copy of the game's own in
+memory, read with Windows' OCR) and reaches no game file.
 
 Read from the files only (no build, no network), these pin the rules of
 the app (`docs/crafting-helper/README.md`, Privacy). They are the waystone
@@ -18,7 +20,11 @@ copied, with these differences:
   `KeyboardAndMouse` and the rest) is an offence in every Rust source here,
   as is every name that guard forbids everywhere (mouse and hardware input,
   the cursor, window messages, focus and activation, another process, hooks,
-  another program's window, the game's files);
+  another program's window, the game's files); the trade site's domain,
+  `www.pathofexile.com` in lower case, is a web address and not a game
+  file, and so is the bare `"pathofexile"` a Rust test checks stays out of
+  the log, in a test under `tests/` alone; `PathOfExile.exe` stays an
+  offence everywhere, tests included;
 - the one exception is the overlay's show and hide: `src-tauri/src/lib.rs`
   alone may name `ShowWindow`, and every `SW_` name it holds is
   `SW_SHOWNOACTIVATE` or `SW_HIDE`, so the game keeps the focus;
@@ -60,20 +66,31 @@ copied, with these differences:
   waystone roller's two plugins, so `wr.ALLOWED_TAURI_PLUGINS` is not
   loosened: it is allowed in the workspace's `[workspace.dependencies]` and
   `src-tauri`'s `[dependencies]` alone;
-- the app opens one web address, Craft of Exile's: in the Rust sources
-  outside tests (comments blanked) that address is the one `http://` or
-  `https://` literal, once, in `ch-app`; the glue alone names
-  `tauri_plugin_opener`, once, registers it with
+- the app opens two web addresses, Craft of Exile's and the trade site's
+  search: in the Rust sources outside tests (comments blanked) they are the
+  only two `http://` or `https://` literals, each once, in `ch-app`, the
+  values of `CRAFT_OF_EXILE_URL` and `TRADE_SEARCH_URL`; the glue alone
+  names `tauri_plugin_opener`, once, registers it with
   `open_js_links_on_click(false)` (no link handler in the pages) and never
-  with `init`, and calls `.opener()` once; the `open_craft_of_exile`
-  command takes nothing but the app state, and no command takes a URL or
-  path argument;
+  with `init`, and calls `.opener()` once; the `open_craft_of_exile` and
+  `open_trade_search` commands each take nothing but the app state, and no
+  command takes a URL or path argument;
+- the one request beside GitHub's is the trade site's league list:
+  `ep-net`'s `TRADE_LEAGUES_HOST` is `www.pathofexile.com` and its
+  `TRADE_LEAGUES_PATH` `/api/trade2/data/leagues`, each defined once
+  outside tests (comments and `#[cfg(test)]` items blanked);
+  `ep_net::fetch_trade_leagues` is named in the crafting helper by the
+  glue's `lib.rs` alone, once, and `fetch_trade_leagues` by no Rust source
+  of the quest tracker, the waystone roller or `ep-update`; the
+  `refresh_trade_leagues` command, the one that asks for it, takes nothing
+  but the app state;
 - the pages hold no address and open nothing themselves: no UI source but
   the tests (`//`, `/* */` and `<!-- -->` comments blanked, strings kept)
   names an `http://` or `https://` literal, `window.open`, `location.href`,
   `.assign` or `.replace`, `target="_blank"`, `plugin:opener` or
-  `@tauri-apps/plugin-opener`, and the main window's bridge declares
-  `open_craft_of_exile` once, taking `Record<string, never>`;
+  `@tauri-apps/plugin-opener`, and the bridge declares
+  `open_craft_of_exile`, `open_trade_search` and `refresh_trade_leagues`
+  once each, taking `Record<string, never>`;
 - the windows' CSP is the pinned string; the capabilities are three, the
   `main` window's (`core:event:default`, `core:window:default`), the
   `settings` window's and the `overlay` window's (`core:event:default`
@@ -211,9 +228,29 @@ OPENER_TABLES = {
     APP / "Cargo.toml": "workspace.dependencies",
     TAURI / "Cargo.toml": "dependencies",
 }
-# The one web address the app opens (`ch_app::CRAFT_OF_EXILE_URL`).
+# The two web addresses the app opens, by the `ch-app` constant that holds
+# each: Craft of Exile's and the trade site's search (the league and the
+# query follow it).
 CRAFT_OF_EXILE_URL = "https://beta.craftofexile.com/?game=poe2"
+TRADE_SEARCH_URL = "https://www.pathofexile.com/trade2/search/poe2/"
+ADDRESS_CONSTS = {"CRAFT_OF_EXILE_URL": CRAFT_OF_EXILE_URL, "TRADE_SEARCH_URL": TRADE_SEARCH_URL}
 URL_LITERAL = re.compile(r"\bhttps?://[^\"\s]*", re.IGNORECASE)
+# A `&str` constant and its value (no escaped quote in any pinned value).
+STR_CONST = re.compile(r"\bconst\s+(\w+)\s*:\s*&\s*(?:'static\s+)?str\s*=\s*\"([^\"]*)\"\s*;")
+# The trade site's domain, a web address and not one of the game's files
+# (`wr.GAME_NAMES`' `PathOfExile`): lower case, as the addresses write it.
+# A Rust test may also name the bare `"pathofexile"`, to check it stays out
+# of the log.
+TRADE_SITE_DOMAIN = re.compile(r"(?<![\w.])www\.pathofexile\.com\b")
+TRADE_SITE_TEST_NEEDLE = re.compile(r"\"pathofexile\"")
+# The one request beside GitHub's: `ep-net`'s league list, its host and path
+# pinned, asked for through `ep_net::fetch_trade_leagues` by the glue alone.
+EP_NET = ROOT / "apps" / "shared" / "crates" / "ep-net"
+EP_UPDATE = ROOT / "apps" / "shared" / "crates" / "ep-update"
+OTHER_APPS = [ROOT / "apps" / "quest-tracker", ROOT / "apps" / "waystone-roller"]
+TRADE_LEAGUES_PINS = {"TRADE_LEAGUES_HOST": "www.pathofexile.com", "TRADE_LEAGUES_PATH": "/api/trade2/data/leagues"}
+EP_NET_LEAGUES_CALL = re.compile(r"\bep_net\s*::\s*(?:\{[^}]*\b)?fetch_trade_leagues\b")
+LEAGUES_FETCH_NAME = re.compile(r"\bfetch_trade_leagues\b")
 OPENER_CRATE = re.compile(r"\btauri_plugin_opener\b")
 OPENER_INIT = re.compile(r"\btauri_plugin_opener\s*::\s*(?:\{[^}]*\b)?init\b")
 OPENER_CALL = re.compile(r"\.\s*opener\s*\(\s*\)")
@@ -224,7 +261,10 @@ ANY_LINK_HANDLER = re.compile(r"\bopen_js_links_on_click\b")
 COMMAND = re.compile(
     r"#\[\s*tauri\s*::\s*command\b[^\]]*\]\s*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)"
 )
-# The app state, the one parameter `open_craft_of_exile` takes.
+# The commands that take the app state alone: the two that open an address
+# and the one that asks the trade site for its league list.
+STATE_ONLY_COMMANDS = ("open_craft_of_exile", "open_trade_search", "refresh_trade_leagues")
+# The app state, the one parameter each of those takes.
 STATE_TYPE = re.compile(r"^(?:Shared<'_>|(?:tauri\s*::\s*)?State<'_,\s*Arc<App>>)$")
 # A parameter that would carry an address or a file: by its name or its type.
 ADDRESS_PARAM_NAME = re.compile(r"url|uri|href|link|address|path|file|dir|location", re.IGNORECASE)
@@ -232,7 +272,8 @@ ADDRESS_PARAM_TYPE = re.compile(r"\b(?:PathBuf|Path|Url|OsString|Uri)\b")
 # What a page could open a page or a browser with, which no UI source
 # outside the tests names (comments blanked): any web address, `window.open`,
 # a change of `location`, a link to a new window, or the opener plugin's own
-# commands or package. The pages send `open_craft_of_exile` instead.
+# commands or package. The pages send `open_craft_of_exile` or
+# `open_trade_search` instead.
 UI_OPEN_NAMES = [
     ("http(s):// literal", re.compile(r"\bhttps?://", re.IGNORECASE)),
     ("window.open", re.compile(r"\bwindow\s*\??\.\s*open\b")),
@@ -244,10 +285,9 @@ UI_OPEN_NAMES = [
     ("@tauri-apps/plugin-opener", re.compile(r"@tauri-apps/plugin-opener\b")),
 ]
 UI_COMMENT_SUFFIXES = {".ts", ".js", ".mjs", ".svelte", ".html", ".css"}
-# The main window's bridge declares each command's arguments in
-# `CommandArgs`; the Craft of Exile command's must be the empty record.
+# The bridge declares each command's arguments (`CommandArgs`,
+# `SettingsCommandArgs`); each state-only command's must be the empty record.
 BRIDGE = APP / "src" / "bridge.ts"
-UI_OPEN_COMMAND = re.compile(r"\bopen_craft_of_exile\s*:\s*([^;]*);")
 UI_OPEN_COMMAND_ARGS = "Record<string, never>"
 # The workspace pins the quest tracker's workspace lacks: `ch-blueprint`'s
 # TOML reader, a package already in its lock (through the Tauri build).
@@ -264,14 +304,31 @@ FILE_WRITE_NAMES = [
 CFG_TEST = re.compile(r"#\[\s*cfg\s*\(\s*test\s*\)\s*\]")
 
 
-def input_offences(name: str, text: str, glue: bool, game_window: bool = False) -> list[str]:
+def blank_trade_site(code: str, rust_test: bool) -> str:
+    """`code` with each lower-case `www.pathofexile.com` (the trade site's
+    domain) turned to spaces, and, in a Rust test (`rust_test`), each bare
+    `"pathofexile"` string; newlines are kept. Neither is a game file."""
+    out = list(code)
+    spans = [m.span() for m in TRADE_SITE_DOMAIN.finditer(code)]
+    if rust_test:
+        spans += [m.span() for m in TRADE_SITE_TEST_NEEDLE.finditer(code)]
+    for a, b in spans:
+        out[a:b] = " " * (b - a)
+    return "".join(out)
+
+
+def input_offences(
+    name: str, text: str, glue: bool, game_window: bool = False, rust_test: bool = False
+) -> list[str]:
     """The input, watching, window, process and game names one Rust source
     may not name. `glue` says whether it is `src-tauri/src/lib.rs`: there
     `ShowWindow` is allowed and every `SW_` name is one of the overlay's two
     show commands; anywhere else `ShowWindow` is an offence. `game_window`
     says whether it is `GAME_WINDOW_FILE`: there, and nowhere else,
-    `GetForegroundWindow` and `GetWindowText(Length)` are allowed."""
-    code = wr.blank_rust_comments(text)
+    `GetForegroundWindow` and `GetWindowText(Length)` are allowed. The trade
+    site's domain is no game file (`blank_trade_site`; `rust_test` says
+    whether the source is under a crate's `tests/`)."""
+    code = blank_trade_site(wr.blank_rust_comments(text), rust_test)
     names = [m for m in NO_INPUT_NAMES if not (game_window and m[0] in WINDOW_IN_FRONT_LABELS)]
     offences = wr.text_offences(name, code, names + WATCH_NAMES + SHOW_WINDOW_ASYNC)
     if not glue:
@@ -466,13 +523,13 @@ def ui_open_offences(name: str, text: str) -> list[str]:
     return wr.text_offences(name, blank_ui_comments(text), UI_OPEN_NAMES)
 
 
-def ui_open_command_offences(name: str, text: str) -> list[str]:
-    """The bridge declares `open_craft_of_exile` once, taking the empty record."""
-    found = UI_OPEN_COMMAND.findall(blank_ui_comments(text))
+def ui_command_offences(name: str, text: str, command: str) -> list[str]:
+    """The bridge declares `command` once, taking the empty record."""
+    found = re.findall(rf"\b{command}\s*:\s*([^;]*);", blank_ui_comments(text))
     if len(found) != 1:
-        return [f"{name}: open_craft_of_exile declared {len(found)} times"]
+        return [f"{name}: {command} declared {len(found)} times"]
     args = re.sub(r"\s+", " ", found[0]).strip()
-    return [] if args == UI_OPEN_COMMAND_ARGS else [f"{name}: open_craft_of_exile takes {args}, not {UI_OPEN_COMMAND_ARGS}"]
+    return [] if args == UI_OPEN_COMMAND_ARGS else [f"{name}: {command} takes {args}, not {UI_OPEN_COMMAND_ARGS}"]
 
 
 def is_rust_test(path: Path) -> bool:
@@ -512,15 +569,59 @@ def address_parameter_offences(name: str, found: dict[str, list[tuple[str, str]]
     ]
 
 
-def open_command_offences(found: dict[str, list[tuple[str, str]]]) -> list[str]:
-    """Where `open_craft_of_exile` is missing or takes more than the app
-    state."""
-    params = found.get("open_craft_of_exile")
+def state_only_offences(found: dict[str, list[tuple[str, str]]], command: str) -> list[str]:
+    """Where `command` is missing or takes more than the app state."""
+    params = found.get(command)
     if params is None:
-        return ["open_craft_of_exile: no such command"]
+        return [f"{command}: no such command"]
     if len(params) != 1 or not STATE_TYPE.match(params[0][1]):
-        return [f"open_craft_of_exile: takes {params}, not the app state alone"]
+        return [f"{command}: takes {params}, not the app state alone"]
     return []
+
+
+def address_const_offences(name: str, text: str, literals: list[str]) -> list[str]:
+    """Each address literal in one Rust source (comments blanked) that is not
+    the value of the `ch-app` constant pinned to it (`ADDRESS_CONSTS`)."""
+    consts = {value: const for const, value in STR_CONST.findall(wr.blank_rust_comments(text))}
+    pinned = {value: const for const, value in ADDRESS_CONSTS.items()}
+    offences = []
+    for literal in literals:
+        want = pinned.get(literal)
+        if want is None or consts.get(literal) != want:
+            offences.append(f"{name}: {literal} is not {want or 'a pinned address'}")
+    return offences
+
+
+def str_consts_outside_tests(text: str) -> list[tuple[str, str]]:
+    """`(name, value)` of each `&str` constant one Rust source defines,
+    comments and `#[cfg(test)]` items blanked."""
+    return STR_CONST.findall(blank_cfg_test(wr.blank_rust_comments(text)))
+
+
+def league_pin_offences(sources: dict[str, str]) -> list[str]:
+    """Where `ep-net`'s sources (`name -> text`) do not define each of
+    `TRADE_LEAGUES_PINS` once, outside tests, with its pinned value."""
+    defined: dict[str, list[str]] = {}
+    for text in sources.values():
+        for const, value in str_consts_outside_tests(text):
+            defined.setdefault(const, []).append(value)
+    offences = []
+    for const, want in TRADE_LEAGUES_PINS.items():
+        values = defined.get(const, [])
+        if len(values) != 1:
+            offences.append(f"{const}: defined {len(values)} times outside tests")
+        elif values[0] != want:
+            offences.append(f"{const}: {values[0]!r}, not {want!r}")
+    return offences
+
+
+def league_fetch_names(name: str, text: str, matcher: re.Pattern) -> list[str]:
+    """`name:line` of each `matcher` hit in one Rust source, comments
+    blanked: `EP_NET_LEAGUES_CALL` in the crafting helper (where ch-app's
+    `Shell` has a method of the same name), `LEAGUES_FETCH_NAME` in another
+    app or shared crate."""
+    code = wr.blank_rust_comments(text)
+    return [f"{name}:{code.count(chr(10), 0, m.start()) + 1}" for m in matcher.finditer(code)]
 
 
 class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
@@ -551,13 +652,40 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
             ],
         )
         self.assertEqual(input_offences("clean.rs", "// SendInput OpenProcess GetKeyState\nfn f() {}\n", glue=False), [])
+        # The trade site's domain is no game file; the game's files still are,
+        # in a test too, and a mixed-case domain or the bare name outside a
+        # test is one.
+        site = (
+            f'pub const TRADE_SEARCH_URL: &str = "{TRADE_SEARCH_URL}";\n'
+            'let needle = "pathofexile";\n'
+            'let a = "https://www.PathOfExile.com/trade2";\n'
+            'let b = "https://www.pathofexile.com/../PathOfExile.exe";\n'
+            'let c = "C:/games/pathofexile.exe";\n'
+        )
+        self.assertEqual(
+            input_offences("t.rs", site, glue=False, rust_test=True),
+            ["t.rs:3: PathOfExile", "t.rs:4: PathOfExile", "t.rs:5: PathOfExile"],
+        )
+        self.assertEqual(
+            input_offences("s.rs", site, glue=False),
+            ["s.rs:2: PathOfExile", "s.rs:3: PathOfExile", "s.rs:4: PathOfExile", "s.rs:5: PathOfExile"],
+        )
+        self.assertEqual(input_offences("s.rs", site.splitlines()[0], glue=False), [])
 
         offences = []
-        for path in self.rust_sources():
+        sources = self.rust_sources()
+        for path in sources:
             offences += input_offences(
-                wr.rel(path), wr.read(path), glue=path == GLUE_LIB, game_window=path == GAME_WINDOW_FILE
+                wr.rel(path),
+                wr.read(path),
+                glue=path == GLUE_LIB,
+                game_window=path == GAME_WINDOW_FILE,
+                rust_test=is_rust_test(path),
             )
         self.assertEqual(offences, [])
+        # Positive control: the domain is there to be allowed (else the
+        # allowance is stale, or the walk blind).
+        self.assertTrue(any(TRADE_SITE_DOMAIN.search(wr.read(p)) for p in sources if not is_rust_test(p)))
 
     def test_only_the_game_window_file_reads_the_window_in_front(self):
         reader = (
@@ -848,14 +976,31 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
         )
         self.assertEqual(blank_ui_comments("a // b\nc"), "a     \nc")
         self.assertEqual(
-            ui_open_command_offences("b.ts", "interface C {\n  open_craft_of_exile: { url: string };\n}\n"),
+            ui_command_offences("b.ts", "interface C {\n  open_craft_of_exile: { url: string };\n}\n", "open_craft_of_exile"),
             ["b.ts: open_craft_of_exile takes { url: string }, not Record<string, never>"],
         )
         self.assertEqual(
-            ui_open_command_offences("b.ts", "// open_craft_of_exile: Record<string, never>;\n"),
+            ui_command_offences("b.ts", "// open_craft_of_exile: Record<string, never>;\n", "open_craft_of_exile"),
             ["b.ts: open_craft_of_exile declared 0 times"],
         )
-        self.assertEqual(ui_open_command_offences("b.ts", "  open_craft_of_exile: Record<string,  never>;\n"), [])
+        self.assertEqual(
+            ui_command_offences("b.ts", "  open_craft_of_exile: Record<string,  never>;\n", "open_craft_of_exile"), []
+        )
+        # The trade search and the league refresh: a field added, a second
+        # declaration; `set_trade_search` is not `open_trade_search`.
+        bridge = (
+            "  set_trade_search: { search: TradeSelection };\n"
+            "  open_trade_search: { league: string };\n"
+            "  refresh_trade_leagues: Record<string, never>;\n"
+            "  refresh_trade_leagues: Record<string, never>;\n"
+        )
+        self.assertEqual(
+            [o for c in STATE_ONLY_COMMANDS[1:] for o in ui_command_offences("b.ts", bridge, c)],
+            [
+                "b.ts: open_trade_search takes { league: string }, not Record<string, never>",
+                "b.ts: refresh_trade_leagues declared 2 times",
+            ],
+        )
 
         files = [p for p in wr.walk(APP / "src", UI_COMMENT_SUFFIXES) if not wr.is_ui_test(p)]
         pages = sorted(APP.glob("*.html"))
@@ -868,7 +1013,8 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
         for path in files:
             offences += ui_open_offences(wr.rel(path), wr.read(path))
         self.assertEqual(offences, [])
-        self.assertEqual(ui_open_command_offences(wr.rel(BRIDGE), wr.read(BRIDGE)), [])
+        bridge = wr.read(BRIDGE)
+        self.assertEqual([o for c in STATE_ONLY_COMMANDS for o in ui_command_offences(wr.rel(BRIDGE), bridge, c)], [])
 
     def test_no_manifest_depends_on_network_input_or_process_crates(self):
         offender = {
@@ -945,7 +1091,7 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
         glue = tomllib.loads(wr.read(TAURI / "Cargo.toml"))["dependencies"]
         self.assertEqual(glue[OPENER_PLUGIN], {"workspace": True})
 
-    def test_only_the_craft_of_exile_address_is_opened(self):
+    def test_only_the_two_pinned_addresses_are_opened(self):
         offender = (
             "// https://in.a.comment is fine\n"
             f'pub const A: &str = "{CRAFT_OF_EXILE_URL}";\n'
@@ -956,10 +1102,25 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
             "#[tauri::command(async)]\nfn open_page(app: Shared<'_>, url: String) -> View { todo!() }\n"
             "#[tauri::command]\npub fn reveal(app: Shared<'_>, at: PathBuf) {}\n"
             "#[tauri::command]\nfn open_craft_of_exile(app: Shared<'_>, page: String) -> View { todo!() }\n"
+            "#[tauri::command(async)]\nfn open_trade_search(app: Shared<'_>, league: String) -> View { todo!() }\n"
+            "#[tauri::command(async)]\nfn refresh_trade_leagues(app: Shared<'_>, host: String) -> SettingsView { todo!() }\n"
         )
         self.assertEqual(
             url_literals("o.rs", offender),
             [("o.rs:2", CRAFT_OF_EXILE_URL), ("o.rs:3", "http://example.com/x")],
+        )
+        # Each address is the value of the constant pinned to it; a literal
+        # under another name, or any other address, is an offence.
+        self.assertEqual(
+            address_const_offences("o.rs", offender, [CRAFT_OF_EXILE_URL, "http://example.com/x"]),
+            ["o.rs: https://beta.craftofexile.com/?game=poe2 is not CRAFT_OF_EXILE_URL",
+             "o.rs: http://example.com/x is not a pinned address"],
+        )
+        self.assertEqual(
+            address_const_offences(
+                "t.rs", f'pub const TRADE_SEARCH_URL: &str = "{TRADE_SEARCH_URL}";\n', [TRADE_SEARCH_URL]
+            ),
+            [],
         )
         self.assertEqual(len(OPENER_CRATE.findall(wr.blank_rust_comments(offender))), 2)
         self.assertTrue(OPENER_INIT.search(offender))
@@ -975,27 +1136,38 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
                 "open_page": [("app", "Shared<'_>"), ("url", "String")],
                 "reveal": [("app", "Shared<'_>"), ("at", "PathBuf")],
                 "open_craft_of_exile": [("app", "Shared<'_>"), ("page", "String")],
+                "open_trade_search": [("app", "Shared<'_>"), ("league", "String")],
+                "refresh_trade_leagues": [("app", "Shared<'_>"), ("host", "String")],
             },
         )
         self.assertEqual(
             address_parameter_offences("o.rs", found),
             ["o.rs: open_page(url: String)", "o.rs: reveal(at: PathBuf)"],
         )
+        # A parameter added to any state-only command is caught, though no
+        # name or type of it reads as an address.
         self.assertEqual(
-            open_command_offences(found),
-            ["open_craft_of_exile: takes [('app', \"Shared<'_>\"), ('page', 'String')], not the app state alone"],
+            [o for c in STATE_ONLY_COMMANDS for o in state_only_offences(found, c)],
+            [
+                "open_craft_of_exile: takes [('app', \"Shared<'_>\"), ('page', 'String')], not the app state alone",
+                "open_trade_search: takes [('app', \"Shared<'_>\"), ('league', 'String')], not the app state alone",
+                "refresh_trade_leagues: takes [('app', \"Shared<'_>\"), ('host', 'String')], not the app state alone",
+            ],
         )
-        self.assertEqual(open_command_offences({}), ["open_craft_of_exile: no such command"])
-        self.assertEqual(open_command_offences({"open_craft_of_exile": [("app", "Shared<'_>")]}), [])
+        self.assertEqual(state_only_offences({}, "open_trade_search"), ["open_trade_search: no such command"])
+        self.assertEqual(state_only_offences({"open_trade_search": [("app", "Shared<'_>")]}, "open_trade_search"), [])
 
         sources = [p for p in self.rust_sources() if not is_rust_test(p)]
         self.assertIn(CH_APP / "src" / "craft.rs", sources)
+        self.assertIn(CH_APP / "src" / "trade.rs", sources)
         self.assertFalse(any(is_rust_test(p) for p in sources))
-        literals, crate_names, calls, found = [], [], [], {}
+        literals, crate_names, calls, found, misnamed = [], [], [], {}, []
         for path in sources:
             text = wr.read(path)
             code = wr.blank_rust_comments(text)
-            literals += [(path, literal) for _, literal in url_literals(wr.rel(path), text)]
+            here = [literal for _, literal in url_literals(wr.rel(path), text)]
+            literals += [(path, literal) for literal in here]
+            misnamed += address_const_offences(wr.rel(path), text, here)
             crate_names += [path for _ in OPENER_CRATE.finditer(code)]
             calls += [path for _ in OPENER_CALL.finditer(code)]
             self.assertFalse(OPENER_INIT.search(code), wr.rel(path))
@@ -1003,22 +1175,89 @@ class NoInputNoWatchingNoNetworkNoGame(unittest.TestCase):
                 self.assertNotIn(command, found, f"{command} declared twice")
                 found[command] = params
                 self.assertEqual(path, GLUE_LIB, f"{command}: a command outside the glue")
-        # The address, once, in ch-app; no other web address.
-        self.assertEqual(len(literals), 1, [(wr.rel(p), lit) for p, lit in literals])
-        path, literal = literals[0]
-        self.assertEqual(literal, CRAFT_OF_EXILE_URL)
-        self.assertTrue(path.is_relative_to(CH_APP / "src"), wr.rel(path))
+        # The two addresses, each once, in ch-app, each its constant's value;
+        # no other web address.
+        self.assertEqual(
+            sorted(lit for _, lit in literals), sorted(ADDRESS_CONSTS.values()), [(wr.rel(p), lit) for p, lit in literals]
+        )
+        for path, _ in literals:
+            self.assertTrue(path.is_relative_to(CH_APP / "src"), wr.rel(path))
+        self.assertEqual(misnamed, [])
         # The opener: named once, called once, both in the glue.
         self.assertEqual(crate_names, [GLUE_LIB])
         self.assertEqual(calls, [GLUE_LIB])
         glue = wr.blank_rust_comments(wr.read(GLUE_LIB))
         self.assertEqual(len(NO_LINK_HANDLER.findall(glue)), 1)
         self.assertEqual(len(ANY_LINK_HANDLER.findall(glue)), 1)
-        # The commands: the walk sees them, the open command takes the state
-        # alone, and none takes an address or a path.
+        # The commands: the walk sees them, the two open commands and the
+        # league refresh take the state alone, and none takes an address or
+        # a path.
         self.assertIn("grab_text", found)
-        self.assertEqual(open_command_offences(found), [])
+        self.assertIn("set_trade_search", found)
+        self.assertEqual([o for c in STATE_ONLY_COMMANDS for o in state_only_offences(found, c)], [])
         self.assertEqual(address_parameter_offences("glue", found), [])
+
+    def test_the_league_list_is_the_one_trade_request(self):
+        # The host and path: a changed path, a second definition, one in a
+        # comment or a test (not counted), one missing.
+        lib = (
+            '// pub const TRADE_LEAGUES_PATH: &str = "/api/trade2/data/leagues";\n'
+            'pub const TRADE_LEAGUES_HOST: &str = "www.pathofexile.com";\n'
+            'pub const TRADE_LEAGUES_PATH: &str = "/api/trade2/data/stats";\n'
+            "#[cfg(test)]\nmod tests {\n"
+            '    const TRADE_LEAGUES_HOST: &str = "127.0.0.1";\n'
+            '    fn f() { let s = "}"; }\n'
+            "}\n"
+        )
+        self.assertEqual(
+            league_pin_offences({"lib.rs": lib}),
+            ["TRADE_LEAGUES_PATH: '/api/trade2/data/stats', not '/api/trade2/data/leagues'"],
+        )
+        self.assertEqual(
+            league_pin_offences({"lib.rs": lib, "win.rs": 'const TRADE_LEAGUES_HOST: &\'static str = "x";\n'}),
+            [
+                "TRADE_LEAGUES_HOST: defined 2 times outside tests",
+                "TRADE_LEAGUES_PATH: '/api/trade2/data/stats', not '/api/trade2/data/leagues'",
+            ],
+        )
+        self.assertEqual(
+            league_pin_offences({"lib.rs": ""}),
+            ["TRADE_LEAGUES_HOST: defined 0 times outside tests", "TRADE_LEAGUES_PATH: defined 0 times outside tests"],
+        )
+        # The callers: the glue's one, a second in it, one through a `use`,
+        # and the Shell method of the same name (no call of ep-net).
+        glue = (
+            "// ep_net::fetch_trade_leagues() in a comment is fine\n"
+            "fn fetch_trade_leagues(&self) -> Result<Answer, String> {\n"
+            "    ep_net::fetch_trade_leagues()\n"
+            "}\n"
+            "let again = ep_net :: fetch_trade_leagues();\n"
+            "use ep_net::{fetch_release_list, fetch_trade_leagues};\n"
+        )
+        self.assertEqual(
+            league_fetch_names("lib.rs", glue, EP_NET_LEAGUES_CALL), ["lib.rs:3", "lib.rs:5", "lib.rs:6"]
+        )
+        # In another app, any mention of the name is a caller.
+        other = "// fetch_trade_leagues in a comment is fine\nlet r = net::fetch_trade_leagues();\n"
+        self.assertEqual(league_fetch_names("o.rs", other, LEAGUES_FETCH_NAME), ["o.rs:2"])
+
+        # The real tree: ep-net defines each pin once, outside tests.
+        net = wr.walk(EP_NET / "src", {".rs"})
+        self.assertIn(EP_NET / "src" / "lib.rs", net)
+        self.assertEqual(league_pin_offences({wr.rel(p): wr.read(p) for p in net}), [])
+        # The crafting helper names the call once, in the glue.
+        callers = []
+        for path in wr.walk(CRATES, {".rs"}) + wr.walk(TAURI, {".rs"}):
+            callers += [(path, hit) for hit in league_fetch_names(wr.rel(path), wr.read(path), EP_NET_LEAGUES_CALL)]
+        self.assertEqual([p for p, _ in callers], [GLUE_LIB], [hit for _, hit in callers])
+        # No other app, nor the other shared crate, names it at all.
+        others = []
+        for top in OTHER_APPS + [EP_UPDATE]:
+            files = wr.walk(top, {".rs"})
+            self.assertGreater(len(files), 0 if top == EP_UPDATE else 5, f"the walk found no Rust sources in {wr.rel(top)}")
+            for path in files:
+                others += league_fetch_names(wr.rel(path), wr.read(path), LEAGUES_FETCH_NAME)
+        self.assertEqual(others, [])
 
     def test_package_json_has_no_tauri_plugin(self):
         self.assertEqual(

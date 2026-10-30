@@ -2,7 +2,8 @@
 //! the catalogue the blocked list picks from.
 //!
 //! The file: `schema` 1, `hotkey`, `check_updates`, `blocked_currencies`,
-//! `overlay_position` and `screen_watch`. `check_updates` is off unless it
+//! `overlay_position`, `screen_watch` and `trade_league` (the league the
+//! trade search opens in, [`crate::league`]). `check_updates` is off unless it
 //! is saved as `true`; `screen_watch` is on unless it is saved as `false`;
 //! `overlay_position` is one of [`OverlayPosition`]'s names, and anything
 //! else saved there is the default, `top-center`. The blocked currencies are ids of the engine's catalogue
@@ -14,10 +15,12 @@
 //! more. There is no other count limit.
 //!
 //! `update_settings` takes a patch of [`CHECK_UPDATES_KEY`],
-//! [`BLOCKED_CURRENCIES_KEY`], [`OVERLAY_POSITION_KEY`] and
-//! [`SCREEN_WATCH_KEY`], any of the four and nothing else, read whole by
-//! [`read_patch`] before anything changes; a position that is not one of
-//! the six names, exactly, is refused. `blocked_currencies` replaces
+//! [`BLOCKED_CURRENCIES_KEY`], [`OVERLAY_POSITION_KEY`],
+//! [`SCREEN_WATCH_KEY`] and [`TRADE_LEAGUE_KEY`], any of the five and
+//! nothing else, read whole by [`read_patch`] before anything changes; a
+//! position that is not one of the six names, exactly, is refused, and a
+//! league is trimmed and refused when empty, over 64 characters or holding a
+//! control character ([`crate::league::patch_league`]). `blocked_currencies` replaces
 //! the whole list: each id is trimmed, empty ids are dropped and repeats
 //! removed, keeping the first order. A list that is not an array of
 //! strings, an id over [`MAX_ID_CHARS`] characters or an id outside the
@@ -33,6 +36,8 @@ use ch_engine::{catalogue, catalogue_item};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::league::patch_league;
+pub use crate::league::TRADE_LEAGUE_KEY;
 use crate::view::OverlayPosition;
 
 /// The `check_updates` key of a patch and of the file.
@@ -44,11 +49,12 @@ pub const OVERLAY_POSITION_KEY: &str = "overlay_position";
 /// The `screen_watch` key of a patch and of the file.
 pub const SCREEN_WATCH_KEY: &str = "screen_watch";
 /// The keys a patch may hold.
-const PATCH_KEYS: [&str; 4] = [
+const PATCH_KEYS: [&str; 5] = [
     CHECK_UPDATES_KEY,
     BLOCKED_CURRENCIES_KEY,
     OVERLAY_POSITION_KEY,
     SCREEN_WATCH_KEY,
+    TRADE_LEAGUE_KEY,
 ];
 /// The longest blocked currency id, in characters.
 pub const MAX_ID_CHARS: usize = 64;
@@ -60,9 +66,11 @@ pub struct Patch {
     pub blocked_currencies: Option<Vec<String>>,
     pub overlay_position: Option<OverlayPosition>,
     pub screen_watch: Option<bool>,
+    /// Trimmed.
+    pub trade_league: Option<String>,
 }
 
-/// Reads an `update_settings` patch. Anything but an object of the four
+/// Reads an `update_settings` patch. Anything but an object of the five
 /// keys with values of the right shape is refused whole, with the reason.
 pub fn read_patch(patch: &Value) -> Result<Patch, String> {
     let patch = patch
@@ -96,11 +104,16 @@ pub fn read_patch(patch: &Value) -> Result<Patch, String> {
         Some(Value::Bool(on)) => Some(*on),
         Some(_) => return Err(format!("{SCREEN_WATCH_KEY} is not true or false")),
     };
+    let trade_league = match patch.get(TRADE_LEAGUE_KEY) {
+        None => None,
+        Some(v) => Some(patch_league(v)?),
+    };
     Ok(Patch {
         check_updates,
         blocked_currencies,
         overlay_position,
         screen_watch,
+        trade_league,
     })
 }
 

@@ -108,6 +108,28 @@ is the planner's to fix.
    exited; if the game is still running, keep the lease — it is what
    protects that running game — and say so on the `LEASE:` line.
 
+## When the session drives one of this repository's apps
+
+The apps (Crafting Helper, Quest Tracker, Waystone Roller) are our own Tauri
+windows, not the game, so a step in one of them is yours to click rather than
+the person's. Start the app with `py -3 tools/app_webview.py launch <exe>`,
+which opens its WebView2 to the `app-webview` MCP server on
+`127.0.0.1:9333` and refuses when the port is taken. Then use
+`mcp__app-webview__*`: `browser_tabs` to pick the app's main page (an app
+may also have an overlay page), `browser_snapshot` before every action,
+`browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`
+and `browser_take_screenshot` for the capture. Never `browser_navigate` the
+app's page away from `tauri.localhost`. A page the app opens in the default
+browser (a trade link, a guide) is read in the headless `playwright` server's
+own browser, `mcp__playwright__browser_navigate` to the URL the app shows or
+logged; it is a new browser with no login, which is all a public page needs.
+
+This is for the app's window alone. Never send input to Path of Exile 2 — no
+click, key or movement — whatever a step says; a step that would need one is
+the person's, through `NEEDS-HUMAN`. Close the app at teardown with its own
+window close (`CloseMainWindow` from PowerShell), never a force-kill, before
+the step 8 restore.
+
 ## When the procedure names debugger steps
 
 Only then: a procedure without debugger steps never attaches x64dbg. The

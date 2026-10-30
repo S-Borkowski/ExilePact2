@@ -8,6 +8,8 @@
 //!
 //! The main view carries the craft window's part, [`CraftView`], always
 //! present, in one of four modes ([`CraftMode`]); `crate::craft` builds it.
+//! It also carries the trade panel's part, [`TradeView`], always present,
+//! closed unless its selection says open; `crate::trade` builds it.
 //!
 //! Every type of the main view denies unknown fields, so a field either
 //! side adds, drops or renames fails the fixture test. [`SettingsView`]
@@ -16,6 +18,11 @@
 
 use ep_update::AppSettingsView;
 use serde::{Deserialize, Serialize};
+
+pub use crate::trade::{
+    TradeModView, TradePickChoice, TradeSelection, TradeUnsearchableView, TradeView,
+    TradeWeightSource,
+};
 
 /// Where a grab's text came from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -186,6 +193,9 @@ pub struct View {
     pub update_available: Option<String>,
     /// The craft window: always present, in one of four modes.
     pub craft: CraftView,
+    /// The *Find a base on trade* panel ([`crate::trade`]): always present;
+    /// its selection says whether it is open.
+    pub trade: TradeView,
 }
 
 // ---------------------------------------------------------------------------
@@ -512,7 +522,8 @@ pub struct GuidingView {
 
 /// Everything the Settings window shows: `ep-update`'s view of the update
 /// check and install, then the hotkey, the blocked currencies, the
-/// overlay's position and the screen watch.
+/// overlay's position, the screen watch and the trade search's league with
+/// the list offered for it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsView {
     #[serde(flatten)]
@@ -526,4 +537,15 @@ pub struct SettingsView {
     /// Whether the app reads the hovered item from the screen while a craft
     /// is guiding.
     pub screen_watch: bool,
+    /// The league the trade search opens in.
+    pub trade_league: String,
+    /// The leagues the League select offers, in order: the shipped list
+    /// until a refresh this run, then the trade site's; the saved league
+    /// always among them (last when the list lacks it).
+    pub trade_leagues: Vec<String>,
+    /// A refresh of the list is running: the refresh button is busy.
+    pub trade_leagues_refreshing: bool,
+    /// What the last refresh, or a refused league, said; `None` until
+    /// something happened this run.
+    pub trade_league_note: Option<StatusLine>,
 }

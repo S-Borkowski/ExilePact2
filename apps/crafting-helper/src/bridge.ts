@@ -12,8 +12,8 @@
 //   http://127.0.0.1:1422/overlay.html?state=overlay-active&scene=bright
 //
 // Commands are logged, not acted on: the preview has no app behind it, so a
-// paste is not shown as a grab, a target change does not re-plan and the
-// Craft of Exile button opens nothing. The currency pickers read the
+// paste is not shown as a grab, a target change does not re-plan, and the
+// Craft of Exile button and the trade panel's search open nothing. The currency pickers read the
 // catalogue once, from `get_catalogue` in the app and from
 // `fixtures/catalogue.json` in the preview. The fixtures are reached only
 // behind `import.meta.env.DEV`, which is false in `vite build`, so the
@@ -21,7 +21,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { type CatalogueGroup, type OverlayPosition, type View, catalogueProblems, viewProblems } from './ipc';
+import { type CatalogueGroup, type OverlayPosition, type TradeSelection, type View, catalogueProblems, viewProblems } from './ipc';
 
 export const VIEW_EVENT = 'ch:view';
 
@@ -54,6 +54,18 @@ export interface CommandArgs {
    * one address it opens, and the page names none.
    */
   open_craft_of_exile: Record<string, never>;
+  /**
+   * The trade panel's whole selection (class, base, item level, picks with
+   * their floors, Both slots, open or closed); the app refuses it whole when
+   * something does not fit, and keeps the last one. It names no address.
+   */
+  set_trade_search: { search: TradeSelection };
+  /**
+   * The trade panel's Search button. It takes nothing: the app builds the
+   * link from its own state and the saved league, and opens it in the
+   * default browser; the page names no address.
+   */
+  open_trade_search: Record<string, never>;
 }
 
 /** One target as `set_targets` sends it. */
@@ -72,6 +84,8 @@ export interface SettingsPatch {
   blocked_currencies?: string[];
   overlay_position?: OverlayPosition;
   screen_watch?: boolean;
+  /** The league the trade search opens in; the app trims it and refuses an empty, overlong or control-character name. */
+  trade_league?: string;
 }
 
 /**
@@ -80,7 +94,8 @@ export interface SettingsPatch {
  * and the shell also pushes it on `ch:app-settings` after every change.
  * `update_settings`, `set_hotkey` and `install_update` reject with a
  * one-line reason when refused. `install_update` is the only way an install
- * starts; no command opens a release page or a browser.
+ * starts; no command opens a release page or a browser. `refresh_trade_leagues`
+ * is the only one that asks the trade site anything (its league list).
  */
 export interface SettingsCommandArgs {
   get_app_settings: Record<string, never>;
@@ -90,6 +105,12 @@ export interface SettingsCommandArgs {
   check_for_updates: Record<string, never>;
   install_update: Record<string, never>;
   cancel_update: Record<string, never>;
+  /**
+   * The Trade section's refresh icon: the app asks the trade site for its
+   * league list on a thread of its own and answers at once, marked
+   * refreshing. It takes nothing, so the page names no address.
+   */
+  refresh_trade_leagues: Record<string, never>;
 }
 export type SettingsCommand = keyof SettingsCommandArgs;
 

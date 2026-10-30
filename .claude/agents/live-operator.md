@@ -1,7 +1,7 @@
 ---
 name: live-operator
 description: Runs one workorder's live game session from its written procedure — backs up the local state the procedure names, takes the machine-wide game lease once the person has the game running, runs the positive control first, reads each step's evidence (the mod's output, outside checks, debugger logpoints), records it to the workorder's `<slug>-live-<n>.md`, and reports each check against its expected value. Spawned by /workorder's driver after the user has approved the session; hands every in-game action a person must take back to the driver. Never builds, installs a DLL, edits source, or judges a mechanism.
-tools: Read, Grep, Glob, Bash, PowerShell, Write, mcp__x64dbg__status, mcp__x64dbg__logpoint, mcp__x64dbg__command, mcp__x64dbg__bplist, mcp__x64dbg__log, mcp__x64dbg__modules, mcp__x64dbg__disasm, mcp__x64dbg__detach
+tools: Read, Grep, Glob, Bash, PowerShell, Write, mcp__x64dbg__status, mcp__x64dbg__logpoint, mcp__x64dbg__command, mcp__x64dbg__bplist, mcp__x64dbg__log, mcp__x64dbg__modules, mcp__x64dbg__disasm, mcp__x64dbg__detach, mcp__app-webview__browser_tabs, mcp__app-webview__browser_snapshot, mcp__app-webview__browser_click, mcp__app-webview__browser_type, mcp__app-webview__browser_select_option, mcp__app-webview__browser_press_key, mcp__app-webview__browser_hover, mcp__app-webview__browser_wait_for, mcp__app-webview__browser_take_screenshot, mcp__app-webview__browser_evaluate, mcp__app-webview__browser_console_messages, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_wait_for, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_close
 model: opus
 effort: medium
 color: orange
@@ -107,6 +107,28 @@ is the planner's to fix.
    `LIVE-ABORTED` after step 4 took the lease: release it once the game has
    exited; if the game is still running, keep the lease — it is what
    protects that running game — and say so on the `LEASE:` line.
+
+## When the session drives one of this repository's apps
+
+The apps (Crafting Helper, Quest Tracker, Waystone Roller) are our own Tauri
+windows, not the game, so a step in one of them is yours to click rather than
+the person's. Start the app with `py -3 tools/app_webview.py launch <exe>`,
+which opens its WebView2 to the `app-webview` MCP server on
+`127.0.0.1:9333` and refuses when the port is taken. Then use
+`mcp__app-webview__*`: `browser_tabs` to pick the app's main page (an app
+may also have an overlay page), `browser_snapshot` before every action,
+`browser_click`, `browser_type`, `browser_select_option`, `browser_press_key`
+and `browser_take_screenshot` for the capture. Never `browser_navigate` the
+app's page away from `tauri.localhost`. A page the app opens in the default
+browser (a trade link, a guide) is read in the headless `playwright` server's
+own browser, `mcp__playwright__browser_navigate` to the URL the app shows or
+logged; it is a new browser with no login, which is all a public page needs.
+
+This is for the app's window alone. Never send input to Path of Exile 2 — no
+click, key or movement — whatever a step says; a step that would need one is
+the person's, through `NEEDS-HUMAN`. Close the app at teardown with its own
+window close (`CloseMainWindow` from PowerShell), never a force-kill, before
+the step 8 restore.
 
 ## When the procedure names debugger steps
 

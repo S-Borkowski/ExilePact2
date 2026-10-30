@@ -66,7 +66,18 @@ pub struct Recorded {
     pub opened: Vec<String>,
     /// Opening the browser fails with this reason.
     pub open_fails: Option<String>,
+    /// How often the app asked for the trade site's league list, and how
+    /// many of those asks have returned.
+    pub league_calls: usize,
+    pub league_returned: usize,
+    /// What the next league list ask returns; `None`: a failure.
+    pub league_answer: Option<Result<Answer, String>>,
+    /// A league list ask waits while this is set (a slow answer).
+    pub league_held: bool,
 }
+
+/// What an unanswered league list ask says.
+pub const NO_LEAGUE_ANSWER: &str = "the fake shell has no league list";
 
 /// What a busy clipboard's read says, as the glue reports it after its
 /// retries.
@@ -79,9 +90,26 @@ pub const BUSY: &str = "another program holds the clipboard";
 #[derive(Clone, Default)]
 pub struct FakeShell {
     pub rec: Arc<Mutex<Recorded>>,
+    /// Wakes a league list ask held on `league_held`.
+    pub league_gate: Arc<Condvar>,
 }
 
 impl FakeShell {
+    /// The league list asks answer `answer`.
+    pub fn answer_leagues(&self, answer: Result<Answer, String>) {
+        self.rec().league_answer = Some(answer);
+    }
+
+    /// Holds league list asks in flight, or lets them return.
+    pub fn hold_leagues(&self, held: bool) {
+        self.rec().league_held = held;
+        self.league_gate.notify_all();
+    }
+
+    pub fn league_calls(&self) -> usize {
+        self.rec().league_calls
+    }
+
     pub fn with_taken(taken: &[&str]) -> FakeShell {
         let shell = FakeShell::default();
         shell.rec().taken = taken.iter().map(|s| s.to_string()).collect();
@@ -188,6 +216,56 @@ impl Shell for FakeShell {
             None => Ok(()),
         }
     }
+
+    fn fetch_trade_leagues(&self) -> Result<Answer, String> {
+        let mut r = self.rec();
+        r.league_calls += 1;
+        while r.league_held {
+            r = self.league_gate.wait(r).unwrap();
+        }
+        r.league_returned += 1;
+        r.league_answer
+            .clone()
+            .unwrap_or_else(|| Err(NO_LEAGUE_ANSWER.to_string()))
+    }
+}
+
+/// The trade site's league list as it answered on 2026-10-30: `result`, a
+/// list of `{id, realm, text}`, here with `entries` as (id, realm).
+pub fn leagues_answer(entries: &[(&str, &str)]) -> Answer {
+    let result: Vec<Value> = entries
+        .iter()
+        .map(|(id, realm)| json!({ "id": id, "realm": realm, "text": id }))
+        .collect();
+    Answer {
+        status: 200,
+        body: serde_json::to_vec(&json!({ "result": result })).unwrap(),
+    }
+}
+
+/// A refreshed list unlike the shipped one: a new league first, then two
+/// of the shipped.
+pub const SITE_LEAGUES: [&str; 3] = ["Dawn of the Hunt", "HC Dawn of the Hunt", "Standard"];
+
+/// [`SITE_LEAGUES`], each in the poe2 realm.
+pub fn site_leagues() -> Answer {
+    let entries: Vec<(&str, &str)> = SITE_LEAGUES.iter().map(|l| (*l, "poe2")).collect();
+    leagues_answer(&entries)
+}
+
+/// Waits until a league refresh ended: the app is no longer refreshing and
+/// the last Settings view it sent says so (the app logs the outcome before
+/// it sends that view).
+pub fn wait_refreshed(app: &App, shell: &FakeShell) -> SettingsView {
+    wait_until("the league refresh to end", || {
+        !app.get_app_settings().trade_leagues_refreshing
+            && shell
+                .rec()
+                .app_settings
+                .last()
+                .is_some_and(|v| !v.trade_leagues_refreshing)
+    });
+    app.get_app_settings()
 }
 
 pub fn app_root() -> PathBuf {

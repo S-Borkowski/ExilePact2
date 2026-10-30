@@ -2,7 +2,8 @@
 // (`crates/ch-app/src/view.rs`): `ep-update`'s `AppSettingsView`
 // (`apps/shared/crates/ep-update/src/view.rs`) flattened in, then the
 // hotkey, what the last hotkey change said, the blocked currencies, the
-// overlay's position and the screen watch.
+// overlay's position, the screen watch, and the trade search's league with
+// the leagues offered for it.
 // Field names are snake_case exactly as serde writes them in
 // `ch:app-settings` and the answer to `get_app_settings`. The window renders
 // these values; whether a check runs, what it found, which version is newer,
@@ -87,6 +88,18 @@ export interface SettingsView extends AppSettingsView {
   overlay_position: OverlayPosition;
   /** Whether the app reads the hovered item from the screen while a craft is guiding (on by default). */
   screen_watch: boolean;
+  /** The league the trade search opens in. */
+  trade_league: string;
+  /**
+   * The leagues the League select offers, in order: the shipped list until a
+   * refresh this run, then the trade site's; the saved league always among
+   * them (last when the list lacks it).
+   */
+  trade_leagues: string[];
+  /** A refresh of the list is running: the refresh button is busy. */
+  trade_leagues_refreshing: boolean;
+  /** What the last refresh, or a refused league, said; null until something happened this run. */
+  trade_league_note: StatusLine | null;
 }
 
 // One field spec per type, from `../ipc.ts`'s checks: `Spec<T>` makes the
@@ -112,6 +125,10 @@ const settings = record<SettingsView>({
   blocked_currencies: list(str),
   overlay_position: oneOf(OVERLAY_POSITIONS),
   screen_watch: bool,
+  trade_league: str,
+  trade_leagues: list(str),
+  trade_leagues_refreshing: bool,
+  trade_league_note: nullable(statusLine),
 });
 
 /** Every way `value` differs from a `SettingsView`; empty when it is one. */

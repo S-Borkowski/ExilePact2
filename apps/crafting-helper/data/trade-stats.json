@@ -1,0 +1,5239 @@
+{
+  "schema": 1,
+  "source": "https://www.pathofexile.com/api/trade2/data/stats",
+  "fetched": "2026-10-30",
+  "source_note": "Trade stat ids and texts from the Path of Exile trade site's public stat list; the texts are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Only the entries matched to the crafting helper's modifiers are kept.",
+  "classes": {
+    "Gloves": {
+      "prefix-increased-armour": {
+        "text": "#% increased Armour (Local)",
+        "ids": [
+          "explicit.stat_1062208444"
+        ]
+      },
+      "prefix-increased-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-energy-shield": {
+        "text": "#% increased Armour and Energy Shield",
+        "ids": [
+          "explicit.stat_3321629045"
+        ]
+      },
+      "prefix-increased-armour-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-evasion": {
+        "text": "#% increased Armour and Evasion",
+        "ids": [
+          "explicit.stat_2451402625"
+        ]
+      },
+      "prefix-increased-armour-and-evasion-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-energy-shield": {
+        "text": "#% increased Energy Shield",
+        "ids": [
+          "explicit.stat_4015621042"
+        ]
+      },
+      "prefix-increased-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-and-energy-shield": {
+        "text": "#% increased Evasion and Energy Shield",
+        "ids": [
+          "explicit.stat_1999113824"
+        ]
+      },
+      "prefix-increased-evasion-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_124859000"
+        ]
+      },
+      "prefix-increased-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating",
+        "ids": [
+          "explicit.stat_803737631"
+        ]
+      },
+      "prefix-to-armour": {
+        "text": "# to Armour (Local)",
+        "ids": [
+          "explicit.stat_3484657501"
+        ]
+      },
+      "prefix-to-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating": {
+        "text": "# to Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_53045048"
+        ]
+      },
+      "prefix-to-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-energy-shield": {
+        "text": "# to maximum Energy Shield (Local)",
+        "ids": [
+          "explicit.stat_4052037485"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "prefix-adds-to-cold-damage-to-attacks": {
+        "text": "Adds # to # Cold damage to Attacks",
+        "ids": [
+          "explicit.stat_4067062424"
+        ]
+      },
+      "prefix-adds-to-fire-damage-to-attacks": {
+        "text": "Adds # to # Fire damage to Attacks",
+        "ids": [
+          "explicit.stat_1573130764"
+        ]
+      },
+      "prefix-adds-to-lightning-damage-to-attacks": {
+        "text": "Adds # to # Lightning damage to Attacks",
+        "ids": [
+          "explicit.stat_1754445556"
+        ]
+      },
+      "prefix-adds-to-physical-damage-to-attacks": {
+        "text": "Adds # to # Physical Damage to Attacks",
+        "ids": [
+          "explicit.stat_3032590688"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-increased-critical-damage-bonus": {
+        "text": "#% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_3556824919"
+        ]
+      },
+      "suffix-increased-energy-shield-recharge-rate": {
+        "text": "#% increased Energy Shield Recharge Rate",
+        "ids": [
+          "explicit.stat_2339757871"
+        ]
+      },
+      "suffix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-of-armour-also-applies-to-elemental-damage": {
+        "text": "#% of Armour also applies to Elemental Damage",
+        "ids": [
+          "explicit.stat_3362812763"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-gain-life-per-enemy-hit-with-attacks": {
+        "text": "Gain # Life per Enemy Hit with Attacks",
+        "ids": [
+          "explicit.stat_2797971005"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-gain-deflection-rating-equal-to-of-evasion-rating": {
+        "text": "Gain Deflection Rating equal to #% of Evasion Rating",
+        "ids": [
+          "explicit.stat_3033371881"
+        ]
+      },
+      "suffix-leech-of-physical-attack-damage-as-life": {
+        "text": "Leech #% of Physical Attack Damage as Life",
+        "ids": [
+          "explicit.stat_2557965901"
+        ]
+      },
+      "suffix-leech-of-physical-attack-damage-as-mana": {
+        "text": "Leech #% of Physical Attack Damage as Mana",
+        "ids": [
+          "explicit.stat_707457662"
+        ]
+      }
+    },
+    "Boots": {
+      "prefix-increased-armour": {
+        "text": "#% increased Armour (Local)",
+        "ids": [
+          "explicit.stat_1062208444"
+        ]
+      },
+      "prefix-increased-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-energy-shield": {
+        "text": "#% increased Armour and Energy Shield",
+        "ids": [
+          "explicit.stat_3321629045"
+        ]
+      },
+      "prefix-increased-armour-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-evasion": {
+        "text": "#% increased Armour and Evasion",
+        "ids": [
+          "explicit.stat_2451402625"
+        ]
+      },
+      "prefix-increased-armour-and-evasion-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-energy-shield": {
+        "text": "#% increased Energy Shield",
+        "ids": [
+          "explicit.stat_4015621042"
+        ]
+      },
+      "prefix-increased-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-and-energy-shield": {
+        "text": "#% increased Evasion and Energy Shield",
+        "ids": [
+          "explicit.stat_1999113824"
+        ]
+      },
+      "prefix-increased-evasion-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_124859000"
+        ]
+      },
+      "prefix-increased-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-movement-speed": {
+        "text": "#% increased Movement Speed",
+        "ids": [
+          "explicit.stat_2250533757"
+        ]
+      },
+      "prefix-to-armour": {
+        "text": "# to Armour (Local)",
+        "ids": [
+          "explicit.stat_3484657501"
+        ]
+      },
+      "prefix-to-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating": {
+        "text": "# to Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_53045048"
+        ]
+      },
+      "prefix-to-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-energy-shield": {
+        "text": "# to maximum Energy Shield (Local)",
+        "ids": [
+          "explicit.stat_4052037485"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "suffix-life-regeneration-per-second": {
+        "text": "# Life Regeneration per second",
+        "ids": [
+          "explicit.stat_3325883026"
+        ]
+      },
+      "suffix-increased-energy-shield-recharge-rate": {
+        "text": "#% increased Energy Shield Recharge Rate",
+        "ids": [
+          "explicit.stat_2339757871"
+        ]
+      },
+      "suffix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-reduced-chill-duration-on-you": {
+        "text": "#% reduced Chill Duration on you",
+        "ids": [
+          "explicit.stat_1874553720"
+        ]
+      },
+      "suffix-reduced-freeze-duration-on-you": {
+        "text": "#% reduced Freeze Duration on you",
+        "ids": [
+          "explicit.stat_2160282525"
+        ]
+      },
+      "suffix-reduced-shock-duration-on-you": {
+        "text": "#% reduced Shock duration on you",
+        "ids": [
+          "explicit.stat_99927264"
+        ]
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-stun-threshold": {
+        "text": "# to Stun Threshold",
+        "ids": [
+          "explicit.stat_915769802"
+        ]
+      },
+      "suffix-of-armour-also-applies-to-elemental-damage": {
+        "text": "#% of Armour also applies to Elemental Damage",
+        "ids": [
+          "explicit.stat_3362812763"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-gain-deflection-rating-equal-to-of-evasion-rating": {
+        "text": "Gain Deflection Rating equal to #% of Evasion Rating",
+        "ids": [
+          "explicit.stat_3033371881"
+        ]
+      }
+    },
+    "Helmets": {
+      "prefix-increased-armour": {
+        "text": "#% increased Armour (Local)",
+        "ids": [
+          "explicit.stat_1062208444"
+        ]
+      },
+      "prefix-increased-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-energy-shield": {
+        "text": "#% increased Armour and Energy Shield",
+        "ids": [
+          "explicit.stat_3321629045"
+        ]
+      },
+      "prefix-increased-armour-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-energy-shield-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-evasion": {
+        "text": "#% increased Armour and Evasion",
+        "ids": [
+          "explicit.stat_2451402625"
+        ]
+      },
+      "prefix-increased-armour-and-evasion-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-evasion-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-energy-shield": {
+        "text": "#% increased Energy Shield",
+        "ids": [
+          "explicit.stat_4015621042"
+        ]
+      },
+      "prefix-increased-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-energy-shield-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-and-energy-shield": {
+        "text": "#% increased Evasion and Energy Shield",
+        "ids": [
+          "explicit.stat_1999113824"
+        ]
+      },
+      "prefix-increased-evasion-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-and-energy-shield-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_124859000"
+        ]
+      },
+      "prefix-increased-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-rating-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating",
+        "ids": [
+          "explicit.stat_803737631"
+        ]
+      },
+      "prefix-to-armour": {
+        "text": "# to Armour (Local)",
+        "ids": [
+          "explicit.stat_3484657501"
+        ]
+      },
+      "prefix-to-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating": {
+        "text": "# to Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_53045048"
+        ]
+      },
+      "prefix-to-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-energy-shield": {
+        "text": "# to maximum Energy Shield (Local)",
+        "ids": [
+          "explicit.stat_4052037485"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "suffix-life-regeneration-per-second": {
+        "text": "# Life Regeneration per second",
+        "ids": [
+          "explicit.stat_3325883026"
+        ]
+      },
+      "suffix-increased-critical-hit-chance": {
+        "text": "#% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_587431675"
+        ]
+      },
+      "suffix-increased-energy-shield-recharge-rate": {
+        "text": "#% increased Energy Shield Recharge Rate",
+        "ids": [
+          "explicit.stat_2339757871"
+        ]
+      },
+      "suffix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-minion-skills": {
+        "text": "# to Level of all Minion Skills",
+        "ids": [
+          "explicit.stat_2162097452"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-of-armour-also-applies-to-elemental-damage": {
+        "text": "#% of Armour also applies to Elemental Damage",
+        "ids": [
+          "explicit.stat_3362812763"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-gain-deflection-rating-equal-to-of-evasion-rating": {
+        "text": "Gain Deflection Rating equal to #% of Evasion Rating",
+        "ids": [
+          "explicit.stat_3033371881"
+        ]
+      }
+    },
+    "Body Armours": {
+      "prefix-to-physical-thorns-damage": {
+        "text": "# to # Physical Thorns damage",
+        "ids": [
+          "explicit.stat_2881298780"
+        ]
+      },
+      "prefix-increased-armour": {
+        "text": "#% increased Armour (Local)",
+        "ids": [
+          "explicit.stat_1062208444"
+        ]
+      },
+      "prefix-increased-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-energy-shield": {
+        "text": "#% increased Armour and Energy Shield",
+        "ids": [
+          "explicit.stat_3321629045"
+        ]
+      },
+      "prefix-increased-armour-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-evasion": {
+        "text": "#% increased Armour and Evasion",
+        "ids": [
+          "explicit.stat_2451402625"
+        ]
+      },
+      "prefix-increased-armour-and-evasion-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-evasion-and-energy-shield": {
+        "text": "#% increased Armour, Evasion and Energy Shield",
+        "ids": [
+          "explicit.stat_3523867985"
+        ]
+      },
+      "prefix-increased-energy-shield": {
+        "text": "#% increased Energy Shield",
+        "ids": [
+          "explicit.stat_4015621042"
+        ]
+      },
+      "prefix-increased-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-and-energy-shield": {
+        "text": "#% increased Evasion and Energy Shield",
+        "ids": [
+          "explicit.stat_1999113824"
+        ]
+      },
+      "prefix-increased-evasion-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_124859000"
+        ]
+      },
+      "prefix-increased-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour": {
+        "text": "# to Armour (Local)",
+        "ids": [
+          "explicit.stat_3484657501"
+        ]
+      },
+      "prefix-to-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-4": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-5": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-6": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating": {
+        "text": "# to Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_53045048"
+        ]
+      },
+      "prefix-to-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating-4": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-energy-shield": {
+        "text": "# to maximum Energy Shield (Local)",
+        "ids": [
+          "explicit.stat_4052037485"
+        ]
+      },
+      "prefix-to-maximum-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-spirit": {
+        "text": "# to Spirit",
+        "ids": [
+          "explicit.stat_3981240776",
+          "explicit.stat_2704225257"
+        ]
+      },
+      "suffix-life-regeneration-per-second": {
+        "text": "# Life Regeneration per second",
+        "ids": [
+          "explicit.stat_3325883026"
+        ]
+      },
+      "suffix-increased-energy-shield-recharge-rate": {
+        "text": "#% increased Energy Shield Recharge Rate",
+        "ids": [
+          "explicit.stat_2339757871"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-reduced-duration-of-bleeding-on-you": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-reduced-ignite-duration-on-you": {
+        "text": "#% reduced Ignite Duration on you",
+        "ids": [
+          "explicit.stat_986397080"
+        ]
+      },
+      "suffix-reduced-poison-duration-on-you": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-stun-threshold": {
+        "text": "# to Stun Threshold",
+        "ids": [
+          "explicit.stat_915769802"
+        ]
+      },
+      "suffix-of-armour-also-applies-to-elemental-damage": {
+        "text": "#% of Armour also applies to Elemental Damage",
+        "ids": [
+          "explicit.stat_3362812763"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-gain-deflection-rating-equal-to-of-evasion-rating": {
+        "text": "Gain Deflection Rating equal to #% of Evasion Rating",
+        "ids": [
+          "explicit.stat_3033371881"
+        ]
+      }
+    },
+    "Shields": {
+      "prefix-to-physical-thorns-damage": {
+        "text": "# to # Physical Thorns damage",
+        "ids": [
+          "explicit.stat_2881298780"
+        ]
+      },
+      "prefix-increased-armour": {
+        "text": "#% increased Armour (Local)",
+        "ids": [
+          "explicit.stat_1062208444"
+        ]
+      },
+      "prefix-increased-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-energy-shield": {
+        "text": "#% increased Armour and Energy Shield",
+        "ids": [
+          "explicit.stat_3321629045"
+        ]
+      },
+      "prefix-increased-armour-and-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-armour-and-evasion": {
+        "text": "#% increased Armour and Evasion",
+        "ids": [
+          "explicit.stat_2451402625"
+        ]
+      },
+      "prefix-increased-armour-and-evasion-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-block-chance": {
+        "text": "#% increased Block chance (Local)",
+        "ids": [
+          "explicit.stat_2481353198"
+        ]
+      },
+      "prefix-to-armour": {
+        "text": "# to Armour (Local)",
+        "ids": [
+          "explicit.stat_3484657501"
+        ]
+      },
+      "prefix-to-armour-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-armour-3": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "suffix-additional-physical-damage-reduction": {
+        "text": "#% additional Physical Damage Reduction",
+        "ids": [
+          "explicit.stat_3771516363"
+        ]
+      },
+      "suffix-increased-energy-shield-recharge-rate": {
+        "text": "#% increased Energy Shield Recharge Rate",
+        "ids": [
+          "explicit.stat_2339757871"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-stun-threshold": {
+        "text": "# to Stun Threshold",
+        "ids": [
+          "explicit.stat_915769802"
+        ]
+      },
+      "suffix-of-armour-also-applies-to-elemental-damage": {
+        "text": "#% of Armour also applies to Elemental Damage",
+        "ids": [
+          "explicit.stat_3362812763"
+        ]
+      },
+      "suffix-to-all-elemental-resistances": {
+        "text": "#% to all Elemental Resistances",
+        "ids": [
+          "explicit.stat_2901986750"
+        ]
+      },
+      "suffix-to-all-maximum-elemental-resistances": {
+        "text": "#% to all Maximum Elemental Resistances",
+        "ids": [
+          "explicit.stat_1978899297"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-to-maximum-chaos-resistance": {
+        "text": "#% to Maximum Chaos Resistance",
+        "ids": [
+          "explicit.stat_1301765461"
+        ]
+      },
+      "suffix-to-maximum-cold-resistance": {
+        "text": "#% to Maximum Cold Resistance",
+        "ids": [
+          "explicit.stat_3676141501"
+        ]
+      },
+      "suffix-to-maximum-fire-resistance": {
+        "text": "#% to Maximum Fire Resistance",
+        "ids": [
+          "explicit.stat_4095671657"
+        ]
+      },
+      "suffix-to-maximum-lightning-resistance": {
+        "text": "#% to Maximum Lightning Resistance",
+        "ids": [
+          "explicit.stat_1011760251"
+        ]
+      },
+      "suffix-gain-deflection-rating-equal-to-of-evasion-rating": {
+        "text": "Gain Deflection Rating equal to #% of Evasion Rating",
+        "ids": [
+          "explicit.stat_3033371881"
+        ]
+      },
+      "suffix-hits-against-you-have-reduced-critical-damage-bonus": {
+        "text": "Hits against you have #% reduced Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_3855016469"
+        ]
+      }
+    },
+    "Quivers": {
+      "prefix-increased-damage-with-bow-skills": {
+        "text": "#% increased Damage with Bow Skills",
+        "ids": [
+          "explicit.stat_1241625305"
+        ]
+      },
+      "prefix-increased-projectile-speed": {
+        "text": "#% increased Projectile Speed",
+        "ids": [
+          "explicit.stat_3759663284"
+        ]
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating",
+        "ids": [
+          "explicit.stat_803737631"
+        ]
+      },
+      "prefix-adds-to-cold-damage-to-attacks": {
+        "text": "Adds # to # Cold damage to Attacks",
+        "ids": [
+          "explicit.stat_4067062424"
+        ]
+      },
+      "prefix-adds-to-fire-damage-to-attacks": {
+        "text": "Adds # to # Fire damage to Attacks",
+        "ids": [
+          "explicit.stat_1573130764"
+        ]
+      },
+      "prefix-adds-to-lightning-damage-to-attacks": {
+        "text": "Adds # to # Lightning damage to Attacks",
+        "ids": [
+          "explicit.stat_1754445556"
+        ]
+      },
+      "prefix-adds-to-physical-damage-to-attacks": {
+        "text": "Adds # to # Physical Damage to Attacks",
+        "ids": [
+          "explicit.stat_3032590688"
+        ]
+      },
+      "suffix-chance-to-pierce-an-enemy": {
+        "text": "#% chance to Pierce an Enemy",
+        "ids": [
+          "explicit.stat_2321178454"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed",
+        "ids": [
+          "explicit.stat_681332047"
+        ]
+      },
+      "suffix-increased-critical-damage-bonus-for-attack-damage": {
+        "text": "#% increased Critical Damage Bonus for Attack Damage",
+        "ids": [
+          "explicit.stat_3714003708"
+        ]
+      },
+      "suffix-increased-critical-hit-chance-for-attacks": {
+        "text": "#% increased Critical Hit Chance for Attacks",
+        "ids": [
+          "explicit.stat_2194114101"
+        ]
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-level-of-all-projectile-skills": {
+        "text": "# to Level of all Projectile Skills",
+        "ids": [
+          "explicit.stat_1202301673"
+        ]
+      },
+      "suffix-surpassing-chance-to-fire-an-additional-arrow": {
+        "text": "#% Surpassing chance to fire an additional Arrow",
+        "ids": [
+          "explicit.stat_2463230181"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      }
+    },
+    "Bucklers": {
+      "prefix-to-physical-thorns-damage": {
+        "text": "# to # Physical Thorns damage",
+        "ids": [
+          "explicit.stat_2881298780"
+        ]
+      },
+      "prefix-increased-block-chance": {
+        "text": "#% increased Block chance (Local)",
+        "ids": [
+          "explicit.stat_2481353198"
+        ]
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_124859000"
+        ]
+      },
+      "prefix-increased-evasion-rating-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-evasion-rating": {
+        "text": "# to Evasion Rating (Local)",
+        "ids": [
+          "explicit.stat_53045048"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-stun-threshold": {
+        "text": "# to Stun Threshold",
+        "ids": [
+          "explicit.stat_915769802"
+        ]
+      },
+      "suffix-to-all-maximum-elemental-resistances": {
+        "text": "#% to all Maximum Elemental Resistances",
+        "ids": [
+          "explicit.stat_1978899297"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-to-maximum-chaos-resistance": {
+        "text": "#% to Maximum Chaos Resistance",
+        "ids": [
+          "explicit.stat_1301765461"
+        ]
+      },
+      "suffix-to-maximum-cold-resistance": {
+        "text": "#% to Maximum Cold Resistance",
+        "ids": [
+          "explicit.stat_3676141501"
+        ]
+      },
+      "suffix-to-maximum-fire-resistance": {
+        "text": "#% to Maximum Fire Resistance",
+        "ids": [
+          "explicit.stat_4095671657"
+        ]
+      },
+      "suffix-to-maximum-lightning-resistance": {
+        "text": "#% to Maximum Lightning Resistance",
+        "ids": [
+          "explicit.stat_1011760251"
+        ]
+      },
+      "suffix-gain-deflection-rating-equal-to-of-evasion-rating": {
+        "text": "Gain Deflection Rating equal to #% of Evasion Rating",
+        "ids": [
+          "explicit.stat_3033371881"
+        ]
+      }
+    },
+    "Foci": {
+      "prefix-increased-chaos-damage": {
+        "text": "#% increased Chaos Damage",
+        "ids": [
+          "explicit.stat_736967255"
+        ]
+      },
+      "prefix-increased-cold-damage": {
+        "text": "#% increased Cold Damage",
+        "ids": [
+          "explicit.stat_3291658075"
+        ]
+      },
+      "prefix-increased-energy-shield": {
+        "text": "#% increased Energy Shield",
+        "ids": [
+          "explicit.stat_4015621042"
+        ]
+      },
+      "prefix-increased-energy-shield-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-fire-damage": {
+        "text": "#% increased Fire Damage",
+        "ids": [
+          "explicit.stat_3962278098"
+        ]
+      },
+      "prefix-increased-lightning-damage": {
+        "text": "#% increased Lightning Damage",
+        "ids": [
+          "explicit.stat_2231156303"
+        ]
+      },
+      "prefix-increased-spell-damage": {
+        "text": "#% increased Spell Damage",
+        "ids": [
+          "explicit.stat_2974417149"
+        ]
+      },
+      "prefix-increased-spell-physical-damage": {
+        "text": "#% increased Spell Physical Damage",
+        "ids": [
+          "explicit.stat_2768835289"
+        ]
+      },
+      "prefix-to-maximum-energy-shield": {
+        "text": "# to maximum Energy Shield (Local)",
+        "ids": [
+          "explicit.stat_4052037485"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "suffix-increased-cast-speed": {
+        "text": "#% increased Cast Speed",
+        "ids": [
+          "explicit.stat_2891184298"
+        ]
+      },
+      "suffix-increased-critical-hit-chance-for-spells": {
+        "text": "#% increased Critical Hit Chance for Spells",
+        "ids": [
+          "explicit.stat_737908626"
+        ]
+      },
+      "suffix-increased-critical-spell-damage-bonus": {
+        "text": "#% increased Critical Spell Damage Bonus",
+        "ids": [
+          "explicit.stat_274716455"
+        ]
+      },
+      "suffix-increased-energy-shield-recharge-rate": {
+        "text": "#% increased Energy Shield Recharge Rate",
+        "ids": [
+          "explicit.stat_2339757871"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-spell-skills": {
+        "text": "# to Level of all Spell Skills",
+        "ids": [
+          "explicit.stat_124131830"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      }
+    },
+    "Wands": {
+      "prefix-increased-chaos-damage": {
+        "text": "#% increased Chaos Damage",
+        "ids": [
+          "explicit.stat_736967255"
+        ]
+      },
+      "prefix-increased-cold-damage": {
+        "text": "#% increased Cold Damage",
+        "ids": [
+          "explicit.stat_3291658075"
+        ]
+      },
+      "prefix-increased-fire-damage": {
+        "text": "#% increased Fire Damage",
+        "ids": [
+          "explicit.stat_3962278098"
+        ]
+      },
+      "prefix-increased-lightning-damage": {
+        "text": "#% increased Lightning Damage",
+        "ids": [
+          "explicit.stat_2231156303"
+        ]
+      },
+      "prefix-increased-spell-damage": {
+        "text": "#% increased Spell Damage",
+        "ids": [
+          "explicit.stat_2974417149"
+        ]
+      },
+      "prefix-increased-spell-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-spell-physical-damage": {
+        "text": "#% increased Spell Physical Damage",
+        "ids": [
+          "explicit.stat_2768835289"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "prefix-gain-of-damage-as-extra-cold-damage": {
+        "text": "Gain #% of Damage as Extra Cold Damage",
+        "ids": [
+          "explicit.stat_2505884597"
+        ]
+      },
+      "prefix-gain-of-damage-as-extra-fire-damage": {
+        "text": "Gain #% of Damage as Extra Fire Damage",
+        "ids": [
+          "explicit.stat_3015669065"
+        ]
+      },
+      "prefix-gain-of-damage-as-extra-lightning-damage": {
+        "text": "Gain #% of Damage as Extra Lightning Damage",
+        "ids": [
+          "explicit.stat_3278136794"
+        ]
+      },
+      "suffix-increased-cast-speed": {
+        "text": "#% increased Cast Speed",
+        "ids": [
+          "explicit.stat_2891184298"
+        ]
+      },
+      "suffix-increased-chance-to-shock": {
+        "text": "#% increased chance to Shock",
+        "ids": [
+          "explicit.stat_293638271"
+        ]
+      },
+      "suffix-increased-critical-hit-chance-for-spells": {
+        "text": "#% increased Critical Hit Chance for Spells",
+        "ids": [
+          "explicit.stat_737908626"
+        ]
+      },
+      "suffix-increased-critical-spell-damage-bonus": {
+        "text": "#% increased Critical Spell Damage Bonus",
+        "ids": [
+          "explicit.stat_274716455"
+        ]
+      },
+      "suffix-increased-flammability-magnitude": {
+        "text": "#% increased Flammability Magnitude",
+        "ids": [
+          "explicit.stat_2968503605"
+        ]
+      },
+      "suffix-increased-freeze-buildup": {
+        "text": "#% increased Freeze Buildup",
+        "ids": [
+          "explicit.stat_473429811"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-chaos-spell-skills": {
+        "text": "# to Level of all Chaos Spell Skills",
+        "ids": [
+          "explicit.stat_4226189338"
+        ]
+      },
+      "suffix-to-level-of-all-cold-spell-skills": {
+        "text": "# to Level of all Cold Spell Skills",
+        "ids": [
+          "explicit.stat_2254480358"
+        ]
+      },
+      "suffix-to-level-of-all-fire-spell-skills": {
+        "text": "# to Level of all Fire Spell Skills",
+        "ids": [
+          "explicit.stat_591105508"
+        ]
+      },
+      "suffix-to-level-of-all-lightning-spell-skills": {
+        "text": "# to Level of all Lightning Spell Skills",
+        "ids": [
+          "explicit.stat_1545858329"
+        ]
+      },
+      "suffix-to-level-of-all-physical-spell-skills": {
+        "text": "# to Level of all Physical Spell Skills",
+        "ids": [
+          "explicit.stat_1600707273"
+        ]
+      },
+      "suffix-to-level-of-all-spell-skills": {
+        "text": "# to Level of all Spell Skills",
+        "ids": [
+          "explicit.stat_124131830"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      }
+    },
+    "One Hand Maces": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-increased-stun-duration": {
+        "text": "#% increased Stun Duration",
+        "ids": [
+          "explicit.stat_748522257"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-causes-increased-stun-buildup": {
+        "text": "Causes #% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_791928121"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      }
+    },
+    "Sceptres": {
+      "prefix-increased-spirit": {
+        "text": "#% increased Spirit",
+        "ids": [
+          "explicit.stat_3984865854",
+          "explicit.stat_1416406066"
+        ]
+      },
+      "prefix-increased-spirit-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "prefix-allies-in-your-presence-deal-to-added-attack-cold-damage": {
+        "text": "Allies in your Presence deal # to # added Attack Cold Damage",
+        "ids": [
+          "explicit.stat_2347036682"
+        ]
+      },
+      "prefix-allies-in-your-presence-deal-to-added-attack-fire-damage": {
+        "text": "Allies in your Presence deal # to # added Attack Fire Damage",
+        "ids": [
+          "explicit.stat_849987426"
+        ]
+      },
+      "prefix-allies-in-your-presence-deal-to-added-attack-lightning-damage": {
+        "text": "Allies in your Presence deal # to # added Attack Lightning Damage",
+        "ids": [
+          "explicit.stat_2854751904"
+        ]
+      },
+      "prefix-allies-in-your-presence-deal-to-added-attack-physical-damage": {
+        "text": "Allies in your Presence deal # to # added Attack Physical Damage",
+        "ids": [
+          "explicit.stat_1574590649"
+        ]
+      },
+      "prefix-allies-in-your-presence-deal-increased-damage": {
+        "text": "Allies in your Presence deal #% increased Damage",
+        "ids": [
+          "explicit.stat_1798257884"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-increased-presence-area-of-effect": {
+        "text": "#% increased Presence Area of Effect",
+        "ids": [
+          "explicit.stat_101878827"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-minion-skills": {
+        "text": "# to Level of all Minion Skills",
+        "ids": [
+          "explicit.stat_2162097452"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-allies-in-your-presence-have-increased-attack-speed": {
+        "text": "Allies in your Presence have #% increased Attack Speed",
+        "ids": [
+          "explicit.stat_1998951374"
+        ]
+      },
+      "suffix-allies-in-your-presence-have-increased-cast-speed": {
+        "text": "Allies in your Presence have #% increased Cast Speed",
+        "ids": [
+          "explicit.stat_289128254"
+        ]
+      },
+      "suffix-allies-in-your-presence-have-increased-critical-damage-bonus": {
+        "text": "Allies in your Presence have #% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_3057012405"
+        ]
+      },
+      "suffix-allies-in-your-presence-have-increased-critical-hit-chance": {
+        "text": "Allies in your Presence have #% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_1250712710"
+        ]
+      },
+      "suffix-allies-in-your-presence-have-to-all-elemental-resistances": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-allies-in-your-presence-regenerate-life-per-second": {
+        "text": "Allies in your Presence Regenerate # Life per second",
+        "ids": [
+          "explicit.stat_4010677958"
+        ]
+      },
+      "suffix-minions-have-increased-maximum-life": {
+        "text": "Minions have #% increased maximum Life",
+        "ids": [
+          "explicit.stat_770672621"
+        ]
+      }
+    },
+    "Spears": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-increased-stun-duration": {
+        "text": "#% increased Stun Duration",
+        "ids": [
+          "explicit.stat_748522257"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-level-of-all-projectile-skills": {
+        "text": "# to Level of all Projectile Skills",
+        "ids": [
+          "explicit.stat_1202301673"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-causes-increased-stun-buildup": {
+        "text": "Causes #% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_791928121"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      }
+    },
+    "Bows": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-level-of-all-projectile-skills": {
+        "text": "# to Level of all Projectile Skills",
+        "ids": [
+          "explicit.stat_1202301673"
+        ]
+      },
+      "suffix-surpassing-chance-to-fire-an-additional-arrow": {
+        "text": "#% Surpassing chance to fire an additional Arrow",
+        "ids": [
+          "explicit.stat_2463230181"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      }
+    },
+    "Staves": {
+      "prefix-increased-chaos-damage": {
+        "text": "#% increased Chaos Damage",
+        "ids": [
+          "explicit.stat_736967255"
+        ]
+      },
+      "prefix-increased-cold-damage": {
+        "text": "#% increased Cold Damage",
+        "ids": [
+          "explicit.stat_3291658075"
+        ]
+      },
+      "prefix-increased-fire-damage": {
+        "text": "#% increased Fire Damage",
+        "ids": [
+          "explicit.stat_3962278098"
+        ]
+      },
+      "prefix-increased-lightning-damage": {
+        "text": "#% increased Lightning Damage",
+        "ids": [
+          "explicit.stat_2231156303"
+        ]
+      },
+      "prefix-increased-spell-damage": {
+        "text": "#% increased Spell Damage",
+        "ids": [
+          "explicit.stat_2974417149"
+        ]
+      },
+      "prefix-increased-spell-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-increased-spell-physical-damage": {
+        "text": "#% increased Spell Physical Damage",
+        "ids": [
+          "explicit.stat_2768835289"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "prefix-gain-of-damage-as-extra-cold-damage": {
+        "text": "Gain #% of Damage as Extra Cold Damage",
+        "ids": [
+          "explicit.stat_2505884597"
+        ]
+      },
+      "prefix-gain-of-damage-as-extra-fire-damage": {
+        "text": "Gain #% of Damage as Extra Fire Damage",
+        "ids": [
+          "explicit.stat_3015669065"
+        ]
+      },
+      "prefix-gain-of-damage-as-extra-lightning-damage": {
+        "text": "Gain #% of Damage as Extra Lightning Damage",
+        "ids": [
+          "explicit.stat_3278136794"
+        ]
+      },
+      "suffix-increased-cast-speed": {
+        "text": "#% increased Cast Speed",
+        "ids": [
+          "explicit.stat_2891184298"
+        ]
+      },
+      "suffix-increased-chance-to-shock": {
+        "text": "#% increased chance to Shock",
+        "ids": [
+          "explicit.stat_293638271"
+        ]
+      },
+      "suffix-increased-critical-hit-chance-for-spells": {
+        "text": "#% increased Critical Hit Chance for Spells",
+        "ids": [
+          "explicit.stat_737908626"
+        ]
+      },
+      "suffix-increased-critical-spell-damage-bonus": {
+        "text": "#% increased Critical Spell Damage Bonus",
+        "ids": [
+          "explicit.stat_274716455"
+        ]
+      },
+      "suffix-increased-flammability-magnitude": {
+        "text": "#% increased Flammability Magnitude",
+        "ids": [
+          "explicit.stat_2968503605"
+        ]
+      },
+      "suffix-increased-freeze-buildup": {
+        "text": "#% increased Freeze Buildup",
+        "ids": [
+          "explicit.stat_473429811"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-chaos-spell-skills": {
+        "text": "# to Level of all Chaos Spell Skills",
+        "ids": [
+          "explicit.stat_4226189338"
+        ]
+      },
+      "suffix-to-level-of-all-cold-spell-skills": {
+        "text": "# to Level of all Cold Spell Skills",
+        "ids": [
+          "explicit.stat_2254480358"
+        ]
+      },
+      "suffix-to-level-of-all-fire-spell-skills": {
+        "text": "# to Level of all Fire Spell Skills",
+        "ids": [
+          "explicit.stat_591105508"
+        ]
+      },
+      "suffix-to-level-of-all-lightning-spell-skills": {
+        "text": "# to Level of all Lightning Spell Skills",
+        "ids": [
+          "explicit.stat_1545858329"
+        ]
+      },
+      "suffix-to-level-of-all-physical-spell-skills": {
+        "text": "# to Level of all Physical Spell Skills",
+        "ids": [
+          "explicit.stat_1600707273"
+        ]
+      },
+      "suffix-to-level-of-all-spell-skills": {
+        "text": "# to Level of all Spell Skills",
+        "ids": [
+          "explicit.stat_124131830"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      }
+    },
+    "Two Hand Maces": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-increased-stun-duration": {
+        "text": "#% increased Stun Duration",
+        "ids": [
+          "explicit.stat_748522257"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-causes-increased-stun-buildup": {
+        "text": "Causes #% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_791928121"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      }
+    },
+    "Quarterstaves": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-increased-stun-duration": {
+        "text": "#% increased Stun Duration",
+        "ids": [
+          "explicit.stat_748522257"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-causes-increased-stun-buildup": {
+        "text": "Causes #% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_791928121"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      }
+    },
+    "Crossbows": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-level-of-all-projectile-skills": {
+        "text": "# to Level of all Projectile Skills",
+        "ids": [
+          "explicit.stat_1202301673"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      },
+      "suffix-loads-additional-bolts": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-loads-an-additional-bolt": {
+        "text": "Loads an additional bolt",
+        "ids": [
+          "explicit.stat_1967051901"
+        ]
+      }
+    },
+    "Talismans": {
+      "prefix-increased-elemental-damage-with-attacks": {
+        "text": "#% increased Elemental Damage with Attacks",
+        "ids": [
+          "explicit.stat_387439868"
+        ]
+      },
+      "prefix-increased-physical-damage": {
+        "text": "#% increased Physical Damage",
+        "ids": [
+          "explicit.stat_1509134228"
+        ]
+      },
+      "prefix-increased-physical-damage-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating (Local)",
+        "ids": [
+          "explicit.stat_691932474"
+        ]
+      },
+      "prefix-adds-to-cold-damage": {
+        "text": "Adds # to # Cold Damage",
+        "ids": [
+          "explicit.stat_1037193709"
+        ]
+      },
+      "prefix-adds-to-fire-damage": {
+        "text": "Adds # to # Fire Damage",
+        "ids": [
+          "explicit.stat_709508406"
+        ]
+      },
+      "prefix-adds-to-lightning-damage": {
+        "text": "Adds # to # Lightning Damage",
+        "ids": [
+          "explicit.stat_3336890334"
+        ]
+      },
+      "prefix-adds-to-physical-damage": {
+        "text": "Adds # to # Physical Damage",
+        "ids": [
+          "explicit.stat_1940865751"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed (Local)",
+        "ids": [
+          "explicit.stat_210067635"
+        ]
+      },
+      "suffix-increased-stun-duration": {
+        "text": "#% increased Stun Duration",
+        "ids": [
+          "explicit.stat_748522257"
+        ]
+      },
+      "suffix-reduced-attribute-requirements": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-accuracy-rating": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-critical-damage-bonus": {
+        "text": "#% to Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2694482655"
+        ]
+      },
+      "suffix-to-critical-hit-chance": {
+        "text": "#% to Critical Hit Chance",
+        "ids": [
+          "explicit.stat_518292764"
+        ]
+      },
+      "suffix-causes-increased-stun-buildup": {
+        "text": "Causes #% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_791928121"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-grants-life-per-enemy-hit": {
+        "text": "Grants # Life per Enemy Hit",
+        "ids": [
+          "explicit.stat_821021828"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-life": {
+        "text": "Leeches #% of Physical Damage as Life",
+        "ids": [
+          "explicit.stat_55876295"
+        ]
+      },
+      "suffix-leeches-of-physical-damage-as-mana": {
+        "text": "Leeches #% of Physical Damage as Mana",
+        "ids": [
+          "explicit.stat_669069897"
+        ]
+      }
+    },
+    "Belts": {
+      "prefix-to-physical-thorns-damage": {
+        "text": "# to # Physical Thorns damage",
+        "ids": [
+          "explicit.stat_2881298780"
+        ]
+      },
+      "prefix-increased-charm-effect-duration": {
+        "text": "#% increased Charm Effect Duration",
+        "ids": [
+          "explicit.stat_1389754388"
+        ]
+      },
+      "prefix-increased-flask-life-recovery-rate": {
+        "text": "#% increased Flask Life Recovery rate",
+        "ids": [
+          "explicit.stat_51994685"
+        ]
+      },
+      "prefix-increased-flask-mana-recovery-rate": {
+        "text": "#% increased Flask Mana Recovery rate",
+        "ids": [
+          "explicit.stat_1412217137"
+        ]
+      },
+      "prefix-to-armour": {
+        "text": "# to Armour",
+        "ids": [
+          "explicit.stat_809229260"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "suffix-life-regeneration-per-second": {
+        "text": "# Life Regeneration per second",
+        "ids": [
+          "explicit.stat_3325883026"
+        ]
+      },
+      "suffix-increased-charm-charges-gained": {
+        "text": "#% increased Charm Charges gained",
+        "ids": [
+          "explicit.stat_3585532255"
+        ]
+      },
+      "suffix-increased-flask-charges-gained": {
+        "text": "#% increased Flask Charges gained",
+        "ids": [
+          "explicit.stat_1836676211"
+        ]
+      },
+      "suffix-reduced-charm-charges-used": {
+        "text": "#% reduced Charm Charges used",
+        "ids": [
+          "explicit.stat_1570770415"
+        ]
+      },
+      "suffix-reduced-flask-charges-used": {
+        "text": "#% reduced Flask Charges used",
+        "ids": [
+          "explicit.stat_644456512"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-stun-threshold": {
+        "text": "# to Stun Threshold",
+        "ids": [
+          "explicit.stat_915769802"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      }
+    },
+    "Amulets": {
+      "prefix-increased-armour": {
+        "text": "#% increased Armour",
+        "ids": [
+          "explicit.stat_2866361420"
+        ]
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating",
+        "ids": [
+          "explicit.stat_2106365538"
+        ]
+      },
+      "prefix-increased-maximum-energy-shield": {
+        "text": "#% increased maximum Energy Shield",
+        "ids": [
+          "explicit.stat_2482852589"
+        ]
+      },
+      "prefix-increased-maximum-life": {
+        "text": "#% increased maximum Life",
+        "ids": [
+          "explicit.stat_983749596"
+        ]
+      },
+      "prefix-increased-maximum-mana": {
+        "text": "#% increased maximum Mana",
+        "ids": [
+          "explicit.stat_2748665614"
+        ]
+      },
+      "prefix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "prefix-increased-spell-damage": {
+        "text": "#% increased Spell Damage",
+        "ids": [
+          "explicit.stat_2974417149"
+        ]
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating",
+        "ids": [
+          "explicit.stat_803737631"
+        ]
+      },
+      "prefix-to-maximum-energy-shield": {
+        "text": "# to maximum Energy Shield",
+        "ids": [
+          "explicit.stat_3489782002"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "prefix-to-spirit": {
+        "text": "# to Spirit",
+        "ids": [
+          "explicit.stat_3981240776",
+          "explicit.stat_2704225257"
+        ]
+      },
+      "suffix-life-regeneration-per-second": {
+        "text": "# Life Regeneration per second",
+        "ids": [
+          "explicit.stat_3325883026"
+        ]
+      },
+      "suffix-increased-cast-speed": {
+        "text": "#% increased Cast Speed",
+        "ids": [
+          "explicit.stat_2891184298"
+        ]
+      },
+      "suffix-increased-critical-damage-bonus": {
+        "text": "#% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_3556824919"
+        ]
+      },
+      "suffix-increased-critical-hit-chance": {
+        "text": "#% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_587431675"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "suffix-of-damage-taken-recouped-as-life": {
+        "text": "#% of Damage taken Recouped as Life",
+        "ids": [
+          "explicit.stat_1444556985"
+        ]
+      },
+      "suffix-of-damage-taken-recouped-as-mana": {
+        "text": "#% of Damage taken Recouped as Mana",
+        "ids": [
+          "explicit.stat_472520716"
+        ]
+      },
+      "suffix-to-all-attributes": {
+        "text": "# to all Attributes",
+        "ids": [
+          "explicit.stat_1379411836",
+          "explicit.stat_2897413282"
+        ]
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-level-of-all-melee-skills": {
+        "text": "# to Level of all Melee Skills",
+        "ids": [
+          "explicit.stat_9187492"
+        ]
+      },
+      "suffix-to-level-of-all-minion-skills": {
+        "text": "# to Level of all Minion Skills",
+        "ids": [
+          "explicit.stat_2162097452"
+        ]
+      },
+      "suffix-to-level-of-all-projectile-skills": {
+        "text": "# to Level of all Projectile Skills",
+        "ids": [
+          "explicit.stat_1202301673"
+        ]
+      },
+      "suffix-to-level-of-all-spell-skills": {
+        "text": "# to Level of all Spell Skills",
+        "ids": [
+          "explicit.stat_124131830"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-all-elemental-resistances": {
+        "text": "#% to all Elemental Resistances",
+        "ids": [
+          "explicit.stat_2901986750"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      }
+    },
+    "Rings": {
+      "prefix-increased-chaos-damage": {
+        "text": "#% increased Chaos Damage",
+        "ids": [
+          "explicit.stat_736967255"
+        ]
+      },
+      "prefix-increased-cold-damage": {
+        "text": "#% increased Cold Damage",
+        "ids": [
+          "explicit.stat_3291658075"
+        ]
+      },
+      "prefix-increased-fire-damage": {
+        "text": "#% increased Fire Damage",
+        "ids": [
+          "explicit.stat_3962278098"
+        ]
+      },
+      "prefix-increased-lightning-damage": {
+        "text": "#% increased Lightning Damage",
+        "ids": [
+          "explicit.stat_2231156303"
+        ]
+      },
+      "prefix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "prefix-to-accuracy-rating": {
+        "text": "# to Accuracy Rating",
+        "ids": [
+          "explicit.stat_803737631"
+        ]
+      },
+      "prefix-to-evasion-rating": {
+        "text": "# to Evasion Rating",
+        "ids": [
+          "explicit.stat_2144192055"
+        ]
+      },
+      "prefix-to-maximum-life": {
+        "text": "# to maximum Life",
+        "ids": [
+          "explicit.stat_3299347043"
+        ]
+      },
+      "prefix-to-maximum-mana": {
+        "text": "# to maximum Mana",
+        "ids": [
+          "explicit.stat_1050105434"
+        ]
+      },
+      "prefix-adds-to-cold-damage-to-attacks": {
+        "text": "Adds # to # Cold damage to Attacks",
+        "ids": [
+          "explicit.stat_4067062424"
+        ]
+      },
+      "prefix-adds-to-fire-damage-to-attacks": {
+        "text": "Adds # to # Fire damage to Attacks",
+        "ids": [
+          "explicit.stat_1573130764"
+        ]
+      },
+      "prefix-adds-to-lightning-damage-to-attacks": {
+        "text": "Adds # to # Lightning damage to Attacks",
+        "ids": [
+          "explicit.stat_1754445556"
+        ]
+      },
+      "prefix-adds-to-physical-damage-to-attacks": {
+        "text": "Adds # to # Physical Damage to Attacks",
+        "ids": [
+          "explicit.stat_3032590688"
+        ]
+      },
+      "suffix-life-regeneration-per-second": {
+        "text": "# Life Regeneration per second",
+        "ids": [
+          "explicit.stat_3325883026"
+        ]
+      },
+      "suffix-increased-cast-speed": {
+        "text": "#% increased Cast Speed",
+        "ids": [
+          "explicit.stat_2891184298"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate-2": {
+        "searchable": false,
+        "reason": "hybrid"
+      },
+      "suffix-increased-rarity-of-items-found": {
+        "text": "#% increased Rarity of Items found",
+        "ids": [
+          "explicit.stat_3917489142"
+        ]
+      },
+      "suffix-to-all-attributes": {
+        "text": "# to all Attributes",
+        "ids": [
+          "explicit.stat_1379411836",
+          "explicit.stat_2897413282"
+        ]
+      },
+      "suffix-to-dexterity": {
+        "text": "# to Dexterity",
+        "ids": [
+          "explicit.stat_3261801346"
+        ]
+      },
+      "suffix-to-intelligence": {
+        "text": "# to Intelligence",
+        "ids": [
+          "explicit.stat_328541901"
+        ]
+      },
+      "suffix-to-strength": {
+        "text": "# to Strength",
+        "ids": [
+          "explicit.stat_4080418644"
+        ]
+      },
+      "suffix-to-all-elemental-resistances": {
+        "text": "#% to all Elemental Resistances",
+        "ids": [
+          "explicit.stat_2901986750"
+        ]
+      },
+      "suffix-to-chaos-resistance": {
+        "text": "#% to Chaos Resistance",
+        "ids": [
+          "explicit.stat_2923486259"
+        ]
+      },
+      "suffix-to-cold-resistance": {
+        "text": "#% to Cold Resistance",
+        "ids": [
+          "explicit.stat_4220027924"
+        ]
+      },
+      "suffix-to-fire-resistance": {
+        "text": "#% to Fire Resistance",
+        "ids": [
+          "explicit.stat_3372524247"
+        ]
+      },
+      "suffix-to-lightning-resistance": {
+        "text": "#% to Lightning Resistance",
+        "ids": [
+          "explicit.stat_1671376347"
+        ]
+      },
+      "suffix-gain-life-per-enemy-killed": {
+        "text": "Gain # Life per enemy killed",
+        "ids": [
+          "explicit.stat_3695891184"
+        ]
+      },
+      "suffix-gain-mana-per-enemy-killed": {
+        "text": "Gain # Mana per enemy killed",
+        "ids": [
+          "explicit.stat_1368271171"
+        ]
+      },
+      "suffix-leech-of-physical-attack-damage-as-life": {
+        "text": "Leech #% of Physical Attack Damage as Life",
+        "ids": [
+          "explicit.stat_2557965901"
+        ]
+      },
+      "suffix-leech-of-physical-attack-damage-as-mana": {
+        "text": "Leech #% of Physical Attack Damage as Mana",
+        "ids": [
+          "explicit.stat_707457662"
+        ]
+      }
+    },
+    "Jewels": {
+      "prefix-chance-for-attack-hits-to-apply-incision": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "prefix-chance-to-inflict-bleeding-on-hit": {
+        "text": "#% chance to inflict Bleeding on Hit",
+        "ids": [
+          "explicit.stat_2174054121"
+        ]
+      },
+      "prefix-faster-start-of-energy-shield-recharge": {
+        "text": "#% faster start of Energy Shield Recharge",
+        "ids": [
+          "explicit.stat_1782086450"
+        ]
+      },
+      "prefix-increased-accuracy-rating": {
+        "text": "#% increased Accuracy Rating",
+        "ids": [
+          "explicit.stat_624954515"
+        ]
+      },
+      "prefix-increased-accuracy-rating-with-bows": {
+        "text": "#% increased Accuracy Rating with Bows",
+        "ids": [
+          "explicit.stat_169946467"
+        ]
+      },
+      "prefix-increased-area-of-effect": {
+        "text": "#% increased Area of Effect",
+        "ids": [
+          "explicit.stat_280731498"
+        ]
+      },
+      "prefix-increased-area-of-effect-of-curses": {
+        "text": "#% increased Area of Effect of Curses",
+        "ids": [
+          "explicit.stat_153777645"
+        ]
+      },
+      "prefix-increased-armour": {
+        "text": "#% increased Armour",
+        "ids": [
+          "explicit.stat_2866361420"
+        ]
+      },
+      "prefix-increased-armour-evasion-and-energy-shield-from-equipped-shield": {
+        "text": "#% increased Armour, Evasion and Energy Shield from Equipped Shield",
+        "ids": [
+          "explicit.stat_2523933828"
+        ]
+      },
+      "prefix-increased-attack-damage": {
+        "text": "#% increased Attack Damage",
+        "ids": [
+          "explicit.stat_2843214518"
+        ]
+      },
+      "prefix-increased-blind-effect": {
+        "text": "#% increased Blind Effect",
+        "ids": [
+          "explicit.stat_1585769763"
+        ]
+      },
+      "prefix-increased-block-chance": {
+        "text": "#% increased Block chance",
+        "ids": [
+          "explicit.stat_4147897060"
+        ]
+      },
+      "prefix-increased-bonuses-gained-from-equipped-quiver": {
+        "text": "#% increased bonuses gained from Equipped Quiver",
+        "ids": [
+          "explicit.stat_1200678966"
+        ]
+      },
+      "prefix-increased-chaos-damage": {
+        "text": "#% increased Chaos Damage",
+        "ids": [
+          "explicit.stat_736967255"
+        ]
+      },
+      "prefix-increased-cold-damage": {
+        "text": "#% increased Cold Damage",
+        "ids": [
+          "explicit.stat_3291658075"
+        ]
+      },
+      "prefix-increased-curse-magnitudes": {
+        "text": "#% increased Curse Magnitudes",
+        "ids": [
+          "explicit.stat_2353576063"
+        ]
+      },
+      "prefix-increased-damage-against-enemies-with-fully-broken-armour": {
+        "text": "#% increased Damage against Enemies with Fully Broken Armour",
+        "ids": [
+          "explicit.stat_2301718443"
+        ]
+      },
+      "prefix-increased-damage-if-you-have-consumed-a-corpse-recently": {
+        "text": "#% increased Damage if you have Consumed a Corpse Recently",
+        "ids": [
+          "explicit.stat_2118708619"
+        ]
+      },
+      "prefix-increased-damage-while-shapeshifted": {
+        "text": "#% increased Damage while Shapeshifted",
+        "ids": [
+          "explicit.stat_2440073079"
+        ]
+      },
+      "prefix-increased-damage-while-you-have-an-active-charm": {
+        "text": "#% increased Damage while you have an active Charm",
+        "ids": [
+          "explicit.stat_627767961"
+        ]
+      },
+      "prefix-increased-damage-with-bows": {
+        "text": "#% increased Damage with Bows",
+        "ids": [
+          "explicit.stat_4188894176"
+        ]
+      },
+      "prefix-increased-damage-with-crossbows": {
+        "text": "#% increased Damage with Crossbows",
+        "ids": [
+          "explicit.stat_427684353"
+        ]
+      },
+      "prefix-increased-damage-with-hits-against-rare-and-unique-enemies": {
+        "text": "#% increased Damage with Hits against Rare and Unique Enemies",
+        "ids": [
+          "explicit.stat_1852872083"
+        ]
+      },
+      "prefix-increased-damage-with-maces": {
+        "text": "#% increased Damage with Maces",
+        "ids": [
+          "explicit.stat_1181419800"
+        ]
+      },
+      "prefix-increased-damage-with-plant-skills": {
+        "text": "#% increased Damage with Plant Skills",
+        "ids": [
+          "explicit.stat_2518900926"
+        ]
+      },
+      "prefix-increased-damage-with-quarterstaves": {
+        "text": "#% increased Damage with Quarterstaves",
+        "ids": [
+          "explicit.stat_4045894391"
+        ]
+      },
+      "prefix-increased-damage-with-spears": {
+        "text": "#% increased Damage with Spears",
+        "ids": [
+          "explicit.stat_2696027455"
+        ]
+      },
+      "prefix-increased-damage-with-warcries": {
+        "text": "#% increased Damage with Warcries",
+        "ids": [
+          "explicit.stat_1594812856"
+        ]
+      },
+      "prefix-increased-effect-of-your-mark-skills": {
+        "text": "#% increased Effect of your Mark Skills",
+        "ids": [
+          "explicit.stat_712554801"
+        ]
+      },
+      "prefix-increased-elemental-damage": {
+        "text": "#% increased Elemental Damage",
+        "ids": [
+          "explicit.stat_3141070085"
+        ]
+      },
+      "prefix-increased-energy-shield-from-equipped-focus": {
+        "text": "#% increased Energy Shield from Equipped Focus",
+        "ids": [
+          "explicit.stat_3174700878"
+        ]
+      },
+      "prefix-increased-evasion-rating": {
+        "text": "#% increased Evasion Rating",
+        "ids": [
+          "explicit.stat_2106365538"
+        ]
+      },
+      "prefix-increased-fire-damage": {
+        "text": "#% increased Fire Damage",
+        "ids": [
+          "explicit.stat_3962278098"
+        ]
+      },
+      "prefix-increased-global-physical-damage": {
+        "text": "#% increased Global Physical Damage",
+        "ids": [
+          "explicit.stat_1310194496"
+        ]
+      },
+      "prefix-increased-hazard-damage": {
+        "text": "#% increased Hazard Damage",
+        "ids": [
+          "explicit.stat_1697951953"
+        ]
+      },
+      "prefix-increased-ignite-magnitude": {
+        "text": "#% increased Ignite Magnitude",
+        "ids": [
+          "explicit.stat_3791899485"
+        ]
+      },
+      "prefix-increased-lightning-damage": {
+        "text": "#% increased Lightning Damage",
+        "ids": [
+          "explicit.stat_2231156303"
+        ]
+      },
+      "prefix-increased-magnitude-of-ailments-you-inflict": {
+        "text": "#% increased Magnitude of Ailments you inflict",
+        "ids": [
+          "explicit.stat_1303248024"
+        ]
+      },
+      "prefix-increased-magnitude-of-bleeding-you-inflict": {
+        "text": "#% increased Magnitude of Bleeding you inflict",
+        "ids": [
+          "explicit.stat_3166958180"
+        ]
+      },
+      "prefix-increased-magnitude-of-damaging-ailments-you-inflict-with-critical-hits": {
+        "text": "#% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
+        "ids": [
+          "explicit.stat_440490623"
+        ]
+      },
+      "prefix-increased-magnitude-of-poison-you-inflict": {
+        "text": "#% increased Magnitude of Poison you inflict",
+        "ids": [
+          "explicit.stat_2487305362"
+        ]
+      },
+      "prefix-increased-magnitude-of-shock-you-inflict": {
+        "text": "#% increased Magnitude of Shock you inflict",
+        "ids": [
+          "explicit.stat_2527686725"
+        ]
+      },
+      "prefix-increased-maximum-energy-shield": {
+        "text": "#% increased maximum Energy Shield",
+        "ids": [
+          "explicit.stat_2482852589"
+        ]
+      },
+      "prefix-increased-melee-damage": {
+        "text": "#% increased Melee Damage",
+        "ids": [
+          "explicit.stat_1002362373"
+        ]
+      },
+      "prefix-increased-melee-damage-if-you-ve-dealt-a-projectile-attack-hit-in-the-past-eight-seconds": {
+        "text": "#% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds",
+        "ids": [
+          "explicit.stat_3028809864"
+        ]
+      },
+      "prefix-increased-parry-damage": {
+        "text": "#% increased Parry Damage",
+        "ids": [
+          "explicit.stat_1569159338"
+        ]
+      },
+      "prefix-increased-presence-area-of-effect": {
+        "text": "#% increased Presence Area of Effect",
+        "ids": [
+          "explicit.stat_101878827"
+        ]
+      },
+      "prefix-increased-projectile-damage": {
+        "text": "#% increased Projectile Damage",
+        "ids": [
+          "explicit.stat_1839076647"
+        ]
+      },
+      "prefix-increased-projectile-damage-if-you-ve-dealt-a-melee-hit-in-the-past-eight-seconds": {
+        "text": "#% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds",
+        "ids": [
+          "explicit.stat_3596695232"
+        ]
+      },
+      "prefix-increased-projectile-speed": {
+        "text": "#% increased Projectile Speed",
+        "ids": [
+          "explicit.stat_3759663284"
+        ]
+      },
+      "prefix-increased-spell-damage": {
+        "text": "#% increased Spell Damage",
+        "ids": [
+          "explicit.stat_2974417149"
+        ]
+      },
+      "prefix-increased-thorns-damage": {
+        "text": "#% increased Thorns damage",
+        "ids": [
+          "explicit.stat_1315743832"
+        ]
+      },
+      "prefix-increased-totem-damage": {
+        "text": "#% increased Totem Damage",
+        "ids": [
+          "explicit.stat_3851254963"
+        ]
+      },
+      "prefix-increased-totem-life": {
+        "text": "#% increased Totem Life",
+        "ids": [
+          "explicit.stat_686254215"
+        ]
+      },
+      "prefix-increased-withered-magnitude": {
+        "text": "#% increased Withered Magnitude",
+        "ids": [
+          "explicit.stat_3973629633"
+        ]
+      },
+      "prefix-to-maximum-rage": {
+        "text": "# to Maximum Rage",
+        "ids": [
+          "explicit.stat_1181501418"
+        ]
+      },
+      "prefix-banner-skills-have-increased-area-of-effect": {
+        "text": "Banner Skills have #% increased Area of Effect",
+        "ids": [
+          "explicit.stat_429143663"
+        ]
+      },
+      "prefix-break-increased-armour": {
+        "text": "Break #% increased Armour",
+        "ids": [
+          "explicit.stat_1776411443"
+        ]
+      },
+      "prefix-companions-deal-increased-damage": {
+        "text": "Companions deal #% increased Damage",
+        "ids": [
+          "explicit.stat_234296660"
+        ]
+      },
+      "prefix-companions-have-increased-maximum-life": {
+        "text": "Companions have #% increased maximum Life",
+        "ids": [
+          "explicit.stat_1805182458"
+        ]
+      },
+      "prefix-damage-penetrates-cold-resistance": {
+        "text": "Damage Penetrates #% Cold Resistance",
+        "ids": [
+          "explicit.stat_3417711605"
+        ]
+      },
+      "prefix-damage-penetrates-fire-resistance": {
+        "text": "Damage Penetrates #% Fire Resistance",
+        "ids": [
+          "explicit.stat_2653955271"
+        ]
+      },
+      "prefix-damage-penetrates-lightning-resistance": {
+        "text": "Damage Penetrates #% Lightning Resistance",
+        "ids": [
+          "explicit.stat_818778753"
+        ]
+      },
+      "prefix-empowered-attacks-deal-increased-damage": {
+        "text": "Empowered Attacks deal #% increased Damage",
+        "ids": [
+          "explicit.stat_1569101201"
+        ]
+      },
+      "prefix-herald-skills-deal-increased-damage": {
+        "text": "Herald Skills deal #% increased Damage",
+        "ids": [
+          "explicit.stat_21071013"
+        ]
+      },
+      "prefix-minions-deal-increased-damage": {
+        "text": "Minions deal #% increased Damage",
+        "ids": [
+          "explicit.stat_1589917703"
+        ]
+      },
+      "prefix-minions-have-increased-area-of-effect": {
+        "text": "Minions have #% increased Area of Effect",
+        "ids": [
+          "explicit.stat_3811191316"
+        ]
+      },
+      "prefix-minions-have-increased-maximum-life": {
+        "text": "Minions have #% increased maximum Life",
+        "ids": [
+          "explicit.stat_770672621"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-faster-start-of-energy-shield-recharge": {
+        "text": "Notable Passive Skills in Radius also grant #% faster start of Energy Shield Recharge",
+        "ids": [
+          "explicit.stat_3394832998"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-area-of-effect": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Area of Effect",
+        "ids": [
+          "explicit.stat_3391917254"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-area-of-effect-of-curses": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Area of Effect of Curses",
+        "ids": [
+          "explicit.stat_3859848445"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-armour-evasion-and-energy-shield-from-equipped-shield": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Armour, Evasion and Energy Shield from Equipped Shield",
+        "ids": [
+          "explicit.stat_3429148113"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-blind-effect": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Blind Effect",
+        "ids": [
+          "explicit.stat_2912416697"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-block-chance": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Block chance",
+        "ids": [
+          "explicit.stat_3821543413"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-bonuses-gained-from-equipped-quiver": {
+        "text": "Notable Passive Skills in Radius also grant #% increased bonuses gained from Equipped Quiver",
+        "ids": [
+          "explicit.stat_4180952808"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-curse-magnitudes": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Curse Magnitudes",
+        "ids": [
+          "explicit.stat_2770044702"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-effect-of-your-mark-skills": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Effect of your Mark Skills",
+        "ids": [
+          "explicit.stat_179541474"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-energy-shield-from-equipped-focus": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Energy Shield from Equipped Focus",
+        "ids": [
+          "explicit.stat_3419203492"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-ignite-magnitude": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Ignite Magnitude",
+        "ids": [
+          "explicit.stat_253641217"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-magnitude-of-ailments-you-inflict": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Magnitude of Ailments you inflict",
+        "ids": [
+          "explicit.stat_1321104829"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-magnitude-of-bleeding-you-inflict": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Magnitude of Bleeding you inflict",
+        "ids": [
+          "explicit.stat_391602279"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-magnitude-of-damaging-ailments-you-inflict-with-critical-hits": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Magnitude of Damaging Ailments you inflict with Critical Hits",
+        "ids": [
+          "explicit.stat_4092130601"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-magnitude-of-poison-you-inflict": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Magnitude of Poison you inflict",
+        "ids": [
+          "explicit.stat_462424929"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-magnitude-of-shock-you-inflict": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Magnitude of Shock you inflict",
+        "ids": [
+          "explicit.stat_1166140625"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-presence-area-of-effect": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Presence Area of Effect",
+        "ids": [
+          "explicit.stat_4032352472"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-projectile-speed": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Projectile Speed",
+        "ids": [
+          "explicit.stat_1777421941"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-increased-withered-magnitude": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Withered Magnitude",
+        "ids": [
+          "explicit.stat_3936121440"
+        ]
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-to-maximum-rage": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "prefix-notable-passive-skills-in-radius-also-grant-minions-have-increased-area-of-effect": {
+        "text": "Notable Passive Skills in Radius also grant Minions have #% increased Area of Effect",
+        "ids": [
+          "explicit.stat_2534359663"
+        ]
+      },
+      "prefix-offerings-have-increased-maximum-life": {
+        "text": "Offerings have #% increased Maximum Life",
+        "ids": [
+          "explicit.stat_3787460122"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-chance-for-attack-hits-to-apply-incision": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-chance-to-inflict-bleeding-on-hit": {
+        "text": "Small Passive Skills in Radius also grant #% chance to inflict Bleeding on Hit",
+        "ids": [
+          "explicit.stat_944643028"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-accuracy-rating": {
+        "text": "Small Passive Skills in Radius also grant #% increased Accuracy Rating",
+        "ids": [
+          "explicit.stat_533892981"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-accuracy-rating-with-bows": {
+        "text": "Small Passive Skills in Radius also grant #% increased Accuracy Rating with Bows",
+        "ids": [
+          "explicit.stat_1285594161"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-armour": {
+        "text": "Small Passive Skills in Radius also grant #% increased Armour",
+        "ids": [
+          "explicit.stat_3858398337"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-attack-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Attack Damage",
+        "ids": [
+          "explicit.stat_1426522529"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-chaos-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Chaos Damage",
+        "ids": [
+          "explicit.stat_1309799717"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-cold-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Cold Damage",
+        "ids": [
+          "explicit.stat_2442527254"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-against-enemies-with-fully-broken-armour": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage against Enemies with Fully Broken Armour",
+        "ids": [
+          "explicit.stat_1834658952"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-if-you-have-consumed-a-corpse-recently": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage if you have Consumed a Corpse Recently",
+        "ids": [
+          "explicit.stat_1892122971"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-while-shapeshifted": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage while Shapeshifted",
+        "ids": [
+          "explicit.stat_266564538"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-while-you-have-an-active-charm": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage while you have an active Charm",
+        "ids": [
+          "explicit.stat_3752589831"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-bows": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Bows",
+        "ids": [
+          "explicit.stat_945774314"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-crossbows": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Crossbows",
+        "ids": [
+          "explicit.stat_517664839"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-hits-against-rare-and-unique-enemies": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Hits against Rare and Unique Enemies",
+        "ids": [
+          "explicit.stat_147764878"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-maces": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Maces",
+        "ids": [
+          "explicit.stat_1852184471"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-plant-skills": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Plant Skills",
+        "ids": [
+          "explicit.stat_1590846356"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-quarterstaves": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Quarterstaves",
+        "ids": [
+          "explicit.stat_821948283"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-spears": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Spears",
+        "ids": [
+          "explicit.stat_2809428780"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-damage-with-warcries": {
+        "text": "Small Passive Skills in Radius also grant #% increased Damage with Warcries",
+        "ids": [
+          "explicit.stat_1160637284"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-elemental-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Elemental Damage",
+        "ids": [
+          "explicit.stat_3222402650"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-evasion-rating": {
+        "text": "Small Passive Skills in Radius also grant #% increased Evasion Rating",
+        "ids": [
+          "explicit.stat_1994296038"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-fire-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Fire Damage",
+        "ids": [
+          "explicit.stat_139889694"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-global-physical-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Global Physical Damage",
+        "ids": [
+          "explicit.stat_1417267954"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-hazard-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Hazard Damage",
+        "ids": [
+          "explicit.stat_255840549"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-lightning-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Lightning Damage",
+        "ids": [
+          "explicit.stat_2768899959"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-maximum-energy-shield": {
+        "text": "Small Passive Skills in Radius also grant #% increased maximum Energy Shield",
+        "ids": [
+          "explicit.stat_3665922113"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-melee-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Melee Damage",
+        "ids": [
+          "explicit.stat_1337740333"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-melee-damage-if-you-ve-dealt-a-projectile-attack-hit-in-the-past-eight-seconds": {
+        "text": "Small Passive Skills in Radius also grant #% increased Melee Damage if you've dealt a Projectile Attack Hit in the past eight seconds",
+        "ids": [
+          "explicit.stat_2421151933"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-parry-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Parry Damage",
+        "ids": [
+          "explicit.stat_1007380041"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-projectile-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Projectile Damage",
+        "ids": [
+          "explicit.stat_455816363"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-projectile-damage-if-you-ve-dealt-a-melee-hit-in-the-past-eight-seconds": {
+        "text": "Small Passive Skills in Radius also grant #% increased Projectile Damage if you've dealt a Melee Hit in the past eight seconds",
+        "ids": [
+          "explicit.stat_288364275"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-spell-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Spell Damage",
+        "ids": [
+          "explicit.stat_1137305356"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-thorns-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Thorns damage",
+        "ids": [
+          "explicit.stat_1320662475"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-totem-damage": {
+        "text": "Small Passive Skills in Radius also grant #% increased Totem Damage",
+        "ids": [
+          "explicit.stat_2108821127"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-increased-totem-life": {
+        "text": "Small Passive Skills in Radius also grant #% increased Totem Life",
+        "ids": [
+          "explicit.stat_442393998"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-banner-skills-have-increased-area-of-effect": {
+        "text": "Small Passive Skills in Radius also grant Banner Skills have #% increased Area of Effect",
+        "ids": [
+          "explicit.stat_4142814612"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-break-increased-armour": {
+        "text": "Small Passive Skills in Radius also grant Break #% increased Armour",
+        "ids": [
+          "explicit.stat_4089835882"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-companions-deal-increased-damage": {
+        "text": "Small Passive Skills in Radius also grant Companions deal #% increased Damage",
+        "ids": [
+          "explicit.stat_1494950893"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-companions-have-increased-maximum-life": {
+        "text": "Small Passive Skills in Radius also grant Companions have #% increased maximum Life",
+        "ids": [
+          "explicit.stat_2638756573"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-damage-penetrates-cold-resistance": {
+        "text": "Small Passive Skills in Radius also grant Damage Penetrates #% Cold Resistance",
+        "ids": [
+          "explicit.stat_1896066427"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-damage-penetrates-fire-resistance": {
+        "text": "Small Passive Skills in Radius also grant Damage Penetrates #% Fire Resistance",
+        "ids": [
+          "explicit.stat_1432756708"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-damage-penetrates-lightning-resistance": {
+        "text": "Small Passive Skills in Radius also grant Damage Penetrates #% Lightning Resistance",
+        "ids": [
+          "explicit.stat_868556494"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-empowered-attacks-deal-increased-damage": {
+        "text": "Small Passive Skills in Radius also grant Empowered Attacks deal #% increased Damage",
+        "ids": [
+          "explicit.stat_3395186672"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-herald-skills-deal-increased-damage": {
+        "text": "Small Passive Skills in Radius also grant Herald Skills deal #% increased Damage",
+        "ids": [
+          "explicit.stat_3065378291"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-minions-deal-increased-damage": {
+        "text": "Small Passive Skills in Radius also grant Minions deal #% increased Damage",
+        "ids": [
+          "explicit.stat_2954360902"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-minions-have-increased-maximum-life": {
+        "text": "Small Passive Skills in Radius also grant Minions have #% increased maximum Life",
+        "ids": [
+          "explicit.stat_378796798"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-offerings-have-increased-maximum-life": {
+        "text": "Small Passive Skills in Radius also grant Offerings have #% increased Maximum Life",
+        "ids": [
+          "explicit.stat_2107703111"
+        ]
+      },
+      "prefix-small-passive-skills-in-radius-also-grant-triggered-spells-deal-increased-spell-damage": {
+        "text": "Small Passive Skills in Radius also grant Triggered Spells deal #% increased Spell Damage",
+        "ids": [
+          "explicit.stat_473917671"
+        ]
+      },
+      "prefix-triggered-spells-deal-increased-spell-damage": {
+        "text": "Triggered Spells deal #% increased Spell Damage",
+        "ids": [
+          "explicit.stat_3067892458"
+        ]
+      },
+      "prefix-upgrades-radius-to-large": {
+        "text": "Upgrades Radius to Large",
+        "ids": [
+          "explicit.stat_3891355829|2"
+        ]
+      },
+      "prefix-upgrades-radius-to-medium": {
+        "text": "Upgrades Radius to Medium",
+        "ids": [
+          "explicit.stat_3891355829|1"
+        ]
+      },
+      "suffix-chance-to-blind-enemies-on-hit-with-attacks": {
+        "text": "#% chance to Blind Enemies on Hit with Attacks",
+        "ids": [
+          "explicit.stat_318953428"
+        ]
+      },
+      "suffix-chance-to-daze-on-hit": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-chance-to-pierce-an-enemy": {
+        "text": "#% chance to Pierce an Enemy",
+        "ids": [
+          "explicit.stat_2321178454"
+        ]
+      },
+      "suffix-chance-to-poison-on-hit": {
+        "text": "#% chance to Poison on Hit",
+        "ids": [
+          "explicit.stat_795138349"
+        ]
+      },
+      "suffix-faster-curse-activation": {
+        "text": "#% faster Curse Activation",
+        "ids": [
+          "explicit.stat_1104825894"
+        ]
+      },
+      "suffix-increased-amount-of-life-leeched": {
+        "text": "#% increased amount of Life Leeched",
+        "ids": [
+          "explicit.stat_2112395885"
+        ]
+      },
+      "suffix-increased-amount-of-mana-leeched": {
+        "text": "#% increased amount of Mana Leeched",
+        "ids": [
+          "explicit.stat_2839066308"
+        ]
+      },
+      "suffix-increased-armour-break-duration": {
+        "text": "#% increased Armour Break Duration",
+        "ids": [
+          "explicit.stat_2637470878"
+        ]
+      },
+      "suffix-increased-attack-speed": {
+        "text": "#% increased Attack Speed",
+        "ids": [
+          "explicit.stat_681332047"
+        ]
+      },
+      "suffix-increased-attack-speed-with-bows": {
+        "text": "#% increased Attack Speed with Bows",
+        "ids": [
+          "explicit.stat_3759735052"
+        ]
+      },
+      "suffix-increased-attack-speed-with-crossbows": {
+        "text": "#% increased Attack Speed with Crossbows",
+        "ids": [
+          "explicit.stat_1135928777"
+        ]
+      },
+      "suffix-increased-attack-speed-with-quarterstaves": {
+        "text": "#% increased Attack Speed with Quarterstaves",
+        "ids": [
+          "explicit.stat_3283482523"
+        ]
+      },
+      "suffix-increased-attack-speed-with-spears": {
+        "text": "#% increased Attack Speed with Spears",
+        "ids": [
+          "explicit.stat_1165163804"
+        ]
+      },
+      "suffix-increased-bleeding-duration": {
+        "text": "#% increased Bleeding Duration",
+        "ids": [
+          "explicit.stat_1459321413"
+        ]
+      },
+      "suffix-increased-cast-speed": {
+        "text": "#% increased Cast Speed",
+        "ids": [
+          "explicit.stat_2891184298"
+        ]
+      },
+      "suffix-increased-chance-to-inflict-ailments": {
+        "text": "#% increased chance to inflict Ailments",
+        "ids": [
+          "explicit.stat_1772247089"
+        ]
+      },
+      "suffix-increased-chance-to-shock": {
+        "text": "#% increased chance to Shock",
+        "ids": [
+          "explicit.stat_293638271"
+        ]
+      },
+      "suffix-increased-charm-charges-gained": {
+        "text": "#% increased Charm Charges gained",
+        "ids": [
+          "explicit.stat_3585532255"
+        ]
+      },
+      "suffix-increased-charm-effect-duration": {
+        "text": "#% increased Charm Effect Duration",
+        "ids": [
+          "explicit.stat_1389754388"
+        ]
+      },
+      "suffix-increased-chill-duration-on-enemies": {
+        "text": "#% increased Chill Duration on Enemies",
+        "ids": [
+          "explicit.stat_3485067555"
+        ]
+      },
+      "suffix-increased-cooldown-recovery-rate": {
+        "text": "#% increased Cooldown Recovery Rate",
+        "ids": [
+          "explicit.stat_1004011302"
+        ]
+      },
+      "suffix-increased-critical-damage-bonus": {
+        "text": "#% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_3556824919"
+        ]
+      },
+      "suffix-increased-critical-damage-bonus-for-attack-damage": {
+        "text": "#% increased Critical Damage Bonus for Attack Damage",
+        "ids": [
+          "explicit.stat_3714003708"
+        ]
+      },
+      "suffix-increased-critical-damage-bonus-with-spears": {
+        "text": "#% increased Critical Damage Bonus with Spears",
+        "ids": [
+          "explicit.stat_2456523742"
+        ]
+      },
+      "suffix-increased-critical-hit-chance": {
+        "text": "#% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_587431675"
+        ]
+      },
+      "suffix-increased-critical-hit-chance-for-attacks": {
+        "text": "#% increased Critical Hit Chance for Attacks",
+        "ids": [
+          "explicit.stat_2194114101"
+        ]
+      },
+      "suffix-increased-critical-hit-chance-for-spells": {
+        "text": "#% increased Critical Hit Chance for Spells",
+        "ids": [
+          "explicit.stat_737908626"
+        ]
+      },
+      "suffix-increased-critical-spell-damage-bonus": {
+        "text": "#% increased Critical Spell Damage Bonus",
+        "ids": [
+          "explicit.stat_274716455"
+        ]
+      },
+      "suffix-increased-crossbow-reload-speed": {
+        "text": "#% increased Crossbow Reload Speed",
+        "ids": [
+          "explicit.stat_3192728503"
+        ]
+      },
+      "suffix-increased-curse-duration": {
+        "text": "#% increased Curse Duration",
+        "ids": [
+          "explicit.stat_3824372849"
+        ]
+      },
+      "suffix-increased-duration-of-damaging-ailments-on-enemies": {
+        "text": "#% increased Duration of Damaging Ailments on Enemies",
+        "ids": [
+          "explicit.stat_1829102168"
+        ]
+      },
+      "suffix-increased-duration-of-ignite-shock-and-chill-on-enemies": {
+        "text": "#% increased Duration of Ignite, Shock and Chill on Enemies",
+        "ids": [
+          "explicit.stat_1062710370"
+        ]
+      },
+      "suffix-increased-effect-of-notable-passive-skills-in-radius": {
+        "text": "#% increased Effect of Notable Passive Skills in Radius",
+        "ids": [
+          "explicit.stat_4234573345"
+        ]
+      },
+      "suffix-increased-effect-of-small-passive-skills-in-radius": {
+        "text": "#% increased Effect of Small Passive Skills in Radius",
+        "ids": [
+          "explicit.stat_1060572482"
+        ]
+      },
+      "suffix-increased-elemental-ailment-threshold": {
+        "text": "#% increased Elemental Ailment Threshold",
+        "ids": [
+          "explicit.stat_3544800472"
+        ]
+      },
+      "suffix-increased-flammability-magnitude": {
+        "text": "#% increased Flammability Magnitude",
+        "ids": [
+          "explicit.stat_2968503605"
+        ]
+      },
+      "suffix-increased-flask-charges-gained": {
+        "text": "#% increased Flask Charges gained",
+        "ids": [
+          "explicit.stat_1836676211"
+        ]
+      },
+      "suffix-increased-flask-effect-duration": {
+        "text": "#% increased Flask Effect Duration",
+        "ids": [
+          "explicit.stat_3741323227"
+        ]
+      },
+      "suffix-increased-freeze-buildup": {
+        "text": "#% increased Freeze Buildup",
+        "ids": [
+          "explicit.stat_473429811"
+        ]
+      },
+      "suffix-increased-freeze-buildup-with-quarterstaves": {
+        "text": "#% increased Freeze Buildup with Quarterstaves",
+        "ids": [
+          "explicit.stat_1697447343"
+        ]
+      },
+      "suffix-increased-freeze-threshold": {
+        "text": "#% increased Freeze Threshold",
+        "ids": [
+          "explicit.stat_3780644166"
+        ]
+      },
+      "suffix-increased-glory-generation-for-banner-skills": {
+        "text": "#% increased Glory generation for Banner Skills",
+        "ids": [
+          "explicit.stat_1869147066"
+        ]
+      },
+      "suffix-increased-knockback-distance": {
+        "text": "#% increased Knockback Distance",
+        "ids": [
+          "explicit.stat_565784293"
+        ]
+      },
+      "suffix-increased-life-flask-charges-gained": {
+        "text": "#% increased Life Flask Charges gained",
+        "ids": [
+          "explicit.stat_4009879772"
+        ]
+      },
+      "suffix-increased-life-recovery-from-flasks": {
+        "text": "#% increased Life Recovery from Flasks",
+        "ids": [
+          "explicit.stat_821241191"
+        ]
+      },
+      "suffix-increased-life-regeneration-rate": {
+        "text": "#% increased Life Regeneration rate",
+        "ids": [
+          "explicit.stat_44972811"
+        ]
+      },
+      "suffix-increased-mana-flask-charges-gained": {
+        "text": "#% increased Mana Flask Charges gained",
+        "ids": [
+          "explicit.stat_3590792340"
+        ]
+      },
+      "suffix-increased-mana-recovery-from-flasks": {
+        "text": "#% increased Mana Recovery from Flasks",
+        "ids": [
+          "explicit.stat_2222186378"
+        ]
+      },
+      "suffix-increased-mana-regeneration-rate": {
+        "text": "#% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_789117908"
+        ]
+      },
+      "suffix-increased-movement-speed": {
+        "text": "#% increased Movement Speed",
+        "ids": [
+          "explicit.stat_2250533757"
+        ]
+      },
+      "suffix-increased-parried-debuff-duration": {
+        "text": "#% increased Parried Debuff Duration",
+        "ids": [
+          "explicit.stat_3401186585"
+        ]
+      },
+      "suffix-increased-pin-buildup": {
+        "text": "#% increased Pin Buildup",
+        "ids": [
+          "explicit.stat_3473929743"
+        ]
+      },
+      "suffix-increased-poison-duration": {
+        "text": "#% increased Poison Duration",
+        "ids": [
+          "explicit.stat_2011656677"
+        ]
+      },
+      "suffix-increased-shock-duration": {
+        "text": "#% increased Shock Duration",
+        "ids": [
+          "explicit.stat_3668351662"
+        ]
+      },
+      "suffix-increased-skill-effect-duration": {
+        "text": "#% increased Skill Effect Duration",
+        "ids": [
+          "explicit.stat_3377888098"
+        ]
+      },
+      "suffix-increased-skill-speed-while-shapeshifted": {
+        "text": "#% increased Skill Speed while Shapeshifted",
+        "ids": [
+          "explicit.stat_918325986"
+        ]
+      },
+      "suffix-increased-stun-buildup": {
+        "text": "#% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_239367161"
+        ]
+      },
+      "suffix-increased-stun-buildup-with-maces": {
+        "text": "#% increased Stun Buildup with Maces",
+        "ids": [
+          "explicit.stat_872504239"
+        ]
+      },
+      "suffix-increased-stun-threshold": {
+        "text": "#% increased Stun Threshold",
+        "ids": [
+          "explicit.stat_680068163"
+        ]
+      },
+      "suffix-increased-stun-threshold-if-you-haven-t-been-stunned-recently": {
+        "text": "#% increased Stun Threshold if you haven't been Stunned Recently",
+        "ids": [
+          "explicit.stat_1405298142"
+        ]
+      },
+      "suffix-increased-stun-threshold-while-parrying": {
+        "text": "#% increased Stun Threshold while Parrying",
+        "ids": [
+          "explicit.stat_1911237468"
+        ]
+      },
+      "suffix-increased-totem-placement-speed": {
+        "text": "#% increased Totem Placement speed",
+        "ids": [
+          "explicit.stat_3374165039"
+        ]
+      },
+      "suffix-increased-warcry-cooldown-recovery-rate": {
+        "text": "#% increased Warcry Cooldown Recovery Rate",
+        "ids": [
+          "explicit.stat_4159248054"
+        ]
+      },
+      "suffix-increased-warcry-speed": {
+        "text": "#% increased Warcry Speed",
+        "ids": [
+          "explicit.stat_1316278494"
+        ]
+      },
+      "suffix-of-damage-is-taken-from-mana-before-life": {
+        "text": "#% of Damage is taken from Mana before Life",
+        "ids": [
+          "explicit.stat_458438597"
+        ]
+      },
+      "suffix-of-damage-taken-recouped-as-life": {
+        "text": "#% of Damage taken Recouped as Life",
+        "ids": [
+          "explicit.stat_1444556985"
+        ]
+      },
+      "suffix-of-skill-mana-costs-converted-to-life-costs": {
+        "text": "#% of Skill Mana Costs Converted to Life Costs",
+        "ids": [
+          "explicit.stat_2480498143"
+        ]
+      },
+      "suffix-reduced-slowing-potency-of-debuffs-on-you": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-to-maximum-cold-resistance": {
+        "text": "#% to Maximum Cold Resistance",
+        "ids": [
+          "explicit.stat_3676141501"
+        ]
+      },
+      "suffix-to-maximum-fire-resistance": {
+        "text": "#% to Maximum Fire Resistance",
+        "ids": [
+          "explicit.stat_4095671657"
+        ]
+      },
+      "suffix-to-maximum-lightning-resistance": {
+        "text": "#% to Maximum Lightning Resistance",
+        "ids": [
+          "explicit.stat_1011760251"
+        ]
+      },
+      "suffix-banner-skills-have-increased-duration": {
+        "text": "Banner Skills have #% increased Duration",
+        "ids": [
+          "explicit.stat_2720982137"
+        ]
+      },
+      "suffix-damaging-ailments-deal-damage-faster": {
+        "text": "Damaging Ailments deal damage #% faster",
+        "ids": [
+          "explicit.stat_538241406"
+        ]
+      },
+      "suffix-debuffs-on-you-expire-faster": {
+        "text": "Debuffs on you expire #% faster",
+        "ids": [
+          "explicit.stat_1238227257"
+        ]
+      },
+      "suffix-gain-rage-on-melee-hit": {
+        "text": "Gain # Rage on Melee Hit",
+        "ids": [
+          "explicit.stat_2709367754"
+        ]
+      },
+      "suffix-gain-rage-when-hit-by-an-enemy": {
+        "text": "Gain # Rage when Hit by an Enemy",
+        "ids": [
+          "explicit.stat_3292710273"
+        ]
+      },
+      "suffix-gain-additional-ailment-threshold-equal-to-of-maximum-energy-shield": {
+        "text": "Gain additional Ailment Threshold equal to #% of maximum Energy Shield",
+        "ids": [
+          "explicit.stat_3398301358"
+        ]
+      },
+      "suffix-gain-additional-stun-threshold-equal-to-of-maximum-energy-shield": {
+        "text": "Gain additional Stun Threshold equal to #% of maximum Energy Shield",
+        "ids": [
+          "explicit.stat_416040624"
+        ]
+      },
+      "suffix-mark-skills-have-increased-skill-effect-duration": {
+        "text": "Mark Skills have #% increased Skill Effect Duration",
+        "ids": [
+          "explicit.stat_2594634307"
+        ]
+      },
+      "suffix-mark-skills-have-increased-use-speed": {
+        "text": "Mark Skills have #% increased Use Speed",
+        "ids": [
+          "explicit.stat_1714971114"
+        ]
+      },
+      "suffix-meta-skills-gain-increased-energy": {
+        "text": "Meta Skills gain #% increased Energy",
+        "ids": [
+          "explicit.stat_4236566306"
+        ]
+      },
+      "suffix-minions-have-additional-physical-damage-reduction": {
+        "text": "Minions have #% additional Physical Damage Reduction",
+        "ids": [
+          "explicit.stat_3119612865"
+        ]
+      },
+      "suffix-minions-have-increased-attack-and-cast-speed": {
+        "text": "Minions have #% increased Attack and Cast Speed",
+        "ids": [
+          "explicit.stat_3091578504"
+        ]
+      },
+      "suffix-minions-have-increased-critical-damage-bonus": {
+        "text": "Minions have #% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_1854213750"
+        ]
+      },
+      "suffix-minions-have-increased-critical-hit-chance": {
+        "text": "Minions have #% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_491450213"
+        ]
+      },
+      "suffix-minions-have-to-all-elemental-resistances": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-minions-have-to-chaos-resistance": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-chance-to-pierce-an-enemy": {
+        "text": "Notable Passive Skills in Radius also grant #% chance to Pierce an Enemy",
+        "ids": [
+          "explicit.stat_1800303440"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-armour-break-duration": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Armour Break Duration",
+        "ids": [
+          "explicit.stat_504915064"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-attack-speed": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Attack Speed",
+        "ids": [
+          "explicit.stat_2822644689"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-attack-speed-with-bows": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Attack Speed with Bows",
+        "ids": [
+          "explicit.stat_3641543553"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-attack-speed-with-crossbows": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Attack Speed with Crossbows",
+        "ids": [
+          "explicit.stat_715957346"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-attack-speed-with-quarterstaves": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Attack Speed with Quarterstaves",
+        "ids": [
+          "explicit.stat_111835965"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-attack-speed-with-spears": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Attack Speed with Spears",
+        "ids": [
+          "explicit.stat_1266413530"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-bleeding-duration": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Bleeding Duration",
+        "ids": [
+          "explicit.stat_1505023559"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-cast-speed": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Cast Speed",
+        "ids": [
+          "explicit.stat_1022759479"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-chance-to-inflict-ailments": {
+        "text": "Notable Passive Skills in Radius also grant #% increased chance to inflict Ailments",
+        "ids": [
+          "explicit.stat_412709880"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-charm-charges-gained": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Charm Charges gained",
+        "ids": [
+          "explicit.stat_2320654813"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-chill-duration-on-enemies": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Chill Duration on Enemies",
+        "ids": [
+          "explicit.stat_61644361"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-cooldown-recovery-rate": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Cooldown Recovery Rate",
+        "ids": [
+          "explicit.stat_2149603090"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-damage-bonus": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_2359002191"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-damage-bonus-for-attack-damage": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Damage Bonus for Attack Damage",
+        "ids": [
+          "explicit.stat_1352561456"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-damage-bonus-with-spears": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Damage Bonus with Spears",
+        "ids": [
+          "explicit.stat_138421180"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-hit-chance": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_2077117738"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-hit-chance-for-attacks": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Hit Chance for Attacks",
+        "ids": [
+          "explicit.stat_3865605585"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-hit-chance-for-spells": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Hit Chance for Spells",
+        "ids": [
+          "explicit.stat_2704905000"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-critical-spell-damage-bonus": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Critical Spell Damage Bonus",
+        "ids": [
+          "explicit.stat_2466785537"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-crossbow-reload-speed": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Crossbow Reload Speed",
+        "ids": [
+          "explicit.stat_3856744003"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-duration-of-damaging-ailments-on-enemies": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Duration of Damaging Ailments on Enemies",
+        "ids": [
+          "explicit.stat_2272980012"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-duration-of-ignite-shock-and-chill-on-enemies": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Duration of Ignite, Shock and Chill on Enemies",
+        "ids": [
+          "explicit.stat_1323216174"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-flask-charges-gained": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Flask Charges gained",
+        "ids": [
+          "explicit.stat_2066964205"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-freeze-buildup": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Freeze Buildup",
+        "ids": [
+          "explicit.stat_1087531620"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-freeze-buildup-with-quarterstaves": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Freeze Buildup with Quarterstaves",
+        "ids": [
+          "explicit.stat_127081978"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-glory-generation-for-banner-skills": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Glory generation for Banner Skills",
+        "ids": [
+          "explicit.stat_2907381231"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-knockback-distance": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Knockback Distance",
+        "ids": [
+          "explicit.stat_2976476845"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-life-flask-charges-gained": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Life Flask Charges gained",
+        "ids": [
+          "explicit.stat_942519401"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-life-regeneration-rate": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Life Regeneration rate",
+        "ids": [
+          "explicit.stat_1185341308"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-mana-flask-charges-gained": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Mana Flask Charges gained",
+        "ids": [
+          "explicit.stat_3171212276"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-movement-speed": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Movement Speed",
+        "ids": [
+          "explicit.stat_844449513"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-parried-debuff-duration": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Parried Debuff Duration",
+        "ids": [
+          "explicit.stat_1514844108"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-pin-buildup": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Pin Buildup",
+        "ids": [
+          "explicit.stat_1944020877"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-poison-duration": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Poison Duration",
+        "ids": [
+          "explicit.stat_221701169"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-skill-effect-duration": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Skill Effect Duration",
+        "ids": [
+          "explicit.stat_3113764475"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-skill-speed-while-shapeshifted": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Skill Speed while Shapeshifted",
+        "ids": [
+          "explicit.stat_3579898587"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-stun-buildup": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Stun Buildup",
+        "ids": [
+          "explicit.stat_4173554949"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-stun-buildup-with-maces": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Stun Buildup with Maces",
+        "ids": [
+          "explicit.stat_2392824305"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-stun-threshold-while-parrying": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Stun Threshold while Parrying",
+        "ids": [
+          "explicit.stat_1495814176"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-increased-warcry-cooldown-recovery-rate": {
+        "text": "Notable Passive Skills in Radius also grant #% increased Warcry Cooldown Recovery Rate",
+        "ids": [
+          "explicit.stat_2056107438"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-of-damage-is-taken-from-mana-before-life": {
+        "text": "Notable Passive Skills in Radius also grant #% of Damage is taken from Mana before Life",
+        "ids": [
+          "explicit.stat_2709646369"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-of-damage-taken-recouped-as-life": {
+        "text": "Notable Passive Skills in Radius also grant #% of Damage taken Recouped as Life",
+        "ids": [
+          "explicit.stat_3669820740"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-of-skill-mana-costs-converted-to-life-costs": {
+        "text": "Notable Passive Skills in Radius also grant #% of Skill Mana Costs Converted to Life Costs",
+        "ids": [
+          "explicit.stat_3386297724"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-reduced-slowing-potency-of-debuffs-on-you": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-damaging-ailments-deal-damage-faster": {
+        "text": "Notable Passive Skills in Radius also grant Damaging Ailments deal damage #% faster",
+        "ids": [
+          "explicit.stat_3173882956"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-debuffs-on-you-expire-faster": {
+        "text": "Notable Passive Skills in Radius also grant Debuffs on you expire #% faster",
+        "ids": [
+          "explicit.stat_2256120736"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-gain-rage-on-melee-hit": {
+        "text": "Notable Passive Skills in Radius also grant Gain # Rage on Melee Hit",
+        "ids": [
+          "explicit.stat_2969557004"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-gain-rage-when-hit-by-an-enemy": {
+        "text": "Notable Passive Skills in Radius also grant Gain # Rage when Hit by an Enemy",
+        "ids": [
+          "explicit.stat_2131720304"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-meta-skills-gain-increased-energy": {
+        "text": "Notable Passive Skills in Radius also grant Meta Skills gain #% increased Energy",
+        "ids": [
+          "explicit.stat_2849546516"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-minions-have-increased-attack-and-cast-speed": {
+        "text": "Notable Passive Skills in Radius also grant Minions have #% increased Attack and Cast Speed",
+        "ids": [
+          "explicit.stat_3106718406"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-minions-have-increased-critical-damage-bonus": {
+        "text": "Notable Passive Skills in Radius also grant Minions have #% increased Critical Damage Bonus",
+        "ids": [
+          "explicit.stat_593241812"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-minions-have-increased-critical-hit-chance": {
+        "text": "Notable Passive Skills in Radius also grant Minions have #% increased Critical Hit Chance",
+        "ids": [
+          "explicit.stat_3628935286"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-offering-skills-have-increased-duration": {
+        "text": "Notable Passive Skills in Radius also grant Offering Skills have #% increased Duration",
+        "ids": [
+          "explicit.stat_2374711847"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-projectiles-have-chance-for-an-additional-projectile-when-forking": {
+        "text": "Notable Passive Skills in Radius also grant Projectiles have #% chance for an additional Projectile when Forking",
+        "ids": [
+          "explicit.stat_4258720395"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-projectiles-have-chance-to-chain-an-additional-time-from-terrain": {
+        "text": "Notable Passive Skills in Radius also grant Projectiles have #% chance to Chain an additional time from terrain",
+        "ids": [
+          "explicit.stat_2334956771"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-recover-of-maximum-life-on-kill": {
+        "text": "Notable Passive Skills in Radius also grant Recover #% of maximum Life on Kill",
+        "ids": [
+          "explicit.stat_2726713579"
+        ]
+      },
+      "suffix-notable-passive-skills-in-radius-also-grant-recover-of-maximum-mana-on-kill": {
+        "text": "Notable Passive Skills in Radius also grant Recover #% of maximum Mana on Kill",
+        "ids": [
+          "explicit.stat_525523040"
+        ]
+      },
+      "suffix-offering-skills-have-increased-duration": {
+        "text": "Offering Skills have #% increased Duration",
+        "ids": [
+          "explicit.stat_2957407601"
+        ]
+      },
+      "suffix-projectiles-have-chance-for-an-additional-projectile-when-forking": {
+        "text": "Projectiles have #% chance for an additional Projectile when Forking",
+        "ids": [
+          "explicit.stat_3003542304"
+        ]
+      },
+      "suffix-projectiles-have-chance-to-chain-an-additional-time-from-terrain": {
+        "text": "Projectiles have #% chance to Chain an additional time from terrain",
+        "ids": [
+          "explicit.stat_4081947835"
+        ]
+      },
+      "suffix-recover-of-maximum-life-on-kill": {
+        "text": "Recover #% of maximum Life on Kill",
+        "ids": [
+          "explicit.stat_2023107756"
+        ]
+      },
+      "suffix-recover-of-maximum-mana-on-kill": {
+        "text": "Recover #% of maximum Mana on Kill",
+        "ids": [
+          "explicit.stat_1030153674"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-chance-to-blind-enemies-on-hit-with-attacks": {
+        "text": "Small Passive Skills in Radius also grant #% chance to Blind Enemies on Hit with Attacks",
+        "ids": [
+          "explicit.stat_2610562860"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-chance-to-daze-on-hit": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-chance-to-poison-on-hit": {
+        "text": "Small Passive Skills in Radius also grant #% chance to Poison on Hit",
+        "ids": [
+          "explicit.stat_2840989393"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-amount-of-life-leeched": {
+        "text": "Small Passive Skills in Radius also grant #% increased amount of Life Leeched",
+        "ids": [
+          "explicit.stat_3666476747"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-amount-of-mana-leeched": {
+        "text": "Small Passive Skills in Radius also grant #% increased amount of Mana Leeched",
+        "ids": [
+          "explicit.stat_3700202631"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-chance-to-shock": {
+        "text": "Small Passive Skills in Radius also grant #% increased chance to Shock",
+        "ids": [
+          "explicit.stat_1039268420"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-charm-effect-duration": {
+        "text": "Small Passive Skills in Radius also grant #% increased Charm Effect Duration",
+        "ids": [
+          "explicit.stat_3088348485"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-curse-duration": {
+        "text": "Small Passive Skills in Radius also grant #% increased Curse Duration",
+        "ids": [
+          "explicit.stat_1087108135"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-elemental-ailment-threshold": {
+        "text": "Small Passive Skills in Radius also grant #% increased Elemental Ailment Threshold",
+        "ids": [
+          "explicit.stat_3409275777"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-flammability-magnitude": {
+        "text": "Small Passive Skills in Radius also grant #% increased Flammability Magnitude",
+        "ids": [
+          "explicit.stat_394473632"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-flask-effect-duration": {
+        "text": "Small Passive Skills in Radius also grant #% increased Flask Effect Duration",
+        "ids": [
+          "explicit.stat_1773308808"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-freeze-threshold": {
+        "text": "Small Passive Skills in Radius also grant #% increased Freeze Threshold",
+        "ids": [
+          "explicit.stat_830345042"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-life-recovery-from-flasks": {
+        "text": "Small Passive Skills in Radius also grant #% increased Life Recovery from Flasks",
+        "ids": [
+          "explicit.stat_980177976"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-mana-recovery-from-flasks": {
+        "text": "Small Passive Skills in Radius also grant #% increased Mana Recovery from Flasks",
+        "ids": [
+          "explicit.stat_3774951878"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-mana-regeneration-rate": {
+        "text": "Small Passive Skills in Radius also grant #% increased Mana Regeneration Rate",
+        "ids": [
+          "explicit.stat_3256879910"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-shock-duration": {
+        "text": "Small Passive Skills in Radius also grant #% increased Shock Duration",
+        "ids": [
+          "explicit.stat_3513818125"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-stun-threshold": {
+        "text": "Small Passive Skills in Radius also grant #% increased Stun Threshold",
+        "ids": [
+          "explicit.stat_484792219"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-stun-threshold-if-you-haven-t-been-stunned-recently": {
+        "text": "Small Passive Skills in Radius also grant #% increased Stun Threshold if you haven't been Stunned Recently",
+        "ids": [
+          "explicit.stat_654207792"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-totem-placement-speed": {
+        "text": "Small Passive Skills in Radius also grant #% increased Totem Placement speed",
+        "ids": [
+          "explicit.stat_1145481685"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-increased-warcry-speed": {
+        "text": "Small Passive Skills in Radius also grant #% increased Warcry Speed",
+        "ids": [
+          "explicit.stat_1602294220"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-banner-skills-have-increased-duration": {
+        "text": "Small Passive Skills in Radius also grant Banner Skills have #% increased Duration",
+        "ids": [
+          "explicit.stat_2690740379"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-gain-additional-ailment-threshold-equal-to-of-maximum-energy-shield": {
+        "text": "Small Passive Skills in Radius also grant Gain additional Ailment Threshold equal to #% of maximum Energy Shield",
+        "ids": [
+          "explicit.stat_693237939"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-gain-additional-stun-threshold-equal-to-of-maximum-energy-shield": {
+        "text": "Small Passive Skills in Radius also grant Gain additional Stun Threshold equal to #% of maximum Energy Shield",
+        "ids": [
+          "explicit.stat_1653682082"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-mark-skills-have-increased-skill-effect-duration": {
+        "text": "Small Passive Skills in Radius also grant Mark Skills have #% increased Skill Effect Duration",
+        "ids": [
+          "explicit.stat_4162678661"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-mark-skills-have-increased-use-speed": {
+        "text": "Small Passive Skills in Radius also grant Mark Skills have #% increased Use Speed",
+        "ids": [
+          "explicit.stat_2202308025"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-minions-have-additional-physical-damage-reduction": {
+        "text": "Small Passive Skills in Radius also grant Minions have #% additional Physical Damage Reduction",
+        "ids": [
+          "explicit.stat_30438393"
+        ]
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-minions-have-to-all-elemental-resistances": {
+        "searchable": false,
+        "reason": "no trade stat"
+      },
+      "suffix-small-passive-skills-in-radius-also-grant-minions-have-to-chaos-resistance": {
+        "searchable": false,
+        "reason": "no trade stat"
+      }
+    }
+  }
+}
