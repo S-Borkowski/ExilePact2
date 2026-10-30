@@ -1,0 +1,76 @@
+# Any equipment, listed: a full rare missing only one target. A desecration
+# on that target's side takes a random modifier off that side and holds an
+# unrevealed one in its place; the reveal may offer the missing target.
+# Paraphrased from the guide `source` names; never paste its text here.
+id = "full-rare-desecration-rescue"
+name = "Rescue a full rare with one target missing by desecration"
+classes = [
+    "Gloves", "Boots", "Helmets", "Body Armours", "Shields", "Quivers",
+    "Bucklers", "Foci", "Wands", "One Hand Maces", "Sceptres", "Spears",
+    "Bows", "Staves", "Two Hand Maces", "Quarterstaves", "Crossbows",
+    "Talismans", "Belts", "Amulets", "Rings",
+]
+source = "maxroll, How to Craft in Path of Exile 2, the rescue of boots with no movement speed (https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2), reviewed 2026-10-30 (issue #35)"
+notes = """
+A paraphrase of the guide's rescue: a rare with six modifiers that lacks \
+one target, such as boots with everything but movement speed, is not \
+thrown away. A bone used with the Sinistral or Dextral Necromancy omen of \
+the missing target's side, active before use (omens-active-before-use), \
+takes one modifier off that full side and leaves an unrevealed one there \
+(full-desecration-same-side, not established); which one goes is assumed \
+equally likely (removal-equally-likely), so the step's odds are the share \
+of that side's removable modifiers that are not targets, and do not \
+include the reveal's own chance. The reveal, with Omen of Abyssal \
+Echoes, may offer the target; a wrong reveal is taken off with Omen of \
+Light and an Orb of Annulment and the bone used again. A class with no \
+desecrated modifier on that side relies on what Necromancy does there \
+(necromancy-without-pool). Losing a target to the desecration gives the \
+item up."""
+relies_on = [
+    "omens-active-before-use",
+    "necromancy-without-pool",
+    "removal-equally-likely",
+    "full-desecration-same-side",
+]
+
+[[start]]
+rarity = ["rare"]
+modifiers_at_least = 6
+modifiers_at_most = 6
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the missing target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+bind = "last-remaining"
+requires = { wanted_remaining_exactly = 1, no_desecrated = true }
+on_miss = "abandon"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "last-remaining"
+on_hit = "done"
+on_miss = "next"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+on_hit = "goto:desecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]

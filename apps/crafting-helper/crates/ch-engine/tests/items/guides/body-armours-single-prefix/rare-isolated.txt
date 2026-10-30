@@ -1,0 +1,18 @@
+Item Class: Body Armours
+Rarity: Rare
+Gale Wrap
+Slipstrike Vest
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Illusion's" (Tier: 1) — Defences, Evasion }
+105(101-110)% increased Evasion Rating
+{ Prefix Modifier "Fecund" (Tier: 4) — Life }
++160(150-174) to maximum Life
+{ Prefix Modifier "Elusory" (Tier: 4) — Defences, Evasion }
++190(177-207) to Evasion Rating
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++33(31-35)% to Fire Resistance
+{ Suffix Modifier "of the Polar Bear" (Tier: 3) — Elemental, Cold, Resistance }
++33(31-35)% to Cold Resistance
+{ Unrevealed Desecrated Suffix Modifier }

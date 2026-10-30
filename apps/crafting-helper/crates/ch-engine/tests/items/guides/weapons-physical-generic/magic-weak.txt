@@ -1,0 +1,8 @@
+Item Class: Two Hand Maces
+Rarity: Magic
+Cruel Aberrant Sledge
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Cruel" (Tier: 3) — Damage, Physical, Attack }
+145(135-154)% increased Physical Damage

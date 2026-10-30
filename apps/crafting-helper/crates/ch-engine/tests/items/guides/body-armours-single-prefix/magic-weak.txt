@@ -1,0 +1,10 @@
+Item Class: Body Armours
+Rarity: Magic
+Nightmare's Slipstrike Vest of the Volcano
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Nightmare's" (Tier: 3) — Defences, Evasion }
+85(80-91)% increased Evasion Rating
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++33(31-35)% to Fire Resistance

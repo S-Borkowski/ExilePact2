@@ -87,7 +87,7 @@ the session; it does not change the id.
 |---|---|---|
 | `greater-with-side-omen` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic` | The side slam (and `close-a-side`'s close) resolves `greater-omen` beside `side-omen`; `weapons-physical-generic`'s two suffixes come from Greater with Dextral Exaltation. |
 | `greater-needs-two-free` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic`, `body-armours-single-prefix` | `greater-omen` resolves only where two slots are free; the two listed blueprints name Omen of Greater Exaltation where two are. |
-| `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full. |
+| `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix`, `weapons-physical-generic` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full; `weapons-physical-generic`'s augment lands on the magic weapon's free side. |
 | `whittling-mod-level` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The removal step's whittle alternative is certain only by this reading of "lowest level". |
 | `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first` | A removal's odds and the blocked-side test leave fractured modifiers out; `fracture-first` annuls and Chaos-rolls around its fractured target. |
 | `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
@@ -717,3 +717,9 @@ Invariants over every case and every route:
   does to the slots" for the Fracturing Orb and the essence swap are for
   the engine and the listed blueprints, not the model).
 - Listed-order blueprints beyond the baseline reading above.
+- The two state-ordered blueprints from the guides,
+  `weapons-physical-generic` and `body-armours-single-prefix`: they use only
+  the rules above, which the cases already pin, so they are not among the
+  model's blueprints and `cases.json` records no route for them. The
+  engine's walks pin them instead
+  (`apps/crafting-helper/crates/ch-engine/tests/seeds_guides.rs`).

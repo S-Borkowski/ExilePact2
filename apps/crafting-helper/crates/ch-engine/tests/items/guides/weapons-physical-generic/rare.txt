@@ -1,0 +1,13 @@
+Item Class: Two Hand Maces
+Rarity: Rare
+Brood Mangler
+Aberrant Sledge
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Tyrannical" (Tier: 2) — Damage, Physical, Attack }
+160(155-169)% increased Physical Damage
+{ Prefix Modifier "Razor-sharp" (Tier: 3) — Damage, Physical, Attack }
+Adds 29(23-35) to 49(39-59) Physical Damage
+{ Suffix Modifier "of Fame" (Tier: 3) — Attack, Speed }
+21(20-22)% increased Attack Speed
