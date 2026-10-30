@@ -206,7 +206,9 @@ hold:
    desecration the pool condition holds (§ "The last-target desecration").
 
 The **next step** is the first candidate in file order, unless § "Certain
-removals first" moves a later one ahead of it. With none, the
+removals first" moves a later one ahead of it, and leaving out a
+`remove-desecrated` step that waits (§ "A wrong reveal waits for the
+same-side exalt"). With none, the
 craft is **done** when no target is missing, and otherwise **stuck**, and
 the guide names each step's reason (guard false, goal met, no side, no free
 slot, every alternative blocked, no alternative fits).
@@ -398,7 +400,9 @@ data; the model takes it from the case (§ "Representative crafts"). The
 desecrated modifier that is not a target, with the last target still
 missing: `light-last` takes it with Omen of Light and an Orb of Annulment
 (certain: it takes nothing else), then `desecrate-last` and `reveal-last`
-run again.
+run again. When an exalt on the same side still has a free slot and a
+target to add there, Omen of Light waits for it first (§ "A wrong reveal
+waits for the same-side exalt").
 
 **The fallback reason** (engine only). When the item is rare, carries no
 desecrated modifier and exactly one target is missing, but `desecrate-last`
@@ -410,6 +414,46 @@ it and the parity test does not compare it, as with odds.
 
 **Odds.** A desecration and a reveal have no established weights, so their
 odds are unknown, with that reason, as in listed order.
+
+### A wrong reveal waits for the same-side exalt
+
+Added 2026-10-30 (issue #37). A route rule of ours, not a game fact: the
+guide (which step now) and the projection pick by it alike.
+
+A `remove-desecrated` step whose guard asks `desecrated_unwanted = true`
+(`light`, `light-last`) **waits** while the item holds a revealed
+desecrated modifier that is not a target and some `add-wanted` step of the
+blueprint is a candidate on that modifier's side with a free slot there: a
+candidate whose resolved side is that side, or, for a step without
+`side`, one that can place a missing target on that side. A step that
+waits is not taken; the next step is picked from the other candidates as
+above, and the guide names its reason (it waits for the add). Once that
+side is full, or no add-wanted step can place a target there, the step is
+taken as before.
+
+Why: the modifier a wrong reveal leaves stays on the item through the
+exalt that fills the rest of its side, and the engine's add odds drop from
+the pool every family of every revealed modifier on the item, desecrated
+ones included (the reading the blocker blueprints, `gloves-crit-melee` and
+`amulets-resist-spirit`, rely on). Keeping it never makes the exalt worse
+and can make it better; taking it off first throws that away, and Omen of
+Light still comes once the side is done. It applies to every wrong reveal
+in a state-ordered route, not only one the player chose on purpose
+(the owner's default, reversible). The existing `rare-wrong-reveal` case
+(its side full) keeps Light first.
+
+**The blocker advice** (engine only). Because the reveal's three offers
+are never read (`desecrate-adds-unrevealed`), the engine names, for a
+reveal step whose desecration is followed later in the projection by an
+add on the same side with an Exalted Orb of any grade, which desecrated
+modifiers to take if no target is offered: the class variant's
+desecrated-section modifiers on that side at the item level that are not
+targets, each scored by that exalt's chance of a target with the
+candidate on the item (its families out of the pool), against the same
+exalt with the slot taken by a modifier that excludes nothing. Only those
+that raise the chance are named, at most three, best first. Ordinary
+modifiers a reveal may offer (`reveal-offers-base`) are left out: which
+ones is not known. The model has no pools and does not compute it.
 
 ### Rejections
 
@@ -581,6 +625,19 @@ is a spec or model defect, never a reason to change the expectation.
     `rare-clean-then-slam`: an Orb of Annulment with Omen of Light, odds
     certain; desecrate on the prefix side with Sinistral Necromancy; reveal
     with Abyssal Echoes. Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`rare-wrong-reveal-same-side-exalt`** (2026-10-30, issue #37): a rare
+  whose prefixes are a target and a revealed desecrated junk (a reveal that
+  offered no target), and whose one suffix is a target; a second prefix
+  target is missing, and the prefix side has one free slot. Omen of Light
+  waits for the prefix exalt (§ "A wrong reveal waits for the same-side
+  exalt").
+  - `essence-desecrate-double-slam`, `rare-clean-then-slam`: add the prefix
+    with a Perfect Exalted Orb and Sinistral Exaltation, the desecrated junk
+    kept on the item. Done (Light used to come first).
+  - `close-a-side`: the suffix side is closable, so fill it with an Exalted
+    Orb, Greater and Dextral Exaltation; then add the prefix with a Perfect
+    Exalted Orb and no omen (one side open). Done; Light never comes.
   - `magic-augment-essence`: rejected, `no-start-fits`.
 - **`magic-two-good`**: a magic item with a target prefix and a target
   suffix; missing a prefix an essence adds, a desecrated-pool prefix and

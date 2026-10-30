@@ -236,36 +236,34 @@ fn essence_desecrate_double_slam_hit_and_miss() {
     let out = observe(&engine, &mut guide, &unrevealed, &revealed);
     done(&out, &guide);
 
-    // Miss path: the reveal is Cold and Chaos Resistance. Omen of Light
-    // takes it off, and the bone is used again.
+    // Miss path: the reveal is Cold and Chaos Resistance, on the suffix
+    // side with two slots still free and Fire missing there. Omen of Light
+    // waits for the suffix exalt (docs/models/crafting-slots-spec.md, "A
+    // wrong reveal waits for the same-side exalt"; it used to take the
+    // modifier off first), so the exalt goes with it kept on the item.
     let (mut guide, _) = start(&engine, "essence-desecrate-double-slam", &magic, &list, &[]);
     observe(&engine, &mut guide, &magic, &rare);
     observe(&engine, &mut guide, &rare, &unrevealed);
     let wrong = state("essence-revealed-wrong");
     let out = observe(&engine, &mut guide, &unrevealed, &wrong);
-    let light = then(&out, Miss).clone();
+    let slam = then(&out, Miss).clone();
     is(
-        &light,
-        "light",
-        None,
-        "orb-of-annulment",
-        &["omen-of-light"],
+        &slam,
+        "side-slam",
+        Some(Side::Suffix),
+        "perfect-exalted-orb",
+        &["omen-of-dextral-exaltation"],
     );
     replans_to(
         &engine,
         "essence-desecrate-double-slam",
         &wrong,
         &list,
-        &light,
+        &slam,
     );
-    let out = observe(&engine, &mut guide, &wrong, &rare);
-    is(
-        then(&out, Hit),
-        "desecrate",
-        Some(Side::Suffix),
-        "desecrate",
-        &["omen-of-dextral-necromancy"],
-    );
+    let kept = state("essence-wrong-kept-fire");
+    let out = observe(&engine, &mut guide, &wrong, &kept);
+    done(&out, &guide);
 }
 
 #[test]

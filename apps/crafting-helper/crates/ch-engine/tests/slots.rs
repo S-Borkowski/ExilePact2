@@ -114,6 +114,17 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("s1", FIRE, Some(5)),
             ],
         },
+        // The same ring without its Life prefix: Mana T5 and the revealed
+        // desecrated Remnant Effect prefix, one prefix slot free; Life T4
+        // missing (spec, "A wrong reveal waits for the same-side exalt").
+        "rare-wrong-reveal-same-side-exalt" => Fixture {
+            item: "slots/rare-wrong-reveal-same-side-exalt.txt",
+            targets: &[
+                ("p1", MANA, Some(5)),
+                ("p2", LIFE, Some(4)),
+                ("s1", FIRE, Some(5)),
+            ],
+        },
         // Magic amulet: Mana T2 (a top-two tier, so `weak-magic-start`
         // leaves the route alone) and Cold Resistance T5. Life T8 is the
         // Lesser Essence of the Body's; the desecrated Global Defences

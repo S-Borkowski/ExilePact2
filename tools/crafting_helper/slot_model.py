@@ -23,7 +23,8 @@ What is here:
   not-established facts it relies on, the last-target desecration's steps
   among them, bound to `last-remaining` (made afresh on every item) and
   held to the case's `desecration_pool`;
-- the next-step rules (certain removals first among them), the side
+- the next-step rules (certain removals first and Omen of Light waiting
+  for a same-side exalt among them), the side
   rules, the `greater-omen` and `side-omen`
   placeholders, the removal rules and the projection (`plan`), with the
   rejections in the spec's order;
@@ -803,15 +804,48 @@ def certain_removal(state, choice):
     return choice.step.goal in REMOVALS and removal_certain(state, choice)
 
 
+def light_waits(state, bp, step, acc):
+    """The add-wanted step a `remove-desecrated` step guarded by
+    `desecrated_unwanted = true` waits for, or None (spec § "A wrong reveal
+    waits for the same-side exalt"): one that is a candidate on the side of
+    a revealed desecrated non-target, with a free slot there (a step without
+    `side`: one that can place a missing target there)."""
+    if step.goal != "remove-desecrated" or ("desecrated_unwanted", True) not in step.guard:
+        return None
+    sides = {s for s, m in state.item.placed()
+             if m.desecrated and not m.unrevealed and not m.is_target}
+    open_sides = {s for s in sides if acc[s].free > 0}
+    if not open_sides:
+        return None
+    for add in bp.steps:
+        if add.goal != "add-wanted":
+            continue
+        got = evaluate(state, add, acc)
+        if not isinstance(got, Choice):
+            continue
+        if got.side is not None:
+            if got.side in open_sides:
+                return add
+        elif any(t.side in open_sides for t in placeable(state, add)):
+            return add
+    return None
+
+
 def next_step(state, bp, acc):
-    """The next step (spec §§ "Candidates and the next step" and "Certain
-    removals first"): the first candidate in file order, unless it is not a
-    certain removal and a later candidate is a `remove-unwanted` step whose
-    chosen alternative is certain; then the first such later one."""
+    """The next step (spec §§ "Candidates and the next step", "Certain
+    removals first" and "A wrong reveal waits for the same-side exalt"): the
+    first candidate in file order, unless it is not a certain removal and a
+    later candidate is a `remove-unwanted` step whose chosen alternative is
+    certain; then the first such later one. A Light step that waits is not
+    a candidate."""
     reasons = {}
     first = None
     for step in bp.steps:
         got = evaluate(state, step, acc)
+        if isinstance(got, Choice):
+            add = light_waits(state, bp, step, acc)
+            if add is not None:
+                got = f"waits for {add.id}, an add on the revealed desecrated modifier's side"
         if not isinstance(got, Choice):
             reasons[step.id] = got
             continue

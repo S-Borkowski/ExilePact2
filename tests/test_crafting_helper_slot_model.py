@@ -69,6 +69,11 @@ CERTAIN_FIRST_CASES = [
     "rare-certain-removal-first",
     "rare-uncertain-removal-keeps-order",
 ]
+# A wrong reveal waits for the same-side exalt (2026-10-30, #37): Omen of
+# Light passed over while a prefix exalt can still place a target there.
+LIGHT_WAITS_CASES = [
+    "rare-wrong-reveal-same-side-exalt",
+]
 
 GREATER ="omen-of-greater-exaltation"
 SIN_EX, DEX_EX = "omen-of-sinistral-exaltation", "omen-of-dextral-exaltation"
@@ -116,6 +121,10 @@ MUST_HOLD = {
     ("rare-wrong-reveal", "essence-desecrate-double-slam"): ([LIGHT_OFF] + DESECRATE_PREFIX, True),
     ("rare-wrong-reveal", "rare-clean-then-slam"): ([LIGHT_OFF] + DESECRATE_PREFIX, True),
     ("rare-wrong-reveal", "magic-augment-essence"): "no-start-fits",
+    ("rare-wrong-reveal-same-side-exalt", "close-a-side"): (CLOSE_THEN_SLAM, True),
+    ("rare-wrong-reveal-same-side-exalt", "essence-desecrate-double-slam"): (SIDE_SLAM_PREFIX, True),
+    ("rare-wrong-reveal-same-side-exalt", "rare-clean-then-slam"): (SIDE_SLAM_PREFIX, True),
+    ("rare-wrong-reveal-same-side-exalt", "magic-augment-essence"): "no-start-fits",
     ("magic-two-good", "essence-desecrate-double-slam"): ([
         ("add-wanted", None, ESSENCE, []),
         ("desecrate", "prefix", "desecrate", [SIN_NEC]),
@@ -277,7 +286,7 @@ class Cases(unittest.TestCase):
     def test_cases_cover_the_owners_crafts(self):
         cases = {c.id: c for c in load_cases()}
         self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS + LAST_TARGET_CASES
-                                               + CERTAIN_FIRST_CASES))
+                                               + CERTAIN_FIRST_CASES + LIGHT_WAITS_CASES))
         raw = json.loads(CASES.read_text(encoding="utf-8"))
         self.assertIn("crafting-slots-spec.md", raw.get("spec", ""))
 
@@ -429,6 +438,62 @@ class CertainRemovalsFirst(unittest.TestCase):
         self.assertEqual([i for i, _ in cands], ["essence", "remove"])
         self.assertTrue(annulment_certain(st, dict(cands)["remove"]))
         self.assertEqual(first_pick(c, "essence-desecrate-double-slam").step.id, "remove")
+
+
+class LightWaits(unittest.TestCase):
+    """Spec § "A wrong reveal waits for the same-side exalt": a
+    `remove-desecrated` step guarded by `desecrated_unwanted` is passed over
+    while an add is a candidate on the revealed desecrated junk's side with a
+    free slot there; with that side full, Light comes first as before."""
+
+    def test_wrong_reveal_waits_for_same_side_exalt(self):
+        c = case("rare-wrong-reveal-same-side-exalt")
+        junk = [m for m in c.item.prefix if m.desecrated]
+        self.assertEqual([(m.role, m.unrevealed) for m in junk], [("junk", False)])
+        acc = sm.accounting(sm.State.from_case(c))
+        self.assertEqual(acc["prefix"].free, 1)
+
+        for bp_id in ("essence-desecrate-double-slam", "rare-clean-then-slam"):
+            light = "light" if bp_id == "essence-desecrate-double-slam" else "light-last"
+            with self.subTest(blueprint=bp_id):
+                # Light is a candidate on the item as it stands...
+                _, cands = candidates(c, bp_id)
+                self.assertEqual([i for i, _ in cands], [light, "side-slam"])
+                # ...but waits: the exalt goes first, the junk kept through it
+                self.assertEqual(first_pick(c, bp_id).step.id, "side-slam")
+                route = sm.plan(sm.BLUEPRINTS[bp_id], c)
+                self.assertEqual(steps_of(route.record()), SIDE_SLAM_PREFIX)
+                self.assertTrue(route.complete)
+                self.assertTrue(any(m.desecrated and m.alias == "junk-d1"
+                                    for m in route.steps[-1].after.item.prefix))
+                st = sm.State.from_case(c)
+                sm.ensure_bindings(st, sm.BLUEPRINTS[bp_id])
+                _, reasons = sm.next_step(st, sm.BLUEPRINTS[bp_id], sm.accounting(st))
+                self.assertIn("waits for side-slam", reasons[light])
+        # close-a-side closes the suffix first; Light still never comes
+        record = sm.plan(sm.BLUEPRINTS["close-a-side"], c).record()
+        self.assertEqual(steps_of(record), CLOSE_THEN_SLAM)
+
+        # control: the side full (`rare-wrong-reveal`) keeps Light first
+        full = case("rare-wrong-reveal")
+        for bp_id in ("close-a-side", "essence-desecrate-double-slam", "rare-clean-then-slam"):
+            with self.subTest(control=bp_id):
+                self.assertEqual(steps_of(sm.plan(sm.BLUEPRINTS[bp_id], full).record()),
+                                 [LIGHT_OFF[:4]] + DESECRATE_PREFIX)
+        # control: with Sinistral Exaltation blocked no add can place the
+        # prefix, so Light comes first and the bone is used again
+        no_side = with_changes(c, blocked=frozenset({SIN_EX}))
+        record = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], no_side).record()
+        self.assertEqual(steps_of(record), [LIGHT_OFF[:4]] + DESECRATE_PREFIX)
+        # control: a desecrated target (not junk) never makes anything wait;
+        # Light's guard is false
+        hit = copy.deepcopy(c)
+        hit.item.prefix[1].role = "target"
+        hit.item.prefix[1].alias = "p2"
+        self.assertTrue(sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], hit).record()["complete"])
+        self.assertIsNone(sm.light_waits(sm.State.from_case(hit),
+                                         sm.BLUEPRINTS["rare-clean-then-slam"],
+                                         sm.LIGHT_LAST, sm.accounting(sm.State.from_case(hit))))
 
 
 class Invariants(unittest.TestCase):

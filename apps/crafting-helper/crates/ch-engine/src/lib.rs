@@ -30,6 +30,11 @@
 //!   whose floor, lowered to the tier an unblocked essence (or alloy, or
 //!   liquid emotion) guarantees, then gives a route using that currency
 //!   ([`Relaxation`]); `None` when they route already or nothing does.
+//! - [`Engine::blocker_advice`]: for a state-ordered route whose reveal is
+//!   followed by an exalt on the same side, the desecrated modifiers to take
+//!   if the target is not offered, each with the exalt's chance of a target
+//!   before and after ([`BlockerAdvice`]); the route keeps that modifier
+//!   through the exalt (Omen of Light waits for it).
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!
@@ -76,6 +81,7 @@ pub use ch_blueprint;
 pub use ch_data;
 pub use ch_item;
 
+mod blocker;
 mod catalogue;
 mod context;
 mod engine;
@@ -86,6 +92,7 @@ mod route;
 mod slots;
 mod state_order;
 
+pub use blocker::{BlockerAdvice, BlockerMod, BlockerPick, BLOCKER_LIMIT};
 pub use catalogue::{catalogue, catalogue_item, CatalogueItem};
 pub use ch_data::Odds;
 pub use context::{Refusal, Target, TargetInfo};

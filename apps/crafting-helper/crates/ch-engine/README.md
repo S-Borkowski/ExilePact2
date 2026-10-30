@@ -30,6 +30,12 @@ the data, the join and the add and removal odds are `ch-data`'s
   Refusal>`** (0.2.0): the one-target tier relaxation, `None` when the
   targets already route or no single lowered floor makes a route. See
   "Tier relaxation in brief" below.
+- **`Engine::blocker_advice(item, targets, blocked, blueprint) ->
+  Result<Option<BlockerAdvice>, Refusal>`** (0.2.0): for a state-ordered
+  route whose reveal is followed by an exalt on the same side, the
+  desecrated modifiers to take if the target is not offered, with that
+  exalt's chance of a target before and after. See "Blocker advice in
+  brief" below.
 - **`Engine::start(blueprint, item, targets, blocked) -> Started`**: the
   route, the `Guide` and the first `Next` step.
 - **`Engine::observe(&mut guide, before, after) -> Outcome`**: the verdict on
@@ -139,6 +145,15 @@ engine computes the same numbers and picks the same steps.
   essence swap whose removal is, the first such later candidate is next
   (`certain_removal`). The projection takes the same pick. Add certainty
   stays in the odds and never reorders.
+- **A wrong reveal waits for the same-side exalt** (since 0.2.0; the
+  spec's section of that name): a `remove-desecrated` step guarded by
+  `desecrated_unwanted = true` (`light`, `light-last`) is passed over while
+  an `add-wanted` step is a candidate on the side of the revealed
+  desecrated non-target with a free slot there (`light_waits`); its
+  reason, and the projection's skipped reason, say it waits for that
+  step. The modifier stays through the exalt, keeping its families out of
+  the pool; Light comes once the side is full or nothing more can be
+  added there.
 - **Essence swaps** (since 0.1.4, engine-only): an `add-wanted` step whose
   chosen alternative is a Perfect or special essence (`Effect::Swap`)
   fits on a Rare when its `essence` binding (made on a Rare for such a
@@ -168,7 +183,8 @@ engine computes the same numbers and picks the same steps.
   with a `desecrate-last` step bound to `last-remaining` (a bone
   and the side's Necromancy omen, nothing else) and a reveal with Omen of
   Abyssal Echoes; a wrong reveal is taken off with Omen of Light and an
-  Orb of Annulment and the bone used again. When that desecration
+  Orb of Annulment (once its side is done, above) and the bone used
+  again. When that desecration
   is not a candidate and a later step is picked in its place, the picked
   step's `StepView::instead_of_desecration` says why in words (no pool on
   the side, the bone or the Necromancy omen blocked, or the engine's own
@@ -263,6 +279,30 @@ through the currency. Accepting it is an ordinary plan with that target
 list. It never lowers two floors, never raises one and proposes nothing
 when a route exists.
 
+## Blocker advice in brief
+
+Since 0.2.0. The app never reads the Well of Souls' offers
+(`desecrate-adds-unrevealed`), so a reveal step says up front which
+desecrated modifier to take if no target is offered. `Engine::blocker_advice`
+projects the route (state order only; `None` for a listed route, an
+unknown blueprint or a rejected one) and finds its first reveal; the
+desecration's side is the side of the modifier it reveals. The advice
+needs a later add on that side with an Exalted Orb of any grade; the last
+one is scored. On the item as that exalt finds it, the reveal's slot is
+taken first by a modifier that keeps nothing out (`before`), then by each
+of the class variant's desecrated modifiers on that side that the item
+level reaches and that are not targets (`after`), and the exalt's chance of
+a missing target on that side is read as `add_chance` reads every add: the
+families of every revealed modifier on the item, desecrated ones included,
+leave the pool. Only modifiers that raise the chance are named, at most
+`BLOCKER_LIMIT` (three), best first; equal chances share one
+`BlockerPick`, with the ordinary modifiers they keep out (`keeps_out`).
+Ordinary modifiers a reveal may offer (`reveal-offers-base`) are left out.
+On the relaxed magic belt (Fire Resistance T3, Cold and Lightning T2) the
+double slam's reveal names `desecrated-suffix-to-strength-and-dexterity`
+and `desecrated-suffix-to-strength-and-intelligence`, keeping
+`suffix-to-strength` out of the suffix exalt's pool.
+
 ## The CLI
 
 ```text
@@ -284,6 +324,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test fracture
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_guides
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test relax
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test blocker
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -298,7 +339,10 @@ two prefixes and a suffix and still rejects a rare with one target.
 `tests/state_order.rs` covers state order over the `test-state-*`
 blueprints and `ring-state-*` items there: the guide's pick, the
 projection, the passed-over exalt, `greater-omen`, the removals, the
-desecration's free slot and the rejections. `tests/last_desecration.rs`
+desecration's free slot and the rejections, and on the shipped blueprints
+a wrong reveal kept through the same-side exalt, Light coming once the
+side is full (`a_wrong_reveal_waits_for_the_same_side_exalt`).
+`tests/last_desecration.rs`
 covers the last-target desecration over the shipped blueprints and the
 owner's two-prefix, one-suffix belt and its later states in
 `tests/items/last-desecration/` (constructed; its README lists them): the
@@ -345,7 +389,13 @@ offered Cold Resistance by Greater Essence of Thawing through
 `magic-augment-essence` (`a_normal_belt_proposes_greater_thawing`) and
 nothing with the transmutation orbs blocked
 (`a_normal_belt_gets_no_relaxation`), and a selection that routes gets
-nothing (`a_routed_selection_gets_no_relaxation`).
+nothing (`a_routed_selection_gets_no_relaxation`). `tests/blocker.rs`
+(0.2.0) covers the blocker advice over the shipped blueprints and the
+relaxed magic belt in `tests/items/blocker/`: the double slam's reveal
+names both Strength-sharing desecrated suffixes, after above before
+(`blocker_advice_ranks_the_strength_blockers`), and
+`magic-augment-essence`, whose desecration is its last add, gets none
+(`no_blocker_advice_for_a_last_desecration`).
 `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 

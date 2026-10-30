@@ -230,6 +230,48 @@
       }
     },
     {
+      "id": "rare-wrong-reveal-same-side-exalt",
+      "about": "A rare after a wrong reveal with a free slot on its side: its prefixes are a target and a revealed desecrated junk, its one suffix a target; a second prefix target missing. Omen of Light waits while a prefix exalt can still place it, so the junk stays through the exalt (spec, 'A wrong reveal waits for the same-side exalt').",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-d1", "role": "junk", "fractured": false, "desecrated": true, "unrevealed": false, "level": 65}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "fill", "side": "suffix", "currency": "exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
       "id": "magic-two-good",
       "about": "A magic item with a target prefix and a target suffix; missing a prefix an essence adds, a desecrated-pool prefix and two more suffixes.",
       "class": "Amulets",
