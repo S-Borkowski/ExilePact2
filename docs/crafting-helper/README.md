@@ -1977,9 +1977,10 @@ route for rings and amulets, and a review of the PoE2 Crafting Codex
 - **A catalyst route for rings and amulets.** A new route,
   `jewellery-catalyst-exalt`, starts from a rare with no modifier you do
   not want: put catalysts of the target's kind on the item, then exalt
-  with Omen of Catalysing Exaltation and the target side's Exaltation
-  omen (the plain Exalted Orb if Catalysing is blocked), and annul on
-  that side after a miss. The chance shown is the plain exalt's; the
+  with a Greater Exalted Orb, Omen of Catalysing Exaltation and the
+  target side's Exaltation omen (the plain Exalted Orb the same way if
+  the Greater is blocked; the Greater Exalted Orb with the side omen
+  alone if Catalysing is), and annul on that side after a miss. The chance shown is the plain exalt's; the
   catalyst's favour is not counted, and the step says so. The route aims
   at the hardest missing target and ends when it lands: plan again for
   the next one.
