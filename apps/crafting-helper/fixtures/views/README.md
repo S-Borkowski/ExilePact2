@@ -69,7 +69,11 @@ chosen:
   views (`craft-planning`, `craft-fallback`, `craft-no-route`) choose three
   suffixes, so their other suffix choices carry `Suffixes full: 0 on the
   item + 3 chosen = 3 of 3`; in `craft-prefilled` no side is full and every
-  `disabled` is `null`.
+  `disabled` is `null`. Its route is the one the engine previews first,
+  not `close-a-side`: since 0.2.0 `fractured-essence-swap` plans on the
+  belt too (its desecration and reveal; no swap, the belt has no
+  fractured modifier) and takes route number 1, so in
+  `craft-last-desecration` `close-a-side` is `route_number` 2.
 
 - `craft-close-side`: planning on the belt with Omen of Sinistral
   Necromancy blocked for the craft (its `blocked` list), so the last
@@ -117,6 +121,25 @@ Resistance as the targets:
   Intelligence`, which keep the ordinary `+# to Strength` out of the
   exalt's pool, and that exalt's chance of a target before and after.
   Every other step line of every view carries `blocker: null`.
+
+One craft state uses the essence swap ring
+(`crates/ch-app/tests/items/ring-essence-swap.txt`, constructed, copied
+from `ch-engine`'s `tests/items/essence-swap/`): a rare Amethyst Ring at
+item level 76 whose suffix side is full with a fractured Fire Resistance,
+an unrevealed desecrated suffix and Dexterity, with maximum Mana T5,
+Mana Regeneration Rate T2 and the desecrated Cold and Chaos Resistances
+as the targets (0.2.0):
+
+- `craft-essence-swap`: `fractured-essence-swap` chosen: the essence
+  step's instruction names what Essence of Hysteria removes and what
+  stays (`…; it removes the unrevealed desecrated suffix or +10(9-12) to
+  Dexterity, one at random; +23(21-25)% to Fire Resistance is fractured
+  and stays`), and its `survival` the unrevealed suffix's chance of
+  surviving the swap (1 in 2), the reveal if it stays, and if it goes the
+  annulment with Omen of Dextral Annulment, its chance of sparing the
+  essence's modifier and the re-plan if it does not. Then the reveal of
+  the desecrated target. Every other step line of every view carries
+  `survival: null`.
 
 Every guiding view carries the overlay's content (`overlay.guide`: the
 current step, both branch lines, the last outcome and the screen watch's

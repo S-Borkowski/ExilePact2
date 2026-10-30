@@ -107,8 +107,8 @@ from a bought base.
     why it does not apply, and above those lines the app may propose
     lowering one target's tier (below). *Start crafting* starts the guide.
 
-    Six of the sixteen blueprints are **state-ordered** (four since
-    0.1.1, two more since 0.1.4): the
+    Seven of the seventeen blueprints are **state-ordered** (four since
+    0.1.1, two more since 0.1.4, one since 0.2.0): the
     engine plans them from each side's free slots rather than a fixed
     order, taking the first step whose condition holds on the item as it
     stands, so an item part-way through a craft (a rare with some of the
@@ -222,6 +222,30 @@ from a bought base.
     modifiers are candidates, and the app does not read the Well of Souls
     screen, so it cannot tell which of them were offered (Known
     limitations). Listed-order routes give no blocker advice.
+
+    **A fractured modifier narrows an essence's removal** (since 0.2.0,
+    issue #37). On a rare whose prefix or suffix side is full and holds
+    a fractured modifier, the state-ordered fractured essence swap adds
+    an essence's target there (Essence of Hysteria's, the one essence
+    whose modifiers are in the class lists): the essence removes one of
+    that side's other modifiers first, never the fractured one, so with
+    no target among them its modifier is certain. Its step names what the
+    removal can take and what stays (`Essence of Hysteria for #% increased
+    Mana Regeneration Rate (suffix); it removes the unrevealed desecrated
+    suffix or +10(9-12) to Dexterity, one at random; +23(21-25)% to Fire
+    Resistance is fractured and stays`). When one of those is an
+    unrevealed desecrated modifier, a **Survival** line under the odds,
+    in the route preview and on the guide's step (the overlay does not
+    show it), gives its chance of surviving the swap and the next step on
+    each outcome: `The unrevealed desecrated suffix survives the swap 1
+    in 2 (…). If it stays, Reveal at the Well of Souls with Omen of
+    Abyssal Echoes for … If it goes, Orb of Annulment with Omen of
+    Dextral Annulment to remove +10(9-12) to Dexterity; it takes one
+    modifier at random, so it spares #% increased Mana Regeneration Rate
+    1 in 2; if it takes it, the route re-plans when the item is read
+    again.` After the annulment the route desecrates the last target on
+    that side with its Necromancy omen and reveals it (Known
+    limitations).
 
     **Target choices respect the item's prefix and suffix limits** (since
     0.1.2, issue #32). The limit is the item's as a rare, read from the
@@ -882,6 +906,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test fracture  # the fracture goal, the count conditions, a full-side desecration
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test relax  # the one-target tier relaxation when no route exists
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test blocker  # the reveal step's blocker advice
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test essence_swap  # the fractured essence swap: survival, both outcomes, the Dusk Ring
 py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
 py -3 -m unittest tests.test_crafting_helper_mechanics_doc                             # crafting-mechanics.md: headings, sources, labels
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
@@ -1499,8 +1524,22 @@ release already exists, only its assets are replaced.
     share of a reveal's options a normal-pool target gets, which is why
     the rule offers any target on a side with a pool and its odds are
     unknown. The Necromancy and Abyssal Echoes omens are assumed active
-    before use (`omens-active-before-use`, now all six state-ordered
+    before use (`omens-active-before-use`, now all seven state-ordered
     routes').
+  - **The fractured essence swap rests on statements, not measurements**
+    (since 0.2.0). That a Perfect or special essence on a full side
+    removes from that side (`essence-full-side-removal`), never a
+    fractured modifier (`fractured-not-removed`), each modifier it may
+    take equally likely (`removal-equally-likely`), is what community
+    guides and the owner say, not established and not measured; that the
+    removal may take an unrevealed desecrated modifier is the owner's
+    statement alone. The Survival line's chance and the annulment's
+    chance of sparing the essence's modifier rest on them. No Perfect
+    essence's own modifier is in the class lists, so it cannot be a
+    target: the route uses Essence of Hysteria. What the route plans
+    after an annulment that took the essence's modifier is the engine's
+    reading, pinned only as far as the essence step coming back; the
+    Python slot model has no essence swap.
   - **The tier join is measured on five items.** The tier the engine
     derives from poe2db's levels equalled the game's `Tier:` on all 18
     joined modifiers of the owner's five real items
@@ -1565,7 +1604,7 @@ release already exists, only its assets are replaced.
     never raises a floor or lowers two targets together, so a list that
     would need two lowered gets no proposal.
   - **The state-ordered routes rely on facts that are not established.**
-    Each of the six names them in its `relies_on`, by their id in the
+    Each of the seven names them in its `relies_on`, by their id in the
     spec's facts table
     ([`crafting-slots-spec.md`](../models/crafting-slots-spec.md)
     § "Facts"); community guides state them or they are inferred, and
@@ -1585,8 +1624,8 @@ release already exists, only its assets are replaced.
     four), a fractured modifier never being annulled or chaosed
     (`fractured-not-removed`, the first four), the Necromancy and Abyssal
     Echoes omens needing to be active before use
-    (`omens-active-before-use`, all six since 0.1.2's last-target
-    desecration and 0.1.4), and what Sinistral Necromancy does on a class
+    (`omens-active-before-use`, all seven since 0.1.2's last-target
+    desecration, 0.1.4 and 0.2.0), and what Sinistral Necromancy does on a class
     with no desecrated prefixes (`necromancy-without-pool`,
     `essence-desecrate-double-slam`'s alone among them: the last-target
     desecration is never offered without a pool, so it does not rely on
@@ -1595,7 +1634,10 @@ release already exists, only its assets are replaced.
     `omens-active-before-use`, `abyss-mark-unfracturable` and
     `desecrated-unfracturable`, and `full-rare-desecration-rescue` on
     `omens-active-before-use`, `necromancy-without-pool`,
-    `removal-equally-likely` and `full-desecration-same-side`. The craft window does
+    `removal-equally-likely` and `full-desecration-same-side`. The
+    state-ordered `fractured-essence-swap` (0.2.0) relies on
+    `essence-full-side-removal`, `fractured-not-removed`,
+    `removal-equally-likely` and `omens-active-before-use`. The craft window does
     not show `relies_on`: the blueprint files and
     [`blueprints.md`](blueprints.md) § "The seed blueprints" carry it. If
     one of them is false in the game, the step is still shown as the
@@ -1843,8 +1885,8 @@ release already exists, only its assets are replaced.
 
 ### 0.2.0
 
-Route choice, Necromancy omens, a tier proposal, blocker advice and the
-new name (#37).
+Route choice, Necromancy omens, a tier proposal, blocker advice, the
+fractured essence swap and the new name (#37).
 
 - **Picking a route sticks.** The route list now numbers every route the
   same way whichever one you look at, so choosing Route 2 shows Route 2
@@ -1879,6 +1921,30 @@ new name (#37).
   it) and takes it off with Omen of Light once that side is done, instead
   of right away. A side that is already full takes Omen of Light first,
   as before.
+- **A fractured modifier can make an essence's modifier certain.** On a
+  rare whose prefix or suffix side is full, an essence that adds a
+  modifier there (Essence of Hysteria) has to remove one of that side's
+  modifiers first, and never the fractured one, so the fractured
+  modifier narrows what it can take. When none of what is left is one
+  of your targets, the essence's modifier is certain; with only one
+  modifier left for it to take (a Dusk or Gloam ring's smaller side, for
+  one), which modifier goes is certain too. A new route takes that
+  craft, and its essence step says what it can remove and what stays
+  ("Essence of Hysteria for #% increased Mana Regeneration Rate
+  (suffix); it removes the unrevealed desecrated suffix or +10(9-12) to
+  Dexterity, one at random; +23(21-25)% to Fire Resistance is fractured
+  and stays"). When an unrevealed desecrated modifier sits on that
+  side, the step's **Survival** line gives its chance of surviving the
+  swap (1 in 2 with two modifiers it can take) and what to do either
+  way: if it stays, reveal it; if it goes, annul on that side with Omen
+  of Sinistral or Dextral Annulment (it may take the essence's modifier
+  instead, with the chance shown, and the route then plans again from
+  the item), then desecrate with that side's Necromancy omen and reveal.
+  Perfect essences' own modifiers cannot be targets (none adds a
+  modifier from the item's own list), so Essence of Hysteria is the
+  essence the route uses; and how often the essence or the annulment
+  takes each modifier is not measured: the chances assume each is
+  equally likely.
 - **The main window no longer scrolls past its content.** With long
   lists the window could scroll far below the last line into empty
   space.
