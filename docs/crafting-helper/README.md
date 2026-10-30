@@ -610,7 +610,8 @@ the research note:
   cannot leave its place in the address; nothing else. Both prefixes are
   fixed in the app (`ch-app`'s `CRAFT_OF_EXILE_URL` and
   `TRADE_SEARCH_URL`), no command takes an address (the trade search's
-  link is built from the app's own state), and the pages hold none and
+  command, `open_trade_search`, takes no argument: its link is built from
+  the app's own state), and the pages hold none and
   cannot open one themselves (no link, no `window.open`; the opener
   plugin's own commands are granted to no window). The app itself sends
   nothing for either; the page loads in your browser, which connects to
@@ -650,7 +651,8 @@ the research note:
   (at most 64 MiB for the exe, 4 KiB for the signature), after 30 s without
   a byte, or after 15 minutes in all.
 - **The league list** (since 0.1.2), only when you click the refresh icon
-  beside *League* in Settings, *Trade*: one `GET
+  beside *League* in Settings, *Trade* (the `refresh_trade_leagues`
+  command, which takes no argument): one `GET
   https://www.pathofexile.com/api/trade2/data/leagues`, port 443 only,
   from Rust through the same shared `ep-net` and WinHTTP, with two
   headers, `Accept: application/json` and the same `User-Agent`, and
