@@ -84,7 +84,17 @@ unknown with the reason.
   (Preserved, Ancient, Gnawed), `side-omen` to the Sinistral or Dextral
   omen of the bound target's side (or the step's `side`), and
   `greater-omen` to Omen of Greater Exaltation where two fit (below) or to
-  nothing. Every alternative blocked rejects the blueprint
+  nothing. Since 0.2.0, a listed step with `when = "bound"` and
+  `bind = "last-remaining"` and no `side` (the whittle's desecration),
+  planned while several targets are still missing, resolves `side-omen`
+  to the side they all share; when they lie on both sides, the
+  alternative is taken with its omen waiting for the last target's side
+  (no omen id, `ChosenAction::side_omen_waits` set) and counts as blocked
+  when either of its currency's two side omens is. The guide picks the
+  step again once one target is left and names that side's omen. A
+  `last-remaining` step without `when` (the rescue, which requires one
+  target missing) keeps an unbound `side-omen` unfit, so it is still
+  rejected with two targets missing. Every alternative blocked rejects the blueprint
   (`EveryAlternativeBlocked`); none usable, `NoAlternativeFits`. On class
   `Jewels`, a currency with a Minimum Modifier Level (the Greater and
   Perfect orbs) is unfit in either order (since 0.1.4: a jewel's modifiers

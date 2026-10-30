@@ -622,7 +622,40 @@ fn check_step(errors: &mut Errors<'_>, step: &Spanned<Step>, ids: &HashMap<&str,
     for action in &s.actions {
         check_action(errors, s, action.get_ref());
     }
+    check_side_desecration(errors, s);
     check_say(errors, s);
+}
+
+/// A desecration tied to a side (its `side`) or to a target (its `bind`)
+/// carries `side-omen`, or a Necromancy omen by name, on its first
+/// alternative: without one the desecrated modifier may land on either
+/// side, and the step's instruction could not say which. A later
+/// alternative may be the plain bone, taken when the omen is blocked.
+fn check_side_desecration(errors: &mut Errors<'_>, step: &Step) {
+    if *step.goal.get_ref() != Goal::Desecrate {
+        return;
+    }
+    if step.side.is_none() && step.side_rule.is_none() && step.bind.is_none() {
+        return;
+    }
+    let Some(first) = step.actions.first() else {
+        return;
+    };
+    let necromancy = first.get_ref().omens.iter().any(|omen| match omen.get_ref().as_str() {
+        SIDE_OMEN => true,
+        id => catalogue::entry(id)
+            .and_then(|e| e.omen)
+            .is_some_and(|o| o.fits == catalogue::OmenFits::Desecration && o.side.is_some()),
+    });
+    if !necromancy {
+        let id = step.id.get_ref();
+        errors.push(
+            first.get_ref().currency.span(),
+            format!(
+                "step `{id}`: a `desecrate` step with a `side` or `bind` needs `{SIDE_OMEN}` or a Necromancy omen on its first [[step.action]], so the desecrated modifier lands on that side"
+            ),
+        );
+    }
 }
 
 /// A step's `say` promises no omen its actions lack: when it names an omen

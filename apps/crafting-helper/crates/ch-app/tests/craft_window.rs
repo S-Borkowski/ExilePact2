@@ -680,7 +680,8 @@ fn a_targeted_step_says_its_currency_side_and_mods() {
     );
 
     // One target left (the desecration's last, once two have landed): the
-    // currency the step uses (the bone it resolved to) and that target.
+    // Necromancy omen of its side, the bone it resolved to, the side, then
+    // that target.
     let last = vec!["suffix-to-lightning-resistance".to_string()];
     let mut desecrate = route.steps[2].clone();
     assert_eq!(desecrate.id, "desecrate");
@@ -688,7 +689,7 @@ fn a_targeted_step_says_its_currency_side_and_mods() {
     let bone = desecrate.action.as_ref().unwrap().name.clone();
     assert_eq!(
         step_instruction(&desecrate, &item, &ring_targets()),
-        format!("{bone} for +#% to Lightning Resistance (suffix)")
+        format!("Use Omen of Dextral Necromancy, then apply the {bone}; the desecrated modifier will be a suffix, for +#% to Lightning Resistance")
     );
     // The reveal names what it reveals into.
     let mut reveal = route.steps[3].clone();
@@ -735,6 +736,242 @@ fn a_step_without_targets_keeps_the_blueprint_text() {
     manual.goal = Goal::Manual;
     manual.action = None;
     assert_eq!(step_instruction(&manual, &item, &targets), chaos.say);
+}
+
+/// The Necromancy omens, by the side each makes the desecrated modifier.
+const NECROMANCY: [(&str, &str, &str); 2] = [
+    (
+        "omen-of-sinistral-necromancy",
+        "Omen of Sinistral Necromancy",
+        "prefix",
+    ),
+    (
+        "omen-of-dextral-necromancy",
+        "Omen of Dextral Necromancy",
+        "suffix",
+    ),
+];
+
+/// The magic Heavy Belt `ch-engine`'s relaxation tests read
+/// (`crates/ch-engine/tests/items/relax/belt-magic-life.txt`, constructed):
+/// maximum Life T2, no suffix.
+const MAGIC_BELT: &str = "Item Class: Belts\nRarity: Magic\nAthlete's Heavy Belt\n--------\nRequires: Level 40\n--------\nItem Level: 82\n--------\n{ Implicit Modifier }\nHas 2 Charm Slots \u{2014} Unscalable Value\n--------\n{ Prefix Modifier \"Athlete's\" (Tier: 2) \u{2014} Life }\n+130(120-149) to maximum Life\n";
+
+/// Fire Resistance at floor T3, Cold and Lightning Resistance at T2: the
+/// magic belt's list that routes on its Greater Essence of Insulation.
+fn magic_belt_targets() -> Vec<Target> {
+    [
+        ("suffix-to-fire-resistance", 3),
+        ("suffix-to-cold-resistance", 2),
+        ("suffix-to-lightning-resistance", 2),
+    ]
+    .iter()
+    .map(|(id, floor)| Target::new(*id, Some(*floor)))
+    .collect()
+}
+
+#[test]
+fn an_unsided_desecration_names_no_omen_baseline() {
+    use ch_app::ch_engine::ch_blueprint::Goal;
+    use ch_app::craft::step_instruction;
+    // `caster-cast-speed`'s `block` step has no side and no binding: its
+    // bone carries no omen, and its instruction names none.
+    let engine = Engine::shipped().unwrap();
+    let path = app_root()
+        .join("crates/ch-engine/tests/items/jewels-weapons/caster-cast-speed/0-start.txt");
+    let text = std::fs::read_to_string(&path)
+        .unwrap()
+        .replace("\r\n", "\n");
+    let item = ch_app::ch_item::parse(&text).unwrap();
+    let targets: Vec<Target> = [
+        ("prefix-increased-spell-damage", Some(4)),
+        ("suffix-increased-critical-hit-chance-for-spells", Some(4)),
+        ("desecrated-prefix-increased-elemental-damage", None),
+    ]
+    .iter()
+    .map(|(id, floor)| Target::new(*id, *floor))
+    .collect();
+    let plan = engine.plan(&item, &targets, &[]).unwrap();
+    let route = plan
+        .routes
+        .iter()
+        .find(|r| r.blueprint == "caster-cast-speed")
+        .expect("the caster route plans on its start");
+    let block = route.steps.iter().find(|s| s.id == "block").unwrap();
+    assert_eq!(block.goal, Goal::Desecrate);
+    assert_eq!(block.side, None);
+    let action = block.action.as_ref().unwrap();
+    assert!(action.omens.is_empty(), "{:?}", action.omens);
+    let said = step_instruction(block, &item, &targets);
+    assert!(!said.contains("Omen"), "{said}");
+    assert!(!said.contains("Necromancy"), "{said}");
+    assert!(!said.contains("desecrated modifier will be"), "{said}");
+}
+
+#[test]
+fn every_side_desecration_names_its_necromancy_omen() {
+    use ch_app::ch_engine::ch_blueprint::Goal;
+    use ch_app::craft::step_instruction;
+    let engine = Engine::shipped().unwrap();
+    let cases = [
+        ("ring", ring("01-start"), ring_targets()),
+        ("2P/1S belt", belt("belt-2p1s"), belt_targets()),
+        ("magic belt", MAGIC_BELT.to_string(), magic_belt_targets()),
+    ];
+    let mut checked = 0;
+    let mut whittle_checked = false;
+    for (what, text, targets) in &cases {
+        let item = ch_app::ch_item::parse(text).unwrap();
+        let plan = engine.plan(&item, targets, &[]).unwrap();
+        assert!(!plan.routes.is_empty(), "{what}: no route");
+        for route in &plan.routes {
+            for step in route.steps.iter().filter(|s| s.goal == Goal::Desecrate) {
+                let Some(action) = &step.action else { continue };
+                let Some((_, omen, side)) = NECROMANCY
+                    .iter()
+                    .find(|(id, _, _)| action.omens.iter().any(|o| o == id))
+                else {
+                    continue;
+                };
+                let said = step_instruction(step, &item, targets);
+                let at = format!("{what}, {} `{}`", route.blueprint, step.id);
+                let start = format!("Use {omen}, then apply the {}", action.name);
+                assert!(said.starts_with(&start), "{at}: {said}");
+                assert!(
+                    said.contains(&format!("the desecrated modifier will be a {side}")),
+                    "{at}: {said}"
+                );
+                // Each target it may place is still named.
+                let shown = ch_app::craft::step_targets(step, &item);
+                assert!(
+                    shown.iter().all(|t| said.contains(t.as_str())),
+                    "{at}: {said}"
+                );
+                if route.blueprint == WHITTLE {
+                    assert!(
+                        said.starts_with(
+                            "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone"
+                        ),
+                        "{at}: {said}"
+                    );
+                    whittle_checked = true;
+                }
+                checked += 1;
+            }
+        }
+    }
+    // Positive control: the sets plan side desecrations to check, the
+    // whittle's among them.
+    assert!(
+        whittle_checked,
+        "the ring's whittle desecration was not checked"
+    );
+    assert!(checked >= 3, "only {checked} side desecrations planned");
+
+    // The whittle's desecration, its last target left: the omen, the bone,
+    // the side, then the target.
+    let (route, item) = whittle_route();
+    let mut desecrate = route.steps[2].clone();
+    assert_eq!(desecrate.id, "desecrate");
+    desecrate.targets = vec!["suffix-to-lightning-resistance".to_string()];
+    let bone = desecrate.action.as_ref().unwrap().name.clone();
+    assert_eq!(
+        step_instruction(&desecrate, &item, &ring_targets()),
+        format!("Use Omen of Dextral Necromancy, then apply the {bone}; the desecrated modifier will be a suffix, for +#% to Lightning Resistance")
+    );
+    // No target left: it ends after the side.
+    desecrate.targets.clear();
+    assert_eq!(
+        step_instruction(&desecrate, &item, &ring_targets()),
+        format!("Use Omen of Dextral Necromancy, then apply the {bone}; the desecrated modifier will be a suffix")
+    );
+}
+
+/// The whittle's desecrate step as the preview shows it, the ring planned
+/// with `targets` and `blocked` blocked for this craft.
+fn whittle_desecration_line(targets: &[Target], blocked: &[&str]) -> ch_app::StepLineView {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(&ring("01-start")));
+    app.set_targets(targets);
+    let list: Vec<String> = blocked.iter().map(|id| id.to_string()).collect();
+    app.set_craft_blocked(&list);
+    let view = app.choose_route(WHITTLE);
+    let route = planning(&view)
+        .preview
+        .as_ref()
+        .unwrap()
+        .route
+        .as_ref()
+        .expect("a route for the ring");
+    assert_eq!(route.blueprint, WHITTLE);
+    let line = route
+        .steps
+        .iter()
+        .find(|s| s.id == "desecrate")
+        .expect("the whittle desecrates")
+        .clone();
+    app.shutdown();
+    line
+}
+
+#[test]
+fn a_mixed_side_whittle_names_both_necromancy_omens() {
+    // A suffix and a prefix: the omen is the last target's, which only the
+    // guide will know. The preview names both, and each target's side.
+    let phys = "prefix-adds-to-physical-damage-to-attacks";
+    let targets = vec![Target::new(FIRE, Some(3)), Target::new(phys, None)];
+    let line = whittle_desecration_line(&targets, &[]);
+    assert!(
+        line.instruction.starts_with("Use Omen of Sinistral Necromancy if the last target is a prefix, or Omen of Dextral Necromancy if it is a suffix, then apply the Preserved Collarbone"),
+        "{}",
+        line.instruction
+    );
+    assert_eq!(line.targets.len(), 2, "{:?}", line.targets);
+    for text in &line.targets {
+        let side = if text == FIRE_TEXT {
+            "suffix"
+        } else {
+            "prefix"
+        };
+        assert!(
+            line.instruction.contains(&format!("{text} ({side})")),
+            "{}",
+            line.instruction
+        );
+    }
+    assert!(
+        !line.instruction.contains("will be a"),
+        "{}",
+        line.instruction
+    );
+    assert_eq!(line.uses, ["Preserved Collarbone"]);
+    assert_eq!(line.fallback, None);
+}
+
+#[test]
+fn a_blocked_necromancy_omen_names_itself_in_the_fallback() {
+    // The ring's targets are suffixes: Dextral Necromancy blocked, the
+    // plain bone is used, and the fallback says which omen was.
+    let line = whittle_desecration_line(&ring_targets(), &["omen-of-dextral-necromancy"]);
+    assert_eq!(line.uses, ["Preserved Collarbone"]);
+    assert_eq!(
+        line.fallback.as_deref(),
+        Some("Preserved Collarbone instead of a bone: Omen of Dextral Necromancy blocked")
+    );
+    assert!(
+        line.instruction.starts_with("Preserved Collarbone for "),
+        "{}",
+        line.instruction
+    );
+    // Negative control: the other side's omen blocked changes nothing.
+    let line = whittle_desecration_line(&ring_targets(), &["omen-of-sinistral-necromancy"]);
+    assert_eq!(
+        line.uses,
+        ["Preserved Collarbone", "Omen of Dextral Necromancy"]
+    );
+    assert_eq!(line.fallback, None);
 }
 
 #[test]
@@ -1049,7 +1286,7 @@ fn regrab_hit_advances_the_guide() {
     assert_eq!(step.try_number, 1);
     assert_eq!(
         step.on_hit,
-        "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)"
+        "On a hit: this step again until its condition holds, then use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance or +#% to Lightning Resistance"
     );
     // The item now is the one grabbed, its fire resistance a target met.
     let fire = g

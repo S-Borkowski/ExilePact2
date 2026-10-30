@@ -9,7 +9,7 @@ use std::fmt;
 use ch_blueprint::catalogue::{
     self, bones_for, Currency, Effect, ItemGroup, GREATER_EXALTATION, GREATER_OMEN, SIDE_OMEN,
 };
-use ch_blueprint::{Action, Binding, Goal, Order, Rarity as BpRarity, Side, Spanned, Step};
+use ch_blueprint::{Action, Binding, Goal, Order, Rarity as BpRarity, Side, Spanned, Step, When};
 use ch_data::{Kind, Odds, Section};
 use ch_item::{Item, Rarity};
 use serde::Serialize;
@@ -49,6 +49,12 @@ pub struct ChosenAction {
     pub data_backed: bool,
     /// It removes a modifier before adding its own.
     pub removes: bool,
+    /// Its `side-omen` waits for the last target's side: a bound-only
+    /// `last-remaining` desecration planned while targets on both sides are
+    /// still missing. No omen id stands for it in `omens`; the guide names
+    /// the omen once one target is left.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub side_omen_waits: bool,
 }
 
 /// One step as the player sees it, on a given item.
@@ -511,7 +517,12 @@ pub(crate) fn pick_step(
             .or_else(|| step.side.as_ref().map(|s| *s.get_ref()));
         let placeable = target.map_or_else(|| eligible.clone(), |t| vec![t]);
         let greater = greater_fits(ctx, st, goal, side.map(kind_of), &placeable);
-        match choose_action(ctx, st, step, side, greater, essence) {
+        let omen_side = match side {
+            Some(s) => OmenSide::Known(s),
+            None if waits_for_last_target(step, binding) => shared_side(ctx, &eligible),
+            None => OmenSide::Unknown,
+        };
+        match choose_action(ctx, st, step, omen_side, greater, essence) {
             Ok(a) => Some(a),
             Err(ActionProblem::AllBlocked) => {
                 return StepPick::Reject(Rejection::EveryAlternativeBlocked { step: id })
@@ -877,20 +888,56 @@ pub(crate) fn greater_fits(
     }
 }
 
+/// The side a `side-omen` resolves to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OmenSide {
+    /// The bound target's, the step's `side`, or the side every target it
+    /// may place shares.
+    Known(Side),
+    /// The last target's, not known yet: the targets it may place lie on
+    /// both sides.
+    WaitsForLastTarget,
+    /// None: `side-omen` does not fit.
+    Unknown,
+}
+
+/// A step whose `side-omen` may take its side from the targets it may
+/// place while its binding names none: `when = "bound"` and
+/// `bind = "last-remaining"`, no `side` (the whittle's desecration). The
+/// guide picks such a step again once one target is left, and its omen is
+/// then that target's. A `last-remaining` step without `when` (the rescue,
+/// which requires one target missing) keeps an unbound `side-omen` unfit.
+fn waits_for_last_target(step: &Step, binding: Option<Binding>) -> bool {
+    binding == Some(Binding::LastRemaining)
+        && step.when.as_ref().map(|w| *w.get_ref()) == Some(When::Bound)
+        && step.side.is_none()
+}
+
+/// The side every target in `eligible` shares, or, with targets on both
+/// sides, the last one's to come.
+fn shared_side(ctx: &Ctx, eligible: &[usize]) -> OmenSide {
+    let mut sides = eligible.iter().map(|&t| ctx.targets[t].side);
+    match sides.next() {
+        Some(first) if sides.all(|k| k == first) => OmenSide::Known(side_of(first)),
+        Some(_) => OmenSide::WaitsForLastTarget,
+        None => OmenSide::Unknown,
+    }
+}
+
 /// The first alternative none of whose ids (placeholders resolved) is
 /// blocked and that fits the item.
 fn choose_action(
     ctx: &Ctx,
     st: &State,
     step: &Step,
-    side: Option<Side>,
+    side: OmenSide,
     greater: bool,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, ActionProblem> {
     let mut blocked = 0;
     let mut reasons = Vec::new();
     for (i, action) in step.actions.iter().enumerate() {
-        match try_alternative(ctx, st, i, action.get_ref(), side, greater, essence_for) {
+        match alternative_on(ctx, st, i, action.get_ref(), side, greater, essence_for) {
             Ok(chosen) => return Ok(chosen),
             Err(AltProblem::Blocked) => blocked += 1,
             Err(AltProblem::Unfit(why)) => reasons.push(why),
@@ -913,6 +960,23 @@ pub(crate) fn try_alternative(
     alternative: usize,
     action: &Action,
     side: Option<Side>,
+    greater: bool,
+    essence_for: Option<usize>,
+) -> Result<ChosenAction, AltProblem> {
+    let side = side.map_or(OmenSide::Unknown, OmenSide::Known);
+    alternative_on(ctx, st, alternative, action, side, greater, essence_for)
+}
+
+/// [`try_alternative`] with `side-omen`'s side as [`OmenSide`]: when it
+/// waits for the last target, the alternative is taken with no omen id for
+/// it and `side_omen_waits` set, and is blocked when either of the
+/// currency's two side omens is.
+fn alternative_on(
+    ctx: &Ctx,
+    st: &State,
+    alternative: usize,
+    action: &Action,
+    side: OmenSide,
     greater: bool,
     essence_for: Option<usize>,
 ) -> Result<ChosenAction, AltProblem> {
@@ -1022,6 +1086,12 @@ pub(crate) fn try_alternative(
     let mut omens = Vec::new();
     let mut omen_names = Vec::new();
     let mut omen_side = None;
+    let mut side_omen_waits = false;
+    let side_omen = |s: Side| {
+        currency.side_omen(s).ok_or_else(|| {
+            AltProblem::Unfit(format!("`{written}` has no {} omen", side_word(kind_of(s))))
+        })
+    };
     for omen in &action.omens {
         let id = omen.get_ref().as_str();
         if id == GREATER_OMEN && !greater {
@@ -1031,14 +1101,23 @@ pub(crate) fn try_alternative(
             catalogue::entry(GREATER_EXALTATION)
                 .ok_or_else(|| AltProblem::Unfit(format!("unknown omen `{GREATER_EXALTATION}`")))?
         } else if id == SIDE_OMEN {
-            let Some(s) = side else {
-                return Err(AltProblem::Unfit(
-                    "`side-omen` with no bound target or side".to_string(),
-                ));
-            };
-            currency.side_omen(s).ok_or_else(|| {
-                AltProblem::Unfit(format!("`{written}` has no {} omen", side_word(kind_of(s))))
-            })?
+            match side {
+                OmenSide::Known(s) => side_omen(s)?,
+                OmenSide::WaitsForLastTarget => {
+                    // Either side's omen may be the one used.
+                    let both = [side_omen(Side::Prefix)?, side_omen(Side::Suffix)?];
+                    if both.iter().any(|e| ctx.is_blocked(e.id)) {
+                        return Err(AltProblem::Blocked);
+                    }
+                    side_omen_waits = true;
+                    continue;
+                }
+                OmenSide::Unknown => {
+                    return Err(AltProblem::Unfit(
+                        "`side-omen` with no bound target or side".to_string(),
+                    ))
+                }
+            }
         } else {
             catalogue::entry(id).ok_or_else(|| AltProblem::Unfit(format!("unknown omen `{id}`")))?
         };
@@ -1064,5 +1143,6 @@ pub(crate) fn try_alternative(
         min_modifier_level: mml,
         data_backed,
         removes,
+        side_omen_waits,
     })
 }

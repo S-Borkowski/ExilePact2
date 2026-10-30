@@ -156,7 +156,12 @@ fn the_last_step_is_a_desecration_and_reveal() {
     );
     assert_eq!(desecrate.uses[1..], [SINISTRAL_NECRO]);
     assert!(
-        desecrate.instruction.contains("on the prefix side"),
+        desecrate
+            .instruction
+            .starts_with("Use Omen of Sinistral Necromancy, then apply the ")
+            && desecrate
+                .instruction
+                .contains("; the desecrated modifier will be a prefix"),
         "{}",
         desecrate.instruction
     );

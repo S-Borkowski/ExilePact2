@@ -1198,7 +1198,7 @@
             {
               "fallback": null,
               "id": "desecrate-last",
-              "instruction": "Preserved Collarbone with Omen of Sinistral Necromancy on the prefix side for +# to Armour",
+              "instruction": "Use Omen of Sinistral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a prefix, for +# to Armour",
               "number": 1,
               "odds": "odds unknown: desecration and reveals have no established weights",
               "targets": [

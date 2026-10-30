@@ -87,7 +87,7 @@
 //! ([`summary`]).
 
 use ch_engine::ch_blueprint::catalogue::{
-    bones_for, Currency, ItemGroup, OmenChange, GREATER_OMEN, SIDE_OMEN,
+    bones_for, Currency, ItemGroup, OmenChange, OmenFits, GREATER_OMEN, SIDE_OMEN,
 };
 use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
@@ -1638,9 +1638,23 @@ pub fn step_targets(step: &StepView, item: &Item) -> Vec<String> {
 /// - `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral
 ///   Exaltation on the suffix side, for any modifier`.
 ///
+/// A desecration whose action carries a Necromancy omen says the omen comes
+/// first, then the bone, then the side the omen gives the desecrated
+/// modifier, and the targets it may place when it has any
+/// ([`necromancy_instruction`]).
+///
 /// Any other step (no target left, or a manual step) keeps the blueprint's
 /// `say`.
 pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> String {
+    if step.goal == Goal::Desecrate {
+        if let Some(said) = step
+            .action
+            .as_ref()
+            .and_then(|action| necromancy_instruction(step, action, item))
+        {
+            return said;
+        }
+    }
     if step.goal == Goal::RemoveUnwanted {
         if let Some(action) = &step.action {
             return removal_instruction(action, item, wanted);
@@ -1679,6 +1693,92 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
             format!("{uses} for {}", word_list(&each, "or"))
         }
     }
+}
+
+/// A desecration's instruction when its action carries a Necromancy omen
+/// (a Sinistral or Dextral omen of a desecration): the omen, then the bone
+/// `with` any other omen, the side the desecrated modifier will be on, and
+/// the targets it may place. A target off that side, which a route should
+/// not name, says its own. `None` for an action without one.
+///
+/// - `Use Omen of Dextral Necromancy, then apply the Preserved Collarbone;
+///   the desecrated modifier will be a suffix, for +#% to Lightning
+///   Resistance`;
+/// - `Use Omen of Sinistral Necromancy, then apply the Preserved Jawbone;
+///   the desecrated modifier will be a prefix` (no target).
+///
+/// When the engine left the omen waiting for the last target's side (the
+/// targets lie on both sides), it names both omens, each with its side, and
+/// each target with its own:
+///
+/// - `Use Omen of Sinistral Necromancy if the last target is a prefix, or
+///   Omen of Dextral Necromancy if it is a suffix, then apply the Preserved
+///   Collarbone, for +#% to Fire Resistance (suffix) or …(prefix)`.
+fn necromancy_instruction(step: &StepView, action: &ChosenAction, item: &Item) -> Option<String> {
+    let necromancy = action.omens.iter().enumerate().find_map(|(at, id)| {
+        let omen = catalogue_item(id)?.omen.as_ref()?;
+        let necromancy = omen.fits == OmenFits::Desecration && omen.change == OmenChange::Side;
+        necromancy
+            .then_some(omen.side)
+            .flatten()
+            .map(|side| (at, side))
+    });
+    let (lead, side) = match necromancy {
+        Some((at, side)) => {
+            let omen = action
+                .omen_names
+                .get(at)
+                .cloned()
+                .unwrap_or_else(|| currency_name(&action.omens[at]));
+            (format!("Use {omen}"), Some((at, side)))
+        }
+        None if action.side_omen_waits => {
+            let currency = Currency::of(&action.currency)?;
+            let name = |side: Side| currency.side_omen(side).map(|e| currency_name(e.id));
+            (
+                format!(
+                    "Use {} if the last target is a prefix, or {} if it is a suffix",
+                    name(Side::Prefix)?,
+                    name(Side::Suffix)?
+                ),
+                None,
+            )
+        }
+        None => return None,
+    };
+    let others: Vec<String> = action
+        .omen_names
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| side.is_none_or(|(at, _)| *i != at))
+        .map(|(_, name)| name.clone())
+        .collect();
+    let mut said = format!("{lead}, then apply the {}", action.name);
+    if !others.is_empty() {
+        said.push_str(" with ");
+        said.push_str(&word_list(&others, "and"));
+    }
+    let side = side.map(|(_, side)| side);
+    if let Some(side) = side {
+        said.push_str(&format!(
+            "; the desecrated modifier will be a {}",
+            side_word(side)
+        ));
+    }
+    let targets = step_targets(step, item);
+    if !targets.is_empty() {
+        let each: Vec<String> = step
+            .targets
+            .iter()
+            .zip(&targets)
+            .map(|(id, text)| match target_kind(item, id) {
+                Some(kind) if Some(kind) != side => format!("{text} ({})", side_word(kind)),
+                _ => text.clone(),
+            })
+            .collect();
+        said.push_str(&format!(", for {}", word_list(&each, "or")));
+    }
+    Some(said)
 }
 
 /// The currency, `with` each omen.
@@ -1860,10 +1960,17 @@ pub fn fallback_line(
     let bp_step = blueprint_step(blueprint, &step.id)?;
     let first = bp_step.actions.first()?.get_ref();
     let first_name = action_name(first.currency.get_ref());
-    let side = target_side(item, step);
+    let sides = side_omen_sides(item, step);
     let mut names: Vec<String> = Vec::new();
     for passed in bp_step.actions.iter().take(action.alternative) {
-        for id in action_ids(passed.get_ref(), item, side) {
+        let ids = match sides.as_slice() {
+            [] => action_ids(passed.get_ref(), item, None),
+            _ => sides
+                .iter()
+                .flat_map(|&side| action_ids(passed.get_ref(), item, Some(side)))
+                .collect(),
+        };
+        for id in ids {
             if blocked.contains(&id) {
                 let name = currency_name(&id);
                 if !names.contains(&name) {
@@ -1994,6 +2101,24 @@ fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side
 fn target_side(item: &Item, step: &StepView) -> Option<Side> {
     let from_target = step.target.as_deref().and_then(|id| target_kind(item, id));
     from_target.or(step.side)
+}
+
+/// The sides a listed step's `side-omen` may resolve to, as the engine
+/// resolves it: the bound target's or the step's `side`; else the side
+/// every one of the step's targets shares, or both when they lie on both
+/// sides (an omen waiting for the last target's side, which either side's
+/// omen being blocked passes over). Empty when the step has no target.
+fn side_omen_sides(item: &Item, step: &StepView) -> Vec<Side> {
+    if let Some(side) = target_side(item, step) {
+        return vec![side];
+    }
+    let mut sides = Vec::new();
+    for side in step.targets.iter().filter_map(|id| target_kind(item, id)) {
+        if !sides.contains(&side) {
+            sides.push(side);
+        }
+    }
+    sides
 }
 
 /// Every id a blueprint action names, its placeholders resolved as far as
@@ -2129,7 +2254,7 @@ pub(crate) fn state_branch_lines(
     };
     let projection = now.or_else(followed);
     let hit = match projection.as_deref() {
-        Some([_, next, ..]) => step_instruction(next, item, targets),
+        Some([_, next, ..]) => in_a_line(step_instruction(next, item, targets)),
         Some(_) => "the craft is done".to_string(),
         None => PICKED_AFTER_HIT.to_string(),
     };
@@ -2192,7 +2317,18 @@ impl Where<'_> {
         if view.targets.iter().any(|id| !met.contains(id)) {
             view.targets.retain(|id| !met.contains(id));
         }
-        step_instruction(&view, self.item, self.targets)
+        in_a_line(step_instruction(&view, self.item, self.targets))
+    }
+}
+
+/// A composed instruction as a branch line names it, after `On a hit:` or
+/// `then`: the Necromancy sentence's leading `Use` in lower case
+/// (`then use Omen of Dextral Necromancy, then apply the …`). Any other
+/// instruction starts with a name and is kept as it is.
+fn in_a_line(instruction: String) -> String {
+    match instruction.strip_prefix("Use ") {
+        Some(rest) => format!("use {rest}"),
+        None => instruction,
     }
 }
 

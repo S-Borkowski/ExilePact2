@@ -143,7 +143,12 @@ next starts:
    "Dextral Exaltation") needs an action carrying that omen, and one that
    mentions an omen at all (the word "omen" too) needs an action carrying
    one; `side-omen` counts as its currency's two side omens and
-   `greater-omen` as Omen of Greater Exaltation. Since 0.1.4 pass 3
+   `greater-omen` as Omen of Greater Exaltation. Since 0.2.0 a
+   `desecrate` step with a `side`, a side rule or a `bind` needs
+   `side-omen` or a Necromancy omen on its first alternative
+   (`check_side_desecration`, at that alternative's currency), so the
+   desecrated modifier lands on the step's side; a later alternative may
+   be the plain bone. Since 0.1.4 pass 3
    also holds the one-crafted rules and the jewel one: a second step
    that places a crafted modifier (an action naming an essence of any
    grade, an alloy or a liquid emotion, the data-backed ids) with no
@@ -191,6 +196,8 @@ whose text promised an Exaltation omen its action did not carry;
 `two_crafted_steps_without_a_removal_between_are_refused`,
 `a_crafted_step_that_repeats_on_a_miss_is_refused`,
 `greater_and_perfect_currencies_are_refused_on_a_jewel_blueprint` and
-`a_fracture_step_needs_a_fracturing_orb`; `modifier_count_conditions_parse`
+`a_fracture_step_needs_a_fracturing_orb`; `desecrate-side-omen.toml`
+holds `rings-resist-whittle`'s old desecration, with no Necromancy omen,
+in `a_sided_desecration_needs_its_side_omen`; `modifier_count_conditions_parse`
 reads the two count keys). It also reads the spec's facts table against
 `NOT_ESTABLISHED`.

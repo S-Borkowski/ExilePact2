@@ -638,10 +638,10 @@ describe('the craft window', () => {
 
   it('the_last_target_is_desecrated_or_the_fallback_says_why', async () => {
     // `craft-last-desecration`: the belt's last target missing (Armour) on
-    // a rare with no desecrated modifier: the route's steps are the bone on
-    // the prefix side with Omen of Sinistral Necromancy, then the reveal
-    // with Omen of Abyssal Echoes, each with its odds unknown, in words,
-    // and no Fallback line.
+    // a rare with no desecrated modifier: the route's steps are Omen of
+    // Sinistral Necromancy then the bone, the desecrated modifier a prefix,
+    // then the reveal with Omen of Abyssal Echoes, each with its odds
+    // unknown, in words, and no Fallback line.
     const view = fixtureView('craft-last-desecration');
     const previewed = view.craft.planning!.preview!.route!;
     const { root } = await render(view);
@@ -649,7 +649,9 @@ describe('the craft window', () => {
     expect(steps).toHaveLength(2);
     const [desecrate, reveal] = steps;
     expect(text(desecrate.querySelector('.instruction'))).toBe(previewed.steps[0].instruction);
-    expect(text(desecrate.querySelector('.instruction'))).toContain('Omen of Sinistral Necromancy on the prefix side');
+    expect(text(desecrate.querySelector('.instruction'))).toMatch(
+      /^Use Omen of Sinistral Necromancy, then apply the .*Collarbone; the desecrated modifier will be a prefix, for /,
+    );
     expect(text(desecrate.querySelector('.uses'))).toMatch(/^Uses .*Collarbone, Omen of Sinistral Necromancy$/);
     expect(text(reveal.querySelector('.uses'))).toBe('Uses Reveal at the Well of Souls, Omen of Abyssal Echoes');
     for (const li of steps) {

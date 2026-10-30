@@ -346,6 +346,25 @@ fn full_rare_desecration_rescue_start_refuses() {
     );
 }
 
+#[test]
+fn a_rescue_with_two_targets_missing_stays_rejected_baseline() {
+    // The rescue's bone takes its Necromancy omen from the one target left.
+    // With two missing it has none to take it from, and a plan never offers
+    // it: its guide would stop at once (it requires one target missing).
+    let engine = guides();
+    let six = rs("rare-six");
+    // Movement Speed (a prefix) and Chaos Resistance (a suffix) missing;
+    // then Movement Speed and increased Evasion Rating, both prefixes.
+    for second in [CHAOS, "prefix-increased-evasion-rating"] {
+        let mut list = rescue_targets();
+        list.extend(targets(&[(second, None)]));
+        match rejection(&engine, &six, &list, RESCUE) {
+            Rejection::NoAlternativeFits { step, .. } => assert_eq!(step, "desecrate", "{second}"),
+            other => panic!("{second}: expected no alternative to fit, got {other}"),
+        }
+    }
+}
+
 // --- weapons-physical-generic -----------------------------------------------
 
 const WEAPON: &str = "weapons-physical-generic";

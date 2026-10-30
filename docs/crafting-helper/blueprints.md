@@ -69,6 +69,10 @@ when = "bound"
 
 [[step.action]]
 currency = "desecrate"                          # the bones that fit the item
+omens = ["side-omen"]                           # Necromancy of the last target's side
+
+[[step.action]]
+currency = "desecrate"                          # the plain bone, if that omen is blocked
 
 [[step]]
 id = "reveal"
@@ -257,6 +261,17 @@ Greater Exaltation. It catches a step whose text says "with an Exaltation
 omen" while its action has none, which is how the retired
 `fill-desecrate-exalt` came to offer a plain Exalted Orb.
 
+**A sided desecration names its Necromancy omen** (since 0.2.0): a
+`desecrate` step with a `side`, a side rule or a `bind` needs `side-omen`,
+or a Necromancy omen by name, on its first `[[step.action]]`, so the
+desecrated modifier lands on the side the step means and the instruction
+can say which (`Use Omen of Dextral Necromancy, then apply the Preserved
+Collarbone; the desecrated modifier will be a suffix, for …`). A later
+alternative may be the plain bone, taken when the omen is blocked, with a
+fallback line naming it. A desecration tied to neither (a blocker on any
+side) needs no omen. `rings-resist-whittle`'s desecration was the one
+shipped step this refused.
+
 ### One crafted modifier
 
 Since 0.5 an item holds at most one crafted modifier
@@ -304,7 +319,7 @@ Four placeholders stand for a choice the engine makes on the item:
 |---|---|---|
 | `desecrate` | `currency` | The bones that fit the item's class and level, tried Preserved, Ancient, Gnawed (Gnawed only up to item level 64). |
 | `reveal` | `currency` | The reveal at the Well of Souls. It names no crafting item, so nothing blocks it. |
-| `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`, or the side its side rule resolved): Sinistral for a prefix, Dextral for a suffix. Needs a `bind` or a `side`, and a currency that has side omens. |
+| `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`, or the side its side rule resolved): Sinistral for a prefix, Dextral for a suffix. Needs a `bind` or a `side`, and a currency that has side omens. A listed step with `when = "bound"`, `bind = "last-remaining"` and no `side`, planned while several targets are missing, takes the side they all share; with targets on both sides its omen waits for the last target's side (the preview names both omens, and either one blocked passes the alternative over), and the guide names the one omen once a single target is left. |
 | `greater-omen` | `omens` | Omen of Greater Exaltation, on an Exalted Orb of any grade only, where the step's side (the item, with no side) has two free slots and the step can use two (an add: two missing targets it can place there; a fill: always), and the omen is not blocked; otherwise nothing, with no fallback line. It may sit beside `side-omen`, and is an error beside an explicit `omen-of-greater-exaltation`. Whether Greater with a side omen adds both to that side, and whether Greater needs two free slots, are not established (`greater-with-side-omen`, `greater-needs-two-free`). |
 
 Blocking applies to what a placeholder resolves to: block
@@ -645,7 +660,7 @@ repeats its Essence of Hysteria on a miss.
 | `essence-desecrate-double-slam` | timesaver's 0.5 guide; the domistae codex; maxroll and Mobalytics (methods 2 and 4) | every equipment class with spawn weights | From a magic item an essence binds on, or a rare: the essence; a desecration for the hardest target on its side (Sinistral or Dextral Necromancy), revealed with Abyssal Echoes; a wrong reveal taken off with Omen of Light; a removal when a side is blocked; then side-restricted Perfect exalts, with Greater Exaltation where two fit. |
 | `magic-augment-essence` | maxroll's "How to Craft", method 1 | every equipment class with spawn weights | From a normal or magic item: transmute; annul a wrong modifier on the magic item (side-restricted when the other side holds a target); augment; an essence that makes it rare with a third target; then removals and side-restricted slams. |
 | `rare-clean-then-slam` | issue #28; maxroll and the domistae codex (method 2's clean-up, method 3's side restriction) | every equipment class with spawn weights | From a rare with any number of targets, a dropped one included: clean the blocked side (a certain whittle, else an annulment, side-restricted when the other side holds a target) until each side has a free slot per missing target, then side-restricted slams. |
-| `rings-resist-whittle` | post 10 | Rings | Chaos Orbs, then whittling until one target is left, then a desecration for the last. |
+| `rings-resist-whittle` | post 10 | Rings | Chaos Orbs, then whittling until one target is left, then a desecration for the last, with the Necromancy omen of its side (since 0.2.0; the plain bone when that omen is blocked). |
 | `rings-flat-attack` | post 11 | Rings | Attack quality raised first (manual), flat attack damage prefixes over resistance suffixes. |
 | `weapons-physical-generic` | Mobalytics' SSF crafting guide, "Generic Phys Weapon" | Bows, Crossbows, One Hand Maces, Quarterstaves, Spears, Talismans, Two Hand Maces (the classes with both increased Physical Damage and a Greater Essence of Abrasion for flat physical damage) | State-ordered, from a normal or magic weapon: transmute and augment (Perfect first), annulling a wrong modifier, until the increased Physical Damage prefix is a top-two tier (a weaker one is sent back, `weak-magic-start`); Greater Essence of Abrasion as it turns rare, its one crafted modifier; a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and the side omen for two suffixes; the last target by desecration. The guide's closing Perfect Essence of Battle would be a second crafted modifier and is left out. A weapon whose targets give Abrasion nothing to add cannot finish here; `magic-augment-essence` takes any essence. |
 | `body-armours-single-prefix` | Mobalytics' Lightning Arrow crafting guide, the body armour, without Homogenising | Body Armours | State-ordered, from a normal or magic armour: a top single-stat defence prefix by transmute and augment (a weaker one is sent back, `weak-magic-start`); a Greater Essence of Insulation, Thawing or Grounding; a desecration on the hardest target's side (the suffixes), left unrevealed; with only the prefixes open, a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and no side omen lands two prefixes (the isolation); the reveal, Omen of Light for a wrong one, a removal, the last target's desecration and side slams. |
@@ -731,8 +746,9 @@ Posts not made into a blueprint:
   that reason, as `weapons-physical-generic` and
   `body-armours-single-prefix` are.
 - A side taken from another step's binding: `side-omen` resolves only
-  from the step's own bound target or its own `side`, and every binding
-  aims at a missing target. So no step can name the side of a target
+  from the step's own bound target, its own `side`, or (a bound-only
+  `last-remaining` step) the targets it may itself place, and every
+  binding aims at a missing target. So no step can name the side of a target
   already on the item, which is how the guides keep a Perfect essence off
   the target they want to fracture (the other side's Crystallisation
   omen); `fracture-first` goes without it.

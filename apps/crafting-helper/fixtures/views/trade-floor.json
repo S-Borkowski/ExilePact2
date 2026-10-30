@@ -1679,7 +1679,7 @@
             {
               "fallback": null,
               "id": "desecrate",
-              "instruction": "Preserved Collarbone for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+              "instruction": "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Fire Resistance, +#% to Cold Resistance or +#% to Lightning Resistance",
               "number": 3,
               "odds": "odds unknown: desecration and reveals have no established weights",
               "targets": [
@@ -1688,7 +1688,8 @@
                 "+#% to Lightning Resistance"
               ],
               "uses": [
-                "Preserved Collarbone"
+                "Preserved Collarbone",
+                "Omen of Dextral Necromancy"
               ]
             },
             {
