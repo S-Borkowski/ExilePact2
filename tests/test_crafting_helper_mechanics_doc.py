@@ -13,7 +13,10 @@ claim against the game) depend on a fixed shape, which these cases pin:
 - the fourteen chunks of the owner's paste are each one `### Post <n>`
   (`test_posts_one_to_fourteen`);
 - `## Gaps` says the wiki was not read (`test_gaps_name_the_wiki`);
-- corruption, Vaal Orb included, is out of scope rather than described.
+- corruption, Vaal Orb included, is out of scope rather than described;
+- every fact taken from the crafting guides of 2026-10-30 carries a label
+  (community guide, documented or not established) and its source, and
+  `## Sources` names each guide with that date (`test_guide_facts_are_labelled`).
 
 Each check is a small function over the doc's text, and each keeps a negative
 control beside it: a synthetic doc the function must refuse, so a check that
@@ -99,6 +102,55 @@ SOURCE_LINE = re.compile(
     r"^Source: .*https://poe2db\.tw/us/\S+.*\b\d{4}-\d{2}-\d{2}\b", re.MULTILINE
 )
 NOT_ESTABLISHED = re.compile(r"^Source: not established\b", re.MULTILINE)
+
+# The crafting guides read for issue #35: the owner's paste of the Mobalytics
+# pages, and the maxroll page the issue records as reviewed.
+GUIDE_DATE = "2026-10-30"
+MOBALYTICS = "https://mobalytics.gg/poe-2/guides/"
+MAXROLL_HOW_TO = "https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2"
+PATCH_NOTES_050 = "https://www.pathofexile.com/forum/view-thread/3932540"
+GUIDE_URLS = [MOBALYTICS + slug for slug in (
+    "ssf-crafting",
+    "lightning-arrow-crafting",
+    "isolation-crafting",
+    "fracturing-orbs",
+    "omen-of-recombination",
+    "campaign-martial-weapon-crafting",
+    "crafting-basics-part-1",
+    "essences",
+    "0-3-crafting-changes",
+)] + [MAXROLL_HOW_TO]
+
+# A guide fact is tagged in place: "(label: <label>; <source URL>, ... 2026-10-30)".
+LABEL_TAG = re.compile(
+    r"\(label: (community guide|documented|not established); ([^()]*?\b"
+    + GUIDE_DATE + r"\b[^()]*)\)"
+)
+GUIDE_SECTION = "Crafting principles from the guides"
+
+# Where the guide facts sit, and a URL one of the place's tags must name.
+# ("##", "###") is a `###` entry; ("##", "- **name") a bold-named bullet; ("##",
+# None) the section's own text before its first `###`.
+LABELLED_PLACES = [
+    (("Item basics", "- **Crafted and desecrated modifiers"), MOBALYTICS),
+    (("Item basics", "- **Hybrid modifiers"), MOBALYTICS),
+    (("Currency", "Orb of Alchemy"), MOBALYTICS),
+    (("Currency", "Fracturing Orb"), MOBALYTICS),
+    (("Greater and Perfect currency", "Greater Orb of Transmutation"), MOBALYTICS),
+    (("Greater and Perfect currency", "Greater Orb of Augmentation"), MOBALYTICS),
+    (("Greater and Perfect currency", "Perfect Exalted Orb"), MOBALYTICS),
+    (("Essences", "Perfect Essence"), MOBALYTICS),
+    (("Essences", "Essence of the Abyss"), MOBALYTICS),
+    (("Desecration", "Desecration and reveal"), MAXROLL_HOW_TO),
+    (("Omens", "Omen of Recombination"), MOBALYTICS),
+    (("Alloys", None), PATCH_NOTES_050),
+    (("Out of scope", "- **The reforge bench"), MOBALYTICS),
+    ((GUIDE_SECTION, "- **Isolation"), MOBALYTICS),
+    ((GUIDE_SECTION, "- **Gamble last"), MOBALYTICS),
+    ((GUIDE_SECTION, "- **Restart a weak magic start"), MOBALYTICS),
+    ((GUIDE_SECTION, "- **Item-level breakpoints"), MOBALYTICS),
+    ((GUIDE_SECTION, "- **Alchemy and the reforge fallback"), MOBALYTICS),
+]
 
 
 def split_sections(text, level):
@@ -207,6 +259,71 @@ def out_of_scope_problems(text):
     return problems
 
 
+def bullets(body):
+    """Return each top-level `- ` bullet of `body`, its indented lines joined."""
+    out = []
+    inside = False
+    for line in body.splitlines():
+        if line.startswith("- "):
+            out.append(line)
+            inside = True
+        elif inside and line.startswith("  ") and line.strip():
+            out[-1] += " " + line.strip()
+        else:
+            inside = False
+    return out
+
+
+def place_text(text, title, key):
+    """The text of one labelled place: a `###` entry, a bold-named bullet, or
+    (key None) a section's text before its first `###`. None when absent."""
+    body = section(text, title)
+    if body is None:
+        return None
+    if key is None:
+        return re.split(r"^### ", body, maxsplit=1, flags=re.MULTILINE)[0]
+    if key.startswith("- "):
+        found = [b for b in bullets(body) if b.startswith(key)]
+        return found[0] if found else None
+    return dict(split_sections(body, 3)).get(key)
+
+
+def guide_label_problems(text):
+    """Each guide fact's place carries a label tag dated 2026-10-30 that names
+    its source; `## Sources` lists each guide with that date; the principles
+    section sits after the crafting patterns and before `## Gaps`; and the
+    alloy question has left `## Gaps`."""
+    problems = []
+    for (title, key), url in LABELLED_PLACES:
+        where = f"## {title}" + (f" / {key}" if key else "")
+        body = place_text(text, title, key)
+        if body is None:
+            problems.append(f"{where}: missing")
+            continue
+        tags = LABEL_TAG.findall(" ".join(body.split()))
+        if not tags:
+            problems.append(f"{where}: no '(label: ...; ..., {GUIDE_DATE})' tag")
+        elif not any(url in source for _, source in tags):
+            problems.append(f"{where}: no label tag names {url}")
+    source_bullets = bullets(section(text, "Sources") or "")
+    for url in GUIDE_URLS:
+        named = re.compile(re.escape(url) + r"(?![\w/-])")
+        listed = [b for b in source_bullets if named.search(b)]
+        if not listed:
+            problems.append(f"## Sources does not list {url}")
+        elif not any(GUIDE_DATE in b for b in listed):
+            problems.append(f"## Sources lists {url} without {GUIDE_DATE}")
+    titles = [name for name, _ in split_sections(text, 2)]
+    if GUIDE_SECTION not in titles:
+        problems.append(f"## {GUIDE_SECTION}: missing")
+    elif not (titles.index("Crafting patterns seen") < titles.index(GUIDE_SECTION)
+              < titles.index("Gaps")):
+        problems.append(f"## {GUIDE_SECTION} is not between the patterns and ## Gaps")
+    if "Alloys and the crafted limit" in (section(text, "Gaps") or ""):
+        problems.append("## Gaps still holds the alloy question the 0.5.0 notes settle")
+    return problems
+
+
 def minimal_doc():
     """A synthetic doc with the right shape, for the negative controls."""
     parts = ["# Title\n"]
@@ -287,6 +404,34 @@ class MechanicsDoc(unittest.TestCase):
         self.assertEqual(out_of_scope_problems(good), [])
         moved = good.replace("### Currency entry\n", "### Vaal Orb\n")
         self.assertTrue(out_of_scope_problems(moved))
+
+    def test_guide_facts_are_labelled(self):
+        self.assertEqual(guide_label_problems(self.text), [])
+        # Negative controls, each a one-place edit of the real doc. A synthetic
+        # doc without the guide facts is refused outright.
+        self.assertTrue(guide_label_problems(minimal_doc()))
+        # A fact whose tag loses its label word, its date or its guide URL.
+        fracture = place_text(self.text, "Currency", "Fracturing Orb")
+        self.assertIn("(label: community guide;", fracture)
+        for old, new in (("(label: community guide;", "(community guide;"),
+                         (GUIDE_DATE, "2026-10-29"),
+                         (MOBALYTICS, "https://example.invalid/")):
+            broken = self.text.replace(fracture, fracture.replace(old, new))
+            self.assertTrue(guide_label_problems(broken), old)
+        # A guide listed under ## Sources without the date, or not at all.
+        sources = section(self.text, "Sources")
+        self.assertTrue(guide_label_problems(self.text.replace(
+            sources, sources.replace(GUIDE_DATE, "2026-10-28"))))
+        self.assertTrue(guide_label_problems(self.text.replace(
+            sources, sources.replace(MAXROLL_HOW_TO, "https://maxroll.gg/poe2"))))
+        # The principles section moved after ## Gaps, and the alloy gap restored.
+        guide = "\n## " + GUIDE_SECTION + "\n"
+        head, tail = self.text.split(guide, 1)
+        principles, rest = tail.split("\n## Gaps\n", 1)
+        self.assertTrue(guide_label_problems(
+            head + "\n## Gaps\n" + rest + guide + principles))
+        self.assertTrue(guide_label_problems(self.text.replace(
+            "## Gaps\n", "## Gaps\n\n- **Alloys and the crafted limit.** Open.\n", 1)))
 
 
 if __name__ == "__main__":

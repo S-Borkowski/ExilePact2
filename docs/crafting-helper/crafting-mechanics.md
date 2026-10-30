@@ -13,6 +13,14 @@ marked so in the entry and listed under [Gaps](#gaps). Nothing here is copied
 from a page: no page, table or item text is stored in this repository
 (AGENTS.md § "Legal").
 
+The facts added from the crafting guides read on 2026-10-30 (issue #35) are
+tagged where they stand, `(label: <label>; <source>, <date>)`, with one of
+three labels: **community guide** (only a guide says it), **documented**
+(Grinding Gear Games or poe2db says it) or **not established** (nothing
+settles it, or it is inferred). A tag is an addition to an entry; its
+`Source:` line stays. In `docs/models/crafting-slots-spec.md` a
+community-guide fact is labelled not established, per that spec's own table.
+
 `## Crafting patterns seen` paraphrases the crafting routes in the owner's
 Discord paste. They seed the M4 blueprints; they are players' routes, not
 claims about the game, and each step that names a mechanic links back to the
@@ -61,6 +69,50 @@ Fetched 2026-10-29, for the 0.5 availability and slot facts (game version
 - `https://maxroll.gg/poe2/resources/path-of-exile-2-crafting-overview`: a
   community guide, for the one-and-one and three-and-three split.
 
+Read 2026-10-30, for the guide facts of issue #35. The Mobalytics pages are
+the owner's paste of 2026-10-30, each file starting with its source URL and
+copy date, kept on the owner's machine outside the repository; only facts
+are taken from them, in our own words.
+
+- `https://mobalytics.gg/poe-2/guides/ssf-crafting`, the owner's paste of
+  2026-10-30: fracturing beside a desecrated modifier, the Alchemy and
+  reforge fallback.
+- `https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting`, the
+  owner's paste of 2026-10-30: the Abyss mark turning a fracture into a
+  one-in-three pick.
+- `https://mobalytics.gg/poe-2/guides/isolation-crafting`, the owner's paste
+  of 2026-10-30: the isolation principle, and Perfect Exalted's level floor
+  keeping a top tier.
+- `https://mobalytics.gg/poe-2/guides/fracturing-orbs`, the owner's paste of
+  2026-10-30: fracturing as the first step of an isolated craft.
+- `https://mobalytics.gg/poe-2/guides/omen-of-recombination`, the owner's
+  paste of 2026-10-30: what Omen of Recombination does and when it pays.
+- `https://mobalytics.gg/poe-2/guides/campaign-martial-weapon-crafting`, the
+  owner's paste of 2026-10-30: the restart rule for a weak magic weapon.
+- `https://mobalytics.gg/poe-2/guides/crafting-basics-part-1`, the owner's
+  paste of 2026-10-30: hybrid modifiers, item-level breakpoints.
+- `https://mobalytics.gg/poe-2/guides/essences`, the owner's paste of
+  2026-10-30: one essence modifier per item, Perfect essence removals, the
+  Abyss mark.
+- `https://mobalytics.gg/poe-2/guides/0-3-crafting-changes`, the owner's
+  paste of 2026-10-30: the Greater and Perfect currency levels, Perfect
+  essences as a chosen Chaos Orb.
+- `https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2`,
+  reviewed 2026-10-30 (issue #35): the rescue of a full rare by a
+  side-steered desecration (boots without movement speed).
+
+Fetched 2026-10-30, to settle two questions the guides raised:
+
+- `https://www.pathofexile.com/forum/view-thread/3932540`: the 0.5.0 patch
+  notes again, for alloys adding crafted modifiers.
+- `https://poe2db.tw/us/Essence_of_the_Abyss` and
+  `https://poe2db.tw/us/Essence`: Essence of the Abyss is a corrupted
+  essence, and the Crystallisation omens name Perfect or corrupted essences.
+
+The other pages of the owner's paste (waystones, Vaal and corruption, gems,
+runes, minion gear, league start, essence farming and the Homogenising
+crafts) were not used: they are out of the helper's scope.
+
 The slot rules the crafting helper plans with, and the omen-stacking
 questions no page settles, are written down and labelled in
 [`docs/models/crafting-slots-spec.md`](../models/crafting-slots-spec.md).
@@ -103,7 +155,23 @@ currency's own description, that currency's entry carries the source.
   crafted modifier (an essence's modifier is one) and one desecrated
   modifier, and a desecrated modifier no longer counts as crafted (0.5.0
   patch notes, https://www.pathofexile.com/forum/view-thread/3932540,
-  fetched 2026-10-29).
+  fetched 2026-10-29). So an item holds one essence modifier at a time, and
+  an alloy's modifier is that same one crafted modifier (see Alloys)
+  (label: documented; the 0.5.0 notes, fetched 2026-10-29 and 2026-10-30;
+  the community guide https://mobalytics.gg/poe-2/guides/essences, read
+  2026-10-30, says the same of essences).
+- **Hybrid modifiers.** A hybrid modifier improves two stats and still takes
+  one prefix or suffix slot: poe2db lists each hybrid as one modifier, and
+  the owner's real magic boots (the helper's fixture
+  `ch-item/fixtures/real/boots-magic-hybrid-unmet-advanced.txt`) hold a
+  two-line prefix beside a suffix (label: documented; poe2db's modifier
+  pages, fetched 2026-10-28, and the community guide
+  https://mobalytics.gg/poe-2/guides/crafting-basics-part-1, read
+  2026-10-30). On the plain tooltip a hybrid's value is said to be summed
+  into the single-stat line of the same stat, so a line reading 120% can be
+  a 90% modifier plus a hybrid's 30%; this is not measured (label: community
+  guide; https://mobalytics.gg/poe-2/guides/crafting-basics-part-1, read
+  2026-10-30).
 - **Item level and modifier level.** Each modifier tier has a level, and an
   item can only roll a tier whose level is at or below the item's level. The
   Greater and Perfect currencies raise a floor instead: they add only modifiers
@@ -157,6 +225,15 @@ Makes a Normal or Magic item Rare with four random modifiers. Omens of
 Sinistral and Dextral Alchemy push the result to the most prefixes or the
 most suffixes it can have; they are no longer obtainable since 0.3.0.
 
+When Transmutation and Augmentation leave a poor magic item, an Alchemy on
+it is a fresh four-modifier try, and a poor rare it produces is still worth
+keeping: three rares of the same rarity can be reforged at the bench into one
+new unidentified rare (label: community guide;
+https://mobalytics.gg/poe-2/guides/ssf-crafting, read 2026-10-30). The same
+guide warns against it on physical weapons, where a poor magic base is kept
+for the reforge instead. The reforge is not a helper route (see Out of
+scope).
+
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28;
 https://pathofexile2.wiki.fextralife.com/Patch_Notes_040, fetched 2026-10-29
 
@@ -206,7 +283,20 @@ Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 ### Fracturing Orb
 
 On a Rare item with at least four modifiers, picks one at random and fractures
-it, locking it in place for the rest of the craft.
+it, locking it in place for the rest of the craft (label: documented;
+https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28).
+
+A desecrated modifier is never the one fractured (label: community guide;
+https://mobalytics.gg/poe-2/guides/ssf-crafting, read 2026-10-30). Nor is
+the Mark of the Abyssal Lord that Essence of the Abyss adds, so a
+four-modifier rare carrying the mark fractures the wanted modifier one time
+in three instead of one in four (label: community guide;
+https://mobalytics.gg/poe-2/guides/ssf-crafting and
+https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting, read
+2026-10-30). The guides fracture early, on a good base with exactly four
+modifiers of which one is excellent, and build the rest of the item around
+the locked one (label: community guide;
+https://mobalytics.gg/poe-2/guides/fracturing-orbs, read 2026-10-30).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -289,7 +379,11 @@ Source: https://poe2db.tw/us/Minimum_Modifier_Level, fetched 2026-10-28
 
 ### Greater Orb of Transmutation
 
-The Orb of Transmutation effect with a Minimum Modifier Level of 44.
+The Orb of Transmutation effect with a Minimum Modifier Level of 44. One
+guide gives 55 for the Greater Transmutation and Augmentation orbs; the
+helper keeps poe2db's 44 and records the disagreement (label: documented;
+44 from poe2db, 55 from the community guide
+https://mobalytics.gg/poe-2/guides/0-3-crafting-changes, read 2026-10-30).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -301,7 +395,10 @@ Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
 ### Greater Orb of Augmentation
 
-The Orb of Augmentation effect with a Minimum Modifier Level of 44.
+The Orb of Augmentation effect with a Minimum Modifier Level of 44. The same
+guide gives 55 here too; the helper keeps poe2db's 44 (label: documented; 44
+from poe2db, 55 from the community guide
+https://mobalytics.gg/poe-2/guides/0-3-crafting-changes, read 2026-10-30).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -334,7 +431,19 @@ Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 The Exalted Orb effect with a Minimum Modifier Level of 50. Players use it to
 add a modifier that is likely a high tier ("perfect slam").
 
-Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
+The level-50 floor does not rule a family out: when every tier of a family
+the item can reach is below 50, the family's best reachable tier stays in the
+pool. That is the Minimum Modifier Level page's own exception, and the
+isolation guide's amulet example relies on it, a Perfect Exalted Orb leaving
+only the top tier of a family whose lower tiers sit under 50 (label:
+documented;
+https://poe2db.tw/us/Minimum_Modifier_Level, fetched 2026-10-28; the
+community guide https://mobalytics.gg/poe-2/guides/isolation-crafting, read
+2026-10-30, agrees). The helper's modifier pool already keeps that tier
+when it applies the floor.
+
+Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28;
+https://poe2db.tw/us/Minimum_Modifier_Level, fetched 2026-10-28
 
 ### Greater Chaos Orb
 
@@ -394,6 +503,18 @@ Sinistral and Dextral Crystallisation choose which side the removal comes
 from. Since 0.5 the essence's modifier is the item's one crafted modifier, and
 it is always added.
 
+In effect it is a Chaos Orb whose added modifier is chosen: one random
+removal, then a certain add. The removal can be narrowed like any other, by
+a fractured modifier, a Crystallisation omen or a full side, so on a set-up
+item it can leave a single candidate and be certain (label: community guide;
+https://mobalytics.gg/poe-2/guides/0-3-crafting-changes and
+https://mobalytics.gg/poe-2/guides/essences, read 2026-10-30; the owner's
+reading of 2026-10-30 is the same). When the side the essence's modifier
+belongs to is already full, the removal is taken from that side to make
+room (label: community guide; https://mobalytics.gg/poe-2/guides/essences,
+read 2026-10-30; not established in the slot spec, which labels every
+community-guide fact so).
+
 Source: https://poe2db.tw/us/Essence, fetched 2026-10-28;
 https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29
 
@@ -433,7 +554,24 @@ A special essence that removes a random modifier and adds the Mark of the
 Abyssal Lord to any equipment. What the mark then enables is not stated on
 the page (see Gaps).
 
-Source: https://poe2db.tw/us/Essence, fetched 2026-10-28
+It is a corrupted essence: poe2db gives its internal type as one, and both
+Crystallisation omens act on a Perfect or corrupted essence, so either omen
+confines this essence's removal to its side (label: documented;
+https://poe2db.tw/us/Essence_of_the_Abyss and https://poe2db.tw/us/Essence,
+fetched 2026-10-30).
+
+The mark cannot be fractured, which turns a four-modifier fracture into a
+one-in-three pick (see Fracturing Orb) (label: community guide;
+https://mobalytics.gg/poe-2/guides/ssf-crafting and
+https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting, read
+2026-10-30). The essences guide also suggests the mark makes a later reveal
+of desecrated modifiers likelier to offer a high tier; nothing confirms it
+(label: not established; the community guide
+https://mobalytics.gg/poe-2/guides/essences, read 2026-10-30).
+
+Source: https://poe2db.tw/us/Essence, fetched 2026-10-28;
+https://poe2db.tw/us/Essence_of_the_Abyss and https://poe2db.tw/us/Essence,
+fetched 2026-10-30
 
 ### Essence of the Breach
 
@@ -470,6 +608,16 @@ offered options can include ordinary modifiers unless an omen forces a lord.
 Omen of Abyssal Echoes allows one reroll of the offered options at reveal;
 Sinistral and Dextral Necromancy pick the side; Sovereign, Liege and
 Blackblooded force the lord.
+
+When the side a Necromancy omen picks is already full, the modifier the
+desecration removes to make room comes from that same side. No page says so;
+it is inferred from the two facts above (a desecration removes first when
+the item is full, and the omen fixes the side), and maxroll's rescue of a
+full rare relies on it: boots with no movement speed lose a prefix to a
+prefix-side desecration, and a later reveal can offer movement speed
+(label: not established; inferred, used by the community guide
+https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2, reviewed
+2026-10-30 for issue #35).
 
 Source: https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-28 and 2026-10-29;
 https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29
@@ -754,7 +902,13 @@ Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
 ### Omen of Recombination
 
-Listed on the omen page with no effect text.
+Listed on the omen page with no effect text. A guide says it makes the next
+recombination Lucky: the outcome is rolled twice and the better one kept.
+Since a failed first roll gets a second try, the omen is worth its price
+when the recombination's chance of failing, times what its input items cost
+to replace, is at least the omen's own cost (label: community guide;
+https://mobalytics.gg/poe-2/guides/omen-of-recombination, read 2026-10-30).
+The helper models no recombination, so it never names this omen in a route.
 
 Source: not established
 
@@ -763,10 +917,12 @@ Source: not established
 An alloy works like a Perfect Essence: on a Rare item it removes one random
 modifier and adds a guaranteed one, chosen by the item kind. The modifiers are
 ones the ordinary pools do not offer (many about Runic Ward). Each entry names
-the item kinds and what the alloy adds there, in short. Whether an alloy's
-modifier is the item's one crafted modifier (the 0.5 limit, see Item basics)
-is not established: the 0.5.0 notes liken alloys to Perfect Essences without
-saying so, and only community guides state it (see Gaps).
+the item kinds and what the alloy adds there, in short. An alloy's modifier
+is the item's one crafted modifier (the 0.5 limit, see Item basics): the
+0.5.0 notes describe alloys as adding crafted modifiers by replacing an
+existing one, and the same notes allow one crafted modifier per item
+(label: documented; https://www.pathofexile.com/forum/view-thread/3932540,
+fetched 2026-10-30).
 
 ### Runic Alloy
 
@@ -1124,6 +1280,14 @@ Listed so a reader knows they were seen and left out on purpose, not missed.
 - **Non-crafting stackables**: splinters, artifacts, Rogue's Marker, Gold,
   Verisium, Starlit Ore, crests, Cryptic Key.
 - **Delirium side effect** of liquid emotions (making an area Delirious).
+- **The reforge bench**: three items of the same rarity go in and one new
+  unidentified item of that rarity comes out, so three poor rares become
+  one fresh try (label: community guide;
+  https://mobalytics.gg/poe-2/guides/ssf-crafting, read 2026-10-30). A
+  helper route follows one item, which a three-into-one step cannot, so it
+  is recorded here and under Orb of Alchemy, not offered as a route.
+- **Omen of Recombination as a route step**: the helper models no
+  recombination; the omen's effect is recorded in its entry.
 
 ## Crafting patterns seen
 
@@ -1329,6 +1493,47 @@ Source: Discord post 13, owner's paste, 2026-10-28
 
 Source: Discord post 14, owner's paste, 2026-10-28
 
+## Crafting principles from the guides
+
+The practice the crafting guides of 2026-10-30 teach, beyond single
+mechanics. They are players' advice, labelled as such; the helper's route
+engine follows them where `docs/models/crafting-slots-spec.md` says so.
+
+- **Isolation.** A random step becomes a sure one when everything but the
+  wanted outcome is excluded before it is taken: a fractured modifier is
+  never removed, a side omen rules out the other side, Whittling picks the
+  lowest-level modifier, and a Minimum Modifier Level drops the low tiers.
+  Set the item up so those exclusions leave one candidate, and the step
+  cannot miss (label: community guide;
+  https://mobalytics.gg/poe-2/guides/isolation-crafting and
+  https://mobalytics.gg/poe-2/guides/fracturing-orbs, read 2026-10-30).
+  The slot spec's "Certain removals first" rule is our use of it.
+- **Gamble last.** The same guides order a craft so that its certain steps
+  come first and the step that can still fail comes at the end, when
+  nothing more depends on it (label: community guide;
+  https://mobalytics.gg/poe-2/guides/isolation-crafting, read 2026-10-30).
+- **Restart a weak magic start.** For a magic martial weapon, a damage
+  prefix in its family's best or second-best tier is worth a Regal Orb or
+  an essence; anything lower is worth a new base instead (label: community
+  guide; https://mobalytics.gg/poe-2/guides/campaign-martial-weapon-crafting,
+  read 2026-10-30).
+- **Item-level breakpoints.** A tier only rolls on an item whose level
+  reaches the tier's, so the target tiers set the base's minimum item
+  level. The guide's examples: the top elemental resistance tier needs item
+  level 82, and boots' top movement speed tier 82 and the second 70 (label:
+  community guide; https://mobalytics.gg/poe-2/guides/crafting-basics-part-1,
+  read 2026-10-30). The helper's shipped data, from poe2db's boots pages
+  fetched 2026-10-28, has the top tier at 82 but the second (Cheetah's) at
+  65 on every boots base, `prefix-increased-movement-speed`; the helper keeps
+  the data's 65 (label: documented; poe2db, fetched 2026-10-28, against
+  the guide read 2026-10-30).
+- **Alchemy and the reforge fallback.** A magic start that went badly can be
+  turned rare by an Orb of Alchemy for a second chance, and poor rares can
+  be fed three at a time to the reforge bench for a new unidentified one
+  (label: community guide; https://mobalytics.gg/poe-2/guides/ssf-crafting,
+  read 2026-10-30). Neither is a helper route; see Orb of Alchemy and Out
+  of scope.
+
 ## Gaps
 
 Questions the poe2db pages did not answer. Each is open until someone reads
@@ -1351,16 +1556,24 @@ a better source or measures it in the game.
   picks by modifier level, and whether a fractured modifier is ever removed
   are not established (community guides or inference only). They are
   labelled, with their sources, in `docs/models/crafting-slots-spec.md`.
-- **Alloys and the crafted limit.** Whether an alloy's modifier counts as the
-  item's one crafted modifier since 0.5; only community guides say so.
-- **Omen of Recombination**: listed with no effect text.
+- **Omen of Recombination**: listed with no effect text on poe2db. A
+  community guide (2026-10-30) describes it as making a recombination
+  Lucky; no GGG or poe2db text confirms it, so its entry stays not
+  established.
 - **Crystallisation on alloys.** The omen text names Perfect or corrupted
   essences only; posts 8, 12 and 13 use it with alloys. Not established
   whether alloys count.
 - **Which essences are "corrupted".** The Crystallisation omens name them;
-  the essence page does not label any. Hysteria, Delirium, Horror, Insanity,
-  the Abyss and the Breach are the single-tier ones and are the likely set.
-- **Essence of the Abyss**: what the Mark of the Abyssal Lord enables.
+  the essence page does not label any. Essence of the Abyss is one (poe2db's
+  Essence of the Abyss page, fetched 2026-10-30, gives its type).
+  Hysteria, Delirium, Horror, Insanity and the Breach, the other single-tier
+  ones, are the likely rest of the set, not checked.
+- **Essence of the Abyss**: what the Mark of the Abyssal Lord enables,
+  answered in part. Community guides (2026-10-30) say the mark cannot be
+  fractured, which the helper's fracture route uses; the essences guide's
+  hint that it raises the tier of a later reveal is not established.
+  (Whether an alloy's modifier is the item's crafted one left this list on
+  2026-10-30: the 0.5.0 patch notes settle it; see Alloys.)
 - **Omen of Sanctification**: what sanctifying a Rare item does.
 - **Homogenising omens**: what "the same type" matches (family, tag group).
 - **Omen of Whittling**: how a tie between equal-level modifiers is broken,
