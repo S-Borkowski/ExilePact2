@@ -200,7 +200,7 @@ blueprint makes them differently, § "State-ordered blueprints"):
 | `essence` | The target an unblocked essence, alloy or liquid among the step's actions adds at its floor or better. Lesser, plain and Greater essences fit a Magic item (they make it Rare); Perfect and the special ones fit a Rare (they remove one modifier first). |
 | `hardest` | The target with the lowest odds of being added; unknown odds count as hardest, ties go to the order the targets were given. |
 | `any-remaining` | Any target not yet on the item. |
-| `last-remaining` | The one target not yet on the item; with two or more missing, none. In state order it is made afresh on every item, never kept. |
+| `last-remaining` | The one target not yet on the item; with two or more missing, whichever comes, as `any-remaining`. In state order it is different: made afresh on every item, only when exactly one target is missing (with two or more, none), and never kept. |
 
 A target from the desecrated pool can only be placed by a `desecrate` or
 `reveal` step; a blueprint that has none for it is rejected for that item.

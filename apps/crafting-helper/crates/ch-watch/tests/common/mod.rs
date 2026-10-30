@@ -23,10 +23,14 @@ const RINGS: &str = concat!(
     "/../ch-engine/tests/items/gear/rings-resist-whittle/"
 );
 
-/// One of the whittled ring's texts (`01-start` … `08-whittle-lightning`).
+/// One of the whittled ring's texts (`01-start` … `08-whittle-lightning`),
+/// with LF line endings. A Windows checkout with `core.autocrlf` gives the
+/// files CRLF; the item reader takes either (`ch_item::split_lines`), but the
+/// tests here look for multi-line substrings, so they normalise as it does.
 pub fn ring_text(name: &str) -> String {
     let path = format!("{RINGS}{name}.txt");
-    std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    text.replace("\r\n", "\n")
 }
 
 /// The ring text parsed.
