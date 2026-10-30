@@ -1624,14 +1624,19 @@
             "number": 2
           },
           {
+            "blueprint": "fractured-essence-swap",
+            "name": "Fractured essence swap",
+            "number": 3
+          },
+          {
             "blueprint": "essence-desecrate-double-slam",
             "name": "Essence, desecrate the hardest, then side slams",
-            "number": 3
+            "number": 4
           },
           {
             "blueprint": "rare-clean-then-slam",
             "name": "Clean a rare, then side slams",
-            "number": 4
+            "number": 5
           }
         ],
         "rejected": [],
@@ -1648,6 +1653,7 @@
               "instruction": "Essence of the Breach, for a higher quality cap",
               "number": 1,
               "odds": null,
+              "survival": null,
               "targets": [],
               "uses": [
                 "Essence of the Breach"
@@ -1660,6 +1666,7 @@
               "instruction": "Reaver Catalysts up to 40% attack quality",
               "number": 2,
               "odds": null,
+              "survival": null,
               "targets": [],
               "uses": [
                 "Reaver Catalyst"
@@ -1680,14 +1687,19 @@
             "number": 2
           },
           {
+            "blueprint": "fractured-essence-swap",
+            "name": "Fractured essence swap",
+            "number": 3
+          },
+          {
             "blueprint": "essence-desecrate-double-slam",
             "name": "Essence, desecrate the hardest, then side slams",
-            "number": 3
+            "number": 4
           },
           {
             "blueprint": "rare-clean-then-slam",
             "name": "Clean a rare, then side slams",
-            "number": 4
+            "number": 5
           }
         ]
       },

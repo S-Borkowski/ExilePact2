@@ -365,7 +365,9 @@ pub struct StepLineView {
     pub number: usize,
     /// What to do: for a step that places one of the targets, composed from
     /// its data (the currency, its omens, the side and the target
-    /// modifiers, `crate::craft::step_instruction`); for a removal step, the
+    /// modifiers, `crate::craft::step_instruction`), and on an essence swap
+    /// what its removal may take and the fractured modifiers it leaves; for
+    /// a removal step, the
     /// currency and the modifier(s) it removes (a whittle-or-annul step as
     /// the app named it by the modifier levels); otherwise the blueprint's
     /// text.
@@ -389,6 +391,11 @@ pub struct StepLineView {
     /// pool and the exalt's chance of a target before and after
     /// (`crate::craft::blocker_line`); `None` on every other step.
     pub blocker: Option<String>,
+    /// On a state-ordered essence swap whose removal may take an unrevealed
+    /// desecrated modifier (`ch_engine::Survival`): the chance it survives
+    /// and what to do if it stays and if it goes
+    /// (`crate::craft::survival_line`); `None` on every other step.
+    pub survival: Option<String>,
 }
 
 /// The route the preview shows: what it targets and what to do, never the

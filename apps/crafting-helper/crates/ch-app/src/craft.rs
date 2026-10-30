@@ -82,7 +82,7 @@
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
 //! "Rust-produced copy" is made here: a step's instruction and target
 //! modifiers ([`step_instruction`], [`step_targets`]), [`odds_words`],
-//! a reveal step's [`blocker_line`], [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
+//! a reveal step's [`blocker_line`], an essence swap's [`survival_line`], [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
 //! ([`branch_lines`], [`state_branch_lines`]) and the history summary
 //! ([`summary`]).
 
@@ -93,8 +93,9 @@ use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
 use ch_engine::ch_item::{self, Item, Rarity};
 use ch_engine::{
-    catalogue_item, BlockerAdvice, BlockerMod, BlockerPick, ChosenAction, Engine, Guide, Next,
-    Outcome, OutcomeKind, Refusal, Route, Started, Status, StepView, Target, WantedMod,
+    catalogue_item, BlockerAdvice, BlockerMod, BlockerPick, ChosenAction, Engine, EssenceSwap,
+    Guide, Next, Outcome, OutcomeKind, Refusal, Route, Started, Status, StepView, SwapMod, Target,
+    WantedMod,
 };
 
 use crate::settings::CatalogueEntry;
@@ -1212,6 +1213,7 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                     odds: None,
                     fallback: None,
                     blocker: None,
+                    survival: None,
                 },
             ))
         }
@@ -1487,6 +1489,7 @@ fn step_line(
         ),
         // The caller's: it knows where the step stands in the projection.
         blocker: None,
+        survival: survival_line(step, item, targets),
     }
 }
 
@@ -1731,7 +1734,7 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
         return step.say.clone();
     };
     let uses = uses_words(action);
-    match step.side {
+    let said = match step.side {
         Some(side) => format!(
             "{uses} on the {} side for {}",
             side_word(side),
@@ -1749,7 +1752,158 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
                 .collect();
             format!("{uses} for {}", word_list(&each, "or"))
         }
+    };
+    match step.swap.as_ref().and_then(swap_words) {
+        Some(swap) => format!("{said}; {swap}"),
+        None => said,
     }
+}
+
+/// An essence swap's removal in words ([`EssenceSwap`]): the modifiers it
+/// may take, by their text on the item (`one at random` when more than
+/// one), then the fractured ones it leaves. `None` when it may take none.
+///
+/// - `it removes the unrevealed desecrated suffix or +10(9-12) to
+///   Dexterity, one at random; +23(21-25)% to Fire Resistance is fractured
+///   and stays`;
+/// - `it removes +10(9-12) to Dexterity; …` (one candidate: certain).
+fn swap_words(swap: &EssenceSwap) -> Option<String> {
+    if swap.removes.is_empty() {
+        return None;
+    }
+    let removes: Vec<String> = swap.removes.iter().map(swap_mod_words).collect();
+    let mut said = format!("it removes {}", word_list(&removes, "or"));
+    if removes.len() > 1 {
+        said.push_str(", one at random");
+    }
+    let fractured: Vec<String> = swap.fractured.iter().map(swap_mod_words).collect();
+    match fractured.as_slice() {
+        [] => {}
+        [one] => said.push_str(&format!("; {one} is fractured and stays")),
+        many => said.push_str(&format!(
+            "; {} are fractured and stay",
+            word_list(many, "and")
+        )),
+    }
+    Some(said)
+}
+
+/// A modifier an essence swap may take or leaves, by its text on the item
+/// (without the ` (fractured)` marker, which the words after it say); an
+/// unrevealed one, or one an earlier step of the preview placed, by what
+/// it is.
+fn swap_mod_words(m: &SwapMod) -> String {
+    let side = side_word(m.side);
+    if !m.lines.is_empty() {
+        let lines: Vec<&str> = m
+            .lines
+            .iter()
+            .map(|l| l.strip_suffix(" (fractured)").unwrap_or(l))
+            .collect();
+        lines.join(" / ")
+    } else if m.unrevealed {
+        format!("the unrevealed desecrated {side}")
+    } else {
+        format!("the {side} an earlier step adds")
+    }
+}
+
+/// An essence swap's survival line ([`ch_engine::Survival`]): the chance the
+/// unrevealed desecrated modifier its removal may take survives, then the
+/// instruction of the step the route takes next if it stays and if it goes
+/// ([`step_instruction`], on the item that outcome leaves). An annulment
+/// taken on "goes" may take the essence's modifier: the line gives its
+/// chance of sparing it and says the route re-plans if it does not. `None`
+/// on a step without one.
+///
+/// - `The unrevealed desecrated suffix survives the swap 1 in 2 (each
+///   modifier it may take equally likely; owner-stated, not established).
+///   If it stays, <reveal>. If it goes, Orb of Annulment with Omen of
+///   Dextral Annulment to remove +10(9-12) to Dexterity; it takes one
+///   modifier at random, so it spares +#% increased Mana Regeneration Rate
+///   1 in 2; if it takes it, the route re-plans when the item is read
+///   again.`
+pub fn survival_line(step: &StepView, item: &Item, wanted: &[Target]) -> Option<String> {
+    let swap = step.swap.as_ref()?;
+    let survival = swap.survival.as_ref()?;
+    let side = side_word(survival.side);
+    let mut line = format!(
+        "The unrevealed desecrated {side} survives the swap {} (each modifier it may take equally likely; owner-stated, not established).",
+        hits_in_total(&survival.odds)
+    );
+    // "Stays": the removal took the first non-target it may take that is
+    // on the item as read; "goes": it took the unrevealed one.
+    let stays_item = swap
+        .removes
+        .iter()
+        .find(|m| !m.unrevealed && !m.desecrated && m.target.is_none() && !m.lines.is_empty())
+        .map_or_else(
+            || item.clone(),
+            |taken| without_modifier(item, |m| mod_lines(m) == taken.lines),
+        );
+    match survival.stays.as_deref() {
+        Some(next) => line.push_str(&format!(
+            " If it stays, {}.",
+            step_instruction(next, &stays_item, wanted)
+        )),
+        None => line.push_str(" If it stays, read the item again for the next step."),
+    }
+    let gone_item = without_modifier(item, |m| {
+        m.unrevealed && side_of_kind(m.kind) == Some(survival.side)
+    });
+    match survival.goes.as_deref() {
+        Some(next) => {
+            line.push_str(&format!(
+                " If it goes, {}",
+                step_instruction(next, &gone_item, wanted)
+            ));
+            let spared = step.target.as_deref().map(|id| mod_text_of(item, id));
+            match (next.goal, next.odds.as_ref(), spared) {
+                (Goal::RemoveUnwanted, Some(odds @ Odds::Known { .. }), Some(spared)) => {
+                    line.push_str(&format!(
+                        ", so it spares {spared} {}; if it takes it, the route re-plans when the item is read again.",
+                        hits_in_total(odds)
+                    ));
+                }
+                _ => line.push('.'),
+            }
+        }
+        None => line.push_str(" If it goes, read the item again for the next step."),
+    }
+    Some(line)
+}
+
+/// Known odds as `<hits> in <total>`; unknown odds in [`odds_percent`]'s
+/// form.
+fn hits_in_total(odds: &Odds) -> String {
+    match odds {
+        Odds::Known { hits, total, .. } => format!("{hits} in {total}"),
+        Odds::Unknown { .. } => odds_percent(odds),
+    }
+}
+
+/// A modifier's lines as the item shows them.
+fn mod_lines(m: &ch_item::Modifier) -> Vec<String> {
+    m.lines.iter().map(|l| l.text.clone()).collect()
+}
+
+/// A prefix's or suffix's side; `None` for any other kind.
+fn side_of_kind(kind: ch_item::ModKind) -> Option<Side> {
+    match kind {
+        ch_item::ModKind::Prefix => Some(Side::Prefix),
+        ch_item::ModKind::Suffix => Some(Side::Suffix),
+        _ => None,
+    }
+}
+
+/// `item` without its first modifier `which` picks (unchanged when none
+/// does): what an outcome that took that modifier leaves to read.
+fn without_modifier(item: &Item, which: impl Fn(&ch_item::Modifier) -> bool) -> Item {
+    let mut after = item.clone();
+    if let Some(at) = after.modifiers.iter().position(which) {
+        after.modifiers.remove(at);
+    }
+    after
 }
 
 /// A desecration's instruction when its action carries a Necromancy omen

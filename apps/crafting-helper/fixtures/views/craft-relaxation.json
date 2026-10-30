@@ -1193,6 +1193,11 @@
             "reason": "no start fits the item (the item is magic, not rare; 0 wanted modifiers, at least 1 needed; 1 modifiers, at least 4 needed)"
           },
           {
+            "blueprint": "fractured-essence-swap",
+            "name": "Fractured essence swap",
+            "reason": "no start fits the item (the item is magic, not rare)"
+          },
+          {
             "blueprint": "full-rare-desecration-rescue",
             "name": "Rescue a full rare with one target missing by desecration",
             "reason": "no start fits the item (the item is magic, not rare; 1 modifiers, at least 6 needed)"

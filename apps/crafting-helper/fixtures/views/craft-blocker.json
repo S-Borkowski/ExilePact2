@@ -1176,6 +1176,7 @@
               "instruction": "Greater Essence of Insulation for +#% to Fire Resistance (suffix)",
               "number": 1,
               "odds": "certain (Greater Essence of Insulation adds suffix-to-fire-resistance at T3)",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance"
               ],
@@ -1190,6 +1191,7 @@
               "instruction": "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance",
               "number": 2,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+#% to Cold Resistance"
               ],
@@ -1205,6 +1207,7 @@
               "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +#% to Cold Resistance (suffix)",
               "number": 3,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+#% to Cold Resistance"
               ],
@@ -1220,6 +1223,7 @@
               "instruction": "Perfect Exalted Orb with Omen of Dextral Exaltation on the suffix side for +#% to Lightning Resistance",
               "number": 4,
               "odds": "~9.9% (2000 of 20150 weight, if the earlier steps hit)",
+              "survival": null,
               "targets": [
                 "+#% to Lightning Resistance"
               ],

@@ -37,9 +37,10 @@ fn engine_is_reexported_with_the_shipped_blueprints() {
         let lines: Vec<String> = errors.iter().map(|e| e.to_string()).collect();
         panic!("shipped blueprints do not load:\n{}", lines.join("\n"))
     });
-    // The eight seeds still shipped, the four state-ordered blueprints and
-    // the four from the guides (issue #35).
-    assert_eq!(engine.blueprints().len(), 16);
+    // The eight seeds still shipped, the four state-ordered blueprints, the
+    // four from the guides (issue #35) and the fractured essence swap
+    // (issue #37).
+    assert_eq!(engine.blueprints().len(), 17);
 
     let ring = amethyst_ring_made_rare();
     let targets = [

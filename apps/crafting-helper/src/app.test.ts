@@ -392,6 +392,7 @@ describe('the craft window', () => {
       'craft-no-route': 'Doom Loop',
       'craft-relaxation': 'Heavy Belt',
       'craft-blocker': 'Heavy Belt',
+      'craft-essence-swap': 'Doom Loop',
       'craft-close-side': 'Cord Snare',
       'craft-last-desecration': 'Cord Snare',
       'craft-side-full': 'Cord Snare',
@@ -1365,6 +1366,43 @@ describe('the craft window', () => {
     const gr = await render(guiding);
     const card = gr.root.querySelector('.guide .card')!;
     expect(text(card.querySelector('.blocker .line'))).toBe(blocker);
+  });
+
+  it('essence_swap_step_shows_the_survival_line', async () => {
+    // The fractured essence swap: the essence step's instruction names what
+    // it removes and the fractured suffix it leaves; Rust's survival line
+    // sits under its odds, labelled; no other step shows one.
+    const view = fixtureView('craft-essence-swap');
+    const steps = view.craft.planning!.preview!.route!.steps;
+    expect(steps.map((s) => s.id)).toEqual(['essence', 'reveal-last']);
+    expect(steps[0].instruction).toContain('it removes the unrevealed desecrated suffix or +10(9-12) to Dexterity, one at random');
+    expect(steps[0].instruction).toContain('+23(21-25)% to Fire Resistance is fractured and stays');
+    const survival = steps[0].survival!;
+    expect(survival.startsWith('The unrevealed desecrated suffix survives the swap 1 in 2')).toBe(true);
+    expect(survival).toContain('If it stays, ');
+    expect(survival).toContain('If it goes, Orb of Annulment with Omen of Dextral Annulment');
+    expect(steps.filter((s) => s.survival !== null)).toHaveLength(1);
+    const { root } = await render(view);
+    const shown = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(shown).toHaveLength(steps.length);
+    const essence = shown[0];
+    expect(text(essence.querySelector('.survival .label'))).toBe('Survival');
+    expect(text(essence.querySelector('.survival .line'))).toBe(survival);
+    const facts = [...essence.querySelectorAll('.odds, .survival')].map((el) => el.className.split(' ')[0]);
+    expect(facts).toEqual(['odds', 'survival']);
+    expect(shown[1].querySelector('.survival')).toBeNull();
+
+    // Negative control: a route whose steps carry none shows none.
+    const plain = await render(fixtureView('craft-planning'));
+    expect(plain.root.querySelector('.survival')).toBeNull();
+
+    // The guide's card draws the current step's line the same way.
+    const guiding = fixtureView('craft-guiding');
+    expect(guiding.craft.guiding!.step!.step.survival).toBeNull();
+    guiding.craft.guiding!.step!.step.survival = survival;
+    const gr = await render(guiding);
+    const card = gr.root.querySelector('.guide .card')!;
+    expect(text(card.querySelector('.survival .line'))).toBe(survival);
   });
 
   it('unknown_odds_are_said_in_words', async () => {

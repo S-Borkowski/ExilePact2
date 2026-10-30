@@ -274,6 +274,23 @@ fn main_views() -> Vec<(&'static str, View)> {
         app.choose_route("essence-desecrate-double-slam"),
     ));
     app.shutdown();
+    // The fractured essence swap on `ch-engine`'s ring (copied into
+    // `tests/items/`): the essence step names what it removes and the
+    // fractured suffix it leaves, and its survival line the unrevealed
+    // suffix's chance and the step on each outcome.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("essence-swap"), &shell);
+    app.grab_text(Some(&belt("ring-essence-swap")));
+    app.set_targets(&[
+        ch_app::ch_engine::Target::new("prefix-to-maximum-mana", Some(5)),
+        ch_app::ch_engine::Target::new("suffix-increased-mana-regeneration-rate", Some(2)),
+        ch_app::ch_engine::Target::new("desecrated-suffix-to-cold-and-chaos-resistances", None),
+    ]);
+    out.push((
+        "craft-essence-swap",
+        app.choose_route("fractured-essence-swap"),
+    ));
+    app.shutdown();
 
     let shell = FakeShell::default();
     let app = start(&tmp.path().join("refused"), &shell);
@@ -721,6 +738,8 @@ fn fixtures_are_current() {
         for s in steps {
             let named = *name == "craft-blocker" && s.id == "reveal";
             assert_eq!(s.blocker.is_some(), named, "{name} {}", s.id);
+            let swap = *name == "craft-essence-swap" && s.id == "essence";
+            assert_eq!(s.survival.is_some(), swap, "{name} {}", s.id);
         }
     }
     assert!(blocker.steps[2]
@@ -973,7 +992,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 17);
-    assert_eq!(views.len(), 33);
+    assert_eq!(views.len(), 34);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

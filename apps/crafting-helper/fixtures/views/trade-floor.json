@@ -1653,6 +1653,7 @@
               "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 1,
               "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
@@ -1669,6 +1670,7 @@
               "instruction": "Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 2,
               "odds": "~4.5% ((6000 of 132355 weight) times (the lowest modifier level (33) is unique))",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
@@ -1686,6 +1688,7 @@
               "instruction": "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Fire Resistance, +#% to Cold Resistance or +#% to Lightning Resistance",
               "number": 3,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
@@ -1703,6 +1706,7 @@
               "instruction": "Reveal at the Well of Souls for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 4,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",

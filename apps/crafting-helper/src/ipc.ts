@@ -239,6 +239,12 @@ export interface StepLineView {
    * chance before and after, in Rust's words; null on every other step.
    */
   blocker: string | null;
+  /**
+   * On an essence swap whose removal may take an unrevealed desecrated
+   * modifier: the chance it survives and what to do if it stays and if it
+   * goes, in Rust's words; null on every other step.
+   */
+  survival: string | null;
 }
 
 /** The route the preview shows: what it targets and what to do, never the blueprint's notes. */
@@ -553,6 +559,7 @@ const stepLine = record<StepLineView>({
   odds: nullable(str),
   fallback: nullable(str),
   blocker: nullable(str),
+  survival: nullable(str),
 });
 const routeChoice = record<RouteChoice>({ number: uint, blueprint: str, name: str });
 const planning = record<PlanningView>({

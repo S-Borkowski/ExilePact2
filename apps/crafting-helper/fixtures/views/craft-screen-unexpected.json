@@ -47,6 +47,7 @@
           "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
           "number": 1,
           "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+          "survival": null,
           "targets": [
             "+#% to Fire Resistance",
             "+#% to Cold Resistance",

@@ -1209,6 +1209,7 @@
               "instruction": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier",
               "number": 1,
               "odds": "certain (any modifier fills a free slot)",
+              "survival": null,
               "targets": [],
               "uses": [
                 "Exalted Orb",
@@ -1223,6 +1224,7 @@
               "instruction": "Perfect Exalted Orb on the prefix side for +# to Armour",
               "number": 2,
               "odds": "~19% (2000 of 10800 weight, if the earlier steps hit)",
+              "survival": null,
               "targets": [
                 "+# to Armour"
               ],

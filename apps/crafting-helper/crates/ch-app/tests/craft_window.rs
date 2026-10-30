@@ -1346,6 +1346,152 @@ fn reveal_step_names_the_blocker_with_before_and_after() {
     app.shutdown();
 }
 
+/// The shipped route that swaps a full side's throwaway for Essence of
+/// Hysteria's modifier (`ch-engine`'s `tests/essence_swap.rs`).
+const ESSENCE_SWAP: &str = "fractured-essence-swap";
+const MANA_REGEN: &str = "suffix-increased-mana-regeneration-rate";
+
+/// `ch-engine`'s essence swap ring (`tests/items/`, copied): its suffixes
+/// a fractured Fire Resistance, an unrevealed desecrated suffix and
+/// Dexterity; or the Dusk Ring, with the fractured one and Dexterity.
+fn swap_ring(name: &str) -> String {
+    belt(name)
+}
+
+/// The essence swap route's step lines on `item` with `list`.
+fn essence_swap_steps(item: &str, list: &[Target]) -> Vec<ch_app::StepLineView> {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(&swap_ring(item)));
+    app.set_targets(list);
+    let view = app.choose_route(ESSENCE_SWAP);
+    let route = planning(&view)
+        .preview
+        .as_ref()
+        .unwrap()
+        .route
+        .clone()
+        .unwrap_or_else(|| panic!("no route: {:?}", planning(&view).preview));
+    assert_eq!(route.blueprint, ESSENCE_SWAP);
+    app.shutdown();
+    route.steps
+}
+
+#[test]
+fn essence_swap_step_names_its_removal_and_survival() {
+    // Mana T5 on the ring's prefixes, Hysteria's Mana Regeneration Rate T2
+    // and a desecrated suffix: the essence first, its add certain.
+    let list = vec![
+        Target::new("prefix-to-maximum-mana", Some(5)),
+        Target::new(MANA_REGEN, Some(2)),
+        Target::new("desecrated-suffix-to-cold-and-chaos-resistances", None),
+    ];
+    let steps = essence_swap_steps("ring-essence-swap", &list);
+    let essence = &steps[0];
+    assert_eq!(essence.id, "essence");
+    assert_eq!(essence.uses, ["Essence of Hysteria"]);
+    let said = &essence.instruction;
+    assert!(said.starts_with("Essence of Hysteria for "), "{said}");
+    assert!(said.contains("Mana Regeneration Rate"), "{said}");
+    // What it can remove, by its text on the item, and the fractured one.
+    assert!(
+        said.contains(
+            "it removes the unrevealed desecrated suffix or +10(9-12) to Dexterity, one at random"
+        ),
+        "{said}"
+    );
+    assert!(
+        said.contains("+23(21-25)% to Fire Resistance is fractured and stays"),
+        "{said}"
+    );
+
+    // The survival line, each outcome followed by the instruction of the
+    // step the engine names for it.
+    let engine = Engine::shipped().unwrap();
+    let item = ch_app::ch_item::parse(&swap_ring("ring-essence-swap")).unwrap();
+    let started = engine.start(ESSENCE_SWAP, &item, &list, &[]).unwrap();
+    let survival = started.route.steps[0]
+        .swap
+        .as_ref()
+        .and_then(|s| s.survival.as_ref())
+        .expect("the engine's survival");
+    let stays = survival.stays.as_deref().unwrap();
+    let goes = survival.goes.as_deref().unwrap();
+    assert_eq!(
+        (stays.id.as_str(), goes.id.as_str()),
+        ("reveal-last", "remove")
+    );
+    let line = essence.survival.as_deref().expect("a survival line");
+    assert!(line.contains("1 in 2"), "{line}");
+    assert!(line.contains("unrevealed desecrated suffix"), "{line}");
+    let stays_at = line.find("If it stays, ").expect("If it stays,");
+    let goes_at = line.find("If it goes, ").expect("If it goes,");
+    assert!(stays_at < goes_at, "{line}");
+    let stays_said = &line[stays_at + "If it stays, ".len()..goes_at];
+    let goes_said = &line[goes_at + "If it goes, ".len()..];
+    let stays_instruction = ch_app::craft::step_instruction(stays, &item, &list);
+    assert!(
+        stays_said.starts_with(&stays_instruction),
+        "{stays_said} / {stays_instruction}"
+    );
+    assert!(stays_said.contains("Cold and Chaos"), "{stays_said}");
+    // On "goes" the annulment confined to the suffixes: Dextral, what it
+    // removes on the item the swap left, its chance of sparing the
+    // essence's modifier, and the re-plan if it takes it.
+    assert!(
+        goes_said.starts_with(
+            "Orb of Annulment with Omen of Dextral Annulment to remove +10(9-12) to Dexterity"
+        ),
+        "{goes_said}"
+    );
+    assert!(
+        goes_said.contains("spares #% increased Mana Regeneration Rate 1 in 2"),
+        "{goes_said}"
+    );
+    assert!(
+        goes_said.contains("the route re-plans when the item is read again"),
+        "{goes_said}"
+    );
+    // No other step carries one.
+    for s in &steps[1..] {
+        assert_eq!(s.survival, None, "{}", s.id);
+    }
+
+    // The Dusk Ring: one ordinary suffix beside the fractured one, so the
+    // removal is certain and nothing survives or not.
+    let dusk = vec![
+        Target::new("prefix-to-maximum-mana", Some(5)),
+        Target::new(MANA_REGEN, Some(2)),
+    ];
+    let steps = essence_swap_steps("dusk-ring-essence-swap", &dusk);
+    let essence = &steps[0];
+    assert_eq!(essence.id, "essence");
+    assert!(
+        essence
+            .instruction
+            .contains("it removes +10(9-12) to Dexterity; +23(21-25)% to Fire Resistance is fractured and stays"),
+        "{}",
+        essence.instruction
+    );
+    assert_eq!(essence.survival, None);
+
+    // Control: a route without an essence swap carries no survival line.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = whittle_planned(tmp.path(), &shell);
+    let view = app.get_view();
+    let route = planning(&view)
+        .preview
+        .as_ref()
+        .unwrap()
+        .route
+        .clone()
+        .unwrap();
+    assert!(route.steps.iter().all(|s| s.survival.is_none()));
+    app.shutdown();
+}
+
 #[test]
 fn refused_item_says_why() {
     let tmp = tempfile::tempdir().unwrap();

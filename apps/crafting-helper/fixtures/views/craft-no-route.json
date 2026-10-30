@@ -1666,6 +1666,11 @@
             "reason": "no start fits the item (0 wanted modifiers, at least 1 needed; 2 modifiers, at least 4 needed)"
           },
           {
+            "blueprint": "fractured-essence-swap",
+            "name": "Fractured essence swap",
+            "reason": "no step can be taken while a target is missing (`reveal-last`: its binding is not made; `light-last`: its guard does not hold (no revealed desecrated modifier is unwanted); `essence`: its binding is not made; `remove`: every alternative is blocked; `desecrate-last`: its binding is not made)"
+          },
+          {
             "blueprint": "full-rare-desecration-rescue",
             "name": "Rescue a full rare with one target missing by desecration",
             "reason": "no start fits the item (2 modifiers, at least 6 needed)"

@@ -34,6 +34,7 @@ describe('the TypeScript IPC types', () => {
       'craft-no-route': ['paste', true, 'info', false, 'planning', false],
       'craft-relaxation': ['paste', true, 'info', false, 'planning', false],
       'craft-blocker': ['paste', true, 'info', false, 'planning', false],
+      'craft-essence-swap': ['paste', true, 'info', false, 'planning', false],
       'craft-close-side': ['paste', true, 'info', false, 'planning', false],
       'craft-last-desecration': ['paste', true, 'info', false, 'planning', false],
       'craft-side-full': ['paste', true, 'info', false, 'planning', false],
