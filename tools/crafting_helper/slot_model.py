@@ -23,7 +23,8 @@ What is here:
   not-established facts it relies on, the last-target desecration's steps
   among them, bound to `last-remaining` (made afresh on every item) and
   held to the case's `desecration_pool`;
-- the next-step rules, the side rules, the `greater-omen` and `side-omen`
+- the next-step rules (certain removals first among them), the side
+  rules, the `greater-omen` and `side-omen`
   placeholders, the removal rules and the projection (`plan`), with the
   rejections in the spec's order;
 - a reader for a listed blueprint, for the baselines only
@@ -38,6 +39,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 import sys
 import tomllib
 from dataclasses import dataclass, field
@@ -59,7 +61,9 @@ SIDES = (PREFIX, SUFFIX)
 CAPS = {"normal": 0, "magic": 1, "rare": 3}
 RARE_CAP = 3
 STEP_CAP = 16
-FETCHED = "fetched 2026-10-29"
+# Each source names the day it was read: fetched (a page) or reviewed (one
+# an issue records, maxroll's crafting guide in #35).
+FETCHED = re.compile(r"\b(?:fetched|reviewed) \d{4}-\d{2}-\d{2}\b")
 LABELS = ("measured", "documented", "not established")
 
 EXALTS = ("exalted-orb", "greater-exalted-orb", "perfect-exalted-orb")
@@ -786,14 +790,39 @@ def evaluate(state, step, acc):
     return "no alternative fits: " + "; ".join(whys)
 
 
+def removal_certain(state, choice):
+    """Whether a removal's chosen alternative is certain to take only
+    non-targets: a whittle is chosen only when certain; an annulment is
+    certain when every modifier it may take is a non-target."""
+    if kind(choice.action.currency) == "chaos":
+        return True
+    return all(not m.is_target for _, m in at_risk(state, choice.action.currency, choice.omens))
+
+
+def certain_removal(state, choice):
+    return choice.step.goal in REMOVALS and removal_certain(state, choice)
+
+
 def next_step(state, bp, acc):
+    """The next step (spec §§ "Candidates and the next step" and "Certain
+    removals first"): the first candidate in file order, unless it is not a
+    certain removal and a later candidate is a `remove-unwanted` step whose
+    chosen alternative is certain; then the first such later one."""
     reasons = {}
+    first = None
     for step in bp.steps:
         got = evaluate(state, step, acc)
-        if isinstance(got, Choice):
+        if not isinstance(got, Choice):
+            reasons[step.id] = got
+            continue
+        if first is None:
+            if certain_removal(state, got):
+                return got, reasons
+            first = got
+            continue
+        if step.goal == "remove-unwanted" and removal_certain(state, got):
             return got, reasons
-        reasons[step.id] = got
-    return None, reasons
+    return first, reasons
 
 
 # --- the projection ----------------------------------------------------------
@@ -1076,8 +1105,8 @@ def fact_problems(row):
         problems.append(f"label {row['label']!r} is not one of {LABELS}")
     if "https://" not in row["source"]:
         problems.append("the source names no URL")
-    if FETCHED not in row["source"]:
-        problems.append(f"the source does not say {FETCHED!r}")
+    if not FETCHED.search(row["source"]):
+        problems.append("the source does not say when it was fetched")
     if not row["fact"].strip():
         problems.append("the fact is empty")
     return problems

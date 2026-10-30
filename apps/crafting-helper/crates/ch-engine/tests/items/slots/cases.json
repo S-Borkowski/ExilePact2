@@ -471,6 +471,7 @@
         "essence-desecrate-double-slam": {
           "complete": true,
           "steps": [
+            {"goal": "remove-unwanted", "side": "suffix", "currency": "orb-of-annulment", "omens": ["omen-of-dextral-annulment"], "certain": true},
             {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
             {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
@@ -578,6 +579,106 @@
           "steps": [
             {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
             {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-certain-removal-first",
+      "about": "Certain removals first (2026-10-30). A rare whose prefixes are a fractured target and two junk, and whose suffixes are a target and an unrevealed desecrated modifier from an earlier desecration (it waits for no known target); a prefix target and a desecrated-pool suffix target, the hardest, are missing. The prefix side is blocked. In essence-desecrate-double-slam the reveal is the first candidate in file order, and the later removal is certain (a Sinistral annulment cannot take the fractured target), so the removal goes first.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": true, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 50},
+        {"alias": "junk-p2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 45}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40},
+        {"alias": "unrevealed-s", "role": "junk", "fractured": false, "desecrated": true, "unrevealed": true, "level": null}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "desecrated", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "s2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": true},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": true},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": true},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-uncertain-removal-keeps-order",
+      "about": "The control of rare-certain-removal-first: the same item with the prefix target not fractured, so the removal may take it and is not certain. In essence-desecrate-double-slam the reveal keeps its file-order place before the removal.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-p1", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 50},
+        {"alias": "junk-p2", "role": "junk", "fractured": false, "desecrated": false, "unrevealed": false, "level": 45}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 40},
+        {"alias": "unrevealed-s", "role": "junk", "fractured": false, "desecrated": true, "unrevealed": true, "level": null}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "desecrated", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "s2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
           ]
         }

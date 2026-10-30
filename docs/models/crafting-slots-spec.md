@@ -14,9 +14,12 @@ model or the engine guesses it.
 ## Labels and sources
 
 Game: Path of Exile 2 0.5.5 (the latest patch found; the 0.5 league, Runes
-of Aldur). Every fact below was fetched 2026-10-29 from public pages: GGG's
-patch notes, poe2db's item pages and community guides. Nothing here comes
-from the game client, and no page's text is copied. The official 0.5.5
+of Aldur). Every fact below was fetched from public pages: GGG's patch
+notes, poe2db's item pages and community guides, most on 2026-10-29; the
+facts from the crafting guides of issue #35 on 2026-10-30 (the Mobalytics
+guides as the owner copied them that day, maxroll's crafting guide as the
+issue reviewed it), each with its own date. Nothing here comes from the
+game client, and no page's text is copied. The official 0.5.5
 notes were not fetched; no crafting change in 0.5.5 was found, so the
 rules are 0.5.0's.
 
@@ -43,7 +46,7 @@ the session; it does not change the id.
 | `transmute-adds-one` | documented | An Orb of Transmutation (any grade) makes a normal item magic with one modifier. | https://poe2db.tw/us/Greater_Orb_of_Transmutation, fetched 2026-10-29 |
 | `augment-adds-one` | documented | An Orb of Augmentation (any grade) adds one random modifier to a magic item with a free slot. | https://poe2db.tw/us/Greater_Orb_of_Augmentation, fetched 2026-10-29 |
 | `exalt-adds-one` | documented | An Exalted Orb (any grade) adds one random modifier to a rare item. | https://poe2db.tw/us/Greater_Exalted_Orb, fetched 2026-10-29 |
-| `currency-min-level` | documented | Greater and Perfect Exalted Orbs add a modifier of level at least 35 and 50; Greater and Perfect Transmutation and Augmentation at least 44 and 70. | https://poe2db.tw/us/Perfect_Exalted_Orb and https://poe2db.tw/us/Perfect_Orb_of_Augmentation, fetched 2026-10-29 |
+| `currency-min-level` | documented | Greater and Perfect Exalted Orbs add a modifier of level at least 35 and 50; Greater and Perfect Transmutation and Augmentation at least 44 and 70. A modifier family whose every tier the item can roll is below the minimum keeps its best such tier in the pool, so a Perfect Exalted Orb can still add it (poe2db's own exception to the minimum; Mobalytics' isolation guide relies on it for an amulet). Mobalytics' 0.3 crafting-changes guide gives the Greater Transmutation and Augmentation a minimum of 55; poe2db says 44, and 44 is kept. | https://poe2db.tw/us/Perfect_Exalted_Orb and https://poe2db.tw/us/Perfect_Orb_of_Augmentation, fetched 2026-10-29; https://poe2db.tw/us/Minimum_Modifier_Level, fetched 2026-10-28; https://mobalytics.gg/poe-2/guides/isolation-crafting and https://mobalytics.gg/poe-2/guides/0-3-crafting-changes, fetched 2026-10-30 |
 | `greater-exaltation-adds-two` | documented | Omen of Greater Exaltation makes the next Exalted Orb add two random modifiers. | https://poe2db.tw/us/Omen_of_Greater_Exaltation, fetched 2026-10-29 |
 | `side-exaltation` | documented | Omen of Sinistral (Dextral) Exaltation makes the next Exalted Orb add only a prefix (suffix). | https://poe2db.tw/us/Omen, fetched 2026-10-29 |
 | `annulment-removes-one` | documented | An Orb of Annulment removes one random modifier from a magic or rare item. | https://poe2db.tw/us/Orb_of_Annulment, fetched 2026-10-29 |
@@ -52,7 +55,11 @@ the session; it does not change the id.
 | `whittling-lowest` | documented | Omen of Whittling makes the next Chaos Orb remove the item's lowest-level modifier before it adds a random one. | https://poe2db.tw/us/Omen_of_Whittling, fetched 2026-10-29 |
 | `omen-activation` | documented | An omen works while it is active in the inventory and is used up by the one currency its text names. | https://poe2db.tw/us/Omen_of_Greater_Exaltation and https://poe2db.tw/us/Omen, fetched 2026-10-29 |
 | `essence-magic-to-rare` | documented | A Lesser, plain or Greater essence makes a magic item rare and adds its modifier; Perfect and corrupted essences work on a rare by replacing a modifier. | https://poe2db.tw/us/Essence, fetched 2026-10-29 |
-| `one-crafted-one-desecrated` | documented | Since 0.5 an item has at most one crafted modifier (an essence's among them) and at most one desecrated modifier. | https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29 |
+| `one-crafted-one-desecrated` | documented | Since 0.5 an item has at most one crafted modifier (an essence's among them) and at most one desecrated modifier. Mobalytics' essences guide agrees: one essence modifier per item at a time. | https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29; https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
+| `alloy-counts-as-crafted` | documented | An alloy's modifier is the item's one crafted modifier: the 0.5.0 notes have alloys add crafted modifiers by replacing a modifier already on the item, and an item holds at most one crafted modifier. | https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-30 |
+| `side-crystallisation` | documented | Omen of Sinistral (Dextral) Crystallisation makes the next Perfect or corrupted essence remove only a prefix (suffix). Essence of the Abyss is a corrupted essence (poe2db's internal type for it), so both omens apply to it. | https://poe2db.tw/us/Omen, fetched 2026-10-28; https://poe2db.tw/us/Essence_of_the_Abyss and https://poe2db.tw/us/Essence, fetched 2026-10-30 |
+| `hybrid-one-slot` | documented | A hybrid modifier, one modifier with two stat lines, takes one slot on its side like any other. A community guide adds that the plain tooltip folds its value into a matching single-stat line, so one shown line may be two modifiers summed (not measured here). | https://poe2db.tw/us/Boots_dex, fetched 2026-10-28 (a hybrid is listed as one modifier); https://mobalytics.gg/poe-2/guides/crafting-basics-part-1, fetched 2026-10-30 |
+| `fracture-four-mods` | documented | A Fracturing Orb needs a rare item with at least four modifiers and fractures one of them, picked at random. | https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28 |
 | `desecrate-adds-unrevealed` | documented | A bone adds one unrevealed desecrated modifier to a rare; the Well of Souls reveals it as one of three offered modifiers. | https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-29 |
 | `desecrate-no-free-slot` | documented | A desecration needs no free slot: on a full item it first removes a random modifier. | https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-29 |
 | `side-necromancy` | documented | Omen of Sinistral (Dextral) Necromancy makes the next desecration add only a prefix (suffix). | https://poe2db.tw/us/Omen, fetched 2026-10-29 |
@@ -69,19 +76,27 @@ the session; it does not change the id.
 | `omens-active-before-use` | not established | A Necromancy omen must be active before the bone is used and Abyssal Echoes before the reveal (maxroll's Abyss and crafting guides). | https://maxroll.gg/poe2/resources/abyss, fetched 2026-10-29 |
 | `necromancy-without-pool` | not established | What Sinistral Necromancy does on a class with no desecrated prefixes (body armour, gloves, boots, helmets): presumably a reveal of ordinary prefixes, but no source tests it. | https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-29 |
 | `removal-equally-likely` | not established | Each modifier an Orb of Annulment may take is equally likely to go (poe2db says only "random"). | https://poe2db.tw/us/Orb_of_Annulment, fetched 2026-10-29 |
+| `abyss-mark-unfracturable` | not established | The Mark of the Abyssal Lord, the modifier Essence of the Abyss adds, is never the one a Fracturing Orb picks, so on a four-modifier rare holding it the orb picks among the other three: one chance in three for a given wanted one instead of one in four (Mobalytics' SSF and Lightning Arrow crafting guides; its essences guide also says the mark seems to raise the tier of a later reveal, which nothing here relies on). | https://mobalytics.gg/poe-2/guides/ssf-crafting, https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting and https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
+| `desecrated-unfracturable` | not established | A Fracturing Orb never picks a desecrated modifier (Mobalytics' SSF crafting guide); that an unrevealed one is skipped too is our reading. | https://mobalytics.gg/poe-2/guides/ssf-crafting, fetched 2026-10-30 |
+| `full-desecration-same-side` | not established | On an item whose side is full, a desecration with that side's Necromancy omen removes its random modifier from that side (inferred from `desecrate-no-free-slot` and `side-necromancy`; maxroll's rescue of a full rare relies on it). | https://poe2db.tw/us/Desecrated_Modifiers and https://poe2db.tw/us/Omen, fetched 2026-10-29; https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2, reviewed 2026-10-30 (issue #35) |
+| `essence-full-side-removal` | not established | With no Crystallisation omen, when the side a Perfect or corrupted essence's modifier belongs to is full, the modifier the essence removes comes from that side (Mobalytics' essences guide). | https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
 
 ### Which blueprint relies on which not-established fact
 
 | Fact | Relied on by | Where |
 |---|---|---|
-| `greater-with-side-omen` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The side slam (and `close-a-side`'s close) resolves `greater-omen` beside `side-omen`. |
-| `greater-needs-two-free` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | `greater-omen` resolves only where two slots are free. |
-| `open-side-landing` | `close-a-side`, `magic-augment-essence` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side. |
+| `greater-with-side-omen` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic` | The side slam (and `close-a-side`'s close) resolves `greater-omen` beside `side-omen`; `weapons-physical-generic`'s two suffixes come from Greater with Dextral Exaltation. |
+| `greater-needs-two-free` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic`, `body-armours-single-prefix` | `greater-omen` resolves only where two slots are free; the two listed blueprints name Omen of Greater Exaltation where two are. |
+| `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full. |
 | `whittling-mod-level` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The removal step's whittle alternative is certain only by this reading of "lowest level". |
-| `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | A removal's odds and the blocked-side test leave fractured modifiers out. |
-| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
-| `necromancy-without-pool` | `essence-desecrate-double-slam` | Desecrating for an ordinary prefix target on an armour class. |
-| `removal-equally-likely` | none | Only the odds shown for an uncertain removal assume it. |
+| `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first` | A removal's odds and the blocked-side test leave fractured modifiers out; `fracture-first` annuls and Chaos-rolls around its fractured target. |
+| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
+| `necromancy-without-pool` | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` | Desecrating for an ordinary prefix target on an armour class. |
+| `removal-equally-likely` | `full-rare-desecration-rescue` | The odds shown for an uncertain removal assume it, and so do the rescue's odds of keeping its targets on a full side. |
+| `abyss-mark-unfracturable` | `fracture-first` | The Fracturing Orb's odds after Essence of the Abyss leave the mark out. |
+| `desecrated-unfracturable` | `fracture-first` | The Fracturing Orb's odds leave a desecrated modifier out. |
+| `full-desecration-same-side` | `full-rare-desecration-rescue` | The rescue desecrates a full side; its random removal is taken from that side. |
+| `essence-full-side-removal` | none | Only an essence swap's removal side with no Crystallisation omen assumes it (§ "What each crafting item does to the slots"); no shipped blueprint takes such a swap. |
 
 ## Slot accounting
 
@@ -151,10 +166,18 @@ of the rarity the item has after the currency.
 | + `omen-of-sinistral-annulment` / `omen-of-dextral-annulment` | A modifier at risk on that side. | The removal is confined to that side. | `side-annulment` |
 | + `omen-of-light` | A desecrated modifier. | The desecrated modifier goes. | `light-removes-desecrated` |
 | `chaos-orb` + `omen-of-whittling` | A rare item. | The lowest-level modifier goes, then one random modifier is added, on a side not established. | `whittling-lowest`, `whittling-mod-level` |
+| `fracturing-orb` (listed blueprints only) | A rare item with at least four modifiers. | No slot changes: one modifier, picked at random among the explicit ones that are not fractured, not desecrated (revealed or not) and not the Mark of the Abyssal Lord, becomes fractured. | `fracture-four-mods`, `abyss-mark-unfracturable`, `desecrated-unfracturable`, `fractured-not-removed` |
+| Perfect and special essences (Hysteria, Delirium, Horror, Insanity, the Abyss, the Breach): the essence swap (engine-only in state order) | A rare item, a modifier the removal may take, and room on the added modifier's side once the removal is made. | Like a Chaos Orb whose added modifier is chosen: one modifier goes, then the essence's modifier is added on its side. The removal is taken from the Crystallisation omen's side; with no omen, from the side the essence's modifier belongs to when that side is full; otherwise from either side. It may take any modifier that is not fractured, the Abyss mark and desecrated ones included (they are exclusions of a Fracturing Orb only). Certain when every modifier it may take is a non-target. | `essence-magic-to-rare`, `one-crafted-one-desecrated`, `side-crystallisation`, `essence-full-side-removal`, `fractured-not-removed`, `removal-equally-likely` |
 
 No v2 route uses a Homogenising omen (`homogenising-standard-only`),
 Greater Annulment (`legacy-omens`), the Erasure omens, a Perfect or
 corrupted essence, the Crystallisation omens, an alloy or a Fracturing Orb.
+The two rows above are for the listed blueprints that do (`fracture-first`)
+and for the engine's state-ordered essence swap (§ "Certain removals
+first"); the model has neither. An alloy's modifier counts as the item's one
+crafted modifier (`alloy-counts-as-crafted`), and a hybrid modifier takes
+one slot (`hybrid-one-slot`), so the accounting above already counts it as
+one modifier.
 
 ## Route rules
 
@@ -182,7 +205,8 @@ hold:
    a free slot exists on its resolved side, and for a `last-remaining`
    desecration the pool condition holds (§ "The last-target desecration").
 
-The **next step** is the first candidate in file order. With none, the
+The **next step** is the first candidate in file order, unless § "Certain
+removals first" moves a later one ahead of it. With none, the
 craft is **done** when no target is missing, and otherwise **stuck**, and
 the guide names each step's reason (guard false, goal met, no side, no free
 slot, every alternative blocked, no alternative fits).
@@ -290,6 +314,40 @@ The removal's odds: certain when every modifier it may take is a
 non-target; otherwise the share of non-targets among them
 (`removal-equally-likely`).
 
+### Certain removals first
+
+Added 2026-10-30 (issue #35). Our rule, from the guides' isolation
+principle (Mobalytics' isolation and fracturing guides): arrange a random
+step so that its exclusions leave one outcome, and leave the gamble for
+last. The guide (which step now) and the projection pick by it alike.
+
+The next step is the first candidate in file order, unless that candidate
+is not a certain removal and a later candidate is a `remove-unwanted` step
+whose chosen alternative is certain. Then the first such later candidate is
+the next step.
+
+- A **certain removal** is a candidate whose goal is `remove-unwanted` or
+  `remove-desecrated` and whose chosen alternative (the first that fits,
+  § "Removals") is certain: every modifier it may take (§ "Slot
+  accounting", at risk) is a non-target, or it is a whittle, which fits
+  only when certain.
+- Only removals count. The model has no pools, so an add's certainty is
+  shown in its odds and never reorders.
+- The essence swap (engine-only; § "What each crafting item does to the
+  slots"): an `add-wanted` step whose chosen alternative is a Perfect or
+  special essence counts as a certain removal here when its removal is
+  certain, and otherwise keeps its file-order place. It fits in state order
+  on a rare when the step's `essence` binding names a missing target the
+  essence adds at its floor (the binding is made on a rare as on a magic
+  item), the removal's side holds a removable modifier, and the target's
+  side has room once the removal is made. Its projection takes the
+  non-target the removal would take (§ "Projection", a removal's order)
+  and places the target. The model has no Perfect essence, Crystallisation
+  omen or crafted-modifier rule, and no state-ordered shipped blueprint
+  takes a swap, so no case covers it.
+- Nothing else moves: the other candidates keep file order, and the rule
+  is applied afresh before every pick.
+
 ### The last-target desecration
 
 Added 2026-10-30 (issue #32). When the item is rare, carries no desecrated
@@ -372,6 +430,21 @@ the engine serialises it (`kind`, kebab case):
    here, since it is not a candidate), `no-change` (a step's hit leaves the
    item as it was) or `step-cap` (the cap below is reached), and the step
    concerned when there is one.
+6. `weak-magic-start` (new, 2026-10-30; engine-only, both orders: the
+   model has no tiers): checked last, after a route is planned. The route
+   is rejected when all of these hold: the item is magic; its prefix is a
+   target, at any tier; the route has a step, taken while the item is
+   magic, whose chosen action makes it rare (a Regal Orb of any grade, or a
+   Lesser, plain or Greater essence); and the prefix's tier is worse than
+   the second-best tier its modifier can roll on this base variant at the
+   item's level. With one reachable tier, the top two is that one tier. It
+   does not apply when the item has no item level or the tier is unknown.
+   The rejection names the modifier, its tier, the item level and the top
+   two tiers. Why: a magic start whose wanted prefix is weak is worth a new
+   base, not an upgrade (Mobalytics' campaign martial weapon guide; Boots'
+   movement speed reaches T1 at item level 82 and T2 at 65 in the shipped
+   data, so a magic level-82 boot with T3 movement speed as a target is
+   rejected and one with T2 is not).
 
 `every-alternative-blocked`, `no-alternative-fits` and `cannot-bind` stay
 listed order's; in state order a step they would describe is simply not a
@@ -557,6 +630,34 @@ is a spec or model defect, never a reason to change the expectation.
   suffix; missing a suffix and a prefix an essence adds.
   - `magic-augment-essence`: starts with an Orb of Annulment and Omen of
     Dextral Annulment on the suffix side, odds certain.
+  - `essence-desecrate-double-slam`: the same certain annulment first
+    (§ "Certain removals first": the essence is the first candidate in file
+    order, the removal a later certain one; it used to come after the
+    essence); then the essence; desecrate on the suffix side with Dextral
+    Necromancy; reveal with Abyssal Echoes. Done. With Omen of Dextral
+    Annulment blocked the removal is a plain annulment that may take the
+    target prefix, and the essence keeps its place.
+- **`rare-certain-removal-first`** (2026-10-30): a rare whose prefixes are
+  a fractured target and two junk, and whose suffixes are a target and an
+  unrevealed desecrated modifier left by an earlier desecration (waiting
+  for no known target); a prefix target and a desecrated-pool suffix
+  target, the hardest, are missing. The prefix side is blocked.
+  - `essence-desecrate-double-slam`: its `reveal` is the first candidate in
+    file order, and its removal, an Orb of Annulment with Omen of Sinistral
+    Annulment, is certain (the fractured target cannot go), so the removal
+    goes first; then the reveal; then the prefix with a Perfect Exalted Orb
+    and Sinistral Exaltation. Done.
+  - `close-a-side`, `rare-clean-then-slam`: the removal is already the
+    first candidate; then the prefix slam; the hardest is then the last
+    target, so the waiting modifier is revealed with Abyssal Echoes. Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`rare-uncertain-removal-keeps-order`**: the control, the same item with
+  the prefix target not fractured, so the annulment may take it.
+  - `essence-desecrate-double-slam`: the reveal keeps its file-order place;
+    then the annulment, odds not certain; then the prefix slam. Done.
+  - `close-a-side`, `rare-clean-then-slam`: as above, the annulment not
+    certain.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
 
 Invariants over every case and every route:
 
@@ -587,7 +688,18 @@ Invariants over every case and every route:
   item or missing; checking floors and which currency grade meets them is
   the engine's.
 - Modifier groups (an essence refused for a group already on the item) and
-  the one-crafted-modifier cap beyond the essence step's "magic item".
+  the one-crafted-modifier cap beyond the essence step's "magic item". The
+  one-crafted rule (`one-crafted-one-desecrated`, `alloy-counts-as-crafted`)
+  is held by `ch-blueprint`'s validator, statically, on the blueprints: no
+  two crafted steps without a removal between them, no crafted step that
+  repeats on a miss.
+- Tiers, and so the `weak-magic-start` rejection (engine-only).
+- The Fracturing Orb: listed order only (`fracture-first`); no state-ordered
+  blueprint fractures.
+- The essence swap: the model has no Perfect or special essence and no
+  Crystallisation omen, so no case covers the swap or its place under
+  § "Certain removals first" (engine-only, tested over the engine's own
+  test blueprints).
 - What a whittle adds, where a Chaos Orb's replacement lands, and ties
   between equal-level modifiers: a whittle is taken only when certain, and
   its added modifier is not projected.
@@ -601,5 +713,7 @@ Invariants over every case and every route:
 - Jewels (no spawn weights; no v2 blueprint names them), Homogenising and
   Catalysing omens, Greater Annulment, the Erasure and Crystallisation
   omens, Perfect and corrupted essences, alloys, Fracturing Orbs, Regal,
-  Alchemy, Vaal and Divine.
+  Alchemy, Vaal and Divine (the two rows of § "What each crafting item
+  does to the slots" for the Fracturing Orb and the essence swap are for
+  the engine and the listed blueprints, not the model).
 - Listed-order blueprints beyond the baseline reading above.
