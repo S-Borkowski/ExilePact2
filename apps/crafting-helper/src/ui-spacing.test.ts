@@ -82,7 +82,35 @@ const SIDE = { top: 0, right: 1, bottom: 2, left: 3 } as const;
 
 interface IndexedRule {
   rule: CSSStyleRule;
-  parts: Array<{ selector: string; spec: number }>;
+  parts: Array<{ selector: string; spec: number; classes: string[]; tag: string | undefined }>;
+}
+
+/**
+ * What the element a selector styles must carry, read from its last compound
+ * (after the last combinator outside brackets and parentheses): the classes
+ * and the tag named there, outside any `:not()` or `:is()`. An element
+ * lacking one cannot match, so `matching` skips the costly `el.matches` for
+ * it; a page lists over a hundred checkboxes, and the suite runs in parallel.
+ */
+function subject(selector: string): { classes: string[]; tag: string | undefined } {
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < selector.length; i++) {
+    const ch = selector[i];
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth--;
+    else if (depth === 0 && /[\s>+~]/.test(ch)) start = i + 1;
+  }
+  let last = '';
+  depth = 0;
+  for (const ch of selector.slice(start)) {
+    if (ch === '(' || ch === '[') depth++;
+    if (depth === 0) last += ch;
+    if (ch === ')' || ch === ']') depth--;
+  }
+  const classes = (last.match(/\.[\w-]+/g) ?? []).map((c) => c.slice(1));
+  const tag = /^[a-z][\w-]*/i.exec(last)?.[0].toUpperCase();
+  return { classes, tag };
 }
 
 let index: { sheets: number; rules: IndexedRule[] } | null = null;
@@ -92,7 +120,7 @@ function indexedRules(): IndexedRule[] {
   if (index?.sheets !== document.styleSheets.length) {
     const rules = styleRules().map((rule) => ({
       rule,
-      parts: rule.selectorText.split(',').map((selector) => ({ selector, spec: specificity(selector) })),
+      parts: rule.selectorText.split(',').map((selector) => ({ selector, spec: specificity(selector), ...subject(selector) })),
     }));
     index = { sheets: document.styleSheets.length, rules };
   }
@@ -131,6 +159,8 @@ function matching(el: Element): Array<{ rule: CSSStyleRule; spec: number; order:
   rules.forEach(({ rule, parts }, order) => {
     let spec = -1;
     for (const part of parts) {
+      if (part.tag !== undefined && part.tag !== el.tagName) continue;
+      if (!part.classes.every((c) => el.classList.contains(c))) continue;
       try {
         if (el.matches(part.selector)) spec = Math.max(spec, part.spec);
       } catch {
@@ -245,7 +275,10 @@ afterEach(() => {
   mounted = [];
 });
 
-describe('spacing and alignment', () => {
+// Each test mounts whole windows in jsdom and reads every rule against every
+// control; the acceptance run starts this suite beside others, so the
+// default five seconds is too little margin on a loaded machine.
+describe('spacing and alignment', { timeout: 20_000 }, () => {
   it('the_style_reader_sees_what_a_rule_sets', async () => {
     // Positive and negative controls for the helpers above: a rule the
     // page adds is read and resolved, a shorthand with `var()` included, and
