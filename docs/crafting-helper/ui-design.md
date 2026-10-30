@@ -711,6 +711,17 @@ At 600 × 480 the Modifiers groups scroll together in a sunken box past
 200 px, so Match and the link are not a whole base's list away, and the
 Search bar stays in view, as the craft's Start bar does.
 
+**Spacing** (the UI polish audit, 2026-10-30), every value from the
+theme's spacing scale (`--space-unit` and its multiples): the head, each
+column and the Search bar share one 20 px left edge; groups sit 16 px
+apart and a group's heading 8 px above its first control, a `legend`
+(Match, Prefixes, Suffixes) included; each modifier row has 4 px above
+and below its 28 px line, so its text clears the divider lines, and the
+checkbox, the text and the weight column are centred on the row's
+height. The checkbox and the Match radios drop their native margins, so
+they start at the column's edge as the headings do. A row's text breaks
+anywhere rather than overflow its box at 600 px.
+
 ### The controls
 
 Every change sends `set_trade_search { search: { open, class, base,
@@ -757,8 +768,10 @@ is one line:
   unchecking drops it;
 - at the row's right end, the **weight column**: the rarity weight as
   Rust sends it, one decimal (`12.4`), right-aligned in tabular figures, so
-  the column lines up; unpicked rows show theirs too, so the player can
-  compare before picking;
+  the column lines up (room for six characters, `1234.5`, and, in a list
+  with any "default" tag, a row without one keeps the tag's room empty, so
+  every number ends on one right edge); unpicked rows show theirs too, so
+  the player can compare before picking;
 - when the weight is the **default** (the data gives this modifier no
   usable spawn weight on this base: every jewel, some tiers), the word
   "default" after the number, as an outlined caption-size tag (the
@@ -945,7 +958,9 @@ From the top:
     view's offered leagues, in the view's order, each option's text and
     value the league's id as the site writes it ("Forbidden Rites", "HC
     Forbidden Rites"); the saved `trade_league` is selected. A change
-    sends `update_settings { trade_league }`.
+    sends `update_settings { trade_league }`. The row is the theme's
+    40 px row height; the select stretches to the icon button's 32 px,
+    so the two controls share one height, 8 px apart.
   - What the select offers, all Rust's: **before any refresh**, the six
     leagues this version shipped with (`SHIPPED_TRADE_LEAGUES`: Forbidden
     Rites, HC Forbidden Rites, Runes of Aldur, HC Runes of Aldur, Standard,

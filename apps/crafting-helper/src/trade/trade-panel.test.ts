@@ -591,4 +591,99 @@ describe('the modifier rows', () => {
 </style>`;
     expect(rowTextAlign(before)).not.toBe('center');
   });
+
+  /** A declaration as the last rule naming exactly `selector` gives it (a rule in `@media` counts too). */
+  const decl = (source: string, selector: string, prop: string): string | undefined =>
+    rules(source)
+      .filter((r) => r.selectors.includes(selector))
+      .map((r) => r.decls[prop])
+      .filter((v) => v !== undefined)
+      .pop();
+  /** Every padding, margin and gap given as a bare length rather than through a theme token. */
+  const bareLengths = (source: string): string[] =>
+    rules(source).flatMap((r) =>
+      Object.entries(r.decls)
+        .filter(([k, v]) => /^(padding|margin|gap|row-gap|column-gap)(-|$)/.test(k) && /\d(px|em|rem)\b/.test(v) && !v.includes('var(--'))
+        .map(([k, v]) => `${r.selectors.join(', ')} { ${k}: ${v} }`),
+    );
+  const onScale = (value: string | undefined): boolean => value !== undefined && value.includes('var(--space-');
+
+  // The UI polish audit (owner, 2026-10-30): every box, row, field and
+  // button of the panel and the League row has padding on the theme's
+  // spacing scale, a row's text sits in the middle of its row, the weight
+  // column keeps one right edge, and the controls on one row share a height.
+  it('trade_panel_rows_have_padding_and_centred_text', async () => {
+    const read = async (path: string) => new TextDecoder().decode(await readBytes(path));
+    const mods = await read('./trade/TradeModifiers.svelte');
+    const panel = await read('./trade/TradePanel.svelte');
+    const league = await read('./settings/TradeSection.svelte');
+    // The shared control looks, a plain stylesheet: wrapped so `rules` reads it as a component's block.
+    const app = `<style>${await read('./app.css')}</style>`;
+
+    // A modifier row: padding on the scale, its text centred across the row's height as well as its width.
+    expect(onScale(decl(mods, '.mod-group li', 'padding'))).toBe(true);
+    expect(decl(mods, 'label', 'align-items')).toBe('center');
+    // The native box loses its default margins, so the floor under a picked row lines up with the text.
+    expect(decl(mods, 'label input', 'margin')).toBe('0');
+    // The weight column: right-aligned tabular figures, and a row without the "default" tag keeps the tag's room
+    // when the list has one, so every number ends on one right edge.
+    expect(decl(mods, '.weight', 'text-align')).toBe('right');
+    expect(decl(mods, '.weight', 'font-variant-numeric')).toBe('tabular-nums');
+    const slot = rules(mods).find((r) => r.selectors.some((s) => /\.has-default li:not\(\[data-source='default'\]\) \.weight-cell::after$/.test(s)));
+    expect(slot?.decls.visibility).toBe('hidden');
+    expect(slot?.decls.content).toBe("'default'");
+    expect(mods).toContain('class:has-default={anyDefault}');
+
+    // The panel's boxes: the head, the scrolling area (both layouts), the Search bar, the small button, the link field.
+    for (const box of ['.head', '.scroll', '.col', '.search-bar', '.small', '.link']) {
+      expect(onScale(decl(panel, box, 'padding')), box).toBe(true);
+    }
+    // A group's legend sits as far above its first control as a heading does (the group's gap).
+    expect(decl(panel, 'legend', 'padding')).toContain(decl(panel, '.group', 'gap'));
+
+    // The League row: the theme's row height, and the select as tall as the refresh icon beside it.
+    expect(decl(league, '.row', 'min-height')).toBe('var(--size-row-height)');
+    expect(decl(league, '.pick', 'align-items')).toBe('stretch');
+    expect(onScale(decl(league, '.pick', 'gap'))).toBe(true);
+
+    // Buttons and fields centre their text and carry padding; no component overrides it.
+    expect(decl(app, '.btn', 'justify-content')).toBe('center');
+    expect(onScale(decl(app, '.btn', 'padding'))).toBe(true);
+    expect(onScale(decl(app, '.field', 'padding'))).toBe(true);
+    for (const source of [mods, panel, league]) {
+      for (const button of ['.btn', '.back', '.search', '.small', '.icon']) {
+        expect(decl(source, button, 'justify-content')).toBeUndefined();
+        expect(decl(source, button, 'text-align')).toBeUndefined();
+      }
+      expect(bareLengths(source)).toEqual([]);
+    }
+
+    // Negative control: the rows as the audit found them, padded off the scale, text on the top line, the
+    // radio's offset and the help line's pull in bare pixels.
+    const before = `<style>
+  .mod-group li {
+    padding: 2px 0;
+  }
+
+  label {
+    display: flex;
+    align-items: baseline;
+  }
+
+  .choice input {
+    margin-top: 4px;
+  }
+
+  .help {
+    margin: -6px 0 0;
+  }
+</style>`;
+    expect(onScale(decl(before, '.mod-group li', 'padding'))).toBe(false);
+    expect(decl(before, 'label', 'align-items')).not.toBe('center');
+    expect(bareLengths(before)).toEqual([
+      '.mod-group li { padding: 2px 0 }',
+      '.choice input { margin-top: 4px }',
+      '.help { margin: -6px 0 0 }',
+    ]);
+  });
 });

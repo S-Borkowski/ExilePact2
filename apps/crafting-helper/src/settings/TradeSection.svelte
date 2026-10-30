@@ -86,7 +86,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-row-pad);
-    min-height: 40px;
+    min-height: var(--size-row-height);
   }
 
   .label {
@@ -96,10 +96,12 @@
     line-height: var(--line-caption);
   }
 
+  /* The select stretches to the refresh icon's 32 px, so the two controls on
+     the row share one height, a step apart. */
   .pick {
     display: flex;
-    align-items: center;
-    gap: var(--space-unit);
+    align-items: stretch;
+    gap: var(--space-section-gap);
     min-width: 0;
   }
 
@@ -122,7 +124,7 @@
   }
 
   .help {
-    margin: -6px 0 0;
+    margin: calc(var(--space-unit) * -1.5) 0 0;
     color: var(--color-text-muted);
     font-size: var(--size-label);
     line-height: var(--line-step);

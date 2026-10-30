@@ -313,8 +313,10 @@
     border: 0;
   }
 
+  /* A rendered legend is no flex item, so the group's gap does not reach it:
+     its padding gives it the same room a group's heading has. */
   legend {
-    padding: 0 0 var(--space-unit);
+    padding: 0 0 calc(var(--space-unit) * 2);
   }
 
   .field-row {
@@ -361,10 +363,12 @@
     cursor: pointer;
   }
 
+  /* The radio in the middle of its name's line (the native box is 13 px),
+     with no native side margins, so it starts at the column's edge. */
   .choice input {
     flex: none;
     align-self: flex-start;
-    margin-top: 4px;
+    margin: calc((var(--line-step) - 13px) / 2) 0 0;
   }
 
   .choice-text {
@@ -398,6 +402,8 @@
   }
 
   .league-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
     color: var(--color-text-primary);
     font-size: var(--size-step);
     line-height: var(--line-step);

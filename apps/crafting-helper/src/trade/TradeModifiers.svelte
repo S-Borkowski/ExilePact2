@@ -70,7 +70,7 @@
       <p class="limit">{trade.pick_limit}</p>
     {/if}
 
-    <div class="mod-list">
+    <div class="mod-list" class:has-default={anyDefault}>
       {#each groups as group (group.key)}
         {@const count = group.mods.filter((m) => m.picked).length}
         <fieldset class="mod-group" data-group={group.key} hidden={!group.mods.some((m) => shows(m.text))}>
@@ -200,8 +200,9 @@
     list-style: none;
   }
 
+  /* A row's text clears the divider lines above and below it. */
   .mod-group li {
-    padding: 2px 0;
+    padding: var(--space-unit) 0;
   }
 
   .mod-group li + li {
@@ -209,10 +210,11 @@
   }
 
   /* One line: the checkbox, the text taking the room, the weight column at
-     the right end in tabular figures so the numbers line up. */
+     the right end in tabular figures so the numbers line up; all three in
+     the middle of the row's height, so the text does not sit on its top. */
   label {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: calc(var(--space-unit) * 2);
     min-width: 0;
     min-height: var(--size-button);
@@ -221,9 +223,12 @@
     cursor: pointer;
   }
 
+  /* No native margins: the box starts at the column's edge, as the headings
+     do, and the picked row's floor below lines up with the text. */
   label input {
     flex: none;
     align-self: center;
+    margin: 0;
   }
 
   label input:disabled {
@@ -238,6 +243,7 @@
     flex: 1;
     min-width: 0;
     color: var(--color-text-primary);
+    overflow-wrap: anywhere;
   }
 
   /* A searchable row's text sits in the middle of the room between the
@@ -254,15 +260,28 @@
     gap: var(--space-unit);
   }
 
+  /* Room for "1234.5", so a longer number does not push its row's column. */
   .weight {
-    min-width: 4ch;
+    min-width: 6ch;
     color: var(--color-text-secondary);
     font-variant-numeric: tabular-nums;
     text-align: right;
   }
 
+  /* When the list holds a "default" tag, a row without one keeps the tag's
+     room, invisible and silent, so every number ends on one right edge. */
+  .has-default li:not([data-source='default']) .weight-cell::after {
+    content: 'default';
+    visibility: hidden;
+    padding: 0 var(--space-unit);
+    border: var(--border-width) solid transparent;
+    font-size: var(--size-caption);
+    line-height: var(--line-caption);
+    white-space: nowrap;
+  }
+
   /* A picked row's floor and, for a default weight, its reason, under the
-     text, indented to it. */
+     text, indented to it (the native box's 13 px and the row's gap). */
   .picked {
     display: flex;
     flex-direction: column;
