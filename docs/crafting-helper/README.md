@@ -107,7 +107,7 @@ from a bought base.
     why it does not apply, and above those lines the app may propose
     lowering one target's tier (below). *Start crafting* starts the guide.
 
-    Seven of the seventeen blueprints are **state-ordered** (four since
+    Seven of the eighteen blueprints are **state-ordered** (four since
     0.1.1, two more since 0.1.4, one since 0.2.0): the
     engine plans them from each side's free slots rather than a fixed
     order, taking the first step whose condition holds on the item as it
@@ -1550,6 +1550,24 @@ release already exists, only its assets are replaced.
     mapping, catalyst quality, rune sockets) are kept and said so in the
     blueprint file's `notes`, which the craft window does not show;
     catalyst and rune steps are manual.
+  - **Catalyst quality and modifier tags are not read** (since 0.2.0).
+    The app reads neither an item's catalyst quality nor which kind a
+    modifier is, and does not map a target to its catalyst, so
+    `jewellery-catalyst-exalt`'s catalyst step is manual and its exalt's
+    chance is the plain exalt's, the favour not counted. That Omen of
+    Catalysing Exaltation and a side Exaltation omen both apply to one
+    exalt is not established (`catalysing-with-side-omen`).
+  - **Lord omens are for weapons, rings and amulets only** (since 0.2.0).
+    A desecration on any other class, belts and quivers included, names
+    no lord omen (`lord-omen-classes`), and that a lord's omen and a
+    Necromancy omen both apply to one desecration is a community guide's
+    statement, not measured (`lord-with-side-omen`).
+  - **A Perfect essence with a Crystallisation omen is not routed.** The
+    Crafting Codex's third trick is left out: no Perfect essence's own
+    modifier can be a target, and whether Crystallisation works on
+    Essence of Hysteria is not established
+    ([`crafting-helper-research.md`](crafting-helper-research.md)
+    § "Crafting Codex review (issue #40)").
   - **One crafted modifier per item is checked on the blueprints, not
     on the item.** Since 0.5 an item holds at most one crafted modifier
     (an essence's of any grade, a special essence's, a liquid emotion's
@@ -1886,7 +1904,9 @@ release already exists, only its assets are replaced.
 ### 0.2.0
 
 Route choice, Necromancy omens, a tier proposal, blocker advice, the
-fractured essence swap and the new name (#37).
+fractured essence swap and the new name (#37); lord omens, a catalyst
+route for rings and amulets, and a review of the PoE2 Crafting Codex
+(#40).
 
 - **Picking a route sticks.** The route list now numbers every route the
   same way whichever one you look at, so choosing Route 2 shows Route 2
@@ -1945,6 +1965,32 @@ fractured essence swap and the new name (#37).
   essence the route uses; and how often the essence or the annulment
   takes each modifier is not measured: the chances assume each is
   equally likely.
+- **A desecration aimed at one lord's modifier names that lord's omen
+  too.** On a weapon, ring or amulet, when the target is a desecrated
+  modifier only one lord gives, the step names the lord's omen beside the
+  Necromancy omen: "Use Omen of Sinistral Necromancy and Omen of the
+  Sovereign, then apply the …" for an Ulaman modifier (Omen of the Liege
+  for Amanamu's, Omen of the Blackblooded for Kurgal's). While the ring
+  whittle's desecration has no single target yet, the step says which
+  lord omen to add if it is that target. If the lord omen is blocked, the
+  step keeps the Necromancy omen alone.
+- **A catalyst route for rings and amulets.** A new route,
+  `jewellery-catalyst-exalt`, starts from a rare with no modifier you do
+  not want: put catalysts of the target's kind on the item, then exalt
+  with Omen of Catalysing Exaltation and the target side's Exaltation
+  omen (the plain Exalted Orb if Catalysing is blocked), and annul on
+  that side after a miss. The chance shown is the plain exalt's; the
+  catalyst's favour is not counted, and the step says so. The route aims
+  at the hardest missing target and ends when it lands: plan again for
+  the next one.
+- **The Crafting Codex was reviewed.** The community PoE2 Crafting Codex
+  (domistae) was read section by section: its short facts are in the
+  crafting-mechanics notes, each labelled as a community guide, with
+  every place it disagrees with what the app uses noted beside it rather
+  than changing the data. Its item-level breakpoints were checked against
+  the modifier data the tier choices and the trade link use: five agree,
+  and the second movement-speed tier keeps the data's level 65 (the
+  codex says 70).
 - **The main window no longer scrolls past its content.** With long
   lists the window could scroll far below the last line into empty
   space.

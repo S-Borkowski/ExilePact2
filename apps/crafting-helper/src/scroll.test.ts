@@ -152,7 +152,10 @@ describe('the main view never scrolls past its content', () => {
     // The views draw the hidden spans this is about.
     expect(seen).toBeGreaterThan(20);
     expect(problems).toEqual([]);
-  });
+    // Five full views, each element's cascade read rule by rule: alone it
+    // takes a few seconds, and beside the cargo suites of a parallel verify
+    // it outran vitest's 5 s default. The limit only bounds a hang.
+  }, 60_000);
 
   it('an_unpinned_absolute_box_in_a_scroll_pane_is_caught', () => {
     // The negative control: the check finds the shape the bug had, and
