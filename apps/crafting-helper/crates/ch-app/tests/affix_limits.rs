@@ -3,8 +3,10 @@
 //! Gloam implicit changes it); a side counts its chosen targets, a
 //! desecrated choice on the side its data gives, plus the item's own
 //! modifiers a route cannot take off (fractured, unrevealed) that no target
-//! names. An unchosen choice on a full side carries the reason it is
-//! disabled; a chosen one never does. `set_targets` refuses a list over a
+//! names, an unrevealed one only when no missing target on its side takes
+//! its slot. An unchosen choice carries the reason it is disabled when
+//! ticking it would take a full side past its limit; a chosen one, or an
+//! unticked fractured target, never does. `set_targets` refuses a list over a
 //! limit whole, and a re-grab drops the targets past it in list order.
 //!
 //! The items are the owner's belt (`tests/items/`) and `ch-engine`'s
@@ -72,10 +74,19 @@ fn chosen(p: &PlanningView) -> Vec<String> {
 /// Every unchosen choice on `side` carries `reason`, every chosen one and
 /// every choice on the other side none.
 fn assert_side_full(p: &PlanningView, side: ModSide, reason: &str) {
+    assert_side_full_except(p, side, reason, &[]);
+}
+
+/// As `assert_side_full`, but the choices in `selectable` carry no reason:
+/// ticking one does not raise the side's count.
+fn assert_side_full_except(p: &PlanningView, side: ModSide, reason: &str, selectable: &[&str]) {
     let ids = chosen(p);
     let mut full = 0;
     for c in all_choices(p) {
-        let want = (c.side == side && !ids.contains(&c.mod_id)).then(|| reason.to_string());
+        let want = (c.side == side
+            && !ids.contains(&c.mod_id)
+            && !selectable.contains(&c.mod_id.as_str()))
+        .then(|| reason.to_string());
         assert_eq!(disabled(c), want, "{}", c.mod_id);
         full += usize::from(want.is_some());
     }
@@ -90,6 +101,17 @@ fn assert_none_disabled(p: &PlanningView) {
 
 fn targets(ids: &[&str]) -> Vec<Target> {
     ids.iter().map(|id| Target::new(*id, None)).collect()
+}
+
+/// One of `ch-engine`'s case items (`crates/ch-engine/tests/items/<dir>/`).
+fn engine_item(dir: &str, name: &str) -> String {
+    let path = app_root()
+        .join("crates/ch-engine/tests/items")
+        .join(dir)
+        .join(format!("{name}.txt"));
+    std::fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .replace("\r\n", "\n")
 }
 
 /// The belt with three prefixes on it (Life, Mana, Armour) and Fire
@@ -269,10 +291,12 @@ fn unremovable_modifiers_hold_a_slot_unticked() {
     let view = app.grab_text(Some(&fractured));
     assert!(planning(&view).item.modifiers[0].fractured);
     let view = app.set_targets(&targets(&[MANA, ARMOUR, FIRE]));
-    assert_side_full(
+    // Life itself stays selectable: it already holds its slot.
+    assert_side_full_except(
         planning(&view),
         ModSide::Prefix,
         "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
+        &[LIFE],
     );
     // Negative control: the same belt unfractured frees the slot.
     app.grab_text(Some(&belt("belt-2p1s")));
@@ -280,16 +304,79 @@ fn unremovable_modifiers_hold_a_slot_unticked() {
     assert_none_disabled(planning(&view));
 
     // An unrevealed desecrated suffix holds a suffix: the ring has Fire and
-    // Cold beside it, both ticked by the grab.
+    // Cold beside it, both ticked by the grab. With no suffix target
+    // missing it counts; a missing suffix target takes its slot (it is
+    // revealed as that target), so every suffix stays selectable.
     app.set_targets(&[]);
     let view = app.grab_text(Some(&ring("04-desecrated")));
     let p = planning(&view);
     assert_eq!(chosen(p), [FIRE, COLD]);
+    assert_none_disabled(p);
+    let view = app.set_targets(&targets(&[FIRE, COLD, STRENGTH]));
+    assert_side_full(
+        planning(&view),
+        ModSide::Suffix,
+        "Suffixes full: 2 on the item + 1 chosen = 3 of 3",
+    );
+    app.shutdown();
+}
+
+#[test]
+fn an_unrevealed_modifier_holds_the_slot_of_a_missing_target() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    // Life and Mana on the belt and an unrevealed desecrated prefix: Armour
+    // is the target it waits to become, so it counts once, as the engine
+    // counts it (`ch-engine`'s `slots.rs`).
+    let text = engine_item("last-desecration", "belt-unrevealed");
+    let view = app.grab_text(Some(&text));
+    let p = planning(&view);
+    assert_eq!(chosen(p), [LIFE, MANA, FIRE]);
+    assert_eq!(disabled(choice(p, ARMOUR)), None);
+
+    let view = app.set_targets(&belt_targets());
+    assert_eq!(status(&view).0, StatusKind::Info, "{:?}", view.status);
+    let p = planning(&view);
+    assert_eq!(chosen(p), [LIFE, MANA, ARMOUR, FIRE]);
     assert_side_full(
         p,
-        ModSide::Suffix,
-        "Suffixes full: 3 on the item + 0 chosen = 3 of 3",
+        ModSide::Prefix,
+        "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
     );
+    // A re-grab keeps every target.
+    let view = app.grab_text(Some(&text));
+    assert_eq!(chosen(planning(&view)), [LIFE, MANA, ARMOUR, FIRE]);
+    assert!(!status(&view).1.contains("Dropped"), "{:?}", view.status);
+    app.shutdown();
+}
+
+#[test]
+fn an_unticked_fractured_target_stays_selectable() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    // Life fractured: the grab ticks it with Mana and Fire, Armour is added.
+    let fractured = belt("belt-2p1s").replace(
+        "{ Prefix Modifier \"Athlete's\"",
+        "{ Fractured Prefix Modifier \"Athlete's\"",
+    );
+    app.grab_text(Some(&fractured));
+    let view = app.set_targets(&targets(&[LIFE, MANA, ARMOUR, FIRE]));
+    assert_side_full(
+        planning(&view),
+        ModSide::Prefix,
+        "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
+    );
+    // Life unticked still holds its slot, so ticking it again adds nothing:
+    // it stays selectable and the list with it is taken.
+    let view = app.set_targets(&targets(&[MANA, ARMOUR, FIRE]));
+    let p = planning(&view);
+    assert_eq!(disabled(choice(p, LIFE)), None);
+    assert!(disabled(choice(p, FLASK_LIFE)).is_some());
+    let view = app.set_targets(&targets(&[MANA, ARMOUR, FIRE, LIFE]));
+    assert_eq!(status(&view).0, StatusKind::Info, "{:?}", view.status);
+    assert_eq!(chosen(planning(&view)), [MANA, ARMOUR, FIRE, LIFE]);
     app.shutdown();
 }
 

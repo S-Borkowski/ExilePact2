@@ -328,7 +328,10 @@ impl SideCounts {
 /// uses the same): the chosen targets on the side (a desecrated one on the
 /// side its data gives), each once, plus the item's explicit modifiers on it
 /// that no target names and a route cannot take off with an ordinary
-/// removal (fractured, unrevealed). `None` when the class has no limits.
+/// removal (fractured, unrevealed). An unrevealed one holds the slot of a
+/// chosen target missing from its side (it is revealed as that target), so
+/// it counts only past those, as `ch-engine`'s slot count does. `None` when
+/// the class has no limits.
 fn side_counts(item: &Item, valid: &[ValidMod<'_>], targets: &[Target]) -> Option<SideCounts> {
     let limits = ch_data::item_affix_limits(item, &Rarity::Rare)?;
     let side = |limit| SideCount {
@@ -357,11 +360,19 @@ fn side_counts(item: &Item, valid: &[ValidMod<'_>], targets: &[Target]) -> Optio
             c.chosen += 1;
         }
     }
+    // The missing chosen targets an unrevealed modifier can still become.
+    let mut waiting = [counts.prefixes.chosen, counts.suffixes.chosen];
     for jm in &join.mods {
         let named = jm
             .matched()
             .is_some_and(|m| targets.iter().any(|t| t.mod_id == m.mod_id));
-        if (jm.fractured || jm.unrevealed) && !named {
+        if !(jm.fractured || jm.unrevealed) || named {
+            continue;
+        }
+        let open = &mut waiting[usize::from(jm.kind == Kind::Suffix)];
+        if jm.unrevealed && *open > 0 {
+            *open -= 1;
+        } else {
             counts.on_mut(jm.kind).on_item += 1;
         }
     }
@@ -710,8 +721,13 @@ impl Craft {
         };
         for m in &valid {
             let is_chosen = self.targets.iter().any(|t| t.mod_id == m.id);
+            // Disabled only when ticking it would take a full side past
+            // its limit: an unticked fractured target already holds its
+            // slot, and a missing one can take an unrevealed modifier's.
             let disabled = match &counts {
-                Some(counts) if !is_chosen => counts.full(m.kind),
+                Some(counts) if !is_chosen => counts.full(m.kind).filter(|_| {
+                    !has_room(item, &valid, &self.targets, &Target::new(m.id, None))
+                }),
                 _ => None,
             };
             let choice = TargetChoice {

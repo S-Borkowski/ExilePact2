@@ -807,7 +807,12 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   unticking re-enables the side (`unticking_re_enables_the_side`), an
   implicit changes the count (`an_implicit_changes_the_count`), a
   desecrated choice counts on its side, a fractured or unrevealed
-  modifier no target names holds a slot unticked, `set_targets` refuses
+  modifier no target names holds a slot unticked, an unrevealed modifier
+  holds the slot of the missing target it waits to become, as the
+  engine counts it
+  (`an_unrevealed_modifier_holds_the_slot_of_a_missing_target`), an
+  unticked fractured target stays selectable
+  (`an_unticked_fractured_target_stays_selectable`), `set_targets` refuses
   a list over a limit whole
   (`set_targets_refuses_a_side_over_its_limit`), and a re-grab drops the
   targets past the limit in list order
@@ -1299,7 +1304,9 @@ release already exists, only its assets are replaced.
   rings and amulets, and Distorted and Twisted amulets, allow one more or
   one fewer prefix or suffix, and a Contempt emotion still adds one.
   Fractured and unrevealed modifiers you have not chosen still hold
-  their slot.
+  their slot; an unrevealed one counts as the missing target on its side
+  it will be revealed as, and an unticked fractured target stays
+  selectable, since ticking it again takes no new slot.
 - The app still sends the game nothing.
 
 ### 0.1.1
