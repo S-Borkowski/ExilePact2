@@ -23,6 +23,9 @@ use crate::odds::{step_odds, target_difficulty};
 use crate::slots::SIDES;
 use crate::state_order;
 
+/// The jewel class's name in the data.
+const JEWELS: &str = "Jewels";
+
 /// The way a step is taken: the first alternative none of whose ids is
 /// blocked, with its placeholders resolved.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -158,6 +161,19 @@ pub enum Rejection {
         step: Option<String>,
         reasons: Vec<String>,
     },
+    /// The item is Magic, its prefix is a target below the top two tiers
+    /// its modifier can roll on this base at the item's level, and the
+    /// route spends an upgrade (a Regal Orb or a Lesser, plain or Greater
+    /// essence) on it: a new base is worth more
+    /// (docs/models/crafting-slots-spec.md, "Rejections").
+    WeakMagicStart {
+        modifier: String,
+        tier: u32,
+        item_level: u32,
+        /// The best tier, then the second best (one when only one tier is
+        /// reachable).
+        top: Vec<u32>,
+    },
 }
 
 impl fmt::Display for Rejection {
@@ -212,6 +228,20 @@ impl fmt::Display for Rejection {
                     write!(f, " ({})", reasons.join("; "))?;
                 }
                 Ok(())
+            }
+            Rejection::WeakMagicStart {
+                modifier,
+                tier,
+                item_level,
+                top,
+            } => {
+                let tops: Vec<String> = top.iter().map(|t| format!("T{t}")).collect();
+                write!(
+                    f,
+                    "the magic item's prefix `{modifier}` is T{tier}, below its top tiers at \
+                     item level {item_level} ({}): a new base is worth more than an upgrade",
+                    tops.join(" and ")
+                )
             }
         }
     }
@@ -342,6 +372,9 @@ pub(crate) fn route_for(ctx: &Ctx, resolved: &Resolved) -> Result<Route, Rejecti
             }
         }
         let projection = state_order::project(ctx, &b.steps, &st)?;
+        if let Some(weak) = weak_magic_start(ctx, &st, &projection.steps) {
+            return Err(weak);
+        }
         return Ok(route(
             projection.steps,
             projection.skipped,
@@ -385,8 +418,54 @@ pub(crate) fn route_for(ctx: &Ctx, resolved: &Resolved) -> Result<Route, Rejecti
             });
         }
     }
+    if let Some(weak) = weak_magic_start(ctx, &st, &steps) {
+        return Err(weak);
+    }
 
     Ok(route(steps, skipped, bindings))
+}
+
+/// The `weak-magic-start` rejection (docs/models/crafting-slots-spec.md,
+/// "Rejections"), checked last on a planned route: the item is Magic, its
+/// prefix is a target at any tier, a step of the route makes it Rare (a
+/// Regal Orb of any grade, or a Lesser, plain or Greater essence; only a
+/// Magic item takes one), and the prefix's tier is worse than the second
+/// best its modifier rolls on this base at the item's level. `None` when
+/// any of these fails, or the prefix's tier is unknown.
+fn weak_magic_start(ctx: &Ctx, st: &State, steps: &[StepView]) -> Option<Rejection> {
+    if st.rarity != Some(BpRarity::Magic) {
+        return None;
+    }
+    let upgrades = steps
+        .iter()
+        .filter_map(|s| s.action.as_ref())
+        .any(|a| a.effect == Effect::Upgrade);
+    if !upgrades {
+        return None;
+    }
+    let prefix = st.mods.iter().find(|m| {
+        m.side == Kind::Prefix && matches!(m.role, Role::Wanted(_) | Role::BelowFloor(_))
+    })?;
+    let modifier = prefix.mod_id.as_ref()?;
+    let tier = prefix.tier?;
+    let mut reachable: Vec<u32> = ctx
+        .data
+        .find_mod(modifier)?
+        .tiers_on(ctx.variant)
+        .iter()
+        .filter(|t| t.ilvl <= ctx.item_level)
+        .map(|t| t.tier)
+        .collect();
+    reachable.sort_unstable();
+    reachable.dedup();
+    let top: Vec<u32> = reachable.into_iter().take(2).collect();
+    let second = *top.last()?;
+    (tier > second).then(|| Rejection::WeakMagicStart {
+        modifier: modifier.clone(),
+        tier,
+        item_level: ctx.item_level,
+        top,
+    })
 }
 
 /// What a step is on the item.
@@ -860,6 +939,14 @@ pub(crate) fn try_alternative(
                 return Err(AltProblem::Unfit(format!(
                     "`{written}` is for item level {} or lower",
                     e.max_item_level.unwrap_or_default()
+                )));
+            }
+            // A jewel's modifiers have one level each: a Minimum Modifier
+            // Level only adds cost, so the next alternative (the plain orb)
+            // is taken.
+            if e.min_modifier_level.is_some() && class == JEWELS {
+                return Err(AltProblem::Unfit(format!(
+                    "`{written}` has a minimum modifier level, which only adds cost on a jewel"
                 )));
             }
             (

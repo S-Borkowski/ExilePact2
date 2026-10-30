@@ -257,21 +257,57 @@ pub struct Pool<'a> {
 }
 
 impl Pool<'_> {
+    /// Certain to hit when the pool is `target` alone and each of its tiers
+    /// counts at `floor`: the exclusions leave one outcome, whatever the
+    /// weights. `None` otherwise.
+    fn certain_hit(&self, target: &str, floor: u32) -> Option<Odds> {
+        let [only] = self.entries.as_slice() else {
+            return None;
+        };
+        (only.id == target && only.tiers.iter().all(|t| t.tier <= floor)).then(|| {
+            Odds::certain(
+                true,
+                format!("{target} is the only modifier the add can roll"),
+            )
+        })
+    }
+
+    /// Certain from the pool's shape alone, weights aside: certain to hit
+    /// when the exclusions leave `target` alone (each tier counting at
+    /// `floor`), certain not to when they leave it out. `None` when the
+    /// weights decide.
+    pub fn certainty(&self, target: &str, floor: u32) -> Option<Odds> {
+        if let Some(hit) = self.certain_hit(target, floor) {
+            return Some(hit);
+        }
+        (!self.entries.iter().any(|e| e.id == target))
+            .then(|| Odds::certain(false, format!("{target} is not in the pool")))
+    }
+
     /// The chance the add rolls `target` at tier `floor` or better: the
-    /// target's counting weight over the pool's. Unknown when a counting
-    /// target tier's weight is missing or the placeholder 1, or any pool
-    /// tier's weight is missing; a 1 elsewhere counts as 1.
+    /// target's counting weight over the pool's. Certain, weights aside,
+    /// when the pool is the target alone and each of its tiers counts, and
+    /// certain not to hit when the target is not in the pool and a weight
+    /// is missing. Otherwise unknown when a counting target tier's weight
+    /// is missing or the placeholder 1, or any pool tier's weight is
+    /// missing; a 1 elsewhere counts as 1.
     pub fn odds(&self, target: &str, floor: u32) -> Odds {
+        if let Some(hit) = self.certain_hit(target, floor) {
+            return hit;
+        }
         let mut total: u64 = 0;
         for e in &self.entries {
             for t in &e.tiers {
                 match t.weight {
                     Some(w) => total += u64::from(w),
                     None => {
+                        if let Some(miss) = self.certainty(target, floor) {
+                            return miss;
+                        }
                         return Odds::unknown(format!(
                             "{} tier {} has no weight in the data",
                             e.id, t.tier
-                        ))
+                        ));
                     }
                 }
             }
@@ -373,15 +409,16 @@ pub fn add_odds(item: &Item, target: &str, floor: u32, options: &AddOptions) -> 
         Ok(found) => found,
         Err(why) => return Odds::unknown(format!("the item's variant is unknown: {why:?}")),
     };
-    match data.page(variant).map(|p| p.weights.normal) {
-        Some(WeightBasis::Spawn) => {}
-        _ => {
-            return Odds::unknown(format!(
-                "{} {variant} has no established spawn weights",
-                data.class
-            ))
-        }
-    }
+    let spawn = matches!(
+        data.page(variant).map(|p| p.weights.normal),
+        Some(WeightBasis::Spawn)
+    );
+    let no_spawn = || {
+        Odds::unknown(format!(
+            "{} {variant} has no established spawn weights",
+            data.class
+        ))
+    };
     let Some(item_level) = item.item_level.as_ref().map(|l| l.value) else {
         return Odds::unknown("the item has no item level");
     };
@@ -420,14 +457,19 @@ pub fn add_odds(item: &Item, target: &str, floor: u32, options: &AddOptions) -> 
     if sides.is_empty() {
         return Odds::unknown("no free slot on the allowed side");
     }
-    data.add_pool(
+    let pool = data.add_pool(
         variant,
         item_level,
         &sides,
         &families,
         options.min_modifier_level,
-    )
-    .odds(target, floor)
+    );
+    if spawn {
+        return pool.odds(target, floor);
+    }
+    // Without spawn weights, a pool whose exclusions leave one outcome is
+    // still certain.
+    pool.certainty(target, floor).unwrap_or_else(no_spawn)
 }
 
 fn count_side(joined: &Join, side: Kind) -> usize {

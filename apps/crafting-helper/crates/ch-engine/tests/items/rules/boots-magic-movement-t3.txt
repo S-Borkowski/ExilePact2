@@ -1,0 +1,8 @@
+Item Class: Boots
+Rarity: Magic
+Gazelle's Cavalry Boots
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Gazelle's" (Tier: 3) — Speed }
+25% increased Movement Speed

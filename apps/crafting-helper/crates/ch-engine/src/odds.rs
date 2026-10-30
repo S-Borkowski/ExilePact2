@@ -141,6 +141,33 @@ pub(crate) fn has_omen_change(action: &ChosenAction, change: OmenChange) -> bool
         .any(|o| o.change == change)
 }
 
+/// An essence swap: a Perfect or special essence (`Effect::Swap`), which
+/// removes a modifier, like a Chaos Orb, before adding its own. Alloys and
+/// liquid emotions swap too but are not essences.
+pub(crate) fn is_essence_swap(action: &ChosenAction) -> bool {
+    action.data_backed
+        && action.effect == Effect::Swap
+        && catalogue::data_backed(&action.currency)
+            .is_some_and(|d| d.kind == catalogue::Kind::Essence)
+}
+
+/// The side an essence swap that adds target `t` removes from: its
+/// Crystallisation omen's; with none, `t`'s side when that side is full
+/// (not established: `essence-full-side-removal`); otherwise either side
+/// (`None`).
+pub(crate) fn swap_removal_side(
+    ctx: &Ctx,
+    st: &State,
+    action: &ChosenAction,
+    t: usize,
+) -> Option<Kind> {
+    if let Some(side) = action.side {
+        return Some(kind_of(side));
+    }
+    let side = ctx.targets[t].side;
+    (st.free(side) == 0).then_some(side)
+}
+
 /// The chance the modifier the action removes is not a wanted one.
 pub(crate) fn removal_chance(st: &State, action: &ChosenAction) -> Odds {
     removal_odds(st, action.side.map(kind_of), removal_rule(action))
@@ -263,7 +290,10 @@ fn add_wanted_odds(ctx: &Ctx, st: &State, aims: &[usize], action: &ChosenAction)
                     true,
                     format!("{} adds {} at T{tier}", action.name, target.mod_id),
                 );
-                return if action.removes {
+                return if is_essence_swap(action) {
+                    let side = swap_removal_side(ctx, st, action, t);
+                    add.times(&removal_odds(st, side, Removal::Random))
+                } else if action.removes {
                     add.times(&removal_chance(st, action))
                 } else {
                     add
@@ -315,7 +345,9 @@ pub(crate) fn with_basis_note(odds: Odds, note: &str) -> Odds {
 /// The chance one random add on `sides` rolls any of `aims` at its floor:
 /// the aims' counting weight over the pool's. The pool and the weight
 /// rules are `ch-data`'s (`ClassData::add_pool`, `Pool::odds`), widened to
-/// several targets.
+/// several targets: certain, weights aside, when the pool's exclusions
+/// leave only aims whose every tier counts, and certain not to hit when
+/// they leave every aim out and the weights cannot say so.
 pub(crate) fn add_chance(
     ctx: &Ctx,
     st: &State,
@@ -323,15 +355,16 @@ pub(crate) fn add_chance(
     sides: &[Kind],
     min_modifier_level: Option<u32>,
 ) -> Odds {
-    match ctx.data.page(ctx.variant).map(|p| p.weights.normal) {
-        Some(WeightBasis::Spawn) => {}
-        _ => {
-            return Odds::unknown(format!(
-                "{} `{}` has no established spawn weights",
-                ctx.data.class, ctx.variant
-            ))
-        }
-    }
+    let spawn = matches!(
+        ctx.data.page(ctx.variant).map(|p| p.weights.normal),
+        Some(WeightBasis::Spawn)
+    );
+    let no_spawn = || {
+        Odds::unknown(format!(
+            "{} `{}` has no established spawn weights",
+            ctx.data.class, ctx.variant
+        ))
+    };
     if aims
         .iter()
         .any(|&t| ctx.targets[t].section == Section::Desecrated)
@@ -367,11 +400,31 @@ pub(crate) fn add_chance(
         &families,
         min_modifier_level,
     );
+    let floor_of = |id: &str| {
+        aims.iter()
+            .map(|&t| &ctx.targets[t])
+            .find(|t| t.mod_id == id)
+            .map(|t| t.floor)
+    };
+    let only_aims = !pool.entries.is_empty()
+        && pool
+            .entries
+            .iter()
+            .all(|e| floor_of(e.id).is_some_and(|floor| e.tiers.iter().all(|x| x.tier <= floor)));
+    if only_aims {
+        return Odds::certain(true, "the pool holds only targets, each tier counting");
+    }
+    let no_aim = !pool.entries.iter().any(|e| floor_of(e.id).is_some());
+    let left_out = || Odds::certain(false, "no target is in the pool");
+    if !spawn {
+        return if no_aim { left_out() } else { no_spawn() };
+    }
     let mut total: u64 = 0;
     for entry in &pool.entries {
         for tier in &entry.tiers {
             match tier.weight {
                 Some(w) => total += u64::from(w),
+                None if no_aim => return left_out(),
                 None => {
                     return Odds::unknown(format!(
                         "{} tier {} has no weight in the data",

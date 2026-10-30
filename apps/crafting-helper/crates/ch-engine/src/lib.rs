@@ -17,10 +17,15 @@
 //!   [`Next`] step with its odds.
 //! - State order: a blueprint with `order = "state"` has no transitions; the
 //!   guide takes the first step that is a candidate on the item as it
-//!   stands, and its route is the projection, the steps the craft takes if
-//!   each one hits (docs/models/crafting-slots-spec.md). Both read one slot
-//!   accounting; a route whose hit path cannot finish is rejected
+//!   stands (a certain removal before a gamble), and its route is the
+//!   projection, the steps the craft takes if each one hits
+//!   (docs/models/crafting-slots-spec.md). Both read one slot accounting; a
+//!   route whose hit path cannot finish is rejected
 //!   ([`Rejection::RouteCannotFinish`]).
+//! - Either order: a jewel never takes a currency with a Minimum Modifier
+//!   Level, and a Magic item whose target prefix is below its top two tiers
+//!   is sent back for a new base rather than upgraded
+//!   ([`Rejection::WeakMagicStart`]).
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!

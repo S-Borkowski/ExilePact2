@@ -1,0 +1,18 @@
+# A test blueprint (engine tests only): upgrade a magic pair of boots with
+# a Regal Orb, then exalt.
+id = "test-weak-magic"
+name = "Test: regal a magic item"
+classes = ["Boots"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["magic"]
+
+[[step]]
+id = "regal"
+say = "Regal for a remaining target"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "regal-orb"

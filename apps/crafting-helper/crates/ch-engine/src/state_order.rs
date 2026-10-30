@@ -2,8 +2,10 @@
 //! "Projection"): for a blueprint with `order = "state"`, the next step is
 //! the first in file order that is a candidate on the item as it stands
 //! (its guard holds, its binding is made, its goal is not met, its side
-//! rule finds a side and an alternative fits), and the route preview is the
-//! projection, the steps the craft takes if each one hits.
+//! rule finds a side and an alternative fits), unless a later candidate is a
+//! certain removal and the first is not ("Certain removals first"); the
+//! route preview is the projection, the steps the craft takes if each one
+//! hits.
 //!
 //! Every number here is [`Slots`]'s. Listed blueprints never come here.
 
@@ -19,7 +21,9 @@ use crate::catalogue::data_entries;
 use crate::context::{
     condition_failures, item_rarity, kind_of, side_of, Ctx, ModInfo, Role, State,
 };
-use crate::odds::{add_sides, has_omen_change, step_odds, with_basis_note};
+use crate::odds::{
+    add_sides, has_omen_change, is_essence_swap, step_odds, swap_removal_side, with_basis_note,
+};
 use crate::route::{
     essence_adds, essence_binds_any, essence_fits_rarity, greater_fits, hardest, try_alternative,
     AltProblem, ChosenAction, Rejection, Skipped, Stall, StepView,
@@ -95,7 +99,8 @@ fn bind_all(steps: &[Spanned<Step>], bindings: &mut Bindings, kind: Binding, mod
 }
 
 /// Makes each binding the blueprint uses as soon as the item allows it, and
-/// keeps one once made: `essence` on a Magic item, to the first missing
+/// keeps one once made: `essence` on a Magic item (or a Rare one, for a
+/// Perfect or special essence), to the first missing
 /// target (in target order) an unblocked essence of the essence step adds
 /// at its floor; `hardest` while a target is missing, to a missing
 /// desecrated-section target first, else the one with the lowest add odds
@@ -111,9 +116,10 @@ pub(crate) fn ensure_bindings(
 ) {
     let uses = |kind: Binding| steps.iter().any(|s| binding_of(s.get_ref()) == Some(kind));
     let missing = st.missing(ctx.targets.len());
+    // On a Rare item only a Perfect or special essence (a swap) adds.
     if uses(Binding::Essence)
         && bound(ctx, steps, bindings, Binding::Essence).is_none()
-        && st.rarity == Some(BpRarity::Magic)
+        && matches!(st.rarity, Some(BpRarity::Magic | BpRarity::Rare))
     {
         let actions: Vec<&Action> = steps
             .iter()
@@ -497,6 +503,26 @@ fn fit(
             }
             Ok(chosen)
         }
+        // A Perfect or special essence on a Rare item: it removes a
+        // modifier, like a Chaos Orb, then adds its own (the spec's
+        // "Certain removals first", engine-only).
+        Effect::Swap if is_essence_swap(&chosen) => {
+            let Some(t) = essence_for else {
+                return unfit("an essence needs the step's essence binding");
+            };
+            if rarity != Some(BpRarity::Rare) {
+                return unfit("a Perfect or special essence needs a rare item");
+            }
+            let Some(taken) = swap_takes(ctx, st, &chosen, t) else {
+                return unfit("no modifier its removal could take on its side");
+            };
+            let side = ctx.targets[t].side;
+            let left = st.count(side) - usize::from(st.mods[taken].side == side);
+            if left >= st.limits.on(side) {
+                return unfit("no room for its modifier once the removal is made");
+            }
+            Ok(chosen)
+        }
         Effect::Add | Effect::Augment | Effect::Transmute if !chosen.data_backed => {
             let needs = match chosen.effect {
                 Effect::Add => BpRarity::Rare,
@@ -659,8 +685,10 @@ pub(crate) fn evaluate(
     }
 }
 
-/// The first candidate in file order, or every step's reason (`` `id`:
-/// why ``).
+/// The next step, or every step's reason (`` `id`: why ``): the first
+/// candidate in file order, unless it is not a certain removal and a later
+/// candidate is a `remove-unwanted` step (or an essence swap) that is; then
+/// the first such later one (the spec's "Certain removals first").
 pub(crate) fn next_step(
     ctx: &Ctx,
     st: &State,
@@ -669,13 +697,26 @@ pub(crate) fn next_step(
 ) -> Result<Pick, Vec<String>> {
     let slots = Slots::new(st, &ctx.targets);
     let mut reasons = Vec::new();
+    let mut first: Option<Pick> = None;
     for index in 0..steps.len() {
+        let goal = *steps[index].get_ref().goal.get_ref();
         match evaluate(ctx, st, &slots, steps, index, bindings) {
-            Ok(pick) => return Ok(pick),
+            Ok(pick) if first.is_none() => {
+                if certain_removal(ctx, st, goal, &pick) {
+                    return Ok(pick);
+                }
+                first = Some(pick);
+            }
+            Ok(pick) => {
+                let moves = goal == Goal::RemoveUnwanted || is_essence_swap(&pick.action);
+                if moves && certain_removal(ctx, st, goal, &pick) {
+                    return Ok(pick);
+                }
+            }
             Err(why) => reasons.push(format!("`{}`: {why}", steps[index].get_ref().id.get_ref())),
         }
     }
-    Err(reasons)
+    first.ok_or(reasons)
 }
 
 /// The step as the player sees it. On an item the projection changed, the
@@ -768,7 +809,14 @@ fn removal_takes(st: &State, pick: &Pick) -> Option<usize> {
             m.desecrated && !m.unrevealed && !m.fractured && !matches!(m.role, Role::Wanted(_))
         });
     }
-    let sides: Vec<Kind> = pick.side.map_or(SIDES.to_vec(), |s| vec![s]);
+    first_removable(st, pick.side)
+}
+
+/// The first removable non-target on `side` (both sides, prefix first, with
+/// none) in the item's order, fillers last: what a random removal's hit
+/// takes in the projection.
+fn first_removable(st: &State, side: Option<Kind>) -> Option<usize> {
+    let sides: Vec<Kind> = side.map_or(SIDES.to_vec(), |s| vec![s]);
     for side in sides {
         let on_side = |filler: bool| {
             st.mods
@@ -780,6 +828,33 @@ fn removal_takes(st: &State, pick: &Pick) -> Option<usize> {
         }
     }
     None
+}
+
+/// The position in `st.mods` of the non-target an essence swap adding
+/// target `t` takes if it hits, on its removal's side.
+fn swap_takes(ctx: &Ctx, st: &State, action: &ChosenAction, t: usize) -> Option<usize> {
+    first_removable(st, swap_removal_side(ctx, st, action, t))
+}
+
+/// Whether the candidate is a certain removal (the spec's "Certain removals
+/// first"): a removal whose chosen alternative may take only non-targets
+/// (a whittle fits only when certain), or an essence swap whose removal
+/// may take only non-targets.
+fn certain_removal(ctx: &Ctx, st: &State, goal: Goal, pick: &Pick) -> bool {
+    let only_non_targets = |takes: Takes| {
+        at_risk(st, takes)
+            .into_iter()
+            .all(|i| !matches!(st.mods[i].role, Role::Wanted(_)))
+    };
+    match goal {
+        Goal::RemoveUnwanted | Goal::RemoveDesecrated => {
+            is_whittle(&pick.action) || only_non_targets(takes(&pick.action))
+        }
+        Goal::AddWanted if is_essence_swap(&pick.action) => pick.target.is_some_and(|t| {
+            only_non_targets(Takes::Any(swap_removal_side(ctx, st, &pick.action, t)))
+        }),
+        _ => false,
+    }
 }
 
 /// The item as the step's hit would leave it (the spec's "Projection",
@@ -804,6 +879,14 @@ fn apply_hit(
         Effect::Upgrade if action.data_backed => {
             set_rarity(ctx, &mut new, BpRarity::Rare);
             if let Some(t) = pick.target {
+                place(ctx, &mut new, t);
+            }
+        }
+        Effect::Swap if is_essence_swap(action) => {
+            if let Some(t) = pick.target {
+                if let Some(i) = swap_takes(ctx, st, action, t) {
+                    new.mods.remove(i);
+                }
                 place(ctx, &mut new, t);
             }
         }

@@ -1,0 +1,40 @@
+# A state-ordered test blueprint (engine tests only): an annulment listed
+# before a crystallised Essence of Hysteria, then a slam to finish.
+id = "test-swap-order"
+name = "Test: annul, swap with an essence, slam"
+classes = ["Rings"]
+source = "ch-engine tests"
+order = "state"
+relies_on = ["greater-with-side-omen", "greater-needs-two-free"]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "remove"
+say = "Annul the blocker"
+goal = "remove-unwanted"
+side = "blocked"
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "essence"
+say = "Essence of Hysteria with Omen of Dextral Crystallisation"
+goal = "add-wanted"
+bind = "essence"
+
+[[step.action]]
+currency = "essence-of-hysteria"
+omens = ["omen-of-dextral-crystallisation"]
+
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["greater-omen", "side-omen"]

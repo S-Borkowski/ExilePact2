@@ -1,0 +1,25 @@
+# A test blueprint (engine tests only): the Perfect, Greater and plain
+# Exalted Orb in that order, for jewels and rings alike. A jewel takes the
+# plain orb; a ring keeps the Perfect one.
+id = "test-jewel-grades"
+name = "Test: exalt grades on jewels and rings"
+classes = ["Jewels", "Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt for a remaining target"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+
+[[step.action]]
+currency = "greater-exalted-orb"
+
+[[step.action]]
+currency = "exalted-orb"
