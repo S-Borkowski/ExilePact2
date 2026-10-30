@@ -200,8 +200,13 @@
     list-style: none;
   }
 
-  /* A row's text clears the divider lines above and below it. */
+  /* A row's text clears the divider lines above and below it. Three
+     columns, the checkbox, the text and the weight, which the row's label
+     and a picked row's floor below it both sit in. */
   .mod-group li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: calc(var(--space-unit) * 2);
     padding: var(--space-unit) 0;
   }
 
@@ -213,7 +218,9 @@
      the right end in tabular figures so the numbers line up; all three in
      the middle of the row's height, so the text does not sit on its top. */
   label {
-    display: flex;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: center;
     gap: calc(var(--space-unit) * 2);
     min-width: 0;
@@ -224,7 +231,7 @@
   }
 
   /* No native margins: the box starts at the column's edge, as the headings
-     do, and the picked row's floor below lines up with the text. */
+     do, and the text's column starts one gap after it. */
   label input {
     flex: none;
     align-self: center;
@@ -280,14 +287,17 @@
     white-space: nowrap;
   }
 
-  /* A picked row's floor and, for a default weight, its reason, under the
-     text, indented to it (the native box's 13 px and the row's gap). */
+  /* A picked row's floor and, for a default weight, its reason, centred
+     under the text in the text's column: the checkbox stays at the left and
+     the weight column at the right. */
   .picked {
+    grid-column: 2;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--space-unit);
-    padding: 0 0 var(--space-unit) calc(13px + var(--space-unit) * 2);
+    padding: 0 0 var(--space-unit);
+    text-align: center;
   }
 
   .floor {
@@ -308,10 +318,12 @@
     padding-top: var(--space-unit);
   }
 
+  /* Spaced as the searchable rows are. */
   .not-searchable li {
     display: flex;
     flex-wrap: wrap;
     gap: 0 calc(var(--space-unit) * 2);
+    padding: var(--space-unit) 0;
     font-size: var(--size-step);
     line-height: var(--line-step);
   }

@@ -623,8 +623,18 @@ describe('the modifier rows', () => {
     // A modifier row: padding on the scale, its text centred across the row's height as well as its width.
     expect(onScale(decl(mods, '.mod-group li', 'padding'))).toBe(true);
     expect(decl(mods, 'label', 'align-items')).toBe('center');
-    // The native box loses its default margins, so the floor under a picked row lines up with the text.
+    // The native box loses its default margins, so the text's column starts one gap after it.
     expect(decl(mods, 'label input', 'margin')).toBe('0');
+    // The not-searchable rows are spaced as the searchable ones are.
+    expect(decl(mods, '.not-searchable li', 'padding')).toBe(decl(mods, '.mod-group li', 'padding'));
+    // A picked row's floor sits centred in the text's column: the row is a three-column grid
+    // (checkbox, text, weight) the label shares, and the floor's box takes the middle one.
+    expect(decl(mods, '.mod-group li', 'grid-template-columns')).toBe('auto minmax(0, 1fr) auto');
+    expect(decl(mods, 'label', 'grid-template-columns')).toBe('subgrid');
+    expect(decl(mods, 'label', 'grid-column')).toBe('1 / -1');
+    expect(decl(mods, '.picked', 'grid-column')).toBe('2');
+    expect(decl(mods, '.picked', 'align-items')).toBe('center');
+    expect(decl(mods, '.picked', 'padding')).not.toMatch(/13px/);
     // The weight column: right-aligned tabular figures, and a row without the "default" tag keeps the tag's room
     // when the list has one, so every number ends on one right edge.
     expect(decl(mods, '.weight', 'text-align')).toBe('right');
