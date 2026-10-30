@@ -1084,6 +1084,13 @@ from the log or from poe2db, and change no signal.
 | 6 | Qimah Boons (community table) | yes | auto | measured |
 | 6 | Lythara, the Wayward Spear (community table) | yes | auto | measured |
 
+**The Crowbell** (not observed, 2026-10-30, read-only over the owner's
+`Client.txt`): no NPC or speaker line names it; the name appears only in
+asset-download lines and a chat name. Its "Find The Crowbell" step (0.2.0)
+therefore has no signal and is ticked by hand; the quest's done signal is
+still the passive points line in Hunting Grounds. The remark on first
+seeing it (`CrowbellSeenComment`) stays unattached until it is measured.
+
 ## Seeing a voiced line from outside the game
 
 Beira of the Rotten Pack's defeat is a voiced death cry with no words, and

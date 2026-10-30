@@ -33,6 +33,10 @@ GitHub release of `S-Borkowski/ExilePact2` tagged
 | `quest-tracker.exe` / `waystone-roller.exe` / `crafting-helper.exe` | The app itself, as the release workflow built it. |
 | `quest-tracker.exe.minisig` / `waystone-roller.exe.minisig` / `crafting-helper.exe.minisig` | The exe's minisign signature, as plain text: four lines, algorithm `ED` (Ed25519 over the file's BLAKE2b-512 hash), with the trusted comment `timestamp:<t>`, `file:<exe name>` and `version:<version>`, tab-separated. |
 
+Since 0.2.0 the quest tracker's build is `Quest Tracker.exe`; its release
+workflow publishes and signs it as `quest-tracker.exe`, and an update keeps
+the installed file's own name, whichever of the two it is.
+
 The other assets (`SHA256SUMS.txt`, the quest tracker's
 `quest-tracker-replay.exe`, which is not updated in the app) stay as they
 were. A release with no exe or no `.minisig` is shown as "<version> is

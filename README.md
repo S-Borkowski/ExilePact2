@@ -5,8 +5,9 @@ waystone roller and the crafting helper.
 
 ## Quest tracker
 
-`quest-tracker.exe` is a small always-on-top overlay that lists the Path of
-Exile 2 campaign quests (Acts 1 to 6, 87 quests in 0.1.3). It says which ones
+`Quest Tracker.exe` (`quest-tracker.exe` as a release download) is a small
+always-on-top overlay that lists the Path of
+Exile 2 campaign quests (Acts 1 to 6, 87 quests in 0.2.0). It says which ones
 are worth doing and why, and keeps each character's progress. It learns that
 progress from the game's `Client.txt` log. One setting is opt-in: *Read the
 screen* also reads three regions of the game's window with Windows' own OCR.
@@ -50,11 +51,12 @@ with `--locked` and `npm ci`.
 ```sh
 npm --prefix apps/quest-tracker ci            # only when apps/quest-tracker/node_modules is missing
 npm --prefix apps/quest-tracker run release   # the overlay, then the replay CLI
-# -> apps/quest-tracker/target/release/quest-tracker.exe
+# -> apps/quest-tracker/target/release/Quest Tracker.exe
 # -> apps/quest-tracker/target/release/quest-tracker-replay.exe
 ```
 
-Run `quest-tracker.exe`. `Ctrl+Alt+Q` switches between play mode, which is
+Run `Quest Tracker.exe` (a release download is `quest-tracker.exe`, the
+same program). `Ctrl+Alt+Q` switches between play mode, which is
 click-through, and edit mode. To quit, use the tray icon's *Quit Quest
 Tracker*.
 

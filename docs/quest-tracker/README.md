@@ -24,8 +24,9 @@ works" › "Hiding under game panels"); that is always on since 0.1.1.
 
 What it is:
 
-- **One window, `quest-tracker.exe`.** A Tauri app: the log tailer, parser,
-  quest engine, view-model and per-character store are Rust crates; the UI is
+- **One window, `Quest Tracker.exe`.** The build's name since 0.2.0; a
+  release download is `quest-tracker.exe`, the same program. A Tauri app:
+  the log tailer, parser, quest engine, view-model and per-character store are Rust crates; the UI is
   Svelte and TypeScript in a transparent, undecorated, always-on-top window
   that stays off the taskbar. In play mode it never takes focus from the
   game; edit mode does, so its fields take typing.
@@ -145,7 +146,7 @@ What it is not:
 - It is not an installer: there is no setup, Authenticode code signing or
   bundled WebView2 runtime. It never updates on its own: a newer version
   is installed only when you press the Settings window's install button,
-  and then it replaces only its own `quest-tracker.exe`.
+  and then it replaces only its own exe, keeping that exe's file name.
 - It makes no network request unless you ask it to check for updates (the
   tray's *Check for updates*, the Settings window's *Check now*, or
   *Automatically check for updates* turned on) or to install one, and then
@@ -156,7 +157,7 @@ What it is not:
 
 - **Windows 10 or 11, 64-bit.**
 - **The Microsoft Edge WebView2 runtime.** Windows 11 ships it, and most
-  Windows 10 machines have it through Edge. `quest-tracker.exe` does not
+  Windows 10 machines have it through Edge. The tracker does not
   bundle it; without it the window cannot start.
 - **The game in windowed or borderless windowed fullscreen.** The game
   records the display mode in `Documents\My Games\Path of Exile 2\poe2_production_Config.ini`;
@@ -197,7 +198,11 @@ exactly; build with `--locked` and `npm ci`.
 
 All commands run from the checkout root.
 
-### `quest-tracker.exe`
+### `Quest Tracker.exe`
+
+The overlay. A build makes `target/release/Quest Tracker.exe` (since 0.2.0);
+a release download is `quest-tracker.exe`, the same program, and the options
+below are the same under either name.
 
 ```text
 usage: quest-tracker [--log PATH] [--data PATH] [--from-start]
@@ -310,6 +315,10 @@ running exe to `quest-tracker.exe.old` and the download to
 exe with the same arguments. A failure or a *Cancel* deletes the download
 and leaves the running exe in place. At every start, a background thread
 removes `quest-tracker.exe.old` and a stale `quest-tracker.exe.download`.
+These names are for an exe that runs as `quest-tracker.exe`, as a release
+download does: the `.download` and `.old` files, and the swapped-in exe,
+take the running exe's own name, so a build that runs as
+`Quest Tracker.exe` gets `Quest Tracker.exe.old`.
 The whole flow, and the release key it checks against:
 [`docs/app-updates.md`](../app-updates.md).
 
@@ -578,13 +587,16 @@ Build it:
 ```sh
 npm --prefix apps/quest-tracker ci            # only when apps/quest-tracker/node_modules is missing
 npm --prefix apps/quest-tracker run release   # tauri build --no-bundle, then the replay CLI
-# -> apps/quest-tracker/target/release/quest-tracker.exe
+# -> apps/quest-tracker/target/release/Quest Tracker.exe
 # -> apps/quest-tracker/target/release/quest-tracker-replay.exe
 ```
 
 `npm run release` builds both executables: `tauri build --no-bundle` for
 the overlay, then `cargo build --release -p qt-replay --locked` for the
-replay CLI.
+replay CLI. The overlay's name comes from `mainBinaryName` in
+`src-tauri/tauri.conf.json`. The release workflow copies it to
+`quest-tracker.exe`, the asset name every installed copy's update asks for
+and the name its signature is made for.
 
 ### `quest-tracker-replay`
 
@@ -776,7 +788,7 @@ Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
 | `test` | `vitest run` over `src/*.test.ts` in jsdom. |
 | `tauri` | The Tauri CLI. |
 | `start` | `tauri dev`: the real overlay against the dev server, rebuilt on change. |
-| `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/quest-tracker.exe` and `quest-tracker-replay.exe`. |
+| `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/Quest Tracker.exe` and `quest-tracker-replay.exe`. |
 
 **Browser preview.** Outside Tauri, `npm --prefix apps/quest-tracker run dev`
 serves the UI over one of the serialised views in `fixtures/viewmodels/`,
@@ -1916,7 +1928,14 @@ its quest, step and area exist, and the data's `remarks` rows and
 **Find-it tips.** A step may carry a `"tip"`: a short "how to find it"
 hint, shown on its own line under the step in the row (when it is the step
 the row shows, a skipped row included) and under the step's text in the
-quest detail. The tips are the owner's own words; poe2db's `extract` never
+quest detail. Each tip is in our own words: either the owner's, or a
+paraphrase of a Visual Cue note in the community Path of Exile 2 leveling
+guides for Acts 1 to 3 (domistae's poe2-leveling pages,
+`https://domistae.github.io/poe2-leveling/poe2_act1_guide.html` and its
+`act2` and `act3` siblings, fetched 2026-10-30), which the data's
+`source_note` credits by URL. The guides carry no license, so no guide
+text is copied; a new tip from them is reworded until it shares no run of
+five or more words with the guide, place names aside. poe2db's `extract` never
 writes one, and the file is curated by hand, so a rebuild keeps them. To
 add one, find the quest by its `id`, then the step by its `title`, and add
 a field after `text`:
@@ -1936,9 +1955,15 @@ anything else fails validation naming the quest, the step and the field
 (`qt-engine`'s tests validate the shipped file; a `--data` file that fails
 falls back to the built-in data, as for any invalid file). The shipped
 file is compiled in, so rebuild after the edit, or pass the edited file
-with `--data` to see it at once. This version carries five: Slay the Bloated Miller, Find the Mud
-Burrow, Find Beira of the Rotten Pack, Travel to the Grelwood and Search
-the Grelwood.
+with `--data` to see it at once. In 0.2.0, 20 steps carry a tip, all in
+Acts 1 to 3: five are the owner's (Slay the Bloated Miller, Find the Mud
+Burrow, Find Beira of the Rotten Pack, Travel to the Grelwood and Return
+to the Grelwood), and 15 paraphrase the guides' Visual Cue notes. Where
+one note fits two neighbouring steps that have no signal (The Mysterious
+Shade's "Find the Grim Tangle" and "Travel to the Grim Tangle", A Crown of
+Stone's "Find a way into the Titan Grotto" and "Find and activate
+additional Ancient Seals"), both carry the same tip, so it shows whichever
+of them the ticks leave next.
 
 The data contract (every field, signal kind and reward category) is the
 validator in `apps/quest-tracker/crates/qt-engine/`.
@@ -2589,6 +2614,33 @@ Revisit this feature when:
   game: record it under "Known limitations".
 
 ## Release notes
+
+### 0.2.0
+
+- A build from source is now `Quest Tracker.exe` (in
+  `apps/quest-tracker/target/release/`). The release download is still
+  `quest-tracker.exe`, the same program; renaming it to
+  `Quest Tracker.exe` is fine. An in-app update keeps the installed file's
+  own name, whichever it is, so 0.1.x installs update to 0.2.0 as before.
+- Acts 1 to 3 gained find-it tips on 15 steps, paraphrased in our own
+  words from the Visual Cue notes of the community Path of Exile 2
+  leveling guides (domistae's poe2-leveling pages for Acts 1 to 3,
+  credited by URL in the quest data, fetched 2026-10-30). They are on The
+  Mysterious Shade, Finding the Forge, Ominous Altars, The Trail of
+  Corruption, The Crowbell, A Crown of Stone, Ascent to Power, The Well of
+  Souls and Legacy of the Vaal, and two replace earlier tips (below).
+- The Crowbell gained a "Find The Crowbell" step, with a tip, after
+  "Reach Hunting Grounds". No log line names The Crowbell, so the step is
+  ticked by hand; the quest is still done on the passive points line in
+  Hunting Grounds, and its statuses on a replay are unchanged.
+- Secrets in the Dark: the tips on "Search the Grelwood" (now: follow the
+  faintly glowing roots to the Tree of Souls) and "Find the Red Vale" (now:
+  follow the river upstream to the Red Vale entrance) were replaced.
+- The Mysterious Shade: the mushroom tip is on "Find the Grim Tangle" and
+  "Travel to the Grim Tangle", not on "Travel through the Grim Tangle".
+  The three steps share one poe2db text and none has a signal, so the tip
+  shows whichever of the first two the ticks leave next; the mushrooms
+  mark the way in, not the way through.
 
 ### 0.1.3
 
