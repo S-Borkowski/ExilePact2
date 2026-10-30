@@ -3,7 +3,7 @@
   "game_version": "4.5.3",
   "poe2db_fetched": "2026-10-25",
   "source": "https://poe2db.tw/us/Quest",
-  "source_note": "Quest data from poe2db (poe2db.tw; its wiki content is CC BY-NC-SA 3.0); quest names, step text, NPC names and reward text are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Signals were measured against one player's Client.txt (client 4.3.0 to 4.5.3).",
+  "source_note": "Quest data from poe2db (poe2db.tw; its wiki content is CC BY-NC-SA 3.0); quest names, step text, NPC names and reward text are game text by Grinding Gear Games, quoted under the owner's 2026-10-24 decision. Signals were measured against one player's Client.txt (client 4.3.0 to 4.5.3). The find-it tips added in 0.2.0 paraphrase, in our own words, the Visual Cue notes of the community Path of Exile 2 leveling guides for Acts 1 to 3 (https://domistae.github.io/poe2-leveling/poe2_act1_guide.html, https://domistae.github.io/poe2-leveling/poe2_act2_guide.html and https://domistae.github.io/poe2-leveling/poe2_act3_guide.html, fetched 2026-10-30).",
   "npcs": [
     "The Bloated Miller",
     "The Rust King",
@@ -285,7 +285,7 @@
           "id": "step-2",
           "title": "Search the Grelwood",
           "text": "Search the Grelwood for any hint of what might have happened to the Count and his men that fateful night.",
-          "tip": "Should be close to entrance.",
+          "tip": "Follow the faintly glowing roots; they all lead to the Tree of Souls.",
           "signals": [{"kind": "npc", "speaker": "Una", "area": "G1_4", "line": "What happened here...?"}, {"kind": "screen", "what": "remark", "key": "SinTreeSeenComment", "area": "G1_4"}]
         },
         {
@@ -298,7 +298,7 @@
           "id": "step-4",
           "title": "Find the Red Vale",
           "text": "To release the Hooded One, you must find the 3 runes in the Red Vale. Look for the Red Vale in the Grelwood.",
-          "tip": "Follow up river.",
+          "tip": "Follow the river upstream to reach the Red Vale entrance.",
           "signals": [{"kind": "area", "code": "G1_5"}]
         },
         {
@@ -428,12 +428,14 @@
           "id": "step-2",
           "title": "Find the Grim Tangle",
           "text": "Una has told you about the Count's Signet. She has instructed you to travel through the Grim Tangle in the Grelwood.",
+          "tip": "Mushroom clusters on the ground mark the way to the Grim Tangle.",
           "signals": []
         },
         {
           "id": "step-3",
           "title": "Travel to the Grim Tangle",
           "text": "Una has told you about the Count's Signet. She has instructed you to travel through the Grim Tangle in the Grelwood.",
+          "tip": "Mushroom clusters on the ground mark the way to the Grim Tangle.",
           "signals": []
         },
         {
@@ -464,6 +466,7 @@
           "id": "step-8",
           "title": "Search for the Count's grave past the Memorial Gate",
           "text": "To heal the Hooded One's runic wound, Una needs a ring from an ancient Count. Find his grave past the Memorial Gate.",
+          "tip": "Follow the trail of caskets to the Cemetery of the Eternals.",
           "signals": [{"kind": "area", "code": "G1_7"}]
         },
         {
@@ -518,6 +521,7 @@
           "id": "step-3",
           "title": "Find Renly's tools",
           "text": "Find Renly's tools.",
+          "tip": "Stay on the cobble road; it leads directly to the smithing house.",
           "signals": []
         },
         {
@@ -798,12 +802,14 @@
           "id": "step-1",
           "title": "Find Freythorn",
           "text": "Search for Freythorn above the Hunting Grounds, beyond the Graveyard.",
+          "tip": "Finish the small ritual here; its locust trail runs to the Freythorn entrance.",
           "signals": [{"kind": "area", "code": "G1_11"}]
         },
         {
           "id": "step-2",
           "title": "Cleanse the Ritual Altars",
           "text": "Search for Ritual Altars in Freythorn, and cleanse them.",
+          "tip": "Smoke from the big central altar reaches toward each small altar; follow it.",
           "signals": [{"kind": "area", "code": "G1_12"}]
         },
         {
@@ -852,6 +858,7 @@
           "id": "step-2",
           "title": "Find the entrance to the Village",
           "text": "Cut through the Hunting Grounds and find the entrance to Ogham Village.",
+          "tip": "A road signpost points to Ogham Farmlands; Ogham Village comes after it.",
           "signals": []
         },
         {
@@ -1297,6 +1304,13 @@
           "title": "Reach Hunting Grounds",
           "text": "",
           "signals": [{"kind": "area", "code": "G1_11"}]
+        },
+        {
+          "id": "find",
+          "title": "Find The Crowbell",
+          "text": "",
+          "tip": "Follow the blood trails from pecked livestock to The Crowbell.",
+          "signals": []
         }
       ],
       "unlock": [],
@@ -1306,7 +1320,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the passive points line in Hunting Grounds. Listed in poe2db's community table of permanent rewards, not as a quest page."
+      "notes": "Done on the passive points line in Hunting Grounds. Listed in poe2db's community table of permanent rewards, not as a quest page. \"Find The Crowbell\" has no signal because no log line names The Crowbell (checked 2026-10-30), so it is ticked by hand."
     },
     {
       "id": "candlemass",
@@ -1582,12 +1596,14 @@
           "id": "step-2",
           "title": "Find a way into the Titan Grotto",
           "text": "According to Maraketh knowledge of the Third Pact, there is some way under Valley of the Titans. Find it.",
+          "tip": "Each giant titan head has an entrance nearby; its short canyon ends at a seal.",
           "signals": []
         },
         {
           "id": "step-3",
           "title": "Find and activate additional Ancient Seals",
           "text": "Find and activate additional Ancient Seals.",
+          "tip": "Each giant titan head has an entrance nearby; its short canyon ends at a seal.",
           "signals": []
         },
         {
@@ -1840,6 +1856,7 @@
           "id": "step-4",
           "title": "Obtain another Balbala's Barya",
           "text": "Obtain another Balbala's Barya.",
+          "tip": "At the one fork, the branch hung with parchment goes to Balbala; the other is the exit.",
           "signals": []
         },
         {
@@ -1966,6 +1983,7 @@
           "id": "step-1",
           "title": "Find the source of the Abyssal fissures",
           "text": "Find the source of the Abyssal fissures.",
+          "tip": "Follow the ground cracks to the Lightless Passage.",
           "signals": [{"kind": "area", "code": "G2_5_1"}]
         },
         {
@@ -2188,6 +2206,7 @@
           "id": "step-6",
           "title": "Search for The Matlan Waterways",
           "text": "Somewhere in the region are canals that could potentially be used to lower the water and reveal the city. Find The Matlan Waterways.",
+          "tip": "Talk to the explorers at camps; they mark the next area on your minimap.",
           "signals": [{"kind": "area", "code": "G3_3"}]
         },
         {

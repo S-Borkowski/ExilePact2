@@ -30,7 +30,7 @@
     {"key": "CryptSecondBodyFound", "skip": "no-step", "why": "Finding the second body in the crypt is side content; no step ends on it."},
     {"key": "BitterGuyKillComment", "skip": "no-step", "why": "The kill of a side encounter no quest of the data has."},
     {"key": "RitualHuntingGroundComment", "skip": "no-step", "why": "Sighting a ritual altar in the Hunting Grounds; no step of Ominous Altars ends on it."},
-    {"key": "CrowbellSeenComment", "skip": "no-step", "why": "A sighting of the Crowbell; its quest has no find or fight step."},
+    {"key": "CrowbellSeenComment", "skip": "no-step", "why": "A sighting of the Crowbell, held off Find The Crowbell until a signal for it is measured (owner, 2026-10-30)."},
     {"key": "CrowbellRunningComment", "skip": "no-step", "why": "A bark while the Crowbell flees."},
     {"key": "CrowbellSlainComment", "skip": "no-step", "why": "The Crowbell's kill; its quest in the data has no fight step."},
     {"key": "CanopyVisitedComment", "skip": "log-covers", "why": "Said on entering Freythorn, which its area entry already marks."},
