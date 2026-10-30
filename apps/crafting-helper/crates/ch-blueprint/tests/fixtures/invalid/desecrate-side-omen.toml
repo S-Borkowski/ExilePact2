@@ -1,0 +1,34 @@
+# The first step is rings-resist-whittle's desecration as it was: bound to
+# the last target, with no Necromancy omen to put the desecrated modifier on
+# that target's side. The second names its side but offers the omen only as
+# its second way.
+id = "desecrate-side-omen"
+name = "Sided desecrations without their Necromancy omen"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "desecrate"
+say = "Desecrate for the last target"
+goal = "desecrate"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+
+[[step]]
+id = "block"
+say = "Desecrate a suffix to block it"
+goal = "desecrate"
+side = "suffix"
+
+[[step.action]]
+currency = "desecrate"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]

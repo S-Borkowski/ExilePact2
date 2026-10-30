@@ -17,6 +17,9 @@ claim against the game) depend on a fixed shape, which these cases pin:
 - every fact taken from the crafting guides of 2026-10-30 carries a label
   (community guide, documented or not established) and its source, and
   `## Sources` names each guide with that date (`test_guide_facts_are_labelled`).
+  The PoE2 Crafting Codex reviewed for issue #40 is one of those guides: its
+  sixteen places each carry a tag naming the codex URL (with the section's
+  anchor), and `## Sources` lists the bare URL.
 
 Each check is a small function over the doc's text, and each keeps a negative
 control beside it: a synthetic doc the function must refuse, so a check that
@@ -109,6 +112,9 @@ GUIDE_DATE = "2026-10-30"
 MOBALYTICS = "https://mobalytics.gg/poe-2/guides/"
 MAXROLL_HOW_TO = "https://maxroll.gg/poe2/resources/how-to-craft-in-path-of-exile-2"
 PATCH_NOTES_050 = "https://www.pathofexile.com/forum/view-thread/3932540"
+# The community PoE2 Crafting Codex, reviewed for issue #40; each tag adds the
+# section's anchor (`...codex.html#tiers`) after this URL.
+CODEX = "https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html"
 GUIDE_URLS = [MOBALYTICS + slug for slug in (
     "ssf-crafting",
     "lightning-arrow-crafting",
@@ -119,7 +125,7 @@ GUIDE_URLS = [MOBALYTICS + slug for slug in (
     "crafting-basics-part-1",
     "essences",
     "0-3-crafting-changes",
-)] + [MAXROLL_HOW_TO]
+)] + [MAXROLL_HOW_TO, CODEX]
 
 # A guide fact is tagged in place: "(label: <label>; <source URL>, ... 2026-10-30)".
 LABEL_TAG = re.compile(
@@ -150,6 +156,24 @@ LABELLED_PLACES = [
     ((GUIDE_SECTION, "- **Restart a weak magic start"), MOBALYTICS),
     ((GUIDE_SECTION, "- **Item-level breakpoints"), MOBALYTICS),
     ((GUIDE_SECTION, "- **Alchemy and the reforge fallback"), MOBALYTICS),
+    # The codex's facts (issue #40), one place each; a place that already
+    # carries a Mobalytics tag above gains a second, codex tag.
+    (("Item basics", "- **Modifier groups"), CODEX),
+    (("Greater and Perfect currency", "Greater Orb of Transmutation"), CODEX),
+    (("Greater and Perfect currency", "Greater Orb of Augmentation"), CODEX),
+    (("Currency", "Fracturing Orb"), CODEX),
+    (("Essences", "Perfect Essence"), CODEX),
+    (("Essences", "Essence of the Abyss"), CODEX),
+    (("Omens", "Omen of Sanctification"), CODEX),
+    (("Omens", "Omen of Catalysing Exaltation"), CODEX),
+    (("Omens", "Omen of Recombination"), CODEX),
+    (("Omens", "Omen of the Sovereign"), CODEX),
+    (("Catalysts", None), CODEX),
+    (("Alloys", None), CODEX),
+    (("Fluxes", None), CODEX),
+    (("Desecration", None), CODEX),
+    (("Out of scope", "- **Corruption, Vaal Orb included"), CODEX),
+    ((GUIDE_SECTION, "- **Item-level breakpoints"), CODEX),
 ]
 
 
@@ -418,8 +442,15 @@ class MechanicsDoc(unittest.TestCase):
                          (MOBALYTICS, "https://example.invalid/")):
             broken = self.text.replace(fracture, fracture.replace(old, new))
             self.assertTrue(guide_label_problems(broken), old)
+        # A codex fact whose tag names another page instead of the codex.
+        sanctify = place_text(self.text, "Omens", "Omen of Sanctification")
+        self.assertIn(CODEX + "#", sanctify)
+        self.assertTrue(guide_label_problems(self.text.replace(
+            sanctify, sanctify.replace(CODEX, "https://example.invalid/codex.html"))))
         # A guide listed under ## Sources without the date, or not at all.
         sources = section(self.text, "Sources")
+        self.assertTrue(guide_label_problems(self.text.replace(
+            sources, sources.replace(CODEX, "https://domistae.github.io/"))))
         self.assertTrue(guide_label_problems(self.text.replace(
             sources, sources.replace(GUIDE_DATE, "2026-10-28"))))
         self.assertTrue(guide_label_problems(self.text.replace(

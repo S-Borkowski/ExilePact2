@@ -1,6 +1,6 @@
 {
   "spec": "docs/models/crafting-slots-spec.md",
-  "about": "The contract between the slot model (tools/crafting_helper/slot_model.py) and the engine's parity test (tests/slots.rs). Each case is an abstract item, its ordered targets and what each v2 blueprint must preview on it, as the model computes it from the spec. A modifier's alias is the engine table's key; 'junk' is a modifier that is not a target; a level is the modifier level. A step is goal, resolved side (null when the step has none), currency as written and omens resolved in the order the action lists them; a removal also says whether it is certain to take a non-target. A rejection is its kind as the engine serialises it. 'desecration_pool', when present, names the sides on which the class has a desecrated modifier at the item's level (absent: both). Never edit an expectation to match the engine: a difference is settled by the spec.",
+  "about": "The contract between the slot model (tools/crafting_helper/slot_model.py) and the engine's parity test (tests/slots.rs). Each case is an abstract item, its ordered targets and what each v2 blueprint must preview on it, as the model computes it from the spec. A modifier's alias is the engine table's key; 'junk' is a modifier that is not a target; a level is the modifier level. A step is goal, resolved side (null when the step has none), currency as written and omens resolved in the order the action lists them; a removal also says whether it is certain to take a non-target. A rejection is its kind as the engine serialises it. 'desecration_pool', when present, names the sides on which the class has a desecrated modifier at the item's level (absent: both). A desecrated-pool target's 'lord' (ulaman, amanamu or kurgal) is the lord every tier of the real modifier the engine's table puts behind its alias names, for the lord-omen rule. Never edit an expectation to match the engine: a difference is settled by the spec.",
   "cases": [
     {
       "id": "rare-2p1s-prefix-missing",
@@ -150,7 +150,7 @@
         {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48}
       ],
       "targets": [
-        {"alias": "p1", "side": "prefix", "pool": "desecrated", "essence": null},
+        {"alias": "p1", "side": "prefix", "pool": "desecrated", "essence": null, "lord": "ulaman"},
         {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "p3", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
@@ -230,6 +230,48 @@
       }
     },
     {
+      "id": "rare-wrong-reveal-same-side-exalt",
+      "about": "A rare after a wrong reveal with a free slot on its side: its prefixes are a target and a revealed desecrated junk, its one suffix a target; a second prefix target missing. Omen of Light waits while a prefix exalt can still place it, so the junk stays through the exalt (spec, 'A wrong reveal waits for the same-side exalt').",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "junk-d1", "role": "junk", "fractured": false, "desecrated": true, "unrevealed": false, "level": 65}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "p2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "fill", "side": "suffix", "currency": "exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
       "id": "magic-two-good",
       "about": "A magic item with a target prefix and a target suffix; missing a prefix an essence adds, a desecrated-pool prefix and two more suffixes.",
       "class": "Amulets",
@@ -243,7 +285,7 @@
       "targets": [
         {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "p2", "side": "prefix", "pool": "base", "essence": "lesser-essence-of-the-body"},
-        {"alias": "p3", "side": "prefix", "pool": "desecrated", "essence": null},
+        {"alias": "p3", "side": "prefix", "pool": "desecrated", "essence": null, "lord": "amanamu"},
         {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
         {"alias": "s2", "side": "suffix", "pool": "base", "essence": null},
         {"alias": "s3", "side": "suffix", "pool": "base", "essence": null}
@@ -256,7 +298,7 @@
           "complete": true,
           "steps": [
             {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
-            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy", "omen-of-the-liege"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
             {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]}
           ]
@@ -266,7 +308,7 @@
           "steps": [
             {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
             {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
-            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
+            {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy", "omen-of-the-liege"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
           ]
         },
@@ -602,7 +644,7 @@
         {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
-        {"alias": "s2", "side": "suffix", "pool": "desecrated", "essence": null}
+        {"alias": "s2", "side": "suffix", "pool": "desecrated", "essence": null, "lord": "ulaman"}
       ],
       "blocked": [],
       "hardest": "s2",
@@ -652,7 +694,7 @@
         {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
         {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
-        {"alias": "s2", "side": "suffix", "pool": "desecrated", "essence": null}
+        {"alias": "s2", "side": "suffix", "pool": "desecrated", "essence": null, "lord": "ulaman"}
       ],
       "blocked": [],
       "hardest": "s2",

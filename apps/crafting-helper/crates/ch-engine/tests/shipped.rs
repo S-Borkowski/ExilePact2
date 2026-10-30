@@ -1,6 +1,7 @@
 //! The blueprints embedded from `apps/crafting-helper/blueprints/`: exactly
-//! the eight seeds still shipped, the four state-ordered v2 blueprints and
-//! the four from the maxroll and Mobalytics guides (issue #35;
+//! the eight seeds still shipped, the four state-ordered v2 blueprints, the
+//! four from the maxroll and Mobalytics guides and, since 0.2.0, the
+//! owner's `fractured-essence-swap` (issue #35;
 //! `fill-desecrate-exalt` is retired: its file is a test blueprint under
 //! `tests/items/gear/fill-desecrate-exalt/`; `weapons-alloy-budget` is
 //! retired outright, its two alloys being two crafted modifiers where 0.5
@@ -8,14 +9,15 @@
 //! structural check (`ch-blueprint`) and the data-backed one (`ch-engine`),
 //! and together loading as the shipped engine. The walks of each seed are
 //! in `seeds_gear.rs` and `seeds_jewels_weapons.rs`, the v2 ones' in
-//! `seeds_v2.rs`, the guide ones' in `seeds_guides.rs`, and the v2 ones'
-//! parity with the slot model in `slots.rs`.
+//! `seeds_v2.rs`, the guide ones' in `seeds_guides.rs`, the essence swap's
+//! in `essence_swap.rs`, and the v2 ones' parity with the slot model in
+//! `slots.rs`.
 
 use ch_engine::{resolve, Engine};
 
 /// The shipped blueprint ids, sorted (the embedded list is in file-name
 /// order).
-const SEEDS: [&str; 16] = [
+const SEEDS: [&str; 18] = [
     "amulets-resist-spirit",
     "body-armours-single-prefix",
     "boots-runic-ward",
@@ -23,8 +25,10 @@ const SEEDS: [&str; 16] = [
     "close-a-side",
     "essence-desecrate-double-slam",
     "fracture-first",
+    "fractured-essence-swap",
     "full-rare-desecration-rescue",
     "gloves-crit-melee",
+    "jewellery-catalyst-exalt",
     "jewels-three-one-side",
     "magic-augment-essence",
     "rare-clean-then-slam",

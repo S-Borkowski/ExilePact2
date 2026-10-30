@@ -1,0 +1,82 @@
+# Rings and amulets: catalysts before the exalt, then a slam with Omen of
+# Catalysing Exaltation on the hardest target's side. Paraphrased from the
+# domistae PoE2 Crafting Codex (its catalyst section, its workflow note and
+# its fourth trick); see docs/crafting-helper/blueprints.md § "The seed
+# blueprints".
+id = "jewellery-catalyst-exalt"
+name = "Rings and amulets: catalyst-biased exalt"
+classes = ["Amulets", "Rings"]
+source = "the domistae PoE2 Crafting Codex, the catalyst-biased exalt (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tricks), fetched 2026-10-30"
+notes = """
+Catalyst quality favours modifiers of the catalyst's kind, and Omen of \
+Catalysing Exaltation spends that quality on the next Exalted Orb, so the \
+catalysts come before every slam. The helper cannot read quality or a \
+modifier's kind: the catalyst step is manual, and the odds shown are the \
+plain slam's (the favour is not counted). The route aims at the hardest \
+missing target and ends when it lands; plan again for the next one. It \
+starts from a rare with no modifier that is not a target, so a missed slam \
+leaves the one unwanted modifier on the slam's side, and the annulment \
+on that side takes it. That Catalysing and a side Exaltation omen both \
+apply to one exalt is not established (catalysing-with-side-omen)."""
+relies_on = ["catalysing-with-side-omen", "omens-active-before-use"]
+
+[[start]]
+rarity = ["rare"]
+unwanted_at_most = 0
+blocked_side = false
+
+# Manual: the catalysts of the kind the target is, up to the quality cap.
+# Left out once no target remains.
+[[step]]
+id = "catalyst"
+say = "Catalysts of the kind the target is, up to the quality cap"
+goal = "manual"
+bind = "any-remaining"
+when = "bound"
+
+# Each alternative carries the target side's Exaltation omen; the third,
+# taken when Catalysing is blocked, slams without the catalyst's favour.
+[[step]]
+id = "slam"
+say = "Exalt on the hardest target's side with Catalysing Exaltation and its side's Exaltation omen"
+goal = "add-wanted"
+bind = "hardest"
+when = "bound"
+on_hit = "done"
+on_miss = "next"
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["omen-of-catalysing-exaltation", "side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-catalysing-exaltation", "side-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["side-omen"]
+
+# Reached only from a missed slam: the missed modifier is the one unwanted
+# modifier, on the slam's side, so only that side's step is not skipped.
+[[step]]
+id = "annul-prefix"
+say = "Annul the missed prefix (Sinistral Annulment), then catalysts again"
+goal = "remove-unwanted"
+side = "prefix"
+on_hit = "goto:catalyst"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step]]
+id = "annul-suffix"
+say = "Annul the missed suffix (Dextral Annulment), then catalysts again"
+goal = "remove-unwanted"
+side = "suffix"
+on_hit = "goto:catalyst"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]

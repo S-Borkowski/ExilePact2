@@ -23,9 +23,10 @@ What is here:
   not-established facts it relies on, the last-target desecration's steps
   among them, bound to `last-remaining` (made afresh on every item) and
   held to the case's `desecration_pool`;
-- the next-step rules (certain removals first among them), the side
-  rules, the `greater-omen` and `side-omen`
-  placeholders, the removal rules and the projection (`plan`), with the
+- the next-step rules (certain removals first and Omen of Light waiting
+  for a same-side exalt among them), the side
+  rules, the `greater-omen`, `side-omen` and `lord-omen`
+  placeholders (a target's lord read from the case), the removal rules and the projection (`plan`), with the
   rejections in the spec's order;
 - a reader for a listed blueprint, for the baselines only
   (`listed_first_step`);
@@ -92,6 +93,19 @@ SIDE_OMENS = {
     "desecrate": {PREFIX: "omen-of-sinistral-necromancy", SUFFIX: "omen-of-dextral-necromancy"},
 }
 REMOVALS = ("remove-unwanted", "remove-desecrated")
+# A desecrated modifier's lord to the omen that guarantees one of its
+# modifiers (spec § "`lord-omen`").
+LORD_OMENS = {
+    "ulaman": "omen-of-the-sovereign",
+    "amanamu": "omen-of-the-liege",
+    "kurgal": "omen-of-the-blackblooded",
+}
+# The classes a lord's omen works on (`lord-omen-classes`): the jawbone
+# classes but Quivers, and Amulets and Rings.
+LORD_CLASSES = (
+    "Wands", "One Hand Maces", "Sceptres", "Spears", "Bows", "Staves",
+    "Two Hand Maces", "Quarterstaves", "Crossbows", "Talismans", "Amulets", "Rings",
+)
 
 # Every equipment class `fill-desecrate-exalt` names; jewels have no spawn
 # weights and no v2 blueprint names them.
@@ -177,6 +191,9 @@ class Target:
     side: str
     pool: str  # "base" or "desecrated"
     essence: str | None
+    # A desecrated-pool target's lord (a key of LORD_OMENS), when every tier
+    # of its modifier names the same one; None otherwise.
+    lord: str | None = None
 
 
 @dataclass
@@ -213,12 +230,14 @@ def case_from_dict(d):
     if d["rarity"] not in CAPS:
         raise ValueError(f"case {d['id']!r}: rarity {d['rarity']!r}")
     targets = tuple(
-        Target(t["alias"], t["side"], t.get("pool", "base"), t.get("essence"))
+        Target(t["alias"], t["side"], t.get("pool", "base"), t.get("essence"), t.get("lord"))
         for t in d["targets"]
     )
     for t in targets:
         if t.side not in SIDES or t.pool not in ("base", "desecrated"):
             raise ValueError(f"case {d['id']!r}: target {t}")
+        if t.lord is not None and (t.pool != "desecrated" or t.lord not in LORD_OMENS):
+            raise ValueError(f"case {d['id']!r}: target {t.alias!r} has lord {t.lord!r}")
     pool = frozenset(d.get("desecration_pool", SIDES))
     if not pool <= set(SIDES):
         raise ValueError(f"case {d['id']!r}: desecration_pool {sorted(pool)}")
@@ -251,11 +270,12 @@ class State:
     bindings: dict = field(default_factory=dict)
     fillers: int = 0
     desecration_pool: frozenset = frozenset(SIDES)
+    cls: str = ""
 
     @classmethod
     def from_case(cls, case):
         return cls(copy.deepcopy(case.item), case.targets, case.blocked, case.hardest,
-                   desecration_pool=case.desecration_pool)
+                   desecration_pool=case.desecration_pool, cls=case.cls)
 
 
 def present(state):
@@ -438,10 +458,12 @@ LIGHT_LAST = Step("light-last", "remove-desecrated", bind="last-remaining", when
                   actions=(Action(ANNUL, (LIGHT,)),))
 DESECRATE_LAST = Step("desecrate-last", "desecrate", side="target", bind="last-remaining",
                       when="bound", guard=(("rarity", ("rare",)),),
-                      actions=(Action(DESECRATE, ("side-omen",)),))
+                      actions=(Action(DESECRATE, ("side-omen", "lord-omen")),))
 
 ALL_GREATER = ("greater-with-side-omen", "greater-needs-two-free",
                "whittling-mod-level", "fractured-not-removed")
+# Every v2 blueprint's desecration carries `lord-omen` (spec § "`lord-omen`").
+LORD_FACTS = ("lord-with-side-omen", "lord-omen-classes")
 
 BLUEPRINTS = {
     "close-a-side": Blueprint(
@@ -461,7 +483,7 @@ BLUEPRINTS = {
                  actions=_grades(PERFECT_FIRST, ("greater-omen",))),
             SIDE_SLAM,
         ],
-        relies_on=ALL_GREATER + ("open-side-landing", "omens-active-before-use"),
+        relies_on=ALL_GREATER + LORD_FACTS + ("open-side-landing", "omens-active-before-use"),
     ),
     "essence-desecrate-double-slam": Blueprint(
         id="essence-desecrate-double-slam",
@@ -476,11 +498,12 @@ BLUEPRINTS = {
                  actions=(Action(ANNUL, (LIGHT,)),)),
             REMOVE,
             Step("desecrate", "desecrate", side="target", bind="hardest", when="bound",
-                 actions=(Action(DESECRATE, ("side-omen",)), Action(DESECRATE))),
+                 actions=(Action(DESECRATE, ("side-omen", "lord-omen")),
+                          Action(DESECRATE, ("lord-omen",)))),
             DESECRATE_LAST,
             SIDE_SLAM,
         ],
-        relies_on=ALL_GREATER + ("omens-active-before-use", "necromancy-without-pool"),
+        relies_on=ALL_GREATER + LORD_FACTS + ("omens-active-before-use", "necromancy-without-pool"),
     ),
     "magic-augment-essence": Blueprint(
         id="magic-augment-essence",
@@ -502,14 +525,14 @@ BLUEPRINTS = {
             DESECRATE_LAST,
             SIDE_SLAM,
         ],
-        relies_on=ALL_GREATER + ("open-side-landing", "omens-active-before-use"),
+        relies_on=ALL_GREATER + LORD_FACTS + ("open-side-landing", "omens-active-before-use"),
     ),
     "rare-clean-then-slam": Blueprint(
         id="rare-clean-then-slam",
         classes=EQUIPMENT_CLASSES,
         starts=[{"rarity": ("rare",)}],
         steps=[REVEAL_LAST, LIGHT_LAST, REMOVE, DESECRATE_LAST, SIDE_SLAM],
-        relies_on=ALL_GREATER + ("omens-active-before-use",),
+        relies_on=ALL_GREATER + LORD_FACTS + ("omens-active-before-use",),
     ),
 }
 
@@ -677,9 +700,30 @@ def resolve_omens(state, step, side, action, acc):
                 raise ValueError("greater-omen is allowed on an Exalted Orb only")
             if greater_fits(state, step, side, acc):
                 out.append(GREATER)
+        elif o == "lord-omen":
+            if k != "desecrate":
+                raise ValueError("lord-omen is allowed on a desecration only")
+            lord = lord_omen(state, step)
+            if lord is not None:
+                out.append(lord)
         else:
             out.append(o)
     return out
+
+
+def lord_omen(state, step):
+    """What `lord-omen` resolves to on this step (spec § "`lord-omen`"): the
+    lord omen of its bound target when that target is from the desecrated
+    pool with one lord, the class is a lord class and the omen is not
+    blocked; else None (nothing, no fallback)."""
+    bound = state.bindings.get(step.bind) if step.bind else None
+    if bound is None or state.cls not in LORD_CLASSES:
+        return None
+    t = target_by_alias(state, bound)
+    if t.pool != "desecrated" or t.lord is None:
+        return None
+    omen = LORD_OMENS[t.lord]
+    return None if omen in state.blocked else omen
 
 
 def fit(state, step, side, index, acc):
@@ -803,15 +847,48 @@ def certain_removal(state, choice):
     return choice.step.goal in REMOVALS and removal_certain(state, choice)
 
 
+def light_waits(state, bp, step, acc):
+    """The add-wanted step a `remove-desecrated` step guarded by
+    `desecrated_unwanted = true` waits for, or None (spec § "A wrong reveal
+    waits for the same-side exalt"): one that is a candidate on the side of
+    a revealed desecrated non-target, with a free slot there (a step without
+    `side`: one that can place a missing target there)."""
+    if step.goal != "remove-desecrated" or ("desecrated_unwanted", True) not in step.guard:
+        return None
+    sides = {s for s, m in state.item.placed()
+             if m.desecrated and not m.unrevealed and not m.is_target}
+    open_sides = {s for s in sides if acc[s].free > 0}
+    if not open_sides:
+        return None
+    for add in bp.steps:
+        if add.goal != "add-wanted":
+            continue
+        got = evaluate(state, add, acc)
+        if not isinstance(got, Choice):
+            continue
+        if got.side is not None:
+            if got.side in open_sides:
+                return add
+        elif any(t.side in open_sides for t in placeable(state, add)):
+            return add
+    return None
+
+
 def next_step(state, bp, acc):
-    """The next step (spec §§ "Candidates and the next step" and "Certain
-    removals first"): the first candidate in file order, unless it is not a
-    certain removal and a later candidate is a `remove-unwanted` step whose
-    chosen alternative is certain; then the first such later one."""
+    """The next step (spec §§ "Candidates and the next step", "Certain
+    removals first" and "A wrong reveal waits for the same-side exalt"): the
+    first candidate in file order, unless it is not a certain removal and a
+    later candidate is a `remove-unwanted` step whose chosen alternative is
+    certain; then the first such later one. A Light step that waits is not
+    a candidate."""
     reasons = {}
     first = None
     for step in bp.steps:
         got = evaluate(state, step, acc)
+        if isinstance(got, Choice):
+            add = light_waits(state, bp, step, acc)
+            if add is not None:
+                got = f"waits for {add.id}, an add on the revealed desecrated modifier's side"
         if not isinstance(got, Choice):
             reasons[step.id] = got
             continue
@@ -990,6 +1067,12 @@ def omen_problems(pstep):
     if (k == "desecrate" and side is not None and SIDE_OMENS["desecrate"][side] not in omens
             and SIDE_OMENS["desecrate"][side] not in pstep.before.blocked):
         problems.append(f"a {side} desecration without its Necromancy omen")
+    lords = [o for o in omens if o in LORD_OMENS.values()]
+    # every v2 desecration carries `lord-omen`, the plain bone taken when
+    # the Necromancy omen is blocked included
+    want = lord_omen(pstep.before, pstep.step) if k == "desecrate" else None
+    if lords != ([want] if want else []):
+        problems.append(f"lord omens {lords}, the bound target asks {want or 'none'}")
     if k == "reveal" and ECHOES not in omens and ECHOES not in pstep.before.blocked:
         problems.append("a reveal without Omen of Abyssal Echoes")
     return problems

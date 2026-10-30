@@ -26,7 +26,12 @@ the targets and the whittling route chosen:
   orbs and `odds unknown: …` for the desecration and the reveal. Each step
   line carries the target modifiers a hit of it may place (`targets`) and
   an instruction composed from its data (the currency, its omens, the side
-  and those modifiers); the route carries no blueprint notes.
+  and those modifiers); the route carries no blueprint notes. The
+  whittle's desecration names Omen of Dextral Necromancy (all three
+  targets are suffixes; 0.2.0). The preview's `routes` lists every
+  applicable route with its `number` in the engine's order, and the
+  whittling route chosen is `route_number` 2, where it stands, not first;
+  `other_routes` is the same list without it, numbered the same.
 - `craft-fallback`: as planning, with the Omen of Whittling blocked for
   this craft, so the whittle step falls back to a Perfect Exalted Orb and
   says why.
@@ -64,7 +69,11 @@ chosen:
   views (`craft-planning`, `craft-fallback`, `craft-no-route`) choose three
   suffixes, so their other suffix choices carry `Suffixes full: 0 on the
   item + 3 chosen = 3 of 3`; in `craft-prefilled` no side is full and every
-  `disabled` is `null`.
+  `disabled` is `null`. Its route is the one the engine previews first,
+  not `close-a-side`: since 0.2.0 `fractured-essence-swap` plans on the
+  belt too (its desecration and reveal; no swap, the belt has no
+  fractured modifier) and takes route number 1, so in
+  `craft-last-desecration` `close-a-side` is `route_number` 2.
 
 - `craft-close-side`: planning on the belt with Omen of Sinistral
   Necromancy blocked for the craft (its `blocked` list), so the last
@@ -80,9 +89,10 @@ chosen:
   no web address.
 - `craft-last-desecration`: the same planning with nothing blocked:
   Armour is the last target missing on a rare with no desecrated
-  modifier, so the route desecrates for it (issue #32): `Preserved
-  Collarbone with Omen of Sinistral Necromancy on the prefix side for +#
-  to Armour`, then the reveal with Omen of Abyssal Echoes, both with
+  modifier, so the route desecrates for it (issue #32): `Use Omen of
+  Sinistral Necromancy, then apply the Preserved Collarbone; the
+  desecrated modifier will be a prefix, for +# to Armour` (the wording
+  since 0.2.0), then the reveal with Omen of Abyssal Echoes, both with
   `odds unknown: …` and no Fallback line.
 - `craft-miss-clean`: the same craft started, the suffix side closed (a
   hit) and the slam on the prefix side missed (Flask Life Recovery): on
@@ -94,6 +104,42 @@ chosen:
   whittle over by its own rule). Both branch lines say the next step is
   picked from the item (no route's start fits the full belt, and a step
   missed).
+
+Two craft states use the magic Heavy Belt of `ch-engine`'s relaxation
+tests (`crates/ch-engine/tests/items/relax/belt-magic-life.txt`,
+constructed: maximum Life T2, no suffix), with Fire, Cold and Lightning
+Resistance as the targets:
+
+- `craft-relaxation`: all three at T2: no route, and the preview's
+  `relaxation` proposes lowering fire to T3, the tier Greater Essence of
+  Insulation adds.
+- `craft-blocker`: the relaxation accepted (fire at T3) and
+  `essence-desecrate-double-slam` chosen: the essence, the suffix
+  desecration for cold, its reveal, then a Perfect Exalted Orb on the
+  suffix side. The reveal's line alone carries `blocker`: if cold is not
+  offered, take `+# to Strength and Dexterity` or `+# to Strength and
+  Intelligence`, which keep the ordinary `+# to Strength` out of the
+  exalt's pool, and that exalt's chance of a target before and after.
+  Every other step line of every view carries `blocker: null`.
+
+One craft state uses the essence swap ring
+(`crates/ch-app/tests/items/ring-essence-swap.txt`, constructed, copied
+from `ch-engine`'s `tests/items/essence-swap/`): a rare Amethyst Ring at
+item level 76 whose suffix side is full with a fractured Fire Resistance,
+an unrevealed desecrated suffix and Dexterity, with maximum Mana T5,
+Mana Regeneration Rate T2 and the desecrated Cold and Chaos Resistances
+as the targets (0.2.0):
+
+- `craft-essence-swap`: `fractured-essence-swap` chosen: the essence
+  step's instruction names what Essence of Hysteria removes and what
+  stays (`…; it removes the unrevealed desecrated suffix or +10(9-12) to
+  Dexterity, one at random; +23(21-25)% to Fire Resistance is fractured
+  and stays`), and its `survival` the unrevealed suffix's chance of
+  surviving the swap (1 in 2), the reveal if it stays, and if it goes the
+  annulment with Omen of Dextral Annulment, its chance of sparing the
+  essence's modifier and the re-plan if it does not. Then the reveal of
+  the desecrated target. Every other step line of every view carries
+  `survival: null`.
 
 Every guiding view carries the overlay's content (`overlay.guide`: the
 current step, both branch lines, the last outcome and the screen watch's

@@ -20,6 +20,10 @@ three labels: **community guide** (only a guide says it), **documented**
 settles it, or it is inferred). A tag is an addition to an entry; its
 `Source:` line stays. In `docs/models/crafting-slots-spec.md` a
 community-guide fact is labelled not established, per that spec's own table.
+The facts taken from the community *PoE2 Crafting Codex* for issue #40 are
+tagged the same way, each naming the codex section it came from by its
+anchor; where the codex disagrees with what is recorded here, the
+disagreement is noted beside the fact and the recorded value stays.
 
 `## Crafting patterns seen` paraphrases the crafting routes in the owner's
 Discord paste. They seed the M4 blueprints; they are players' routes, not
@@ -28,7 +32,8 @@ entry above that describes it.
 
 `tests/test_crafting_helper_mechanics_doc.py` pins this doc's shape: its
 sections, the terms a blueprint can name, a source on every entry, the
-fourteen posts and the wiki gap.
+fourteen posts, the wiki gap, and a label tag at each place a guide's or the
+codex's fact stands.
 
 ## Sources
 
@@ -109,6 +114,22 @@ Fetched 2026-10-30, to settle two questions the guides raised:
   `https://poe2db.tw/us/Essence`: Essence of the Abyss is a corrupted
   essence, and the Crystallisation omens name Perfect or corrupted essences.
 
+Read 2026-10-30, for issue #40's review of the codex (one page, seventeen
+anchored sections; the review's verdict per section is in
+[the research doc](crafting-helper-research.md#crafting-codex-review-issue-40)):
+
+- `https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html`, read
+  2026-10-30: a community summary that says it covers patch 0.5.5 and calls
+  itself a quick reference rather than ground truth. Taken from it: modifier
+  groups, the 0.5 Greater orb levels, Sanctification's effect, the size of
+  Catalysing Exaltation's favour, the 0.5 catalyst sources and caps, a
+  Divine Orb leaving a fractured modifier, the Abyss mark's replacement, the
+  0.5 removal of Omen of Recombination, lord omens stacked on a Necromancy
+  omen, Runic Ward enchants and the crafted slot, the flux count, Instant
+  Leech desecrations, the 0.5 Vaal infusers, the item-level breakpoints and
+  a source for the dropped league pools. Each is a short fact in our own
+  words; nothing of the page is stored.
+
 The other pages of the owner's paste (waystones, Vaal and corruption, gems,
 runes, minion gear, league start, essence farming and the Homogenising
 crafts) were not used: they are out of the helper's scope.
@@ -137,6 +158,17 @@ currency's own description, that currency's entry carries the source.
   (poe2db gives a Magic item two modifiers; maxroll's crafting overview gives
   the per-side split; both fetched 2026-10-29). The liquid emotions that
   grant "+1 prefix/suffix modifier allowed" are the way past those limits.
+- **Modifier groups.** An item holds at most one modifier of each group
+  (the data files' `family`), and an essence whose group is already on the
+  item fails without being used up (label: community guide;
+  https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#anatomy,
+  read 2026-10-30). The helper's route engine already refuses such an
+  essence. The codex's rule of thumb that skill-level modifiers are prefixes
+  disagrees with the data, which lists `+# to Level of all Lightning Spell
+  Skills` on wands and staves, and Perfect Essence of Battle's `+# to Level
+  of all Attack Skills` on every class it takes, as suffixes; the data's side
+  is kept (label: documented; poe2db's class pages, fetched 2026-10-28,
+  against the codex read 2026-10-30).
 - **Bases that change the limits.** Some ring and amulet bases carry an
   implicit that allows one more or one fewer prefix or suffix. In the
   helper's shipped data (poe2db's base rows,
@@ -276,7 +308,7 @@ Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 Rerolls the numbers within their ranges on an item's modifiers, leaving which
 modifiers it has alone. Omen of the Blessed limits it to implicit modifiers.
 Whether fractured or desecrated modifiers are rerolled too is not stated (see
-Gaps).
+Gaps); the codex says a fractured one is left as it is (see Fracturing Orb).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -297,6 +329,15 @@ https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting, read
 modifiers of which one is excellent, and build the rest of the item around
 the locked one (label: community guide;
 https://mobalytics.gg/poe-2/guides/fracturing-orbs, read 2026-10-30).
+
+A Divine Orb does not change a fractured modifier's values either (label:
+community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#fracture,
+read 2026-10-30). The codex's isolation trick fractures more than once on
+the same item; whether an item can hold two fractured modifiers is not
+established, and the helper's routes fracture once (label: not established;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tricks,
+read 2026-10-30).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -384,6 +425,10 @@ guide gives 55 for the Greater Transmutation and Augmentation orbs; the
 helper keeps poe2db's 44 and records the disagreement (label: documented;
 44 from poe2db, 55 from the community guide
 https://mobalytics.gg/poe-2/guides/0-3-crafting-changes, read 2026-10-30).
+The codex explains the gap: it gives 44 since 0.5 and 55 before, so the
+other guide's 55 is the older value (label: community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tiers,
+read 2026-10-30).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -399,6 +444,10 @@ The Orb of Augmentation effect with a Minimum Modifier Level of 44. The same
 guide gives 55 here too; the helper keeps poe2db's 44 (label: documented; 44
 from poe2db, 55 from the community guide
 https://mobalytics.gg/poe-2/guides/0-3-crafting-changes, read 2026-10-30).
+The codex gives 44 since 0.5 and 55 before it, as for Transmutation
+(label: community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tiers,
+read 2026-10-30).
 
 Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
@@ -515,6 +564,20 @@ room (label: community guide; https://mobalytics.gg/poe-2/guides/essences,
 read 2026-10-30; not established in the slot spec, which labels every
 community-guide fact so).
 
+The codex adds that a Crystallisation omen for the other side cannot make
+room on a full side: the essence still needs room on its own side, so the
+three-and-three cap holds (label: community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#caveats,
+read 2026-10-30). The helper's essence-swap rule already refuses a swap with
+no room for the essence's modifier. Its 0.5 values for Perfect Essence of
+Battle (+3 on two-handed melee weapons and crossbows, +2 on one-handed
+weapons and bows) agree with the data, but it calls that modifier a prefix,
+where the data lists `+# to Level of all Attack Skills` as a suffix; the
+data's side is kept (label: documented; poe2db's essence rows, fetched
+2026-10-28, against the codex
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#essences,
+read 2026-10-30).
+
 Source: https://poe2db.tw/us/Essence, fetched 2026-10-28;
 https://www.pathofexile.com/forum/view-thread/3932540, fetched 2026-10-29
 
@@ -569,6 +632,16 @@ of desecrated modifiers likelier to offer a high tier; nothing confirms it
 (label: not established; the community guide
 https://mobalytics.gg/poe-2/guides/essences, read 2026-10-30).
 
+The mark does not stay: the next desecration's desecrated modifier takes
+its place (label: community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#essences,
+read 2026-10-30). The codex repeats the higher-tier claim, so it now has
+two guides behind it and still nothing that confirms it (label: not
+established; the community guides
+https://mobalytics.gg/poe-2/guides/essences and
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#essences,
+read 2026-10-30).
+
 Source: https://poe2db.tw/us/Essence, fetched 2026-10-28;
 https://poe2db.tw/us/Essence_of_the_Abyss and https://poe2db.tw/us/Essence,
 fetched 2026-10-30
@@ -595,7 +668,16 @@ and every jewel one level 1.
 
 Each bone desecrates one item group, in three grades: Gnawed (only on items
 up to item level 64), Preserved (no limit) and Ancient (Minimum Modifier
-Level 40).
+Level 40). The codex gives the Gnawed limit as a modifier level of 64 in
+one section and an item level of 64 in another; the helper keeps poe2db's
+item level (label: documented; poe2db, fetched 2026-10-28, against the
+codex https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#breakpoints
+and its #abyss section, read 2026-10-30).
+
+Since 0.5 the Instant Leech desecrated modifiers no longer roll (label:
+community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#abyss,
+read 2026-10-30). The helper's data lists none, so it agrees.
 
 ### Desecration and reveal
 
@@ -795,6 +877,17 @@ The next Exalted Orb spends all of the item's catalyst quality to raise the
 chance of a modifier of the kind that quality favours. How much the chance
 rises per point is not stated (see Gaps).
 
+The codex sizes it: the favoured kind's weight is about five times its
+usual at 20% catalyst quality and about seven and a half times at 40%, and
+40% is a data point, not a cap (label: community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#omens,
+read 2026-10-30). It also says the quality keeps its value after a slam
+that misses, which disagrees with poe2db's text that the omen spends all
+of it; the helper follows poe2db and counts no favour in its odds (label: not
+established; poe2db, fetched 2026-10-28, against the codex
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tags,
+read 2026-10-30).
+
 Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
 ### Omen of Greater Annulment
@@ -865,6 +958,16 @@ Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 The next desecration of a weapon or a piece of jewellery is guaranteed an
 Ulaman modifier.
 
+The lord omens (this one, the Liege and the Blackblooded) are used together
+with a Sinistral or Dextral Necromancy omen on the same desecration: the
+Necromancy omen picks the side and the lord omen the lord (label: community
+guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tricks,
+read 2026-10-30). The helper's routes do the same: a desecration aimed at
+one lord's desecrated modifier on a weapon, ring or amulet names that lord's
+omen beside the Necromancy omen (the `lord-omen` rule; the slot spec's fact
+`lord-with-side-omen`).
+
 Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
 ### Omen of the Liege
@@ -890,7 +993,12 @@ Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 ### Omen of Sanctification
 
 The next Divine Orb used on a Rare item sanctifies it. What sanctifying does
-to the item is not stated on the page (see Gaps).
+to the item is not stated on the page (see Gaps). The codex says each
+modifier's value is multiplied by a random 78% to 122%, the item is marked
+Sanctified, and most crafting no longer applies to it afterwards (label:
+community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#omens,
+read 2026-10-30). The helper names it in no route.
 
 Source: https://poe2db.tw/us/Omen, fetched 2026-10-28
 
@@ -910,6 +1018,12 @@ to replace, is at least the omen's own cost (label: community guide;
 https://mobalytics.gg/poe-2/guides/omen-of-recombination, read 2026-10-30).
 The helper models no recombination, so it never names this omen in a route.
 
+The codex says 0.5 removed the omen and deleted the copies players held,
+and that the Recombinators are switched off for the Runes of Aldur league
+(label: community guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#caveats,
+read 2026-10-30).
+
 Source: not established
 
 ## Alloys
@@ -923,6 +1037,12 @@ is the item's one crafted modifier (the 0.5 limit, see Item basics): the
 existing one, and the same notes allow one crafted modifier per item
 (label: documented; https://www.pathofexile.com/forum/view-thread/3932540,
 fetched 2026-10-30).
+
+The codex warns that a Runic Ward enchantment from the Verisium Anvil also
+takes the one crafted slot, so an item carrying one cannot take an alloy's
+or an essence's modifier as well (label: not established; the community
+guide https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#aldur,
+read 2026-10-30). The helper reads no enchantment and does not model this.
 
 ### Runic Alloy
 
@@ -1021,6 +1141,13 @@ Source: https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28
 
 ## Fluxes
 
+poe2db lists five fluxes, the entries below. The codex, working from the
+0.5 patch notes, counts three; the helper keeps poe2db's five (label:
+documented; https://poe2db.tw/us/Stackable_Currency, fetched 2026-10-28,
+against the community guide
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#aldur,
+read 2026-10-30).
+
 ### Blazing Flux
 
 Turns every cold and lightning resistance modifier on the item into the
@@ -1067,6 +1194,14 @@ quality to favour that kind on the next Exalted Orb. How much quality one
 catalyst adds and how quality scales a modifier are not stated (see Gaps).
 One entry per family; each family has a plain and a Refined version.
 
+The codex says that in 0.5 catalysts come only from the Genesis Tree, not
+from Breach as above, and gives the quality caps: 20% normally, 50% on a
+Breach Ring, and up to 65% with the Genesis Tree's nodes (label: community
+guide;
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#quality,
+read 2026-10-30). Uul-Netol's Catalyst is one place it disagrees with
+poe2db; see that entry.
+
 ### Flesh Catalyst
 
 Life modifiers.
@@ -1087,7 +1222,11 @@ Source: https://poe2db.tw/us/Catalysts, fetched 2026-10-28
 
 ### Uul-Netol's Catalyst
 
-Physical modifiers.
+Physical modifiers. The codex says attack modifiers; the helper keeps
+poe2db's physical (label: documented; poe2db, fetched 2026-10-28, against
+the community guide
+https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#quality,
+read 2026-10-30).
 
 Source: https://poe2db.tw/us/Catalysts, fetched 2026-10-28
 
@@ -1264,7 +1403,11 @@ Listed so a reader knows they were seen and left out on purpose, not missed.
   push quality past the cap with a chance to corrupt, Omen of Corruption,
   and Omen of Putrefaction (replaces every modifier with up to six
   unrevealed ones and corrupts the item; the owner's paste mentions it once
-  as a gamble).
+  as a gamble). 0.5 split the single Vaal infuser into four, the
+  Armourer's, Blacksmith's, Arcanist's and Catalysing infusers, one per kind
+  of quality (label: community guide;
+  https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#vaal,
+  read 2026-10-30); recorded only, as corruption stays out of scope.
 - **Uniques**: Omen of the Ancients (turns an Orb of Chance result into a
   random unique of the class) and Vaal Cultivation Orb.
 - **Skill gems**: Gemcutter's Prism, the Jeweller's Orbs, Crystallised
@@ -1274,6 +1417,12 @@ Listed so a reader knows they were seen and left out on purpose, not missed.
 - **Item classes the helper does not cover**: flasks and charms (Glassblower's
   Bauble), waystones (Preserved Vertebrae, the waystone Chaos omens), tablets
   (Ancient Infuser).
+- **The dropped league pools**: the `chronomancy`, `decay`, `breach_caster`
+  and `breach_minion` modifier groups the extractor leaves out. The codex
+  says their modifiers come from meta-crafting runes and the Genesis Tree's
+  branches (label: community guide;
+  https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#aldur,
+  read 2026-10-30). Still not read into the data; a follow-up.
 - **Omens with no crafting effect**: the Sagas (logbooks), Refreshment,
   Resurgence, Amelioration, Answered Prayers, Secret Compartments, the Hunt,
   Reinforcements, Gambling, Bartering.
@@ -1526,7 +1675,16 @@ engine follows them where `docs/models/crafting-slots-spec.md` says so.
   fetched 2026-10-28, has the top tier at 82 but the second (Cheetah's) at
   65 on every boots base, `prefix-increased-movement-speed`; the helper keeps
   the data's 65 (label: documented; poe2db, fetched 2026-10-28, against
-  the guide read 2026-10-30).
+  the guide read 2026-10-30). The codex agrees with the data on five
+  breakpoints: movement speed's top tier at 82; the top fire, cold and
+  lightning resistance tiers at 82; body armour's top chaos resistance tier
+  at 81; a wand's top lightning spell level tier at 81; and a bow's top
+  additional-arrow tier at 82. It gives movement speed's second tier as 70,
+  like the other guide, where the data says 65, and the data's 65 stays
+  (label: community guide;
+  https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#breakpoints,
+  read 2026-10-30). `apps/crafting-helper/crates/ch-data/tests/codex_breakpoints.rs`
+  pins all six against the data and the trade link's item-level floor.
 - **Alchemy and the reforge fallback.** A magic start that went badly can be
   turned rare by an Orb of Alchemy for a second chance, and poor rares can
   be fed three at a time to the reforge bench for a new unidentified one
@@ -1559,7 +1717,12 @@ a better source or measures it in the game.
 - **Omen of Recombination**: listed with no effect text on poe2db. A
   community guide (2026-10-30) describes it as making a recombination
   Lucky; no GGG or poe2db text confirms it, so its entry stays not
-  established.
+  established. The codex
+  (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#caveats,
+  read 2026-10-30) says 0.5 removed the omen, deleting the copies players
+  held, and switched the Recombinators off for the Runes of Aldur league;
+  if so, the question would not matter to a 0.5 craft (community guide;
+  not established).
 - **Crystallisation on alloys.** The omen text names Perfect or corrupted
   essences only; posts 8, 12 and 13 use it with alloys. Not established
   whether alloys count.
@@ -1571,25 +1734,46 @@ a better source or measures it in the game.
 - **Essence of the Abyss**: what the Mark of the Abyssal Lord enables,
   answered in part. Community guides (2026-10-30) say the mark cannot be
   fractured, which the helper's fracture route uses; the essences guide's
-  hint that it raises the tier of a later reveal is not established.
+  hint that it raises the tier of a later reveal is not established, and
+  the codex
+  (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#essences,
+  read 2026-10-30) is a second guide making the same claim without
+  evidence. The codex also says the next desecration's modifier replaces
+  the mark.
   (Whether an alloy's modifier is the item's crafted one left this list on
   2026-10-30: the 0.5.0 patch notes settle it; see Alloys.)
-- **Omen of Sanctification**: what sanctifying a Rare item does.
+- **Omen of Sanctification**: what sanctifying a Rare item does, answered
+  in part. The codex
+  (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#omens,
+  read 2026-10-30) gives a random 78% to 122% multiplier on each
+  modifier's value and says most crafting stops applying; no GGG or poe2db
+  text confirms it.
 - **Homogenising omens**: what "the same type" matches (family, tag group).
 - **Omen of Whittling**: how a tie between equal-level modifiers is broken,
   and whether fractured or desecrated modifiers can be its target.
-- **Divine Orb** on fractured and desecrated modifiers.
+- **Divine Orb** on fractured and desecrated modifiers, answered in part:
+  the codex
+  (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#fracture,
+  read 2026-10-30) says a fractured modifier is left unchanged; desecrated
+  modifiers are still open.
 - **Hinekora's Lock**: whether a previewed result can be declined.
 - **Mirror of Kalandra**: that a mirrored item is locked is long-standing
   knowledge, not stated on the page.
 - **Shards**: how many combine into a whole orb.
 - **Catalysts**: quality added per catalyst, the normal cap, and how quality
   scales the favoured modifiers; how much Catalysing Exaltation raises the
-  chance.
+  chance. Answered in part by the codex
+  (https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#quality
+  and its #omens section, read 2026-10-30): a 20% normal cap (50% on a
+  Breach Ring, 65% with Genesis Tree nodes) and a favour of about five
+  times at 20% quality and seven and a half at 40%. Quality per catalyst,
+  and how quality scales a modifier's values, are still open.
 - **Fluxes**: how a converted resistance's tier and value map onto the new
   element.
 - **Desecration levels.** Gnawed bones are limited to item level 64, yet
   every equipment desecrated modifier on the page is level 65; whether the
-  page lists only one tier per modifier is not established. Desecrated and
+  page lists only one tier per modifier is not established. The codex calls
+  the Gnawed limit a modifier level in one section and an item level in
+  another (see Desecration). Desecrated and
   jewel modifiers publish no usable spawn weight.
 - **Altered Collarbone**: which modifiers are "otherworldly".

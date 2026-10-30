@@ -1186,25 +1186,30 @@
         "other_routes": [
           {
             "blueprint": "essence-desecrate-double-slam",
-            "name": "Essence, desecrate the hardest, then side slams"
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 2
           },
           {
             "blueprint": "rare-clean-then-slam",
-            "name": "Clean a rare, then side slams"
+            "name": "Clean a rare, then side slams",
+            "number": 3
           }
         ],
         "rejected": [],
+        "relaxation": null,
         "route": {
           "blueprint": "close-a-side",
           "name": "Close the finished side, then slam the open one",
           "source": "maxroll, How to Craft in Path of Exile 2, method 3 and the domistae PoE2 Crafting Codex, fetched 2026-10-29",
           "steps": [
             {
+              "blocker": null,
               "fallback": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation instead of a desecration: Omen of Sinistral Necromancy blocked",
               "id": "close",
               "instruction": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier",
               "number": 1,
               "odds": "certain (any modifier fills a free slot)",
+              "survival": null,
               "targets": [],
               "uses": [
                 "Exalted Orb",
@@ -1213,11 +1218,13 @@
               ]
             },
             {
+              "blocker": null,
               "fallback": "Perfect Exalted Orb instead of a desecration: Omen of Sinistral Necromancy blocked",
               "id": "slam-open-side",
               "instruction": "Perfect Exalted Orb on the prefix side for +# to Armour",
               "number": 2,
               "odds": "~19% (2000 of 10800 weight, if the earlier steps hit)",
+              "survival": null,
               "targets": [
                 "+# to Armour"
               ],
@@ -1226,7 +1233,25 @@
               ]
             }
           ]
-        }
+        },
+        "route_number": 1,
+        "routes": [
+          {
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one",
+            "number": 1
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 2
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams",
+            "number": 3
+          }
+        ]
       },
       "targets": [
         {

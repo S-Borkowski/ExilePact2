@@ -31,6 +31,8 @@ relies_on = [
     "necromancy-without-pool",
     "removal-equally-likely",
     "full-desecration-same-side",
+    "lord-with-side-omen",
+    "lord-omen-classes",
 ]
 
 [[start]]
@@ -48,7 +50,7 @@ on_miss = "abandon"
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step]]
 id = "reveal"

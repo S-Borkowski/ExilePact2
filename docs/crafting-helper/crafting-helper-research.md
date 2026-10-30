@@ -349,9 +349,79 @@ Negatives and rejected alternatives:
   the league pools (`breach_*`, `marksman`, `decay`, `soul`, `destruction`,
   `berserking`, `chronomancy`, `rotmother`) have no established crafting
   source. Their counts stay under each page's `ignored` so a refresh shows
-  drift. Uniques are not read.
+  drift. Uniques are not read. (The crafting codex of 2026-10-30 names a
+  source for four of them; see the review below.)
 - **poe2wiki and craftofexile**: not fetched. poe2wiki sits behind an
   anti-bot wall and craftofexile serves no data in its HTML.
+
+## Crafting Codex review (issue #40)
+
+Source: the community *PoE2 Crafting Codex*,
+`https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html`, read
+2026-10-30. One page in seventeen anchored sections; it says it covers patch
+0.5.5 and calls itself a quick reference, not ground truth, so what it adds
+is labelled **community guide** in
+[`crafting-mechanics.md`](crafting-mechanics.md) (§ "Sources" there lists
+what was taken). Only short facts in our own words were kept, each with the
+URL, its section's anchor and the date; the page itself is not stored.
+
+Each section got one or more verdicts: **already covered** (the helper's
+docs or engine already say it), **adds a fact** (a labelled fact in
+`crafting-mechanics.md`), **adds a rule** (a route-engine rule), **adds a
+blueprint** (a shipped route) or **out of scope** (the helper's scope
+leaves it out). The titles below are ours, not the page's. Where the codex
+disagrees with the data, the data was kept and the disagreement written
+beside the fact.
+
+| # | Section (our title) | Anchor | Verdict | Where it landed |
+|---|---|---|---|---|
+| I | Item anatomy | `#anatomy` | adds a fact | `crafting-mechanics.md` Item basics, "Modifier groups": one modifier per group, and an essence of a group already on the item fails unspent (the route engine already refuses it). Its "skill levels are prefixes" rule of thumb disagrees with the data, noted there. Rarity, sides and implicits already covered; enchantments out of scope. |
+| II | Item-level breakpoints | `#breakpoints` | adds a fact | Crafting principles, "Item-level breakpoints": five breakpoints agree with the data, movement speed's second tier (70 against the data's 65) does not; `ch-data/tests/codex_breakpoints.rs` pins all six. Campaign levelling pace out of scope. |
+| III | Greater and Perfect floors | `#tiers` | adds a fact | Greater Orb of Transmutation and of Augmentation: 44 since 0.5, 55 before, which explains the recorded 44-against-55 disagreement. The other floors already covered. |
+| IV | Currency list | `#currencies` | already covered | Every orb in the helper's scope has an entry; Vaal Orb is out of scope. |
+| V | Essences | `#essences` | adds a fact | Essence of the Abyss (the next desecration replaces the mark; the higher-tier claim gains a second guide and stays not established) and Perfect Essence (Battle's 0.5 values agree, its side disagrees). Hysteria on Foci and Perfect Sorcery's classes agree with the data. Essence farming and the Remnant of Corruption out of scope. |
+| VI | Omens | `#omens` | adds a fact; adds a rule | Omen of Sanctification's effect, Catalysing Exaltation's size, and the lord omens stacked on a Necromancy omen (the route engine's `lord-omen` rule). The waystone omens out of scope (the Waystone Roller's). |
+| VII | Modifier tags | `#tags` | adds a blueprint | The catalyst-biased exalt for rings and amulets (`jewellery-catalyst-exalt`, with sections X and XIII). The data carries no tags, so no target is mapped to a catalyst. Catalysing Exaltation's quality after a miss disagrees with poe2db, noted at the omen. |
+| VIII | Abyss and desecration | `#abyss` | adds a rule; adds a fact | The lord omens (`lord-omen`); Instant Leech desecrations gone since 0.5, which the data agrees with (Desecration intro). Bones already covered; Vertebrae out of scope. |
+| IX | Fracturing | `#fracture` | already covered; adds a fact | Isolation and fracture-first already covered; a Divine Orb leaves a fractured modifier unchanged (Fracturing Orb, Gaps "Divine Orb"). Drop sources out of scope. |
+| X | Quality and catalysts | `#quality` | adds a fact | Catalysts intro: the Genesis Tree as the only 0.5 source and the 20%, 50% and 65% caps; Uul-Netol's Catalyst's kind disagrees, noted at its entry. Whetstone, scrap and etcher already covered; Artificer's Orb out of scope. |
+| XI | Sockets, runes and soul cores | `#sockets` | out of scope | Augments and sockets stay out of the helper's scope. |
+| XII | Vaal and corruption | `#vaal` | out of scope | Documented only: the 0.5 split of the Vaal infuser into four is added to the corruption bullet under Out of scope. |
+| XIII | Tricks | `#tricks` | adds a rule; adds a blueprint | Trick II gives `lord-omen`, Trick IV the catalyst route; Tricks I, V, VI and VII already covered; Trick III not adopted (below). |
+| XIV | Crafting order | `#workflow` | already covered | The routes' state-ordered steps and "Gamble last"; its quality, divine, socket and corruption steps out of scope. |
+| XV | Runes of Aldur league | `#aldur` | adds a fact; out of scope | Alloys already covered; Runic Ward enchants count as the crafted modifier (Alloys intro, not established); three fluxes against poe2db's five (Fluxes intro); a source for the dropped league pools (Out of scope). Runeforging, Remnants, Kalguuran gems, Ritual and the Atlas masters out of scope. No currency, omen or essence in the helper's scope is missing from the data. |
+| XVI | Tools | `#tools` | already covered | poe2db is the data source; craftofexile is linked from the craft window and listed under Gaps. |
+| XVII | Caveats | `#caveats` | adds a fact | Omen of Recombination removed in 0.5 (entry and Gaps); an omen cannot break the three-and-three cap (Perfect Essence), which the engine's essence-swap rule already holds. |
+
+Not adopted, with why:
+
+- **Trick III**, a Perfect essence with a Crystallisation omen: no Perfect
+  essence's own modifier is a class modifier a route can target, and
+  whether Crystallisation works on Essence of Hysteria is under Gaps.
+- **Trick I with several fractures**: not established that an item can hold
+  two fractured modifiers.
+- **Trick VI's Essence of the Abyss clean-up**: the routes' annulment does
+  the same without spending the crafted slot, and the tier claim behind it
+  is not established.
+- **Buying a base at the breakpoint or a level or two above**: the trade
+  link sets no item-level maximum (owner question 5's default).
+- **Choosing a catalyst per target**: the data has no modifier tags; the
+  catalyst route's manual step names examples only.
+
+Follow-up candidates (no issue opened; owner question 2's default):
+
+- Read the dropped league pools (`chronomancy`, `decay`, `breach_caster`,
+  `breach_minion`) now that the codex names their source (meta-crafting
+  runes and the Genesis Tree's branches).
+- Map a target modifier to its catalyst, once a source for modifier tags
+  is read.
+- Settle Crystallisation on Essence of Hysteria, and Trick III with it.
+- Settle the disagreements the review recorded (movement speed's second
+  tier, Battle's and lightning spell levels' side, Uul-Netol's kind,
+  Catalysing Exaltation after a miss, the flux count, the Gnawed bone
+  limit) by a live check or a GGG source.
+- Whether an item can hold two fractured modifiers, and whether the Runic
+  Ward enchantment takes the crafted slot.
 
 ## Item tooltip on screen
 

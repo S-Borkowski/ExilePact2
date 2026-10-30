@@ -3,9 +3,10 @@
 //! the first in file order that is a candidate on the item as it stands
 //! (its guard holds, its binding is made, its goal is not met, its side
 //! rule finds a side and an alternative fits), unless a later candidate is a
-//! certain removal and the first is not ("Certain removals first"); the
-//! route preview is the projection, the steps the craft takes if each one
-//! hits.
+//! certain removal and the first is not ("Certain removals first"), and
+//! leaving out an Omen of Light step that waits for an add on its side ("A
+//! wrong reveal waits for the same-side exalt"); the route preview is the
+//! projection, the steps the craft takes if each one hits.
 //!
 //! Every number here is [`Slots`]'s. Listed blueprints never come here.
 
@@ -26,9 +27,10 @@ use crate::odds::{
 };
 use crate::route::{
     essence_adds, essence_binds_any, essence_fits_rarity, greater_fits, hardest, try_alternative,
-    AltProblem, ChosenAction, Rejection, Skipped, Stall, StepView,
+    AltProblem, ChosenAction, LordOmen, Rejection, Skipped, Stall, StepView,
 };
 use crate::slots::{at_risk, removable, whittle_certain, Slots, Takes, SIDES};
+use crate::swap;
 
 /// A projection that reaches this many steps without finishing is looping
 /// (the spec's "Step cap").
@@ -60,6 +62,8 @@ pub(crate) struct Pick {
 /// as it stands), and the bindings the projection made.
 pub(crate) struct Projection {
     pub steps: Vec<StepView>,
+    /// The item as each step finds it, one per step.
+    pub states: Vec<State>,
     pub skipped: Vec<Skipped>,
     pub bindings: Bindings,
 }
@@ -202,7 +206,7 @@ fn essence_action_adds(ctx: &Ctx, st: &State, action: &Action, t: usize) -> bool
 /// The missing targets the step could place: for the essence step, its
 /// bound target; otherwise the normal-section ones, less the one the
 /// route's essence binding claims.
-fn placeable(
+pub(crate) fn placeable(
     ctx: &Ctx,
     st: &State,
     step: &Step,
@@ -471,12 +475,16 @@ fn fit(
     step: &Step,
     index: usize,
     side: Option<Kind>,
+    target: Option<usize>,
     essence_for: Option<usize>,
     can: &[usize],
 ) -> Result<ChosenAction, AltProblem> {
     let goal = *step.goal.get_ref();
     let action = step.actions[index].get_ref();
     let greater = greater_fits(ctx, st, goal, side, can);
+    // A state-ordered desecration is bound (`hardest`, `last-remaining`);
+    // its lord omen never waits.
+    let lord = target.map_or(LordOmen::Nothing, |t| LordOmen::of_target(ctx, t));
     let chosen = try_alternative(
         ctx,
         st,
@@ -484,6 +492,7 @@ fn fit(
         action,
         side.map(side_of),
         greater,
+        &lord,
         essence_for,
     )?;
     let unfit = |why: &str| Err(AltProblem::Unfit(format!("`{}`: {why}", chosen.currency)));
@@ -606,7 +615,8 @@ fn fit(
                 {
                     continue;
                 }
-                let Ok(annul) = fit(ctx, st, slots, step, later, side, essence_for, can) else {
+                let Ok(annul) = fit(ctx, st, slots, step, later, side, target, essence_for, can)
+                else {
                     continue;
                 };
                 let risks = at_risk(st, takes(&annul))
@@ -661,7 +671,7 @@ pub(crate) fn evaluate(
     let mut blocked = 0;
     let mut reasons = Vec::new();
     for i in 0..step.actions.len() {
-        match fit(ctx, st, slots, step, i, side, essence_for, &can) {
+        match fit(ctx, st, slots, step, i, side, target, essence_for, &can) {
             Ok(action) => {
                 let aims = target.map_or(can, |t| vec![t]);
                 return Ok(Pick {
@@ -685,10 +695,66 @@ pub(crate) fn evaluate(
     }
 }
 
+/// Why the `remove-desecrated` step at `index`, guarded by
+/// `desecrated_unwanted = true`, waits (the spec's "A wrong reveal waits for
+/// the same-side exalt"), or `None`: an `add-wanted` step is a candidate on
+/// the side of a revealed desecrated modifier that is not a target, with a
+/// free slot there (a step without a side: one that can place a missing
+/// target there). Keeping that modifier through the add keeps its families
+/// out of the add's pool; Omen of Light comes once the side is done.
+fn light_waits(
+    ctx: &Ctx,
+    st: &State,
+    slots: &Slots,
+    steps: &[Spanned<Step>],
+    index: usize,
+    bindings: &Bindings,
+) -> Option<String> {
+    let step = steps[index].get_ref();
+    let guarded = step
+        .guard
+        .as_ref()
+        .and_then(|g| g.get_ref().desecrated_unwanted.as_ref())
+        .is_some_and(|b| *b.get_ref());
+    if *step.goal.get_ref() != Goal::RemoveDesecrated || !guarded {
+        return None;
+    }
+    let open: Vec<Kind> = st
+        .mods
+        .iter()
+        .filter(|m| m.desecrated && !m.unrevealed && !matches!(m.role, Role::Wanted(_)))
+        .map(|m| m.side)
+        .filter(|&s| slots.on(s).free > 0)
+        .collect();
+    if open.is_empty() {
+        return None;
+    }
+    steps.iter().enumerate().find_map(|(i, s)| {
+        if *s.get_ref().goal.get_ref() != Goal::AddWanted {
+            return None;
+        }
+        let pick = evaluate(ctx, st, slots, steps, i, bindings).ok()?;
+        let there = match pick.side {
+            Some(side) => open.contains(&side),
+            None => pick
+                .aims
+                .iter()
+                .any(|&t| open.contains(&ctx.targets[t].side)),
+        };
+        there.then(|| {
+            format!(
+                "it waits for `{}`, an add on the revealed desecrated modifier's side",
+                s.get_ref().id.get_ref()
+            )
+        })
+    })
+}
+
 /// The next step, or every step's reason (`` `id`: why ``): the first
 /// candidate in file order, unless it is not a certain removal and a later
 /// candidate is a `remove-unwanted` step (or an essence swap) that is; then
-/// the first such later one (the spec's "Certain removals first").
+/// the first such later one (the spec's "Certain removals first"). An Omen
+/// of Light step that waits for a same-side add is passed over.
 pub(crate) fn next_step(
     ctx: &Ctx,
     st: &State,
@@ -700,7 +766,13 @@ pub(crate) fn next_step(
     let mut first: Option<Pick> = None;
     for index in 0..steps.len() {
         let goal = *steps[index].get_ref().goal.get_ref();
-        match evaluate(ctx, st, &slots, steps, index, bindings) {
+        let picked = evaluate(ctx, st, &slots, steps, index, bindings).and_then(|pick| {
+            match light_waits(ctx, st, &slots, steps, index, bindings) {
+                Some(why) => Err(why),
+                None => Ok(pick),
+            }
+        });
+        match picked {
             Ok(pick) if first.is_none() => {
                 if certain_removal(ctx, st, goal, &pick) {
                     return Ok(pick);
@@ -721,7 +793,9 @@ pub(crate) fn next_step(
 
 /// The step as the player sees it. On an item the projection changed, the
 /// odds are read off it and say "if the earlier steps hit". Taken in place
-/// of the last-target desecration, it carries why.
+/// of the last-target desecration, it carries why; an essence swap carries
+/// its removal and, when that may take an unrevealed modifier, the step
+/// taken next on each outcome ([`swap::essence_swap`]).
 pub(crate) fn view(
     ctx: &Ctx,
     st: &State,
@@ -729,6 +803,20 @@ pub(crate) fn view(
     bindings: &Bindings,
     pick: Pick,
 ) -> StepView {
+    view_with(ctx, st, steps, bindings, pick, true)
+}
+
+/// [`view`]; `outcomes` false leaves an essence swap's outcomes out (the
+/// view of a step an outcome leads to).
+pub(crate) fn view_with(
+    ctx: &Ctx,
+    st: &State,
+    steps: &[Spanned<Step>],
+    bindings: &Bindings,
+    pick: Pick,
+    outcomes: bool,
+) -> StepView {
+    let swap = swap::essence_swap(ctx, st, steps, bindings, &pick, outcomes);
     let step = steps[pick.index].get_ref();
     let goal = *step.goal.get_ref();
     let odds = step_odds(ctx, st, goal, &pick.aims, &pick.action).map(|o| {
@@ -754,6 +842,7 @@ pub(crate) fn view(
         action: Some(pick.action),
         odds,
         instead_of_desecration,
+        swap,
     }
 }
 
@@ -785,7 +874,7 @@ fn projected_mod(side: Kind, role: Role) -> ModInfo {
     }
 }
 
-fn place(ctx: &Ctx, st: &mut State, t: usize) {
+pub(crate) fn place(ctx: &Ctx, st: &mut State, t: usize) {
     let target = &ctx.targets[t];
     st.mods.push(ModInfo {
         mod_id: Some(target.mod_id.clone()),
@@ -859,7 +948,7 @@ fn certain_removal(ctx: &Ctx, st: &State, goal: Goal, pick: &Pick) -> bool {
 
 /// The item as the step's hit would leave it (the spec's "Projection",
 /// step 3).
-fn apply_hit(
+pub(crate) fn apply_hit(
     ctx: &Ctx,
     st: &State,
     steps: &[Spanned<Step>],
@@ -990,6 +1079,7 @@ pub(crate) fn project(
     let mut bindings = Bindings::new();
     let mut st = item.clone();
     let mut views: Vec<StepView> = Vec::new();
+    let mut states: Vec<State> = Vec::new();
     let mut first_reasons: Option<Vec<String>> = None;
     loop {
         ensure_bindings(ctx, &st, steps, &mut bindings);
@@ -1009,7 +1099,8 @@ pub(crate) fn project(
             first_reasons = Some(
                 (0..steps.len())
                     .map(|i| match evaluate(ctx, &st, &slots, steps, i, &bindings) {
-                        Ok(_) => "not needed on the hit path".to_string(),
+                        Ok(_) => light_waits(ctx, &st, &slots, steps, i, &bindings)
+                            .unwrap_or_else(|| "not needed on the hit path".to_string()),
                         Err(why) => why,
                     })
                     .collect(),
@@ -1031,6 +1122,7 @@ pub(crate) fn project(
             });
         }
         views.push(view(ctx, &st, steps, &bindings, pick));
+        states.push(st);
         st = after;
     }
     let skipped = steps
@@ -1046,6 +1138,7 @@ pub(crate) fn project(
         .collect();
     Ok(Projection {
         steps: views,
+        states,
         skipped,
         bindings,
     })

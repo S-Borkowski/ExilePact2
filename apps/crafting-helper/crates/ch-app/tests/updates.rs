@@ -9,7 +9,9 @@
 //! manual check makes one request; with `check_updates` on, one at start and
 //! then one a day; an install starts only from the `install_update`
 //! command, never from a check or a tick; a finished install asks the shell
-//! to quit, and the quit path's shutdown still saves.
+//! to quit, and the quit path's shutdown still saves. An install replaces
+//! the running exe under the name it runs as, `Crafting Helper.exe` or a
+//! 0.1.x copy's `crafting-helper.exe`.
 
 mod common;
 
@@ -226,6 +228,70 @@ fn updates_install_restarts_through_the_quit_path_target() {
     };
     assert!(pos("updates: install of 1.3.0 started") < pos("updates: signature of 1.3.0 checked"));
     assert!(pos("updates: replaced the running exe with 1.3.0, restarting") < pos("stop"));
+}
+
+/// An install from a folder whose running exe is `name`: the new exe takes
+/// that same name, the old one sits beside it as `<name>.old`, and nothing
+/// else is left in the folder.
+fn an_install_replaces_in_place(name: &'static str) {
+    let h = harness(Setup {
+        exe_name: Some(name),
+        ..Setup::default()
+    });
+    assert_eq!(h.exe_name(), name);
+    h.app.start();
+    h.manual(signed_newer());
+    h.app.install_update().unwrap();
+    wait_until("the restart request", || h.restarts() == 1);
+    assert_eq!(h.exe_bytes(), payload());
+    let old = format!("{name}.old");
+    let mut want = vec![name.to_string(), old.clone()];
+    want.sort();
+    assert_eq!(h.folder(), want);
+    assert_eq!(fs::read(h.exe.with_file_name(&old)).unwrap(), RUNNING_BYTES);
+    h.app.shutdown();
+}
+
+/// A 0.1.x copy runs as `crafting-helper.exe`; an update keeps that name.
+#[test]
+fn an_install_replaces_an_exe_with_the_old_name() {
+    assert_eq!(LEGACY_EXE_NAME, "crafting-helper.exe");
+    an_install_replaces_in_place(LEGACY_EXE_NAME);
+}
+
+/// A copy from 0.2.0 runs as `Crafting Helper.exe`, a space in its name.
+#[test]
+fn an_install_replaces_the_renamed_exe() {
+    assert_eq!(EXE_NAME, "Crafting Helper.exe");
+    an_install_replaces_in_place(EXE_NAME);
+}
+
+/// The release the harness serves carries the renamed exe and the legacy
+/// one beside the payload, as a real release from 0.2.0 does; the
+/// crafting helper's own product looks up the renamed one.
+#[test]
+fn the_fake_release_lists_the_renamed_and_the_legacy_exe() {
+    assert_eq!(CRAFTING_HELPER.exe_name, "Crafting.Helper.exe");
+    let Ok(answer) = signed_newer() else {
+        panic!("signed_newer is an answer")
+    };
+    let body: serde_json::Value = serde_json::from_slice(&answer.body).unwrap();
+    let names: Vec<&str> = body[0]["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a["name"].as_str().unwrap())
+        .collect();
+    for name in [
+        "Crafting.Helper.exe",
+        "Crafting.Helper.exe.minisig",
+        "crafting-helper.exe",
+        "crafting-helper.exe.minisig",
+        "payload.bin",
+        "payload.bin.minisig",
+    ] {
+        assert!(names.contains(&name), "{name} in {names:?}");
+    }
 }
 
 #[test]

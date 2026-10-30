@@ -39,6 +39,8 @@ relies_on = [
     "whittling-mod-level",
     "fractured-not-removed",
     "omens-active-before-use",
+    "lord-with-side-omen",
+    "lord-omen-classes",
 ]
 
 [[start]]
@@ -112,7 +114,7 @@ guard = { rarity = ["rare"] }
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 # Filler is filler: the cheapest exalt first.
 [[step]]

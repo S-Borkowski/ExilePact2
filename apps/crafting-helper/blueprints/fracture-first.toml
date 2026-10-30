@@ -39,6 +39,8 @@ relies_on = [
     "omens-active-before-use",
     "abyss-mark-unfracturable",
     "desecrated-unfracturable",
+    "lord-with-side-omen",
+    "lord-omen-classes",
 ]
 
 [[start]]
@@ -97,7 +99,7 @@ when = "bound"
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step]]
 id = "reveal"

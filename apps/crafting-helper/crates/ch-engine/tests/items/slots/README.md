@@ -33,6 +33,7 @@ real target ids and floors behind each case's aliases.
 | `body-armour-prefix-no-pool.txt` | Rare Chieftain Cuirass (str), item level 82, no implicit: Life T5, increased Armour T2; Fire Resistance T3. The class has desecrated suffixes only. | Life T5, increased Armour T2, Spirit T3 (missing), Fire T3. |
 | `rare-desecrated-target.txt` | The 2P/1S ring with a revealed desecrated Attack Damage while on Low Life prefix (its one tier, level 65) in Mana's place, then Life T4; Fire Resistance T5. | The desecrated prefix T1, Life T4, Accuracy Rating T3 (missing), Fire T5. |
 | `rare-wrong-reveal.txt` | The 2P/1S ring plus a revealed desecrated Remnant effect prefix (level 65), not a target: a reveal that offered none. | As `rare-2p1s-prefix-missing`. |
+| `rare-wrong-reveal-same-side-exalt.txt` | `rare-wrong-reveal`'s ring without its Life prefix: Mana T5 and the desecrated Remnant effect prefix; Fire Resistance T5. One prefix slot free. | Mana T5, Life T4 (missing, the hardest), Fire T5. |
 | `rare-certain-removal-first.txt` | `rare-fractured`'s ring with Fire Resistance T5, the lowest level, and an unrevealed desecrated suffix. | Mana T4, Life T4 (missing), Fire T5, the desecrated Skill Speed suffix T1 (missing, the hardest). |
 | `rare-uncertain-removal-keeps-order.txt` | The same ring with its Mana not fractured. | As `rare-certain-removal-first`. |
 
@@ -54,6 +55,7 @@ case items above.
 | `essence-desecrated.txt` | The same with an unrevealed desecrated suffix. |
 | `essence-revealed-fire.txt` | The reveal as Fire Resistance T3 (desecrated): done. |
 | `essence-revealed-wrong.txt` | The reveal as Cold and Chaos Resistances: a miss. |
+| `essence-wrong-kept-fire.txt` | That miss with Fire Resistance T2 from the suffix exalt, the desecrated Cold and Chaos Resistances kept (Omen of Light waits for the same-side exalt): done. |
 | `augment-fire.txt` | `magic-one-good` with Fire Resistance T2 from a Perfect augment. |
 | `augment-miss.txt` | `magic-one-good` with Strength T1 instead. |
 | `augment-essence.txt` | `augment-fire` after the essence: Rare, Mana, Life T8, Fire T2: done. |

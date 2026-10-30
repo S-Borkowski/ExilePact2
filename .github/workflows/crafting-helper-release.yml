@@ -1,10 +1,17 @@
 name: Crafting Helper Release
 
 # Builds the crafting helper from a release tag, signs its executable with
-# the release key and attaches it, SHA256SUMS.txt and
-# crafting-helper.exe.minisig to a DRAFT release. Nothing is published by
-# this workflow: the owner opens the draft, checks it, publishes it and
-# ticks "Set as the latest release" by hand.
+# the release key and attaches it, SHA256SUMS.txt and its .minisig to a
+# DRAFT release. Nothing is published by this workflow: the owner opens the
+# draft, checks it, publishes it and ticks "Set as the latest release" by
+# hand.
+#
+# The build writes `Crafting Helper.exe` (tauri.conf.json's mainBinaryName).
+# GitHub stores an asset name's space as a dot, so it is attached as
+# Crafting.Helper.exe, signed under that name, which the app from 0.2.0
+# looks up. The same exe is also attached as crafting-helper.exe with its own
+# crafting-helper.exe.minisig: the names a 0.1.x copy looks up, so those
+# copies still update in place.
 #
 # The signature is what the app's in-app update checks against the public
 # key built into it, so a release without one is never made: the sign step
@@ -96,14 +103,16 @@ jobs:
       - name: Collect the assets
         run: |
           mkdir -p dist-release
-          cp apps/crafting-helper/target/release/crafting-helper.exe dist-release/
-          (cd dist-release && sha256sum crafting-helper.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          cp "apps/crafting-helper/target/release/Crafting Helper.exe" dist-release/Crafting.Helper.exe
+          cp dist-release/Crafting.Helper.exe dist-release/crafting-helper.exe
+          (cd dist-release && sha256sum Crafting.Helper.exe crafting-helper.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python -m tools.crafting_helper.release notes "$VERSION" --out release-notes.md
 
       # `tauri signer sign` writes the signature base64-encoded to <exe>.sig;
       # the release carries the decoded minisign text as <exe>.minisig. Its
       # trusted comment names the file and the version, which the app checks
-      # against the asset's name and the release's version.
+      # against the asset's name and the release's version, so each of the
+      # two names is signed on its own.
       - name: Sign the exe
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -113,19 +122,23 @@ jobs:
             echo "::error::The TAURI_SIGNING_PRIVATE_KEY secret is missing or empty; no release is made without the exe's signature."
             exit 1
           fi
+          npm --prefix apps/crafting-helper exec -- tauri signer sign --app-version "$VERSION" "$GITHUB_WORKSPACE/dist-release/Crafting.Helper.exe"
+          base64 -d dist-release/Crafting.Helper.exe.sig > dist-release/Crafting.Helper.exe.minisig
           npm --prefix apps/crafting-helper exec -- tauri signer sign --app-version "$VERSION" "$GITHUB_WORKSPACE/dist-release/crafting-helper.exe"
           base64 -d dist-release/crafting-helper.exe.sig > dist-release/crafting-helper.exe.minisig
-          rm dist-release/crafting-helper.exe.sig
-          if ! grep -qF "file:crafting-helper.exe" dist-release/crafting-helper.exe.minisig \
-              || ! grep -qF "version:$VERSION" dist-release/crafting-helper.exe.minisig; then
-            echo "::error::The signature's trusted comment does not name crafting-helper.exe at $VERSION."
-            exit 1
-          fi
-          cat dist-release/crafting-helper.exe.minisig
+          rm dist-release/Crafting.Helper.exe.sig dist-release/crafting-helper.exe.sig
+          for exe in Crafting.Helper.exe crafting-helper.exe; do
+            if ! grep -qF "file:$exe" "dist-release/$exe.minisig" \
+                || ! grep -qF "version:$VERSION" "dist-release/$exe.minisig"; then
+              echo "::error::The signature's trusted comment does not name $exe at $VERSION."
+              exit 1
+            fi
+            cat "dist-release/$exe.minisig"
+          done
 
       - name: Create or update the draft release
         run: |
-          assets=(dist-release/crafting-helper.exe dist-release/SHA256SUMS.txt dist-release/crafting-helper.exe.minisig)
+          assets=(dist-release/Crafting.Helper.exe dist-release/SHA256SUMS.txt dist-release/Crafting.Helper.exe.minisig dist-release/crafting-helper.exe dist-release/crafting-helper.exe.minisig)
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
             echo "Replaced the assets of the existing release $TAG."

@@ -186,6 +186,16 @@ fn trade_selection(
     vec![class_only, with_base, with_picks]
 }
 
+/// The magic Heavy Belt `ch-engine`'s relaxation tests read
+/// (`crates/ch-engine/tests/items/relax/belt-magic-life.txt`, constructed):
+/// maximum Life T2, no suffix.
+fn relax_belt() -> String {
+    let path = app_root().join("crates/ch-engine/tests/items/relax/belt-magic-life.txt");
+    fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .replace("\r\n", "\n")
+}
+
 /// One main view per state the main window and the overlay render.
 fn main_views() -> Vec<(&'static str, View)> {
     let mut out = Vec::new();
@@ -237,6 +247,48 @@ fn main_views() -> Vec<(&'static str, View)> {
     out.push((
         "craft-no-route",
         app.set_craft_blocked(&lines(&["chaos-orb", "orb-of-annulment"])),
+    ));
+    app.shutdown();
+    // No route for another reason: the magic belt's three resistances at
+    // T2, one tier past its Greater essences, so the preview proposes
+    // lowering fire to T3.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("relaxation"), &shell);
+    app.grab_text(Some(&relax_belt()));
+    let resistances: Vec<_> = RING_TARGETS
+        .iter()
+        .map(|id| ch_app::ch_engine::Target::new(*id, Some(2)))
+        .collect();
+    out.push(("craft-relaxation", app.set_targets(&resistances)));
+    app.shutdown();
+    // The relaxation accepted (fire at T3) on the route whose reveal comes
+    // before the suffix exalt: the reveal step names the blocker.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("blocker"), &shell);
+    app.grab_text(Some(&relax_belt()));
+    let mut relaxed = resistances.clone();
+    relaxed[0].floor = Some(3);
+    app.set_targets(&relaxed);
+    out.push((
+        "craft-blocker",
+        app.choose_route("essence-desecrate-double-slam"),
+    ));
+    app.shutdown();
+    // The fractured essence swap on `ch-engine`'s ring (copied into
+    // `tests/items/`): the essence step names what it removes and the
+    // fractured suffix it leaves, and its survival line the unrevealed
+    // suffix's chance and the step on each outcome.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("essence-swap"), &shell);
+    app.grab_text(Some(&belt("ring-essence-swap")));
+    app.set_targets(&[
+        ch_app::ch_engine::Target::new("prefix-to-maximum-mana", Some(5)),
+        ch_app::ch_engine::Target::new("suffix-increased-mana-regeneration-rate", Some(2)),
+        ch_app::ch_engine::Target::new("desecrated-suffix-to-cold-and-chaos-resistances", None),
+    ]);
+    out.push((
+        "craft-essence-swap",
+        app.choose_route("fractured-essence-swap"),
     ));
     app.shutdown();
 
@@ -661,6 +713,40 @@ fn fixtures_are_current() {
     assert!(preview("craft-no-route").route.is_none());
     assert!(!preview("craft-no-route").rejected.is_empty());
     assert!(!plan("craft-no-route").can_accept);
+    assert!(preview("craft-no-route").relaxation.is_none());
+    // No route on the magic belt's T2 resistances, and the one floor to
+    // lower in its place.
+    assert!(preview("craft-relaxation").route.is_none());
+    assert!(!plan("craft-relaxation").can_accept);
+    let relax = preview("craft-relaxation").relaxation.as_ref().unwrap();
+    assert!(relax
+        .text
+        .starts_with("Lower +#% to Fire Resistance from T2 to T3"));
+    assert_eq!((relax.from, relax.to), (2, 3));
+    // The reveal names the blocker; no other step of any route does.
+    let blocker = preview("craft-blocker").route.as_ref().unwrap();
+    assert_eq!(blocker.blueprint, "essence-desecrate-double-slam");
+    for (name, v) in &views {
+        let steps = v
+            .craft
+            .planning
+            .as_ref()
+            .and_then(|p| p.preview.as_ref())
+            .and_then(|p| p.route.as_ref())
+            .map(|r| r.steps.clone())
+            .unwrap_or_default();
+        for s in steps {
+            let named = *name == "craft-blocker" && s.id == "reveal";
+            assert_eq!(s.blocker.is_some(), named, "{name} {}", s.id);
+            let swap = *name == "craft-essence-swap" && s.id == "essence";
+            assert_eq!(s.survival.is_some(), swap, "{name} {}", s.id);
+        }
+    }
+    assert!(blocker.steps[2]
+        .blocker
+        .as_deref()
+        .unwrap()
+        .starts_with("If +#% to Cold Resistance is not offered, take +# to Strength and Dexterity or +# to Strength and Intelligence (keeps out +# to Strength)"));
     assert_eq!(view("craft-refused").craft.mode, CraftMode::Refused);
     let guide = |n: &str| view(n).craft.guiding.as_ref().unwrap();
     assert_eq!(guide("craft-guiding").status, GuideStatusView::Active);
@@ -906,7 +992,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 17);
-    assert_eq!(views.len(), 31);
+    assert_eq!(views.len(), 34);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

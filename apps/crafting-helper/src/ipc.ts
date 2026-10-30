@@ -233,6 +233,18 @@ export interface StepLineView {
   odds: string | null;
   /** Set when an earlier alternative was passed over. */
   fallback: string | null;
+  /**
+   * On a reveal followed by a same-side exalt: which desecrated modifier to
+   * take if the target is not offered, what it keeps out and the exalt's
+   * chance before and after, in Rust's words; null on every other step.
+   */
+  blocker: string | null;
+  /**
+   * On an essence swap whose removal may take an unrevealed desecrated
+   * modifier: the chance it survives and what to do if it stays and if it
+   * goes, in Rust's words; null on every other step.
+   */
+  survival: string | null;
 }
 
 /** The route the preview shows: what it targets and what to do, never the blueprint's notes. */
@@ -246,6 +258,8 @@ export interface RouteView {
 }
 
 export interface RouteChoice {
+  /** The route's number, from 1: its place in Rust's order, whichever is previewed. */
+  number: number;
   blueprint: string;
   name: string;
 }
@@ -258,10 +272,29 @@ export interface RejectedLine {
 
 export interface PreviewView {
   route: RouteView | null;
-  /** The other applicable routes, in the engine's order. */
+  /** The previewed route's number in `routes`. */
+  route_number: number | null;
+  /** Every applicable route, the previewed one included, in the engine's order. */
+  routes: RouteChoice[];
+  /** The applicable routes other than the previewed one, in the engine's order. */
   other_routes: RouteChoice[];
   /** Filled only when there is no route. */
   rejected: RejectedLine[];
+  /** With no route, the one target floor that, lowered, lets a route exist; null otherwise. */
+  relaxation: RelaxationView | null;
+}
+
+/** A tier relaxation: accepting it sends `set_targets` with `mod_id`'s floor changed to `to`. */
+export interface RelaxationView {
+  /** Rust's words: `Lower <target> from T<from> to T<to>: <currency> adds it at T<to>, which unlocks a route.` */
+  text: string;
+  mod_id: string;
+  /** The floor in force now. */
+  from: number;
+  /** The floor to send. */
+  to: number;
+  /** The essence, alloy or liquid emotion's name. */
+  currency: string;
 }
 
 export interface PlanningView {
@@ -525,7 +558,10 @@ const stepLine = record<StepLineView>({
   uses: list(str),
   odds: nullable(str),
   fallback: nullable(str),
+  blocker: nullable(str),
+  survival: nullable(str),
 });
+const routeChoice = record<RouteChoice>({ number: uint, blueprint: str, name: str });
 const planning = record<PlanningView>({
   item,
   choices: record<TargetChoices>({ prefixes: list(choice), suffixes: list(choice), desecrated: list(choice) }),
@@ -537,8 +573,11 @@ const planning = record<PlanningView>({
   preview: nullable(
     record<PreviewView>({
       route: nullable(record<RouteView>({ blueprint: str, name: str, source: str, steps: list(stepLine) })),
-      other_routes: list(record<RouteChoice>({ blueprint: str, name: str })),
+      route_number: nullable(uint),
+      routes: list(routeChoice),
+      other_routes: list(routeChoice),
       rejected: list(record<RejectedLine>({ blueprint: str, name: str, reason: str })),
+      relaxation: nullable(record<RelaxationView>({ text: str, mod_id: str, from: uint, to: uint, currency: str })),
     }),
   ),
   can_accept: bool,

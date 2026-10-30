@@ -14,6 +14,10 @@ use crate::route::ChosenAction;
 /// the Abyssal Lord) a Fracturing Orb does not pick.
 const ABYSS_ESSENCE: &str = "essence-of-the-abyss";
 
+/// The odds basis note of a slam with Omen of Catalysing Exaltation.
+pub const CATALYST_NOTE: &str =
+    "the catalyst's favour is not counted (Omen of Catalysing Exaltation)";
+
 /// The odds of the step's goal on its first try, or `None` for a manual
 /// step (no check, no odds).
 pub(crate) fn step_odds(
@@ -311,6 +315,15 @@ fn add_wanted_odds(ctx: &Ctx, st: &State, aims: &[usize], action: &ChosenAction)
             let add = add_chance(ctx, st, aims, &sides, action.min_modifier_level);
             let add = if has_omen_change(action, OmenChange::AddTwo) {
                 with_basis_note(add, "for each of the two modifiers added")
+            } else {
+                add
+            };
+            // The catalyst's favour has no established size, and the
+            // helper cannot read the item's quality: the odds are the
+            // plain slam's (docs/models/crafting-slots-spec.md,
+            // `catalysing-with-side-omen`).
+            let add = if has_omen_change(action, OmenChange::Catalysing) {
+                with_basis_note(add, CATALYST_NOTE)
             } else {
                 add
             };

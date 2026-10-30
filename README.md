@@ -98,7 +98,7 @@ npm --prefix apps/waystone-roller run release
 
 ## Crafting helper
 
-`crafting-helper.exe` helps you craft items. You copy an item in the game
+`Crafting Helper.exe` (`crafting-helper.exe` before 0.2.0) helps you craft items. You copy an item in the game
 with the game's own `Ctrl+Alt+C`, then press the app's hotkey
 (`Ctrl+Alt+X`, changeable, never `Ctrl+Alt+C`) or `Ctrl+V` in its window,
 and the window shows the item and its modifiers, lets you pick target
@@ -129,9 +129,12 @@ opens it in your browser; the app sends that search nothing itself.
   [`docs/crafting-helper/README.md`](docs/crafting-helper/README.md)
 - Download: the latest Crafting Helper release on the
   [releases page](https://github.com/S-Borkowski/ExilePact2/releases?q=crafting-helper).
-  Each release has `crafting-helper.exe`, `SHA256SUMS.txt` and the exe's
-  signature `crafting-helper.exe.minisig`; there is no installer, and a
-  newer version installs from the app.
+  Each release has `Crafting.Helper.exe` (GitHub's name for `Crafting
+  Helper.exe`: it stores a space as a dot), `SHA256SUMS.txt` and the
+  exe's signature `Crafting.Helper.exe.minisig`, and the same exe under
+  its 0.1.x name, `crafting-helper.exe` with `crafting-helper.exe.minisig`,
+  for copies from 0.1.x to update; there is no installer, and a newer
+  version installs from the app (a 0.1.x copy keeps its old file name).
 - Requirements: Windows 10 or 11, 64-bit, with the WebView2 runtime; an
   English game client; for reading the item from the screen, Windows'
   English OCR and the game windowed or borderless.
@@ -141,7 +144,7 @@ To build it from source, with the same toolchain:
 ```sh
 npm --prefix apps/crafting-helper ci            # only when apps/crafting-helper/node_modules is missing
 npm --prefix apps/crafting-helper run release
-# -> apps/crafting-helper/target/release/crafting-helper.exe
+# -> apps/crafting-helper/target/release/Crafting Helper.exe
 ```
 
 ## Repository layout
@@ -199,10 +202,13 @@ which builds both of the quest tracker's executables;
 [`.github/workflows/waystone-roller-release.yml`](.github/workflows/waystone-roller-release.yml),
 which builds `waystone-roller.exe`; `crafting-helper-v<version>` starts
 [`.github/workflows/crafting-helper-release.yml`](.github/workflows/crafting-helper-release.yml),
-which builds `crafting-helper.exe`. Each builds on a Windows runner, signs
+which builds `Crafting Helper.exe` and attaches it as
+`Crafting.Helper.exe` and, for 0.1.x copies, as `crafting-helper.exe`. Each
+builds on a Windows runner, signs
 the app's exe with the release key (the repository secret
 `TAURI_SIGNING_PRIVATE_KEY`; without it the run fails and no release is
-made), and attaches its files, `SHA256SUMS.txt` and `<exe>.minisig` to a
+made; the crafting helper's under each of its two names), and attaches its
+files, `SHA256SUMS.txt` and `<exe>.minisig` to a
 **draft** release, with the version's changelog from the app's guide as its
 body. [`docs/app-updates.md`](docs/app-updates.md) has the release contract
 the apps' in-app update relies on and the key's set-up and rotation. The owner publishes

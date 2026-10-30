@@ -350,6 +350,7 @@ const BLUEPRINT_NAMES = [
         view.craft.guiding?.route_name,
         view.overlay.guide?.route_name,
         preview?.route?.name,
+        ...(preview?.routes ?? []).map((choice) => choice.name),
         ...(preview?.other_routes ?? []).map((other) => other.name),
         ...(preview?.rejected ?? []).map((line) => line.name),
       ].filter((n): n is string => typeof n === 'string' && n !== '');
@@ -389,6 +390,9 @@ describe('the craft window', () => {
       'craft-planning': 'Doom Loop',
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
+      'craft-relaxation': 'Heavy Belt',
+      'craft-blocker': 'Heavy Belt',
+      'craft-essence-swap': 'Doom Loop',
       'craft-close-side': 'Cord Snare',
       'craft-last-desecration': 'Cord Snare',
       'craft-side-full': 'Cord Snare',
@@ -637,10 +641,10 @@ describe('the craft window', () => {
 
   it('the_last_target_is_desecrated_or_the_fallback_says_why', async () => {
     // `craft-last-desecration`: the belt's last target missing (Armour) on
-    // a rare with no desecrated modifier: the route's steps are the bone on
-    // the prefix side with Omen of Sinistral Necromancy, then the reveal
-    // with Omen of Abyssal Echoes, each with its odds unknown, in words,
-    // and no Fallback line.
+    // a rare with no desecrated modifier: the route's steps are Omen of
+    // Sinistral Necromancy then the bone, the desecrated modifier a prefix,
+    // then the reveal with Omen of Abyssal Echoes, each with its odds
+    // unknown, in words, and no Fallback line.
     const view = fixtureView('craft-last-desecration');
     const previewed = view.craft.planning!.preview!.route!;
     const { root } = await render(view);
@@ -648,7 +652,9 @@ describe('the craft window', () => {
     expect(steps).toHaveLength(2);
     const [desecrate, reveal] = steps;
     expect(text(desecrate.querySelector('.instruction'))).toBe(previewed.steps[0].instruction);
-    expect(text(desecrate.querySelector('.instruction'))).toContain('Omen of Sinistral Necromancy on the prefix side');
+    expect(text(desecrate.querySelector('.instruction'))).toMatch(
+      /^Use Omen of Sinistral Necromancy, then apply the .*Collarbone; the desecrated modifier will be a prefix, for /,
+    );
     expect(text(desecrate.querySelector('.uses'))).toMatch(/^Uses .*Collarbone, Omen of Sinistral Necromancy$/);
     expect(text(reveal.querySelector('.uses'))).toBe('Uses Reveal at the Well of Souls, Omen of Abyssal Echoes');
     for (const li of steps) {
@@ -723,9 +729,9 @@ describe('the craft window', () => {
   it('route_preview_does_not_name_the_blueprint', async () => {
     // The blueprint's name is the app's recipe, not the player's: the Route
     // panel has no route-name line, its chooser labels the routes `Route 1`,
-    // `Route 2`, ... in Rust's order (the previewed one first) with the
-    // blueprint id as each option's value, and a rejection is its reason
-    // alone.
+    // `Route 2`, ... with Rust's numbers in Rust's order (the previewed one
+    // selected where it stands) with the blueprint id as each option's
+    // value, and a rejection is its reason alone.
     expect(BLUEPRINT_NAMES.length).toBeGreaterThan(2);
     for (const name of ['craft-prefilled', 'craft-planning', 'craft-fallback', 'craft-no-route']) {
       const { root } = await renderPreview(name);
@@ -737,16 +743,18 @@ describe('the craft window', () => {
 
     // The chooser, shown only with other routes.
     const p = fixtureView('craft-planning').craft.planning!.preview!;
-    expect(p.other_routes.length).toBeGreaterThan(0);
+    expect(p.routes.length).toBeGreaterThan(1);
     const planning = await renderPreview('craft-planning');
     const select = labelled<HTMLSelectElement>(planning.root.querySelector('.route')!, 'Route')!;
     expect([...select.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2', 'Route 3', 'Route 4', 'Route 5']);
-    expect([...select.options].map((o) => o.value)).toEqual([p.route!.blueprint, ...p.other_routes.map((o) => o.blueprint)]);
+    expect([...select.options].map((o) => o.value)).toEqual(p.routes.map((o) => o.blueprint));
     expect(select.value).toBe(p.route!.blueprint);
     // A route with no other (every fixture's item now has several): the
     // chooser is left out.
     const alone = fixtureView('craft-fallback');
-    alone.craft.planning!.preview!.other_routes = [];
+    const fallbackPreview = alone.craft.planning!.preview!;
+    fallbackPreview.routes = fallbackPreview.routes.filter((r) => r.blueprint === fallbackPreview.route!.blueprint);
+    fallbackPreview.other_routes = [];
     const single = await render(alone);
     expect(labelled(single.root.querySelector('.route')!, 'Route')).toBeNull();
 
@@ -755,6 +763,107 @@ describe('the craft window', () => {
     expect(rejected.length).toBeGreaterThan(0);
     const noRoute = await renderPreview('craft-no-route');
     expect(texts(noRoute.root, 'ul.rejected li')).toEqual(rejected.map((r) => r.reason));
+  });
+
+  it('relaxation_proposal_offers_lower_and_keep', async () => {
+    // Negative control: a no-route view without a proposal shows none.
+    expect(fixtureView('craft-no-route').craft.planning!.preview!.relaxation).toBeNull();
+    const plain = await render(fixtureView('craft-no-route'));
+    expect(plain.root.querySelector('.relaxation')).toBeNull();
+    expect(button(plain.root, 'Keep T2')).toBeUndefined();
+
+    // With one: Rust's words, below the no-route line and above the
+    // rejections, and its two buttons.
+    const view = fixtureView('craft-relaxation');
+    const planning = view.craft.planning!;
+    const relax = planning.preview!.relaxation!;
+    expect(relax.text.startsWith('Lower +#% to Fire Resistance from T2 to T3')).toBe(true);
+    expect(relax.text).toContain('Greater Essence of Insulation');
+    const { root, bridge } = await render(view);
+    const route = root.querySelector('.route')!;
+    const proposal = route.querySelector('.relaxation')!;
+    expect(text(proposal.querySelector('.relaxation-text'))).toBe(relax.text);
+    const order = [...route.querySelectorAll('.no-route, .relaxation, ul.rejected')].map((el) => el.className.split(' ')[0]);
+    expect(order).toEqual(['no-route', 'relaxation', 'rejected']);
+    expect(button(root, 'Start crafting')!.disabled).toBe(true);
+
+    // Lower sends the whole list with that one floor changed.
+    click(button(proposal, 'Lower to T3'));
+    expect(bridge.calls).toEqual([
+      {
+        name: 'set_targets',
+        args: {
+          targets: planning.targets.map((t) => ({ mod_id: t.mod_id, floor: t.mod_id === relax.mod_id ? relax.to : t.floor })),
+        },
+      },
+    ]);
+    expect(bridge.calls[0].args).toEqual({
+      targets: [
+        { mod_id: 'suffix-to-fire-resistance', floor: 3 },
+        { mod_id: 'suffix-to-cold-resistance', floor: 2 },
+        { mod_id: 'suffix-to-lightning-resistance', floor: 2 },
+      ],
+    });
+
+    // Keep sends nothing and hides it, while the view's proposal stays the same.
+    bridge.calls.length = 0;
+    click(button(root, 'Keep T2'));
+    expect(bridge.calls).toEqual([]);
+    expect(root.querySelector('.relaxation')).toBeNull();
+    expect(text(root.querySelector('.no-route'))).toBe('No route reaches these targets.');
+    bridge.pushView(fixtureView('craft-relaxation'));
+    await settle();
+    expect(root.querySelector('.relaxation')).toBeNull();
+
+    // A different proposal shows again.
+    const changed = fixtureView('craft-relaxation');
+    changed.craft.planning!.preview!.relaxation = {
+      ...relax,
+      mod_id: 'suffix-to-cold-resistance',
+      text: 'Lower +#% to Cold Resistance from T2 to T3: Greater Essence of Thawing adds it at T3, which unlocks a route.',
+      currency: 'Greater Essence of Thawing',
+    };
+    bridge.pushView(changed);
+    await settle();
+    expect(text(root.querySelector('.relaxation-text'))).toContain('Cold Resistance');
+    expect(button(root, 'Lower to T3')).toBeDefined();
+  });
+
+  it('route_select_keeps_each_routes_number', async () => {
+    // Each route keeps its number when chosen: the options, their labels
+    // and their values are the same before and after route 2 is previewed,
+    // and the selected one is `Route 2`. `craft-planning` is Rust's view
+    // after the whittling route, route 2, was chosen; before it, the same
+    // view previewing route 1.
+    const after = fixtureView('craft-planning');
+    const q = after.craft.planning!.preview!;
+    expect(q.routes.length).toBeGreaterThan(2);
+    expect(q.route_number).toBe(2);
+    const second = q.routes[1];
+    expect(q.route!.blueprint).toBe(second.blueprint);
+    expect(q.other_routes).toEqual(q.routes.filter((r) => r.number !== 2));
+    const before = fixtureView('craft-planning');
+    const p = before.craft.planning!.preview!;
+    p.route!.blueprint = p.routes[0].blueprint;
+    p.route_number = 1;
+    p.other_routes = p.routes.slice(1);
+
+    const { root, bridge } = await render(before);
+    const select = () => labelled<HTMLSelectElement>(root.querySelector('.route')!, 'Route')!;
+    const options = () => [...select().options].map((o) => [o.value, o.textContent]);
+    const expected = q.routes.map((r) => [r.blueprint, `Route ${r.number}`]);
+    expect(expected.map(([, label]) => label)).toEqual(q.routes.map((_, i) => `Route ${i + 1}`));
+    expect(options()).toEqual(expected);
+    expect(select().selectedOptions[0].textContent).toBe('Route 1');
+
+    // Choosing route 2 sends its blueprint; Rust's next view previews it.
+    choose(select(), second.blueprint);
+    expect(bridge.calls).toEqual([{ name: 'choose_route', args: { blueprint: second.blueprint } }]);
+    bridge.pushView(after);
+    await settle();
+    expect(options()).toEqual(expected);
+    expect(select().value).toBe(second.blueprint);
+    expect(select().selectedOptions[0].textContent).toBe('Route 2');
   });
 
   it('step_lines_name_their_target_mods', async () => {
@@ -1222,6 +1331,78 @@ describe('the craft window', () => {
       const r = await render(view);
       expect(r.root.querySelector('.watch'), name).toBeNull();
     }
+  });
+
+  it('reveal_step_shows_the_blocker_line', async () => {
+    // The reveal before the suffix exalt: Rust's blocker line under the
+    // odds, labelled; no other step shows one.
+    const view = fixtureView('craft-blocker');
+    const steps = view.craft.planning!.preview!.route!.steps;
+    expect(steps.map((s) => s.id)).toEqual(['essence', 'desecrate', 'reveal', 'side-slam']);
+    const blocker = steps[2].blocker!;
+    expect(blocker.startsWith('If +#% to Cold Resistance is not offered, take +# to Strength and Dexterity or +# to Strength and Intelligence (keeps out +# to Strength)')).toBe(true);
+    expect(blocker).toMatch(/goes from ~\d+(\.\d)?% to ~\d+(\.\d)?%$/);
+    expect(steps.filter((s) => s.blocker !== null)).toHaveLength(1);
+    const { root } = await render(view);
+    const shown = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(shown).toHaveLength(steps.length);
+    const reveal = shown[2];
+    expect(text(reveal.querySelector('.blocker .label'))).toBe('Blocker');
+    expect(text(reveal.querySelector('.blocker .line'))).toBe(blocker);
+    const facts = [...reveal.querySelectorAll('.odds, .blocker')].map((el) => el.className.split(' ')[0]);
+    expect(facts).toEqual(['odds', 'blocker']);
+    shown.forEach((li, i) => {
+      if (i !== 2) expect(li.querySelector('.blocker'), steps[i].id).toBeNull();
+    });
+
+    // Negative control: a route whose steps carry none shows none.
+    const plain = await render(fixtureView('craft-planning'));
+    expect(plain.root.querySelector('.blocker')).toBeNull();
+
+    // The guide's card draws the current step's line the same way.
+    const guiding = fixtureView('craft-guiding');
+    expect(guiding.craft.guiding!.step!.step.blocker).toBeNull();
+    guiding.craft.guiding!.step!.step.blocker = blocker;
+    const gr = await render(guiding);
+    const card = gr.root.querySelector('.guide .card')!;
+    expect(text(card.querySelector('.blocker .line'))).toBe(blocker);
+  });
+
+  it('essence_swap_step_shows_the_survival_line', async () => {
+    // The fractured essence swap: the essence step's instruction names what
+    // it removes and the fractured suffix it leaves; Rust's survival line
+    // sits under its odds, labelled; no other step shows one.
+    const view = fixtureView('craft-essence-swap');
+    const steps = view.craft.planning!.preview!.route!.steps;
+    expect(steps.map((s) => s.id)).toEqual(['essence', 'reveal-last']);
+    expect(steps[0].instruction).toContain('it removes the unrevealed desecrated suffix or +10(9-12) to Dexterity, one at random');
+    expect(steps[0].instruction).toContain('+23(21-25)% to Fire Resistance is fractured and stays');
+    const survival = steps[0].survival!;
+    expect(survival.startsWith('The unrevealed desecrated suffix survives the swap 1 in 2')).toBe(true);
+    expect(survival).toContain('If it stays, ');
+    expect(survival).toContain('If it goes, Orb of Annulment with Omen of Dextral Annulment');
+    expect(steps.filter((s) => s.survival !== null)).toHaveLength(1);
+    const { root } = await render(view);
+    const shown = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(shown).toHaveLength(steps.length);
+    const essence = shown[0];
+    expect(text(essence.querySelector('.survival .label'))).toBe('Survival');
+    expect(text(essence.querySelector('.survival .line'))).toBe(survival);
+    const facts = [...essence.querySelectorAll('.odds, .survival')].map((el) => el.className.split(' ')[0]);
+    expect(facts).toEqual(['odds', 'survival']);
+    expect(shown[1].querySelector('.survival')).toBeNull();
+
+    // Negative control: a route whose steps carry none shows none.
+    const plain = await render(fixtureView('craft-planning'));
+    expect(plain.root.querySelector('.survival')).toBeNull();
+
+    // The guide's card draws the current step's line the same way.
+    const guiding = fixtureView('craft-guiding');
+    expect(guiding.craft.guiding!.step!.step.survival).toBeNull();
+    guiding.craft.guiding!.step!.step.survival = survival;
+    const gr = await render(guiding);
+    const card = gr.root.querySelector('.guide .card')!;
+    expect(text(card.querySelector('.survival .line'))).toBe(survival);
   });
 
   it('unknown_odds_are_said_in_words', async () => {

@@ -1,0 +1,8 @@
+Item Class: Bows
+Rarity: Magic
+Tyrannical Adherent Bow
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Tyrannical" (Tier: 2) — Damage, Physical, Attack }
+160(155-169)% increased Physical Damage

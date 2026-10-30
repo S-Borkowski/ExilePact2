@@ -1,16 +1,19 @@
 <script lang="ts">
   // The route preview (`ui-design.md` § "Mode planning"): nothing but a
   // prompt with no target; with a route, its source, the route select when
-  // other routes apply (`Route 1`, `Route 2`, ... in Rust's order, the
-  // previewed one first), the chosen targets with their floors, and the
-  // numbered steps, each naming its target modifiers; with no route, one
-  // reason per rejected blueprint in Rust's order. No blueprint's name: the
-  // route is the app's recipe, not the player's. What the craft targets
-  // and what to do, never the reasoning behind the technique. The route the
-  // engine previews, the floor labels, and why a route does not apply, are
-  // Rust's.
+  // other routes apply (every route as `Route <n>`, its number from Rust,
+  // in Rust's order, the previewed one selected where it stands, so a
+  // route keeps its number when chosen), the chosen targets with their floors, and the
+  // numbered steps, each naming its target modifiers; with no route, Rust's
+  // tier relaxation when it has one (Lower to T<b> sends `set_targets` with
+  // that one floor changed; Keep T<a> hides it until the view proposes
+  // something else), then one reason per rejected blueprint in Rust's
+  // order. No blueprint's name: the route is the app's recipe, not the
+  // player's. What the craft targets and what to do, never the reasoning
+  // behind the technique. The route the engine previews, the floor labels,
+  // the relaxation's words, and why a route does not apply, are Rust's.
   import type { Send } from '../bridge';
-  import type { ChosenTarget, PlanningView } from '../ipc';
+  import type { ChosenTarget, PlanningView, RelaxationView } from '../ipc';
   import StepFacts from './StepFacts.svelte';
 
   let { planning, send }: { planning: PlanningView; send: Send } = $props();
@@ -32,6 +35,16 @@
     select.value = current;
     if (blueprint !== current) send('choose_route', { blueprint });
   }
+
+  const relaxation = $derived(preview?.relaxation ?? null);
+  /** The proposal Keep dismissed, by what it proposes; a different one shows again. */
+  let kept = $state<string | null>(null);
+  const relaxationKey = (r: RelaxationView): string => `${r.mod_id}:${r.from}:${r.to}:${r.currency}`;
+
+  function lower(r: RelaxationView): void {
+    const targets = planning.targets.map((t) => ({ mod_id: t.mod_id, floor: t.mod_id === r.mod_id ? r.to : t.floor }));
+    send('set_targets', { targets });
+  }
 </script>
 
 <section class="route" aria-labelledby="{uid}-title">
@@ -40,12 +53,11 @@
     <p class="no-target">Pick a target to see a route.</p>
   {:else if preview.route}
     {@const route = preview.route}
-    {#if preview.other_routes.length > 0}
+    {#if preview.routes.length > 1}
       <div class="head">
         <select class="field" aria-label="Route" value={route.blueprint} onchange={(event) => chooseRoute(event, route.blueprint)}>
-          <option value={route.blueprint}>Route 1</option>
-          {#each preview.other_routes as other, i (other.blueprint)}
-            <option value={other.blueprint}>Route {i + 2}</option>
+          {#each preview.routes as choice (choice.blueprint)}
+            <option value={choice.blueprint}>Route {choice.number}</option>
           {/each}
         </select>
       </div>
@@ -73,6 +85,16 @@
     </ol>
   {:else}
     <p class="no-route">No route reaches these targets.</p>
+    {#if relaxation !== null && relaxationKey(relaxation) !== kept}
+      {@const relax = relaxation}
+      <div class="relaxation">
+        <p class="relaxation-text">{relax.text}</p>
+        <div class="relaxation-actions">
+          <button type="button" class="btn primary" onclick={() => lower(relax)}>Lower to T{relax.to}</button>
+          <button type="button" class="btn" onclick={() => (kept = relaxationKey(relax))}>Keep T{relax.from}</button>
+        </div>
+      </div>
+    {/if}
     <ul class="rejected">
       {#each preview.rejected as line (line.blueprint)}
         <li>{line.reason}</li>
@@ -171,6 +193,24 @@
   .no-route {
     color: var(--color-text-primary);
     font-weight: 700;
+  }
+
+  .relaxation {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-unit) * 2);
+    padding: calc(var(--space-unit) * 2) 0;
+    border-top: var(--border-width) solid var(--color-panel-divider);
+  }
+
+  .relaxation-text {
+    color: var(--color-text-primary);
+  }
+
+  .relaxation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--space-unit) * 2);
   }
 
   .rejected li {

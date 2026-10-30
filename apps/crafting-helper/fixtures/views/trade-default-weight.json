@@ -1620,33 +1620,40 @@
         "other_routes": [
           {
             "blueprint": "rings-flat-attack",
-            "name": "Rings: flat attack damage and resistances"
+            "name": "Rings: flat attack damage and resistances",
+            "number": 1
           },
           {
             "blueprint": "close-a-side",
-            "name": "Close the finished side, then slam the open one"
+            "name": "Close the finished side, then slam the open one",
+            "number": 3
           },
           {
             "blueprint": "essence-desecrate-double-slam",
-            "name": "Essence, desecrate the hardest, then side slams"
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 4
           },
           {
             "blueprint": "rare-clean-then-slam",
-            "name": "Clean a rare, then side slams"
+            "name": "Clean a rare, then side slams",
+            "number": 5
           }
         ],
         "rejected": [],
+        "relaxation": null,
         "route": {
           "blueprint": "rings-resist-whittle",
           "name": "Rings: resistances by whittling",
           "source": "Discord post 10, owner's paste, 2026-10-28",
           "steps": [
             {
+              "blocker": null,
               "fallback": null,
               "id": "chaos",
               "instruction": "Chaos Orb for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 1,
               "odds": "~4.5% ((6000 of 132355 weight) times (2 of 2 removable modifiers are not wanted))",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
@@ -1657,11 +1664,13 @@
               ]
             },
             {
+              "blocker": null,
               "fallback": null,
               "id": "whittle",
               "instruction": "Chaos Orb with Omen of Whittling for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 2,
               "odds": "~4.5% ((6000 of 132355 weight) times (the lowest modifier level (33) is unique))",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
@@ -1673,26 +1682,31 @@
               ]
             },
             {
+              "blocker": null,
               "fallback": null,
               "id": "desecrate",
-              "instruction": "Preserved Collarbone for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+              "instruction": "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Fire Resistance, +#% to Cold Resistance or +#% to Lightning Resistance",
               "number": 3,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
                 "+#% to Lightning Resistance"
               ],
               "uses": [
-                "Preserved Collarbone"
+                "Preserved Collarbone",
+                "Omen of Dextral Necromancy"
               ]
             },
             {
+              "blocker": null,
               "fallback": null,
               "id": "reveal",
               "instruction": "Reveal at the Well of Souls for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 4,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
                 "+#% to Cold Resistance",
@@ -1703,7 +1717,35 @@
               ]
             }
           ]
-        }
+        },
+        "route_number": 2,
+        "routes": [
+          {
+            "blueprint": "rings-flat-attack",
+            "name": "Rings: flat attack damage and resistances",
+            "number": 1
+          },
+          {
+            "blueprint": "rings-resist-whittle",
+            "name": "Rings: resistances by whittling",
+            "number": 2
+          },
+          {
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one",
+            "number": 3
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 4
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams",
+            "number": 5
+          }
+        ]
       },
       "targets": [
         {

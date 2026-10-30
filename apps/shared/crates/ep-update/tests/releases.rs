@@ -97,10 +97,11 @@ fn releases_pick_the_newest_published_tag_of_the_product() {
         "crafting-helper-v0.1.0"
     );
     assert_eq!(CRAFTING_HELPER.name, "Crafting Helper");
-    assert_eq!(CRAFTING_HELPER.exe_name, "crafting-helper.exe");
+    // `Crafting Helper.exe`, under the name GitHub stores it as.
+    assert_eq!(CRAFTING_HELPER.exe_name, "Crafting.Helper.exe");
     assert_eq!(
         CRAFTING_HELPER.signature_name(),
-        "crafting-helper.exe.minisig"
+        "Crafting.Helper.exe.minisig"
     );
     // An app's own package version, read up to a suffix.
     assert_eq!(Version::of_package("0.2.0"), Version::new(0, 2, 0));
@@ -348,6 +349,55 @@ fn releases_list_the_newest_releases_signed_assets() {
         .unwrap()
         .is_signed());
     assert_eq!(read_answer(&p, answer(), v).1, None);
+}
+
+/// From 0.2.0 a crafting helper release carries its exe twice: under the
+/// renamed `Crafting.Helper.exe`, which this build looks up, and under the
+/// legacy `crafting-helper.exe`, which 0.1.x copies look up.
+#[test]
+fn a_crafting_helper_release_lists_the_renamed_exe_beside_the_legacy_one() {
+    let p = CRAFTING_HELPER;
+    let v = Version::new(0, 2, 0);
+    let exe = ("Crafting.Helper.exe", 9_000_000);
+    let sig = ("Crafting.Helper.exe.minisig", 320);
+    let legacy_exe = ("crafting-helper.exe", 9_000_000);
+    let legacy_sig = ("crafting-helper.exe.minisig", 318);
+    let asset = |(name, size): (&str, u64)| {
+        Some(ReleaseAsset {
+            name: name.to_string(),
+            size,
+        })
+    };
+    let body = list(vec![release_entry(
+        &p,
+        v,
+        &[legacy_exe, legacy_sig, exe, ("SHA256SUMS.txt", 200), sig],
+    )]);
+    let r = newest_release(&p, &body).unwrap().unwrap();
+    assert_eq!(
+        r,
+        Release {
+            version: v,
+            exe: asset(exe),
+            signature: asset(sig)
+        }
+    );
+    assert!(r.is_signed());
+    // Negative control: a release with only the legacy names (0.1.x) has
+    // no asset this build installs.
+    let body = list(vec![release_entry(&p, v, &[legacy_exe, legacy_sig])]);
+    let r = newest_release(&p, &body).unwrap().unwrap();
+    assert_eq!((r.exe, r.signature), (None, None));
+    // The built file's own name, with its space, is not the stored name.
+    let body = list(vec![release_entry(
+        &p,
+        v,
+        &[
+            ("Crafting Helper.exe", 1),
+            ("Crafting Helper.exe.minisig", 1),
+        ],
+    )]);
+    assert!(!newest_release(&p, &body).unwrap().unwrap().is_signed());
 }
 
 #[test]

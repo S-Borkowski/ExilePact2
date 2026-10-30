@@ -1179,26 +1179,36 @@
       "preview": {
         "other_routes": [
           {
+            "blueprint": "fractured-essence-swap",
+            "name": "Fractured essence swap",
+            "number": 1
+          },
+          {
             "blueprint": "essence-desecrate-double-slam",
-            "name": "Essence, desecrate the hardest, then side slams"
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 3
           },
           {
             "blueprint": "rare-clean-then-slam",
-            "name": "Clean a rare, then side slams"
+            "name": "Clean a rare, then side slams",
+            "number": 4
           }
         ],
         "rejected": [],
+        "relaxation": null,
         "route": {
           "blueprint": "close-a-side",
           "name": "Close the finished side, then slam the open one",
           "source": "maxroll, How to Craft in Path of Exile 2, method 3 and the domistae PoE2 Crafting Codex, fetched 2026-10-29",
           "steps": [
             {
+              "blocker": null,
               "fallback": null,
               "id": "desecrate-last",
-              "instruction": "Preserved Collarbone with Omen of Sinistral Necromancy on the prefix side for +# to Armour",
+              "instruction": "Use Omen of Sinistral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a prefix, for +# to Armour",
               "number": 1,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+# to Armour"
               ],
@@ -1208,11 +1218,13 @@
               ]
             },
             {
+              "blocker": null,
               "fallback": null,
               "id": "reveal-last",
               "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +# to Armour (prefix)",
               "number": 2,
               "odds": "odds unknown: desecration and reveals have no established weights",
+              "survival": null,
               "targets": [
                 "+# to Armour"
               ],
@@ -1222,7 +1234,30 @@
               ]
             }
           ]
-        }
+        },
+        "route_number": 2,
+        "routes": [
+          {
+            "blueprint": "fractured-essence-swap",
+            "name": "Fractured essence swap",
+            "number": 1
+          },
+          {
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one",
+            "number": 2
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 3
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams",
+            "number": 4
+          }
+        ]
       },
       "targets": [
         {

@@ -30,8 +30,23 @@ GitHub release of `S-Borkowski/ExilePact2` tagged
 
 | Asset | What it is |
 |---|---|
-| `quest-tracker.exe` / `waystone-roller.exe` / `crafting-helper.exe` | The app itself, as the release workflow built it. |
-| `quest-tracker.exe.minisig` / `waystone-roller.exe.minisig` / `crafting-helper.exe.minisig` | The exe's minisign signature, as plain text: four lines, algorithm `ED` (Ed25519 over the file's BLAKE2b-512 hash), with the trusted comment `timestamp:<t>`, `file:<exe name>` and `version:<version>`, tab-separated. |
+| `quest-tracker.exe` / `waystone-roller.exe` / `Crafting.Helper.exe` | The app itself, as the release workflow built it. |
+| `quest-tracker.exe.minisig` / `waystone-roller.exe.minisig` / `Crafting.Helper.exe.minisig` | The exe's minisign signature, as plain text: four lines, algorithm `ED` (Ed25519 over the file's BLAKE2b-512 hash), with the trusted comment `timestamp:<t>`, `file:<asset name>` and `version:<version>`, tab-separated. |
+
+**The crafting helper's names** (since 0.2.0). Its exe is built as
+`Crafting Helper.exe` (`tauri.conf.json`'s `mainBinaryName`). GitHub stores
+an asset name's space as a dot, so the release attaches it as
+`Crafting.Helper.exe`, signed under that name (`file:Crafting.Helper.exe`),
+and that is the name `ep-net`'s `CRAFTING_HELPER_EXE` and `ep-update`'s
+`CRAFTING_HELPER.exe_name` look up. A 0.1.x copy has
+`crafting-helper.exe` compiled in, for the asset and for the signature's
+`file:`, so every crafting helper release from 0.2.0 also attaches the
+same exe as the **legacy assets** `crafting-helper.exe` and
+`crafting-helper.exe.minisig`, signed on its own under that name
+(`file:crafting-helper.exe`); a current copy never fetches them. The swap
+replaces the running file under its own name, so an updated 0.1.x copy
+stays `crafting-helper.exe` (and then looks up `Crafting.Helper.exe` like
+any 0.2.0). The quest tracker's and waystone roller's names are unchanged.
 
 The other assets (`SHA256SUMS.txt`, the quest tracker's
 `quest-tracker-replay.exe`, which is not updated in the app) stay as they
@@ -47,7 +62,9 @@ the built exe, with the repository secrets `TAURI_SIGNING_PRIVATE_KEY` and
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in that one step's environment,
 decodes the base64 `.sig` it writes into `<exe>.minisig`, checks that the
 trusted comment names the exe and the version, and attaches it to the draft
-release beside the exe. When `TAURI_SIGNING_PRIVATE_KEY` is missing or
+release beside the exe. The crafting helper's workflow does this twice,
+once for `Crafting.Helper.exe` and once for the legacy
+`crafting-helper.exe`, each signed under its own name. When `TAURI_SIGNING_PRIVATE_KEY` is missing or
 empty, that step prints a `::error::` and fails the job before "Create or
 update the draft release", so the workflows never make an unsigned release.
 `py -3 -m tools.<app>.release notes <version>` names the `.minisig` in the
@@ -209,4 +226,6 @@ A change here reaches the three apps at once: run every app's test suite too
 fields), the repository or a tag prefix changing, or the signing key
 changing: update `ep-net`'s constants, `ep-update`'s products and this
 page together, with `tests/test_app_updates_guard.py` and every app's
-`release.py`.
+`release.py`. An app's exe renamed again: keep attaching the exe under
+every name an installed copy looks up, each signed under that name, as
+the crafting helper's legacy assets do.

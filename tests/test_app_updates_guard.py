@@ -32,6 +32,11 @@ runs whatever these crates accept.
 - the two crates agree on each product's exe name and on the signature
   suffix, `.minisig`, the asset the release workflows publish beside each
   exe;
+- each product's exe name is its app's `mainBinaryName` and `.exe` as
+  GitHub stores an asset name (a run of other characters, a space
+  included, becomes one dot): the crafting helper builds
+  `Crafting Helper.exe` and fetches `Crafting.Helper.exe`, the other two
+  keep their kebab names;
 - a download's one redirect may go to exactly two hosts,
   `release-assets.githubusercontent.com` and `objects.githubusercontent.com`.
 
@@ -61,6 +66,7 @@ looked for, strings blanked; `#[cfg(test)]` items removed), imported from
 its module rather than copied.
 """
 import base64
+import json
 import re
 import sys
 import tomllib
@@ -526,6 +532,36 @@ class ReleaseContract(unittest.TestCase):
             rel(VERSION_RS), VERSION_RS.read_text(encoding="utf-8"), real,
         )
         self.assertEqual(offences, [], "the shared crates disagree with the release contract:\n" + "\n".join(offences))
+
+    def test_each_exe_asset_is_the_built_exe_as_github_stores_it(self):
+        # GitHub stores an asset name with each run of characters outside
+        # `[A-Za-z0-9_+@-]` as one dot (the rule `gh release upload` mirrors
+        # for `--clobber`), so `Crafting Helper.exe` is `Crafting.Helper.exe`.
+        self.assertEqual(github_asset_name("Crafting Helper.exe"), "Crafting.Helper.exe")
+        self.assertEqual(github_asset_name("quest-tracker.exe"), "quest-tracker.exe")
+        self.assertEqual(github_asset_name("a  b (c).exe"), "a.b.c.exe")
+        _, net = qtnet.non_test_rust(NET_LIB_RS.read_text(encoding="utf-8"))
+        _, product = qtnet.non_test_rust(VERSION_RS.read_text(encoding="utf-8"))
+        built = {}
+        for app, (_, _, _, exe_const, product_const) in zip((QT, WR, CH), PRODUCTS):
+            conf = json.loads((app / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
+            built[product_const] = conf["mainBinaryName"] + ".exe"
+            asset = github_asset_name(built[product_const])
+            with self.subTest(app=app.name):
+                self.assertEqual(qtnet.rust_const(net, exe_const, "str"), [asset])
+                self.assertEqual(product_fields(product, product_const, "exe_name"), [asset])
+        # Only the crafting helper's exe was renamed: the other two keep
+        # their kebab names.
+        self.assertEqual(built, {
+            "QUEST_TRACKER": "quest-tracker.exe",
+            "WAYSTONE_ROLLER": "waystone-roller.exe",
+            "CRAFTING_HELPER": "Crafting Helper.exe",
+        })
+
+
+def github_asset_name(name: str) -> str:
+    """The name GitHub stores for a release asset uploaded as `name`."""
+    return re.sub(r"[^A-Za-z0-9_+@-]+", ".", name).strip(".")
 
 
 class KeyAndPins(unittest.TestCase):

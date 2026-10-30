@@ -1388,7 +1388,10 @@ class Versions(unittest.TestCase):
     def test_names_are_pinned(self):
         conf = json.loads(wr.read(TAURI / "tauri.conf.json"))
         self.assertEqual(conf["identifier"], "net.exilepact2.crafting-helper")
-        self.assertEqual(conf["mainBinaryName"], "crafting-helper")
+        # The program is `Crafting Helper.exe` (0.2.0); the identifier, the
+        # Cargo names and the window titles stay.
+        self.assertEqual(conf["productName"], "Crafting Helper")
+        self.assertEqual(conf["mainBinaryName"], "Crafting Helper")
         self.assertEqual(conf["app"]["windows"][0]["title"], "Crafting Helper")
         self.assertIs(conf["bundle"]["active"], False)
         tauri = tomllib.loads(wr.read(TAURI / "Cargo.toml"))
