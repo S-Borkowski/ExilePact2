@@ -240,6 +240,13 @@
     color: var(--color-text-primary);
   }
 
+  /* A searchable row's text sits in the middle of the room between the
+     checkbox and the weight column, each wrapped line too. The
+     not-searchable list's names stay at the left. */
+  label .name {
+    text-align: center;
+  }
+
   .weight-cell {
     display: inline-flex;
     flex: none;

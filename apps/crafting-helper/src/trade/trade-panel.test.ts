@@ -17,6 +17,7 @@ import {
   choose,
   click,
   fixtureView,
+  readBytes,
   renderView,
   setValue,
   text,
@@ -476,5 +477,64 @@ describe('the trade panel', () => {
     for (const key of [...Object.keys(sel), ...sel.picks.flatMap((p) => Object.keys(p))]) {
       expect(key).not.toMatch(/url|uri|href|link|address|path|file|dir|location/i);
     }
+  });
+});
+
+// jsdom applies no component stylesheet, so a computed style would read the
+// same with the rule or without it: the test reads the component's source,
+// as `../theme.test.ts` reads the theme's files. The live check
+// `mod-centred` measures the rendered row.
+describe('the modifier rows', () => {
+  /** Each rule in a component's `<style>`, as its selectors and declarations (comments dropped). */
+  function rules(source: string): Array<{ selectors: string[]; decls: Record<string, string> }> {
+    const style = /<style>([\s\S]*?)<\/style>/.exec(source)?.[1] ?? '';
+    const css = style.replace(/\/\*[\s\S]*?\*\//g, '');
+    return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({
+      selectors: m[1].split(',').map((s) => s.trim().replace(/\s+/g, ' ')),
+      decls: Object.fromEntries(
+        m[2]
+          .split(';')
+          .map((d) => d.split(':').map((p) => p.trim()))
+          .filter((p) => p.length === 2 && p[0] !== '')
+          .map(([k, v]) => [k, v]),
+      ),
+    }));
+  }
+  /** The text-align a row's text gets: the last rule reaching `.name` inside the row's `label` that declares one. */
+  function rowTextAlign(source: string): string | undefined {
+    let align: string | undefined;
+    for (const rule of rules(source)) {
+      const reachesRow = rule.selectors.some((s) => /^(?:(?:\.mod-group|li|ul) )*(?:label )?\.name$/.test(s));
+      if (reachesRow && rule.decls['text-align'] !== undefined) align = rule.decls['text-align'];
+    }
+    return align;
+  }
+  /** The text-align every `.name`, the not-searchable list's too, gets from a bare `.name` rule. */
+  const bareNameAlign = (source: string): string | undefined =>
+    rules(source)
+      .filter((r) => r.selectors.includes('.name'))
+      .map((r) => r.decls['text-align'])
+      .filter((a) => a !== undefined)
+      .pop();
+
+  it('trade_modifier_text_is_centred_in_its_row', async () => {
+    const source = new TextDecoder().decode(await readBytes('./trade/TradeModifiers.svelte'));
+    expect(rowTextAlign(source)).toBe('center');
+    // The not-searchable list keeps its left-aligned names.
+    expect(bareNameAlign(source)).toBeUndefined();
+
+    // Negative control: the rule as Live 1 saw it, the text left in its box.
+    const before = `<style>
+  label {
+    display: flex;
+  }
+
+  .name {
+    flex: 1;
+    min-width: 0;
+    color: var(--color-text-primary);
+  }
+</style>`;
+    expect(rowTextAlign(before)).not.toBe('center');
   });
 });
