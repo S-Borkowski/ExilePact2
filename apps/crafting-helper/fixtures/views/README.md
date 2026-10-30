@@ -26,7 +26,12 @@ the targets and the whittling route chosen:
   orbs and `odds unknown: …` for the desecration and the reveal. Each step
   line carries the target modifiers a hit of it may place (`targets`) and
   an instruction composed from its data (the currency, its omens, the side
-  and those modifiers); the route carries no blueprint notes.
+  and those modifiers); the route carries no blueprint notes. The
+  whittle's desecration names Omen of Dextral Necromancy (all three
+  targets are suffixes; 0.2.0). The preview's `routes` lists every
+  applicable route with its `number` in the engine's order, and the
+  whittling route chosen is `route_number` 2, where it stands, not first;
+  `other_routes` is the same list without it, numbered the same.
 - `craft-fallback`: as planning, with the Omen of Whittling blocked for
   this craft, so the whittle step falls back to a Perfect Exalted Orb and
   says why.
@@ -80,9 +85,10 @@ chosen:
   no web address.
 - `craft-last-desecration`: the same planning with nothing blocked:
   Armour is the last target missing on a rare with no desecrated
-  modifier, so the route desecrates for it (issue #32): `Preserved
-  Collarbone with Omen of Sinistral Necromancy on the prefix side for +#
-  to Armour`, then the reveal with Omen of Abyssal Echoes, both with
+  modifier, so the route desecrates for it (issue #32): `Use Omen of
+  Sinistral Necromancy, then apply the Preserved Collarbone; the
+  desecrated modifier will be a prefix, for +# to Armour` (the wording
+  since 0.2.0), then the reveal with Omen of Abyssal Echoes, both with
   `odds unknown: …` and no Fallback line.
 - `craft-miss-clean`: the same craft started, the suffix side closed (a
   hit) and the slam on the prefix side missed (Flask Life Recovery): on

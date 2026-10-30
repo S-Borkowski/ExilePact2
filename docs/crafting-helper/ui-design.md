@@ -284,6 +284,19 @@ window's foot above the status line, so the action is never scrolled away.
 Guiding reads Current step, Item now, History, with the End bar fixed the
 same way.
 
+**The window itself never scrolls**, at any size: only the columns (or the
+one column) do, and each scrolls no further than the bottom of its own
+content and padding (since 0.2.0). Before, a visually hidden element
+(`.visually-hidden`, `position: absolute`, with no positioned ancestor)
+laid out far down a long list stood outside its pane's clipping and
+stretched the page, so the window scrolled up to 2,222 px into empty
+space. `.visually-hidden` is pinned to its containing block's top left
+corner, and anything positioned out of the flow must either be held by a
+positioned box inside its scroll pane or be pinned the same way.
+`src/scroll.test.ts` pins that rule in jsdom, and
+`scripts/scroll-height.mjs` measures every view fixture in headless Edge
+at 960 × 680 and 600 × 480.
+
 ### Mode none: nothing grabbed
 
 "Nothing grabbed yet. To grab an item:" and two numbered steps, "In the
@@ -397,11 +410,16 @@ then:
   attribution; Rust sends it without the web addresses a blueprint's
   source names, so no view carries an address). The blueprint's name is
   not shown: the route ("close the finished side, then slam the open
-  one") is the app's recipe, not something the player has to read. With other applicable routes, a select
-  labelled "Route" whose options read "Route 1", "Route 2", ... in Rust's
-  order, the previewed one first (so the route on screen is always Route
-  1), each option's value its blueprint id; its change sends
-  `choose_route { blueprint }`. Then what the
+  one") is the app's recipe, not something the player has to read. With more than one applicable route, a select
+  labelled "Route" lists every one (the view's `routes`), its option
+  reading "Route <n>" with `<n>` the route's `number` from Rust (its place
+  in the engine's order, from 1), in that order, the previewed one
+  selected where it stands; each option's value is its blueprint id, and
+  its change sends `choose_route { blueprint }`. A route keeps its number
+  whichever is previewed (since 0.2.0; before, the previewed route was
+  listed first as Route 1, so a route's number changed with the choice
+  and choosing Route 2 could flip back to the first), and choosing the
+  previewed one again sends nothing. Then what the
   craft targets: the sub-heading "Targets" and one row per chosen target,
   its text and its floor in Rust's words (the floor select's label, "At
   least T3"). The panel says what is targeted and what to do; the
@@ -415,7 +433,12 @@ then:
   that places none, such as a quality or removal step), a "Uses" line with
   the currency and omen names, its odds as sent (`~12% (8000 of 69500
   weight)`, or `odds unknown: <reason>` with the words "odds unknown" kept,
-  never a blank or a dash), and, when an earlier alternative was passed
+  never a blank or a dash), on a reveal that a same-side exalt follows the
+  **blocker line** under the odds, labelled "Blocker" (small caps, as
+  Fallback), as sent (since 0.2.0: which desecrated modifier to take if
+  the target is not offered, and the exalt's chance before and after,
+  § "Rust-produced copy"; null and not drawn on every other step), and,
+  when an earlier alternative was passed
   over, the fallback line under the label "Fallback" (small caps), as sent:
   `<used name> instead of <first alternative's name>: <names> blocked`
   (§ "Rust-produced copy" for a state-ordered step's). On a state-ordered
@@ -428,10 +451,23 @@ then:
   Necromancy blocked`). No new element: the existing "Fallback" line
   carries it, and the blocked list above opens for it as for any
   fallback line.
-- With no route: "No route reaches these targets." and one line per
+- With no route: "No route reaches these targets.", then the **tier
+  relaxation** when the view's `relaxation` carries one (since 0.2.0),
+  then one line per
   rejected blueprint, the rejection alone in Rust's words (no blueprint
   name), in Rust's order. The blocked list above is open, so the
-  player can unblock what a rejection names.
+  player can unblock what a rejection names. The relaxation is the
+  engine's one-target proposal: lowering one target's floor to the tier
+  an unblocked essence, alloy or liquid emotion adds it at lets a route
+  through that currency exist. It shows, above a divider line, Rust's
+  text (`Lower +#% to Fire Resistance from T2 to T3: Greater Essence of
+  Insulation adds it at T3, which unlocks a route.`, § "Rust-produced
+  copy") and two buttons: the primary **Lower to T<b>**, which sends
+  `set_targets` with the whole list and that one target's floor changed
+  to `T<b>` (the view's `to`), and **Keep T<a>** (the view's `from`),
+  which sends nothing and hides the proposal until the view proposes a
+  different one (another target, tier or currency). Rust never proposes
+  while a route exists, two targets at once or a raised floor.
 
 **The Start bar** (fixed at the right column's foot): the primary button
 **Start crafting**, which sends `accept_craft {}`, enabled only when the
@@ -458,7 +494,10 @@ active and stuck, a sunken card with:
   of a listed route names Omen of Whittling or Orb of Annulment, as the app
   decided from the modifier levels, § "Rust-produced copy"); the "Targets" line
   (the target modifiers a hit may place, as in the route's step list); the
-  "Uses" line; the odds as sent; the fallback line when there is one.
+  "Uses" line; the odds as sent; the blocker line when the current step
+  is a reveal that a same-side exalt follows (as in the route's step
+  list; the overlay does not show it); the fallback line when there is
+  one.
   In a state-ordered route the engine picks each step from the item, so
   "Step <n>" counts the steps in the order this craft takes them, not
   their place in the blueprint or the preview: the first is 1, a step taken
@@ -603,14 +642,16 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 | Target list over a limit | `<Prefixes or Suffixes> over the limit: <a> on the item + <b> chosen = <a+b> of <limit>`, the status line when `set_targets` refuses a list whole |
 | Whittle or annul | in a listed blueprint, a removal step that offers Chaos Orb with Omen of Whittling and then a plain Orb of Annulment (the retired fill route's two clean-up steps, kept as `ch-engine`'s listed-order test blueprint) is named by the app from the modifier levels, on the item the step is shown on: Chaos Orb with Omen of Whittling when the whittle is a certain hit (the single lowest-level removable modifier is unwanted), else Orb of Annulment, its action and odds the engine's. With Orb of Annulment blocked for the craft the whittle stays, with its odds as they are; with Whittling or the Chaos Orb blocked the engine itself takes the annulment and the Fallback line shows. A grab or a screen read is judged against the way the app named the step, and the next step is decided again on the next item. Only in a listed blueprint in which every step that names Omen of Whittling is such a step. A state-ordered step is the engine's pick, never renamed: the engine takes the whittle only when it is certain to take a non-target on the blocked side and an annulment that fits could take a target, else the annulment, with Omen of Sinistral or Dextral Annulment when the other side holds a target |
 | Floor options | `As high as possible (T<best>)` (the default), then `At least T<n>` per reachable tier |
-| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A removal step names the currency with its omens and the modifier it removes, by its text as the item shows it: the whittle `Chaos Orb with Omen of Whittling to remove <modifier>, the lowest-level modifier` (or `to remove the lowest-level modifier: <a> or <b>` when several share the level), the annulment `Orb of Annulment to remove <a> or <b>; it takes one modifier at random`, naming the unwanted modifiers; a side annulment names only those on its side, `Orb of Annulment with Omen of Sinistral Annulment to remove <a>; it takes one modifier at random`. A `fill` step with a currency names it, its omens and the side it fills, any modifier being its aim: `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier` (`<currency>, for any modifier` with no side), in every blueprint, listed included. Every other step keeps the blueprint's `say` text: a `remove-desecrated`, quality or manual step, a removal step with no action, and a step that places a target when no target is left for it. The same function makes it for the route's step list, the current step, the overlay and a History entry |
+| Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A removal step names the currency with its omens and the modifier it removes, by its text as the item shows it: the whittle `Chaos Orb with Omen of Whittling to remove <modifier>, the lowest-level modifier` (or `to remove the lowest-level modifier: <a> or <b>` when several share the level), the annulment `Orb of Annulment to remove <a> or <b>; it takes one modifier at random`, naming the unwanted modifiers; a side annulment names only those on its side, `Orb of Annulment with Omen of Sinistral Annulment to remove <a>; it takes one modifier at random`. A `fill` step with a currency names it, its omens and the side it fills, any modifier being its aim: `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier` (`<currency>, for any modifier` with no side), in every blueprint, listed included. A desecration whose action carries Omen of Sinistral or Dextral Necromancy (every desecration that has to land on one side; since 0.2.0) leads with the omen and says the side: `Use Omen of <Sinistral or Dextral> Necromancy, then apply the <bone>; the desecrated modifier will be a <prefix or suffix>, for <targets>` (`Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance`), any other omen after the bone (`then apply the <bone> with <omen>`), a target of the other side marked with its side. A listed whittle's desecration planned while targets on both sides are missing, whose omen waits for the last target's side, reads `Use Omen of Sinistral Necromancy if the last target is a prefix, or Omen of Dextral Necromancy if it is a suffix, then apply the <bone>, for <targets>`, each target with its side; its Uses line is the bone alone, and the guide names the one omen once a single target is left. A branch line that names such a step lower-cases the leading `Use`. Every other step keeps the blueprint's `say` text: a `remove-desecrated`, quality or manual step, a removal step with no action, and a step that places a target when no target is left for it. The same function makes it for the route's step list, the current step, the overlay and a History entry |
 | Step targets | each step line's target modifiers, as the planning list writes them; empty when the step places none |
+| Blocker (since 0.2.0) | a step line's `blocker`, on a state-ordered route's reveal that an Exalted Orb add on the same side follows (the preview's reveal line, and the guide's current step when that is the reveal; null on every other step, and on listed routes): `If <target> is not offered, take <modifiers> (keeps out <ordinary modifiers>): the <prefix or suffix> exalt's chance of a target goes from <before> to <after>`, then `; else <modifiers> (keeps out …): from <before> to <after>` for each further pick, best first, at most three desecrated modifiers in all, equal chances in one pick (`a or b`), `(keeps out …)` left out when a pick keeps nothing out. `<before>` and `<after>` are the odds' percent forms (`~17%`, `~5.0%`, `under 1%`, `certain`). Only desecrated modifiers that raise the exalt's chance are named; with none the line is null (`If +#% to Cold Resistance is not offered, take +# to Strength and Dexterity or +# to Strength and Intelligence (keeps out +# to Strength): the suffix exalt's chance of a target goes from ~17% to ~20%`) |
+| Tier relaxation (since 0.2.0) | the preview's `relaxation` text, with no route only: `Lower <target> from T<a> to T<b>: <currency> adds it at T<b>, which unlocks a route.` (`Lower +#% to Fire Resistance from T2 to T3: Greater Essence of Insulation adds it at T3, which unlocks a route.`); the view also carries the modifier id, `from`, `to` and the currency's name, which the buttons use |
 | Branches | `On a hit: …` and `On a miss: …`, naming the next step by its instruction as composed for the route on this item (a step the route left out by the blueprint's text), or this step again, start over, give the item up, or the craft is done; a step with a condition, `this step again until its condition holds, then <next>`. A miss that leads to a removal step says `the new modifier is removed next; the step says how once it is shown`: the modifier does not exist yet, so whittle or annul is decided when that step is shown. A state-ordered route has no transitions: the hit line names the projection's next step by its composed instruction, or says `the craft is done` when the step is the projection's last. The projection is the route the engine previews from the item the step is shown on; when no start of the route fits that item (both sides full, a magic route's item made rare), the one made when the craft started, while every step so far hit; with neither, `On a hit: the next step is picked from the item after the hit`. The miss line is always `On a miss: the next step is picked from the item after the miss` |
 | History summary | no outcome word: the targets gained or lost with their tier, a below-floor roll, or the reasons (`gained +#% to Fire Resistance (T3)`). The page puts the word before it; the status line, which shows the summary alone, adds it itself (`Hit: gained +#% to Fire Resistance (T3).`) |
 | Refusal, rejection, stuck and replan reasons, the status line | Rust's words. No status line names the blueprint (`Route chosen.`, `Craft started.`) |
 | Catalogue group labels and currency names | Rust's (English) |
 | The watch line (guiding card and overlay) | § "The screen watch's line", with whether it takes the warning colour |
-| The overlay's rows | the step number and try count, the instruction, the uses, the odds, both branch lines, the last outcome's word, source and summary, the stuck and replan reason and the watch line: Rust's, in the overlay part of the view; whether it shows and its position too |
+| The overlay's rows | the step number and try count, the instruction, the uses, the odds, both branch lines, the last outcome's word, source and summary, the stuck and replan reason and the watch line: Rust's, in the overlay part of the view; whether it shows and its position too. The blocker line is not among them |
 
 ### UI-owned copy
 
@@ -618,9 +659,11 @@ Headings: "Can't plan this item", "Grab another item:", "Grabbed text",
 "Prefixes", "Suffixes", "Desecrated", "Targets", "Chosen", "Route",
 "Blocked for this craft: <n>", "History", "Why:". Buttons: "Explore more
 crafting on Craft of Exile", "Settings", "Start crafting", "End craft",
-"Keep crafting", "Remove", "Clear targets". Labels: "Filter modifiers",
+"Keep crafting", "Remove", "Clear targets", the relaxation's "Lower to
+T<n>" and "Keep T<n>" (their numbers the view's `to` and `from`).
+Labels: "Filter modifiers",
 "Filter currencies", "Blocked only", "Floor for <modifier text>", "Route",
-the route select's options "Route <n>", "Uses", "Targets" (a step's line), "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
+the route select's options "Route <n>" (`<n>` Rust's route number), "Uses", "Targets" (a step's line), "Blocker", "Fallback", "Last:", "best T<n>", "Step <n>", "try <n>", the tags "fractured", "desecrated",
 "unrevealed", "target", "Settings", "this craft", "allowed for this craft",
 the status words "Crafting", "Stuck", "Replan", "Done", the watch line's
 label "Screen", the sources "from the screen" and "from a grab", and the
@@ -1052,8 +1095,10 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `craft-fallback` | A blocked currency and the step's fallback line; Blocked for this craft open, the entry tagged with its source |
 | `craft-no-route` | Targets no blueprint reaches (Chaos Orbs and Orbs of Annulment blocked): one line per rejected blueprint; Start crafting disabled with its reason |
 | `craft-close-side` | The owner's 2P/1S belt on the state-ordered `close-a-side`: the fill step `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier`, then the slam on the one open side with no side omen, Omen of Sinistral Necromancy blocked for the craft, so each step carries the Fallback line `… instead of a desecration: Omen of Sinistral Necromancy blocked`; the source line without its web addresses |
-| `craft-last-desecration` | The same belt with nothing blocked: Armour, the last target missing, is desecrated on the prefix side (`Preserved Collarbone with Omen of Sinistral Necromancy on the prefix side for +# to Armour`), then revealed with Omen of Abyssal Echoes, both "odds unknown", no Fallback line |
+| `craft-last-desecration` | The same belt with nothing blocked: Armour, the last target missing, is desecrated on the prefix side (`Use Omen of Sinistral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a prefix, for +# to Armour`), then revealed with Omen of Abyssal Echoes, both "odds unknown", no Fallback line |
 | `craft-side-full` | The belt right after its targets are set: two prefixes on it and Armour chosen fill the prefix side, so every other prefix choice, desecrated prefixes included, is greyed with the tooltip `Prefixes full: 2 on the item + 1 chosen = 3 of 3`; the chosen prefixes and every suffix choice stay enabled. The state to look at the greyed rows in |
+| `craft-relaxation` | A magic Heavy Belt with Fire, Cold and Lightning Resistance at T2: no route, and under "No route reaches these targets." the tier relaxation `Lower +#% to Fire Resistance from T2 to T3: Greater Essence of Insulation adds it at T3, which unlocks a route.` with **Lower to T3** and **Keep T2**, above the rejections |
+| `craft-blocker` | The same belt with the relaxation accepted (Fire at T3) and the essence-and-desecration route chosen: the reveal step's Blocker line under its odds, naming the two Strength desecrated suffixes and the suffix exalt's chance before and after; every other step without one |
 | `craft-refused` | A grab the engine refuses: "Can't plan this item", the reason, the grabbed text |
 | `craft-guiding` | The guide on its first step: instruction, odds, both branch lines, try 1, "No step taken yet." |
 | `craft-miss` | After a miss: the "Last:" line and History's Miss entry with its summary, the step the miss led to |

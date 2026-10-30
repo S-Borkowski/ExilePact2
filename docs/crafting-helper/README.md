@@ -46,7 +46,9 @@ from a bought base.
 
 ## Overview
 
-- **One window, `crafting-helper.exe`.** A Tauri app: the app's logic
+- **One window, `Crafting Helper.exe`** (since 0.2.0; `crafting-helper.exe`
+  before, and a 0.1.x copy that updates itself keeps that old name: the
+  update bullet below). A Tauri app: the app's logic
   (`ch-app`) is a Rust crate, and the UI is Svelte and TypeScript in an
   ordinary window titled "Crafting Helper", resizable and in the taskbar.
   Closing the window quits the app. Only one copy runs; starting a second
@@ -78,8 +80,12 @@ from a bought base.
     each step's instruction, the target modifiers a hit of it may place,
     its currency and omens, its rough odds or "odds unknown" with the
     reason, a fallback line where a blocked item made it take another,
-    and other applicable routes to choose from, as `Route 1`, `Route 2`
-    and so on. The blueprint's name is not shown: the technique is the
+    and, when more than one route applies, a select listing every one as
+    `Route 1`, `Route 2` and so on in the engine's order, the previewed one
+    selected. A route keeps its number whichever is previewed, so choosing
+    `Route 2` shows route 2 and leaves it selected (since 0.2.0; before,
+    the previewed route was always listed first as `Route 1`, so a second
+    choice could flip back). The blueprint's name is not shown: the technique is the
     app's to follow, not the player's to read. A step that places a
     target says so in the app's own words, naming the currency, its omens,
     the side and the modifiers (`Chaos Orb for +#% to Fire Resistance
@@ -98,7 +104,8 @@ from a bought base.
     removes a modifier (a fill, a quality or a manual step) keeps the
     blueprint's text. The blueprint's notes, the reasoning behind its
     technique, are not shown. With no route, one line per blueprint says
-    why it does not apply. *Start crafting* starts the guide.
+    why it does not apply, and above those lines the app may propose
+    lowering one target's tier (below). *Start crafting* starts the guide.
 
     Six of the sixteen blueprints are **state-ordered** (four since
     0.1.1, two more since 0.1.4): the
@@ -125,11 +132,13 @@ from a bought base.
     included) and exactly one target is missing, a state-ordered route
     places that last target with a desecration on its side instead of an
     Exalted Orb or an essence: the bone for the item's class with Omen of
-    Sinistral or Dextral Necromancy (`Preserved Collarbone with Omen of
-    Sinistral Necromancy on the prefix side for +# to Armour`), then the
+    Sinistral or Dextral Necromancy (`Use Omen of Sinistral Necromancy,
+    then apply the Preserved Collarbone; the desecrated modifier will be a
+    prefix, for +# to Armour`), then the
     reveal with Omen of Abyssal Echoes. A reveal that offers no target is
     taken off with Omen of Light and an Orb of Annulment, and the bone is
-    used again. Both steps say "odds unknown" with the reason. When the
+    used again (since 0.2.0, only once no Exalted Orb step can still add a
+    target on that side: below). Both steps say "odds unknown" with the reason. When the
     last target cannot be desecrated, the route keeps the step it took
     before, and that step's Fallback line says why (`Perfect Exalted Orb
     instead of a desecration: Omen of Sinistral Necromancy blocked`): the
@@ -165,6 +174,54 @@ from a bought base.
       costs more there: the plain orb is offered instead.
     How they work: [`blueprints.md`](blueprints.md) § "The seed
     blueprints".
+
+    **Desecrations name their Necromancy omen** (since 0.2.0, issue #37).
+    Every desecration that has to land on one side tells you to use Omen
+    of Sinistral Necromancy (prefix) or Dextral Necromancy (suffix) first,
+    and says which side the desecrated modifier will be (`Use Omen of
+    Dextral Necromancy, then apply the Preserved Collarbone; the
+    desecrated modifier will be a suffix, for +#% to Cold Resistance`).
+    `rings-resist-whittle`'s desecration, which used the plain bone, now
+    takes the Necromancy omen of the last target's side: while targets on
+    both sides are still missing the preview names both omens (Sinistral
+    if the last target is a prefix, Dextral if it is a suffix), and the
+    guide names the one once a single target is left. When that omen is
+    blocked it falls back to the plain bone, with a Fallback line naming
+    the omen. A desecration tied to no side (a blocker on either side)
+    still names none.
+
+    **A list with no route may be offered one lowered tier** (since 0.2.0,
+    issue #37). When no route reaches the targets, but lowering one
+    target's floor to the tier an essence, alloy or liquid emotion
+    guarantees lets a route through that currency exist, the Route panel
+    says so under "No route reaches these targets" (`Lower +#% to Fire
+    Resistance from T2 to T3: Greater Essence of Insulation adds it at T3,
+    which unlocks a route.`, for a magic Heavy Belt with T2 Fire, Cold and
+    Lightning Resistance), with two buttons: **Lower to T3** changes that
+    one floor and shows the route, **Keep T2** hides the proposal and
+    leaves the targets as they are (it shows again only when the app
+    proposes something else). Only one target is ever lowered, a floor is
+    never raised, and nothing is proposed while a route exists.
+
+    **A wrong reveal is kept through the same-side exalt** (since 0.2.0,
+    issue #37). On a state-ordered route, when a reveal offers none of your
+    targets and the route still has an Exalted Orb step that can add a
+    missing target on the same side, with a free slot there, the revealed
+    modifier stays on the item through that exalt: it keeps its modifier
+    family out of the exalt's pool, so it never lowers the exalt's chance
+    and can raise it. Omen of Light takes it off once that side is done,
+    as before. A side already full takes Omen of Light first, as in 0.1.x.
+    And the reveal step that such an exalt follows names a **blocker**,
+    in the route preview and on the guide's step (the overlay does not
+    show it), under its odds: `Blocker: If +#% to Cold Resistance is not offered,
+    take +# to Strength and Dexterity or +# to Strength and Intelligence
+    (keeps out +# to Strength): the suffix exalt's chance of a target goes
+    from ~17% to ~20%`. It names at most three desecrated modifiers, best
+    first, those of equal chance together, and only those that raise the
+    exalt's chance; with none, there is no Blocker line. Only desecrated
+    modifiers are candidates, and the app does not read the Well of Souls
+    screen, so it cannot tell which of them were offered (Known
+    limitations). Listed-order routes give no blocker advice.
 
     **Target choices respect the item's prefix and suffix limits** (since
     0.1.2, issue #32). The limit is the item's as a rare, read from the
@@ -295,9 +352,15 @@ from a bought base.
   then once a day. A check only checks: nothing is downloaded until you
   press the install button.
 - **The update installs in the app.** *Install <version> and restart*
-  downloads the release's `crafting-helper.exe`, checks its signature
+  downloads the release's exe (`Crafting.Helper.exe`, the name GitHub
+  stores for `Crafting Helper.exe`), checks its signature
   against the key built into the app, puts it in place of the running exe
-  and restarts into it, with a progress bar and *Cancel*. A failed step says
+  and restarts into it, with a progress bar and *Cancel*. The file keeps
+  the name it has: a 0.1.x copy, `crafting-helper.exe`, fetches the
+  release's legacy `crafting-helper.exe` asset (every release from 0.2.0
+  carries it, signed under that name) and stays `crafting-helper.exe`
+  after the update; rename it by hand if you like, or download
+  `Crafting Helper.exe` afresh. A failed step says
   why in one line, with *Try again*, and leaves the running app untouched;
   a newer release that is not signed says it cannot be installed and offers
   no button. An update never opens a release page or a browser
@@ -351,7 +414,7 @@ from a bought base.
 
 - **Windows 10 or 11, 64-bit.**
 - **The Microsoft Edge WebView2 runtime.** Windows 11 ships it, and most
-  Windows 10 machines have it through Edge. `crafting-helper.exe` does not
+  Windows 10 machines have it through Edge. `Crafting Helper.exe` does not
   bundle it; without it the window cannot start.
 - **The game in English.** The app's check of the first line,
   `Item Class: `, is English text, and the screen watch reads English.
@@ -368,9 +431,10 @@ to the quest tracker's versions; build with `--locked` and `npm ci`.
 
 ## Command reference
 
-### `crafting-helper.exe`
+### `Crafting Helper.exe`
 
-Takes no arguments.
+Takes no arguments. A 0.1.x copy updated in place keeps its old name,
+`crafting-helper.exe`, and behaves the same.
 
 | Environment variable | Effect |
 |---|---|
@@ -483,7 +547,8 @@ Takes no arguments.
     Command reference): the setting turned on or off, each check's start
     and outcome, each install step, failure, cancel or refusal, the restart,
     and at every start one `updates: cleanup: ...` line
-    (`removed crafting-helper.exe.old` when an install left one). No line
+    (`removed Crafting Helper.exe.old` when an install left one, the
+    running exe's name with `.old`). No line
     holds a URL or anything of GitHub's answer.
   - `stop` when the app quits.
 
@@ -621,7 +686,7 @@ Run from `apps/crafting-helper/` (or with `npm --prefix apps/crafting-helper`).
 | `npm run build` | Type-checks the pages and writes `dist/`, which the executable embeds. Needed before any `cargo` build of the `crafting-helper` package. |
 | `npm test` | The pages' tests, in jsdom. |
 | `npm run start` | The app under `tauri dev`. |
-| `npm run release` | `tauri build --no-bundle`: `target/release/crafting-helper.exe`. |
+| `npm run release` | `tauri build --no-bundle`: `target/release/Crafting Helper.exe` (Cargo builds `crafting-helper.exe`; Tauri names the result from `mainBinaryName`). |
 
 The data extractor, `py -3 -m tools.crafting_helper.poe2db`, is described in
 the research note:
@@ -716,8 +781,10 @@ the research note:
   find the newest release, and never stored or logged.
 - **An install** (the button only) makes two downloads, the signature, then
   the exe: `GET
-  https://github.com/S-Borkowski/ExilePact2/releases/download/crafting-helper-v<version>/crafting-helper.exe.minisig`
-  and the same path ending `crafting-helper.exe`, each with two headers,
+  https://github.com/S-Borkowski/ExilePact2/releases/download/crafting-helper-v<version>/Crafting.Helper.exe.minisig`
+  and the same path ending `Crafting.Helper.exe` (a 0.1.x copy asks for
+  `crafting-helper.exe.minisig` and `crafting-helper.exe`, which every
+  release from 0.2.0 also carries), each with two headers,
   `Accept: application/octet-stream` and the same `User-Agent`. GitHub
   answers each with a redirect to a signed address on
   `release-assets.githubusercontent.com`; the app follows that one redirect,
@@ -756,9 +823,10 @@ the research note:
   text, no window title, no image, no league, base, modifier or trade
   link, and nothing of GitHub's or the trade site's answers.
   `settings.json` holds the league you chose. An
-  install also writes beside the exe: `crafting-helper.exe.download` while
+  install also writes beside the exe, under the running exe's own name:
+  `Crafting Helper.exe.download` while
   it downloads (deleted when the install fails or is cancelled) and
-  `crafting-helper.exe.old`, the replaced exe, which the next start removes.
+  `Crafting Helper.exe.old`, the replaced exe, which the next start removes.
 
 ## Working on the app
 
@@ -812,10 +880,13 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test seeds_guides  # the four blueprints from the guides: hit, miss, refused start
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test rules  # jewels, weak-magic-start, certain removals first, essence swaps
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test fracture  # the fracture goal, the count conditions, a full-side desecration
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test relax  # the one-target tier relaxation when no route exists
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test blocker  # the reveal step's blocker advice
 py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
 py -3 -m unittest tests.test_crafting_helper_mechanics_doc                             # crafting-mechanics.md: headings, sources, labels
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
 npm --prefix apps/crafting-helper test                                                  # the pages, in jsdom
+node apps/crafting-helper/scripts/scroll-height.mjs                                     # headless Edge: no view scrolls past its content
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
 py -3 -m unittest tests.test_crafting_helper_release                                    # the release cutter and workflow
 py -3 -m unittest tests.test_crafting_helper_poe2db tests.test_crafting_helper_data     # the data extractor and the shipped data
@@ -1046,6 +1117,47 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   (`button_text_keeps_its_inner_padding`), beside a control that the
   style reader sees what a rule sets. jsdom does no layout, so no box is
   measured ([`ui-design.md`](ui-design.md) § "Spacing and alignment").
+- **The window's scroll height** (0.2.0). `scripts/scroll-height.mjs`
+  measures it in a real layout: it serves the pages with the app's own
+  Vite, drives headless Edge (WebView2's engine) over the DevTools
+  protocol, and for every view fixture at 960x680 and 600x480 fails when
+  the document scrolls at all or a scroll pane scrolls past its own
+  content; it exits 2, never 0, when Edge or the page cannot start (Edge
+  from its usual paths, or `MSEDGE`). It found the main window scrolling
+  up to 2,222 px past the views with long lists: each visually hidden
+  span sat at its own place far down a list, outside the pane's clipping.
+  `src/scroll.test.ts` pins the fix in jsdom, in the style of
+  `ui-spacing.test.ts`: every element taken out of the flow is held by a
+  positioned box inside its scroll pane or pinned to its containing
+  block's top left corner (`no_positioned_element_escapes_its_scroll_pane`,
+  with the negative control
+  `an_unpinned_absolute_box_in_a_scroll_pane_is_caught`).
+- **0.2.0's craft changes.** `ch-app`'s `tests/craft_window.rs`: a chosen
+  route keeps its number and stays selected
+  (`route_numbers_stay_with_their_routes`, beside
+  `choosing_a_route_previews_it_baseline`); every desecration bound to a
+  side names its Necromancy omen
+  (`every_side_desecration_names_its_necromancy_omen`, beside
+  `an_unsided_desecration_names_no_omen_baseline`), the whittle's names
+  both while targets on both sides are missing and a blocked omen names
+  itself in the Fallback line; the magic belt's T2 resistances show the
+  relaxation and accepting it previews a route
+  (`no_route_shows_the_tier_relaxation`,
+  `accepting_the_relaxation_previews_a_route`); and the reveal step
+  names the blocker with the exalt's chance before and after
+  (`reveal_step_names_the_blocker_with_before_and_after`, beside
+  `no_blocker_line_on_a_last_desecration_baseline`). `ch-engine`'s
+  `tests/relax.rs` (the belt's baseline with no route, Greater Essence of
+  Insulation proposed, a blocked essence moving the proposal to the next
+  target, none for a selection that already routes) and
+  `tests/blocker.rs` (the Strength blockers ranked, none on a last
+  desecration); the slot model's case
+  `rare-wrong-reveal-same-side-exalt` keeps a wrong reveal through the
+  same-side exalt, while `rare-wrong-reveal` (side full) keeps Light
+  first. The page's `src/app.test.ts` renders `craft-relaxation` and
+  `craft-blocker` (`relaxation_proposal_offers_lower_and_keep`,
+  `reveal_step_shows_the_blocker_line`) and keeps each route's number in
+  the select (`route_select_keeps_each_routes_number`).
 - `tests.test_crafting_helper_mechanics_doc` reads
   [`crafting-mechanics.md`](crafting-mechanics.md): its headings, a
   source for every entry, and since 0.1.4 every guide fact labelled
@@ -1240,9 +1352,14 @@ their own version). These must agree, and "Release notes" below needs a
 3. The pushed tag starts `.github/workflows/crafting-helper-release.yml`. It
    checks the tag against the files, builds with Rust 1.98.1 and Node
    24.19.0 on a Windows runner, signs the exe with the release key, and
-   creates a **draft** release. The draft holds `crafting-helper.exe`,
-   `SHA256SUMS.txt`, `crafting-helper.exe.minisig` (the signature the app
-   checks before it installs an update) and the body from step 2. Without
+   creates a **draft** release. The draft holds the built `Crafting
+   Helper.exe` as `Crafting.Helper.exe` (GitHub stores a space in an
+   asset name as a dot), `Crafting.Helper.exe.minisig` (the signature the
+   app checks before it installs an update), `SHA256SUMS.txt` (both
+   names' hashes), the same exe as `crafting-helper.exe` with its own
+   `crafting-helper.exe.minisig` (signed under that name, for 0.1.x
+   copies, which look up only those names; every release from 0.2.0
+   carries them) and the body from step 2. Without
    the `TAURI_SIGNING_PRIVATE_KEY` secret the sign step fails the run and
    no release is made ([`docs/app-updates.md`](../app-updates.md)).
 4. Open the draft on GitHub, check it, publish it, and tick "Set as the
@@ -1428,6 +1545,25 @@ release already exists, only its assets are replaced.
     modifier from that side (`full-desecration-same-side`, not
     established), each one equally likely (`removal-equally-likely`); its
     odds are that removal's and leave out the reveal's own chance.
+  - **The blocker advice names desecrated modifiers only, and the app
+    does not read the reveal screen** (since 0.2.0). The Well of Souls
+    shows three modifiers to choose from, which the app never sees (the
+    screen watch reads item tooltips alone), so the reveal step's Blocker
+    line is advice given before the reveal: if the target is not offered,
+    take one of these if it is. Its candidates are the class's desecrated
+    modifiers on that side at the item level; an ordinary modifier a
+    reveal may also offer (`reveal-offers-base`, not established) is never
+    named, since which ones is not known. Each candidate's gain is the
+    engine's reading that a revealed modifier's families leave the exalt's
+    pool (the same reading the blocker blueprints rely on), not measured;
+    the chances are the step odds' usual rough figures. A listed-order
+    route gives no advice and keeps its written miss transition.
+  - **The tier relaxation lowers one target, to one currency's tier.** It
+    is proposed only when no route exists, lowers exactly one target's
+    floor to the tier an unblocked essence, alloy or liquid emotion adds
+    it at, and only when a route through that currency then exists; it
+    never raises a floor or lowers two targets together, so a list that
+    would need two lowered gets no proposal.
   - **The state-ordered routes rely on facts that are not established.**
     Each of the six names them in its `relies_on`, by their id in the
     spec's facts table
@@ -1502,16 +1638,31 @@ release already exists, only its assets are replaced.
   GitHub answers at most 60 unauthenticated requests an hour from one IP
   address (GitHub's documentation, not measured here). Windows only.
 - **The install needs a folder it can write.** It downloads into
-  `crafting-helper.exe.download` beside the exe and renames the running exe
-  to `crafting-helper.exe.old`; in a folder the app cannot write (under
+  `Crafting Helper.exe.download` beside the exe and renames the running exe
+  to `Crafting Helper.exe.old` (the running exe's own name, so
+  `crafting-helper.exe.download` and `.old` for a copy that kept its 0.1.x
+  name); in a folder the app cannot write (under
   `Program Files`, for example) the install fails at once with "the app's
   folder cannot be written", before any download.
 - **The `.old` file stays until the next start.** Windows does not let a
   running exe be deleted, so the replaced exe is left as
-  `crafting-helper.exe.old` and removed by the next start, which retries
+  `Crafting Helper.exe.old` and removed by the next start, which retries
   for about 30 s while the old process ends. Until then, to roll back by
-  hand: quit the app, rename `crafting-helper.exe` away and
-  `crafting-helper.exe.old` back to `crafting-helper.exe`.
+  hand: quit the app, rename `Crafting Helper.exe` away and
+  `Crafting Helper.exe.old` back to `Crafting Helper.exe` (the same with
+  `crafting-helper.exe` for a copy that kept its 0.1.x name).
+- **An updated 0.1.x copy keeps its old name.** An update replaces the
+  running file where it is, so a 0.1.x `crafting-helper.exe` stays
+  `crafting-helper.exe` after updating to 0.2.0 and later; it is the same
+  program. A 0.1.x copy reaches 0.2.0 or later through the legacy
+  `crafting-helper.exe` asset (a copy still at 0.1.x would stop updating
+  if a release left that asset out); once updated, it looks up
+  `Crafting.Helper.exe` like any 0.2.0, whatever its file is called.
+  Rename it by hand, or download `Crafting Helper.exe` afresh, to take
+  the new name.
+- **The release asset's name has a dot for the space.** GitHub stores
+  `Crafting Helper.exe` as `Crafting.Helper.exe`, so a browser download
+  saves that name; the program runs under either.
 - **Antivirus and SmartScreen behaviour is not established.** The exe has
   no Authenticode signature, and how an antivirus treats an exe that
   downloads and renames its own file was not measured.
@@ -1680,12 +1831,64 @@ release already exists, only its assets are replaced.
   or the repository, the `crafting-helper-v` tag prefix or the asset names
   change. Update the shared `ep-net` and `ep-update` with
   `tests/test_app_updates_guard.py` and `tools/crafting_helper/release.py`
-  together ([`docs/app-updates.md`](../app-updates.md)).
+  together ([`docs/app-updates.md`](../app-updates.md)). A renamed exe
+  keeps the legacy assets: the release workflow attaches the exe under
+  every name an older copy looks up, each signed under that name, as it
+  attaches `crafting-helper.exe` for 0.1.x since 0.2.0.
 - **The signing key changes** (rotated or lost): follow
   [`docs/app-updates.md`](../app-updates.md) § "Rotating the key"; copies
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.2.0
+
+Route choice, Necromancy omens, a tier proposal, blocker advice and the
+new name (#37).
+
+- **Picking a route sticks.** The route list now numbers every route the
+  same way whichever one you look at, so choosing Route 2 shows Route 2
+  and leaves it selected; before, it could flip back to the first.
+- **Every desecration that must land on one side names its Necromancy
+  omen**: "Use Omen of Dextral Necromancy, then apply the Preserved
+  Collarbone; the desecrated modifier will be a suffix, for …"
+  (Sinistral for a prefix). The ring whittling route's desecration now
+  uses the omen of the last target's side too: while targets on both
+  sides are left it names both, and the one once a single target is
+  left. If that omen is blocked it uses the plain bone and says why.
+- **A target list no route reaches may get a proposal.** If lowering one
+  target's tier lets an essence (or an alloy or liquid emotion) add it
+  for certain, and a route then
+  exists, the app says so, with **Lower to T<n>** and **Keep T<n>**
+  buttons. A magic belt with T2 Fire, Cold and Lightning Resistance gets
+  "Lower +#% to Fire Resistance from T2 to T3: Greater Essence of
+  Insulation adds it at T3, which unlocks a route." Keep hides the
+  proposal and leaves your targets as they were.
+- **Blocker advice at the reveal.** When an exalt on the same side comes
+  after a desecration's reveal, the reveal step says which desecrated
+  modifier to take if your target is not offered, what ordinary modifier
+  it keeps out of the exalt, and how much it raises the exalt's chance
+  ("If +#% to Cold Resistance is not offered, take +# to Strength and
+  Dexterity or +# to Strength and Intelligence (keeps out +# to
+  Strength): the suffix exalt's chance of a target goes from ~17% to
+  ~20%"). Only desecrated modifiers are suggested, and the app does not
+  read the Well of Souls screen, so it cannot see what was offered.
+- **A wrong reveal is kept through that exalt.** When a reveal offers
+  none of your targets and an exalt can still add one on the same side,
+  the route keeps the revealed modifier for that exalt (it can only help
+  it) and takes it off with Omen of Light once that side is done, instead
+  of right away. A side that is already full takes Omen of Light first,
+  as before.
+- **The main window no longer scrolls past its content.** With long
+  lists the window could scroll far below the last line into empty
+  space.
+- **The program is now `Crafting Helper.exe`.** GitHub lists the download
+  as `Crafting.Helper.exe` (it turns the space into a dot); rename it if
+  you like, it runs either way. A 0.1.x copy updates in place as before
+  and keeps its old name, `crafting-helper.exe`: it is the same program,
+  and you can rename it or download the new file whenever you like. Your
+  settings carry over.
+- The app still sends the game nothing.
 
 ### 0.1.4
 
