@@ -327,6 +327,23 @@ then:
   sunken box past 240 px, so the route under them is not a whole base's
   modifier list away.
 
+**A full side's choices are disabled, not hidden** (0.1.2). Each choice
+carries Rust's `disabled`: none when it can be chosen, otherwise the reason
+its side has no room, `Prefixes full: 2 on the item + 1 chosen = 3 of 3`
+(§ "Rust-produced copy"). Rust counts the side against the item's limit as
+a rare, read from the item (its base implicit or a Contempt emotion may
+raise or lower it): the chosen targets on that side, a desecrated choice on
+the side its modifier belongs to, plus the item's modifiers no target names
+that a route cannot take off (fractured, unrevealed). Every unchosen choice
+on a side at its limit is disabled, the desecrated group's included; a
+chosen one never is, so it can always be unticked, and unticking it sends
+the shorter list, whose view re-enables the side. A disabled row stays
+listed and filterable; its name takes the theme's muted text colour, the
+row the not-allowed cursor, its checkbox is disabled, and the reason is the
+row's tooltip (`title`) and the checkbox's accessible description
+(`aria-describedby`, to a visually hidden copy of the text). The page adds
+no words of its own.
+
 **Prefilled targets.** A grab that enters planning arrives with the
 item's own explicit prefixes and suffixes already chosen, each with its
 floor at the tier it has ("At least T5" for a T5 modifier), so each is
@@ -334,15 +351,18 @@ ticked in its group, its count is in the group heading, and the item panel
 tags it "target": the player only adds the new modifier. A modifier the
 craft cannot keep at that tier is left unticked, without a message. After a
 grab that enters planning again, the list is the targets chosen before that
-still fit the new item, then the new item's own modifiers not already in
-it. The list is Rust's; the page sends nothing for it, and unticking works
+still fit the new item, in their order while their side has room under its
+limit, then the new item's own modifiers not already in it that still fit.
+The list is Rust's; the page sends nothing for it, and unticking works
 as for any target. An item with no explicit modifier starts with none.
 
 Every change (check, uncheck, a floor, Remove, Clear targets) sends
 `set_targets { targets: [{ mod_id, floor }] }` with the whole list, `floor`
 none for "as high as possible". A refusal leaves the list as it was and
-says why in the status line. When a re-grab drops targets that do not fit
-the new item, the status line says how many (Rust's words).
+says why in the status line; a list that takes a side past its limit is
+refused whole (`Prefixes over the limit: …`). When a re-grab drops targets
+that do not fit the new item or its limits, the status line says how many
+(Rust's words).
 
 **Blocked for this craft** (right, above the route). A disclosure whose
 summary always shows the count, "Blocked for this craft: 3", so the player
@@ -387,7 +407,16 @@ then:
   never a blank or a dash), and, when an earlier alternative was passed
   over, the fallback line under the label "Fallback" (small caps), as sent:
   `<used name> instead of <first alternative's name>: <names> blocked`
-  (§ "Rust-produced copy" for a state-ordered step's).
+  (§ "Rust-produced copy" for a state-ordered step's). On a state-ordered
+  route the same line says why a step was taken in place of the last
+  target's desecration (0.1.2): when the item is rare with no desecrated
+  modifier and one target missing, the route desecrates for it on its
+  side and reveals it, and where it cannot, the step it takes instead
+  reads `<used, with its omens> instead of a desecration: <reason>`
+  (`Perfect Exalted Orb instead of a desecration: Omen of Sinistral
+  Necromancy blocked`). No new element: the existing "Fallback" line
+  carries it, and the blocked list above opens for it as for any
+  fallback line.
 - With no route: "No route reaches these targets." and one line per
   rejected blueprint, the rejection alone in Rust's words (no blueprint
   name), in Rust's order. The blocked list above is open, so the
@@ -558,7 +587,9 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 |---|---|
 | Known odds | `~12% (8000 of 69500 weight)`: the percent as an integer from 10 up, with one decimal from 1 to under 10, `under 1%` above 0 and under 1; then the basis in brackets. 100 % is `certain (<basis>)` |
 | Unknown odds | `odds unknown: <reason>` |
-| Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id. None on a whittle-or-annul step the app named by the modifier levels: the whittle it passed over is not blocked. A state-ordered step's engine passes alternatives over by its own rules too (a whittle that is not certain, a Sinistral or Dextral omen with nothing on the other side to protect), and that is no fallback: the line shows only when a blocked id made it pass one over, which Rust tells by asking the engine for the same step with those ids unblocked, and reads `<used, with its omens> instead of <that alternative, with its omens>: <names> blocked` (`Orb of Annulment instead of Orb of Annulment with Omen of Sinistral Annulment: Omen of Sinistral Annulment blocked`) |
+| Fallback | `<used name> instead of <first alternative's name>: <names> blocked`, or `<used name> instead of <first alternative's name>: does not fit this item` when no passed-over alternative names a blocked id. None on a whittle-or-annul step the app named by the modifier levels: the whittle it passed over is not blocked. A state-ordered step's engine passes alternatives over by its own rules too (a whittle that is not certain, a Sinistral or Dextral omen with nothing on the other side to protect), and that is no fallback: the line shows only when a blocked id made it pass one over, which Rust tells by asking the engine for the same step with those ids unblocked, and reads `<used, with its omens> instead of <that alternative, with its omens>: <names> blocked` (`Orb of Annulment instead of Orb of Annulment with Omen of Sinistral Annulment: Omen of Sinistral Annulment blocked`). A state-ordered step taken in place of the last target's desecration (a rare with no desecrated modifier, an unrevealed one included, and exactly one target missing; since 0.1.2) reads `<used, with its omens> instead of a desecration: <reason>` (`Perfect Exalted Orb instead of a desecration: Omen of Sinistral Necromancy blocked`), the reason the engine's: `no desecrated <prefix or suffix> modifier on <class> at item level <n>` when the class has no desecrated modifier on that side at the item's level (`no desecrated prefix modifier on Body Armours at item level 82`), `<names> blocked` when the bone or the Necromancy omen is (`a`, `a and b`, `a, b and c`), otherwise the engine's own reason. With a passed-over alternative's line too, the desecration's comes first, joined by `; `. A reveal, Omen of Light or a removal that comes before the desecration clears the way for it and carries no such line |
+| Target choice disabled | `<Prefixes or Suffixes> full: <a> on the item + <b> chosen = <a+b> of <limit>` (`Prefixes full: 2 on the item + 1 chosen = 3 of 3`): a choice's `disabled`, the row's tooltip and the checkbox's description. `<a>` counts the chosen targets already on the item and the item's unchosen modifiers on that side a route cannot take off (fractured, unrevealed); `<b>` the chosen targets not on the item; `<limit>` the item's limit on that side as a rare, read from the item. None on a chosen choice |
+| Target list over a limit | `<Prefixes or Suffixes> over the limit: <a> on the item + <b> chosen = <a+b> of <limit>`, the status line when `set_targets` refuses a list whole |
 | Whittle or annul | in a listed blueprint, a removal step that offers Chaos Orb with Omen of Whittling and then a plain Orb of Annulment (the retired fill route's two clean-up steps, kept as `ch-engine`'s listed-order test blueprint) is named by the app from the modifier levels, on the item the step is shown on: Chaos Orb with Omen of Whittling when the whittle is a certain hit (the single lowest-level removable modifier is unwanted), else Orb of Annulment, its action and odds the engine's. With Orb of Annulment blocked for the craft the whittle stays, with its odds as they are; with Whittling or the Chaos Orb blocked the engine itself takes the annulment and the Fallback line shows. A grab or a screen read is judged against the way the app named the step, and the next step is decided again on the next item. Only in a listed blueprint in which every step that names Omen of Whittling is such a step. A state-ordered step is the engine's pick, never renamed: the engine takes the whittle only when it is certain to take a non-target on the blocked side and an annulment that fits could take a target, else the annulment, with Omen of Sinistral or Dextral Annulment when the other side holds a target |
 | Floor options | `As high as possible (T<best>)` (the default), then `At least T<n>` per reachable tier |
 | Step instruction | for a step that places a target: `<currency> for <targets>` with each target as `<text> (<side>)` (`Chaos Orb for +#% to Fire Resistance (suffix) or +#% to Cold Resistance (suffix)`); with omens, `<currency> with <omen> and <omen> for …`; for a step tied to one side, `<currency> on the <prefix or suffix> side for <targets>`. Lists read `a`, `a or b`, `a, b or c`. A removal step names the currency with its omens and the modifier it removes, by its text as the item shows it: the whittle `Chaos Orb with Omen of Whittling to remove <modifier>, the lowest-level modifier` (or `to remove the lowest-level modifier: <a> or <b>` when several share the level), the annulment `Orb of Annulment to remove <a> or <b>; it takes one modifier at random`, naming the unwanted modifiers; a side annulment names only those on its side, `Orb of Annulment with Omen of Sinistral Annulment to remove <a>; it takes one modifier at random`. A `fill` step with a currency names it, its omens and the side it fills, any modifier being its aim: `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier` (`<currency>, for any modifier` with no side), in every blueprint, listed included. Every other step keeps the blueprint's `say` text: a `remove-desecrated`, quality or manual step, a removal step with no action, and a step that places a target when no target is left for it. The same function makes it for the route's step list, the current step, the overlay and a History entry |
@@ -691,7 +722,9 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `craft-planning` | Targets chosen with their floors, listed again above the route's steps; steps that name their target modifiers and show known and unknown odds; Start crafting enabled |
 | `craft-fallback` | A blocked currency and the step's fallback line; Blocked for this craft open, the entry tagged with its source |
 | `craft-no-route` | Targets no blueprint reaches (Chaos Orbs and Orbs of Annulment blocked): one line per rejected blueprint; Start crafting disabled with its reason |
-| `craft-close-side` | The owner's 2P/1S belt on the state-ordered `close-a-side`: the fill step `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier`, then the slam on the one open side with no side omen; the source line without its web addresses |
+| `craft-close-side` | The owner's 2P/1S belt on the state-ordered `close-a-side`: the fill step `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier`, then the slam on the one open side with no side omen, Omen of Sinistral Necromancy blocked for the craft, so each step carries the Fallback line `… instead of a desecration: Omen of Sinistral Necromancy blocked`; the source line without its web addresses |
+| `craft-last-desecration` | The same belt with nothing blocked: Armour, the last target missing, is desecrated on the prefix side (`Preserved Collarbone with Omen of Sinistral Necromancy on the prefix side for +# to Armour`), then revealed with Omen of Abyssal Echoes, both "odds unknown", no Fallback line |
+| `craft-side-full` | The belt right after its targets are set: two prefixes on it and Armour chosen fill the prefix side, so every other prefix choice, desecrated prefixes included, is greyed with the tooltip `Prefixes full: 2 on the item + 1 chosen = 3 of 3`; the chosen prefixes and every suffix choice stay enabled. The state to look at the greyed rows in |
 | `craft-refused` | A grab the engine refuses: "Can't plan this item", the reason, the grabbed text |
 | `craft-guiding` | The guide on its first step: instruction, odds, both branch lines, try 1, "No step taken yet." |
 | `craft-miss` | After a miss: the "Last:" line and History's Miss entry with its summary, the step the miss led to |

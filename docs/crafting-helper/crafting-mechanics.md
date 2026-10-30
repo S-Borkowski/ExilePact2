@@ -85,6 +85,20 @@ currency's own description, that currency's entry carries the source.
   (poe2db gives a Magic item two modifiers; maxroll's crafting overview gives
   the per-side split; both fetched 2026-10-29). The liquid emotions that
   grant "+1 prefix/suffix modifier allowed" are the way past those limits.
+- **Bases that change the limits.** Some ring and amulet bases carry an
+  implicit that allows one more or one fewer prefix or suffix. In the
+  helper's shipped data (poe2db's base rows,
+  https://poe2db.tw/us/Rings and https://poe2db.tw/us/Amulets, fetched
+  2026-10-28): Dusk Ring and Dusk Amulet, `+1 Prefix Modifier allowed` and
+  `-1 Suffix Modifier allowed`; Gloam Ring and Gloam Amulet, the reverse;
+  Distorted Amulet, `-1 Suffix Modifier allowed`; Twisted Amulet, `-1
+  Prefix Modifier allowed`. So a rare Dusk Ring takes four prefixes and two
+  suffixes. The Absent, Lament and Portent Amulet rows also list such a
+  line, one of many implicit lines in each row (8, 38 and 8), not their
+  one fixed implicit; which of them such an amulet carries is not
+  established here. The helper counts every such line on the
+  item, implicit or explicit, with its sign, a side never below 0. How the
+  game writes these implicits in a `Ctrl+Alt+C` copy is not measured.
 - **Crafted and desecrated modifiers.** Since 0.5 an item may carry one
   crafted modifier (an essence's modifier is one) and one desecrated
   modifier, and a desecrated modifier no longer counts as crafted (0.5.0
