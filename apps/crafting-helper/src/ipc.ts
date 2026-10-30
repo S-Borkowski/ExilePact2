@@ -388,6 +388,11 @@ export interface TradeView {
   pick_limit: string | null;
   /** What the search asks for, and why, once something is picked. */
   count_line: string | null;
+  /**
+   * The item level the picked floors need (the most demanding floor tier's), or null with no floor
+   * picked. The search uses it while the item level field is blank; a typed level wins.
+   */
+  suggested_item_level: number | null;
   /** The league the search opens in (Settings, Trade). */
   league: string;
   /** The link the search button opens, shown read-only; never made a link by the page. */
@@ -623,6 +628,7 @@ const trade = record<TradeView>({
   can_pick: bool,
   pick_limit: nullable(str),
   count_line: nullable(str),
+  suggested_item_level: nullable(uint),
   league: str,
   link: nullable(str),
   can_search: bool,

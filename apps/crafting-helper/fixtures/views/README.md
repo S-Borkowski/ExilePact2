@@ -149,6 +149,11 @@ as the page sends it (the whole selection), with the default league
 - `trade-default-weight`: a jewel base (Sapphire), whose page has no
   established spawn weights: every weight is the default (1.0) with its
   reason, the first prefix and the first suffix picked.
+- `trade-floor`: Boots, Bangled Sandals, the item level left blank,
+  `#% increased Movement Speed` picked at least T2: `suggested_item_level`
+  is 65 (the tier's item level), the selection's `item_level` stays
+  `null`, and the link's item-level filter is 65. Every other view's
+  `suggested_item_level` is `null` (no floor picked, or the panel closed).
 - `trade-refused`: after `trade-picking`, a `set_trade_search` naming a
   base type Rings does not have (Iron Mitts): the error status line, the
   selection and the link as they were.

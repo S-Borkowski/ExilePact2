@@ -93,8 +93,12 @@ describe('the trade panel', () => {
       expect(base.value, name).toBe(sel.base ?? '');
       const level = field<HTMLInputElement>(panel, 'Minimum item level');
       expect(level.value, name).toBe(sel.item_level === null ? '' : String(sel.item_level));
+      const suggested = t.suggested_item_level;
+      expect(level.placeholder, name).toBe(suggested === null ? '' : String(suggested));
       expect(text(document.getElementById(level.getAttribute('aria-describedby')!)), name).toBe(
-        'Optional. Empty searches any item level; a higher level reaches better tiers.',
+        suggested === null
+          ? 'Optional. Empty searches any item level; a higher level reaches better tiers.'
+          : `Optional. Empty searches item level ${suggested} and up, which your tier floors need; a higher level reaches better tiers.`,
       );
 
       // Modifiers: a prompt before a base, else each side's rows with their weights.
@@ -390,6 +394,50 @@ describe('the trade panel', () => {
       click(radio(root, 'At least one'));
       expect(bridge.calls.at(-1)).toEqual({ name: 'set_trade_search', args: { search: { ...sel, both_slots: false } } });
     }
+  });
+
+  it('trade_item_level_suggestion_shows_in_the_blank_field', async () => {
+    // Baseline: no floor picked, nothing suggested; the field is blank with
+    // no placeholder and the help line says a blank field searches any level.
+    const plain = fixtureView('trade-picking');
+    plain.trade.selection.item_level = null;
+    expect(plain.trade.suggested_item_level).toBeNull();
+    {
+      const { root } = await render(plain);
+      const level = field<HTMLInputElement>(root, 'Minimum item level');
+      expect(level.value).toBe('');
+      expect(level.placeholder).toBe('');
+      expect(text(document.getElementById(level.getAttribute('aria-describedby')!))).toBe(
+        'Optional. Empty searches any item level; a higher level reaches better tiers.',
+      );
+    }
+
+    // Target: movement speed at least T2 with the level blank. The field
+    // shows 65 as its placeholder (not as a value, so nothing is sent), and
+    // the help line says the search uses it, never that a blank field
+    // searches any item level.
+    const view = fixtureView('trade-floor');
+    expect(view.trade.selection.item_level).toBeNull();
+    expect(view.trade.suggested_item_level).toBe(65);
+    const { root, bridge } = await render(view);
+    const level = field<HTMLInputElement>(root, 'Minimum item level');
+    expect(level.value).toBe('');
+    expect(level.placeholder).toBe('65');
+    const help = text(document.getElementById(level.getAttribute('aria-describedby')!));
+    expect(help).toBe(
+      'Optional. Empty searches item level 65 and up, which your tier floors need; a higher level reaches better tiers.',
+    );
+    expect(help).not.toContain('any item level');
+    // The link shown is Rust's, with the suggested level as its minimum.
+    expect(view.trade.link).toContain('%22ilvl%22%3A%7B%22min%22%3A65%7D');
+    expect(bridge.calls.filter((c) => c.name === 'set_trade_search')).toEqual([]);
+
+    // A typed level replaces it: sent as the level, the suggestion not sent.
+    setValue(level, '70');
+    expect(bridge.calls.at(-1)).toEqual({
+      name: 'set_trade_search',
+      args: { search: { ...view.trade.selection, item_level: 70 } },
+    });
   });
 
   it('trade_default_weight_is_labelled_with_its_reason', async () => {

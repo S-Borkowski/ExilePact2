@@ -1796,6 +1796,7 @@
       "picks": []
     },
     "suffixes": [],
+    "suggested_item_level": null,
     "why_not": {
       "kind": "info",
       "text": "Choose an item class."

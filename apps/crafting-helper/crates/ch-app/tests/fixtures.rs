@@ -440,6 +440,18 @@ fn main_views() -> Vec<(&'static str, View)> {
         .collect();
     out.push(("trade-default-weight", app.set_trade_search(&sel)));
     app.shutdown();
+    // A floor picked with the item level blank: the view suggests the level
+    // the floor tier needs, and the search uses it.
+    let mut floor = trade_selection(
+        "Boots",
+        "Bangled Sandals",
+        None,
+        &["prefix-increased-movement-speed"],
+    );
+    floor[2].picks[0].floor = Some(2);
+    let (app, view) = trade("trade-floor", &floor);
+    out.push(("trade-floor", view));
+    app.shutdown();
     out
 }
 
@@ -792,6 +804,7 @@ fn fixtures_are_current() {
         "trade-one-side",
         "trade-default-weight",
         "trade-refused",
+        "trade-floor",
     ] {
         assert_eq!(view(n).craft.mode, CraftMode::Planning, "{n}");
     }
@@ -821,6 +834,24 @@ fn fixtures_are_current() {
         .chain(&jewel.suffixes)
         .all(|r| r.weight_source == TradeWeightSource::Default && r.default_reason.is_some()));
     assert_eq!(jewel.selection.picks.len(), 2);
+    // Only a floor picked suggests an item level; the blank field searches
+    // with it.
+    let floor = trade("trade-floor");
+    assert_eq!(floor.selection.item_level, None);
+    assert_eq!(floor.selection.picks[0].floor, Some(2));
+    assert_eq!(floor.suggested_item_level, Some(65));
+    assert!(floor.can_search);
+    let floor_link = floor.link.as_deref().unwrap();
+    // `"ilvl":{"min":65}`, percent-encoded in the link.
+    assert!(
+        floor_link.contains("%22ilvl%22%3A%7B%22min%22%3A65%7D"),
+        "{floor_link}"
+    );
+    for (name, v) in &views {
+        if *name != "trade-floor" {
+            assert_eq!(v.trade.suggested_item_level, None, "{name}");
+        }
+    }
     let refused_trade = trade("trade-refused");
     assert_eq!(refused_trade.selection, picking.selection);
     assert_eq!(refused_trade.link, picking.link);
@@ -875,7 +906,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 17);
-    assert_eq!(views.len(), 30);
+    assert_eq!(views.len(), 31);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

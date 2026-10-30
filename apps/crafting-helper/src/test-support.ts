@@ -42,7 +42,14 @@ export const CRAFT_FIXTURE_NAMES = [
 ] as const;
 
 /** The trade panel's states, one file each, the panel open in all of them (`fixtures/views/README.md`). */
-export const TRADE_FIXTURE_NAMES = ['trade-empty', 'trade-picking', 'trade-one-side', 'trade-default-weight', 'trade-refused'] as const;
+export const TRADE_FIXTURE_NAMES = [
+  'trade-empty',
+  'trade-picking',
+  'trade-one-side',
+  'trade-default-weight',
+  'trade-refused',
+  'trade-floor',
+] as const;
 
 /** Every main-view state, one file each: M3's, the overlay's two, the craft window's, then the trade panel's. */
 export const FIXTURE_NAMES = [

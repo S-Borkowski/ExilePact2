@@ -1636,6 +1636,11 @@
             "reason": "not a blueprint for Rings"
           },
           {
+            "blueprint": "body-armours-single-prefix",
+            "name": "Body armours: a top defence prefix, then isolate the prefixes",
+            "reason": "not a blueprint for Rings"
+          },
+          {
             "blueprint": "boots-runic-ward",
             "name": "Boots: Runic Ward and both attributes",
             "reason": "not a blueprint for Rings"
@@ -1654,6 +1659,16 @@
             "blueprint": "essence-desecrate-double-slam",
             "name": "Essence, desecrate the hardest, then side slams",
             "reason": "no step can be taken while a target is missing (`essence`: its guard does not hold (the item is rare, not magic); `reveal`: no unrevealed modifier; `light`: its guard does not hold (no revealed desecrated modifier is unwanted); `remove`: every alternative is blocked; `desecrate`: a desecrated modifier is already on the item; `desecrate-last`: a desecrated modifier is already on the item; `side-slam`: no open side has a target it can place)"
+          },
+          {
+            "blueprint": "fracture-first",
+            "name": "Fracture a target first, after Essence of the Abyss",
+            "reason": "no start fits the item (0 wanted modifiers, at least 1 needed; 2 modifiers, at least 4 needed)"
+          },
+          {
+            "blueprint": "full-rare-desecration-rescue",
+            "name": "Rescue a full rare with one target missing by desecration",
+            "reason": "no start fits the item (2 modifiers, at least 6 needed)"
           },
           {
             "blueprint": "gloves-crit-melee",
@@ -1691,8 +1706,8 @@
             "reason": "not a blueprint for Rings"
           },
           {
-            "blueprint": "weapons-alloy-budget",
-            "name": "Weapons: the alloy budget route",
+            "blueprint": "weapons-physical-generic",
+            "name": "Physical weapons: a good magic prefix, then Greater Essence of Abrasion",
             "reason": "not a blueprint for Rings"
           }
         ],
@@ -1766,6 +1781,7 @@
       "picks": []
     },
     "suffixes": [],
+    "suggested_item_level": null,
     "why_not": null
   },
   "update_available": null

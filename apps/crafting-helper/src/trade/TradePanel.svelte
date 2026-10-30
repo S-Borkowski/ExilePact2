@@ -22,6 +22,9 @@
   const uid = $props.id();
 
   const sel = $derived(trade.selection);
+  // The level the picked floors need, which the search uses while the field
+  // is blank: the field's placeholder, and named by the help line.
+  const suggested = $derived(trade.suggested_item_level);
 
   // The item level the player has typed but the view does not hold yet:
   // `typed`, the field's text since it was last committed; `sent`, the level
@@ -157,12 +160,19 @@
             step="1"
             autocomplete="off"
             aria-describedby="{uid}-level-help"
+            placeholder={suggested === null ? undefined : String(suggested)}
             value={sel.item_level === null ? '' : String(sel.item_level)}
             oninput={typeItemLevel}
             onchange={setItemLevel}
           />
         </div>
-        <p class="help" id="{uid}-level-help">Optional. Empty searches any item level; a higher level reaches better tiers.</p>
+        {#if suggested === null}
+          <p class="help" id="{uid}-level-help">Optional. Empty searches any item level; a higher level reaches better tiers.</p>
+        {:else}
+          <p class="help" id="{uid}-level-help">
+            Optional. Empty searches item level {suggested} and up, which your tier floors need; a higher level reaches better tiers.
+          </p>
+        {/if}
       </section>
 
       <fieldset class="group match" aria-describedby={trade.count_line ? `${uid}-count` : undefined}>

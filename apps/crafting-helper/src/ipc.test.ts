@@ -51,6 +51,7 @@ describe('the TypeScript IPC types', () => {
       'trade-one-side': ['paste', true, 'info', false, 'planning', true],
       'trade-default-weight': ['paste', true, 'info', false, 'planning', true],
       'trade-refused': ['paste', true, 'error', false, 'planning', true],
+      'trade-floor': ['paste', true, 'info', false, 'planning', true],
     });
     // The overlay's content is there exactly while guiding, and it shows
     // only with content; the M5 views had no game in front, so it stays hidden.
@@ -162,12 +163,14 @@ describe('the TypeScript IPC types', () => {
     (badTrade.trade.selection.picks[0] as unknown as Record<string, unknown>).floor = -1;
     (badTrade.trade.selection as unknown as Record<string, unknown>).url = 'x';
     (badTrade.trade as unknown as Record<string, unknown>).link = 7;
+    (badTrade.trade as unknown as Record<string, unknown>).suggested_item_level = 6.5;
     delete (badTrade.trade.not_searchable[0] as unknown as Record<string, unknown>).reason;
     expect(viewProblems(badTrade)).toEqual([
       'view.trade.selection.picks[0].floor: expected an unsigned integer',
       'view.trade.selection.url: not in the TypeScript types',
       'view.trade.prefixes[0].weight_source: "guess" is not one of spawn|default',
       'view.trade.not_searchable[0].reason: missing',
+      'view.trade.suggested_item_level: expected an unsigned integer',
       'view.trade.link: expected a string',
     ]);
   });
