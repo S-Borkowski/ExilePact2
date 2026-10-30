@@ -26,6 +26,10 @@ the data, the join and the add and removal odds are `ch-data`'s
   applicable `Route` and every `Rejected` blueprint with its `Rejection`.
   A `Target` is a data modifier id and an optional floor (1 is the best
   tier; no floor means the best tier the item level reaches).
+- **`Engine::relax(item, targets, blocked) -> Result<Option<Relaxation>,
+  Refusal>`** (0.2.0): the one-target tier relaxation, `None` when the
+  targets already route or no single lowered floor makes a route. See
+  "Tier relaxation in brief" below.
 - **`Engine::start(blueprint, item, targets, blocked) -> Started`**: the
   route, the `Guide` and the first `Next` step.
 - **`Engine::observe(&mut guide, before, after) -> Outcome`**: the verdict on
@@ -238,6 +242,27 @@ desecrated (revealed or not) and not the Mark of the Abyssal Lord
 Necromancy omen on a full side is its removal's share of non-targets on
 that side, not counting the reveal (`full-desecration-same-side`).
 
+## Tier relaxation in brief
+
+Since 0.2.0. An essence binds a target only at its floor or better, and a
+class's best essence for a modifier is often a tier short of what the
+player asks for: on belts the Greater resistance essences add tier 3, so
+Fire, Cold and Lightning Resistance at T2 on a magic belt plan no route.
+`Engine::relax` looks for the one floor to lower, and only when
+`Engine::plan` finds no route. For each target in target order, each
+data-backed currency of the class (essences, Perfect essences, alloys,
+liquid emotions: the only things here that guarantee a modifier) that adds
+that target's modifier at a tier worse than its floor, is not blocked and
+fits the item level is a candidate. A candidate holds when re-planning
+with that one floor moved to the currency's tier gives some route a step
+whose chosen action uses the currency. The smallest tier drop wins, then
+target order, then data order. The `Relaxation` names the target, its
+modifier lines, the old and new floor, the currency (catalogue id and
+English name), the target list to plan with and the blueprints that route
+through the currency. Accepting it is an ordinary plan with that target
+list. It never lowers two floors, never raises one and proposes nothing
+when a route exists.
+
 ## The CLI
 
 ```text
@@ -258,6 +283,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test rules
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test fracture
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_guides
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test relax
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -309,7 +335,18 @@ constructed items under `tests/items/guides/<id>/` (a README each): the
 weapon and the armour refuse a weak magic prefix (`weak-magic-start`), and
 fracture first and the rescue a rare with the wrong modifier count; the
 two state-ordered ones are not in the slot model, so these walks pin
-them. `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
+them. `tests/relax.rs` (0.2.0) covers the tier relaxation over the
+shipped blueprints and the constructed Heavy Belts in `tests/items/relax/`
+(its README lists them): the magic belt with three T2 resistances plans no
+route (`belt_t2_resistances_have_no_route_baseline`) and is offered Fire
+Resistance T2 to T3 by Greater Essence of Insulation
+(`belt_t2_resistances_propose_greater_insulation`), the normal belt is
+offered Cold Resistance by Greater Essence of Thawing through
+`magic-augment-essence` (`a_normal_belt_proposes_greater_thawing`) and
+nothing with the transmutation orbs blocked
+(`a_normal_belt_gets_no_relaxation`), and a selection that routes gets
+nothing (`a_routed_selection_gets_no_relaxation`).
+`tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 
 `tests/items/slots/cases.json` is the contract between the model and the

@@ -1,0 +1,10 @@
+Item Class: Belts
+Rarity: Normal
+Heavy Belt
+--------
+Requires: Level 40
+--------
+Item Level: 82
+--------
+{ Implicit Modifier }
+Has 2 Charm Slots — Unscalable Value

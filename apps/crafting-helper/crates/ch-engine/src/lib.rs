@@ -26,6 +26,10 @@
 //!   Level, and a Magic item whose target prefix is below its top two tiers
 //!   is sent back for a new base rather than upgraded
 //!   ([`Rejection::WeakMagicStart`]).
+//! - [`Engine::relax`]: when the targets plan no route, the one target
+//!   whose floor, lowered to the tier an unblocked essence (or alloy, or
+//!   liquid emotion) guarantees, then gives a route using that currency
+//!   ([`Relaxation`]); `None` when they route already or nothing does.
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!
@@ -77,6 +81,7 @@ mod context;
 mod engine;
 mod guide;
 mod odds;
+mod relax;
 mod route;
 mod slots;
 mod state_order;
@@ -88,5 +93,6 @@ pub use engine::{check_path, resolve, toml_files, Engine, Resolved};
 pub use guide::{
     Guide, GuideError, Next, Outcome, OutcomeKind, Started, Status, WantedMod, PICKED,
 };
+pub use relax::Relaxation;
 pub use route::{ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView};
 pub use state_order::STEP_CAP;
