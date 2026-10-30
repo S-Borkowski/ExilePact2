@@ -207,10 +207,15 @@ fn main_views() -> Vec<(&'static str, View)> {
     // then started, the suffix side closed and the slam on the open prefix
     // side missed: on `remove`, the engine's annulment kept to the prefix
     // side (mana, a target, is the lowest, so a whittle would take it).
+    // Omen of Sinistral Necromancy is blocked for the craft, so the last
+    // prefix is slammed rather than desecrated (each planned step's
+    // Fallback line says so): the close and the clean-up are these views'
+    // subject.
     let shell = FakeShell::default();
     let app = start(&tmp.path().join("close-side"), &shell);
     app.grab_text(Some(&belt("belt-2p1s")));
     app.set_targets(&belt_targets());
+    app.set_craft_blocked(&lines(&["omen-of-sinistral-necromancy"]));
     out.push(("craft-close-side", app.choose_route(CLOSE)));
     app.accept_craft();
     app.grab_text(Some(&belt("belt-closed")));
@@ -218,6 +223,22 @@ fn main_views() -> Vec<(&'static str, View)> {
         "craft-miss-clean",
         app.grab_text(Some(&belt("belt-slam-miss"))),
     ));
+    app.shutdown();
+    // The same belt planned with nothing blocked: Armour, the last target
+    // missing on a rare with no desecrated modifier, is desecrated on the
+    // prefix side and revealed (issue #32).
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("last-desecration"), &shell);
+    app.grab_text(Some(&belt("belt-2p1s")));
+    app.set_targets(&belt_targets());
+    out.push(("craft-last-desecration", app.choose_route(CLOSE)));
+    app.shutdown();
+    // The belt's prefix side full: Life and Mana on it, Armour chosen
+    // beyond them; every other prefix choice is disabled with the reason.
+    let shell = FakeShell::default();
+    let app = start(&tmp.path().join("side-full"), &shell);
+    app.grab_text(Some(&belt("belt-2p1s")));
+    out.push(("craft-side-full", app.set_targets(&belt_targets())));
     app.shutdown();
 
     // The overlay: guiding after one hit, the game's window in front (shown)
@@ -494,6 +515,50 @@ fn fixtures_are_current() {
         ]
     );
     assert!(plan("craft-close-side").can_accept);
+    // With the Necromancy omen blocked, each step says it was taken
+    // instead of the desecration, and why.
+    for s in &close.steps {
+        let fallback = s.fallback.as_deref().unwrap_or_default();
+        assert!(
+            fallback.ends_with("instead of a desecration: Omen of Sinistral Necromancy blocked"),
+            "{}: {fallback}",
+            s.id
+        );
+    }
+    // Nothing blocked: the route's last two steps are the desecration on
+    // the prefix side and the reveal, odds unknown, no fallback line.
+    let last = preview("craft-last-desecration").route.as_ref().unwrap();
+    assert_eq!(last.blueprint, CLOSE);
+    let ids: Vec<&str> = last.steps.iter().map(|s| s.id.as_str()).collect();
+    assert_eq!(ids, ["desecrate-last", "reveal-last"]);
+    assert_eq!(last.steps[0].uses[1], "Omen of Sinistral Necromancy");
+    assert_eq!(last.steps[1].uses[1], "Omen of Abyssal Echoes");
+    for s in &last.steps {
+        assert!(
+            s.odds
+                .as_deref()
+                .is_some_and(|o| o.starts_with("odds unknown: ")),
+            "{}: {:?}",
+            s.id,
+            s.odds
+        );
+        assert_eq!(s.fallback, None, "{}", s.id);
+    }
+    assert!(plan("craft-last-desecration").can_accept);
+    // The belt's prefix side full: the chosen prefixes selectable, every
+    // other prefix disabled with the reason, every suffix selectable.
+    let full = plan("craft-side-full");
+    let chosen = [
+        "prefix-to-maximum-life",
+        "prefix-to-maximum-mana",
+        "prefix-to-armour",
+    ];
+    for c in &full.choices.prefixes {
+        let want = (!chosen.contains(&c.mod_id.as_str()))
+            .then_some("Prefixes full: 2 on the item + 1 chosen = 3 of 3");
+        assert_eq!(c.disabled.as_deref(), want, "{}", c.mod_id);
+    }
+    assert!(full.choices.suffixes.iter().all(|c| c.disabled.is_none()));
     assert_eq!(guide("craft-replan").status, GuideStatusView::Replan);
     assert_eq!(guide("craft-done").status, GuideStatusView::Done);
 
@@ -594,7 +659,7 @@ fn fixtures_are_current() {
         .map(|(n, v)| (*n, serde_json::to_value(v).unwrap()))
         .collect();
     assert_eq!(settings.len(), 14);
-    assert_eq!(views.len(), 23);
+    assert_eq!(views.len(), 25);
     let mut stale = compare(&fixture_dir("app-settings"), &settings);
     stale.extend(compare(&fixture_dir("views"), &views));
     assert!(

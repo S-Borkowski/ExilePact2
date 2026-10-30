@@ -1,0 +1,18 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Desecrated Prefix Modifier "Ulaman's" (Tier: 1) — Damage, Attack }
+20(15-25)% increased Attack Damage while on Low Life
+{ Prefix Modifier "Stout" (Tier: 4) — Life }
++65(60-69) to maximum Life
+{ Suffix Modifier "of the Kiln" (Tier: 5) — Elemental, Fire, Resistance }
++23(21-25)% to Fire Resistance

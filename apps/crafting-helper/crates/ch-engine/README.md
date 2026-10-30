@@ -105,9 +105,13 @@ engine computes the same numbers and picks the same steps.
   item as it stands: its `guard` holds, its binding is made, its goal is not
   met, its side rule (`target`, `close`, `blocked`) finds a side and an
   alternative fits (a free slot where an add, fill or essence lands, one on
-  a desecration's side). Bindings are made once, as soon as the item allows
-  (`essence` on a Magic item, `hardest` while a target is missing), shared
-  by every step with that binding and kept by the guide. No transitions:
+  a desecration's side). `essence` and `hardest` are made once, as soon as
+  the item allows (`essence` on a Magic item, `hardest` while a target is
+  missing), shared by every step with that binding and kept by the guide.
+  `last-remaining` is made afresh on every item, to the one missing target
+  when exactly one is missing and to nothing otherwise, and never kept: kept
+  like `hardest`, a miss that leaves a second target missing would leave a
+  desecration bound to a target that is no longer the last. No transitions:
   the guide picks again after every change (`Outcome::transition` is
   `picked`), is done when no target is missing, and stuck with every step's
   reason otherwise.
@@ -119,7 +123,22 @@ engine computes the same numbers and picks the same steps.
   lowest-level modifier, a removable non-target on its side, every level
   known) and the first annulment that would otherwise fit could take a
   target, and a Sinistral or Dextral Annulment only when the other side
-  holds a target. The engine's pick is final.
+  holds a target. A `last-remaining` desecration does not fit when the
+  class has no desecrated modifier on the target's side at the item level
+  (`no desecrated <side> modifier on <class> at item level <n>`). The
+  engine's pick is final.
+- **The last-target desecration** (spec, "The last-target desecration"):
+  on a rare with no desecrated modifier (unrevealed ones included) and
+  exactly one target missing, each of the four state-ordered blueprints
+  places it with a `desecrate-last` step bound to `last-remaining` (a bone
+  and the side's Necromancy omen, nothing else) and a reveal with Omen of
+  Abyssal Echoes; a wrong reveal is taken off with Omen of Light and an
+  Orb of Annulment and the bone used again. When that desecration
+  is not a candidate and a later step is picked in its place, the picked
+  step's `StepView::instead_of_desecration` says why in words (no pool on
+  the side, the bone or the Necromancy omen blocked, or the engine's own
+  reason); the app shows it as the step's Fallback line. `None` otherwise,
+  and on the steps before it, which clear the way rather than replace it.
 - **The projection** (`Route::steps`): the steps the craft takes if each
   one hits, from the item: an add places its targets (two with Greater), a
   fill adds fillers (non-targets of unknown level), an essence makes the
@@ -189,6 +208,7 @@ per valid file, and exits 1 on any error (2 with no argument).
 ```text
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test state_order
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test last_desecration
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -203,7 +223,14 @@ two prefixes and a suffix and still rejects a rare with one target.
 `tests/state_order.rs` covers state order over the `test-state-*`
 blueprints and `ring-state-*` items there: the guide's pick, the
 projection, the passed-over exalt, `greater-omen`, the removals, the
-desecration's free slot and the rejections. `tests/common/` holds the
+desecration's free slot and the rejections. `tests/last_desecration.rs`
+covers the last-target desecration over the shipped blueprints and the
+owner's two-prefix, one-suffix belt and its later states in
+`tests/items/last-desecration/` (constructed; its README lists them): the
+desecration and reveal on an undesecrated rare, an item with a desecrated
+target keeping its route, the fallback reason with no pool or a blocked
+Necromancy omen, two missing targets left alone, and a wrong reveal lit
+off and desecrated again. `tests/common/` holds the
 helpers every engine test file shares. A `-p` build does not need the npm
 build.
 

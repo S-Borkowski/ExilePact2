@@ -20,9 +20,16 @@ rare. A wrong modifier on the magic item is annulled, with the Sinistral \
 or Dextral Annulment omen when the other side holds a target. On the rare \
 item the rest come from Perfect Exalted Orbs restricted to their side, with \
 Omen of Greater Exaltation where two free slots take two targets, after a \
-removal when a side has too few free slots. An augment lands on the magic \
-item's free side when the other is full, a community reading the route \
-relies on, like Greater Exaltation with a side omen (relies_on). The \
+removal when a side has too few free slots. The last target, once it is \
+the only one missing on the rare item with no desecrated modifier, is \
+desecrated on its side with Omen of Sinistral or Dextral Necromancy and \
+revealed with Omen of Abyssal Echoes, both active before use, instead of \
+slammed; a wrong reveal is taken off with Omen of Light and an Orb of \
+Annulment and the bone used again. Where the class has no desecrated \
+modifier on that side at the item's level, or the bone or the omen is \
+blocked, it is slammed and the step says why. An augment lands on the \
+magic item's free side when the other is full, a community reading the \
+route relies on, like Greater Exaltation with a side omen (relies_on). The \
 preview assumes every step hits."""
 order = "state"
 relies_on = [
@@ -31,6 +38,7 @@ relies_on = [
     "open-side-landing",
     "whittling-mod-level",
     "fractured-not-removed",
+    "omens-active-before-use",
 ]
 
 [[start]]
@@ -154,7 +162,36 @@ action = [
     { currency = "greater-essence-of-opulence" },
 ]
 
-# The rare phase.
+# The rare phase. The last target's desecration (docs/models/
+# crafting-slots-spec.md, "The last-target desecration"): its unrevealed
+# modifier is revealed before anything else touches the item.
+[[step]]
+id = "reveal-last"
+say = "Reveal the last target's modifier; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+# A reveal that offered no target: the wrong modifier goes, the bone again.
+[[step]]
+id = "light-last"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+bind = "last-remaining"
+when = "bound"
+guard = { desecrated_unwanted = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
 [[step]]
 id = "remove"
 say = "Whittle the blocker when that is certain, else annul it (Sinistral or Dextral Annulment when the other side holds a target)"
@@ -172,6 +209,22 @@ omens = ["side-omen"]
 
 [[step.action]]
 currency = "orb-of-annulment"
+
+# One target left on a rare with no desecrated modifier: desecrate its side
+# rather than slam. One alternative only: a bone without the side omen
+# could land on the other side, so with the omen blocked the route slams.
+[[step]]
+id = "desecrate-last"
+say = "Desecrate on the last target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "last-remaining"
+when = "bound"
+guard = { rarity = ["rare"] }
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
 
 [[step]]
 id = "side-slam"

@@ -30,6 +30,17 @@
 //!   base can roll at the item level with no floor ("as high as possible",
 //!   the best tier) or one of the tiers it reaches; anything else refuses
 //!   the list whole. Repeats are dropped.
+//! - **A side's limit** ([`side_counts`]): the item's prefix and suffix
+//!   limits as a rare, read from the item (a Dusk or Gloam implicit, a
+//!   Contempt emotion). A side counts its chosen targets (a desecrated one
+//!   on the side its data gives) and the item's modifiers no target names
+//!   that a route cannot take off (fractured, unrevealed). Every unchosen
+//!   choice on a full side carries why (`Prefixes full: 2 on the item + 1
+//!   chosen = 3 of 3`); a chosen one never does, so it can be unticked. A
+//!   list past a limit is refused whole (`Prefixes over the limit: ...`),
+//!   and a grab keeps the targets in list order while their side has room,
+//!   the others counted as dropped, then ticks the item's own modifiers
+//!   that still fit.
 //! - **The blocked list of a craft** (`set_craft_blocked`): the craft keeps
 //!   its own additions to the Settings list and its own exceptions from it,
 //!   so the effective list is the Settings list plus the additions minus the
@@ -64,12 +75,14 @@
 //!   them ([`state_step_number`]). The hit line names the projection's next
 //!   step, on the item now, and the miss line says the item picks the next
 //!   step ([`state_branch_lines`]). A fallback line shows only when a
-//!   blocked id passed an earlier alternative over ([`fallback_line`]).
+//!   blocked id passed an earlier alternative over ([`fallback_line`]), or
+//!   when the step was taken in place of the last target's desecration,
+//!   saying why ([`desecration_fallback_line`]).
 //!
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
 //! "Rust-produced copy" is made here: a step's instruction and target
 //! modifiers ([`step_instruction`], [`step_targets`]), [`odds_words`],
-//! [`fallback_line`], [`floor_options`], the branch lines
+//! [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
 //! ([`branch_lines`], [`state_branch_lines`]) and the history summary
 //! ([`summary`]).
 
@@ -241,6 +254,151 @@ fn target_problem(valid: &[ValidMod<'_>], target: &Target) -> Option<String> {
     }
 }
 
+/// One side's count against its limit, for the target choices.
+#[derive(Debug, Clone, Copy)]
+struct SideCount {
+    /// The chosen targets on the item, and the item's modifiers no target
+    /// names that a route cannot take off (fractured, unrevealed).
+    on_item: usize,
+    /// The chosen targets not on the item.
+    chosen: usize,
+    limit: usize,
+}
+
+impl SideCount {
+    fn total(&self) -> usize {
+        self.on_item + self.chosen
+    }
+
+    /// `<Prefixes|Suffixes> <what>: <a> on the item + <b> chosen = <a+b> of
+    /// <limit>`.
+    fn words(&self, kind: Kind, what: &str) -> String {
+        let side = match kind {
+            Kind::Prefix => "Prefixes",
+            Kind::Suffix => "Suffixes",
+        };
+        format!(
+            "{side} {what}: {} on the item + {} chosen = {} of {}",
+            self.on_item,
+            self.chosen,
+            self.total(),
+            self.limit
+        )
+    }
+}
+
+/// Both sides' counts.
+#[derive(Debug, Clone, Copy)]
+struct SideCounts {
+    prefixes: SideCount,
+    suffixes: SideCount,
+}
+
+impl SideCounts {
+    fn on(&self, kind: Kind) -> &SideCount {
+        match kind {
+            Kind::Prefix => &self.prefixes,
+            Kind::Suffix => &self.suffixes,
+        }
+    }
+
+    fn on_mut(&mut self, kind: Kind) -> &mut SideCount {
+        match kind {
+            Kind::Prefix => &mut self.prefixes,
+            Kind::Suffix => &mut self.suffixes,
+        }
+    }
+
+    /// Why an unchosen choice on `kind`'s side is disabled: the side has
+    /// reached its limit.
+    fn full(&self, kind: Kind) -> Option<String> {
+        let c = self.on(kind);
+        (c.total() >= c.limit).then(|| c.words(kind, "full"))
+    }
+
+    /// Why a list is refused: `kind`'s side is past its limit.
+    fn over(&self, kind: Kind) -> Option<String> {
+        let c = self.on(kind);
+        (c.total() > c.limit).then(|| c.words(kind, "over the limit"))
+    }
+}
+
+/// Each side's count against the item's limit as a rare (the craft's
+/// destination, whatever its rarity now; the engine's `targets-exceed-slots`
+/// uses the same): the chosen targets on the side (a desecrated one on the
+/// side its data gives), each once, plus the item's explicit modifiers on it
+/// that no target names and a route cannot take off with an ordinary
+/// removal (fractured, unrevealed). An unrevealed one holds the slot of a
+/// chosen target missing from its side (it is revealed as that target), so
+/// it counts only past those, as `ch-engine`'s slot count does. `None` when
+/// the class has no limits.
+fn side_counts(item: &Item, valid: &[ValidMod<'_>], targets: &[Target]) -> Option<SideCounts> {
+    let limits = ch_data::item_affix_limits(item, &Rarity::Rare)?;
+    let side = |limit| SideCount {
+        on_item: 0,
+        chosen: 0,
+        limit,
+    };
+    let mut counts = SideCounts {
+        prefixes: side(limits.prefixes),
+        suffixes: side(limits.suffixes),
+    };
+    let join = ch_data::join(item);
+    let on_item = |id: &str| {
+        join.mods
+            .iter()
+            .any(|jm| jm.matched().is_some_and(|m| m.mod_id == id))
+    };
+    for t in targets {
+        let Some(m) = valid.iter().find(|m| m.id == t.mod_id) else {
+            continue;
+        };
+        let c = counts.on_mut(m.kind);
+        if on_item(&t.mod_id) {
+            c.on_item += 1;
+        } else {
+            c.chosen += 1;
+        }
+    }
+    // The missing chosen targets an unrevealed modifier can still become.
+    let mut waiting = [counts.prefixes.chosen, counts.suffixes.chosen];
+    for jm in &join.mods {
+        let named = jm
+            .matched()
+            .is_some_and(|m| targets.iter().any(|t| t.mod_id == m.mod_id));
+        if !(jm.fractured || jm.unrevealed) || named {
+            continue;
+        }
+        let open = &mut waiting[usize::from(jm.kind == Kind::Suffix)];
+        if jm.unrevealed && *open > 0 {
+            *open -= 1;
+        } else {
+            counts.on_mut(jm.kind).on_item += 1;
+        }
+    }
+    Some(counts)
+}
+
+/// Whether `t` after `list` keeps its side within the limit. One that
+/// names an unremovable modifier on the item adds nothing to the count.
+fn has_room(item: &Item, valid: &[ValidMod<'_>], list: &[Target], t: &Target) -> bool {
+    let Some(kind) = valid.iter().find(|m| m.id == t.mod_id).map(|m| m.kind) else {
+        return true;
+    };
+    let mut with = list.to_vec();
+    with.push(t.clone());
+    match (
+        side_counts(item, valid, list),
+        side_counts(item, valid, &with),
+    ) {
+        (Some(without), Some(with)) => {
+            let after = with.on(kind);
+            after.total() <= after.limit || after.total() <= without.on(kind).total()
+        }
+        _ => true,
+    }
+}
+
 impl Craft {
     pub(crate) fn mode(&self) -> CraftMode {
         match self.mode {
@@ -291,13 +449,25 @@ impl Craft {
                     self.added.clear();
                     self.excepted.clear();
                 }
-                let valid = valid_mods(&grabbed.item);
+                let item = &grabbed.item;
+                let valid = valid_mods(item);
                 let before = self.targets.len();
-                self.targets.retain(|t| target_problem(&valid, t).is_none());
-                let dropped = before - self.targets.len();
-                for own in own_targets(&grabbed.item) {
+                // In list order: each target the item can roll, while its
+                // side has room.
+                let mut kept: Vec<Target> = Vec::new();
+                for t in std::mem::take(&mut self.targets) {
+                    if target_problem(&valid, &t).is_none() && has_room(item, &valid, &kept, &t) {
+                        kept.push(t);
+                    }
+                }
+                let dropped = before - kept.len();
+                self.targets = kept;
+                for own in own_targets(item) {
                     let taken = self.targets.iter().any(|t| t.mod_id == own.mod_id);
-                    if !taken && target_problem(&valid, &own).is_none() {
+                    if !taken
+                        && target_problem(&valid, &own).is_none()
+                        && has_room(item, &valid, &self.targets, &own)
+                    {
                         self.targets.push(own);
                     }
                 }
@@ -384,6 +554,14 @@ impl Craft {
             }
             if !list.iter().any(|x| x.mod_id == t.mod_id) {
                 list.push(t);
+            }
+        }
+        if let Some(counts) = side_counts(&grabbed.item, &valid, &list) {
+            if let Some(why) = counts
+                .over(Kind::Prefix)
+                .or_else(|| counts.over(Kind::Suffix))
+            {
+                return Err(why);
             }
         }
         // The engine's own checks of a target list (one per family).
@@ -535,18 +713,30 @@ impl Craft {
     ) -> PlanningView {
         let item = &grabbed.item;
         let valid = valid_mods(item);
+        let counts = side_counts(item, &valid, &self.targets);
         let mut choices = TargetChoices {
             prefixes: Vec::new(),
             suffixes: Vec::new(),
             desecrated: Vec::new(),
         };
         for m in &valid {
+            let is_chosen = self.targets.iter().any(|t| t.mod_id == m.id);
+            // Disabled only when ticking it would take a full side past
+            // its limit: an unticked fractured target already holds its
+            // slot, and a missing one can take an unrevealed modifier's.
+            let disabled = match &counts {
+                Some(counts) if !is_chosen => counts.full(m.kind).filter(|_| {
+                    !has_room(item, &valid, &self.targets, &Target::new(m.id, None))
+                }),
+                _ => None,
+            };
             let choice = TargetChoice {
                 mod_id: m.id.to_string(),
                 side: mod_side(m.kind),
                 text: mod_text(m.lines),
                 best_tier: m.best_tier,
                 floors: floor_options(m.best_tier, m.tiers.iter().map(|t| t.tier)),
+                disabled,
             };
             match (m.section, m.kind) {
                 (Section::Desecrated, _) => choices.desecrated.push(choice),
@@ -1203,7 +1393,8 @@ pub fn state_step_number(history: &[HistoryEntry], id: &str) -> usize {
 /// One step's line. A step the app named by level has no fallback line:
 /// the whittle it passed over is not blocked. A state-ordered step's
 /// fallback line asks `without` for the engine's pick of the step with
-/// another list ([`state_fallback_line`]).
+/// another list ([`state_fallback_line`]), after the line of a desecration
+/// it was taken in place of ([`desecration_fallback_line`]).
 fn step_line(
     blueprint: Option<&Blueprint>,
     shown: &Shown,
@@ -1230,12 +1421,39 @@ fn step_line(
         targets: step_targets(step, item),
         uses,
         odds: step.odds.as_ref().map(odds_words),
-        fallback: blueprint
-            .filter(|_| !shown.by_level)
-            .and_then(|b| match b.order() {
-                Order::State => state_fallback_line(b, step, item, blocked, without),
-                Order::Listed => fallback_line(b, step, item, blocked),
-            }),
+        fallback: joined_fallback(
+            desecration_fallback_line(step),
+            blueprint
+                .filter(|_| !shown.by_level)
+                .and_then(|b| match b.order() {
+                    Order::State => state_fallback_line(b, step, item, blocked, without),
+                    Order::Listed => fallback_line(b, step, item, blocked),
+                }),
+        ),
+    }
+}
+
+/// The fallback line of a state-ordered step taken in place of the last
+/// target's desecration (docs/models/crafting-slots-spec.md, "The
+/// last-target desecration"): `<used, with its omens> instead of a
+/// desecration: <reason>`, the reason the engine's
+/// (`StepView::instead_of_desecration`). `None` when the step replaced no
+/// desecration.
+pub fn desecration_fallback_line(step: &StepView) -> Option<String> {
+    let why = step.instead_of_desecration.as_deref()?;
+    let used = step
+        .action
+        .as_ref()
+        .map_or_else(|| "this step".to_string(), uses_words);
+    Some(format!("{used} instead of a desecration: {why}"))
+}
+
+/// A step's one fallback line: the desecration's first, then the passed-over
+/// alternative's, joined by `; `.
+fn joined_fallback(desecration: Option<String>, alternative: Option<String>) -> Option<String> {
+    match (desecration, alternative) {
+        (Some(d), Some(a)) => Some(format!("{d}; {a}")),
+        (d, a) => d.or(a),
     }
 }
 

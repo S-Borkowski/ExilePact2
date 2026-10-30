@@ -67,6 +67,14 @@ pub struct StepView {
     pub action: Option<ChosenAction>,
     /// The first try's odds; `None` for a manual step.
     pub odds: Option<Odds>,
+    /// State order: why the last-target desecration was not taken, in
+    /// words, when the item is rare with no desecrated modifier and one
+    /// target missing and this step was taken in its place (no pool on the
+    /// target's side, the bone or the Necromancy omen blocked, or the
+    /// engine's own reason; docs/models/crafting-slots-spec.md, "The
+    /// last-target desecration"). The app's Fallback line.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instead_of_desecration: Option<String>,
 }
 
 /// A step left out of the route on this item.
@@ -457,6 +465,7 @@ pub(crate) fn pick_step(
             .collect(),
         action,
         odds,
+        instead_of_desecration: None,
     }))
 }
 

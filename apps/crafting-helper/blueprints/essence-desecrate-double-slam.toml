@@ -22,7 +22,11 @@ Dextral Necromancy and with Omen of Abyssal Echoes for the reveal, both \
 active before use; a wrong reveal is taken off with Omen of Light and an \
 Orb of Annulment and the bone used again. The other targets come from \
 Perfect Exalted Orbs restricted to their side, with Omen of Greater \
-Exaltation where two free slots take two targets. A side with too few free \
+Exaltation where two free slots take two targets; when the hardest target \
+is already placed and one target is left on an item with no desecrated \
+modifier, that last one is desecrated and revealed the same way instead, \
+where the class has a desecrated modifier on its side at the item's level \
+and neither the bone nor the omen is blocked. A side with too few free \
 slots is cleaned first (a certain whittle, else an annulment). On body \
 armours, gloves, boots and helmets there are no desecrated prefixes, and \
 what Sinistral Necromancy does there is not established. The preview \
@@ -174,6 +178,24 @@ omens = ["side-omen"]
 
 [[step.action]]
 currency = "desecrate"
+
+# The last target's desecration (docs/models/crafting-slots-spec.md, "The
+# last-target desecration"), when the hardest target was placed some other
+# way and no desecrated modifier is on the item; the reveal and Omen of
+# Light above take what it leaves. One alternative only: a bone without the
+# side omen could land on the other side.
+[[step]]
+id = "desecrate-last"
+say = "Desecrate on the last target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "last-remaining"
+when = "bound"
+guard = { rarity = ["rare"] }
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
 
 [[step]]
 id = "side-slam"

@@ -67,7 +67,8 @@ browser for the crafting this app does not cover.
     prefixes and suffixes with their tiers), the **targets** (the
     modifiers this base can roll at its item level, as prefixes, suffixes
     and desecrated, filterable by text; each chosen one with a floor, "As
-    high as possible" by default or "At least T<n>"), **Blocked for this
+    high as possible" by default or "At least T<n>"; a choice that would
+    take its side past the item's limit is greyed out, below), **Blocked for this
     craft** (the Settings list, which this craft can add to or allow
     from, without changing Settings), and the **route** the engine chose:
     the blueprint's source, the chosen targets with their floors, then
@@ -115,14 +116,57 @@ browser for the crafting this app does not cover.
     the modifier levels). How they work: [`blueprints.md`](blueprints.md)
     § "State-ordered blueprints".
 
+    **The last target is desecrated** (since 0.1.2, issue #32). When the
+    item is rare, carries no desecrated modifier (an unrevealed one
+    included) and exactly one target is missing, a state-ordered route
+    places that last target with a desecration on its side instead of an
+    Exalted Orb or an essence: the bone for the item's class with Omen of
+    Sinistral or Dextral Necromancy (`Preserved Collarbone with Omen of
+    Sinistral Necromancy on the prefix side for +# to Armour`), then the
+    reveal with Omen of Abyssal Echoes. A reveal that offers no target is
+    taken off with Omen of Light and an Orb of Annulment, and the bone is
+    used again. Both steps say "odds unknown" with the reason. When the
+    last target cannot be desecrated, the route keeps the step it took
+    before, and that step's Fallback line says why (`Perfect Exalted Orb
+    instead of a desecration: Omen of Sinistral Necromancy blocked`): the
+    item's class has no desecrated modifier on that side at the item's
+    level (body armours, boots, gloves, helmets, shields and bucklers
+    have no desecrated prefix, sceptres none at all, and every equipment
+    desecrated modifier needs item level 65), or the bone or the
+    Necromancy omen is blocked. A plain bone without the omen is never
+    offered in its place, since it could land on the other side. An item
+    that already has its desecrated modifier, two or more missing
+    targets, and a magic or normal item keep the route as before.
+
+    **Target choices respect the item's prefix and suffix limits** (since
+    0.1.2, issue #32). The limit is the item's as a rare, read from the
+    item: three and three, two and two on a jewel, changed by a line on
+    the item that allows one more or one fewer prefix or suffix (the Dusk
+    and Gloam rings and amulets, the Distorted and Twisted amulets, a
+    Contempt liquid emotion), so a rare Dusk Ring takes four prefixes and
+    two suffixes. A side counts its chosen targets (a desecrated choice
+    on the side its modifier belongs to) and the item's modifiers that no
+    target names and a route cannot take off (fractured, unrevealed). An
+    unchosen choice on a side that has reached its limit is greyed out,
+    still listed and filtered, its checkbox disabled, and says why on
+    hover (`Prefixes full: 2 on the item + 1 chosen = 3 of 3`). A chosen
+    one is never disabled: unticking it frees its side and re-enables
+    the rest. Since a grab ticks the item's own modifiers, a rare with
+    three prefixes arrives with its prefix side full; untick one to pick
+    another prefix.
+
     A grab that enters planning arrives with the item's own explicit
     prefixes and suffixes already ticked as targets, each with its floor
     at the tier it has, so you only add the modifier you want next; one
     the craft cannot keep at that tier is left unticked, without a
     message, and an item with no explicit modifier starts with none.
     After another grab while planning, the list is the targets chosen
-    before that still fit the new item, then the new item's own modifiers
-    not already in it. Untick any of them as you would any target.
+    before that still fit the new item, in their order while their side
+    has room under the new item's limit, then the new item's own
+    modifiers not already in it that still fit. Untick any of them as
+    you would any target. A list that would take a side past its limit
+    is refused whole, and the status line says why (`Prefixes over the
+    limit: 3 on the item + 1 chosen = 4 of 3`).
   - **Guiding**: the current step with its odds and two lines, where a
     hit and where a miss go, and the screen watch's line (below); the item
     as last grabbed or read; and the history of each step's outcome, each
@@ -748,7 +792,43 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   line says the item picks it, no fallback line for the engine's own
   pick, a removal names its side annulment, and the route's source line
   carries no web address
-  (`the_route_source_carries_no_web_address`).
+  (`the_route_source_carries_no_web_address`). Since 0.1.2 the belt's
+  Armour, its last target missing, is desecrated on `close-a-side`, so
+  where the close, the slam or the clean-up is a test's subject (here and
+  in `tests/remarks.rs`) Omen of Sinistral Necromancy is blocked for the
+  craft, which keeps that route.
+- `ch-app`'s `tests/affix_limits.rs` holds the target choices to the
+  item's prefix and suffix limits (issue #32), over the owner's belt and
+  `ch-engine`'s whittled ring edited in the test (a modifier taken off, a
+  fractured header, the base swapped for a Dusk or Gloam Ring with the
+  data's implicit lines): an item with room disables nothing, a full side
+  disables every other choice on it with the reason
+  (`two_on_the_item_and_one_chosen_disable_the_rest_with_the_reason`),
+  unticking re-enables the side (`unticking_re_enables_the_side`), an
+  implicit changes the count (`an_implicit_changes_the_count`), a
+  desecrated choice counts on its side, a fractured or unrevealed
+  modifier no target names holds a slot unticked, an unrevealed modifier
+  holds the slot of the missing target it waits to become, as the
+  engine counts it
+  (`an_unrevealed_modifier_holds_the_slot_of_a_missing_target`), an
+  unticked fractured target stays selectable
+  (`an_unticked_fractured_target_stays_selectable`), `set_targets` refuses
+  a list over a limit whole
+  (`set_targets_refuses_a_side_over_its_limit`), and a re-grab drops the
+  targets past the limit in list order
+  (`a_regrab_drops_targets_past_the_limit`).
+- `ch-app`'s `tests/last_desecration.rs` drives the last-target
+  desecration through the craft window: the belt's last step is the
+  desecration and the reveal (`the_last_step_is_a_desecration_and_reveal`),
+  an item that already has its desecrated modifier keeps its route
+  (`an_already_desecrated_item_keeps_its_route`), and the step taken
+  instead of a desecration says why on its Fallback line, for a blocked
+  Necromancy omen, an item below level 65 and a body armour missing a
+  prefix, and with a blocked alternative of the step's own too, both
+  reasons, the desecration's first (`the_desecration_fallback_says_why`).
+  The page's tests render `craft-side-full` and `craft-last-desecration`
+  (`a_full_side_greys_its_other_choices_with_the_reason`,
+  `the_last_target_is_desecrated_or_the_fallback_says_why`).
 - `ch-app`'s `tests/fixtures.rs` (`fixtures_are_current`) writes the
   views under `fixtures/views/` and `fixtures/app-settings/` and
   `fixtures/catalogue.json`, the overlay's and the screen watch's views
@@ -785,7 +865,13 @@ py -3 -m unittest tests.test_app_updates_guard                                  
 - `ch-data`'s `tests/data.rs` joins the owner's five real items (the
   parser's `fixtures/real/`) to the data and checks the anchored odds
   (`ring_life_exalt_odds_match_the_weights`); the rest of its items are
-  constructed in the test. `ch-blueprint`'s `tests/format.rs` reads the
+  constructed in the test. Its `tests/limits.rs` holds
+  `item_affix_limits` to the table (`rare_limits_are_three_and_three`),
+  a Contempt emotion's extra slot
+  (`contempt_adds_a_slot_on_the_other_side`) and the base implicits that
+  raise or lower a side, with their sign
+  (`an_implicit_raises_or_lowers_a_side`), over items whose implicit
+  lines come from the data's base rows. `ch-blueprint`'s `tests/format.rs` reads the
   files under `tests/fixtures/valid/` and `tests/fixtures/invalid/` and
   checks each error's line and column, and reads the spec's facts table
   against the fact ids `relies_on` may name (`facts_match_the_spec_table`).
@@ -798,7 +884,18 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   `tests/seeds_jewels_weapons.rs` and `tests/seeds_v2.rs` walk each shipped
   blueprint on a hit and
   a miss path, over the item texts under `tests/items/` (each folder's
-  `README.md` says which are real and which constructed); and
+  `README.md` says which are real and which constructed);
+  `tests/last_desecration.rs` holds the last-target desecration on the
+  shipped state-ordered blueprints, over the owner's belt and its later
+  states under `tests/items/last-desecration/`: the last target on a
+  rare with no desecrated modifier is desecrated and revealed
+  (`the_last_target_on_an_undesecrated_rare_is_desecrated`), a wrong
+  reveal is taken off with Omen of Light and the bone used again
+  (`a_wrong_reveal_is_lit_off_and_desecrated_again`), an item with a
+  desecrated target and one with two targets missing keep their route,
+  and no pool or a blocked Necromancy omen falls back with the reason
+  (`a_last_target_outside_the_desecration_pool_falls_back_with_why`,
+  `a_blocked_necromancy_omen_falls_back_with_why`); and
   `tests/shipped.rs` validates and resolves every file under
   `blueprints/`. After editing a blueprint, run `check_blueprints` (above)
   and the `ch-engine` tests: [`blueprints.md`](blueprints.md).
@@ -823,7 +920,16 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   spec, never by editing `cases.json` to match the engine. A new
   state-ordered blueprint is held to the model only once the model's
   `BLUEPRINTS`, an expectation in every case and `tests/slots.rs`'s list
-  of the four (`V2`) name it.
+  of the four (`V2`) name it. The last-target desecration (0.1.2) is in
+  the spec's § "The last-target desecration" and the model's
+  `BLUEPRINTS`; a case may name the sides with a desecration pool
+  (`desecration_pool`, both when absent), and four cases cover it beside
+  the changed expectations of the 2P/1S rares: a rare with a desecrated
+  target (unchanged slam), a body armour missing a prefix with a suffix
+  pool only (slam), a revealed unwanted desecrated modifier (Omen of
+  Light, then the bone again) and the 2P/1S rare with Omen of Sinistral
+  Necromancy blocked (as before the rule). The parity test does not
+  compare odds or Fallback lines.
 
 **Refreshing the modifier data**: see the research note's
 [Data extractor](crafting-helper-research.md#data-extractor).
@@ -969,10 +1075,30 @@ release already exists, only its assets are replaced.
     an expected cost.
   - **The affix limits are assumed**: Magic 1 prefix and 1 suffix, Rare 3
     and 3, Rare jewel 2 and 2, one more on the other side with a Contempt
-    liquid emotion. The Magic and Rare limits are documented (poe2db's
-    item text, the spec's `magic-slots` and `rare-slots`), the jewel and
-    Contempt ones are the owner's; none is measured from the game, and
-    every state-ordered route's slot accounting rests on them.
+    liquid emotion, and one more or one fewer on a side for each base
+    implicit that says so: Dusk Ring and Dusk Amulet one more prefix and
+    one fewer suffix, Gloam Ring and Gloam Amulet the reverse, Distorted
+    Amulet one fewer suffix, Twisted Amulet one fewer prefix (poe2db's base
+    rows in the shipped data, fetched 2026-10-28;
+    [`crafting-mechanics.md`](crafting-mechanics.md) § "Item basics"). The
+    Magic and Rare limits are documented (poe2db's item text, the spec's
+    `magic-slots` and `rare-slots`), the jewel and Contempt ones are the
+    owner's; none is measured from the game, and every state-ordered
+    route's slot accounting and the target choices' greying rest on them.
+    How the game writes a base's limit implicit in a `Ctrl+Alt+C` copy is
+    not measured either (no copied item has one): the app reads it in the
+    form of the data's line, `+1 Prefix Modifier allowed` or `-1 Suffix
+    Modifier allowed`, and `ch-data`'s `tests/limits.rs` builds its items
+    that way.
+  - **The last-target desecration rests on the data's level and pool.**
+    Whether the class has a desecrated modifier on the target's side at
+    the item's level is read from the shipped data (every equipment
+    desecrated modifier is level 65 there), not measured; nor is what
+    share of a reveal's options a normal-pool target gets, which is why
+    the rule offers any target on a side with a pool and its odds are
+    unknown. The Necromancy and Abyssal Echoes omens are assumed active
+    before use (`omens-active-before-use`, now all four state-ordered
+    routes').
   - **The tier join is measured on five items.** The tier the engine
     derives from poe2db's levels equalled the game's `Tier:` on all 18
     joined modifiers of the owner's five real items
@@ -998,9 +1124,11 @@ release already exists, only its assets are replaced.
     all four), a fractured modifier never being annulled or chaosed
     (`fractured-not-removed`, all four), the Necromancy and Abyssal
     Echoes omens needing to be active before use
-    (`omens-active-before-use`), and what Sinistral Necromancy does on a
-    class with no desecrated prefixes (`necromancy-without-pool`), these
-    two `essence-desecrate-double-slam`'s alone. The craft window does
+    (`omens-active-before-use`, all four since 0.1.2's last-target
+    desecration), and what Sinistral Necromancy does on a class with no
+    desecrated prefixes (`necromancy-without-pool`,
+    `essence-desecrate-double-slam`'s alone: the last-target desecration
+    is never offered without a pool, so it does not rely on it). The craft window does
     not show `relies_on`: the blueprint files and
     [`blueprints.md`](blueprints.md) § "The seed blueprints" carry it. If
     one of them is false in the game, the step is still shown as the
@@ -1070,7 +1198,10 @@ release already exists, only its assets are replaced.
   the next step, no route name on screen, the outcome's word said once)
   are proven by tests only, and so are 0.1.1's state-ordered routes: the
   engine's walks, the slot model and the parity test over constructed
-  items, with no craft taken in the game.
+  items, with no craft taken in the game. 0.1.2's last-target desecration
+  and greyed target choices are proven the same way; the page's tests
+  prove a greyed choice's disabled state and tooltip, not how it looks,
+  which is for a look in the browser preview (`craft-side-full`).
 - **Craft of Exile's page is outside this project.** The button opens its
   beta address with `?game=poe2`; if the site moves or drops that address,
   the button opens whatever the site serves there until the app is
@@ -1148,6 +1279,35 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.1.2
+
+- The last target is desecrated (#32). When a rare has every target but
+  one and no desecrated modifier yet, the route now places that last one
+  with a bone on its side, with Omen of Sinistral or Dextral Necromancy,
+  then reveals it with Omen of Abyssal Echoes, instead of an Exalted Orb
+  or essence slam. If the reveal offers none of your targets, the route
+  takes the wrong modifier off with Omen of Light and an Orb of
+  Annulment and uses the bone again. Desecration and reveals still say
+  "odds unknown".
+- When the last target cannot be desecrated, the route keeps its usual
+  step and its Fallback line says why: the item's class has no
+  desecrated modifier on that side at the item's level (body armours,
+  boots, gloves, helmets, shields and bucklers have no desecrated prefix,
+  and every equipment desecrated modifier needs item level 65), or the
+  bone or the Necromancy omen is blocked.
+- Target choices now respect the item's prefix and suffix limits. A
+  choice that would go past a side's limit is greyed out, not hidden,
+  and its tooltip says why (`Prefixes full: 2 on the item + 1 chosen = 3
+  of 3`); untick a target and the side's choices come back.
+- The limits are read from the item, not a fixed three: Dusk and Gloam
+  rings and amulets, and Distorted and Twisted amulets, allow one more or
+  one fewer prefix or suffix, and a Contempt emotion still adds one.
+  Fractured and unrevealed modifiers you have not chosen still hold
+  their slot; an unrevealed one counts as the missing target on its side
+  it will be revealed as, and an unticked fractured target stays
+  selectable, since ticking it again takes no new slot.
+- The app still sends the game nothing.
 
 ### 0.1.1
 

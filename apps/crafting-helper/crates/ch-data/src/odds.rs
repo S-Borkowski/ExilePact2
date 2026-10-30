@@ -112,21 +112,47 @@ pub fn affix_limits(rarity: &Rarity, class: &ItemClass) -> Option<AffixLimits> {
         .map(|row| row.limits)
 }
 
-/// The limits of `item` were it of `rarity`, with the slots a Contempt
-/// liquid emotion on it adds.
+/// The limits of `item` were it of `rarity`, changed by every "Prefix/Suffix
+/// Modifier allowed" line on it, implicit or explicit, with its sign: a
+/// Contempt liquid emotion, or a base implicit such as the Dusk, Gloam and
+/// Distorted bases'. A side never goes below 0.
 pub fn item_affix_limits(item: &Item, rarity: &Rarity) -> Option<AffixLimits> {
-    let mut limits = affix_limits(rarity, &item.class)?;
+    let base = affix_limits(rarity, &item.class)?;
+    let (mut prefixes, mut suffixes) = (base.prefixes as i64, base.suffixes as i64);
     for m in &item.modifiers {
         for line in &m.lines {
-            let extra = line.values.first().map_or(1, |v| v.value.max(0.0) as usize);
-            if line.template == CONTEMPT_EXTRA_SUFFIX_LINE {
-                limits.suffixes += extra;
-            } else if line.template == CONTEMPT_EXTRA_PREFIX_LINE {
-                limits.prefixes += extra;
+            let Some((side, delta)) = limit_change(&line.template, line.values.first()) else {
+                continue;
+            };
+            match side {
+                Kind::Prefix => prefixes += delta,
+                Kind::Suffix => suffixes += delta,
             }
         }
     }
-    Some(limits)
+    Some(AffixLimits {
+        prefixes: prefixes.max(0) as usize,
+        suffixes: suffixes.max(0) as usize,
+    })
+}
+
+/// The side a "Prefix/Suffix Modifier allowed" line changes, and by how
+/// much. `ch-item` keeps a leading `+` in the template (`+# Prefix Modifier
+/// allowed`, value 1) but reads a leading `-` as the number's sign (`#
+/// Suffix Modifier allowed`, value -1); a `-` left in the template (the
+/// data's own `-# ...` form) negates the value. No value counts as 1.
+fn limit_change(template: &str, value: Option<&ch_item::Value>) -> Option<(Kind, i64)> {
+    let (sign, rest) = match template.strip_prefix('-') {
+        Some(rest) => (-1, rest),
+        None => (1, template.strip_prefix('+').unwrap_or(template)),
+    };
+    let side = match rest {
+        "# Prefix Modifier allowed" => Kind::Prefix,
+        "# Suffix Modifier allowed" => Kind::Suffix,
+        _ => return None,
+    };
+    let amount = value.map_or(1, |v| v.value.round() as i64);
+    Some((side, sign * amount))
 }
 
 /// A rough single-step chance: known, with its basis, or unknown, with the

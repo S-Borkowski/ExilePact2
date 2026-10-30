@@ -6,6 +6,11 @@
 //! where a blocked id passed an alternative over, and a removal step naming
 //! its side annulment.
 //!
+//! The belt's Armour is its last target missing, so `close-a-side` now
+//! desecrates for it (issue #32, `tests/last_desecration.rs`); where the
+//! close, the slam or the clean-up is a test's subject, Omen of Sinistral
+//! Necromancy is blocked for the craft, which keeps that route.
+//!
 //! Items: the owner's 2P/1S belt (`tests/items/`, constructed), and
 //! `ch-engine`'s slot case items and walk states
 //! (`crates/ch-engine/tests/items/slots/`, constructed): issue #28's ring
@@ -26,6 +31,9 @@ const SINISTRAL_EXALT: &str = "Omen of Sinistral Exaltation";
 const DEXTRAL_EXALT: &str = "Omen of Dextral Exaltation";
 const SINISTRAL_ANNUL: &str = "Omen of Sinistral Annulment";
 const ANNUL: &str = "Orb of Annulment";
+/// Blocked for the belt's craft where the close is the subject: the last
+/// prefix is then slammed rather than desecrated.
+const NECRO: &str = "omen-of-sinistral-necromancy";
 
 fn guiding(view: &View) -> &ch_app::GuidingView {
     assert_eq!(view.craft.mode, CraftMode::Guiding, "{:?}", view.status);
@@ -58,6 +66,14 @@ fn planned(dir: &std::path::Path, shell: &FakeShell, text: &str, targets: &[Targ
     app
 }
 
+/// The belt planned with Omen of Sinistral Necromancy blocked for the
+/// craft: the route closes and slams, as before the last-target rule.
+fn belt_closing(dir: &std::path::Path, shell: &FakeShell) -> Arc<App> {
+    let app = planned(dir, shell, &belt("belt-2p1s"), &belt_targets());
+    app.set_craft_blocked(&lines(&[NECRO]));
+    app
+}
+
 /// Every route the preview offers for the planning item, each as the
 /// preview shows it once chosen.
 fn every_route(app: &App) -> Vec<RouteView> {
@@ -87,7 +103,7 @@ fn unrestricted_exalt(uses: &[String]) -> bool {
 fn a_fill_step_names_its_currency_omens_and_side() {
     let tmp = tempfile::tempdir().unwrap();
     let shell = FakeShell::default();
-    let app = planned(tmp.path(), &shell, &belt("belt-2p1s"), &belt_targets());
+    let app = belt_closing(tmp.path(), &shell);
     let view = app.choose_route(CLOSE);
     let close = &route(&view).steps[0];
     assert_eq!(close.id, "close");
@@ -127,16 +143,24 @@ fn two_prefixes_and_a_suffix_never_get_an_unrestricted_exalt() {
         assert!(ids.contains(&id), "{id}: {ids:?}");
     }
     // On the item as it stands, no route's first step is an exalt that may
-    // land on the prefix side's reserved slot.
-    for r in &routes {
-        let first = &r.steps[0];
-        assert!(
-            !unrestricted_exalt(&first.uses),
-            "{}: {:?}",
-            r.blueprint,
-            first.uses
-        );
-    }
+    // land on the prefix side's reserved slot: with nothing blocked (the
+    // rare routes desecrate for Armour, the last target missing) and with
+    // the Necromancy omen blocked (they close and slam).
+    let unrestricted = |routes: &[RouteView]| {
+        for r in routes {
+            let first = &r.steps[0];
+            assert!(
+                !unrestricted_exalt(&first.uses),
+                "{}: {:?}",
+                r.blueprint,
+                first.uses
+            );
+        }
+    };
+    unrestricted(&routes);
+    app.set_craft_blocked(&lines(&[NECRO]));
+    let routes = every_route(&app);
+    unrestricted(&routes);
     // `close-a-side` closes the suffix side first (Greater and Dextral
     // Exaltation on a plain Exalted Orb); only then, with one side open,
     // the slam needs no side omen.
@@ -200,11 +224,15 @@ fn a_rare_with_one_target_gets_a_route() {
     let view = app.choose_route("rare-clean-then-slam");
     assert!(view.craft.planning.as_ref().unwrap().can_accept);
     // Clean the prefix side with a plain annulment (the suffix side holds
-    // no target to protect), then a Greater side slam for the two prefixes
-    // and a side slam for the suffix.
-    let uses: Vec<Vec<String>> = route(&view).steps.iter().map(|s| s.uses.clone()).collect();
+    // no target to protect), then a Greater side slam for the two prefixes;
+    // the suffix, then the last target missing on a rare with no
+    // desecrated modifier, is desecrated on its side (Dextral Necromancy)
+    // and revealed (Abyssal Echoes), issue #32's rule.
+    let steps = &route(&view).steps;
+    let uses: Vec<Vec<String>> = steps.iter().map(|s| s.uses.clone()).collect();
+    assert_eq!(uses.len(), 4, "{uses:?}");
     assert_eq!(
-        uses,
+        uses[..2],
         [
             vec![ANNUL.to_string()],
             vec![
@@ -212,9 +240,12 @@ fn a_rare_with_one_target_gets_a_route() {
                 GREATER.to_string(),
                 SINISTRAL_EXALT.to_string()
             ],
-            vec!["Perfect Exalted Orb".to_string(), DEXTRAL_EXALT.to_string()],
         ]
     );
+    assert!(uses[2][0].ends_with("Collarbone"), "{:?}", uses[2]);
+    assert_eq!(uses[2][1..], ["Omen of Dextral Necromancy"]);
+    assert_eq!(uses[3][1..], ["Omen of Abyssal Echoes"]);
+    assert!(steps[2].instruction.contains("on the suffix side"));
     let view = app.accept_craft();
     assert_eq!(guiding(&view).status, GuideStatusView::Active);
     assert_eq!(step(&view).step.id, "remove");
@@ -234,7 +265,7 @@ fn a_rare_with_one_target_gets_a_route() {
 fn a_state_ordered_hit_line_names_the_next_projected_step() {
     let tmp = tempfile::tempdir().unwrap();
     let shell = FakeShell::default();
-    let app = planned(tmp.path(), &shell, &belt("belt-2p1s"), &belt_targets());
+    let app = belt_closing(tmp.path(), &shell);
     app.choose_route(CLOSE);
     let view = app.accept_craft();
     let current = step(&view);
@@ -273,6 +304,9 @@ fn a_state_ordered_hit_line_names_the_next_projected_step() {
         Target::new("suffix-to-cold-resistance", Some(5)),
     ];
     let app = planned(tmp.path(), &shell, &slots_item("magic-one-good"), &targets);
+    // Cold Resistance, the last target once the essence made it rare, is
+    // slammed rather than desecrated: the walk's subject is the slam.
+    app.set_craft_blocked(&lines(&["omen-of-dextral-necromancy"]));
     app.choose_route("magic-augment-essence");
     let view = app.accept_craft();
     assert_eq!(step(&view).step.id, "augment");
@@ -298,7 +332,7 @@ fn a_state_ordered_hit_line_names_the_next_projected_step() {
 fn a_state_ordered_miss_line_says_the_item_picks_the_next_step() {
     let tmp = tempfile::tempdir().unwrap();
     let shell = FakeShell::default();
-    let app = planned(tmp.path(), &shell, &belt("belt-2p1s"), &belt_targets());
+    let app = belt_closing(tmp.path(), &shell);
     app.choose_route(CLOSE);
     app.accept_craft();
     let view = app.grab_text(Some(&belt("belt-closed")));
@@ -337,8 +371,10 @@ fn a_state_ordered_step_shows_no_fallback_for_the_engines_own_pick() {
     let tmp = tempfile::tempdir().unwrap();
     let shell = FakeShell::default();
     // The belt's slam missed: the engine passes the whittle over (it is not
-    // certain) and takes the Sinistral annulment, its second way. Nothing
-    // is blocked: no fallback line.
+    // certain) and takes the Sinistral annulment, its second way. Only the
+    // Necromancy omen is blocked (it keeps the close route), and no way of
+    // the removal names it: no fallback line. The removal comes before the
+    // desecration, so it is not taken in its place either.
     let missed = |dir: &str, blocked: &[&str]| {
         let app = planned(
             &tmp.path().join(dir),
@@ -347,9 +383,9 @@ fn a_state_ordered_step_shows_no_fallback_for_the_engines_own_pick() {
             &belt_targets(),
         );
         app.choose_route(CLOSE);
-        if !blocked.is_empty() {
-            app.set_craft_blocked(&lines(blocked));
-        }
+        let mut list = vec![NECRO];
+        list.extend_from_slice(blocked);
+        app.set_craft_blocked(&lines(&list));
         app.accept_craft();
         app.grab_text(Some(&belt("belt-closed")));
         let view = app.grab_text(Some(&belt("belt-slam-miss")));
@@ -419,7 +455,7 @@ fn a_state_ordered_step_shows_no_fallback_for_the_engines_own_pick() {
 fn a_removal_step_names_its_side_annulment() {
     let tmp = tempfile::tempdir().unwrap();
     let shell = FakeShell::default();
-    let app = planned(tmp.path(), &shell, &belt("belt-2p1s"), &belt_targets());
+    let app = belt_closing(tmp.path(), &shell);
     app.choose_route(CLOSE);
     app.accept_craft();
     app.grab_text(Some(&belt("belt-closed")));
