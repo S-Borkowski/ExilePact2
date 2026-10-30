@@ -1,6 +1,6 @@
 Item Class: Amulets
 Rarity: Magic
-Gentian Jade Amulet of Magma
+Zaffre Jade Amulet of Magma
 --------
 Requires: Level 8
 --------
@@ -9,7 +9,7 @@ Item Level: 82
 { Implicit Modifier — Attribute }
 +12(10-15) to Dexterity
 --------
-{ Prefix Modifier "Gentian" (Tier: 6) — Mana }
-+95(90-104) to maximum Mana
+{ Prefix Modifier "Zaffre" (Tier: 2) — Mana }
++170(165-179) to maximum Mana
 { Suffix Modifier "of Magma" (Tier: 2) — Elemental, Fire, Resistance }
 +38(36-40)% to Fire Resistance

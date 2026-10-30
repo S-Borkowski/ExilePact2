@@ -33,5 +33,9 @@ export default defineConfig(({ mode }) => ({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    // Vitest blanks CSS by default. The components' own `<style>` blocks
+    // and the shared `app.css` are kept, so a page test reads the styles
+    // jsdom resolves from what ships (`src/ui-spacing.test.ts`).
+    css: { include: [/\.svelte\?svelte&type=style/, /src[\\/]app\.css/] },
   },
 }));

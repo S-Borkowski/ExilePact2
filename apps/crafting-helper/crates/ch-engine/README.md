@@ -75,7 +75,20 @@ unknown with the reason.
   omen of the bound target's side (or the step's `side`), and
   `greater-omen` to Omen of Greater Exaltation where two fit (below) or to
   nothing. Every alternative blocked rejects the blueprint
-  (`EveryAlternativeBlocked`); none usable, `NoAlternativeFits`.
+  (`EveryAlternativeBlocked`); none usable, `NoAlternativeFits`. On class
+  `Jewels`, a currency with a Minimum Modifier Level (the Greater and
+  Perfect orbs) is unfit in either order (since 0.1.4: a jewel's modifiers
+  have one level each, so it only adds cost), and the step takes its next
+  alternative.
+- **`weak-magic-start`** (since 0.1.4, either order, checked last on a
+  planned route): `Rejection::WeakMagicStart` when the item is Magic, its
+  prefix is a target at any tier, a step of the route makes it Rare while
+  Magic (a Regal Orb of any grade, or a Lesser, plain or Greater
+  essence), and the prefix's tier is worse than the second best its
+  modifier rolls on the base's variant at the item level. It names the
+  modifier, its tier, the item level and the top two tiers. No item level,
+  an unknown tier or one reachable tier (the top two are that one) never
+  rejects. Engine-only: the slot model has no tiers.
 - **Order**: fewer classes first, then load order. No cost, no expected
   number of tries.
 
@@ -115,6 +128,24 @@ engine computes the same numbers and picks the same steps.
   the guide picks again after every change (`Outcome::transition` is
   `picked`), is done when no target is missing, and stuck with every step's
   reason otherwise.
+- **Certain removals first** (since 0.1.4; the spec's "Certain removals
+  first"): when the first candidate is not a certain removal and a later
+  one is a `remove-unwanted` step whose chosen alternative is certain
+  (every modifier it may take a non-target, or a certain whittle), or an
+  essence swap whose removal is, the first such later candidate is next
+  (`certain_removal`). The projection takes the same pick. Add certainty
+  stays in the odds and never reorders.
+- **Essence swaps** (since 0.1.4, engine-only): an `add-wanted` step whose
+  chosen alternative is a Perfect or special essence (`Effect::Swap`)
+  fits on a Rare when its `essence` binding (made on a Rare for such a
+  step) names a missing target the essence adds at its floor, the
+  removal's side holds a removable modifier, and the target's side has
+  room once it is gone. The removal's side is the Crystallisation omen's;
+  with none, the essence modifier's side when it is full
+  (`essence-full-side-removal`); otherwise either. Its projection takes
+  the first removable non-target on that side, fillers last (`swap_takes`),
+  and places the target. Alloys and liquid emotions stay listed-order
+  only.
 - **Fitting**: an Exalted Orb without a side omen is passed over while both
   sides are open and one is reserved; `greater-omen` resolves to Omen of
   Greater Exaltation only where the side has two free slots the step can
@@ -129,8 +160,8 @@ engine computes the same numbers and picks the same steps.
   engine's pick is final.
 - **The last-target desecration** (spec, "The last-target desecration"):
   on a rare with no desecrated modifier (unrevealed ones included) and
-  exactly one target missing, each of the four state-ordered blueprints
-  places it with a `desecrate-last` step bound to `last-remaining` (a bone
+  exactly one target missing, each state-ordered blueprint places it
+  with a `desecrate-last` step bound to `last-remaining` (a bone
   and the side's Necromancy omen, nothing else) and a reveal with Omen of
   Abyssal Echoes; a wrong reveal is taken off with Omen of Light and an
   Orb of Annulment and the bone used again. When that desecration
@@ -152,7 +183,7 @@ engine computes the same numbers and picks the same steps.
   `DesecratedTargetUnplaced` (no desecrate step), and `RouteCannotFinish`
   with `why` = `no-candidate` (with each step's reason), `no-change` (a
   step's hit changes nothing) or `step-cap` (the projection reaches
-  `STEP_CAP`, 16 steps).
+  `STEP_CAP`, 16 steps), then `WeakMagicStart` (above).
 - **Hit, miss, unexpected** as in listed order; a `side = "blocked"`
   removal hits when a non-target went from a side that was blocked before
   it.
@@ -169,11 +200,13 @@ Given the item before and after the step:
   or flux swaps one; an annulment removes one, two with Greater Annulment;
   a regal or Lesser, plain or Greater essence makes Magic Rare with one
   more; a desecration adds one unrevealed; a reveal turns it into a
-  desecrated one; a manual step accepts anything); or a side omen's side
+  desecrated one; a Fracturing Orb fractures one modifier; a manual step
+  accepts anything); or a side omen's side
   was not the side that changed. The guide stops (`Status::Replan`).
 - **Hit**: the goal is met (the bound or a remaining target is now there at
   its floor; an unwanted modifier went; a slot filled; an unrevealed
-  modifier appeared; the desecrated one went) and no wanted modifier was
+  modifier appeared; the desecrated one went; a target became fractured)
+  and no wanted modifier was
   lost. **Miss**: the change fits and the goal is not met; a target below
   its floor is a miss, and counts as unwanted for removal.
 - Every outcome lists the targets gained, lost and rolled below their
@@ -190,7 +223,20 @@ on (`ch-data`'s pool, Minimum Modifier Level included); a removal is the
 chance the removed modifier is not a wanted one (whittling: certain when
 the lowest level is unique; Omen of Light: the desecrated one); an essence
 is certain, times the removal factor when it removes. Desecration, reveals,
-fluxes and every jewel are unknown.
+fluxes and every jewel are unknown, with the exceptions below.
+
+Since 0.1.4: an add whose pool's exclusions leave only the target, every
+tier counting, is certain, and one that leaves it out is certain not to
+hit, weights or not (`ch-data`'s `Pool::certainty`), so an isolation
+shows on a jewel too. An essence swap's removal factor is over its
+removal's side (the Crystallisation omen's, or the full side of the
+essence's modifier, above). A Fracturing Orb is the share of targets
+among the modifiers it may fracture: explicit, not fractured, not
+desecrated (revealed or not) and not the Mark of the Abyssal Lord
+(`fracture_odds`; the basis names `abyss-mark-unfracturable` and
+`desecrated-unfracturable`, not established). A listed desecration with a
+Necromancy omen on a full side is its removal's share of non-targets on
+that side, not counting the reveal (`full-desecration-same-side`).
 
 ## The CLI
 
@@ -209,6 +255,9 @@ per valid file, and exits 1 on any error (2 with no argument).
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test state_order
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test last_desecration
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test rules
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test fracture
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_guides
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -230,13 +279,44 @@ owner's two-prefix, one-suffix belt and its later states in
 desecration and reveal on an undesecrated rare, an item with a desecrated
 target keeping its route, the fallback reason with no pool or a blocked
 Necromancy omen, two missing targets left alone, and a wrong reveal lit
-off and desecrated again. `tests/common/` holds the
-helpers every engine test file shares. A `-p` build does not need the npm
+off and desecrated again. `tests/rules.rs` (0.1.4) holds the guides'
+route rules over the test blueprints and constructed items in
+`tests/items/rules/` (its README lists them), each beside its baseline:
+a jewel takes the plain Exalted Orb while a ring keeps the Perfect one
+(`a_jewel_route_takes_the_plain_exalted_orb`,
+`a_ring_route_keeps_the_perfect_exalted_orb_baseline`),
+`weak-magic-start` on magic boots with movement speed T3 at item level 82
+and not with T2 (`a_weak_magic_prefix_rejects_a_route_that_spends_an_upgrade`,
+`a_top_two_magic_prefix_keeps_its_route_baseline`), a certain removal
+before an uncertain step (`a_certain_removal_goes_before_an_uncertain_step`,
+`an_uncertain_removal_keeps_file_order_baseline`), and the essence swap's
+odds, side and order (`an_essence_swap_shows_its_removal_odds`,
+`an_essence_swap_on_a_full_side_removes_from_that_side`,
+`a_certain_essence_swap_goes_before_an_uncertain_step`,
+`an_essence_swap_with_a_target_on_its_side_keeps_file_order_baseline`).
+`tests/fracture.rs` (0.1.4) covers the `fracture` goal and the count
+conditions over constructed boots in `tests/items/fracture/`: the
+Fracturing Orb's odds leave out the Abyss mark and desecrated modifiers
+(`fracture_odds_leave_out_the_abyss_mark_and_desecrated`), a fractured
+target is a hit and another fractured modifier a miss, the counts take
+every explicit modifier, and a desecration on a full side shows its
+removal's odds (`a_desecration_on_a_full_side_shows_the_removal_odds`).
+`tests/seeds_guides.rs` (0.1.4) walks the four blueprints from the guides,
+`fracture-first`, `full-rare-desecration-rescue`,
+`weapons-physical-generic` and `body-armours-single-prefix`, each through
+`<id>_hit_path`, `<id>_miss_path` and `<id>_start_refuses`, over the
+constructed items under `tests/items/guides/<id>/` (a README each): the
+weapon and the armour refuse a weak magic prefix (`weak-magic-start`), and
+fracture first and the rescue a rare with the wrong modifier count; the
+two state-ordered ones are not in the slot model, so these walks pin
+them. `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 
 `tests/items/slots/cases.json` is the contract between the model and the
-engine: each case's abstract item and targets and what each shipped
-state-ordered blueprint must preview on it. The model owns it
+engine: each case's abstract item and targets and what each of the four
+modelled state-ordered blueprints (`V2`; not the two from the guides)
+must preview on it. 0.1.4 added two cases, `rare-certain-removal-first`
+and `rare-uncertain-removal-keeps-order`, for Certain removals first. The model owns it
 (`tests/test_crafting_helper_slot_model.py`); the engine's parity test,
 `tests/slots.rs`, builds a constructed item per case and asserts every
 expectation. A disagreement is settled by the spec, never by editing the

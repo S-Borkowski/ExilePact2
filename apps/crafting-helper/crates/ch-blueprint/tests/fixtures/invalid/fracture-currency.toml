@@ -1,0 +1,28 @@
+id = "fracture-currency"
+name = "A fracture step without a Fracturing Orb"
+classes = ["Rings"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+modifiers_at_least = 4
+
+[[step]]
+id = "fracture"
+say = "Fracture a target"
+goal = "fracture"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step.action]]
+currency = "fracturing-orb"
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "add-wanted"
+bind = "hardest"
+
+[[step.action]]
+currency = "fracturing-orb"

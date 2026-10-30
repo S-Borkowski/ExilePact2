@@ -1,0 +1,8 @@
+Item Class: Boots
+Rarity: Magic
+Cheetah's Cavalry Boots
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Cheetah's" (Tier: 2) — Speed }
+30% increased Movement Speed

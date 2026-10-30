@@ -1,0 +1,10 @@
+Item Class: Two Hand Maces
+Rarity: Magic
+Tyrannical Aberrant Sledge of Slamming
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Tyrannical" (Tier: 2) — Damage, Physical, Attack }
+160(155-169)% increased Physical Damage
+{ Suffix Modifier "of Slamming" (Tier: 3) }
+21(20-22)% increased Stun Duration

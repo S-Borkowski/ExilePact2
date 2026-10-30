@@ -79,8 +79,9 @@ pub enum Effect {
 
 impl Effect {
     /// Whether a step with `goal` can be taken with something of this
-    /// effect: a removal-only currency cannot add a wanted modifier, and a
-    /// manual one cannot be checked by any goal but `manual`.
+    /// effect: a removal-only currency cannot add a wanted modifier, only a
+    /// Fracturing Orb fractures, and a manual one cannot be checked by any
+    /// goal but `manual`.
     pub fn serves(self, goal: Goal) -> bool {
         use Effect::*;
         match goal {
@@ -92,6 +93,7 @@ impl Effect {
             Goal::Reveal => self == Reveal,
             Goal::RemoveDesecrated => self == Remove,
             Goal::Convert => self == Convert,
+            Goal::Fracture => self == Fracture,
             Goal::Manual => self != Omen,
         }
     }
@@ -485,6 +487,10 @@ pub const GREATER_OMEN: &str = "greater-omen";
 pub const GREATER_EXALTATION: &str = "omen-of-greater-exaltation";
 /// Every grade of Exalted Orb: the currencies `greater-omen` may go on.
 pub const EXALTED_ORBS: &[&str] = EXALT;
+/// Every grade of Chaos Orb.
+pub const CHAOS_ORBS: &[&str] = CHAOS;
+/// The Orb of Annulment.
+pub const ANNULMENT: &str = "orb-of-annulment";
 
 /// The facts a blueprint may name in `relies_on`: exactly the ids of the
 /// rows labelled not established in docs/models/crafting-slots-spec.md's
@@ -500,6 +506,10 @@ pub const NOT_ESTABLISHED: &[&str] = &[
     "omens-active-before-use",
     "necromancy-without-pool",
     "removal-equally-likely",
+    "abyss-mark-unfracturable",
+    "desecrated-unfracturable",
+    "full-desecration-same-side",
+    "essence-full-side-removal",
 ];
 
 /// The catalogue entry for an id.

@@ -35,7 +35,10 @@ it does not know.
   `magic`, `rare`), `wanted_at_least`, `wanted_prefixes_at_least`,
   `wanted_suffixes_at_least`, `fractured_wanted` (true: a fractured
   modifier is present and every one is wanted; false: none is present),
-  `unwanted_at_most`, `essence_binds`, and the four slot keys, each a bool
+  `unwanted_at_most`, `essence_binds`, `modifiers_at_least` and
+  `modifiers_at_most` (since 0.1.4: the number of explicit modifiers,
+  fractured, desecrated and unrevealed ones counted), and the four slot
+  keys, each a bool
   (`false` asks for the opposite): `blocked_side` (some side is blocked),
   `closable_side` (some side is closable), `one_side_open` (exactly one
   side is open), `desecrated_unwanted` (a revealed desecrated modifier is
@@ -55,7 +58,9 @@ it does not know.
   target's side, or the open side with the most targets the step can
   place), `close` (the closable side), `blocked` (the blocked side).
 - **`goal`**: `add-wanted`, `remove-unwanted`, `fill`, `desecrate`,
-  `reveal`, `remove-desecrated`, `convert`, `manual`.
+  `reveal`, `remove-desecrated`, `convert`, `fracture` (since 0.1.4: a
+  target became fractured; only a currency of effect `fracture`, the
+  Fracturing Orb, serves it), `manual`.
 - **`bind`**: `essence`, `hardest`, `any-remaining`, `last-remaining`. A
   `reveal` or `convert` step needs one.
 - **`[[step.action]]`**: `currency` and optional `omens`. The route takes
@@ -100,7 +105,10 @@ omen, the currency it modifies, its side and its change.
   labelled not established in the spec's facts table, in its order; these
   are what `relies_on` may name. `facts_match_the_spec_table` reads the
   table and fails when the two differ, so a relabelled or added row means
-  editing this list.
+  editing this list. 0.1.4 added `abyss-mark-unfracturable`,
+  `desecrated-unfracturable`, `full-desecration-same-side` and
+  `essence-full-side-removal`; `alloy-counts-as-crafted` is documented,
+  so it is not among them.
 - **Readings, not measurements**: which group Sceptres, Foci and Bucklers
   belong to for the bones, the Refined catalysts' spelling, and
   Crystallisation fitting alloys (the doc marks it not established; the
@@ -135,7 +143,19 @@ next starts:
    "Dextral Exaltation") needs an action carrying that omen, and one that
    mentions an omen at all (the word "omen" too) needs an action carrying
    one; `side-omen` counts as its currency's two side omens and
-   `greater-omen` as Omen of Greater Exaltation.
+   `greater-omen` as Omen of Greater Exaltation. Since 0.1.4 pass 3
+   also holds the one-crafted rules and the jewel one: a second step
+   that places a crafted modifier (an action naming an essence of any
+   grade, an alloy or a liquid emotion, the data-backed ids) with no
+   step between the two whose actions include an Orb of Annulment or a
+   Chaos Orb of any grade (`check_crafted`, at the second step's
+   currency; a plausibility check, since the removal may take another
+   modifier); in a listed blueprint, a crafted step that is not
+   `manual` with an `until`, or whose miss goes to `repeat`, written (at
+   its `on_miss`) or by default (at its currency); and, on a blueprint
+   whose every class is `Jewels`, a currency with a Minimum Modifier
+   Level (`check_jewel_grades`). A `fracture` step whose action cannot
+   fracture is the existing goal check (`Effect::serves`).
 
 ```text
 tests/fixtures/invalid/unknown-currency.toml:15:12: step `slam`: unknown currency `exalted-orbb`
@@ -165,5 +185,12 @@ cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-blue
 blueprint, `state-every-key.toml` every key state order adds), and
 `invalid/` ones whose every error it pins to its `file:line:col`
 (`say-omen.toml` holds the listed `fill-desecrate-exalt`'s old fill step,
-whose text promised an Exaltation omen its action did not carry). It also
-reads the spec's facts table against `NOT_ESTABLISHED`.
+whose text promised an Exaltation omen its action did not carry;
+`crafted-twice.toml`, `crafted-repeat.toml`, `jewel-grades.toml` and
+`fracture-currency.toml` the 0.1.4 rules, in
+`two_crafted_steps_without_a_removal_between_are_refused`,
+`a_crafted_step_that_repeats_on_a_miss_is_refused`,
+`greater_and_perfect_currencies_are_refused_on_a_jewel_blueprint` and
+`a_fracture_step_needs_a_fracturing_orb`; `modifier_count_conditions_parse`
+reads the two count keys). It also reads the spec's facts table against
+`NOT_ESTABLISHED`.

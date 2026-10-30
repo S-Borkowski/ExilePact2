@@ -1,0 +1,30 @@
+# A state-ordered test blueprint (engine tests only): upgrade a magic pair
+# of boots with Greater Essence of Insulation, then slam a target's side.
+id = "test-weak-magic-state"
+name = "Test: essence a magic item, then slam"
+classes = ["Boots"]
+source = "ch-engine tests"
+order = "state"
+relies_on = ["greater-with-side-omen", "greater-needs-two-free"]
+
+[[start]]
+rarity = ["magic"]
+
+[[step]]
+id = "essence"
+say = "Greater Essence of Insulation"
+goal = "add-wanted"
+bind = "essence"
+
+[[step.action]]
+currency = "greater-essence-of-insulation"
+
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["greater-omen", "side-omen"]

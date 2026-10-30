@@ -85,7 +85,14 @@ derived tier equals the game's `Tier:`; the two revealed desecrated ones
   (every jewel page, `Body_Armours_str_dex_int`), when a counting target
   tier's weight is missing or poe2db's placeholder 1, when any pool tier's
   weight is missing, or when a modifier already on the item did not join (its
-  family is then unknown). A 1 elsewhere in the pool counts as 1. Anchor: a
+  family is then unknown). A 1 elsewhere in the pool counts as 1. Before
+  any of that, since 0.1.4, the pool's shape can settle it
+  (`Pool::certainty`): when the exclusions leave the target alone and
+  each of its tiers counts at the floor, the add is certain
+  (`Odds::certain(true, ...)`); when the target is not in the pool and a weight
+  is missing, it is certain not to hit. So an add its exclusions make
+  certain reads 100% on a jewel or a placeholder weight too; a pool whose
+  weights are known is unchanged. Anchor: a
   Rare `Amethyst Ring`, item level 76, prefix side, `+# to maximum Life` at
   floor T8 is 8000 of 69500 (11.5%), at T1 1000 of 69500 (1.4%), and with a
   Minimum Modifier Level of 50 at T1 1000 of 22200 (4.5%).
@@ -149,11 +156,23 @@ or `searchable: false` with the reason (`hybrid`, `no trade stat`).
   `Adds # to #` line), to four significant digits, so a pick adds at most
   its rarity weight. The reference value (the floor tier's minimum roll)
   is only the count group's `value.min`.
+  The query's `ilvl.min` is the item level the caller passes; `ch-app`
+  passes the typed one, or, with the field blank, the suggestion below.
   Refused, with the reason, for an unknown class or base, no pick, more
   than `MAX_TRADE_PICKS` (8), a modifier picked twice or outside the
   ordinary pool, an unreachable floor, or a modifier the site has no stat
   for. Each entry of the report carries the weight, its source, the
   reference value, the top value and the stat ids.
+- **The suggested item level** (`suggested_item_level(class, base,
+  picks)`, since 0.1.4): the item level the picked floors need, the
+  highest `ilvl` of any pick's floor tier on the base's variant (a better
+  tier needs more, so the floor tier's own level is the least that
+  reaches it). `None` with no floor picked, and for an unknown class or
+  base; a pick outside the class or a floor that is not a tier of the
+  variant adds nothing. Anchors from the shipped data: boots movement
+  speed at least T1 gives 82 and at least T2 gives 65; a ring with fire
+  resistance at least T1 and life at any tier gives 82. The trade view
+  carries it, and the search uses it while the item-level field is blank.
 
 The site's query keys come from its public filter list (2026-10-29). Live 3
 (2026-10-30) confirmed that the `?q=` link loads with the Count group
@@ -179,5 +198,23 @@ that moves a weight or tier changes the anchors here, and the tests say so.
 `tests/trade.rs` checks the trade module on the same data: the ring pool
 anchor pinned before it existed, the start weights and their default, the
 offer, and the query's keys, count rule, local stat ids, value floors and
-refusals. A refresh of `trade-stats.json` that moves an id changes the
-Gloves anchors there.
+refusals, and the suggested item level: none without a floor
+(`trade_suggested_item_level_is_none_without_floors_baseline`) and the
+highest floor tier's level otherwise
+(`trade_suggested_item_level_is_the_highest_floor_tier_level`, the
+anchors above). A refresh of `trade-stats.json` that moves an id changes
+the Gloves anchors there.
+
+`tests/isolation.rs` (0.1.4) holds the add certainty: a pool of the
+target alone is certain on jewel tiers with placeholder weights
+(`a_pool_of_one_is_certain_without_weights`), a pool without the target
+is certain not to hit
+(`a_pool_without_the_target_is_certain_not_to_hit`), and a pool the
+weights decide keeps its percent
+(`a_weighed_pool_keeps_its_percent_baseline`). `tests/hybrid.rs` (0.1.4)
+reads `ch-item`'s constructed crossbow with a hybrid increased Physical
+Damage and Accuracy prefix beside the plain increased Physical Damage
+one (different families, so they share an item): the hybrid joins as one
+modifier (`a_hybrid_prefix_joins_as_one_modifier_beside_its_plain_family`)
+and takes one prefix slot, leaving none free
+(`a_hybrid_prefix_takes_one_prefix_slot`).

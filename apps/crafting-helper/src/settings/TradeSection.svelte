@@ -110,13 +110,14 @@
     max-width: 240px;
   }
 
-  /* The refresh icon: a square secondary button, 32 × 32. */
+  /* The refresh icon: a square secondary button, 32 × 32, its 16 px icon
+     at least one space unit clear of every edge. */
   .icon {
     flex: none;
     width: 32px;
     height: 32px;
     min-height: 32px;
-    padding: 0;
+    padding: var(--space-unit);
   }
 
   .icon[aria-busy='true'] {

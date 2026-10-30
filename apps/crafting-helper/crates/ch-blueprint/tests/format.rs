@@ -96,7 +96,7 @@ fn every_key_of_the_format_parses() {
     let ids: Vec<&str> = b.steps.iter().map(|s| s.get_ref().id.get_ref().as_str()).collect();
     assert_eq!(
         ids,
-        ["essence", "fill", "whittle", "desecrate", "reveal", "unseal", "flux", "alloy", "quality", "socket"]
+        ["essence", "fill", "whittle", "desecrate", "reveal", "unseal", "flux", "alloy", "quality", "socket", "fracture"]
     );
 
     let fill = b.steps[1].get_ref();
@@ -174,7 +174,7 @@ fn omen_must_fit_its_currency() {
     // Crystallisation fits a Perfect essence and an alloy, not a Lesser one.
     let fits = |currency: &str| {
         step_errors(&format!(
-            "id = \"e\"\nsay = \"Essence\"\ngoal = \"add-wanted\"\nbind = \"essence\"\n[[step.action]]\ncurrency = \"{currency}\"\nomens = [\"omen-of-sinistral-crystallisation\"]"
+            "id = \"e\"\nsay = \"Essence\"\ngoal = \"add-wanted\"\nbind = \"essence\"\non_miss = \"next\"\n[[step.action]]\ncurrency = \"{currency}\"\nomens = [\"omen-of-sinistral-crystallisation\"]"
         ))
     };
     assert_eq!(fits("perfect-essence-of-the-body"), Vec::<String>::new());
@@ -264,7 +264,7 @@ fn a_blueprint_needs_a_start_and_a_step() {
 fn a_goal_its_action_cannot_produce_is_refused() {
     let case = |goal: &str, currency: &str| {
         step_errors(&format!(
-            "id = \"s\"\nsay = \"Do it\"\ngoal = \"{goal}\"\nbind = \"hardest\"\n[[step.action]]\ncurrency = \"{currency}\""
+            "id = \"s\"\nsay = \"Do it\"\ngoal = \"{goal}\"\nbind = \"hardest\"\non_miss = \"next\"\n[[step.action]]\ncurrency = \"{currency}\""
         ))
     };
     // A removal-only currency cannot add; an adding one cannot remove.
@@ -324,7 +324,7 @@ fn a_reveal_or_convert_step_needs_a_binding() {
     let list = step_errors("id = \"r\"\nsay = \"Reveal\"\ngoal = \"reveal\"\n[[step.action]]\ncurrency = \"reveal\"");
     assert_eq!(list.len(), 1, "{list:?}");
     assert!(list[0].contains("needs `bind`"), "{list:?}");
-    let list = step_errors("id = \"e\"\nsay = \"Essence\"\ngoal = \"add-wanted\"\nwhen = \"bound\"\n[[step.action]]\ncurrency = \"essence-of-ice\"");
+    let list = step_errors("id = \"e\"\nsay = \"Essence\"\ngoal = \"add-wanted\"\nwhen = \"bound\"\non_miss = \"next\"\n[[step.action]]\ncurrency = \"essence-of-ice\"");
     assert_eq!(list.len(), 1, "{list:?}");
 }
 
@@ -685,9 +685,11 @@ fn facts_match_the_spec_table() {
         assert!(all.insert(id), "{id} twice in the table");
         let label = row[1];
         assert!(["measured", "documented", "not established"].contains(&label), "{id}: label `{label}`");
+        // Every source is a URL with the date it was read: fetched, or, for
+        // a page only an issue records, reviewed.
         let source = row[3];
         assert!(
-            source.contains("https://") && source.contains("fetched 2026-10-29"),
+            source.contains("https://") && (source.contains("fetched 2026-") || source.contains("reviewed 2026-")),
             "{id}: source `{source}`"
         );
         if label == "not established" {
@@ -700,4 +702,117 @@ fn facts_match_the_spec_table() {
         not_established.as_slice(),
         "the crate's fact ids differ from the spec's not-established rows"
     );
+}
+
+// ---------------------------------------------------------------------------
+// The guides' additions (issue #35): the fracture goal, the modifier count
+// conditions, the one-crafted rules and the jewel rule.
+
+#[test]
+fn modifier_count_conditions_parse() {
+    let b = valid("valid/every-key.toml").blueprint;
+    let count = |v: &Option<Spanned<u32>>| v.as_ref().map(|n| *n.get_ref());
+    let rare = b.starts[1].get_ref();
+    assert_eq!((count(&rare.modifiers_at_least), count(&rare.modifiers_at_most)), (Some(4), Some(6)));
+    let fracture = b.steps[10].get_ref();
+    assert_eq!(*fracture.goal.get_ref(), Goal::Fracture);
+    let requires = fracture.requires.as_ref().unwrap().get_ref();
+    assert_eq!((count(&requires.modifiers_at_least), count(&requires.modifiers_at_most)), (Some(4), Some(6)));
+    assert_eq!(fracture.actions[0].get_ref().currency.get_ref(), "fracturing-orb");
+
+    // Start keys, so a step's conditions take them too, in either order.
+    assert!(ch_blueprint::Condition::START_KEYS.contains(&"modifiers_at_least"));
+    assert!(ch_blueprint::Condition::START_KEYS.contains(&"modifiers_at_most"));
+    let guard = "id = \"case\"\nname = \"Case\"\nclasses = [\"Rings\"]\nsource = \"roadmap\"\norder = \"state\"\nrelies_on = []\n\n[[start]]\nrarity = [\"rare\"]\n\n[[step]]\nid = \"s\"\nsay = \"Exalt\"\ngoal = \"add-wanted\"\nside = \"target\"\nguard = { modifiers_at_most = 5 }\n[[step.action]]\ncurrency = \"exalted-orb\"\n";
+    let c = check("case.toml", guard).unwrap_or_else(|l| panic!("{l:?}"));
+    let guard = c.blueprint.steps[0].get_ref().guard.as_ref().unwrap().get_ref().clone();
+    assert_eq!(count(&guard.modifiers_at_most), Some(5));
+
+    // A count is a whole number, 0 or more.
+    let list = step_errors(
+        "id = \"s\"\nsay = \"Exalt\"\ngoal = \"fill\"\nrequires = { modifiers_at_least = -1 }\n[[step.action]]\ncurrency = \"exalted-orb\"",
+    );
+    assert_eq!(list, ["case.toml:13:35: `modifiers_at_least` must be a whole number, 0 or more"]);
+}
+
+#[test]
+fn a_fracture_step_needs_a_fracturing_orb() {
+    let (shown, list) = errors("invalid/fracture-currency.toml");
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:16:12: step `fracture`: `exalted-orb` (adds a modifier) cannot meet the `fracture` goal"),
+            format!("{shown}:28:12: step `slam`: `fracturing-orb` (fractures) cannot meet the `add-wanted` goal"),
+        ]
+    );
+    // The orb's second alternative on the fracture step drew no error.
+    let fracture = |currency: &str| {
+        step_errors(&format!(
+            "id = \"f\"\nsay = \"Fracture\"\ngoal = \"fracture\"\non_miss = \"abandon\"\n[[step.action]]\ncurrency = \"{currency}\""
+        ))
+    };
+    assert_eq!(fracture("fracturing-orb"), Vec::<String>::new());
+    assert_eq!(fracture("chaos-orb").len(), 1);
+    assert_eq!(fracture("perfect-essence-of-the-body").len(), 1);
+}
+
+#[test]
+fn two_crafted_steps_without_a_removal_between_are_refused() {
+    let (shown, list) = errors("invalid/crafted-twice.toml");
+    assert_eq!(
+        list,
+        [format!(
+            "{shown}:35:12: step `alloy`: `swift-alloy` places a second crafted modifier after step `essence`, with no annulment or Chaos Orb between them; an item holds one crafted modifier"
+        )]
+    );
+    // The liquid after the annulment drew none. Neither does a Chaos Orb of
+    // any grade between two crafted steps, nor alternatives of one step.
+    let two = |between: &str| {
+        let text = format!(
+            "id = \"case\"\nname = \"Case\"\nclasses = [\"Rings\"]\nsource = \"roadmap\"\n\n[[start]]\nrarity = [\"magic\"]\n\n[[step]]\nid = \"a\"\nsay = \"Essence\"\ngoal = \"add-wanted\"\nbind = \"essence\"\non_miss = \"next\"\n[[step.action]]\ncurrency = \"greater-essence-of-the-body\"\n[[step.action]]\ncurrency = \"greater-essence-of-the-mind\"\n\n[[step]]\nid = \"between\"\nsay = \"Remove\"\ngoal = \"remove-unwanted\"\n[[step.action]]\ncurrency = \"{between}\"\n\n[[step]]\nid = \"b\"\nsay = \"Essence\"\ngoal = \"manual\"\n[[step.action]]\ncurrency = \"essence-of-the-breach\"\n"
+        );
+        check("case.toml", &text).map(|_| ()).map_err(|l| l.len())
+    };
+    assert_eq!(two("orb-of-annulment"), Ok(()));
+    assert_eq!(two("perfect-chaos-orb"), Ok(()));
+    // An exalt removes nothing (it is refused on a removal goal too).
+    assert_eq!(two("exalted-orb"), Err(2));
+}
+
+#[test]
+fn a_crafted_step_that_repeats_on_a_miss_is_refused() {
+    let (shown, list) = errors("invalid/crafted-repeat.toml");
+    let holds = "a step that places a crafted modifier; an item holds one";
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:32:12: step `essence`: a miss repeats by default {holds}, so say where a miss goes (`on_miss`)"),
+            format!("{shown}:47:11: step `hysteria`: a miss repeats {holds}, so say where a miss goes (`on_miss`)"),
+            format!("{shown}:64:9: step `alloy`: `until` repeats {holds}"),
+        ]
+    );
+    // The manual Breach step repeats by default and drew none. Nor does a
+    // state-ordered essence step, which has no transitions.
+    let state = "id = \"case\"\nname = \"Case\"\nclasses = [\"Rings\"]\nsource = \"roadmap\"\norder = \"state\"\nrelies_on = []\n\n[[start]]\nrarity = [\"magic\"]\n\n[[step]]\nid = \"essence\"\nsay = \"Essence\"\ngoal = \"add-wanted\"\nbind = \"essence\"\n[[step.action]]\ncurrency = \"greater-essence-of-the-body\"\n";
+    assert!(check("case.toml", state).is_ok());
+}
+
+#[test]
+fn greater_and_perfect_currencies_are_refused_on_a_jewel_blueprint() {
+    let (shown, list) = errors("invalid/jewel-grades.toml");
+    let costs = "on a jewel blueprint; a jewel's modifiers have one level each, so a Minimum Modifier Level only adds cost (use the plain orb)";
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:15:12: step `slam`: `perfect-exalted-orb` {costs}"),
+            format!("{shown}:18:12: step `slam`: `greater-exalted-orb` {costs}"),
+            format!("{shown}:29:12: step `chaos`: `greater-chaos-orb` {costs}"),
+        ]
+    );
+    // A blueprint for jewels and another class may name them: the other
+    // class has levels to choose from.
+    let text = std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/invalid/jewel-grades.toml"))
+        .unwrap()
+        .replace("[\"Jewels\"]", "[\"Jewels\", \"Rings\"]");
+    assert!(check("jewel-grades.toml", &text).is_ok());
 }

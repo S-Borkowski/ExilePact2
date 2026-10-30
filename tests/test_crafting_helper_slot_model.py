@@ -62,8 +62,15 @@ LAST_TARGET_CASES = [
     "rare-desecrated-target",
     "rare-wrong-reveal",
 ]
+# Certain removals first (2026-10-30): a certain removal later in file
+# order taken before an earlier candidate, and its control, whose removal
+# may take a target.
+CERTAIN_FIRST_CASES = [
+    "rare-certain-removal-first",
+    "rare-uncertain-removal-keeps-order",
+]
 
-GREATER = "omen-of-greater-exaltation"
+GREATER ="omen-of-greater-exaltation"
 SIN_EX, DEX_EX = "omen-of-sinistral-exaltation", "omen-of-dextral-exaltation"
 SIN_ANN, DEX_ANN = "omen-of-sinistral-annulment", "omen-of-dextral-annulment"
 SIN_NEC, DEX_NEC = "omen-of-sinistral-necromancy", "omen-of-dextral-necromancy"
@@ -149,6 +156,26 @@ MUST_HOLD = {
     ("magic-good-and-bad", "magic-augment-essence"): ([
         ("remove-unwanted", "suffix", "orb-of-annulment", [DEX_ANN], True),
     ], False),
+    # certain removals first: the certain suffix annulment goes before the
+    # essence, which is first in file order (it used to come after it)
+    ("magic-good-and-bad", "essence-desecrate-double-slam"): ([
+        ("remove-unwanted", "suffix", "orb-of-annulment", [DEX_ANN], True),
+        ("add-wanted", None, ESSENCE, []),
+        ("desecrate", "suffix", "desecrate", [DEX_NEC]),
+        ("reveal", None, "reveal", [ECHOES]),
+    ], True),
+    ("rare-certain-removal-first", "essence-desecrate-double-slam"): ([
+        ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], True),
+        ("reveal", None, "reveal", [ECHOES]),
+        ("add-wanted", "prefix", "perfect-exalted-orb", [SIN_EX]),
+    ], True),
+    ("rare-uncertain-removal-keeps-order", "essence-desecrate-double-slam"): ([
+        ("reveal", None, "reveal", [ECHOES]),
+        ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], False),
+        ("add-wanted", "prefix", "perfect-exalted-orb", [SIN_EX]),
+    ], True),
+    ("rare-certain-removal-first", "magic-augment-essence"): "no-start-fits",
+    ("rare-uncertain-removal-keeps-order", "magic-augment-essence"): "no-start-fits",
     ("rare-whittle-certain", "close-a-side"): ([
         ("remove-unwanted", "prefix", "chaos-orb", ["omen-of-whittling"], True),
     ], False),
@@ -249,7 +276,8 @@ class Cases(unittest.TestCase):
 
     def test_cases_cover_the_owners_crafts(self):
         cases = {c.id: c for c in load_cases()}
-        self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS + LAST_TARGET_CASES))
+        self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS + LAST_TARGET_CASES
+                                               + CERTAIN_FIRST_CASES))
         raw = json.loads(CASES.read_text(encoding="utf-8"))
         self.assertIn("crafting-slots-spec.md", raw.get("spec", ""))
 
@@ -316,6 +344,91 @@ class Cases(unittest.TestCase):
                                         waits_for="p1")
         record = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], waiting).record()
         self.assertEqual(steps_of(record), SIDE_SLAM_PREFIX + [("reveal", None, "reveal", [ECHOES])])
+
+
+def candidates(c, bp_id):
+    """Every candidate on case `c`'s item, in file order, as (step id,
+    Choice): what the pick chooses from, apart from the pick itself."""
+    bp = sm.BLUEPRINTS[bp_id]
+    st = sm.State.from_case(c)
+    sm.ensure_bindings(st, bp)
+    acc = sm.accounting(st)
+    out = []
+    for step in bp.steps:
+        got = sm.evaluate(st, step, acc)
+        if isinstance(got, sm.Choice):
+            out.append((step.id, got))
+    return st, out
+
+
+def first_pick(c, bp_id):
+    bp = sm.BLUEPRINTS[bp_id]
+    st = sm.State.from_case(c)
+    sm.ensure_bindings(st, bp)
+    choice, _ = sm.next_step(st, bp, sm.accounting(st))
+    return choice
+
+
+def annulment_certain(st, choice):
+    """Written from the spec apart from the model: every modifier the
+    annulment may take (at risk: not fractured, on the omen's side) is a
+    non-target."""
+    side = sm.omen_side(choice.omens[0]) if choice.omens else None
+    return all(not m.is_target for s, m in st.item.placed()
+               if not m.fractured and (side is None or s == side))
+
+
+class CertainRemovalsFirst(unittest.TestCase):
+    """Spec § "Certain removals first": a later `remove-unwanted` candidate
+    whose chosen alternative is certain goes before an earlier candidate that
+    is not a certain removal; a removal that may take a target keeps its
+    file-order place. The guide and the projection pick alike."""
+
+    def test_uncertain_removal_keeps_file_order(self):
+        # baseline: what file order alone picks, and still picks when the
+        # removal is not certain (the prefix target can be annulled)
+        c = case("rare-uncertain-removal-keeps-order")
+        st, cands = candidates(c, "essence-desecrate-double-slam")
+        self.assertEqual([i for i, _ in cands], ["reveal", "remove"])
+        remove = dict(cands)["remove"]
+        self.assertEqual(remove.action.currency, "orb-of-annulment")
+        self.assertFalse(annulment_certain(st, remove))
+        self.assertEqual(first_pick(c, "essence-desecrate-double-slam").step.id, "reveal")
+        record = sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], c).record()
+        self.assertEqual(record["steps"][0]["goal"], "reveal")
+        self.assertEqual(record["steps"][1]["certain"], False)
+
+        # the same on a magic item: with Omen of Dextral Annulment blocked the
+        # removal falls to a plain annulment, which may take the target
+        # prefix, so the essence keeps its place before it
+        mixed = with_changes(case("magic-good-and-bad"), blocked=frozenset({DEX_ANN}))
+        st, cands = candidates(mixed, "essence-desecrate-double-slam")
+        self.assertEqual([i for i, _ in cands], ["essence", "remove"])
+        self.assertFalse(annulment_certain(st, dict(cands)["remove"]))
+        self.assertEqual(first_pick(mixed, "essence-desecrate-double-slam").step.id, "essence")
+
+    def test_certain_removal_goes_first(self):
+        # the same item with the prefix target fractured: the reveal is still
+        # the first candidate in file order, but the removal can only take
+        # junk, so it is picked first
+        c = case("rare-certain-removal-first")
+        st, cands = candidates(c, "essence-desecrate-double-slam")
+        self.assertEqual([i for i, _ in cands], ["reveal", "remove"])
+        remove = dict(cands)["remove"]
+        self.assertTrue(annulment_certain(st, remove))
+        self.assertEqual(first_pick(c, "essence-desecrate-double-slam").step.id, "remove")
+        record = sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], c).record()
+        self.assertEqual([s["goal"] for s in record["steps"]],
+                         ["remove-unwanted", "reveal", "add-wanted"])
+        self.assertEqual(record["steps"][0]["certain"], True)
+
+        # on a magic item: a certain Dextral annulment of the junk suffix goes
+        # before the essence (it used to come after it)
+        c = case("magic-good-and-bad")
+        st, cands = candidates(c, "essence-desecrate-double-slam")
+        self.assertEqual([i for i, _ in cands], ["essence", "remove"])
+        self.assertTrue(annulment_certain(st, dict(cands)["remove"]))
+        self.assertEqual(first_pick(c, "essence-desecrate-double-slam").step.id, "remove")
 
 
 class Invariants(unittest.TestCase):

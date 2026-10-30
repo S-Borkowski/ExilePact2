@@ -1,0 +1,20 @@
+# A test blueprint (engine tests only): Essence of Hysteria, a special
+# essence, swaps a modifier for its own on a rare ring, with no
+# Crystallisation omen.
+id = "test-swap-plain"
+name = "Test: an essence swap without an omen"
+classes = ["Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "essence"
+say = "Essence of Hysteria"
+goal = "add-wanted"
+bind = "essence"
+on_miss = "next"
+
+[[step.action]]
+currency = "essence-of-hysteria"

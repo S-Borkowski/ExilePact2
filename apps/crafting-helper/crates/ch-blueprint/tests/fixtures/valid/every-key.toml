@@ -17,6 +17,8 @@ wanted_prefixes_at_least = 1
 wanted_suffixes_at_least = 1
 fractured_wanted = true
 unwanted_at_most = 2
+modifiers_at_least = 4
+modifiers_at_most = 6
 
 [[step]]
 id = "essence"
@@ -25,6 +27,7 @@ goal = "add-wanted"
 bind = "essence"
 when = "bound"
 requires = { rarity = ["magic"] }
+on_miss = "next"
 
 [[step.action]]
 currency = "greater-essence-of-the-body"
@@ -111,6 +114,7 @@ id = "alloy"
 say = "Use the alloy, removing a suffix"
 goal = "add-wanted"
 bind = "last-remaining"
+on_miss = "abandon"
 
 [[step.action]]
 currency = "swift-alloy"
@@ -133,3 +137,13 @@ id = "socket"
 say = "Socket the runes you want"
 goal = "manual"
 on_hit = "restart"
+
+[[step]]
+id = "fracture"
+say = "Fracture a target"
+goal = "fracture"
+requires = { modifiers_at_least = 4, modifiers_at_most = 6 }
+on_miss = "abandon"
+
+[[step.action]]
+currency = "fracturing-orb"

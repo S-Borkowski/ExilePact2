@@ -305,6 +305,50 @@ fn required_gloves_fixture_has_every_feature() {
 }
 
 #[test]
+fn constructed_crossbow_hybrid_beside_plain_physical() {
+    // Two prefixes carry `#% increased Physical Damage`: the plain one and
+    // the hybrid with Accuracy. Each header starts its own modifier, so the
+    // hybrid is one prefix with two lines, not two prefixes.
+    let item = parse_ok(&constructed("crossbows-rare-hybrid-physical.txt"));
+    assert_eq!(item.form, Form::Advanced);
+    assert_eq!(item.class, ItemClass::Crossbows);
+    assert_eq!(item.rarity, Rarity::Rare);
+    assert_eq!(item.base_type.as_deref(), Some("Siege Crossbow"));
+    assert_eq!((item.prefix_count(), item.suffix_count()), (3, 3));
+    let prefixes: Vec<&Modifier> = item
+        .modifiers
+        .iter()
+        .filter(|m| m.kind == ModKind::Prefix)
+        .collect();
+    let line_counts: Vec<usize> = prefixes.iter().map(|m| m.lines.len()).collect();
+    assert_eq!(line_counts, vec![1, 2, 1]);
+
+    let plain = prefixes[0];
+    assert_eq!(plain.affix_name.as_deref(), Some("Vicious"));
+    assert_eq!(plain.lines[0].template, "#% increased Physical Damage");
+    assert_eq!(plain.lines[0].values, vec![value(92.0, 85.0, 109.0)]);
+
+    let hybrid = prefixes[1];
+    assert_eq!(hybrid.affix_name.as_deref(), Some("Reaver's"));
+    assert_eq!(hybrid.tier, Some(6));
+    let templates: Vec<&str> = hybrid.lines.iter().map(|l| l.template.as_str()).collect();
+    assert_eq!(
+        templates,
+        vec!["#% increased Physical Damage", "+# to Accuracy Rating"]
+    );
+    assert_eq!(hybrid.lines[0].values, vec![value(28.0, 25.0, 34.0)]);
+    assert_eq!(hybrid.lines[1].values, vec![value(55.0, 47.0, 72.0)]);
+
+    let flat = prefixes[2];
+    assert_eq!(flat.lines[0].template, "Adds # to # Physical Damage");
+    assert_eq!(
+        flat.lines[0].values,
+        vec![value(27.0, 23.0, 35.0), value(48.0, 39.0, 59.0)]
+    );
+    assert!(!item.has_fractured() && !item.has_desecrated() && !item.corrupted);
+}
+
+#[test]
 fn short_form_gloves_fixture() {
     let item = parse_ok(&constructed("gloves-rare-short-form.txt"));
     assert_eq!(item.form, Form::Short);

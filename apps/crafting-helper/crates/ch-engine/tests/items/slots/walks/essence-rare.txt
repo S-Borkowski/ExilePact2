@@ -10,7 +10,7 @@ Item Level: 82
 { Implicit Modifier — Attribute }
 +12(10-15) to Dexterity
 --------
-{ Prefix Modifier "Gentian" (Tier: 6) — Mana }
-+95(90-104) to maximum Mana
+{ Prefix Modifier "Zaffre" (Tier: 2) — Mana }
++170(165-179) to maximum Mana
 { Prefix Modifier "Healthy" (Tier: 8) — Life }
 +25(20-29) to maximum Life

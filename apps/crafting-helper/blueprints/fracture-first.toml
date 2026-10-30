@@ -1,0 +1,164 @@
+# Any equipment, listed: on a rare with four modifiers, Essence of the Abyss
+# swaps one for its mark so a Fracturing Orb has one fewer to pick from,
+# the fractured target is kept while the rest is annulled and Chaos-rolled,
+# then a desecration and side-restricted slams finish it. Paraphrased from
+# the guides `source` names; never paste their text here.
+id = "fracture-first"
+name = "Fracture a target first, after Essence of the Abyss"
+classes = [
+    "Gloves", "Boots", "Helmets", "Body Armours", "Shields", "Quivers",
+    "Bucklers", "Foci", "Wands", "One Hand Maces", "Sceptres", "Spears",
+    "Bows", "Staves", "Two Hand Maces", "Quarterstaves", "Crossbows",
+    "Talismans", "Belts", "Amulets", "Rings",
+]
+source = "Mobalytics, SSF crafting guide, Fracturing Orb with Essence of the Abyss (https://mobalytics.gg/poe-2/guides/ssf-crafting) and Fracturing Orbs guide (https://mobalytics.gg/poe-2/guides/fracturing-orbs), fetched 2026-10-30"
+notes = """
+A paraphrase of the guides. A Fracturing Orb needs a rare with four \
+modifiers and fixes one of them at random; Essence of the Abyss first \
+swaps a modifier for the Mark of the Abyssal Lord, which the guides say \
+the orb never picks, so a single target among the other three is one \
+chance in three instead of one in four (abyss-mark-unfracturable, not \
+established; a desecrated modifier is left out the same way, \
+desecrated-unfracturable). The guides guard the target from the essence \
+with the other side's Crystallisation omen; this route cannot name that \
+side, so it uses no omen, and an essence that takes a target off is a \
+miss that gives the item up. With the target fractured, Orbs of \
+Annulment bring the item down to it and one more modifier, and Chaos \
+Orbs reroll that one until a second target is on; the annulments and \
+Chaos Orbs leave the fractured modifier alone (fractured-not-removed). \
+The hardest remaining target is then desecrated on its side with Omen of \
+Sinistral or Dextral Necromancy and revealed with Omen of Abyssal \
+Echoes, both active before use (omens-active-before-use); a wrong reveal \
+is taken off with Omen of Light and the bone used again. Perfect Exalted \
+Orbs restricted to each remaining target's side finish it; a missed slam \
+moves on. The guides finish with a filler slam and a Perfect essence \
+with Crystallisation instead: no Perfect essence can aim at a target \
+here, so that step is left out."""
+relies_on = [
+    "fractured-not-removed",
+    "omens-active-before-use",
+    "abyss-mark-unfracturable",
+    "desecrated-unfracturable",
+]
+
+[[start]]
+rarity = ["rare"]
+modifiers_at_least = 4
+modifiers_at_most = 4
+fractured_wanted = false
+wanted_at_least = 1
+
+# The essence swaps a random modifier for its mark; losing a target to it
+# ends the craft.
+[[step]]
+id = "abyss"
+say = "Essence of the Abyss: a random modifier becomes the Mark of the Abyssal Lord"
+goal = "fill"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "essence-of-the-abyss"
+
+[[step]]
+id = "fracture"
+say = "Fracture a target"
+goal = "fracture"
+on_miss = "abandon"
+
+[[step.action]]
+currency = "fracturing-orb"
+
+[[step]]
+id = "annul"
+say = "Annul down to the fractured target and one more modifier"
+goal = "remove-unwanted"
+until = { modifiers_at_most = 2 }
+on_miss = "next"
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "chaos"
+say = "Chaos Orb until a second target is on"
+goal = "add-wanted"
+bind = "any-remaining"
+until = { wanted_at_least = 2 }
+
+[[step.action]]
+currency = "chaos-orb"
+
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+on_hit = "goto:slam-1"
+on_miss = "next"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+on_hit = "goto:desecrate"
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+# Each slam binds its own remaining target, so its side omen follows that
+# target's side; a slam with no target left is skipped.
+[[step]]
+id = "slam-1"
+say = "Perfect Exalted Orb on a target's side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+bind = "hardest"
+when = "bound"
+on_miss = "next"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "slam-2"
+say = "Perfect Exalted Orb on a target's side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+bind = "hardest"
+when = "bound"
+on_miss = "next"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step]]
+id = "slam-3"
+say = "Perfect Exalted Orb on a target's side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+bind = "hardest"
+when = "bound"
+on_miss = "next"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]

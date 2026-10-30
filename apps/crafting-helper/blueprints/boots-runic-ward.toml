@@ -1,16 +1,19 @@
-# Boots: movement speed (fractured), Runic Ward, both attributes and
-# augment effect, with the chosen runes. Paraphrased from the owner's
-# Discord post 8.
+# Boots: movement speed (fractured), Runic Ward and both attributes, with
+# the chosen runes. Paraphrased from the owner's Discord post 8, less its
+# Essence of Horror: since 0.5 an item holds one crafted modifier.
 id = "boots-runic-ward"
 name = "Boots: Runic Ward and both attributes"
 classes = ["Boots"]
 source = "Discord post 8, owner's paste, 2026-10-28"
 notes = """\
 Start from Rare boots with a fractured wanted modifier (movement speed in \
-the post) and two sockets. Each exalted prefix is filler the next \
-crystallised use removes. Essence of Horror (augment effect) and the \
-Sovereign Alloy (Runic Ward) add modifiers a target cannot name, so their \
-steps are manual; the alloy with Sinistral Crystallisation rests on a \
+the post) and two sockets. The first exalted prefix is filler the \
+crystallised alloy removes. The post also used Essence of Horror (augment \
+effect) on a filler prefix of its own, but since 0.5 an item holds at most \
+one crafted modifier and the alloy's is it, so the Horror step and its \
+filler are left out: keep the one you want more, the Runic Ward here. The \
+Sovereign Alloy (Runic Ward) adds a modifier a target cannot name, so its \
+step is manual; the alloy with Sinistral Crystallisation rests on a \
 mechanic the docs mark not established. The two attributes are your \
 targets: the Chaos Orb lands one, the desecration the other. Rune sockets \
 are manual: the helper does not read them."""
@@ -29,27 +32,8 @@ bind = "any-remaining"
 currency = "chaos-orb"
 
 [[step]]
-id = "filler-one"
-say = "Exalt a prefix (Sinistral Exaltation) for the essence to take"
-goal = "fill"
-side = "prefix"
-
-[[step.action]]
-currency = "exalted-orb"
-omens = ["omen-of-sinistral-exaltation"]
-
-[[step]]
-id = "augment"
-say = "Essence of Horror with Sinistral Crystallisation, so it takes the filler prefix"
-goal = "manual"
-
-[[step.action]]
-currency = "essence-of-horror"
-omens = ["omen-of-sinistral-crystallisation"]
-
-[[step]]
-id = "filler-two"
-say = "Exalt another prefix (Sinistral Exaltation) for the alloy to take"
+id = "filler"
+say = "Exalt a prefix (Sinistral Exaltation) for the alloy to take"
 goal = "fill"
 side = "prefix"
 

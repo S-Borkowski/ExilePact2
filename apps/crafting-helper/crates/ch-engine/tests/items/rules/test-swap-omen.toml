@@ -1,0 +1,21 @@
+# A test blueprint (engine tests only): Essence of Hysteria, a special
+# essence, swaps a suffix for its own on a rare ring, confined to the
+# suffixes by Omen of Dextral Crystallisation.
+id = "test-swap-omen"
+name = "Test: a crystallised essence swap"
+classes = ["Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "essence"
+say = "Essence of Hysteria with Omen of Dextral Crystallisation"
+goal = "add-wanted"
+bind = "essence"
+on_miss = "next"
+
+[[step.action]]
+currency = "essence-of-hysteria"
+omens = ["omen-of-dextral-crystallisation"]

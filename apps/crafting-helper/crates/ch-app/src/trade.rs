@@ -11,6 +11,11 @@
 //! [`MAX_TRADE_LINK_CHARS`] is refused. Nothing here talks to the trade
 //! site; `App::open_trade_search` hands the link to the shell's browser.
 //!
+//! The picked floors suggest a minimum item level (`ch-data`'s
+//! [`suggested_item_level`]: the level the most demanding floor tier
+//! needs). With the item level field blank the search uses the suggestion;
+//! a typed level always wins, and the suggestion is still shown beside it.
+//!
 //! `set_trade_search` takes the whole selection, never an address: a new
 //! class starts its base and picks over; a new base type or item level keeps
 //! the picks the base still offers (a floor it no longer reaches goes back to
@@ -22,8 +27,8 @@
 //! log that names no league, base or modifier ([`TradeRefusal::log`]).
 
 use ch_engine::ch_data::{
-    class_data_by_name, index, start_weight, trade_offer, trade_query, Kind, OfferedMod,
-    TradeOffer, TradePick, TradeQuery, TradeSearch, WeightSource, MAX_TRADE_PICKS,
+    class_data_by_name, index, start_weight, suggested_item_level, trade_offer, trade_query, Kind,
+    OfferedMod, TradeOffer, TradePick, TradeQuery, TradeSearch, WeightSource, MAX_TRADE_PICKS,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -146,6 +151,10 @@ pub struct TradeView {
     pub pick_limit: Option<String>,
     /// What the search asks for, and why, once something is picked.
     pub count_line: Option<String>,
+    /// The item level the picked floors need (the most demanding floor
+    /// tier's); `None` with no floor picked. The search uses it while the
+    /// item level field is blank; a typed level wins.
+    pub suggested_item_level: Option<u32>,
     /// The league the search opens in (Settings, Trade).
     pub league: String,
     /// The link the search button opens.
@@ -417,7 +426,17 @@ impl Trade {
         Ok(note)
     }
 
-    /// The search `ch-data` builds for the selection, or why there is none.
+    /// The item level the picked floors need, or `None` with no class, base
+    /// type or floor.
+    pub fn suggested_item_level(&self) -> Option<u32> {
+        let sel = &self.sel;
+        let picks: Vec<TradePick> = sel.picks.iter().map(trade_pick).collect();
+        suggested_item_level(sel.class.as_deref()?, sel.base.as_deref()?, &picks)
+    }
+
+    /// The search `ch-data` builds for the selection, or why there is none:
+    /// at the typed item level, or the suggested one when the field is
+    /// blank.
     fn query(&self) -> Result<TradeQuery, TradeRefusal> {
         let sel = &self.sel;
         let Some(class) = &sel.class else {
@@ -435,15 +454,8 @@ impl Trade {
         trade_query(&TradeSearch {
             class: class.clone(),
             base: base.clone(),
-            item_level: sel.item_level,
-            picks: sel
-                .picks
-                .iter()
-                .map(|p| TradePick {
-                    id: p.mod_id.clone(),
-                    floor: p.floor,
-                })
-                .collect(),
+            item_level: sel.item_level.or_else(|| self.suggested_item_level()),
+            picks: sel.picks.iter().map(trade_pick).collect(),
             both_slots: sel.both_slots,
         })
         .map_err(|e| refuse(e, "the search could not be built"))
@@ -474,6 +486,7 @@ impl Trade {
             pick_limit: (sel.picks.len() >= MAX_TRADE_PICKS)
                 .then(|| format!("At most {MAX_TRADE_PICKS} modifiers in one search.")),
             count_line: None,
+            suggested_item_level: None,
             league: league.to_string(),
             link: None,
             can_search: false,
@@ -483,6 +496,7 @@ impl Trade {
             return view;
         }
         view.classes = index().classes.iter().map(|c| c.class.clone()).collect();
+        view.suggested_item_level = self.suggested_item_level();
         if let Some(data) = sel.class.as_deref().and_then(class_data_by_name) {
             for b in &data.bases {
                 if !view.bases.contains(&b.name) {
@@ -559,6 +573,13 @@ fn why_not(r: &TradeRefusal) -> StatusLine {
         StatusLine::info(r.sentence())
     } else {
         StatusLine::error(r.sentence())
+    }
+}
+
+fn trade_pick(p: &TradePickChoice) -> TradePick {
+    TradePick {
+        id: p.mod_id.clone(),
+        floor: p.floor,
     }
 }
 

@@ -1,0 +1,29 @@
+id = "jewel-grades"
+name = "Greater and Perfect orbs on jewels"
+classes = ["Jewels"]
+source = "roadmap"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt"
+goal = "fill"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+
+[[step.action]]
+currency = "greater-exalted-orb"
+
+[[step.action]]
+currency = "exalted-orb"
+
+[[step]]
+id = "chaos"
+say = "Chaos"
+goal = "remove-unwanted"
+
+[[step.action]]
+currency = "greater-chaos-orb"

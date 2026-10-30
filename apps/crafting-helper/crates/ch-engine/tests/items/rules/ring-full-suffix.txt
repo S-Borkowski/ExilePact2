@@ -1,0 +1,22 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Prefix Modifier "Gentian" (Tier: 5) — Mana }
++95(90-104) to maximum Mana
+{ Prefix Modifier "Consistent" (Tier: 4) — Attack }
++150(124-167) to Accuracy Rating
+{ Suffix Modifier "of the Yeti" (Tier: 5) — Elemental, Cold, Resistance }
++23(21-25)% to Cold Resistance
+{ Suffix Modifier "of the Lynx" (Tier: 7) — Attribute }
++10(9-12) to Dexterity
+{ Suffix Modifier "of the Kiln" (Tier: 5) — Elemental, Fire, Resistance }
++23(21-25)% to Fire Resistance

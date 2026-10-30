@@ -408,6 +408,7 @@ describe('the craft window', () => {
       'trade-one-side': 'Find a base on trade',
       'trade-default-weight': 'Find a base on trade',
       'trade-refused': 'Find a base on trade',
+      'trade-floor': 'Find a base on trade',
     });
 
     // Refused: the reason as sent, how to grab another, the grabbed text open.

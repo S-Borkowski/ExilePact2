@@ -1,0 +1,8 @@
+Item Class: Boots
+Rarity: Magic
+Rotund Cavalry Boots
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Rotund" (Tier: 3) — Life }
++90(85-99) to maximum Life

@@ -1,0 +1,14 @@
+Item Class: Boots
+Rarity: Rare
+Storm Trail
+Cavalry Boots
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Cheetah's" (Tier: 2) — Speed }
+30% increased Movement Speed
+{ Crafted Prefix Modifier }
+Mark of the Abyssal Lord
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++33(31-35)% to Fire Resistance
+{ Unrevealed Desecrated Suffix Modifier }

@@ -126,7 +126,7 @@
   .blocked-only {
     display: inline-flex;
     align-items: center;
-    gap: calc(var(--space-unit) * 1.5);
+    gap: calc(var(--space-unit) * 2);
     color: var(--color-text-secondary);
     font-size: var(--size-step);
     cursor: pointer;
@@ -168,9 +168,13 @@
     list-style: none;
   }
 
+  /* A checkbox row, "Blocked only" included: the box in the middle of its
+     name's line, with no native margins, so it starts on the group
+     heading's edge and sits two space units from its name, as the trade
+     panel's rows do (`ui-design.md` § "Spacing and alignment"). */
   label {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: calc(var(--space-unit) * 2);
     padding: 2px 0;
     font-size: var(--size-step);
@@ -179,7 +183,8 @@
   }
 
   label input {
-    align-self: center;
+    flex: none;
+    margin: 0;
   }
 
   .name {

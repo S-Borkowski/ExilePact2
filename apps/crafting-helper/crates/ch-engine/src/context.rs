@@ -488,6 +488,20 @@ pub(crate) fn condition_failures(
             failed.push(format!("{have} unwanted modifiers, at most {most} allowed"));
         }
     }
+    // Every explicit modifier counts: fractured, desecrated and unrevealed
+    // ones too.
+    let explicit = st.mods.len() as u32;
+    at_least(
+        &mut failed,
+        explicit,
+        num(&cond.modifiers_at_least),
+        "modifiers",
+    );
+    if let Some(most) = num(&cond.modifiers_at_most) {
+        if explicit > most {
+            failed.push(format!("{explicit} modifiers, at most {most} allowed"));
+        }
+    }
     if let Some(want) = flag(&cond.essence_binds) {
         let binds = essence_binds();
         if binds != want {

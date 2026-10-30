@@ -41,6 +41,7 @@ const FIRE: &str = "suffix-to-fire-resistance";
 const COLD: &str = "suffix-to-cold-resistance";
 const LIGHTNING: &str = "suffix-to-lightning-resistance";
 const CHAOS: &str = "suffix-to-chaos-resistance";
+const SKILL_SPEED: &str = "desecrated-suffix-increased-skill-speed";
 
 /// One case's half of the table: its item text under `tests/items/slots/`,
 /// and each target alias's data modifier id and floor.
@@ -113,7 +114,8 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("s1", FIRE, Some(5)),
             ],
         },
-        // Magic amulet: Mana T6 and Cold Resistance T5. Life T8 is the
+        // Magic amulet: Mana T2 (a top-two tier, so `weak-magic-start`
+        // leaves the route alone) and Cold Resistance T5. Life T8 is the
         // Lesser Essence of the Body's; the desecrated Global Defences
         // prefix has its one tier.
         "magic-two-good" => Fixture {
@@ -163,7 +165,7 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("s2", FIRE, Some(3)),
             ],
         },
-        // Magic amulet: Mana T6 and an open suffix.
+        // Magic amulet: Mana T2 (a top-two tier) and an open suffix.
         "magic-one-good" => Fixture {
             item: "slots/magic-one-good.txt",
             targets: &[
@@ -172,7 +174,8 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("s1", FIRE, Some(5)),
             ],
         },
-        // Magic amulet: Mana T6 and Intelligence T5, not a target.
+        // Magic amulet: Mana T2 (a top-two tier) and Intelligence T5, not a
+        // target.
         "magic-good-and-bad" => Fixture {
             item: "slots/magic-good-and-bad.txt",
             targets: &[
@@ -198,6 +201,29 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("p1", MANA, Some(5)),
                 ("p2", LIFE, Some(4)),
                 ("s1", FIRE, Some(5)),
+            ],
+        },
+        // A fractured Mana T4, Accuracy Rating T3 and Cold Damage T3
+        // (prefixes, full while Life is missing); Fire Resistance T5 and an
+        // unrevealed desecrated suffix. Skill Speed, a desecrated suffix, is
+        // the hardest.
+        "rare-certain-removal-first" => Fixture {
+            item: "slots/rare-certain-removal-first.txt",
+            targets: &[
+                ("p1", MANA, Some(4)),
+                ("p2", LIFE, Some(4)),
+                ("s1", FIRE, Some(5)),
+                ("s2", SKILL_SPEED, Some(1)),
+            ],
+        },
+        // The same ring with its Mana not fractured.
+        "rare-uncertain-removal-keeps-order" => Fixture {
+            item: "slots/rare-uncertain-removal-keeps-order.txt",
+            targets: &[
+                ("p1", MANA, Some(4)),
+                ("p2", LIFE, Some(4)),
+                ("s1", FIRE, Some(5)),
+                ("s2", SKILL_SPEED, Some(1)),
             ],
         },
         _ => return None,

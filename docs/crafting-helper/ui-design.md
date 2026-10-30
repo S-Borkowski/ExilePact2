@@ -750,7 +750,14 @@ selection as it was and says why in the status line with `!`.
   field), not on every key; empty sends `null`. Rust takes a whole number
   from 1 to 100 and refuses anything else; on a refusal the field shows
   the view's value again. The level also sets which tiers each modifier's
-  floor offers.
+  floor offers. Once a pick has a floor (`At least T<n>`), the view carries
+  the item level the most demanding floor tier needs
+  (`suggested_item_level`, since 0.1.4; boots movement speed at least T2
+  gives 65): the blank field shows it as its placeholder, the search uses
+  it while the field is blank, and a typed level replaces it. While there
+  is one, the help line reads "Optional. Empty searches item level <n> and
+  up, which your tier floors need; a higher level reaches better tiers."
+  and never says a blank field searches any item level.
 
 **Modifiers** (right column, heading "Modifiers"): the help line "Weight:
 higher is rarer. 12.0 means about 1 in 12 modifiers added to that side of
@@ -848,6 +855,9 @@ A failure to open shows in the status line with `!`.
   count line, no link; disabled beside `Pick at least one modifier.`
 - **Picks on one side only**: the link shown and the button enabled; the
   count line says the search asks for one, and why.
+- **A floor picked, the level blank**: the field shows the suggested item
+  level as its placeholder, the help line says the search uses it, and the
+  link's item-level filter is that level.
 - **A refusal**: a `set_trade_search` Rust refuses (a base the class does
   not have, a modifier the base does not offer or cannot search, a ninth
   pick, an item level out of range) changes nothing: the panel shows the
@@ -871,6 +881,7 @@ The page renders these as sent; `ch-app`'s tests pin each form.
 | Modifier text | as the data writes it, a line each (`+# to maximum Life`) |
 | Weight | one decimal, `12.4`; the source `spawn` or `default`, and for a default its reason |
 | Floor options | `Any tier` (the default), then `At least T<n>` per reachable tier |
+| Suggested item level | a whole number, the level the most demanding picked floor tier needs (`65`); none with no floor picked. The page writes it into the field's placeholder and the help line |
 | Not searchable reason | `more than one line; the trade site lists each line as its own stat`, `no trade site stat for this text` |
 | Count line | `The search asks for two: one prefix and one suffix.`, `The search asks for at least one of your picks.`, `Your picks are all suffixes and a magic item holds one, so the search asks for one.` (prefixes alike) |
 | Why there is no link | `Choose an item class.`, `Choose a base type.`, `Pick at least one modifier.`, `! Too many modifiers for one link: remove one.` |
@@ -889,7 +900,11 @@ modifiers", "Prefixes", "Suffixes", "<n> picked", "Floor for <modifier
 text>", the tag "default", "Not searchable on trade: <n>", "prefix",
 "suffix", "Match", "Both slots", "At least one", "League", "Trade link".
 Placeholders, hints and help: "Choose a class", "Choose a base", "Optional.
-Empty searches any item level; a higher level reaches better tiers.",
+Empty searches any item level; a higher level reaches better tiers." (no
+floor picked), "Optional. Empty searches item level <n> and up, which your
+tier floors need; a higher level reaches better tiers." (a suggestion
+shown, `<n>` the view's `suggested_item_level`, also the field's
+placeholder),
 "A prefix and a suffix from your picks.", "Any one of your picks.",
 "Weight: higher is rarer. 12.0 means about 1 in 12 modifiers added to that
 side of this base is this one, at the floor or better. The search ranks
@@ -1054,6 +1069,7 @@ pickers read is `fixtures/catalogue.json`, written by the same test.
 | `trade-picking` | Rings, Sapphire Ring, item level 75, one prefix and one suffix picked at Any tier, Both slots: the count line asks for two, every row's weight, the link shown, Search enabled |
 | `trade-one-side` | Two suffixes picked: the count line says the search asks for one and why; the link shown |
 | `trade-default-weight` | A jewel base: every weight tagged "default", the picked rows' `default: <reason>` lines, the legend above the groups |
+| `trade-floor` | Boots, Bangled Sandals, the item level blank, movement speed picked at least T2: the field's placeholder `65`, the help line saying the search uses item level 65 and up, the link's item-level filter 65 |
 | `trade-refused` | After `trade-picking`, a `set_trade_search` naming a base the class does not have: `!` the reason in the status line, the selection and the link kept |
 
 | Settings window (`fixtures/app-settings/`) | What it shows |
@@ -1148,3 +1164,46 @@ none.
   the tokens at the panel's 0.92 opacity).
 - No motion beyond transitions of 120 ms (colours, the switch, the
   download bar), and none under `prefers-reduced-motion`.
+
+### Spacing and alignment
+
+The UI review of 2026-10-30 (the `impeccable` audit and polish, and
+`taste-skill`'s app-screen review, over the main window, the overlay and
+the Settings window) set two rules, each pinned by a page test in
+`src/ui-spacing.test.ts`:
+
+- **Minimum inner padding.** Every button and text control (`.btn`,
+  `.field`: text and search fields, selects, the trade link's text area)
+  keeps at least one space unit (4 px) above and below its text and two
+  (8 px) at each side, so no letter meets an edge, the lines of a wrapped
+  label included. A button that shows only an icon (the Trade section's
+  refresh) keeps 4 px on every side. A standard control stays 28 px high:
+  its one 18 px line (`--line-step`), the padding and its two borders make
+  the 28. The trade panel's small Change button holds a 16 px line and is
+  26 px high.
+- **A checkbox lines up with its label.** The box sits inside its label
+  row, which centres it on the text's line (`align-items: center`); the
+  box drops the browser's own margins, so it starts on the group heading's
+  edge, and its name starts two space units (8 px) after it. The currency
+  picker's entries, its "Blocked only" toggle, the target choices and the
+  trade panel's modifier rows all follow it.
+
+Fixed by the review:
+
+- The currency picker (Settings' Blocked currencies and the craft
+  window's Blocked for this craft): the boxes kept the browser's margins,
+  so they sat 4 px in from the group heading, the entries' text aligned
+  by baseline while the box was centred, and "Blocked only" had a 6 px
+  gap against the entries' 8 px. Now the shared row above
+  (`currency_filter_checkboxes_align_with_their_labels`).
+- The target choices: the same baseline row and native margins (`target_checkboxes_align_with_their_labels`).
+- Buttons and text controls had no padding above and below their text, so
+  a label that wrapped (the header's buttons beside an update notice, a
+  larger system text size) put its lines on the top and bottom border; the
+  trade panel's Change button and the refresh icon likewise
+  (`button_text_keeps_its_inner_padding`).
+
+The tests read the declarations jsdom receives from the shipped styles
+(`vite.config.ts` keeps the components' styles and `app.css` under
+Vitest) and resolve them against the shared tokens; jsdom does no layout,
+so a box is never measured.

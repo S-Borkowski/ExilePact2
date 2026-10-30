@@ -8,7 +8,9 @@ classes = ["Gloves"]
 source = "Discord post 9, owner's paste, 2026-10-28"
 notes = """
 The goal in the post is critical damage, melee skill levels, attack speed \
-and a desecrated modifier. The first desecration is a blocker: revealed as \
+and a desecrated modifier. The essence is used once: since 0.5 an item \
+holds one crafted modifier and the essence's is it, so a miss goes on to \
+the blocker rather than trying the essence again. The first desecration is a blocker: revealed as \
 a common, heavily weighted defensive prefix, it keeps that family out of \
 the Perfect Exalted Orb's pool, and the Omen of Light takes it off \
 afterwards. The perfect slams and the suffix desecrations repeat until \
@@ -36,6 +38,7 @@ say = "Essence of Hysteria with Dextral Crystallisation for critical damage"
 goal = "add-wanted"
 bind = "essence"
 when = "bound"
+on_miss = "next"
 
 [[step.action]]
 currency = "essence-of-hysteria"

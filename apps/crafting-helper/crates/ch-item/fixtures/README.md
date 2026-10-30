@@ -32,6 +32,7 @@ shapes are true. Texts the owner copies in the game go to `real/` instead
 | `two-hand-maces-rare-mirrored.txt` | Two Hand Maces, rare, `Mirrored` flag |
 | `quarterstaves-rare.txt` | Quarterstaves, rare, a two-value elemental line |
 | `crossbows-magic.txt` | Crossbows, magic, a decimal augmented property |
+| `crossbows-rare-hybrid-physical.txt` | Crossbows, rare, a hybrid prefix (`#% increased Physical Damage` with Accuracy, two lines under one header) beside the plain `#% increased Physical Damage` prefix and a flat physical one: two modifiers of different families with the same line, three prefixes in all. The values sit in the tier ranges of `data/classes/crossbows.json`; the plain value plus the hybrid's (120%) lands in another plain tier, and the hybrid's Accuracy alone in a tier of the plain Accuracy prefix |
 | `talismans-rare.txt` | Talismans, rare, three explicit modifiers |
 | `jewels-rare.txt` | Jewels, rare, no requirements, a description section |
 | `belts-rare-unscalable.txt` | Belts, rare, an implicit ending ` — Unscalable Value` |
@@ -88,6 +89,12 @@ Still guessed, because no real text has shown them yet:
 - how an unrevealed desecrated modifier is shown (here a header
   `{ Unrevealed Desecrated Suffix Modifier }` and the line
   `Unrevealed Desecrated Modifier`);
+- a hybrid modifier beside a plain one that shares its line
+  (`crossbows-rare-hybrid-physical.txt`): the advanced copy here keeps the
+  two under their own headers, each line with its own value and range, and
+  that is a guess; no real copy of such an item has been seen. What the
+  plain tooltip shows (one summed `#% increased Physical Damage` line, as
+  the `ch-watch` matcher test assumes) is not measured either;
 - the flag lines `Mirrored` and `Unidentified`;
 - negative roll ranges, and the order of an implicit and a rune section on
   one item;

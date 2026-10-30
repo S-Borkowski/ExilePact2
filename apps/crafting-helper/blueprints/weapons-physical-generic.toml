@@ -1,0 +1,161 @@
+# Physical weapons, state-ordered: a magic weapon with a good increased
+# Physical Damage prefix, Greater Essence of Abrasion for flat physical
+# damage as it turns rare, then a double side slam and the last target's
+# desecration. Paraphrased from the guide `source` names; the rules are
+# docs/models/crafting-slots-spec.md.
+id = "weapons-physical-generic"
+name = "Physical weapons: a good magic prefix, then Greater Essence of Abrasion"
+classes = [
+    "Bows", "Crossbows", "One Hand Maces", "Quarterstaves", "Spears",
+    "Talismans", "Two Hand Maces",
+]
+source = "Mobalytics, SSF crafting guide, Generic Phys Weapon (https://mobalytics.gg/poe-2/guides/ssf-crafting), fetched 2026-10-30"
+notes = """
+A paraphrase of the guide's physical weapon, kept to one crafted \
+modifier as 0.5 requires. Orbs of Transmutation and Augmentation \
+(Perfect first) are used on the magic weapon until its increased Physical \
+Damage prefix is one of its top two tiers; a magic weapon whose target \
+prefix is below them is sent back for a new base (weak-magic-start) \
+rather than upgraded. A wrong modifier on the magic item is annulled, \
+with the Sinistral or Dextral Annulment omen when the other side holds a \
+target. Greater Essence of Abrasion then adds flat physical damage as the \
+weapon turns rare; a weapon whose targets give Abrasion nothing to add at \
+its floor cannot finish here, and magic-augment-essence, which takes any \
+essence, is the route for it. Two suffixes come from a Greater Exalted \
+Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation \
+(greater-with-side-omen and greater-needs-two-free, not established), \
+and the last target is desecrated on its side with Omen of Sinistral or \
+Dextral Necromancy and revealed with Omen of Abyssal Echoes, both active \
+before use (omens-active-before-use). The guide ends with a Perfect \
+Essence of Battle, a second crafted modifier, so it is left out. An \
+augment lands on the magic item's free side when the other is full \
+(open-side-landing, not established). The preview assumes every step \
+hits."""
+order = "state"
+relies_on = [
+    "greater-with-side-omen",
+    "greater-needs-two-free",
+    "open-side-landing",
+    "omens-active-before-use",
+]
+
+[[start]]
+rarity = ["normal"]
+
+[[start]]
+rarity = ["magic"]
+
+[[step]]
+id = "transmute"
+say = "Transmute the normal weapon"
+goal = "add-wanted"
+guard = { rarity = ["normal"] }
+
+[[step.action]]
+currency = "perfect-orb-of-transmutation"
+
+[[step.action]]
+currency = "greater-orb-of-transmutation"
+
+[[step.action]]
+currency = "orb-of-transmutation"
+
+# A magic item has one slot a side: a wrong modifier blocks it.
+[[step]]
+id = "remove-magic"
+say = "Annul the wrong modifier (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+guard = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "augment"
+say = "Augment the magic weapon's free slot"
+goal = "add-wanted"
+guard = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "perfect-orb-of-augmentation"
+
+[[step.action]]
+currency = "greater-orb-of-augmentation"
+
+[[step.action]]
+currency = "orb-of-augmentation"
+
+# The one crafted modifier. Only Greater Essence of Abrasion: the guide's
+# essence, and the one that adds flat physical damage at a useful tier.
+[[step]]
+id = "essence"
+say = "Greater Essence of Abrasion: flat physical damage as the weapon turns rare"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+guard = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "greater-essence-of-abrasion"
+
+# The rare phase. The last target's desecration (docs/models/
+# crafting-slots-spec.md, "The last-target desecration").
+[[step]]
+id = "reveal-last"
+say = "Reveal the last target's modifier; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "last-remaining"
+when = "bound"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+[[step]]
+id = "light-last"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+bind = "last-remaining"
+when = "bound"
+guard = { desecrated_unwanted = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "desecrate-last"
+say = "Desecrate on the last target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "last-remaining"
+when = "bound"
+guard = { rarity = ["rare"] }
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+# The guide's two suffixes: Greater Exalted Orb with Greater and Dextral
+# Exaltation.
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["greater-omen", "side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["greater-omen", "side-omen"]

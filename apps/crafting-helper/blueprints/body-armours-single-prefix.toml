@@ -1,0 +1,199 @@
+# Body armours, state-ordered: a magic armour with a top single-stat
+# defence prefix, a Greater resistance essence, a desecration that fills
+# the suffixes, then one unrestricted Greater exalt that can only land on
+# the prefixes. Paraphrased from the guide `source` names; the rules are
+# docs/models/crafting-slots-spec.md.
+id = "body-armours-single-prefix"
+name = "Body armours: a top defence prefix, then isolate the prefixes"
+classes = ["Body Armours"]
+source = "Mobalytics, Lightning Arrow crafting guide, the body armour craft without Homogenising (https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting), fetched 2026-10-30"
+notes = """
+A paraphrase of the guide's body armour, without its Omen of \
+Homogenising Exaltation. Orbs of Transmutation and Augmentation (Perfect \
+first) are used on the magic armour until its prefix is a top tier of a \
+single defence stat and its suffix a resistance; a magic armour whose \
+target prefix is below its top two tiers is sent back for a new base \
+(weak-magic-start) rather than upgraded. A Greater Essence of \
+Insulation, Thawing or Grounding adds a second resistance as it turns \
+rare. A bone with the Dextral (or Sinistral) Necromancy omen, active \
+before use (omens-active-before-use), then fills the hardest target's \
+side, the suffixes in the guide, and is left unrevealed for now. With \
+only the prefix side open, a Greater Exalted Orb with Omen of Greater \
+Exaltation and no side omen lands two prefixes (open-side-landing and \
+greater-needs-two-free, not established): the isolation. The desecrated \
+modifier is then revealed with Omen of Abyssal Echoes; a wrong reveal is \
+taken off with Omen of Light and the bone used again. A target still \
+missing after that is placed by a side-restricted slam, or a desecration \
+when it is the last one. The preview assumes every step hits."""
+order = "state"
+relies_on = [
+    "greater-needs-two-free",
+    "open-side-landing",
+    "omens-active-before-use",
+]
+
+[[start]]
+rarity = ["normal"]
+
+[[start]]
+rarity = ["magic"]
+
+[[step]]
+id = "transmute"
+say = "Transmute the normal armour"
+goal = "add-wanted"
+guard = { rarity = ["normal"] }
+
+[[step.action]]
+currency = "perfect-orb-of-transmutation"
+
+[[step.action]]
+currency = "greater-orb-of-transmutation"
+
+[[step.action]]
+currency = "orb-of-transmutation"
+
+# A magic item has one slot a side: a wrong modifier blocks it.
+[[step]]
+id = "remove-magic"
+say = "Annul the wrong modifier (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+guard = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "augment"
+say = "Augment the magic armour's free slot"
+goal = "add-wanted"
+guard = { rarity = ["magic"] }
+
+[[step.action]]
+currency = "perfect-orb-of-augmentation"
+
+[[step.action]]
+currency = "greater-orb-of-augmentation"
+
+[[step.action]]
+currency = "orb-of-augmentation"
+
+# The one crafted modifier: a Greater resistance essence.
+[[step]]
+id = "essence"
+say = "Use the Greater resistance essence that adds a target"
+goal = "add-wanted"
+bind = "essence"
+when = "bound"
+guard = { rarity = ["magic"] }
+action = [
+    { currency = "greater-essence-of-insulation" },
+    { currency = "greater-essence-of-thawing" },
+    { currency = "greater-essence-of-grounding" },
+]
+
+# The bone waits for a free slot on its side; the state-ordered hardest
+# binding takes a desecrated-section target first.
+[[step]]
+id = "desecrate"
+say = "Desecrate on the hardest target's side (Sinistral or Dextral Necromancy) and leave it unrevealed"
+goal = "desecrate"
+side = "target"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+# The isolation: while the unrevealed modifier holds the suffixes, an
+# exalt with no side omen can only land on the prefixes.
+[[step]]
+id = "isolate"
+say = "Greater Exalted Orb with Omen of Greater Exaltation and no side omen: only the prefixes are open"
+goal = "add-wanted"
+guard = { unrevealed = true }
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["greater-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["greater-omen"]
+
+[[step]]
+id = "reveal"
+say = "Reveal it; Abyssal Echoes rerolls the options"
+goal = "reveal"
+bind = "hardest"
+when = "bound"
+
+[[step.action]]
+currency = "reveal"
+omens = ["omen-of-abyssal-echoes"]
+
+[[step.action]]
+currency = "reveal"
+
+[[step]]
+id = "light"
+say = "Omen of Light with an Orb of Annulment: the wrong desecrated modifier goes"
+goal = "remove-desecrated"
+bind = "hardest"
+when = "bound"
+guard = { desecrated_unwanted = true }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["omen-of-light"]
+
+[[step]]
+id = "remove"
+say = "Annul the blocker (Sinistral or Dextral Annulment when the other side holds a target)"
+goal = "remove-unwanted"
+side = "blocked"
+guard = { rarity = ["rare"] }
+
+[[step.action]]
+currency = "orb-of-annulment"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "orb-of-annulment"
+
+[[step]]
+id = "desecrate-last"
+say = "Desecrate on the last target's side (Sinistral or Dextral Necromancy)"
+goal = "desecrate"
+side = "target"
+bind = "last-remaining"
+when = "bound"
+guard = { rarity = ["rare"] }
+
+[[step.action]]
+currency = "desecrate"
+omens = ["side-omen"]
+
+[[step]]
+id = "side-slam"
+say = "Exalt for a target on its side (Sinistral or Dextral Exaltation)"
+goal = "add-wanted"
+side = "target"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["side-omen"]
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["side-omen"]

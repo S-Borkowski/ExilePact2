@@ -123,6 +123,7 @@ and `guard` take the same keys plus the step-only ones.
 | `closable_side` | start, step | `true`: some side is closable. |
 | `one_side_open` | start, step | `true`: exactly one side is open. |
 | `desecrated_unwanted` | start, step | `true`: a revealed desecrated modifier on the item is not a target. |
+| `modifiers_at_least`, `modifiers_at_most` | start, step | At least (at most) n explicit modifiers are on the item, fractured, desecrated and unrevealed ones counted (since 0.1.4: a Fracturing Orb wants a rare with four, and `fracture-first` starts from exactly four). |
 | `free_prefixes_at_least`, `free_suffixes_at_least` | step only | At least n open prefix (suffix) slots. |
 | `no_desecrated` | step only | `true`: no desecrated modifier, revealed or not. |
 | `unrevealed` | step only | `true`: an unrevealed desecrated modifier is present. |
@@ -166,7 +167,7 @@ free slot. They work in listed blueprints too.
 | `until` | no, listed only | On a hit, repeat the step until this condition holds (`{ wanted_remaining_at_most = 2 }`: fill until two targets are left). |
 | `[[step.action]]` | yes, but a `manual` step may have none | The ways to take the step, preferred first. |
 | `on_hit` | no, listed only | Where to go on a hit. Default: `next`, or `repeat` while `until` does not hold. |
-| `on_miss` | no, listed only | Where to go on a miss. Default: `repeat`. |
+| `on_miss` | no, listed only | Where to go on a miss. Default: `repeat`. A step that places a crafted modifier (an essence, alloy or liquid emotion) and is not `manual` must give one other than `repeat` (§ "One crafted modifier"). |
 
 A key the blueprint's order does not take is an error at its own line and
 column: `requires`, `until`, `on_hit` and `on_miss` in a state-ordered
@@ -186,6 +187,7 @@ whose `when` did not resolve, is skipped, and the guide says so.
 | `reveal` | The unrevealed modifier was revealed as the bound target at its floor. |
 | `remove-desecrated` | The desecrated modifier went. |
 | `convert` | A flux turned one modifier into the bound target. |
+| `fracture` | A target became fractured (since 0.1.4). Another modifier fractured is a miss. Its actions must fracture: a Fracturing Orb (`fracturing-orb`). |
 | `manual` | Always: the player does the step and confirms. No check, no odds. Catalysts, quality, rune sockets and anything the engine cannot read are manual. |
 
 No goal is a hit when a target that was on the item is gone.
@@ -255,6 +257,47 @@ Greater Exaltation. It catches a step whose text says "with an Exaltation
 omen" while its action has none, which is how the retired
 `fill-desecrate-exalt` came to offer a plain Exalted Orb.
 
+### One crafted modifier
+
+Since 0.5 an item holds at most one crafted modifier
+([`crafting-slots-spec.md`](../models/crafting-slots-spec.md) § "Facts",
+`one-crafted-one-desecrated`, documented). Every essence grade, the
+special essences (Hysteria, Horror, the Abyss, the Breach and the rest),
+every liquid emotion and every alloy places one; an alloy counts too
+(`alloy-counts-as-crafted`, documented in the 0.5.0 patch notes). A step
+places one when an action of it names such a currency; a `manual` step
+with no action does not. Since 0.1.4 the check holds every blueprint to
+it, in either order:
+
+- **Two crafted steps need a removal between them**: a second step that
+  places a crafted modifier, with no step between the two in file order
+  whose actions include an Orb of Annulment or a Chaos Orb of any grade,
+  is an error at the second step's currency. This is a plausibility rule,
+  not a proof: the removal between them may take another modifier and
+  leave the first crafted one where it is.
+- **A crafted step does not repeat** (listed order): a step that places a
+  crafted modifier and is not `manual` may not have `until`, and its miss
+  may not go to `repeat`, written or by default. So a listed essence step
+  says where a miss goes (`on_miss = "next"`, `"abandon"`, a `goto:`): the
+  second use would find the first one's modifier on the item.
+
+The rule is checked on the blueprints, not on the item: the app cannot
+tell whether an item already carries a crafted modifier from before the
+craft (the copied text's crafted marker is not measured).
+
+### Jewels and Greater or Perfect currencies
+
+A jewel's modifiers have one level each, so a currency with a Minimum
+Modifier Level (the Greater and Perfect orbs) only costs more on one.
+Since 0.1.4 a blueprint whose every class is `Jewels` may not name one (an
+error at the currency), and on any blueprint the route never offers one
+on a jewel: the step takes its next alternative, the reason in words
+(`` `perfect-exalted-orb` has a minimum modifier level, which only adds
+cost on a jewel ``). A blueprint for rings and jewels keeps the Perfect
+Exalted Orb on a ring and offers the plain one on a jewel.
+
+### Placeholders
+
 Four placeholders stand for a choice the engine makes on the item:
 
 | Placeholder | Where | Means |
@@ -295,9 +338,9 @@ is still missing, `hardest` or `last-remaining`, in file order.
 
 **The last-target desecration** (since 0.1.2, issue #32; the spec's
 § "The last-target desecration"). On a rare with no desecrated modifier
-(an unrevealed one included) and exactly one target missing, each of the
-four places that target by a desecration on its side and a reveal, not an
-exalt or an essence. It is three ordinary steps, all bound to
+(an unrevealed one included) and exactly one target missing, each
+state-ordered blueprint places that target by a desecration on its side
+and a reveal, not an exalt or an essence. It is three ordinary steps, all bound to
 `last-remaining` with `when = "bound"`, so the guide, outcomes and step ids
 work as for any step:
 
@@ -313,11 +356,14 @@ work as for any step:
 
 `reveal-last` and `light-last` come before the `remove` step and
 `desecrate-last` right after it, before `close`, `slam-open-side` and
-`side-slam`; in `magic-augment-essence` they are in the rare phase.
-`essence-desecrate-double-slam` adds only `desecrate-last`, after its own
-`desecrate`: its `reveal` and `light` already serve it, and its `hardest`
-desecration is unchanged (a route that desecrated for the hardest target
-has its one desecrated modifier, so the rule cannot apply after it). An
+`side-slam`; in `magic-augment-essence` and `weapons-physical-generic`
+they are in the rare phase. `essence-desecrate-double-slam` adds only
+`desecrate-last`, after its own `desecrate`: its `reveal` and `light`
+already serve it, and its `hardest` desecration is unchanged (a route that
+desecrated for the hardest target has its one desecrated modifier, so the
+rule cannot apply after it). `body-armours-single-prefix` (0.1.4) has
+only `desecrate-last` too, after its `remove` step, with its own `reveal`
+and `light` earlier in the file. An
 item with a revealed unwanted desecrated modifier and one target missing
 gets `light-last`, then `desecrate-last`.
 
@@ -366,6 +412,32 @@ other side holds a target; otherwise a plain annulment. A Magic item's
 removal has no whittle. A `side = "blocked"` removal is a hit when a
 non-target went from a side that was blocked.
 
+**Certain removals first** (since 0.1.4; the spec's § "Certain removals
+first"). The next step is the first candidate in file order, unless that
+candidate is not a certain removal and a later candidate is a
+`remove-unwanted` step whose chosen alternative is certain: every
+modifier it may take is a non-target, or its whittle is certain. Then the
+first such later candidate goes first, so a removal that cannot cost a
+target is never left behind a gamble. Only removals reorder: the
+certainty of an add stays in its odds. The preview takes the same pick.
+
+**Essence swaps** (since 0.1.4, engine-only: the slot model has no
+Perfect essence or Crystallisation omen). A Perfect or special essence
+(Hysteria, Delirium, Horror, Insanity, the Abyss, the Breach) on a rare
+removes a modifier, like a Chaos Orb, and adds its own. An `add-wanted`
+step whose chosen alternative is one fits when its `essence` binding
+names a missing target the essence adds at its floor (the binding is made
+on a rare as on a magic item for such a step), the removal's side holds a
+modifier a removal may take, and the target's side has room once it has.
+The removal's side is the Crystallisation omen's; with none, the side the
+essence's modifier belongs to when that side is full
+(`essence-full-side-removal`, not established); otherwise either side.
+The preview takes the first removable non-target on that side and places
+the target, and a swap whose removal is certain counts as a certain
+removal above. No shipped blueprint takes one; the engine's
+`tests/rules.rs` pins the rule over test blueprints. Alloys and liquid
+emotions swap too, but stay listed-order only.
+
 **The preview** is the route the craft takes if each step hits, from the
 item as it stands: an add places its target (two with Greater), a fill
 adds fillers to its side, an essence makes the Magic item Rare with its
@@ -381,7 +453,19 @@ alone exceed the item's limit as a rare, three unless a line on the item
 changes it (`TargetsExceedSlots`), a desecrated target and
 no desecrate step, and a route whose hit path cannot finish
 (`RouteCannotFinish`: no candidate, a step whose hit changes nothing, or
-16 steps without finishing).
+16 steps without finishing). Last, in either order since 0.1.4,
+**`weak-magic-start`** (`WeakMagicStart`): the item is magic, its prefix
+is a target (at any tier), a step of the route makes it rare while it is
+magic (a Regal Orb of any grade, or a Lesser, plain or Greater essence),
+and the prefix's tier is worse than the second-best tier its modifier
+rolls on this base at the item's level. The guides send such an item back
+for a new base rather than spend an upgrade on it, and the rejection says
+so, naming the modifier by its data id: ``the magic item's prefix
+`prefix-increased-movement-speed` is T3, below its top tiers at item
+level 82 (T1 and T2): a new base is worth more than an upgrade`` (boots'
+movement speed reaches T1 at item level 82 and T2 at 65). It does not
+apply with no item level, an unknown tier, or a prefix that is not a
+target; with one reachable tier, that tier is the top two.
 
 **What the guide does.** The craft window numbers a state-ordered route's
 steps in the order this craft takes them; its hit line names the next step
@@ -418,6 +502,31 @@ error at the parser's position). For example:
 .../omen-must-fit.toml:17:10: step `slam`: `omen-of-whittling` does not modify `exalted-orb` (it modifies chaos-orb, greater-chaos-orb, perfect-chaos-orb)
 ```
 
+Since 0.1.4 it also refuses, each at the value at fault:
+
+- **crafted-twice**: a second step that places a crafted modifier with no
+  annulment or Chaos Orb step between (§ "One crafted modifier"), at its
+  currency: ``step `<id>`: `<currency>` places a second crafted modifier
+  after step `<id>`, with no annulment or Chaos Orb between them; an item
+  holds one crafted modifier``;
+- **crafted-repeat**: a listed crafted step that is not `manual` with an
+  `until`, or whose miss repeats (at its `on_miss`, or at its currency
+  when the repeat is the default): ``step `<id>`: a miss repeats by
+  default a step that places a crafted modifier; an item holds one, so
+  say where a miss goes (`on_miss`)``;
+- **jewel-grades**: a Greater or Perfect currency on a blueprint for
+  `Jewels` alone (§ "Jewels and Greater or Perfect currencies");
+- a `fracture` step whose action cannot fracture, through the existing
+  check of a goal the action cannot produce;
+- a `relies_on` id outside the spec's table, which since 0.1.4 also
+  holds `abyss-mark-unfracturable`, `desecrated-unfracturable`,
+  `full-desecration-same-side` and `essence-full-side-removal`
+  (§ "The seed blueprints").
+
+The test blueprints under `ch-blueprint`'s `tests/fixtures/invalid/`
+(`crafted-twice.toml`, `crafted-repeat.toml`, `jewel-grades.toml`,
+`fracture-currency.toml`) pin each line and column.
+
 It exits 0 when every file is valid, 1 on any error and 2 with no argument.
 The shipped blueprints are embedded in the app at build time, so a new or
 changed file also needs `cargo test --manifest-path
@@ -445,7 +554,8 @@ before and after, on their modifiers joined to the data, and says one of:
   adds one; an annulment removes one, two with Omen of Greater Annulment;
   a Regal Orb or a Lesser, plain or Greater essence makes a Magic item Rare
   with one more; a desecration adds one unrevealed modifier; a reveal turns
-  the unrevealed one into a desecrated one on the same side); or a side
+  the unrevealed one into a desecrated one on the same side; a Fracturing
+  Orb fractures one modifier and changes nothing else); or a side
   omen's side is not the side that changed. After a `manual` step only the
   first group counts (class, base type, item level, corrupted, mirrored,
   unidentified): any change to the modifiers fits it.
@@ -461,26 +571,73 @@ a target whose weight is the site's placeholder 1, for a flux, and for a
 whittle when two modifiers tie for the lowest level. An essence, alloy or
 liquid's add is certain.
 
+Since 0.1.4:
+
+- **A certain add shows as certain, weights or not.** When an add's
+  exclusions (the family already on the item, the side omen, the Minimum
+  Modifier Level) leave the target alone in the pool and every one of its
+  tiers counts at the floor, the step is certain to hit; when they leave
+  the target out and a weight is missing, it is certain not to. So an
+  isolation reads 100% on a jewel or a placeholder weight too.
+- **An essence swap's odds** (a Perfect or special essence on a rare) are
+  its certain add times its removal's share of non-targets, over the
+  removal's side (§ "State-ordered blueprints", "Essence swaps"), and
+  100% when every modifier the removal may take is a non-target.
+- **A Fracturing Orb's odds** are the share of targets among the
+  modifiers it may fracture: the explicit ones that are not fractured, not
+  desecrated (revealed or not) and not the Mark of the Abyssal Lord
+  (Essence of the Abyss's modifier). Leaving the last two out rests on
+  `desecrated-unfracturable` and `abyss-mark-unfracturable`, not
+  established, and the basis says so; each candidate is taken as equally
+  likely. One target among three such modifiers is one in three.
+- **A desecration on a full side** (listed order; state order never takes
+  one) shows the odds of its removal: the share of non-targets among the
+  side's modifiers a removal may take, resting on
+  `full-desecration-same-side` and `removal-equally-likely`, and not
+  counting the reveal's own chance.
+
 ## The seed blueprints
 
-Thirteen blueprints ship, each a paraphrase in our own words of the source
-it names: four state-ordered ones from published 0.5 crafting guides
-(their URLs and "fetched 2026-10-29" are in each `source`), and nine
-listed ones from the owner's Discord paste of 2026-10-28; see
-[`crafting-mechanics.md`](crafting-mechanics.md) § "Crafting patterns
-seen". Each is walked on a hit path and a miss path in `ch-engine`'s tests
-(`tests/seeds_v2.rs` for the state-ordered four, `tests/seeds_gear.rs` and
-`tests/seeds_jewels_weapons.rs` for the rest), and the four state-ordered
-ones are held to the slot model on the spec's representative crafts by the
-parity test (`tests/slots.rs`, over `tests/items/slots/cases.json`).
+Sixteen blueprints ship, each a paraphrase in our own words of the source
+it names, never a sentence of it:
 
-The state-ordered four cover every equipment class with spawn weights
-(not jewels). None names a Homogenising omen, Omen of Greater Annulment,
-an Erasure omen, a Perfect essence, an alloy or a Fracturing Orb. Since
-0.1.2 each also places the last missing target on a rare with no
-desecrated modifier by a desecration and a reveal (§ "State-ordered
-blueprints", "The last-target desecration"), which the table below leaves
-out.
+- four state-ordered ones from published 0.5 crafting guides (their URLs
+  and "fetched 2026-10-29" are in each `source`);
+- eight listed ones from the owner's Discord paste of 2026-10-28; see
+  [`crafting-mechanics.md`](crafting-mechanics.md) § "Crafting patterns
+  seen";
+- since 0.1.4 (issue #35), four from the Mobalytics and maxroll crafting
+  guides: two state-ordered, `weapons-physical-generic` and
+  `body-armours-single-prefix`, which start from a normal or magic item,
+  and two listed, `fracture-first` and `full-rare-desecration-rescue`,
+  which start from a rare. The Mobalytics pages' URLs and "fetched
+  2026-10-30" are in each `source`; maxroll's page is "reviewed
+  2026-10-30 (issue #35)".
+
+Each is walked on a hit path and a miss path in `ch-engine`'s tests
+(`tests/seeds_v2.rs` for the first state-ordered four,
+`tests/seeds_guides.rs` for the four from the guides, with a third walk
+each, `<id>_start_refuses`, for the item it turns away;
+`tests/seeds_gear.rs` and `tests/seeds_jewels_weapons.rs` for the rest).
+The first four state-ordered ones are also held to the slot model on the
+spec's representative crafts by the parity test (`tests/slots.rs`, over
+`tests/items/slots/cases.json`). The two state-ordered guide blueprints
+are not in the model's cases: they use only rules the cases already pin,
+and `tests/seeds_guides.rs` pins them (the spec's § "Not covered").
+
+The first state-ordered four cover every equipment class with spawn
+weights (not jewels). None names a Homogenising omen, Omen of Greater
+Annulment, an Erasure omen, a Perfect essence, an alloy or a Fracturing
+Orb. Since 0.1.2 each state-ordered blueprint also places the last missing
+target on a rare with no desecrated modifier by a desecration and a reveal
+(§ "State-ordered blueprints", "The last-target desecration"), which the
+table below leaves out.
+
+Every shipped blueprint places at most one crafted modifier
+(§ "One crafted modifier"). The audit of 2026-10-30 found two that did
+not: `boots-runic-ward` lost its Essence of Horror step (below) and
+`weapons-alloy-budget` was retired; `gloves-crit-melee` no longer
+repeats its Essence of Hysteria on a miss.
 
 | id | source | classes | the route |
 |---|---|---|---|
@@ -490,13 +647,16 @@ out.
 | `rare-clean-then-slam` | issue #28; maxroll and the domistae codex (method 2's clean-up, method 3's side restriction) | every equipment class with spawn weights | From a rare with any number of targets, a dropped one included: clean the blocked side (a certain whittle, else an annulment, side-restricted when the other side holds a target) until each side has a free slot per missing target, then side-restricted slams. |
 | `rings-resist-whittle` | post 10 | Rings | Chaos Orbs, then whittling until one target is left, then a desecration for the last. |
 | `rings-flat-attack` | post 11 | Rings | Attack quality raised first (manual), flat attack damage prefixes over resistance suffixes. |
-| `gloves-crit-melee` | post 9 | Gloves | Critical damage from Essence of Hysteria, a desecrated prefix that blocks a common family while the prefixes are slammed, then desecrated suffixes until attack speed. |
+| `weapons-physical-generic` | Mobalytics' SSF crafting guide, "Generic Phys Weapon" | Bows, Crossbows, One Hand Maces, Quarterstaves, Spears, Talismans, Two Hand Maces (the classes with both increased Physical Damage and a Greater Essence of Abrasion for flat physical damage) | State-ordered, from a normal or magic weapon: transmute and augment (Perfect first), annulling a wrong modifier, until the increased Physical Damage prefix is a top-two tier (a weaker one is sent back, `weak-magic-start`); Greater Essence of Abrasion as it turns rare, its one crafted modifier; a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and the side omen for two suffixes; the last target by desecration. The guide's closing Perfect Essence of Battle would be a second crafted modifier and is left out. A weapon whose targets give Abrasion nothing to add cannot finish here; `magic-augment-essence` takes any essence. |
+| `body-armours-single-prefix` | Mobalytics' Lightning Arrow crafting guide, the body armour, without Homogenising | Body Armours | State-ordered, from a normal or magic armour: a top single-stat defence prefix by transmute and augment (a weaker one is sent back, `weak-magic-start`); a Greater Essence of Insulation, Thawing or Grounding; a desecration on the hardest target's side (the suffixes), left unrevealed; with only the prefixes open, a Greater, then plain, Exalted Orb with Omen of Greater Exaltation and no side omen lands two prefixes (the isolation); the reveal, Omen of Light for a wrong one, a removal, the last target's desecration and side slams. |
+| `fracture-first` | Mobalytics' SSF crafting guide (Fracturing Orb with Essence of the Abyss) and its Fracturing Orbs guide | every equipment class with spawn weights | Listed, from a rare with exactly four modifiers, none fractured, at least one a target: Essence of the Abyss (losing a target to it gives the item up), so the Fracturing Orb picks among three; the orb (fracturing anything else gives it up); annulments down to the fractured target and one more; Chaos Orbs until a second target; a desecration for the hardest target on its side, revealed with Abyssal Echoes, a wrong reveal lit off and the bone used again; side-restricted Perfect exalts. The guides' Crystallisation omen to guard the target, and their closing filler and Perfect essence, are left out (§ "What a blueprint cannot say"). |
+| `full-rare-desecration-rescue` | maxroll's "How to Craft", its rescue of boots with no movement speed | every equipment class with spawn weights | Listed, from a rare with six modifiers and exactly one target missing, no desecrated modifier: a bone with the missing target's side Necromancy omen takes a random modifier off that full side (losing a target gives the item up); the reveal with Abyssal Echoes; a wrong reveal taken off with Omen of Light and the bone used again. |
+| `gloves-crit-melee` | post 9 | Gloves | Critical damage from Essence of Hysteria, used once (a miss goes on: an item holds one crafted modifier), a desecrated prefix that blocks a common family while the prefixes are slammed, then desecrated suffixes until attack speed. |
 | `amulets-resist-spirit` | post 14 | Amulets | Resistances turned into the wanted elements with fluxes, a desecrated blocker suffix for two Perfect Exalted Orbs, then a desecrated Spirit modifier. |
 | `jewels-three-one-side` | post 6 (post 5's note in `notes`) | Jewels | Three targets on one side, the third from a desecration, then the other side. |
 | `time-lost-jewel-radius` | post 3 | Jewels | Three suffixes, a desecrated prefix and the Very Large radius (manual) on a Time-Lost jewel. |
-| `weapons-alloy-budget` | post 12 | Staves, Wands and the physical weapon classes both alloys fit | A damage modifier by Chaos Orb, two alloys over exalted filler suffixes, a side-restricted Perfect Exalted Orb and a desecration. |
 | `caster-cast-speed` | post 13 | Wands, Staves, Foci | Cast speed from the Transcendent Alloy, a desecration holding a slot while a Perfect Exalted Orb adds two, then the last desecration. |
-| `boots-runic-ward` | post 8 | Boots | From fractured movement speed: Runic Ward and augment effect (manual), both attributes by Chaos Orb and desecration, the runes (manual). |
+| `boots-runic-ward` | post 8 | Boots | From fractured movement speed: Runic Ward (the Sovereign Alloy over a filler prefix, manual), both attributes by Chaos Orb and desecration, the runes (manual). Since 0.1.4 without the post's Essence of Horror (augment effect) and its filler: the alloy is the item's one crafted modifier. |
 
 Steps that rest on a mechanic the docs mark not established (an alloy with
 the Crystallisation omens, how a flux maps one resistance's tier to
@@ -505,19 +665,27 @@ lands on) are kept, and their catalyst and rune steps are `manual`. Each
 blueprint's `notes` names what it rests on, but the craft window does not
 show `notes`: the caveats live in the blueprint file and in this guide.
 
-What each state-ordered blueprint relies on (`relies_on`; each fact is
-labelled not established in the spec's facts table, which names its
-source):
+What each blueprint relies on (`relies_on`; each fact is labelled not
+established in the spec's facts table, which names its source, and its
+§ "Which blueprint relies on which not-established fact" is the same
+list). "The first four" are `close-a-side`,
+`essence-desecrate-double-slam`, `magic-augment-essence` and
+`rare-clean-then-slam`:
 
 | Fact | What the route assumes | Relied on by |
 |---|---|---|
-| `greater-with-side-omen` | Greater Exaltation with a Sinistral or Dextral Exaltation omen adds two modifiers, both on that side. | all four |
-| `greater-needs-two-free` | Greater Exaltation needs two free slots (on the restricted side, with a side omen). | all four |
-| `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side. | `close-a-side`, `magic-augment-essence` |
-| `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | all four |
-| `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | all four |
-| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four (the other three since 0.1.2's last-target desecration) |
-| `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes. | `essence-desecrate-double-slam` |
+| `greater-with-side-omen` | Greater Exaltation with a Sinistral or Dextral Exaltation omen adds two modifiers, both on that side. | the first four, `weapons-physical-generic` |
+| `greater-needs-two-free` | Greater Exaltation needs two free slots (on the restricted side, with a side omen). | the first four, `weapons-physical-generic`, `body-armours-single-prefix` |
+| `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side. | `close-a-side`, `magic-augment-essence`, `weapons-physical-generic` (its augment), `body-armours-single-prefix` (its isolating Greater exalt) |
+| `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | the first four |
+| `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | the first four, `fracture-first` |
+| `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), and the four of 0.1.4 |
+| `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes. | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` |
+| `removal-equally-likely` | Each modifier a random removal may take is equally likely to go. | `full-rare-desecration-rescue` |
+| `abyss-mark-unfracturable` | A Fracturing Orb never picks the Mark of the Abyssal Lord (Essence of the Abyss's modifier). | `fracture-first` |
+| `desecrated-unfracturable` | A Fracturing Orb never picks a desecrated modifier, revealed or not. | `fracture-first` |
+| `full-desecration-same-side` | A desecration with a side's Necromancy omen, on an item whose side is full, removes its random modifier from that side. | `full-rare-desecration-rescue` |
+| `essence-full-side-removal` | A Perfect or corrupted essence with no Crystallisation omen, whose modifier's side is full, removes from that side. | none (only the engine's essence swap reads it) |
 
 `ch-blueprint`'s list of these ids is read against the spec's table by a
 test, so a fact relabelled there means editing the list, and a blueprint
@@ -531,6 +699,14 @@ prefix slot the last target needed, and it refused a rare with one target
 (issue #28). `close-a-side` and `rare-clean-then-slam` cover those crafts.
 Its file stays in `ch-engine`'s tests
 (`tests/items/gear/fill-desecrate-exalt/`) as the listed-order baseline.
+
+**Retired in 0.1.4**: post 12's alloy budget for weapons
+(`weapons-alloy-budget`) no longer ships. Its premise was two alloys on
+one weapon, the Celestial and the Transcendent, with no removal between
+them, and since 0.5 an item holds one crafted modifier, an alloy's
+included. `weapons-physical-generic` and `caster-cast-speed` cover its
+classes. Its file, walks and items were deleted; nothing tests its
+shape.
 
 Posts not made into a blueprint:
 
@@ -548,3 +724,21 @@ Posts not made into a blueprint:
 - Corruption, uniques, rune and soul-core socketing, catalyst quality and
   quality currencies, except as a `manual` step.
 - Costs, expected numbers of tries or odds beyond the next step.
+- A rarity skip in listed order: a listed step is skipped only when its
+  goal is met or its `when = "bound"` binding did not resolve, never
+  because the item is already magic or rare (`guard` is state order's).
+  A route that starts from a normal or magic item is state-ordered for
+  that reason, as `weapons-physical-generic` and
+  `body-armours-single-prefix` are.
+- A side taken from another step's binding: `side-omen` resolves only
+  from the step's own bound target or its own `side`, and every binding
+  aims at a missing target. So no step can name the side of a target
+  already on the item, which is how the guides keep a Perfect essence off
+  the target they want to fracture (the other side's Crystallisation
+  omen); `fracture-first` goes without it.
+- A Perfect essence's modifier as a target: in the shipped data no
+  Perfect essence matches a pool modifier, so an `essence` binding can
+  never aim one at a target (only the special Essence of Hysteria matches
+  one, in 12 classes).
+- An item's crafted modifier from before the craft: one crafted modifier
+  per item is checked on the blueprint's steps, not read from the item.
