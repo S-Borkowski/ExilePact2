@@ -26,6 +26,20 @@
 //!   Level, and a Magic item whose target prefix is below its top two tiers
 //!   is sent back for a new base rather than upgraded
 //!   ([`Rejection::WeakMagicStart`]).
+//! - [`Engine::relax`]: when the targets plan no route, the one target
+//!   whose floor, lowered to the tier an unblocked essence (or alloy, or
+//!   liquid emotion) guarantees, then gives a route using that currency
+//!   ([`Relaxation`]); `None` when they route already or nothing does.
+//! - [`Engine::blocker_advice`]: for a state-ordered route whose reveal is
+//!   followed by an exalt on the same side, the desecrated modifiers to take
+//!   if the target is not offered, each with the exalt's chance of a target
+//!   before and after ([`BlockerAdvice`]); the route keeps that modifier
+//!   through the exalt (Omen of Light waits for it).
+//! - State order's essence swap: a [`StepView`] whose action is a Perfect or
+//!   special essence carries its removal ([`EssenceSwap`]): what it may take
+//!   and, when that includes an unrevealed desecrated modifier, the chance
+//!   it survives and the step the route takes next if it stays and if it
+//!   goes ([`Survival`]).
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!
@@ -72,15 +86,19 @@ pub use ch_blueprint;
 pub use ch_data;
 pub use ch_item;
 
+mod blocker;
 mod catalogue;
 mod context;
 mod engine;
 mod guide;
 mod odds;
+mod relax;
 mod route;
 mod slots;
 mod state_order;
+mod swap;
 
+pub use blocker::{BlockerAdvice, BlockerMod, BlockerPick, BLOCKER_LIMIT};
 pub use catalogue::{catalogue, catalogue_item, CatalogueItem};
 pub use ch_data::Odds;
 pub use context::{Refusal, Target, TargetInfo};
@@ -88,5 +106,10 @@ pub use engine::{check_path, resolve, toml_files, Engine, Resolved};
 pub use guide::{
     Guide, GuideError, Next, Outcome, OutcomeKind, Started, Status, WantedMod, PICKED,
 };
-pub use route::{ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView};
+pub use odds::CATALYST_NOTE;
+pub use relax::Relaxation;
+pub use route::{
+    ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView, WaitingLordOmen,
+};
 pub use state_order::STEP_CAP;
+pub use swap::{EssenceSwap, SwapMod, Survival};

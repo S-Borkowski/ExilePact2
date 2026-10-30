@@ -1,0 +1,19 @@
+Item Class: Quivers
+Rarity: Rare
+Grim Flight
+Broadhead Quiver
+--------
+Item Level: 76
+--------
+{ Implicit Modifier }
+Adds 1 to 3 Physical Damage to Attacks
+--------
+{ Fractured Prefix Modifier "Brisk" (Tier: 4) — Speed }
+20(18-25)% increased Projectile Speed (fractured)
+{ Unrevealed Desecrated Prefix Modifier }
+{ Prefix Modifier "Steady" (Tier: 4) — Attack }
++200(168-236) to Accuracy Rating
+{ Suffix Modifier "of Mastery" (Tier: 2) — Attack, Speed }
+12(11-13)% increased Attack Speed
+{ Suffix Modifier "of the Leopard" (Tier: 3) — Attribute }
++26(25-27) to Dexterity

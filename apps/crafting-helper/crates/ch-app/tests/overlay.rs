@@ -309,7 +309,7 @@ fn overlay_lines_follow_the_step_and_the_last_outcome() {
     assert_eq!(last.summary, "gained +#% to Fire Resistance (T3)");
     assert_eq!(
         guide.on_hit.as_deref(),
-        Some("On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)")
+        Some("On a hit: this step again until its condition holds, then use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance or +#% to Lightning Resistance")
     );
     app.shutdown();
 

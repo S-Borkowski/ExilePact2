@@ -26,6 +26,21 @@ the data, the join and the add and removal odds are `ch-data`'s
   applicable `Route` and every `Rejected` blueprint with its `Rejection`.
   A `Target` is a data modifier id and an optional floor (1 is the best
   tier; no floor means the best tier the item level reaches).
+- **`Engine::relax(item, targets, blocked) -> Result<Option<Relaxation>,
+  Refusal>`** (0.2.0): the one-target tier relaxation, `None` when the
+  targets already route or no single lowered floor makes a route. See
+  "Tier relaxation in brief" below.
+- **`Engine::blocker_advice(item, targets, blocked, blueprint) ->
+  Result<Option<BlockerAdvice>, Refusal>`** (0.2.0): for a state-ordered
+  route whose reveal is followed by an exalt on the same side, the
+  desecrated modifiers to take if the target is not offered, with that
+  exalt's chance of a target before and after. See "Blocker advice in
+  brief" below.
+- **`StepView::swap: Option<EssenceSwap>`** (0.2.0): on a state-ordered
+  essence swap step, what its removal may take, the fractured modifiers it
+  leaves and, when it may take an unrevealed desecrated modifier, that
+  modifier's survival (`Survival`) with the step taken next on each
+  outcome. See "The essence swap's survival in brief" below.
 - **`Engine::start(blueprint, item, targets, blocked) -> Started`**: the
   route, the `Guide` and the first `Next` step.
 - **`Engine::observe(&mut guide, before, after) -> Outcome`**: the verdict on
@@ -74,7 +89,29 @@ unknown with the reason.
   (Preserved, Ancient, Gnawed), `side-omen` to the Sinistral or Dextral
   omen of the bound target's side (or the step's `side`), and
   `greater-omen` to Omen of Greater Exaltation where two fit (below) or to
-  nothing. Every alternative blocked rejects the blueprint
+  nothing. Since 0.2.0, a listed step with `when = "bound"` and
+  `bind = "last-remaining"` and no `side` (the whittle's desecration),
+  planned while several targets are still missing, resolves `side-omen`
+  to the side they all share; when they lie on both sides, the
+  alternative is taken with its omen waiting for the last target's side
+  (no omen id, `ChosenAction::side_omen_waits` set) and counts as blocked
+  when either of its currency's two side omens is. The guide picks the
+  step again once one target is left and names that side's omen. A
+  `last-remaining` step without `when` (the rescue, which requires one
+  target missing) keeps an unbound `side-omen` unfit, so it is still
+  rejected with two targets missing. Since 0.2.0 (issue #40), `lord-omen`
+  on a desecration resolves to the bound target's lord omen (Sovereign for
+  Ulaman, Liege for Amanamu, Blackblooded for Kurgal) where the target is
+  a desecrated modifier every tier of which, on the item's variant, names
+  that one lord in its name (`Ulaman's`, `of Ulaman`), the class is in
+  `LORD_CLASSES` and the omen is not blocked; otherwise to nothing, with
+  no fallback line (`LordOmen`). It needs no `side-omen` beside it: the
+  plain bone the whittle and `essence-desecrate-double-slam` fall back to
+  when the Necromancy omen is blocked carries `lord-omen` alone and names
+  the lord omen alone. On the whittle's desecration, unbound
+  while several targets are missing, it waits too:
+  `ChosenAction::lord_omens_waiting` lists each remaining target that
+  would take one, with its omen. Every alternative blocked rejects the blueprint
   (`EveryAlternativeBlocked`); none usable, `NoAlternativeFits`. On class
   `Jewels`, a currency with a Minimum Modifier Level (the Greater and
   Perfect orbs) is unfit in either order (since 0.1.4: a jewel's modifiers
@@ -90,7 +127,9 @@ unknown with the reason.
   an unknown tier or one reachable tier (the top two are that one) never
   rejects. Engine-only: the slot model has no tiers.
 - **Order**: fewer classes first, then load order. No cost, no expected
-  number of tries.
+  number of tries. Since 0.2.0 the two-class `jewellery-catalyst-exalt`
+  (Amulets, Rings) is therefore offered before the many-class routes on a clean
+  rare ring or amulet, which renumbers their routes.
 
 That is listed order, what a blueprint without `order` keeps. A
 state-ordered blueprint (`order = "state"`) is planned and guided by the
@@ -135,6 +174,15 @@ engine computes the same numbers and picks the same steps.
   essence swap whose removal is, the first such later candidate is next
   (`certain_removal`). The projection takes the same pick. Add certainty
   stays in the odds and never reorders.
+- **A wrong reveal waits for the same-side exalt** (since 0.2.0; the
+  spec's section of that name): a `remove-desecrated` step guarded by
+  `desecrated_unwanted = true` (`light`, `light-last`) is passed over while
+  an `add-wanted` step is a candidate on the side of the revealed
+  desecrated non-target with a free slot there (`light_waits`); its
+  reason, and the projection's skipped reason, say it waits for that
+  step. The modifier stays through the exalt, keeping its families out of
+  the pool; Light comes once the side is full or nothing more can be
+  added there.
 - **Essence swaps** (since 0.1.4, engine-only): an `add-wanted` step whose
   chosen alternative is a Perfect or special essence (`Effect::Swap`)
   fits on a Rare when its `essence` binding (made on a Rare for such a
@@ -164,7 +212,8 @@ engine computes the same numbers and picks the same steps.
   with a `desecrate-last` step bound to `last-remaining` (a bone
   and the side's Necromancy omen, nothing else) and a reveal with Omen of
   Abyssal Echoes; a wrong reveal is taken off with Omen of Light and an
-  Orb of Annulment and the bone used again. When that desecration
+  Orb of Annulment (once its side is done, above) and the bone used
+  again. When that desecration
   is not a candidate and a later step is picked in its place, the picked
   step's `StepView::instead_of_desecration` says why in words (no pool on
   the side, the bone or the Necromancy omen blocked, or the engine's own
@@ -238,6 +287,82 @@ desecrated (revealed or not) and not the Mark of the Abyssal Lord
 Necromancy omen on a full side is its removal's share of non-targets on
 that side, not counting the reveal (`full-desecration-same-side`).
 
+Since 0.2.0: an exalt with Omen of Catalysing Exaltation has the plain
+slam's odds, its basis ending with `CATALYST_NOTE` ("the catalyst's favour
+is not counted"): the favour's size is not established and the helper
+does not read catalyst quality.
+
+## Tier relaxation in brief
+
+Since 0.2.0. An essence binds a target only at its floor or better, and a
+class's best essence for a modifier is often a tier short of what the
+player asks for: on belts the Greater resistance essences add tier 3, so
+Fire, Cold and Lightning Resistance at T2 on a magic belt plan no route.
+`Engine::relax` looks for the one floor to lower, and only when
+`Engine::plan` finds no route. For each target in target order, each
+data-backed currency of the class (essences, Perfect essences, alloys,
+liquid emotions: the only things here that guarantee a modifier) that adds
+that target's modifier at a tier worse than its floor, is not blocked and
+fits the item level is a candidate. A candidate holds when re-planning
+with that one floor moved to the currency's tier gives some route a step
+whose chosen action uses the currency. The smallest tier drop wins, then
+target order, then data order. The `Relaxation` names the target, its
+modifier lines, the old and new floor, the currency (catalogue id and
+English name), the target list to plan with and the blueprints that route
+through the currency. Accepting it is an ordinary plan with that target
+list. It never lowers two floors, never raises one and proposes nothing
+when a route exists.
+
+## Blocker advice in brief
+
+Since 0.2.0. The app never reads the Well of Souls' offers
+(`desecrate-adds-unrevealed`), so a reveal step says up front which
+desecrated modifier to take if no target is offered. `Engine::blocker_advice`
+projects the route (state order only; `None` for a listed route, an
+unknown blueprint or a rejected one) and finds its first reveal; the
+desecration's side is the side of the modifier it reveals. The advice
+needs a later add on that side with an Exalted Orb of any grade; the last
+one is scored. On the item as that exalt finds it, the reveal's slot is
+taken first by a modifier that keeps nothing out (`before`), then by each
+of the class variant's desecrated modifiers on that side that the item
+level reaches and that are not targets (`after`), and the exalt's chance of
+a missing target on that side is read as `add_chance` reads every add: the
+families of every revealed modifier on the item, desecrated ones included,
+leave the pool. Only modifiers that raise the chance are named, at most
+`BLOCKER_LIMIT` (three), best first; equal chances share one
+`BlockerPick`, with the ordinary modifiers they keep out (`keeps_out`).
+Ordinary modifiers a reveal may offer (`reveal-offers-base`) are left out.
+On the relaxed magic belt (Fire Resistance T3, Cold and Lightning T2) the
+double slam's reveal names `desecrated-suffix-to-strength-and-dexterity`
+and `desecrated-suffix-to-strength-and-intelligence`, keeping
+`suffix-to-strength` out of the suffix exalt's pool.
+
+## The essence swap's survival in brief
+
+Since 0.2.0 (the shipped `fractured-essence-swap`; spec, "The essence swap
+and an unrevealed modifier"). A state-ordered step whose action is a
+Perfect or special essence carries `StepView::swap`, an `EssenceSwap`: the
+side its removal takes from (the Crystallisation omen's, else the target's
+side when it is full, else either), the modifiers it may take (`removes`,
+every one there that is not fractured) and the fractured ones it leaves.
+When one it may take is unrevealed, `survival` gives that modifier's
+survival chance as known odds, (n-1) in n over the n modifiers it may take
+(`removal-equally-likely`; that an unrevealed modifier is in the pool is
+owner-stated), and for each outcome the step state order takes next on the
+item that outcome leaves, by its own `next_step` (no rule of its own):
+`stays` on the projection's own hit (which never takes an unrevealed
+modifier), `goes` on the item with the unrevealed modifier removed and the
+essence's modifier added. The step's own odds and its place under Certain
+removals first are not changed. On the test ring (fractured, unrevealed and
+ordinary suffixes, all three slots taken) the survival is 1 in 2; if it
+stays the reveal is next, and if it goes the suffixes are full again, so
+`remove` annuls with Omen of Dextral Annulment at 1 in 2 (it may take the
+essence's modifier), then `desecrate-last` with Dextral Necromancy and
+`reveal-last`. State order keeps no miss branch: an annulment that took the
+essence's modifier re-plans from the item when it is read again, and the
+essence step comes back bound to that modifier. The listed order sets no
+`swap`.
+
 ## The CLI
 
 ```text
@@ -258,6 +383,11 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test rules
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test fracture
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_guides
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test relax
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test blocker
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test essence_swap
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test lord_omen
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_codex
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -272,7 +402,10 @@ two prefixes and a suffix and still rejects a rare with one target.
 `tests/state_order.rs` covers state order over the `test-state-*`
 blueprints and `ring-state-*` items there: the guide's pick, the
 projection, the passed-over exalt, `greater-omen`, the removals, the
-desecration's free slot and the rejections. `tests/last_desecration.rs`
+desecration's free slot and the rejections, and on the shipped blueprints
+a wrong reveal kept through the same-side exalt, Light coming once the
+side is full (`a_wrong_reveal_waits_for_the_same_side_exalt`).
+`tests/last_desecration.rs`
 covers the last-target desecration over the shipped blueprints and the
 owner's two-prefix, one-suffix belt and its later states in
 `tests/items/last-desecration/` (constructed; its README lists them): the
@@ -309,14 +442,79 @@ constructed items under `tests/items/guides/<id>/` (a README each): the
 weapon and the armour refuse a weak magic prefix (`weak-magic-start`), and
 fracture first and the rescue a rare with the wrong modifier count; the
 two state-ordered ones are not in the slot model, so these walks pin
-them. `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
+them. `tests/relax.rs` (0.2.0) covers the tier relaxation over the
+shipped blueprints and the constructed Heavy Belts in `tests/items/relax/`
+(its README lists them): the magic belt with three T2 resistances plans no
+route (`belt_t2_resistances_have_no_route_baseline`) and is offered Fire
+Resistance T2 to T3 by Greater Essence of Insulation
+(`belt_t2_resistances_propose_greater_insulation`), the normal belt is
+offered Cold Resistance by Greater Essence of Thawing through
+`magic-augment-essence` (`a_normal_belt_proposes_greater_thawing`) and
+nothing with the transmutation orbs blocked
+(`a_normal_belt_gets_no_relaxation`), and a selection that routes gets
+nothing (`a_routed_selection_gets_no_relaxation`). `tests/blocker.rs`
+(0.2.0) covers the blocker advice over the shipped blueprints and the
+relaxed magic belt in `tests/items/blocker/`: the double slam's reveal
+names both Strength-sharing desecrated suffixes, after above before
+(`blocker_advice_ranks_the_strength_blockers`), and
+`magic-augment-essence`, whose desecration is its last add, gets none
+(`no_blocker_advice_for_a_last_desecration`). `tests/essence_swap.rs`
+(0.2.0) covers the essence swap's survival over the shipped
+`fractured-essence-swap` and the constructed items in
+`tests/items/essence-swap/` (its README lists them): the issue #28 ring
+with the listed test swap keeps 2 in 4 and carries no survival
+(`no_survival_without_an_unrevealed_modifier_baseline`); the ring with a
+fractured, an unrevealed and an ordinary suffix gets a certain add and a
+survival of 1 in 2, the reveal if it stays and the Dextral annulment at
+1 in 2 if it goes (`a_ring_swap_gives_the_unrevealed_suffix_one_in_two`);
+that ring after "goes" annuls, desecrates and reveals
+(`a_ring_swap_goes_annuls_then_desecrates`); after an annulment that took
+the essence's modifier it re-plans with the essence again
+(`a_ring_swap_annulment_miss_replans`); the quiver is the prefix case with
+Sinistral Annulment
+(`a_quiver_swap_gives_the_unrevealed_prefix_one_in_two`); and a Dusk Ring's
+one ordinary suffix goes for certain with no survival
+(`a_dusk_ring_swap_removes_its_one_throwaway`).
+`tests/lord_omen.rs` (0.2.0, issue #40) covers `lord-omen` over the
+shipped blueprints and the constructed items in `tests/items/lord-omen/`
+(its README lists them): an ordinary target takes the Necromancy omen
+alone (`a_base_pool_target_takes_no_lord_omen_baseline`), a ring's
+Ulaman prefix takes Omen of the Sovereign beside it
+(`a_ring_desecration_for_an_ulaman_target_takes_the_sovereign_omen`), a
+body armour and a belt take none (`an_armour_desecration_takes_no_lord_omen`,
+`a_belt_desecration_takes_no_lord_omen`), a blocked lord omen leaves the
+Necromancy omen and no fallback
+(`a_blocked_lord_omen_keeps_the_necromancy_omen`), both Necromancy omens
+blocked leave an ordinary target the plain bone with no omen
+(`a_blocked_necromancy_omen_takes_the_plain_bone_baseline`) and a lord's
+target the plain bone with its lord omen alone, in the whittle and in
+`essence-desecrate-double-slam`
+(`a_blocked_necromancy_omen_keeps_the_lord_omen`), a Bow's Ulaman prefix
+takes the Sovereign in `weapons-physical-generic`'s preview
+(`a_bow_desecration_for_an_ulaman_target_takes_the_sovereign_omen`),
+and the whittle's waiting desecration lists which target would take which lord omen
+(`a_waiting_whittle_desecration_waits_for_its_lord_omen`); `route.rs`'s
+unit test reads a lord from tier names, two lords or none giving nothing.
+`tests/seeds_codex.rs` (0.2.0) walks `jewellery-catalyst-exalt` through
+`jewellery_catalyst_exalt_hit_path`, `_miss_path` (a missed suffix
+annulled with Dextral Annulment, then the catalysts again) and
+`_start_refuses` (a modifier that is not a target, a magic item) over the
+constructed ring in `tests/items/codex/` (its README lists them), and its
+slam's odds: the plain slam's numbers with the catalyst note
+(`a_catalysing_slam_says_the_favour_is_not_counted`), and no note on a
+slam without Catalysing (`a_plain_slam_carries_no_catalyst_note_baseline`).
+`tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 
 `tests/items/slots/cases.json` is the contract between the model and the
 engine: each case's abstract item and targets and what each of the four
 modelled state-ordered blueprints (`V2`; not the two from the guides)
 must preview on it. 0.1.4 added two cases, `rare-certain-removal-first`
-and `rare-uncertain-removal-keeps-order`, for Certain removals first. The model owns it
+and `rare-uncertain-removal-keeps-order`, for Certain removals first.
+0.2.0 gave each desecrated-pool target its `lord` (issue #40, the
+`lord-omen` rule), which `tests/slots.rs` checks against the tier names of
+the real modifier behind its alias; `magic-two-good`'s desecrations now
+record Omen of the Liege, from the model's side. The model owns it
 (`tests/test_crafting_helper_slot_model.py`); the engine's parity test,
 `tests/slots.rs`, builds a constructed item per case and asserts every
 expectation. A disagreement is settled by the spec, never by editing the

@@ -39,6 +39,8 @@ relies_on = [
     "fractured-not-removed",
     "omens-active-before-use",
     "necromancy-without-pool",
+    "lord-with-side-omen",
+    "lord-omen-classes",
 ]
 
 [[start]]
@@ -174,10 +176,11 @@ when = "bound"
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step.action]]
 currency = "desecrate"
+omens = ["lord-omen"]
 
 # The last target's desecration (docs/models/crafting-slots-spec.md, "The
 # last-target desecration"), when the hardest target was placed some other
@@ -195,7 +198,7 @@ guard = { rarity = ["rare"] }
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step]]
 id = "side-slam"

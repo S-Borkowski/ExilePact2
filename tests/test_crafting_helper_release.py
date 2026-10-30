@@ -21,8 +21,10 @@ own version and is not read.
 `Workflow` reads `.github/workflows/crafting-helper-release.yml` as text and
 checks the properties the release path relies on, signing included, with a
 mutated copy of the file as each check's negative control; the signing
-checks are the waystone roller test's, applied to this app. The workflow
-names neither sibling app.
+checks are the waystone roller test's, applied to this app's two exe
+names: `Crafting.Helper.exe` (the built `Crafting Helper.exe` as GitHub
+stores it) and the legacy `crafting-helper.exe` that 0.1.x copies update
+from. The workflow names neither sibling app.
 
 `RealTree` checks the real checkout, so a version bump that misses a file
 fails here first. It needs the app and its guide in place.
@@ -261,7 +263,9 @@ class Notes(unittest.TestCase):
             write_tree(Path(d))
             body = release.notes("1.2.0", Path(d))
         self.assertTrue(body.startswith("Crafting Helper 1.2.0"))
-        for needed in ("`crafting-helper.exe`", "`SHA256SUMS.txt`", "`crafting-helper.exe.minisig`",
+        for needed in ("`Crafting.Helper.exe`", "`Crafting Helper.exe`", "`SHA256SUMS.txt`",
+                       "`Crafting.Helper.exe.minisig`", "`crafting-helper.exe`", "`crafting-helper.exe.minisig`",
+                       "in-app updates from 0.1.x",
                        "`Ctrl+Alt+C`", "`Ctrl+Alt+X`", "WebView2", "64-bit", "English",
                        "/blob/crafting-helper-v1.2.0/docs/crafting-helper/README.md"):
             self.assertIn(needed, body)
@@ -365,23 +369,34 @@ def workflow_problems(text: str) -> list[str]:
         "windows runner": "runs-on: windows-latest" in lines,
         "checks the tag": 'python -m tools.crafting_helper.release check "$version"' in lines,
         "builds the app": "npm --prefix apps/crafting-helper run release" in lines,
-        "takes the exe": any("apps/crafting-helper/target/release/crafting-helper.exe" in line for line in lines),
-        "hashes it": any(line.startswith("(cd dist-release && sha256sum crafting-helper.exe > SHA256SUMS.txt")
-                         for line in lines),
+        "takes the exe": 'cp "apps/crafting-helper/target/release/Crafting Helper.exe" '
+                         "dist-release/Crafting.Helper.exe" in lines,
+        "copies it under the legacy name":
+            "cp dist-release/Crafting.Helper.exe dist-release/crafting-helper.exe" in lines,
+        "hashes both": any(line.startswith("(cd dist-release && sha256sum Crafting.Helper.exe crafting-helper.exe "
+                                           "> SHA256SUMS.txt") for line in lines),
         "notes from the guide": any(line.startswith("python -m tools.crafting_helper.release notes")
                                     for line in lines),
         "a draft release": any("gh release create" in line for line in lines) and "--draft" in text,
         "its title": any('--title "Crafting Helper $VERSION"' in line for line in lines),
         "attaches the exe, the sums and the signature":
-            "assets=(dist-release/crafting-helper.exe dist-release/SHA256SUMS.txt "
+            "assets=(dist-release/Crafting.Helper.exe dist-release/SHA256SUMS.txt "
+            "dist-release/Crafting.Helper.exe.minisig dist-release/crafting-helper.exe "
             "dist-release/crafting-helper.exe.minisig)" in lines,
+        "checks each signature names its file":
+            "for exe in Crafting.Helper.exe crafting-helper.exe; do" in lines
+            and 'if ! grep -qF "file:$exe" "dist-release/$exe.minisig" \\' in lines,
         "npm cache of this app": "cache-dependency-path: apps/crafting-helper/package-lock.json" in lines,
         "rust cache of this app": "workspaces: apps/crafting-helper" in lines,
         "nothing publishes": "--draft=false" not in text and "--latest" not in text
                              and "gh release edit" not in text,
         "nothing of either sibling": not any(name in text.lower() for name in SIBLINGS),
     }
-    needs.update(wr_test.signing_problems(text, "crafting-helper.exe", "apps/crafting-helper"))
+    # Both names are signed on their own: the renamed exe under the name
+    # GitHub stores, and the legacy name 0.1.x copies look up.
+    for exe, label in (("Crafting.Helper.exe", ""), ("crafting-helper.exe", " (legacy)")):
+        needs.update({name + label: ok for name, ok in wr_test.signing_problems(
+            text, exe, "apps/crafting-helper").items()})
     return [name for name, ok in needs.items() if not ok]
 
 
@@ -401,13 +416,21 @@ class Workflow(unittest.TestCase):
             "windows runner": ("runs-on: windows-latest", "runs-on: ubuntu-latest"),
             "checks the tag": ('release check "$version"', 'release check'),
             "builds the app": ("run release\n", "run build\n"),
-            "takes the exe": ("cp apps/crafting-helper/target/release/crafting-helper.exe",
-                              "cp apps/crafting-helper/target/debug/crafting-helper.exe"),
+            "takes the exe": ('cp "apps/crafting-helper/target/release/Crafting Helper.exe"',
+                              "cp apps/crafting-helper/target/release/crafting-helper.exe"),
+            "copies it under the legacy name": ("cp dist-release/Crafting.Helper.exe dist-release/crafting-helper.exe",
+                                                "true"),
+            "hashes both": ("sha256sum Crafting.Helper.exe crafting-helper.exe", "sha256sum Crafting.Helper.exe"),
+            "checks each signature names its file": ('grep -qF "file:$exe"', 'grep -qF "file:"'),
             "a draft release": ("--draft --verify-tag", "--verify-tag"),
             "its title": ('--title "Crafting Helper $VERSION"', '--title "$VERSION"'),
             "notes from the guide": ("python -m tools.crafting_helper.release notes",
                                      "python -m tools.crafting_helper.release changes"),
             "attaches the exe, the sums and the signature": (" dist-release/crafting-helper.exe.minisig)", ")"),
+            "signs with the app's own CLI and the version (legacy)": (
+                '"$GITHUB_WORKSPACE/dist-release/crafting-helper.exe"', '"$GITHUB_WORKSPACE/dist-release/x.exe"'),
+            "writes the .minisig (legacy)": ("base64 -d dist-release/crafting-helper.exe.sig",
+                                             "cp dist-release/crafting-helper.exe.sig"),
             "rust cache of this app": ("workspaces: apps/crafting-helper", "workspaces: apps"),
             "signs with the app's own CLI and the version": ('tauri signer sign --app-version "$VERSION" ',
                                                              "tauri signer sign "),
@@ -416,8 +439,8 @@ class Workflow(unittest.TestCase):
                 "GH_TOKEN: ${{ github.token }}\n      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"),
             "fails without the key": ("\n            exit 1\n          fi\n          npm --prefix",
                                       "\n          fi\n          npm --prefix"),
-            "writes the .minisig": ("base64 -d dist-release/crafting-helper.exe.sig",
-                                    "cp dist-release/crafting-helper.exe.sig"),
+            "writes the .minisig": ("base64 -d dist-release/Crafting.Helper.exe.sig",
+                                    "cp dist-release/Crafting.Helper.exe.sig"),
         }
         for name, (old, new) in mutations.items():
             with self.subTest(name=name):

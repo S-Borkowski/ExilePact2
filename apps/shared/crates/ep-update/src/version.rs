@@ -33,11 +33,15 @@ pub const WAYSTONE_ROLLER: Product = Product {
     exe_name: "waystone-roller.exe",
 };
 
-/// The crafting helper, as its releases name it.
+/// The crafting helper, as its releases name it. Its exe is built as
+/// `Crafting Helper.exe` and attached as `Crafting.Helper.exe`, the name
+/// GitHub stores (a space becomes a dot), signed under that name. From
+/// 0.2.0 each release also attaches the legacy `crafting-helper.exe` with
+/// its own signature, which 0.1.x copies look up.
 pub const CRAFTING_HELPER: Product = Product {
     name: "Crafting Helper",
     tag_prefix: "crafting-helper-v",
-    exe_name: "crafting-helper.exe",
+    exe_name: "Crafting.Helper.exe",
 };
 
 impl Product {

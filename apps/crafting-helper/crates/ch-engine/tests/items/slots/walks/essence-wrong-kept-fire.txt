@@ -1,0 +1,20 @@
+Item Class: Amulets
+Rarity: Rare
+Storm Beads
+Jade Amulet
+--------
+Requires: Level 8
+--------
+Item Level: 82
+--------
+{ Implicit Modifier — Attribute }
++12(10-15) to Dexterity
+--------
+{ Prefix Modifier "Zaffre" (Tier: 2) — Mana }
++170(165-179) to maximum Mana
+{ Prefix Modifier "Healthy" (Tier: 8) — Life }
++25(20-29) to maximum Life
+{ Desecrated Suffix Modifier "of Kurgal" (Tier: 1) — Elemental, Cold, Chaos, Resistance }
++15(13-17)% to Cold and Chaos Resistances
+{ Suffix Modifier "of Magma" (Tier: 2) — Elemental, Fire, Resistance }
++38(36-40)% to Fire Resistance

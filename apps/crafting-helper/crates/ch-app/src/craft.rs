@@ -82,19 +82,20 @@
 //! The copy marked Rust's in `docs/crafting-helper/ui-design.md` §
 //! "Rust-produced copy" is made here: a step's instruction and target
 //! modifiers ([`step_instruction`], [`step_targets`]), [`odds_words`],
-//! [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
+//! a reveal step's [`blocker_line`], an essence swap's [`survival_line`], [`fallback_line`], [`desecration_fallback_line`], [`floor_options`], the branch lines
 //! ([`branch_lines`], [`state_branch_lines`]) and the history summary
 //! ([`summary`]).
 
 use ch_engine::ch_blueprint::catalogue::{
-    bones_for, Currency, ItemGroup, OmenChange, GREATER_OMEN, SIDE_OMEN,
+    bones_for, Currency, ItemGroup, OmenChange, OmenFits, GREATER_OMEN, LORD_OMEN, SIDE_OMEN,
 };
 use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
 use ch_engine::ch_item::{self, Item, Rarity};
 use ch_engine::{
-    catalogue_item, ChosenAction, Engine, Guide, Next, Outcome, OutcomeKind, Refusal, Route,
-    Started, Status, StepView, Target, WantedMod,
+    catalogue_item, BlockerAdvice, BlockerMod, BlockerPick, ChosenAction, Engine, EssenceSwap,
+    Guide, Next, Outcome, OutcomeKind, Refusal, Route, Started, Status, StepView, SwapMod, Target,
+    WantedMod,
 };
 
 use crate::settings::CatalogueEntry;
@@ -102,7 +103,7 @@ use crate::view::{
     BlockedFrom, ChosenTarget, CraftBlockedEntry, CraftBlockedView, CraftItemView, CraftMode,
     CraftView, CurrentStepView, FloorOption, GuideStatusView, GuidingView, HistoryEntry,
     ItemModView, ModSide, OutcomeSource, OutcomeWord, PlanningView, PreviewView, RejectedLine,
-    RouteChoice, RouteView, StepLineView, TargetChoice, TargetChoices,
+    RelaxationView, RouteChoice, RouteView, StepLineView, TargetChoice, TargetChoices,
 };
 
 /// Craft of Exile's Path of Exile 2 calculator, opened in the default
@@ -1005,18 +1006,23 @@ fn preview(
         Err(why) => {
             return PreviewView {
                 route: None,
+                route_number: None,
+                routes: Vec::new(),
                 other_routes: Vec::new(),
                 rejected: vec![RejectedLine {
                     blueprint: String::new(),
                     name: "Every blueprint".to_string(),
                     reason: why.to_string(),
                 }],
+                relaxation: None,
             }
         }
     };
     let Some(route) = previewed(&plan.routes, chosen) else {
         return PreviewView {
             route: None,
+            route_number: None,
+            routes: Vec::new(),
             other_routes: Vec::new(),
             rejected: plan
                 .rejected
@@ -1027,12 +1033,18 @@ fn preview(
                     reason: r.reason.to_string(),
                 })
                 .collect(),
+            relaxation: relaxation(engine, item, targets, blocked),
         };
     };
     let blueprint = engine.blueprint(&route.blueprint).map(|r| r.blueprint());
     // The same blueprint's route with Omen of Whittling added to the list,
     // taken once, the first time a step asks for its annulment.
     let mut longer: Option<Option<Route>> = None;
+    // The reveal that names a blocker, if the route has one.
+    let advice = engine
+        .blocker_advice(item, targets, blocked, &route.blueprint)
+        .ok()
+        .flatten();
     let mut steps = Vec::new();
     for (i, s) in route.steps.iter().enumerate() {
         let named = annulment_by_level(blueprint, s, blocked, |list| {
@@ -1067,16 +1079,23 @@ fn preview(
                 .ok()
                 .and_then(|started| started.route.steps.get(i).cloned())
         };
-        steps.push(step_line(
-            blueprint,
-            &shown,
-            i + 1,
-            item,
-            blocked,
-            targets,
-            without,
-        ));
+        let mut line = step_line(blueprint, &shown, i + 1, item, blocked, targets, without);
+        line.blocker = advice
+            .as_ref()
+            .filter(|a| a.position == i && a.step == s.id)
+            .map(blocker_line);
+        steps.push(line);
     }
+    let routes: Vec<RouteChoice> = plan
+        .routes
+        .iter()
+        .enumerate()
+        .map(|(i, r)| RouteChoice {
+            number: i + 1,
+            blueprint: r.blueprint.clone(),
+            name: r.name.clone(),
+        })
+        .collect();
     PreviewView {
         route: Some(RouteView {
             blueprint: route.blueprint.clone(),
@@ -1084,17 +1103,43 @@ fn preview(
             source: source_line(&route.source),
             steps,
         }),
-        other_routes: plan
-            .routes
+        // A route's number is its place in the engine's order, so choosing
+        // one moves only which is previewed, never its number.
+        route_number: routes
+            .iter()
+            .find(|r| r.blueprint == route.blueprint)
+            .map(|r| r.number),
+        other_routes: routes
             .iter()
             .filter(|r| r.blueprint != route.blueprint)
-            .map(|r| RouteChoice {
-                blueprint: r.blueprint.clone(),
-                name: r.name.clone(),
-            })
+            .cloned()
             .collect(),
+        routes,
         rejected: Vec::new(),
+        relaxation: None,
     }
+}
+
+/// With no route, the engine's one-target tier relaxation in words: which
+/// floor to lower, to what, and the currency that then adds it.
+fn relaxation(
+    engine: &Engine,
+    item: &Item,
+    targets: &[Target],
+    blocked: &[String],
+) -> Option<RelaxationView> {
+    let relax = engine.relax(item, targets, blocked).ok()??;
+    let text = mod_text(&relax.lines);
+    Some(RelaxationView {
+        text: format!(
+            "Lower {text} from T{} to T{}: {} adds it at T{}, which unlocks a route.",
+            relax.from, relax.to, relax.name, relax.to
+        ),
+        mod_id: relax.mod_id,
+        from: relax.from,
+        to: relax.to,
+        currency: relax.name,
+    })
 }
 
 fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
@@ -1122,20 +1167,29 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                 copy.blocked = list.to_vec();
                 engine?.current(&copy, item).ok()
             };
-            Some(current_step(
-                engine,
+            let mut line = step_line(
                 blueprint,
-                g,
-                step_line(
-                    blueprint,
-                    &shown,
-                    number,
+                &shown,
+                number,
+                item,
+                &g.guide.blocked,
+                own,
+                without,
+            );
+            // The current step is the first of the projection made on the
+            // item it is shown on.
+            line.blocker = engine.and_then(|engine| {
+                blocker_at(
+                    engine,
                     item,
-                    &g.guide.blocked,
                     own,
-                    without,
-                ),
-            ))
+                    &g.guide.blocked,
+                    &g.guide.blueprint,
+                    &shown.step.id,
+                    0,
+                )
+            });
+            Some(current_step(engine, blueprint, g, line))
         }
         (Next::Stuck { step, .. }, _) => {
             let (number, instruction) = guide_place(blueprint, g, step);
@@ -1158,6 +1212,8 @@ fn guiding_view(engine: Option<&Engine>, g: &Guiding) -> GuidingView {
                     uses: Vec::new(),
                     odds: None,
                     fallback: None,
+                    blocker: None,
+                    survival: None,
                 },
             ))
         }
@@ -1431,7 +1487,28 @@ fn step_line(
                     Order::Listed => fallback_line(b, step, item, blocked),
                 }),
         ),
+        // The caller's: it knows where the step stands in the projection.
+        blocker: None,
+        survival: survival_line(step, item, targets),
     }
+}
+
+/// The blocker line of the step `id` at `position` in the projection the
+/// engine makes for `blueprint` on `item` ([`Engine::blocker_advice`]):
+/// `Some` only on the reveal it advises.
+fn blocker_at(
+    engine: &Engine,
+    item: &Item,
+    targets: &[Target],
+    blocked: &[String],
+    blueprint: &str,
+    id: &str,
+    position: usize,
+) -> Option<String> {
+    let advice = engine
+        .blocker_advice(item, targets, blocked, blueprint)
+        .ok()??;
+    (advice.step == id && advice.position == position).then(|| blocker_line(&advice))
 }
 
 /// The fallback line of a state-ordered step taken in place of the last
@@ -1621,9 +1698,23 @@ pub fn step_targets(step: &StepView, item: &Item) -> Vec<String> {
 /// - `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral
 ///   Exaltation on the suffix side, for any modifier`.
 ///
+/// A desecration whose action carries a Necromancy omen says the omen comes
+/// first, then the bone, then the side the omen gives the desecrated
+/// modifier, and the targets it may place when it has any
+/// ([`necromancy_instruction`]).
+///
 /// Any other step (no target left, or a manual step) keeps the blueprint's
 /// `say`.
 pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> String {
+    if step.goal == Goal::Desecrate {
+        if let Some(said) = step
+            .action
+            .as_ref()
+            .and_then(|action| necromancy_instruction(step, action, item))
+        {
+            return said;
+        }
+    }
     if step.goal == Goal::RemoveUnwanted {
         if let Some(action) = &step.action {
             return removal_instruction(action, item, wanted);
@@ -1643,7 +1734,7 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
         return step.say.clone();
     };
     let uses = uses_words(action);
-    match step.side {
+    let said = match step.side {
         Some(side) => format!(
             "{uses} on the {} side for {}",
             side_word(side),
@@ -1661,7 +1752,276 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
                 .collect();
             format!("{uses} for {}", word_list(&each, "or"))
         }
+    };
+    match step.swap.as_ref().and_then(swap_words) {
+        Some(swap) => format!("{said}; {swap}"),
+        None => said,
     }
+}
+
+/// An essence swap's removal in words ([`EssenceSwap`]): the modifiers it
+/// may take, by their text on the item (`one at random` when more than
+/// one), then the fractured ones it leaves. `None` when it may take none.
+///
+/// - `it removes the unrevealed desecrated suffix or +10(9-12) to
+///   Dexterity, one at random; +23(21-25)% to Fire Resistance is fractured
+///   and stays`;
+/// - `it removes +10(9-12) to Dexterity; …` (one candidate: certain).
+fn swap_words(swap: &EssenceSwap) -> Option<String> {
+    if swap.removes.is_empty() {
+        return None;
+    }
+    let removes: Vec<String> = swap.removes.iter().map(swap_mod_words).collect();
+    let mut said = format!("it removes {}", word_list(&removes, "or"));
+    if removes.len() > 1 {
+        said.push_str(", one at random");
+    }
+    let fractured: Vec<String> = swap.fractured.iter().map(swap_mod_words).collect();
+    match fractured.as_slice() {
+        [] => {}
+        [one] => said.push_str(&format!("; {one} is fractured and stays")),
+        many => said.push_str(&format!(
+            "; {} are fractured and stay",
+            word_list(many, "and")
+        )),
+    }
+    Some(said)
+}
+
+/// A modifier an essence swap may take or leaves, by its text on the item
+/// (without the ` (fractured)` marker, which the words after it say); an
+/// unrevealed one, or one an earlier step of the preview placed, by what
+/// it is.
+fn swap_mod_words(m: &SwapMod) -> String {
+    let side = side_word(m.side);
+    if !m.lines.is_empty() {
+        let lines: Vec<&str> = m
+            .lines
+            .iter()
+            .map(|l| l.strip_suffix(" (fractured)").unwrap_or(l))
+            .collect();
+        lines.join(" / ")
+    } else if m.unrevealed {
+        format!("the unrevealed desecrated {side}")
+    } else {
+        format!("the {side} an earlier step adds")
+    }
+}
+
+/// An essence swap's survival line ([`ch_engine::Survival`]): the chance the
+/// unrevealed desecrated modifier its removal may take survives, then the
+/// instruction of the step the route takes next if it stays and if it goes
+/// ([`step_instruction`], on the item that outcome leaves). An annulment
+/// taken on "goes" may take the essence's modifier: the line gives its
+/// chance of sparing it and says the route re-plans if it does not. `None`
+/// on a step without one.
+///
+/// - `The unrevealed desecrated suffix survives the swap 1 in 2 (each
+///   modifier it may take equally likely; owner-stated, not established).
+///   If it stays, <reveal>. If it goes, Orb of Annulment with Omen of
+///   Dextral Annulment to remove +10(9-12) to Dexterity; it takes one
+///   modifier at random, so it spares +#% increased Mana Regeneration Rate
+///   1 in 2; if it takes it, the route re-plans when the item is read
+///   again.`
+pub fn survival_line(step: &StepView, item: &Item, wanted: &[Target]) -> Option<String> {
+    let swap = step.swap.as_ref()?;
+    let survival = swap.survival.as_ref()?;
+    let side = side_word(survival.side);
+    let mut line = format!(
+        "The unrevealed desecrated {side} survives the swap {} (each modifier it may take equally likely; owner-stated, not established).",
+        hits_in_total(&survival.odds)
+    );
+    // "Stays": the removal took the first non-target it may take that is
+    // on the item as read; "goes": it took the unrevealed one.
+    let stays_item = swap
+        .removes
+        .iter()
+        .find(|m| !m.unrevealed && !m.desecrated && m.target.is_none() && !m.lines.is_empty())
+        .map_or_else(
+            || item.clone(),
+            |taken| without_modifier(item, |m| mod_lines(m) == taken.lines),
+        );
+    match survival.stays.as_deref() {
+        Some(next) => line.push_str(&format!(
+            " If it stays, {}.",
+            step_instruction(next, &stays_item, wanted)
+        )),
+        None => line.push_str(" If it stays, read the item again for the next step."),
+    }
+    let gone_item = without_modifier(item, |m| {
+        m.unrevealed && side_of_kind(m.kind) == Some(survival.side)
+    });
+    match survival.goes.as_deref() {
+        Some(next) => {
+            line.push_str(&format!(
+                " If it goes, {}",
+                step_instruction(next, &gone_item, wanted)
+            ));
+            let spared = step.target.as_deref().map(|id| mod_text_of(item, id));
+            match (next.goal, next.odds.as_ref(), spared) {
+                (Goal::RemoveUnwanted, Some(odds @ Odds::Known { .. }), Some(spared)) => {
+                    line.push_str(&format!(
+                        ", so it spares {spared} {}; if it takes it, the route re-plans when the item is read again.",
+                        hits_in_total(odds)
+                    ));
+                }
+                _ => line.push('.'),
+            }
+        }
+        None => line.push_str(" If it goes, read the item again for the next step."),
+    }
+    Some(line)
+}
+
+/// Known odds as `<hits> in <total>`; unknown odds in [`odds_percent`]'s
+/// form.
+fn hits_in_total(odds: &Odds) -> String {
+    match odds {
+        Odds::Known { hits, total, .. } => format!("{hits} in {total}"),
+        Odds::Unknown { .. } => odds_percent(odds),
+    }
+}
+
+/// A modifier's lines as the item shows them.
+fn mod_lines(m: &ch_item::Modifier) -> Vec<String> {
+    m.lines.iter().map(|l| l.text.clone()).collect()
+}
+
+/// A prefix's or suffix's side; `None` for any other kind.
+fn side_of_kind(kind: ch_item::ModKind) -> Option<Side> {
+    match kind {
+        ch_item::ModKind::Prefix => Some(Side::Prefix),
+        ch_item::ModKind::Suffix => Some(Side::Suffix),
+        _ => None,
+    }
+}
+
+/// `item` without its first modifier `which` picks (unchanged when none
+/// does): what an outcome that took that modifier leaves to read.
+fn without_modifier(item: &Item, which: impl Fn(&ch_item::Modifier) -> bool) -> Item {
+    let mut after = item.clone();
+    if let Some(at) = after.modifiers.iter().position(which) {
+        after.modifiers.remove(at);
+    }
+    after
+}
+
+/// A desecration's instruction when its action carries a Necromancy omen
+/// (a Sinistral or Dextral omen of a desecration): the omen, then the bone
+/// `with` any other omen, the side the desecrated modifier will be on, and
+/// the targets it may place. A target off that side, which a route should
+/// not name, says its own. `None` for an action without one.
+///
+/// - `Use Omen of Dextral Necromancy, then apply the Preserved Collarbone;
+///   the desecrated modifier will be a suffix, for +#% to Lightning
+///   Resistance`;
+/// - `Use Omen of Sinistral Necromancy, then apply the Preserved Jawbone;
+///   the desecrated modifier will be a prefix` (no target).
+///
+/// When the engine left the omen waiting for the last target's side (the
+/// targets lie on both sides), it names both omens, each with its side, and
+/// each target with its own:
+///
+/// - `Use Omen of Sinistral Necromancy if the last target is a prefix, or
+///   Omen of Dextral Necromancy if it is a suffix, then apply the Preserved
+///   Collarbone, for +#% to Fire Resistance (suffix) or …(prefix)`.
+///
+/// A lord omen (Sovereign, Liege, Blackblooded: the `lord-omen` rule) is
+/// named beside the Necromancy omen, both before the bone; one that waits
+/// for the last target says which target takes it:
+///
+/// - `Use Omen of Sinistral Necromancy and Omen of the Sovereign, then
+///   apply the Preserved Collarbone; the desecrated modifier will be a
+///   prefix, for #% increased Attack Damage while on Low Life`;
+/// - `Use Omen of Sinistral Necromancy if the last target is a prefix, or
+///   Omen of Dextral Necromancy if it is a suffix, with Omen of the
+///   Sovereign if it is #% increased Attack Damage while on Low Life, then
+///   apply …`.
+fn necromancy_instruction(step: &StepView, action: &ChosenAction, item: &Item) -> Option<String> {
+    let necromancy = action.omens.iter().enumerate().find_map(|(at, id)| {
+        let omen = catalogue_item(id)?.omen.as_ref()?;
+        let necromancy = omen.fits == OmenFits::Desecration && omen.change == OmenChange::Side;
+        necromancy
+            .then_some(omen.side)
+            .flatten()
+            .map(|side| (at, side))
+    });
+    let lord = action.omens.iter().position(|id| {
+        catalogue_item(id)
+            .and_then(|c| c.omen.as_ref())
+            .is_some_and(|o| o.change == OmenChange::Lord)
+    });
+    let name_at = |at: usize| {
+        action
+            .omen_names
+            .get(at)
+            .cloned()
+            .unwrap_or_else(|| currency_name(&action.omens[at]))
+    };
+    let (lead, side) = match necromancy {
+        Some((at, side)) => {
+            let mut lead = format!("Use {}", name_at(at));
+            if let Some(l) = lord {
+                lead.push_str(&format!(" and {}", name_at(l)));
+            }
+            (lead, Some((at, side)))
+        }
+        None if action.side_omen_waits => {
+            let currency = Currency::of(&action.currency)?;
+            let name = |side: Side| currency.side_omen(side).map(|e| currency_name(e.id));
+            let mut lead = format!(
+                "Use {} if the last target is a prefix, or {} if it is a suffix",
+                name(Side::Prefix)?,
+                name(Side::Suffix)?
+            );
+            let texts = step_targets(step, item);
+            for waiting in &action.lord_omens_waiting {
+                let text = step
+                    .targets
+                    .iter()
+                    .position(|id| *id == waiting.target)
+                    .and_then(|at| texts.get(at).cloned())
+                    .unwrap_or_else(|| waiting.target.clone());
+                lead.push_str(&format!(", with {} if it is {text}", waiting.name));
+            }
+            (lead, None)
+        }
+        None => return None,
+    };
+    let others: Vec<String> = action
+        .omen_names
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| side.is_none_or(|(at, _)| *i != at))
+        .filter(|(i, _)| side.is_none() || lord != Some(*i))
+        .map(|(_, name)| name.clone())
+        .collect();
+    let mut said = format!("{lead}, then apply the {}", action.name);
+    if !others.is_empty() {
+        said.push_str(" with ");
+        said.push_str(&word_list(&others, "and"));
+    }
+    let side = side.map(|(_, side)| side);
+    if let Some(side) = side {
+        said.push_str(&format!(
+            "; the desecrated modifier will be a {}",
+            side_word(side)
+        ));
+    }
+    let targets = step_targets(step, item);
+    if !targets.is_empty() {
+        let each: Vec<String> = step
+            .targets
+            .iter()
+            .zip(&targets)
+            .map(|(id, text)| match target_kind(item, id) {
+                Some(kind) if Some(kind) != side => format!("{text} ({})", side_word(kind)),
+                _ => text.clone(),
+            })
+            .collect();
+        said.push_str(&format!(", for {}", word_list(&each, "or")));
+    }
+    Some(said)
 }
 
 /// The currency, `with` each omen.
@@ -1791,21 +2151,70 @@ fn word_list(items: &[String], last: &str) -> String {
 pub fn odds_words(odds: &Odds) -> String {
     match odds {
         Odds::Unknown { reason } => format!("odds unknown: {reason}"),
-        Odds::Known { percent, basis, .. } => {
+        Odds::Known { basis, .. } => format!("{} ({basis})", odds_percent(odds)),
+    }
+}
+
+/// The odds' percent form, as [`odds_words`] writes it before the basis:
+/// `~12%`, `~5.0%`, `under 1%`, `certain`, `no chance`; `odds unknown`
+/// for unknown odds.
+pub fn odds_percent(odds: &Odds) -> String {
+    match odds {
+        Odds::Unknown { .. } => "odds unknown".to_string(),
+        Odds::Known { percent, .. } => {
             let p = *percent;
             if p >= 100.0 {
-                format!("certain ({basis})")
+                "certain".to_string()
             } else if p <= 0.0 {
-                format!("no chance ({basis})")
+                "no chance".to_string()
             } else if p < 1.0 {
-                format!("under 1% ({basis})")
+                "under 1%".to_string()
             } else if p < 10.0 {
-                format!("~{p:.1}% ({basis})")
+                format!("~{p:.1}%")
             } else {
-                format!("~{p:.0}% ({basis})")
+                format!("~{p:.0}%")
             }
         }
     }
+}
+
+/// A reveal step's blocker line ([`Engine::blocker_advice`]): `If <target>
+/// is not offered, take <modifiers> (keeps out <competitors>): the <side>
+/// exalt's chance of a target goes from <before> to <after>`, then `; else
+/// <modifiers> (keeps out …): from <before> to <after>` for each further
+/// pick, best first, in [`odds_percent`]'s forms.
+pub fn blocker_line(advice: &BlockerAdvice) -> String {
+    let target = advice
+        .target
+        .as_ref()
+        .map(|t| mod_text(&t.lines))
+        .unwrap_or_else(|| "the target".to_string());
+    let before = odds_percent(&advice.before);
+    let texts =
+        |mods: &[BlockerMod]| -> Vec<String> { mods.iter().map(|m| mod_text(&m.lines)).collect() };
+    let pick = |p: &BlockerPick| {
+        let keeps = texts(&p.keeps_out);
+        let mods = word_list(&texts(&p.mods), "or");
+        if keeps.is_empty() {
+            mods
+        } else {
+            format!("{mods} (keeps out {})", word_list(&keeps, "and"))
+        }
+    };
+    let mut line = format!("If {target} is not offered, take ");
+    for (i, p) in advice.picks.iter().enumerate() {
+        let after = odds_percent(&p.after);
+        if i == 0 {
+            line.push_str(&format!(
+                "{}: the {} exalt's chance of a target goes from {before} to {after}",
+                pick(p),
+                side_word(advice.side)
+            ));
+        } else {
+            line.push_str(&format!("; else {}: from {before} to {after}", pick(p)));
+        }
+    }
+    line
 }
 
 /// A target's floor options: `As high as possible (T<best>)`, then
@@ -1843,10 +2252,17 @@ pub fn fallback_line(
     let bp_step = blueprint_step(blueprint, &step.id)?;
     let first = bp_step.actions.first()?.get_ref();
     let first_name = action_name(first.currency.get_ref());
-    let side = target_side(item, step);
+    let sides = side_omen_sides(item, step);
     let mut names: Vec<String> = Vec::new();
     for passed in bp_step.actions.iter().take(action.alternative) {
-        for id in action_ids(passed.get_ref(), item, side) {
+        let ids = match sides.as_slice() {
+            [] => action_ids(passed.get_ref(), item, None),
+            _ => sides
+                .iter()
+                .flat_map(|&side| action_ids(passed.get_ref(), item, Some(side)))
+                .collect(),
+        };
+        for id in ids {
             if blocked.contains(&id) {
                 let name = currency_name(&id);
                 if !names.contains(&name) {
@@ -1949,7 +2365,8 @@ fn blueprint_step<'a>(blueprint: &'a Blueprint, id: &str) -> Option<&'a Step> {
 
 /// A blueprint action in words: its currency, `with` each omen it names,
 /// the side omen resolved for `side`. Omen of Greater Exaltation's
-/// placeholder is left out: it names the omen only where two slots are free.
+/// placeholder is left out: it names the omen only where two slots are free;
+/// so is the lord omen's, which names one only for a lord's target.
 fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side>) -> String {
     let written = action.currency.get_ref().as_str();
     let currency = Currency::of(written);
@@ -1961,7 +2378,7 @@ fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side
                 .zip(side)
                 .and_then(|(c, s)| c.side_omen(s))
                 .map(|e| currency_name(e.id)),
-            GREATER_OMEN => None,
+            GREATER_OMEN | LORD_OMEN => None,
             id => Some(currency_name(id)),
         })
         .collect();
@@ -1977,6 +2394,24 @@ fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side
 fn target_side(item: &Item, step: &StepView) -> Option<Side> {
     let from_target = step.target.as_deref().and_then(|id| target_kind(item, id));
     from_target.or(step.side)
+}
+
+/// The sides a listed step's `side-omen` may resolve to, as the engine
+/// resolves it: the bound target's or the step's `side`; else the side
+/// every one of the step's targets shares, or both when they lie on both
+/// sides (an omen waiting for the last target's side, which either side's
+/// omen being blocked passes over). Empty when the step has no target.
+fn side_omen_sides(item: &Item, step: &StepView) -> Vec<Side> {
+    if let Some(side) = target_side(item, step) {
+        return vec![side];
+    }
+    let mut sides = Vec::new();
+    for side in step.targets.iter().filter_map(|id| target_kind(item, id)) {
+        if !sides.contains(&side) {
+            sides.push(side);
+        }
+    }
+    sides
 }
 
 /// Every id a blueprint action names, its placeholders resolved as far as
@@ -2006,6 +2441,9 @@ fn action_ids(
         if id == SIDE_OMEN {
             let resolved = currency.zip(side).and_then(|(c, s)| c.side_omen(s));
             ids.extend(resolved.map(|e| e.id.to_string()));
+        } else if id == LORD_OMEN {
+            // A blocked lord omen resolves to nothing and never passes an
+            // alternative over, so it names no id here.
         } else {
             ids.push(id.to_string());
         }
@@ -2112,7 +2550,7 @@ pub(crate) fn state_branch_lines(
     };
     let projection = now.or_else(followed);
     let hit = match projection.as_deref() {
-        Some([_, next, ..]) => step_instruction(next, item, targets),
+        Some([_, next, ..]) => in_a_line(step_instruction(next, item, targets)),
         Some(_) => "the craft is done".to_string(),
         None => PICKED_AFTER_HIT.to_string(),
     };
@@ -2175,7 +2613,18 @@ impl Where<'_> {
         if view.targets.iter().any(|id| !met.contains(id)) {
             view.targets.retain(|id| !met.contains(id));
         }
-        step_instruction(&view, self.item, self.targets)
+        in_a_line(step_instruction(&view, self.item, self.targets))
+    }
+}
+
+/// A composed instruction as a branch line names it, after `On a hit:` or
+/// `then`: the Necromancy sentence's leading `Use` in lower case
+/// (`then use Omen of Dextral Necromancy, then apply the …`). Any other
+/// instruction starts with a name and is kept as it is.
+fn in_a_line(instruction: String) -> String {
+    match instruction.strip_prefix("Use ") {
+        Some(rest) => format!("use {rest}"),
+        None => instruction,
     }
 }
 

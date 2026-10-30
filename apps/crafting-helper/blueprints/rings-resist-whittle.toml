@@ -8,9 +8,15 @@ source = "Discord post 10, owner's paste, 2026-10-28"
 notes = """
 The poster's ring aimed at three top-tier resistances and flat damage, and \
 said a different set of suffixes works the same way. No omen but Whittling \
-is used: every slot after the first is brute-forced. A reveal that misses \
+is used to fill: every slot after the first is brute-forced. The \
+desecration takes the Necromancy omen of the last target's side, so the \
+desecrated modifier lands on that side. A reveal that misses \
 goes back to whittling. Whether a Chaos Orb can take off a desecrated \
 modifier is not established in the docs."""
+# The desecration names the last target lord's omen beside the Necromancy
+# omen, or alone on the plain bone when the Necromancy omen is blocked
+# (docs/models/crafting-slots-spec.md, "`lord-omen`").
+relies_on = ["lord-with-side-omen", "lord-omen-classes"]
 
 [[start]]
 rarity = ["rare"]
@@ -47,8 +53,16 @@ goal = "desecrate"
 bind = "last-remaining"
 when = "bound"
 
+# The Necromancy omen of the last target's side makes the desecrated
+# modifier land there; without it, the plain bone, still with the lord's
+# omen for a lord's target.
 [[step.action]]
 currency = "desecrate"
+omens = ["side-omen", "lord-omen"]
+
+[[step.action]]
+currency = "desecrate"
+omens = ["lord-omen"]
 
 [[step]]
 id = "reveal"

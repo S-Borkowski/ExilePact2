@@ -18,6 +18,9 @@ with the suffixes full, a Perfect Exalted Orb can only land a prefix. Only \
 one desecrated modifier fits on an item, so the Omen of Light takes the \
 blocker off before the desecration for Spirit; with the blocker gone, one \
 suffix is left open."""
+# Each desecration names the target lord's omen beside the Necromancy omen
+# (docs/models/crafting-slots-spec.md, "`lord-omen`").
+relies_on = ["lord-with-side-omen", "lord-omen-classes"]
 
 [[start]]
 rarity = ["rare"]
@@ -90,7 +93,7 @@ side = "suffix"
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step]]
 id = "reveal-block"
@@ -147,7 +150,7 @@ when = "bound"
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step]]
 id = "reveal-spirit"

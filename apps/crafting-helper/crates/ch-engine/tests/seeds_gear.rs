@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use ch_engine::{Engine, Next, Outcome, OutcomeKind, Status, StepView, Target};
 use ch_item::Item;
-use common::{crate_dir, item, next_step, observe, real, start, targets};
+use common::{blocked, crate_dir, item, next_step, observe, real, start, targets};
 
 use OutcomeKind::{Hit, Miss};
 
@@ -313,12 +313,16 @@ fn rings_resist_whittle_hit_path() {
             vec!["omen-of-whittling".to_string()]
         )
     );
-    // The last target, desecrated with no omen (the post uses none).
+    // The last target, desecrated with its side's Necromancy omen, so the
+    // desecrated modifier is a suffix.
     let desecrate = next_of(&outs[1]);
     assert_eq!(desecrate.target.as_deref(), Some(LIGHTNING));
     assert_eq!(
         uses(desecrate),
-        ("preserved-collarbone".to_string(), Vec::new())
+        (
+            "preserved-collarbone".to_string(),
+            vec![DEXTRAL_NECROMANCY.to_string()]
+        )
     );
     assert_eq!(gained(&outs[3]), [LIGHTNING]);
     assert!(outs.iter().all(|o| o.result == Hit));
@@ -352,6 +356,92 @@ fn rings_resist_whittle_miss_path() {
     );
     assert_eq!(gained(&outs[5]), [LIGHTNING]);
     assert_eq!(skipped(&outs[5]), ["desecrate", "reveal"]);
+    // The desecration on the way took the last target's omen, as on the hit
+    // path.
+    assert_eq!(
+        uses(next_of(&outs[2])),
+        (
+            "preserved-collarbone".to_string(),
+            vec![DEXTRAL_NECROMANCY.to_string()]
+        )
+    );
+}
+
+const SINISTRAL_NECROMANCY: &str = "omen-of-sinistral-necromancy";
+const DEXTRAL_NECROMANCY: &str = "omen-of-dextral-necromancy";
+
+/// The planned `rings-resist-whittle` route's `desecrate` step on the
+/// whittle's start, with `ids` blocked.
+fn whittle_desecration(list: &[Target], ids: &[&str]) -> StepView {
+    let engine = gear();
+    let start = state("rings-resist-whittle", "01-start.txt");
+    let plan = engine.plan(&start, list, &blocked(ids)).unwrap();
+    let route = plan
+        .routes
+        .iter()
+        .find(|r| r.blueprint == "rings-resist-whittle")
+        .unwrap_or_else(|| panic!("the whittle does not plan: {:?}", plan.rejected));
+    route
+        .steps
+        .iter()
+        .find(|s| s.id == "desecrate")
+        .unwrap_or_else(|| panic!("no `desecrate` step: {:?}", route.steps))
+        .clone()
+}
+
+/// The alternative a step took, its omens, and whether its Necromancy omen
+/// waits for the last target's side.
+fn taken(step: &StepView) -> (usize, Vec<String>, bool) {
+    let action = step.action.as_ref().expect("the desecration has an action");
+    assert_eq!(action.omens.len(), action.omen_names.len(), "{action:?}");
+    (
+        action.alternative,
+        action.omens.clone(),
+        action.side_omen_waits,
+    )
+}
+
+#[test]
+fn a_whittle_desecration_takes_the_shared_sides_omen() {
+    // Three suffixes missing: the bone is still unbound at plan time, but
+    // every target it may place is a suffix, so its omen is Dextral.
+    let list = whittle_targets();
+    let step = whittle_desecration(&list, &[]);
+    assert_eq!(step.target, None);
+    assert_eq!(step.targets, [FIRE, COLD, LIGHTNING]);
+    assert_eq!(
+        taken(&step),
+        (0, vec![DEXTRAL_NECROMANCY.to_string()], false)
+    );
+    assert_eq!(
+        step.action.as_ref().unwrap().side,
+        Some(ch_engine::ch_blueprint::Side::Suffix)
+    );
+    // That omen blocked: the plain bone, the second alternative.
+    let step = whittle_desecration(&list, &[DEXTRAL_NECROMANCY]);
+    assert_eq!(taken(&step), (1, Vec::new(), false));
+    // Negative control: the other side's omen blocked changes nothing.
+    let step = whittle_desecration(&list, &[SINISTRAL_NECROMANCY]);
+    assert_eq!(
+        taken(&step),
+        (0, vec![DEXTRAL_NECROMANCY.to_string()], false)
+    );
+}
+
+#[test]
+fn a_mixed_side_whittle_defers_its_necromancy_omen() {
+    // A suffix and a prefix missing: the omen is the last target's, which
+    // is not known yet. It is taken, unresolved, waiting for that side.
+    let list = targets(&[(FIRE, Some(3)), (PHYS_ATTACK, None)]);
+    let step = whittle_desecration(&list, &[]);
+    assert_eq!(step.target, None);
+    assert_eq!(taken(&step), (0, Vec::new(), true));
+    assert_eq!(step.action.as_ref().unwrap().side, None);
+    // Either side's omen blocked: the plain bone, which waits for nothing.
+    for omen in [SINISTRAL_NECROMANCY, DEXTRAL_NECROMANCY] {
+        let step = whittle_desecration(&list, &[omen]);
+        assert_eq!(taken(&step), (1, Vec::new(), false), "{omen}");
+    }
 }
 
 // --- rings-flat-attack (post 11) -----------------------------------------

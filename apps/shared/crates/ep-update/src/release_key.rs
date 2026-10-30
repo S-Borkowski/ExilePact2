@@ -1,7 +1,8 @@
 //! The owner's release public key.
 //!
-//! Every `quest-tracker.exe`, `waystone-roller.exe` and `crafting-helper.exe`
-//! a release workflow publishes carries a `<exe>.minisig` signature made with
+//! Every `quest-tracker.exe`, `waystone-roller.exe`, `Crafting.Helper.exe`
+//! and legacy `crafting-helper.exe` a release workflow publishes carries a
+//! `<exe>.minisig` signature made with
 //! this key's private half, and the app installs a downloaded update only when that signature
 //! checks out against the key below. The private half is the owner's alone:
 //! it lives in the repository secret `TAURI_SIGNING_PRIVATE_KEY` (with its

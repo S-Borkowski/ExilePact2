@@ -47,14 +47,16 @@
       "route_name": "Rings: resistances by whittling",
       "status": "active",
       "step": {
-        "on_hit": "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+        "on_hit": "On a hit: this step again until its condition holds, then use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance or +#% to Lightning Resistance",
         "on_miss": "On a miss: this step again",
         "step": {
+          "blocker": null,
           "fallback": null,
           "id": "whittle",
           "instruction": "Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
           "number": 2,
           "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
+          "survival": null,
           "targets": [
             "+#% to Cold Resistance",
             "+#% to Lightning Resistance"
@@ -94,7 +96,7 @@
         "summary": "gained +#% to Fire Resistance (T3)"
       },
       "odds": "~3.0% ((4000 of 133355 weight) times (the lowest modifier level (54) is unique))",
-      "on_hit": "On a hit: this step again until its condition holds, then Preserved Collarbone for +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
+      "on_hit": "On a hit: this step again until its condition holds, then use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Cold Resistance or +#% to Lightning Resistance",
       "on_miss": "On a miss: this step again",
       "route_name": "Rings: resistances by whittling",
       "status": "active",

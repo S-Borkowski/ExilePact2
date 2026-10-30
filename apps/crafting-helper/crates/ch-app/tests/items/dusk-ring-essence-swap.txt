@@ -1,0 +1,19 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Dusk Ring
+--------
+Item Level: 76
+--------
+{ Implicit Modifier }
++1 Prefix Modifier allowed
+-1 Suffix Modifier allowed
+--------
+{ Prefix Modifier "Gentian" (Tier: 5) — Mana }
++95(90-104) to maximum Mana
+{ Prefix Modifier "Consistent" (Tier: 4) — Attack }
++150(124-167) to Accuracy Rating
+{ Fractured Suffix Modifier "of the Kiln" (Tier: 5) — Elemental, Fire, Resistance }
++23(21-25)% to Fire Resistance (fractured)
+{ Suffix Modifier "of the Lynx" (Tier: 7) — Attribute }
++10(9-12) to Dexterity

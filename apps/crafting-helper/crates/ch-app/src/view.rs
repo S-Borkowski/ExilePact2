@@ -365,7 +365,9 @@ pub struct StepLineView {
     pub number: usize,
     /// What to do: for a step that places one of the targets, composed from
     /// its data (the currency, its omens, the side and the target
-    /// modifiers, `crate::craft::step_instruction`); for a removal step, the
+    /// modifiers, `crate::craft::step_instruction`), and on an essence swap
+    /// what its removal may take and the fractured modifiers it leaves; for
+    /// a removal step, the
     /// currency and the modifier(s) it removes (a whittle-or-annul step as
     /// the app named it by the modifier levels); otherwise the blueprint's
     /// text.
@@ -383,6 +385,17 @@ pub struct StepLineView {
     /// taken in place of the last target's desecration, saying why; both
     /// joined by `; `, the desecration's first.
     pub fallback: Option<String>,
+    /// On a state-ordered route's reveal followed by a same-side exalt
+    /// (`ch_engine::Engine::blocker_advice`), which desecrated modifier to
+    /// take if the target is not offered, what it keeps out of the exalt's
+    /// pool and the exalt's chance of a target before and after
+    /// (`crate::craft::blocker_line`); `None` on every other step.
+    pub blocker: Option<String>,
+    /// On a state-ordered essence swap whose removal may take an unrevealed
+    /// desecrated modifier (`ch_engine::Survival`): the chance it survives
+    /// and what to do if it stays and if it goes
+    /// (`crate::craft::survival_line`); `None` on every other step.
+    pub survival: Option<String>,
 }
 
 /// The route the preview shows: what it targets and what to do, never the
@@ -398,10 +411,13 @@ pub struct RouteView {
     pub steps: Vec<StepLineView>,
 }
 
-/// Another applicable route, for the route select.
+/// An applicable route, for the route select.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RouteChoice {
+    /// The route's number, from 1: its place in the engine's order, the
+    /// same whichever route is previewed.
+    pub number: usize,
     pub blueprint: String,
     pub name: String,
 }
@@ -422,10 +438,38 @@ pub struct RejectedLine {
 #[serde(deny_unknown_fields)]
 pub struct PreviewView {
     pub route: Option<RouteView>,
-    /// The other applicable routes, in the engine's order.
+    /// The previewed route's number in `routes`.
+    pub route_number: Option<usize>,
+    /// Every applicable route, the previewed one included, in the engine's
+    /// order.
+    pub routes: Vec<RouteChoice>,
+    /// The applicable routes other than the previewed one, in the engine's
+    /// order, each with its number in `routes`.
     pub other_routes: Vec<RouteChoice>,
     /// Filled only when there is no route.
     pub rejected: Vec<RejectedLine>,
+    /// With no route, the one target floor that, lowered to the tier a
+    /// currency guarantees, lets a route exist; `None` otherwise.
+    pub relaxation: Option<RelaxationView>,
+}
+
+/// A tier relaxation the preview proposes when no route reaches the targets
+/// (`ch_engine::Engine::relax`). Accepting it is an ordinary `set_targets`
+/// with the one floor changed to `to`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RelaxationView {
+    /// `Lower <target text> from T<from> to T<to>: <currency> adds it at
+    /// T<to>, which unlocks a route.`
+    pub text: String,
+    /// The target whose floor moves.
+    pub mod_id: String,
+    /// The floor in force now.
+    pub from: u32,
+    /// The floor `set_targets` sends for it.
+    pub to: u32,
+    /// The essence, alloy or liquid emotion's name.
+    pub currency: String,
 }
 
 /// Mode planning.

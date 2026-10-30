@@ -37,6 +37,8 @@ relies_on = [
     "greater-needs-two-free",
     "open-side-landing",
     "omens-active-before-use",
+    "lord-with-side-omen",
+    "lord-omen-classes",
 ]
 
 [[start]]
@@ -142,7 +144,7 @@ guard = { rarity = ["rare"] }
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 # The guide's two suffixes: Greater Exalted Orb with Greater and Dextral
 # Exaltation.

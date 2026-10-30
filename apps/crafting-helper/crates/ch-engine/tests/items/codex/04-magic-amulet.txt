@@ -1,0 +1,13 @@
+Item Class: Amulets
+Rarity: Magic
+Zaffre Jade Amulet
+--------
+Requires: Level 8
+--------
+Item Level: 82
+--------
+{ Implicit Modifier — Attribute }
++12(10-15) to Dexterity
+--------
+{ Prefix Modifier "Zaffre" (Tier: 2) — Mana }
++170(165-179) to maximum Mana

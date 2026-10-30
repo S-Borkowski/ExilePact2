@@ -193,8 +193,15 @@ kbd {
   white-space: nowrap;
 }
 
+/* Read by a screen reader, drawn nowhere. Pinned to its containing block's
+   top left corner: no ancestor here is positioned, so that block is the page,
+   and a span left at its own place far down a scroll pane's list stood
+   outside the pane's clipping and made the whole window scroll past its
+   content (`src/scroll.test.ts`, `scripts/scroll-height.mjs`). */
 .visually-hidden {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: -1px;

@@ -756,8 +756,12 @@ pub const PRODUCT: Product = Product {
 /// The running exe's bytes, which only a finished install replaces.
 pub const RUNNING_BYTES: &[u8] =
     b"the running crafting helper, which a failed install never touches";
-/// The running exe's file name in the harness.
-pub const EXE_NAME: &str = "crafting-helper.exe";
+/// The running exe's file name in the harness, unless [`Setup::exe_name`]
+/// names another: the name a build from 0.2.0 has.
+pub const EXE_NAME: &str = "Crafting Helper.exe";
+/// The name a 0.1.x copy runs under, which an update keeps (the swap
+/// replaces the running file in place).
+pub const LEGACY_EXE_NAME: &str = "crafting-helper.exe";
 
 pub fn signing(name: &str) -> Vec<u8> {
     let p = app_root().join("../shared/fixtures/signing").join(name);
@@ -780,16 +784,30 @@ pub fn test_key() -> String {
 pub type Reply = Result<Answer, TransportError>;
 
 /// A 200 release list of `versions`; the newest lists the payload and its
-/// signature when `signed`, the payload alone otherwise.
+/// signature when `signed`, the payload alone otherwise. Beside them it
+/// lists what a real release from 0.2.0 carries: the renamed exe under the
+/// name GitHub stores (`CRAFTING_HELPER.exe_name`), the legacy
+/// `crafting-helper.exe` for 0.1.x copies, their signatures and
+/// `SHA256SUMS.txt`, none of which the harness's product installs.
 pub fn list(versions: &[Version], signed: bool) -> Reply {
     let newest = versions.iter().max().copied();
     let entries: Vec<Value> = versions
         .iter()
         .map(|v| {
-            let mut assets = vec![json!({
+            let mut assets: Vec<Value> = [
+                CRAFTING_HELPER.exe_name.to_string(),
+                CRAFTING_HELPER.signature_name(),
+                LEGACY_EXE_NAME.to_string(),
+                format!("{LEGACY_EXE_NAME}.minisig"),
+                "SHA256SUMS.txt".to_string(),
+            ]
+            .into_iter()
+            .map(|name| json!({ "name": name, "size": 1, "state": "uploaded" }))
+            .collect();
+            assets.push(json!({
                 "name": PRODUCT.exe_name, "size": payload().len(), "state": "uploaded",
                 "browser_download_url": "https://example.invalid/never-read",
-            })];
+            }));
             if signed {
                 assets.push(json!({
                     "name": PRODUCT.signature_name(),
@@ -954,6 +972,8 @@ pub struct Setup {
     pub list_held: bool,
     /// The fake shell to use; a default one when `None`.
     pub shell: Option<FakeShell>,
+    /// The running exe's file name; [`EXE_NAME`] when `None`.
+    pub exe_name: Option<&'static str>,
 }
 
 pub fn auto_on() -> Setup {
@@ -985,7 +1005,7 @@ pub fn harness(setup: Setup) -> Harness {
     if let Some(saved) = &setup.saved {
         save_settings(&store, saved);
     }
-    let exe = bin.join(EXE_NAME);
+    let exe = bin.join(setup.exe_name.unwrap_or(EXE_NAME));
     fs::write(&exe, RUNNING_BYTES).unwrap();
     let wire = Wire::new();
     wire.gate(|g| g.list_held = setup.list_held);
@@ -1110,6 +1130,11 @@ impl Harness {
 
     pub fn exe_bytes(&self) -> Vec<u8> {
         fs::read(&self.exe).unwrap()
+    }
+
+    /// The running exe's file name.
+    pub fn exe_name(&self) -> String {
+        self.exe.file_name().unwrap().to_string_lossy().into_owned()
     }
 
     pub fn folder(&self) -> Vec<String> {

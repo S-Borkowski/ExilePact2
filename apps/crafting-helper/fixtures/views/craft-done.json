@@ -20,7 +20,7 @@
           "summary": "gained +#% to Cold Resistance (T3)"
         },
         {
-          "instruction": "Preserved Collarbone for +#% to Lightning Resistance (suffix)",
+          "instruction": "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Lightning Resistance",
           "number": 3,
           "result": "hit",
           "source": "grab",

@@ -17,6 +17,10 @@ exalts cannot roll the mana modifier. The post does not say what to do when \
 the double exalt misses; the route moves on. Revealing the last desecration \
 with Abyssal Echoes, and retrying it with Omen of Light, is this \
 blueprint's."""
+# The last desecration names the target lord's omen beside the Necromancy
+# omen on a wand or a staff (docs/models/crafting-slots-spec.md,
+# "`lord-omen`").
+relies_on = ["lord-with-side-omen", "lord-omen-classes"]
 
 [[start]]
 rarity = ["rare"]
@@ -81,7 +85,7 @@ when = "bound"
 
 [[step.action]]
 currency = "desecrate"
-omens = ["side-omen"]
+omens = ["side-omen", "lord-omen"]
 
 [[step]]
 id = "reveal"

@@ -114,6 +114,17 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("s1", FIRE, Some(5)),
             ],
         },
+        // The same ring without its Life prefix: Mana T5 and the revealed
+        // desecrated Remnant Effect prefix, one prefix slot free; Life T4
+        // missing (spec, "A wrong reveal waits for the same-side exalt").
+        "rare-wrong-reveal-same-side-exalt" => Fixture {
+            item: "slots/rare-wrong-reveal-same-side-exalt.txt",
+            targets: &[
+                ("p1", MANA, Some(5)),
+                ("p2", LIFE, Some(4)),
+                ("s1", FIRE, Some(5)),
+            ],
+        },
         // Magic amulet: Mana T2 (a top-two tier, so `weak-magic-start`
         // leaves the route alone) and Cold Resistance T5. Life T8 is the
         // Lesser Essence of the Body's; the desecrated Global Defences
@@ -438,6 +449,46 @@ fn targets_of(
     list
 }
 
+/// Each desecrated-pool target's `lord` is the one every tier of its real
+/// modifier names on the item's variant (`Ulaman's`, `of Ulaman`), and a
+/// target with no lord names none (or several); read here from the data,
+/// apart from the engine, for the `lord-omen` rule.
+fn lords(case: &Value, fx: &Fixture, it: &ch_engine::ch_item::Item, out: &mut Vec<String>) {
+    let id = text(&case["id"]);
+    let (data, variant) = ch_engine::ch_data::variant_of(it).expect("a known class and variant");
+    for t in case["targets"].as_array().unwrap() {
+        let alias = text(&t["alias"]);
+        let Some(&(_, mod_id, _)) = fx.targets.iter().find(|(a, _, _)| *a == alias) else {
+            continue;
+        };
+        let names: Vec<String> = data
+            .mod_tiers(mod_id, variant)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|tier| {
+                let last = tier.name.split_whitespace().last()?;
+                Some(last.trim_end_matches("'s").to_lowercase())
+            })
+            .collect();
+        let one = match names.as_slice() {
+            [first, rest @ ..] if rest.iter().all(|n| n == first) => Some(first.as_str()),
+            _ => None,
+        }
+        .filter(|n| ["ulaman", "amanamu", "kurgal"].contains(n));
+        let said = t.get("lord").and_then(Value::as_str);
+        let want = if text(&t["pool"]) == "desecrated" {
+            one
+        } else {
+            None
+        };
+        if said != want {
+            out.push(format!(
+                "{id}: `{alias}` ({mod_id}) has lord {said:?} in the case, its tiers name {want:?}"
+            ));
+        }
+    }
+}
+
 /// The item text matches the case's abstract item: rarity, and per side
 /// the number of modifiers and which are fractured, in order.
 fn item_shape(case: &Value, it: &ch_engine::ch_item::Item, out: &mut Vec<String>) {
@@ -500,6 +551,7 @@ fn every_case_projects_as_the_model_records() {
         };
         let it = item(fx.item);
         item_shape(case, &it, &mut out);
+        lords(case, &fx, &it, &mut out);
         let list = targets_of(case, &fx, None, &mut out);
         let blocked: Vec<String> = case["blocked"]
             .as_array()

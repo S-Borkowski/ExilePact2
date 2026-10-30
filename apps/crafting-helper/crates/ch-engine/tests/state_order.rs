@@ -10,7 +10,9 @@ mod common;
 
 use ch_engine::ch_blueprint::{Goal, Side};
 use ch_engine::{Next, Odds, OutcomeKind, Rejection, Route, Status, StepView, Target};
-use common::{blocked, engine, item, next_step, observe, start, targets};
+use common::{
+    blocked, engine, item, item_text, next_step, observe, parse, shipped, start, targets,
+};
 
 const MANA: &str = "prefix-to-maximum-mana";
 const LIFE: &str = "prefix-to-maximum-life";
@@ -554,6 +556,101 @@ fn a_desecration_waits_for_a_free_slot_on_its_side() {
         &[],
     );
     assert_eq!(route.steps[0].goal, Goal::Desecrate);
+}
+
+/// The ring after a wrong reveal with a prefix slot free (the slot case
+/// `rare-wrong-reveal-same-side-exalt`): Mana T5 and a revealed desecrated
+/// Remnant effect prefix, not a target; Fire Resistance T5. Life T4 missing.
+const WRONG_SAME_SIDE: &str = "slots/rare-wrong-reveal-same-side-exalt.txt";
+
+#[test]
+fn a_wrong_reveal_waits_for_the_same_side_exalt() {
+    let engine = shipped();
+    let list = blocked_prefix_targets();
+    let wrong = item(WRONG_SAME_SIDE);
+    let slam = step(
+        Goal::AddWanted,
+        Some(Side::Prefix),
+        "perfect-exalted-orb",
+        &["omen-of-sinistral-exaltation"],
+    );
+    let light = step(
+        Goal::RemoveDesecrated,
+        None,
+        "orb-of-annulment",
+        &["omen-of-light"],
+    );
+
+    // Omen of Light waits: the prefix exalt goes first, the desecrated
+    // modifier kept through it, and the route is done without Light.
+    for (blueprint, light_id) in [
+        ("essence-desecrate-double-slam", "light"),
+        ("rare-clean-then-slam", "light-last"),
+    ] {
+        let route = engine
+            .plan(&wrong, &list, &[])
+            .unwrap()
+            .routes
+            .into_iter()
+            .find(|r| r.blueprint == blueprint)
+            .unwrap_or_else(|| panic!("{blueprint} does not route"));
+        let shapes: Vec<_> = route.steps.iter().map(shape).collect();
+        assert_eq!(shapes, std::slice::from_ref(&slam), "{blueprint}");
+        let skipped = route
+            .skipped
+            .iter()
+            .find(|s| s.step == light_id)
+            .unwrap_or_else(|| panic!("{blueprint}: `{light_id}` not skipped"));
+        assert!(
+            skipped.why.contains("waits for `side-slam`"),
+            "{blueprint}: {}",
+            skipped.why
+        );
+
+        // The guide picks the same, and after the exalt hits the craft is
+        // done; after it misses the prefix side is full and Light comes.
+        let (mut guide, first) = start(&engine, blueprint, &wrong, &list, &[]);
+        assert_eq!(shape(&first), slam, "{blueprint}");
+        let hit = item("slots/rare-wrong-reveal.txt");
+        let out = observe(&engine, &mut guide, &wrong, &hit);
+        assert_eq!(out.result, OutcomeKind::Hit, "{blueprint}: {out:?}");
+        assert_eq!(out.next, Next::Done, "{blueprint}");
+
+        let (mut guide, _) = start(&engine, blueprint, &wrong, &list, &[]);
+        let miss = parse(&item_text(WRONG_SAME_SIDE).replace(
+            "{ Desecrated Prefix",
+            "{ Prefix Modifier \"Vaporous\" (Tier: 3) — Defences, Evasion }\n\
+             +160(142-174) to Evasion Rating\n{ Desecrated Prefix",
+        ));
+        let out = observe(&engine, &mut guide, &wrong, &miss);
+        assert_eq!(out.result, OutcomeKind::Miss, "{blueprint}: {out:?}");
+        let next = next_step(&out.next);
+        assert_eq!(next.id, light_id);
+        assert_eq!(shape(next), light, "{blueprint}");
+    }
+
+    // Baseline: the prefix side full (`rare-wrong-reveal`), Light comes
+    // first, as before the rule.
+    let full = item("slots/rare-wrong-reveal.txt");
+    let (_, first) = start(
+        &engine,
+        "essence-desecrate-double-slam",
+        &full,
+        &two_p_one_s_targets(),
+        &[],
+    );
+    assert_eq!(shape(&first), light);
+
+    // Control: with Omen of Sinistral Exaltation blocked no add can place
+    // the prefix, so Light does not wait.
+    let (_, first) = start(
+        &engine,
+        "rare-clean-then-slam",
+        &wrong,
+        &list,
+        &blocked(&["omen-of-sinistral-exaltation"]),
+    );
+    assert_eq!(first.id, "light-last");
 }
 
 // --- Rejections ----------------------------------------------------------------

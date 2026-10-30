@@ -245,7 +245,16 @@ fn a_rare_with_one_target_gets_a_route() {
     assert!(uses[2][0].ends_with("Collarbone"), "{:?}", uses[2]);
     assert_eq!(uses[2][1..], ["Omen of Dextral Necromancy"]);
     assert_eq!(uses[3][1..], ["Omen of Abyssal Echoes"]);
-    assert!(steps[2].instruction.contains("on the suffix side"));
+    assert!(
+        steps[2]
+            .instruction
+            .starts_with("Use Omen of Dextral Necromancy, then apply the ")
+            && steps[2]
+                .instruction
+                .contains("; the desecrated modifier will be a suffix"),
+        "{}",
+        steps[2].instruction
+    );
     let view = app.accept_craft();
     assert_eq!(guiding(&view).status, GuideStatusView::Active);
     assert_eq!(step(&view).step.id, "remove");

@@ -273,9 +273,16 @@ fn a_goal_its_action_cannot_produce_is_refused() {
     // Catalysts and quality currency only serve a manual step.
     assert_eq!(case("fill", "flesh-catalyst").len(), 1);
     assert_eq!(case("manual", "flesh-catalyst"), Vec::<String>::new());
-    // A bone desecrates; a flux converts.
-    assert_eq!(case("desecrate", "ancient-rib"), Vec::<String>::new());
-    assert_eq!(case("desecrate", "exalted-orb").len(), 1);
+    // A bone desecrates; a flux converts. The desecrations are unbound: a
+    // bound one also needs its Necromancy omen
+    // (`a_sided_desecration_needs_its_side_omen`).
+    let unbound = |currency: &str| {
+        step_errors(&format!(
+            "id = \"s\"\nsay = \"Do it\"\ngoal = \"desecrate\"\non_miss = \"next\"\n[[step.action]]\ncurrency = \"{currency}\""
+        ))
+    };
+    assert_eq!(unbound("ancient-rib"), Vec::<String>::new());
+    assert_eq!(unbound("exalted-orb").len(), 1);
     assert_eq!(case("convert", "void-flux"), Vec::<String>::new());
     assert_eq!(case("convert", "chaos-orb").len(), 1);
     // A chaos orb swaps: it can add, and remove.
@@ -288,6 +295,49 @@ fn a_goal_its_action_cannot_produce_is_refused() {
     let list = case("fill", "omen-of-light");
     assert_eq!(list.len(), 1);
     assert!(list[0].contains("is an omen, not a currency"), "{list:?}");
+}
+
+#[test]
+fn a_sided_desecration_needs_its_side_omen() {
+    // Bound to its last target, or named a side, with the plain bone first:
+    // refused, each at its first alternative's currency.
+    let (shown, list) = errors("invalid/desecrate-side-omen.toml");
+    let rule = "a `desecrate` step with a `side` or `bind` needs `side-omen` or a Necromancy omen on its first [[step.action]], so the desecrated modifier lands on that side";
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:21:12: step `desecrate`: {rule}"),
+            format!("{shown}:30:12: step `block`: {rule}"),
+        ]
+    );
+
+    let case = |extra: &str, omens: &str, more: &str| {
+        step_errors(&format!(
+            "id = \"d\"\nsay = \"Desecrate\"\ngoal = \"desecrate\"\n{extra}\n[[step.action]]\ncurrency = \"desecrate\"\nomens = [{omens}]{more}"
+        ))
+    };
+    let plain = "\n[[step.action]]\ncurrency = \"desecrate\"";
+    // `side-omen`, or a Necromancy omen by name, first: taken, with or
+    // without a plain bone after it.
+    for extra in ["bind = \"last-remaining\"", "side = \"prefix\""] {
+        assert_eq!(case(extra, "\"side-omen\"", ""), Vec::<String>::new(), "{extra}");
+        assert_eq!(case(extra, "\"side-omen\"", plain), Vec::<String>::new(), "{extra}");
+    }
+    assert_eq!(
+        case("side = \"prefix\"", "\"omen-of-sinistral-necromancy\"", plain),
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        case("bind = \"hardest\"", "\"omen-of-the-liege\", \"omen-of-dextral-necromancy\"", ""),
+        Vec::<String>::new()
+    );
+    // Another omen alone does not pick the side.
+    let list = case("bind = \"hardest\"", "\"omen-of-the-liege\"", "");
+    assert_eq!(list.len(), 1, "{list:?}");
+    assert!(list[0].ends_with(rule), "{list:?}");
+    // Negative control: a desecration tied to neither (a blocker anywhere)
+    // needs no omen.
+    assert_eq!(case("", "", ""), Vec::<String>::new());
 }
 
 #[test]
@@ -617,6 +667,59 @@ fn greater_omen_needs_an_exalted_orb() {
     // this id.
     assert!(catalogue::entry(catalogue::GREATER_OMEN).is_none());
     assert!(is_kebab(catalogue::GREATER_OMEN));
+}
+
+#[test]
+fn lord_omen_needs_a_desecration() {
+    let (shown, list) = errors("invalid/lord-omen.toml");
+    assert_eq!(
+        list,
+        [
+            format!("{shown}:18:10: step `slam`: `lord-omen` on `exalted-orb`; it is for `desecrate`"),
+            format!("{shown}:27:12: step `desecrate`: `lord-omen` beside `omen-of-the-sovereign` on one action"),
+        ]
+    );
+    let case = |currency: &str, omens: &str| {
+        step_errors(&format!(
+            "id = \"s\"\nsay = \"Desecrate\"\ngoal = \"desecrate\"\nbind = \"hardest\"\n[[step.action]]\ncurrency = \"{currency}\"\nomens = [{omens}]"
+        ))
+    };
+    // Beside the side omen, in either order, or alone.
+    assert_eq!(case("desecrate", "\"side-omen\", \"lord-omen\""), Vec::<String>::new());
+    assert_eq!(case("desecrate", "\"lord-omen\", \"side-omen\""), Vec::<String>::new());
+    assert_eq!(case("desecrate", "\"omen-of-sinistral-necromancy\", \"lord-omen\""), Vec::<String>::new());
+    assert_eq!(case("desecrate", "\"side-omen\", \"lord-omen\", \"lord-omen\"").len(), 1);
+    // Every explicit lord omen beside it is refused; one alone is not.
+    for lord in ["omen-of-the-sovereign", "omen-of-the-liege", "omen-of-the-blackblooded"] {
+        assert_eq!(case("desecrate", &format!("\"side-omen\", \"lord-omen\", \"{lord}\"")).len(), 1, "{lord}");
+        assert_eq!(case("desecrate", &format!("\"side-omen\", \"{lord}\"")), Vec::<String>::new(), "{lord}");
+    }
+    // A bone named outright is not the `desecrate` placeholder.
+    assert_eq!(case("preserved-collarbone", "\"side-omen\", \"lord-omen\"").len(), 1);
+    // A placeholder, not a catalogue omen; it resolves to one of the three.
+    assert!(catalogue::entry(catalogue::LORD_OMEN).is_none());
+    assert!(is_kebab(catalogue::LORD_OMEN));
+    let omens: Vec<&str> = catalogue::LORD_OMENS.iter().map(|(_, omen)| *omen).collect();
+    assert_eq!(omens, ["omen-of-the-sovereign", "omen-of-the-liege", "omen-of-the-blackblooded"]);
+    for omen in omens {
+        let spec = catalogue::entry(omen).and_then(|e| e.omen).expect("a catalogue omen");
+        assert_eq!(spec.change, catalogue::OmenChange::Lord, "{omen}");
+    }
+    // The lord classes: the jawbone classes but Quivers, Amulets and Rings.
+    for class in catalogue::LORD_CLASSES {
+        assert!(catalogue::CLASSES.contains(class), "{class}");
+    }
+    for class in ["Quivers", "Belts", "Gloves", "Body Armours", "Jewels"] {
+        assert!(!catalogue::LORD_CLASSES.contains(&class), "{class}");
+    }
+    assert!(catalogue::LORD_CLASSES.contains(&"Rings") && catalogue::LORD_CLASSES.contains(&"Amulets"));
+    // `say` may name the lord omen `lord-omen` resolves to.
+    assert_eq!(
+        step_errors(
+            "id = \"s\"\nsay = \"Desecrate with Omen of the Sovereign\"\ngoal = \"desecrate\"\nbind = \"hardest\"\n[[step.action]]\ncurrency = \"desecrate\"\nomens = [\"side-omen\", \"lord-omen\"]"
+        ),
+        Vec::<String>::new()
+    );
 }
 
 #[test]
