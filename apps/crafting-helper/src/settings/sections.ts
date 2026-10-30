@@ -9,6 +9,7 @@ import type { SettingsView } from './view';
 import BlockedCurrenciesSection from './BlockedCurrenciesSection.svelte';
 import GrabSection from './GrabSection.svelte';
 import OverlaySection from './OverlaySection.svelte';
+import TradeSection from './TradeSection.svelte';
 import UpdatesSection from './UpdatesSection.svelte';
 
 export interface SectionProps {
@@ -30,5 +31,6 @@ export const SECTIONS: readonly SettingsSection[] = [
   { id: 'grab', title: 'Grab', component: GrabSection },
   { id: 'overlay', title: 'Overlay', component: OverlaySection },
   { id: 'blocked', title: 'Blocked currencies', component: BlockedCurrenciesSection },
+  { id: 'trade', title: 'Trade', component: TradeSection },
   { id: 'updates', title: 'Updates', component: UpdatesSection },
 ];

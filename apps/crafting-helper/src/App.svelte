@@ -2,13 +2,16 @@
   // The main window's root: renders the last `View` the bridge delivered and
   // turns a paste into the window into `grab_text`. The shell answers every
   // command with a new view; nothing here changes the view itself. The
-  // catalogue the currency picker lists is read once, at the start.
-  import { onDestroy, onMount } from 'svelte';
+  // catalogue the currency picker lists is read once, at the start. While
+  // the view's trade part is open, the trade panel takes the craft area's
+  // place; the craft goes on underneath, untouched.
+  import { onDestroy, onMount, tick } from 'svelte';
   import type { Bridge, Command, CommandArgs } from './bridge';
   import type { CatalogueGroup, View } from './ipc';
   import { pastedText } from './paste';
   import CraftArea from './craft/CraftArea.svelte';
   import StatusLine from './components/StatusLine.svelte';
+  import TradePanel from './trade/TradePanel.svelte';
 
   let { bridge }: { bridge: Bridge } = $props();
 
@@ -17,6 +20,40 @@
   let view = $state<View | null>(null);
   let catalogue = $state<CatalogueGroup[]>([]);
   let stop: (() => void) | null = null;
+  let page = $state<HTMLElement | null>(null);
+  let findButton = $state<HTMLButtonElement | null>(null);
+
+  const tradeOpen = $derived(view?.trade.selection.open ?? false);
+  let shownOpen: boolean | null = null;
+
+  // Opening the panel moves focus to its heading; closing it, either way,
+  // moves focus back to the header's button. The first view moves nothing.
+  $effect(() => {
+    const open = tradeOpen;
+    if (view !== null && shownOpen !== null && open !== shownOpen) {
+      void tick().then(() => {
+        if (open) page?.querySelector<HTMLElement>('[data-trade-heading]')?.focus();
+        else findButton?.focus();
+      });
+    }
+    if (view !== null) shownOpen = open;
+  });
+
+  /** The header's button: opens the panel, or closes it while open, with the selection as the view holds it. */
+  function toggleTrade(): void {
+    if (!view) return;
+    const sel = view.trade.selection;
+    send('set_trade_search', {
+      search: {
+        open: !sel.open,
+        class: sel.class,
+        base: sel.base,
+        item_level: sel.item_level,
+        picks: sel.picks.map((p) => ({ mod_id: p.mod_id, floor: p.floor })),
+        both_slots: sel.both_slots,
+      },
+    });
+  }
 
   function send<C extends Command>(name: C, args: CommandArgs[C]): void {
     void bridge.command(name, args);
@@ -62,9 +99,17 @@
 <svelte:window onpaste={onPaste} />
 
 {#if view}
-  <div class="app" data-state={view.grab ? 'grabbed' : 'empty'} data-mode={view.craft.mode}>
+  <div class="app" data-state={view.grab ? 'grabbed' : 'empty'} data-mode={view.craft.mode} bind:this={page}>
     <header class="top">
       <h1 class="caps">Crafting Helper</h1>
+      <!-- Opens a panel in this window, not the browser: no outward mark. -->
+      <button
+        type="button"
+        class="btn find"
+        aria-pressed={tradeOpen ? 'true' : 'false'}
+        bind:this={findButton}
+        onclick={toggleTrade}>Find a base on trade</button
+      >
       <!-- Sends the command alone: the app holds the one address it opens
            in the default browser, and this page holds none. -->
       <button type="button" class="btn coe" aria-describedby="{uid}-coe" onclick={() => send('open_craft_of_exile', {})}>
@@ -87,7 +132,11 @@
         {/if}
       </button>
     </header>
-    <CraftArea {view} {catalogue} {send} />
+    {#if tradeOpen}
+      <TradePanel trade={view.trade} {send} />
+    {:else}
+      <CraftArea {view} {catalogue} {send} />
+    {/if}
     <StatusLine status={view.status} />
   </div>
 {:else}
@@ -103,12 +152,13 @@
     min-width: 0;
   }
 
-  /* From 760 px: title, then the two buttons at the right end. Below, the
-     Craft of Exile button takes its own row under the title. */
+  /* From 760 px: title, then the three buttons at the right end. Below, the
+     Find a base on trade and Craft of Exile buttons take their own row under
+     the title, in that order. */
   .top {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas: 'title coe settings';
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-areas: 'title find coe settings';
     align-items: center;
     gap: calc(var(--space-unit) * 2) calc(var(--space-unit) * 3);
     padding: calc(var(--space-unit) * 4) calc(var(--space-unit) * 5) calc(var(--space-unit) * 3);
@@ -121,6 +171,15 @@
     font-size: 22px;
     line-height: 28px;
     color: var(--color-text-primary);
+  }
+
+  .find {
+    grid-area: find;
+  }
+
+  .find[aria-pressed='true'] {
+    border-color: var(--color-edit-accent);
+    background: var(--color-select-active-bg);
   }
 
   .coe {
@@ -137,12 +196,13 @@
 
   @media (max-width: 759px) {
     .top {
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
       grid-template-areas:
-        'title settings'
-        'coe coe';
+        'title title title settings'
+        'find coe . .';
     }
 
+    .find,
     .coe {
       justify-self: start;
     }

@@ -96,6 +96,8 @@ export interface View {
   update_available: string | null;
   /** The craft window: always present, in one of four modes. */
   craft: CraftView;
+  /** The *Find a base on trade* panel: always present; its selection says whether it is open. */
+  trade: TradeView;
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +308,91 @@ export interface GuidingView {
 }
 
 // ---------------------------------------------------------------------------
+// The *Find a base on trade* panel (`ch-app`'s `trade.rs` builds it). The
+// class and base names, the modifier texts, the weights, the floor labels,
+// the count line, the reasons and the link are Rust's, rendered as sent; the
+// page holds no address and builds no link.
+
+export const TRADE_WEIGHT_SOURCES = ['spawn', 'default'] as const;
+/** Where a shown weight came from: the data's spawn weights, or the stated default where the data has none. */
+export type TradeWeightSource = (typeof TRADE_WEIGHT_SOURCES)[number];
+
+/** One picked modifier, as `set_trade_search` sends it: `floor` null is "Any tier". */
+export interface TradePickChoice {
+  mod_id: string;
+  floor: number | null;
+}
+
+/** The panel's whole selection: what `set_trade_search` takes and what the view sends back. No field names an address. */
+export interface TradeSelection {
+  /** The panel shows in place of the craft area. */
+  open: boolean;
+  /** The item class as the data names it (`Rings`); null until chosen. */
+  class: string | null;
+  /** The base type (`Sapphire Ring`); null until chosen. */
+  base: string | null;
+  /** The minimum item level; null for none. */
+  item_level: number | null;
+  picks: TradePickChoice[];
+  /** *Both slots* (the default); false is *At least one*. */
+  both_slots: boolean;
+}
+
+/** One searchable modifier the base offers. */
+export interface TradeModView {
+  mod_id: string;
+  side: ModSide;
+  /** As the data writes it (`+# to maximum Life`). */
+  text: string;
+  /** `Any tier`, then `At least T<n>` per tier reachable at the item level. */
+  floors: FloorOption[];
+  picked: boolean;
+  /** The pick's floor; null for any tier (and when not picked). */
+  floor: number | null;
+  /** The rarity weight, one decimal (`12.4`). */
+  weight: string;
+  weight_source: TradeWeightSource;
+  /** For a default weight: why the data has none here. */
+  default_reason: string | null;
+}
+
+/** A modifier the base offers that the trade site cannot search for. */
+export interface TradeUnsearchableView {
+  mod_id: string;
+  side: ModSide;
+  /** Its lines, joined by ` / `. */
+  text: string;
+  reason: string;
+}
+
+/** The trade panel's part of the view; closed, it carries the selection and the league alone. */
+export interface TradeView {
+  selection: TradeSelection;
+  /** Every item class, in the data's order. */
+  classes: string[];
+  /** The chosen class's base types, in the data's order. */
+  bases: string[];
+  prefixes: TradeModView[];
+  suffixes: TradeModView[];
+  /** The base's modifiers the site cannot search for, prefixes first. */
+  not_searchable: TradeUnsearchableView[];
+  /** Another modifier may be picked. */
+  can_pick: boolean;
+  /** `At most 8 modifiers in one search.` once 8 are picked. */
+  pick_limit: string | null;
+  /** What the search asks for, and why, once something is picked. */
+  count_line: string | null;
+  /** The league the search opens in (Settings, Trade). */
+  league: string;
+  /** The link the search button opens, shown read-only; never made a link by the page. */
+  link: string | null;
+  /** `open_trade_search` would open the link. */
+  can_search: boolean;
+  /** Why there is no link: info while something is still to choose, an error when the selection cannot make one. */
+  why_not: StatusLine | null;
+}
+
+// ---------------------------------------------------------------------------
 // The catalogue (`get_catalogue`, both windows): every crafting item the
 // blocked list may name, grouped by kind, each group sorted by name.
 
@@ -495,6 +582,40 @@ const craft: Check = (v, p, out) => {
   }
 };
 
+const tradeMod = record<TradeModView>({
+  mod_id: str,
+  side,
+  text: str,
+  floors: list(floorOption),
+  picked: bool,
+  floor: nullable(uint),
+  weight: str,
+  weight_source: oneOf(TRADE_WEIGHT_SOURCES),
+  default_reason: nullable(str),
+});
+const trade = record<TradeView>({
+  selection: record<TradeSelection>({
+    open: bool,
+    class: nullable(str),
+    base: nullable(str),
+    item_level: nullable(uint),
+    picks: list(record<TradePickChoice>({ mod_id: str, floor: nullable(uint) })),
+    both_slots: bool,
+  }),
+  classes: list(str),
+  bases: list(str),
+  prefixes: list(tradeMod),
+  suffixes: list(tradeMod),
+  not_searchable: list(record<TradeUnsearchableView>({ mod_id: str, side, text: str, reason: str })),
+  can_pick: bool,
+  pick_limit: nullable(str),
+  count_line: nullable(str),
+  league: str,
+  link: nullable(str),
+  can_search: bool,
+  why_not: nullable(statusLine),
+});
+
 const view = record<View>({
   hotkey: str,
   grab: nullable(grab),
@@ -502,6 +623,7 @@ const view = record<View>({
   overlay,
   update_available: nullable(str),
   craft,
+  trade,
 });
 
 /** Every way `value` differs from a `View`; empty when it is one. */

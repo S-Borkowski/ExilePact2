@@ -14,33 +14,41 @@ describe('the TypeScript IPC types', () => {
     const shape = Object.fromEntries(
       FIXTURE_NAMES.map((n) => {
         const v = fixtureView(n);
-        return [n, [v.grab?.source ?? null, v.grab?.looks_like_item ?? null, v.status?.kind ?? null, v.overlay.visible, v.craft.mode]];
+        return [
+          n,
+          [v.grab?.source ?? null, v.grab?.looks_like_item ?? null, v.status?.kind ?? null, v.overlay.visible, v.craft.mode, v.trade.selection.open],
+        ];
       }),
     );
     expect(shape).toEqual({
-      empty: [null, null, null, false, 'none'],
-      'grabbed-item': ['shortcut', true, 'info', false, 'refused'],
-      'grabbed-not-item': ['paste', false, 'error', false, 'refused'],
-      'grab-refused': ['shortcut', true, 'error', false, 'refused'],
-      'hotkey-taken': [null, null, 'error', false, 'none'],
-      'overlay-active': ['paste', true, 'info', true, 'guiding'],
-      'overlay-not-in-front': ['paste', true, 'info', false, 'guiding'],
-      'craft-prefilled': ['paste', true, 'info', false, 'planning'],
-      'craft-planning': ['paste', true, 'info', false, 'planning'],
-      'craft-fallback': ['paste', true, 'info', false, 'planning'],
-      'craft-no-route': ['paste', true, 'info', false, 'planning'],
-      'craft-close-side': ['paste', true, 'info', false, 'planning'],
-      'craft-refused': ['paste', true, 'info', false, 'refused'],
-      'craft-guiding': ['paste', true, 'info', false, 'guiding'],
-      'craft-miss': ['paste', true, 'info', false, 'guiding'],
-      'craft-miss-clean': ['paste', true, 'info', false, 'guiding'],
-      'craft-replan': ['paste', true, 'error', false, 'guiding'],
-      'craft-done': ['paste', true, 'info', false, 'guiding'],
-      'craft-watching': ['paste', true, 'info', true, 'guiding'],
-      'craft-screen-hit': ['paste', true, 'info', true, 'guiding'],
-      'craft-screen-unexpected': ['paste', true, 'error', true, 'guiding'],
-      'craft-watch-off': ['paste', true, 'info', true, 'guiding'],
-      'craft-watch-unavailable': ['paste', true, 'info', true, 'guiding'],
+      empty: [null, null, null, false, 'none', false],
+      'grabbed-item': ['shortcut', true, 'info', false, 'refused', false],
+      'grabbed-not-item': ['paste', false, 'error', false, 'refused', false],
+      'grab-refused': ['shortcut', true, 'error', false, 'refused', false],
+      'hotkey-taken': [null, null, 'error', false, 'none', false],
+      'overlay-active': ['paste', true, 'info', true, 'guiding', false],
+      'overlay-not-in-front': ['paste', true, 'info', false, 'guiding', false],
+      'craft-prefilled': ['paste', true, 'info', false, 'planning', false],
+      'craft-planning': ['paste', true, 'info', false, 'planning', false],
+      'craft-fallback': ['paste', true, 'info', false, 'planning', false],
+      'craft-no-route': ['paste', true, 'info', false, 'planning', false],
+      'craft-close-side': ['paste', true, 'info', false, 'planning', false],
+      'craft-refused': ['paste', true, 'info', false, 'refused', false],
+      'craft-guiding': ['paste', true, 'info', false, 'guiding', false],
+      'craft-miss': ['paste', true, 'info', false, 'guiding', false],
+      'craft-miss-clean': ['paste', true, 'info', false, 'guiding', false],
+      'craft-replan': ['paste', true, 'error', false, 'guiding', false],
+      'craft-done': ['paste', true, 'info', false, 'guiding', false],
+      'craft-watching': ['paste', true, 'info', true, 'guiding', false],
+      'craft-screen-hit': ['paste', true, 'info', true, 'guiding', false],
+      'craft-screen-unexpected': ['paste', true, 'error', true, 'guiding', false],
+      'craft-watch-off': ['paste', true, 'info', true, 'guiding', false],
+      'craft-watch-unavailable': ['paste', true, 'info', true, 'guiding', false],
+      'trade-empty': ['paste', true, 'info', false, 'planning', true],
+      'trade-picking': ['paste', true, 'info', false, 'planning', true],
+      'trade-one-side': ['paste', true, 'info', false, 'planning', true],
+      'trade-default-weight': ['paste', true, 'info', false, 'planning', true],
+      'trade-refused': ['paste', true, 'error', false, 'planning', true],
     });
     // The overlay's content is there exactly while guiding, and it shows
     // only with content; the M5 views had no game in front, so it stays hidden.
@@ -142,6 +150,24 @@ describe('the TypeScript IPC types', () => {
     const noCraft = fixtureView('empty') as unknown as Record<string, unknown>;
     delete noCraft.craft;
     expect(viewProblems(noCraft)).toEqual(['view.craft: missing']);
+
+    // The trade part: missing, and drifts deep inside it.
+    const noTrade = fixtureView('empty') as unknown as Record<string, unknown>;
+    delete noTrade.trade;
+    expect(viewProblems(noTrade)).toEqual(['view.trade: missing']);
+    const badTrade = fixtureView('trade-picking');
+    (badTrade.trade.prefixes[0] as unknown as Record<string, unknown>).weight_source = 'guess';
+    (badTrade.trade.selection.picks[0] as unknown as Record<string, unknown>).floor = -1;
+    (badTrade.trade.selection as unknown as Record<string, unknown>).url = 'x';
+    (badTrade.trade as unknown as Record<string, unknown>).link = 7;
+    delete (badTrade.trade.not_searchable[0] as unknown as Record<string, unknown>).reason;
+    expect(viewProblems(badTrade)).toEqual([
+      'view.trade.selection.picks[0].floor: expected an unsigned integer',
+      'view.trade.selection.url: not in the TypeScript types',
+      'view.trade.prefixes[0].weight_source: "guess" is not one of spawn|default',
+      'view.trade.not_searchable[0].reason: missing',
+      'view.trade.link: expected a string',
+    ]);
   });
 
   it('catalogue_problems_catch_drift', () => {
