@@ -119,8 +119,12 @@ pub const CRAFTING_HELPER_TAG_PREFIX: &str = "crafting-helper-v";
 pub const QUEST_TRACKER_EXE: &str = "quest-tracker.exe";
 /// The waystone roller's exe, as its releases name the asset.
 pub const WAYSTONE_ROLLER_EXE: &str = "waystone-roller.exe";
-/// The crafting helper's exe, as its releases name the asset.
-pub const CRAFTING_HELPER_EXE: &str = "crafting-helper.exe";
+/// The crafting helper's exe, as its releases name the asset. The built
+/// file is `Crafting Helper.exe`; GitHub stores an asset name's space as a
+/// dot, so the release carries it as `Crafting.Helper.exe`. Releases from
+/// 0.2.0 also carry the same exe as `crafting-helper.exe`, the name 0.1.x
+/// copies look up; this build never fetches that one.
+pub const CRAFTING_HELPER_EXE: &str = "Crafting.Helper.exe";
 /// The suffix of an exe's signature asset (minisign's signature text).
 pub const SIGNATURE_SUFFIX: &str = ".minisig";
 
@@ -742,21 +746,33 @@ mod tests {
             "/S-Borkowski/ExilePact2/releases/download/waystone-roller-v1.0.0/waystone-roller.exe.minisig"
         );
 
-        let ch = ReleaseTag::new(Product::CraftingHelper, 0, 1, 0);
-        assert_eq!(ch.tag(), "crafting-helper-v0.1.0");
-        assert_eq!(ch.asset_name(Asset::Exe), "crafting-helper.exe");
+        // From 0.2.0 the crafting helper's exe is `Crafting Helper.exe`,
+        // which GitHub stores as `Crafting.Helper.exe` (a space becomes a
+        // dot); the asset a download fetches is that stored name.
+        let ch = ReleaseTag::new(Product::CraftingHelper, 0, 2, 0);
+        assert_eq!(ch.tag(), "crafting-helper-v0.2.0");
+        assert_eq!(ch.asset_name(Asset::Exe), "Crafting.Helper.exe");
         assert_eq!(
             ch.asset_name(Asset::Signature),
-            "crafting-helper.exe.minisig"
+            "Crafting.Helper.exe.minisig"
         );
         assert_eq!(
             ch.download_path(Asset::Exe),
-            "/S-Borkowski/ExilePact2/releases/download/crafting-helper-v0.1.0/crafting-helper.exe"
+            "/S-Borkowski/ExilePact2/releases/download/crafting-helper-v0.2.0/Crafting.Helper.exe"
         );
         assert_eq!(
             ch.download_path(Asset::Signature),
-            "/S-Borkowski/ExilePact2/releases/download/crafting-helper-v0.1.0/crafting-helper.exe.minisig"
+            "/S-Borkowski/ExilePact2/releases/download/crafting-helper-v0.2.0/Crafting.Helper.exe.minisig"
         );
+        // No asset name holds a character a request path would have to
+        // escape, so the path above is sent as it stands.
+        for name in [QUEST_TRACKER_EXE, WAYSTONE_ROLLER_EXE, CRAFTING_HELPER_EXE] {
+            assert!(
+                name.bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b)),
+                "{name}"
+            );
+        }
 
         assert_eq!(Asset::Exe.cap(), 64 * 1024 * 1024);
         assert_eq!(Asset::Signature.cap(), 4 * 1024);

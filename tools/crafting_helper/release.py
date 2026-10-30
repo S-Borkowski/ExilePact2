@@ -2,8 +2,10 @@
 
 Developer-only. A release is one annotated tag, `crafting-helper-v<version>`;
 pushing it starts `.github/workflows/crafting-helper-release.yml`, which
-builds `crafting-helper.exe`, signs it with the release key (and fails
-without it) and attaches it, with `SHA256SUMS.txt` and
+builds `Crafting Helper.exe`, signs it with the release key (and fails
+without it) and attaches it as `Crafting.Helper.exe` (GitHub stores a space
+as a dot), with `Crafting.Helper.exe.minisig`, `SHA256SUMS.txt` and the same
+exe under its 0.1.x name, `crafting-helper.exe` with its own
 `crafting-helper.exe.minisig`, to a draft release for the owner to publish
 (and mark as latest) by hand:
 
@@ -28,8 +30,9 @@ version, or an empty one.
 `notes` prints the release body: a short header, then the version's section
 of the guide's "Release notes", with each hard-wrapped list item joined onto
 one line (a release body renders a single newline as a line break). The
-header names each asset, `crafting-helper.exe.minisig` (the release key's
-signature, which the app checks before it installs an update) among them.
+header names each asset, `Crafting.Helper.exe.minisig` (the release key's
+signature, which the app checks before it installs an update) among them,
+and says the legacy `crafting-helper.exe` is for in-app updates from 0.1.x.
 
 `cut` runs `check` on the files' own version, then refuses unless the work
 tree has no uncommitted change to a tracked file, HEAD is the tip of
@@ -176,10 +179,13 @@ def notes(version: str, root: Path = ROOT) -> str:
         "in the game with the game's own `Ctrl+Alt+C`, then press the app's hotkey (`Ctrl+Alt+X` by "
         "default) or `Ctrl+V` in its window. It reads the clipboard once per grab and never watches it, "
         "sends the game no keys, reads no game memory, moves no mouse and clicks nothing.\n\n"
-        "Download `crafting-helper.exe` below and run it; there is no installer. It needs Windows 10 or "
-        "11, 64-bit, with the Microsoft Edge WebView2 runtime, and the game in English. "
-        "`SHA256SUMS.txt` lists the file's hash. `crafting-helper.exe.minisig` is the release key's "
-        "signature of it, which the app checks before it installs an update.\n\n"
+        "Download `Crafting.Helper.exe` below and run it; there is no installer. GitHub lists "
+        "`Crafting Helper.exe` with a dot for the space, so rename it back if you like. It needs "
+        "Windows 10 or 11, 64-bit, with the Microsoft Edge WebView2 runtime, and the game in English. "
+        "`SHA256SUMS.txt` lists the files' hashes. `Crafting.Helper.exe.minisig` is the release key's "
+        "signature of it, which the app checks before it installs an update. `crafting-helper.exe` and "
+        "`crafting-helper.exe.minisig` are the same program and its signature under the old name, for "
+        "in-app updates from 0.1.x; there is no need to download them.\n\n"
         "Guide: [docs/crafting-helper/README.md](%s).\n\n"
         "## Changelog\n\n" % (version, guide)
     )
