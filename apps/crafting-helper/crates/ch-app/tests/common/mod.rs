@@ -609,6 +609,15 @@ pub const ITEM_TEXT_NORMALISED: &str = "Item Class: Gloves\nRarity: Rare\nGale G
 /// Text that is not an item.
 pub const NOT_ITEM_TEXT: &str = "a shopping list\nmilk\neggs\n";
 
+/// An item text file with LF line breaks, whatever the checkout wrote (a
+/// Windows checkout with `core.autocrlf` writes CRLF): the tests edit and
+/// compare the texts with `\n` line breaks.
+fn read_item(path: &Path) -> String {
+    fs::read_to_string(path)
+        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        .replace("\r\n", "\n")
+}
+
 /// One state of the whittled ring `ch-engine`'s tests walk
 /// (`crates/ch-engine/tests/items/gear/rings-resist-whittle/`): `01-start`
 /// is the start, `02-chaos-fire` … `05-revealed-lightning` the hit path,
@@ -618,16 +627,7 @@ pub fn ring(name: &str) -> String {
     let path = app_root()
         .join("crates/ch-engine/tests/items/gear/rings-resist-whittle")
         .join(format!("{name}.txt"));
-    fixture_text(&path)
-}
-
-/// An item fixture's text, with CRLF read as LF: a checkout with
-/// `core.autocrlf` writes the fixtures CRLF, and a test that edits across a
-/// line break searches for `\n` (as `ch-engine`'s `item_text`).
-pub fn fixture_text(path: &Path) -> String {
-    fs::read_to_string(path)
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
-        .replace("\r\n", "\n")
+    read_item(&path)
 }
 
 /// The ring's targets: fire, cold and lightning resistance at T3 or better.
@@ -658,7 +658,7 @@ pub fn belt(name: &str) -> String {
     let path = app_root()
         .join("crates/ch-app/tests/items")
         .join(format!("{name}.txt"));
-    fixture_text(&path)
+    read_item(&path)
 }
 
 /// The belt's targets: maximum Life T2, maximum Mana T2 and Armour T2 (the
@@ -686,7 +686,7 @@ pub fn slots_item(name: &str) -> String {
     let path = app_root()
         .join("crates/ch-engine/tests/items/slots")
         .join(format!("{name}.txt"));
-    fixture_text(&path)
+    read_item(&path)
 }
 
 /// Issue #28's ring's targets (`cases.json`'s `rare-one-target`): maximum

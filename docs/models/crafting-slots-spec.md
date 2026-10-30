@@ -79,7 +79,7 @@ the session; it does not change the id.
 | `open-side-landing` | `close-a-side`, `magic-augment-essence` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side. |
 | `whittling-mod-level` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The removal step's whittle alternative is certain only by this reading of "lowest level". |
 | `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | A removal's odds and the blocked-side test leave fractured modifiers out. |
-| `omens-active-before-use` | `essence-desecrate-double-slam` | The desecration's Necromancy omen and the reveal's Abyssal Echoes. |
+| `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. |
 | `necromancy-without-pool` | `essence-desecrate-double-slam` | Desecrating for an ordinary prefix target on an armour class. |
 | `removal-equally-likely` | none | Only the odds shown for an uncertain removal assume it. |
 
@@ -143,7 +143,7 @@ of the rarity the item has after the currency.
 | + `omen-of-sinistral-exaltation` / `omen-of-dextral-exaltation` | A free slot on that side. | The modifier lands on that side. | `side-exaltation` |
 | + `omen-of-greater-exaltation` | Two free slots (on the restricted side, with a side omen). | Two modifiers instead of one. | `greater-exaltation-adds-two`, `greater-needs-two-free`, `greater-with-side-omen` |
 | Lesser, plain or Greater essence | A magic item with no crafted modifier. | The item turns rare with its modifiers kept, plus the essence's modifier on that modifier's side. | `essence-magic-to-rare`, `one-crafted-one-desecrated` |
-| `desecrate` (a bone that fits the class) | A rare item with no desecrated modifier. The routes also ask a free slot on the resolved side, so the game never removes a random modifier for it. | One unrevealed desecrated modifier, on the side its omen names. | `desecrate-adds-unrevealed`, `desecrate-no-free-slot`, `one-crafted-one-desecrated` |
+| `desecrate` (a bone that fits the class) | A rare item with no desecrated modifier. The routes also ask a free slot on the resolved side, so the game never removes a random modifier for it; a `last-remaining` desecration also asks the class's desecration pool on that side (§ "The last-target desecration"). | One unrevealed desecrated modifier, on the side its omen names. | `desecrate-adds-unrevealed`, `desecrate-no-free-slot`, `one-crafted-one-desecrated` |
 | + `omen-of-sinistral-necromancy` / `omen-of-dextral-necromancy` | Active before the bone. | The unrevealed modifier is a prefix (suffix). | `side-necromancy`, `omens-active-before-use`, `necromancy-without-pool` |
 | `reveal` | An unrevealed modifier on the item. | It becomes the chosen one of the offered modifiers, in place: no slot changes. | `desecrate-adds-unrevealed`, `reveal-offers-base` |
 | + `omen-of-abyssal-echoes` | Active before the reveal. | One reroll of the offer; no slot changes. | `abyssal-echoes`, `omens-active-before-use` |
@@ -179,7 +179,8 @@ hold:
 4. its side rule finds a side (below; a step without `side` needs none);
 5. it can be taken: an alternative fits (below), and for an add, a fill or
    an essence a free slot exists where the action lands; for a desecration
-   a free slot exists on its resolved side.
+   a free slot exists on its resolved side, and for a `last-remaining`
+   desecration the pool condition holds (§ "The last-target desecration").
 
 The **next step** is the first candidate in file order. With none, the
 craft is **done** when no target is missing, and otherwise **stuck**, and
@@ -191,7 +192,7 @@ land on, from the base pool for an add (a desecrated-pool target is placed
 only by a desecration and its reveal), and not the target the route's
 `essence` binding claims (an `any-remaining` add leaves that one out).
 Bindings (`essence`, `hardest`) are made once and kept across items, as in
-listed order.
+listed order; `last-remaining` is not (below).
 
 When a binding is made (a gap the model met; added 2026-10-29): before each
 pick, each binding the blueprint uses that is not yet made is made as soon
@@ -199,6 +200,14 @@ as the item allows it: `essence` on a magic item, to the first missing
 target in target order that an unblocked essence adds; `hardest` while a
 target is missing. A binding whose target is later placed stays made, and
 the step it binds then has its goal met.
+
+`last-remaining` in state order (added 2026-10-30) is made afresh before
+every pick, on the item as it stands: to the one missing target when
+exactly one target is missing, and otherwise not made. It is never kept
+from an earlier item: kept like `hardest`, a miss that leaves a second
+target missing would keep a desecration bound to a target that is no longer
+the last. An unrevealed modifier a `last-remaining` desecration left waits
+for that target (§ "Slot accounting", need).
 
 `hardest` in the model: a missing desecrated-pool target first (its odds
 are unknown, so it counts as hardest), the first in target order; else the
@@ -281,6 +290,69 @@ The removal's odds: certain when every modifier it may take is a
 non-target; otherwise the share of non-targets among them
 (`removal-equally-likely`).
 
+### The last-target desecration
+
+Added 2026-10-30 (issue #32). When the item is rare, carries no desecrated
+modifier (an unrevealed one included) and exactly one target is missing,
+the route places that last target with a desecration on its side and a
+reveal, instead of an exalt or an essence. It is three blueprint steps,
+bound to `last-remaining`, not a hidden rule, so the guide, the outcomes
+and the step ids work as for every other step:
+
+| Step | Goal | Bind, `when` | Side | Guard | Alternatives, in order |
+|---|---|---|---|---|---|
+| `reveal-last` | `reveal` | `last-remaining`, `bound` | none | none | `reveal` with `omen-of-abyssal-echoes`; plain `reveal` |
+| `light-last` | `remove-desecrated` | `last-remaining`, `bound` | none | `desecrated_unwanted = true` | `orb-of-annulment` with `omen-of-light` |
+| `desecrate-last` | `desecrate` | `last-remaining`, `bound` | `target` | `rarity = ["rare"]` | `desecrate` with `side-omen` |
+
+Where each blueprint has them:
+
+- `close-a-side`: `reveal-last`, `light-last`, `remove`, `desecrate-last`,
+  `close`, `slam-open-side`, `side-slam`.
+- `rare-clean-then-slam`: `reveal-last`, `light-last`, `remove`,
+  `desecrate-last`, `side-slam`.
+- `magic-augment-essence`, in its rare phase: `transmute`, `remove-magic`,
+  `augment`, `essence`, `reveal-last`, `light-last`, `remove`,
+  `desecrate-last`, `side-slam`.
+- `essence-desecrate-double-slam`: `desecrate-last` only, right after its
+  `desecrate`: `essence`, `reveal`, `light`, `remove`, `desecrate`,
+  `desecrate-last`, `side-slam`. Its `reveal` and `light` already take an
+  unrevealed modifier and an unwanted desecrated one, whichever binding left
+  it. Its own `hardest` desecration is unchanged and still comes first; once
+  it has desecrated, the item has a desecrated modifier and the rule cannot
+  apply (`one-crafted-one-desecrated`).
+
+`desecrate-last` has one alternative. A bone without the side omen could
+land on the other side, so with the Necromancy omen (or the bone) on the
+player's blocked list the step is not a candidate, and the route takes the
+step it took before the rule.
+
+**The pool condition.** A `last-remaining` desecration is a candidate only
+when the item's class has at least one desecrated-section modifier on the
+target's side at the item's level (the list the craft window's Desecrated
+group shows). Any target on that side then qualifies, a base-pool one
+included (`reveal-offers-base`), so the rule never relies on
+`necromancy-without-pool`. The engine reads the pool from the shipped class
+data; the model takes it from the case (§ "Representative crafts"). The
+`hardest` desecration of `essence-desecrate-double-slam` does not ask it.
+
+**A wrong reveal.** A reveal that offers no target leaves a revealed
+desecrated modifier that is not a target, with the last target still
+missing: `light-last` takes it with Omen of Light and an Orb of Annulment
+(certain: it takes nothing else), then `desecrate-last` and `reveal-last`
+run again.
+
+**The fallback reason** (engine only). When the item is rare, carries no
+desecrated modifier and exactly one target is missing, but `desecrate-last`
+is not a candidate, the engine attaches why, in words, to the step it picks
+instead: no pool (`no desecrated <prefix|suffix> modifier on <class> at
+item level <n>`), the bone or the Necromancy omen blocked (`<names>
+blocked`), or otherwise the engine's own reason. The model does not compute
+it and the parity test does not compare it, as with odds.
+
+**Odds.** A desecration and a reveal have no established weights, so their
+odds are unknown, with that reason, as in listed order.
+
 ### Rejections
 
 Checked in this order; the first that applies is the route's rejection, as
@@ -290,7 +362,10 @@ the engine serialises it (`kind`, kebab case):
 2. `no-start-fits`: no `[[start]]` alternative holds.
 3. `targets-exceed-slots` (new): a side's targets alone exceed its Rare cap.
 4. `desecrated-target-unplaced`: a desecrated-pool target is missing and
-   the blueprint has no `desecrate` step.
+   the blueprint has no `desecrate` step. Since every v2 blueprint has
+   `desecrate-last` (added 2026-10-30), none of them is rejected this way;
+   a desecrated-pool target that no `hardest` desecration binds and that
+   never becomes the last missing one ends in `route-cannot-finish`.
 5. `route-cannot-finish` (new), with `why`: `no-candidate` (no step is a
    candidate while a target is missing; the reasons name each step's, so a
    step whose every alternative is on the player's blocked list shows up
@@ -370,23 +445,70 @@ and each rejection's `kind`. A removal step there also records `certain`,
 whether every modifier it may take is a non-target. Every case names its
 `hardest` target, so a route that desecrates does not depend on odds the
 model does not have; a target's essence is the essence id the engine's
-floor picks, which the model takes as given (added 2026-10-29). A difference between this list and the model
+floor picks, which the model takes as given (added 2026-10-29). A case
+may name the sides on which its class has a desecrated modifier at the
+item's level (`desecration_pool`, a list of `prefix` and `suffix`; absent,
+both), for the last-target desecration's pool condition (added
+2026-10-30). A difference between this list and the model
 is a spec or model defect, never a reason to change the expectation.
 
 - **`rare-2p1s-prefix-missing`** (the owner's craft of 2026-10-29): a rare
   with two target prefixes and one target suffix; a third prefix target is
   missing. The prefix side is reserved, the suffix side closable.
-  - `close-a-side`: fill the suffix side with an Exalted Orb, Omen of
-    Greater Exaltation and Omen of Dextral Exaltation; then add the prefix
-    with a Perfect Exalted Orb and no omen (one side open). Done.
+  - `close-a-side`: the last target, so desecrate on the prefix side with
+    Omen of Sinistral Necromancy; then reveal with Omen of Abyssal Echoes.
+    Done (issue #32's first test; it used to close the suffix side and
+    slam).
   - `essence-desecrate-double-slam`: desecrate on the prefix side with Omen
     of Sinistral Necromancy; then reveal with Omen of Abyssal Echoes. Done.
-  - `rare-clean-then-slam`: add the prefix with a Perfect Exalted Orb and
-    Omen of Sinistral Exaltation (one free slot, so no Greater). Done.
+  - `rare-clean-then-slam`: the same desecration and reveal. Done (it used
+    to exalt with Sinistral Exaltation).
   - `magic-augment-essence`: rejected, `no-start-fits`.
   - Baseline: the listed `fill-desecrate-exalt` names a plain `exalted-orb`
     with no omen first, and an unrestricted exalt can land in the reserved
     prefix slot.
+- **`rare-2p1s-necromancy-blocked`**: the owner's craft with
+  `omen-of-sinistral-necromancy` on the blocked list. The last-target
+  desecration is not a candidate, so each route is as it was before the
+  rule.
+  - `close-a-side`: fill the suffix side with an Exalted Orb, Omen of
+    Greater Exaltation and Omen of Dextral Exaltation; then add the prefix
+    with a Perfect Exalted Orb and no omen (one side open). Done.
+  - `essence-desecrate-double-slam`: its `hardest` desecration falls to the
+    plain bone, on the prefix side with no omen; then reveal with Abyssal
+    Echoes. Done.
+  - `rare-clean-then-slam`: add the prefix with a Perfect Exalted Orb and
+    Omen of Sinistral Exaltation (one free slot, so no Greater). Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`body-armour-prefix-no-pool`**: the owner's craft on a body armour,
+  whose class has no desecrated prefix (`armour-no-desecrated-prefix`;
+  `desecration_pool` is suffix only). The last target is a prefix, outside
+  the pool.
+  - `close-a-side`: fill the suffix side, then add the prefix with a
+    Perfect Exalted Orb and no omen, as above. Done.
+  - `essence-desecrate-double-slam`: desecrate on the prefix side with
+    Sinistral Necromancy, then reveal with Abyssal Echoes (its `hardest`
+    desecration does not ask the pool; `necromancy-without-pool`). Done.
+  - `rare-clean-then-slam`: add the prefix with a Perfect Exalted Orb and
+    Sinistral Exaltation. Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`rare-desecrated-target`** (issue #32's second test): a rare whose
+  prefixes are a revealed desecrated target and a target, and whose one
+  suffix is a target; a third prefix target is missing. The item already
+  has its desecrated modifier, so no route desecrates.
+  - `close-a-side`: fill the suffix side, then add the prefix with a
+    Perfect Exalted Orb and no omen. Done.
+  - `essence-desecrate-double-slam`, `rare-clean-then-slam`: add the prefix
+    with a Perfect Exalted Orb and Sinistral Exaltation. Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`rare-wrong-reveal`**: a rare whose prefixes are two targets and a
+  revealed desecrated junk (a reveal that offered no target), and whose one
+  suffix is a target; a third prefix target is missing.
+  - `close-a-side`, `essence-desecrate-double-slam`,
+    `rare-clean-then-slam`: an Orb of Annulment with Omen of Light, odds
+    certain; desecrate on the prefix side with Sinistral Necromancy; reveal
+    with Abyssal Echoes. Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
 - **`magic-two-good`**: a magic item with a target prefix and a target
   suffix; missing a prefix an essence adds, a desecrated-pool prefix and
   two more suffixes.
@@ -394,15 +516,21 @@ is a spec or model defect, never a reason to change the expectation.
     side with Sinistral Necromancy; reveal with Abyssal Echoes; add the two
     suffixes with a Perfect Exalted Orb, Greater and Dextral Exaltation.
     Done.
+  - `magic-augment-essence`: the essence; add the two suffixes with a
+    Perfect Exalted Orb, Greater and Dextral Exaltation; the desecrated
+    prefix is then the last target, so desecrate on the prefix side with
+    Sinistral Necromancy and reveal with Abyssal Echoes. Done (it used to
+    be rejected `desecrated-target-unplaced`).
   - `close-a-side`, `rare-clean-then-slam`: rejected, `no-start-fits`.
-    `magic-augment-essence`: rejected, `desecrated-target-unplaced`.
 - **`rare-fractured`**: a rare whose prefixes are a fractured target and
   two junk, whose one suffix is a target and the item's lowest-level
   modifier; a prefix target is missing. The prefix side is blocked.
   - `close-a-side`, `essence-desecrate-double-slam`,
     `rare-clean-then-slam`: each starts with an Orb of Annulment and Omen
     of Sinistral Annulment on the prefix side, odds certain (the fractured
-    target cannot go; the whittle would take the suffix target).
+    target cannot go; the whittle would take the suffix target); then
+    desecrate on the prefix side with Sinistral Necromancy and reveal with
+    Abyssal Echoes. Done.
   - `magic-augment-essence`: rejected, `no-start-fits`.
 - **`rare-one-target`** (#28): a rare whose prefixes are a target and a
   junk and whose suffixes are two junk, the lowest-level modifier a junk
@@ -410,8 +538,10 @@ is a spec or model defect, never a reason to change the expectation.
   the suffix side reserved.
   - `rare-clean-then-slam`: a plain Orb of Annulment on the prefix side
     (the suffix side holds no target to protect); add the two prefixes with
-    a Perfect Exalted Orb, Greater and Sinistral Exaltation; add the suffix
-    with a Perfect Exalted Orb and Dextral Exaltation. Done.
+    a Perfect Exalted Orb, Greater and Sinistral Exaltation; the suffix is
+    then the last target, so desecrate on the suffix side with Omen of
+    Dextral Necromancy and reveal with Abyssal Echoes. Done (it used to
+    exalt the suffix with Dextral Exaltation).
   - `close-a-side`: rejected, `no-start-fits` (no side closable, both
     open).
 - **`rare-no-target`** (#28's belt): a rare with two junk prefixes and two
@@ -439,7 +569,14 @@ Invariants over every case and every route:
 - a whittle only when it is certain and an annulment could take a target;
 - a fractured modifier is never projected as removed;
 - every omen a step needs is in its list (the side omen with Greater, the
-  Necromancy omen with a side desecration).
+  Necromancy omen with a side desecration), unless the player blocked it
+  and the step took its plain alternative (a reveal without Abyssal
+  Echoes, `essence-desecrate-double-slam`'s plain bone);
+- the last target is desecrated when it can be: on a rare with no
+  desecrated modifier and exactly one target missing, whose side has a
+  free slot and a desecration pool, with neither the bone nor that side's
+  Necromancy omen blocked, the step taken is a desecration on that side
+  with its Necromancy omen.
 
 ## Not covered
 
@@ -455,8 +592,10 @@ Invariants over every case and every route:
   between equal-level modifiers: a whittle is taken only when certain, and
   its added modifier is not projected.
 - Whether an unrevealed modifier can be annulled, and Putrefaction.
-- Class pools: which desecrated modifiers a class has (beyond the
-  `necromancy-without-pool` caveat) and which essences fit it.
+- Class pools: which desecrated modifiers a class has at which level (a
+  case names only the sides its pool covers, `desecration_pool`; the
+  engine reads the shipped class data), what a desecration without a pool
+  does (`necromancy-without-pool`) and which essences fit a class.
 - Two desecrated-pool targets on one item: the second finds no step, and
   the route is rejected `route-cannot-finish`.
 - Jewels (no spawn weights; no v2 blueprint names them), Homogenising and

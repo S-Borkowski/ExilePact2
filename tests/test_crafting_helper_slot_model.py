@@ -10,7 +10,9 @@ Baselines (how things stand without the v2 routes):
   2P/1S craft still needs (`test_baseline_an_unrestricted_exalt_...`);
 - the listed `fill-desecrate-exalt`, read as written, names a plain
   `exalted-orb` first on that craft;
-- its starts reject a rare with one target (#28).
+- its starts reject a rare with one target (#28);
+- an item that already has its desecrated modifier keeps its slam (#32's
+  second test: `test_a_desecrated_item_keeps_its_slam`).
 
 Targets: every case projects as `cases.json` records, the records keep what
 the spec's "Representative crafts" says must hold (written out here, apart
@@ -51,30 +53,62 @@ OWNERS_CRAFTS = [
 # The whittle's positive control and its blocked pair: required cases, so
 # neither can be dropped from the case file silently.
 WHITTLE_CONTROLS = ["rare-whittle-certain", "rare-whittle-blocked"]
+# The last-target desecration (#32): where it cannot apply (a blocked
+# Necromancy omen, no pool on the side, a desecrated target already on the
+# item) and its wrong-reveal loop.
+LAST_TARGET_CASES = [
+    "rare-2p1s-necromancy-blocked",
+    "body-armour-prefix-no-pool",
+    "rare-desecrated-target",
+    "rare-wrong-reveal",
+]
 
 GREATER = "omen-of-greater-exaltation"
 SIN_EX, DEX_EX = "omen-of-sinistral-exaltation", "omen-of-dextral-exaltation"
 SIN_ANN, DEX_ANN = "omen-of-sinistral-annulment", "omen-of-dextral-annulment"
-SIN_NEC = "omen-of-sinistral-necromancy"
+SIN_NEC, DEX_NEC = "omen-of-sinistral-necromancy", "omen-of-dextral-necromancy"
 ECHOES = "omen-of-abyssal-echoes"
+LIGHT = "omen-of-light"
 ESSENCE = "<the case's essence>"
+
+# The steps the last-target desecration takes on a prefix (suffix).
+DESECRATE_PREFIX = [("desecrate", "prefix", "desecrate", [SIN_NEC]), ("reveal", None, "reveal", [ECHOES])]
+DESECRATE_SUFFIX = [("desecrate", "suffix", "desecrate", [DEX_NEC]), ("reveal", None, "reveal", [ECHOES])]
+# The owner's craft before the rule, and wherever it cannot apply.
+CLOSE_THEN_SLAM = [
+    ("fill", "suffix", "exalted-orb", [GREATER, DEX_EX]),
+    ("add-wanted", "prefix", "perfect-exalted-orb", []),
+]
+SIDE_SLAM_PREFIX = [("add-wanted", "prefix", "perfect-exalted-orb", [SIN_EX])]
+LIGHT_OFF = ("remove-desecrated", None, "orb-of-annulment", [LIGHT], True)
 
 # What the spec's "Representative crafts" says must hold, step by step:
 # (goal, side, currency, omens[, certain]); `done` when the route must end
 # there, `False` when only these first steps are pinned.
 MUST_HOLD = {
-    ("rare-2p1s-prefix-missing", "close-a-side"): ([
-        ("fill", "suffix", "exalted-orb", [GREATER, DEX_EX]),
-        ("add-wanted", "prefix", "perfect-exalted-orb", []),
-    ], True),
-    ("rare-2p1s-prefix-missing", "essence-desecrate-double-slam"): ([
-        ("desecrate", "prefix", "desecrate", [SIN_NEC]),
+    ("rare-2p1s-prefix-missing", "close-a-side"): (DESECRATE_PREFIX, True),
+    ("rare-2p1s-prefix-missing", "essence-desecrate-double-slam"): (DESECRATE_PREFIX, True),
+    ("rare-2p1s-prefix-missing", "rare-clean-then-slam"): (DESECRATE_PREFIX, True),
+    ("rare-2p1s-prefix-missing", "magic-augment-essence"): "no-start-fits",
+    ("rare-2p1s-necromancy-blocked", "close-a-side"): (CLOSE_THEN_SLAM, True),
+    ("rare-2p1s-necromancy-blocked", "essence-desecrate-double-slam"): ([
+        ("desecrate", "prefix", "desecrate", []),
         ("reveal", None, "reveal", [ECHOES]),
     ], True),
-    ("rare-2p1s-prefix-missing", "rare-clean-then-slam"): ([
-        ("add-wanted", "prefix", "perfect-exalted-orb", [SIN_EX]),
-    ], True),
-    ("rare-2p1s-prefix-missing", "magic-augment-essence"): "no-start-fits",
+    ("rare-2p1s-necromancy-blocked", "rare-clean-then-slam"): (SIDE_SLAM_PREFIX, True),
+    ("rare-2p1s-necromancy-blocked", "magic-augment-essence"): "no-start-fits",
+    ("body-armour-prefix-no-pool", "close-a-side"): (CLOSE_THEN_SLAM, True),
+    ("body-armour-prefix-no-pool", "essence-desecrate-double-slam"): (DESECRATE_PREFIX, True),
+    ("body-armour-prefix-no-pool", "rare-clean-then-slam"): (SIDE_SLAM_PREFIX, True),
+    ("body-armour-prefix-no-pool", "magic-augment-essence"): "no-start-fits",
+    ("rare-desecrated-target", "close-a-side"): (CLOSE_THEN_SLAM, True),
+    ("rare-desecrated-target", "essence-desecrate-double-slam"): (SIDE_SLAM_PREFIX, True),
+    ("rare-desecrated-target", "rare-clean-then-slam"): (SIDE_SLAM_PREFIX, True),
+    ("rare-desecrated-target", "magic-augment-essence"): "no-start-fits",
+    ("rare-wrong-reveal", "close-a-side"): ([LIGHT_OFF] + DESECRATE_PREFIX, True),
+    ("rare-wrong-reveal", "essence-desecrate-double-slam"): ([LIGHT_OFF] + DESECRATE_PREFIX, True),
+    ("rare-wrong-reveal", "rare-clean-then-slam"): ([LIGHT_OFF] + DESECRATE_PREFIX, True),
+    ("rare-wrong-reveal", "magic-augment-essence"): "no-start-fits",
     ("magic-two-good", "essence-desecrate-double-slam"): ([
         ("add-wanted", None, ESSENCE, []),
         ("desecrate", "prefix", "desecrate", [SIN_NEC]),
@@ -83,22 +117,24 @@ MUST_HOLD = {
     ], True),
     ("magic-two-good", "close-a-side"): "no-start-fits",
     ("magic-two-good", "rare-clean-then-slam"): "no-start-fits",
-    ("magic-two-good", "magic-augment-essence"): "desecrated-target-unplaced",
+    ("magic-two-good", "magic-augment-essence"): ([
+        ("add-wanted", None, ESSENCE, []),
+        ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER, DEX_EX]),
+    ] + DESECRATE_PREFIX, True),
     ("rare-fractured", "close-a-side"): ([
         ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], True),
-    ], False),
+    ] + DESECRATE_PREFIX, True),
     ("rare-fractured", "essence-desecrate-double-slam"): ([
         ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], True),
-    ], False),
+    ] + DESECRATE_PREFIX, True),
     ("rare-fractured", "rare-clean-then-slam"): ([
         ("remove-unwanted", "prefix", "orb-of-annulment", [SIN_ANN], True),
-    ], False),
+    ] + DESECRATE_PREFIX, True),
     ("rare-fractured", "magic-augment-essence"): "no-start-fits",
     ("rare-one-target", "rare-clean-then-slam"): ([
         ("remove-unwanted", "prefix", "orb-of-annulment", []),
         ("add-wanted", "prefix", "perfect-exalted-orb", [GREATER, SIN_EX]),
-        ("add-wanted", "suffix", "perfect-exalted-orb", [DEX_EX]),
-    ], True),
+    ] + DESECRATE_SUFFIX, True),
     ("rare-one-target", "close-a-side"): "no-start-fits",
     ("rare-no-target", "rare-clean-then-slam"): ([
         ("remove-unwanted", "prefix", "orb-of-annulment", []),
@@ -147,6 +183,31 @@ def with_changes(c, **changes):
     return other
 
 
+def steps_of(record):
+    """A route record's steps as (goal, side, currency, omens) tuples."""
+    return [(s["goal"], s["side"], s["currency"], s["omens"]) for s in record["steps"]]
+
+
+def last_target_to_desecrate(state, acc):
+    """The missing target the spec's last-target desecration must take on
+    this item, written from the spec apart from the model's step list: a rare
+    with no desecrated modifier and exactly one target missing, whose side
+    has a free slot and a desecration pool, the bone and that side's
+    Necromancy omen unblocked. None when the rule does not apply."""
+    item = state.item
+    if item.rarity != "rare" or any(m.desecrated for m in item.mods()):
+        return None
+    miss = sm.missing(state)
+    if len(miss) != 1:
+        return None
+    t = miss[0]
+    if t.side not in state.desecration_pool or acc[t.side].free <= 0:
+        return None
+    if {"desecrate", sm.SIDE_OMENS["desecrate"][t.side]} & state.blocked:
+        return None
+    return t
+
+
 class Baseline(unittest.TestCase):
     def test_baseline_an_unrestricted_exalt_can_fill_the_reserved_prefix_slot(self):
         c = case("rare-2p1s-prefix-missing")
@@ -188,7 +249,7 @@ class Cases(unittest.TestCase):
 
     def test_cases_cover_the_owners_crafts(self):
         cases = {c.id: c for c in load_cases()}
-        self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS))
+        self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS + LAST_TARGET_CASES))
         raw = json.loads(CASES.read_text(encoding="utf-8"))
         self.assertIn("crafting-slots-spec.md", raw.get("spec", ""))
 
@@ -226,6 +287,36 @@ class Cases(unittest.TestCase):
                         if len(want) > 4:
                             self.assertEqual(got["certain"], want[4])
 
+    def test_a_desecrated_item_keeps_its_slam(self):
+        # #32's second test: the item already carries its one desecrated
+        # modifier (a target), so no route desecrates and each slams as
+        # before the rule
+        c = case("rare-desecrated-target")
+        self.assertTrue(any(m.desecrated and m.is_target for m in c.item.mods()))
+        for bp_id in V2:
+            record = sm.plan(sm.BLUEPRINTS[bp_id], c).record()
+            with self.subTest(blueprint=bp_id):
+                for s in record.get("steps", []):
+                    self.assertNotEqual(s["goal"], "desecrate")
+        self.assertEqual(steps_of(sm.plan(sm.BLUEPRINTS["close-a-side"], c).record()), CLOSE_THEN_SLAM)
+        self.assertEqual(steps_of(sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], c).record()),
+                         SIDE_SLAM_PREFIX)
+        # control: the same item with that modifier not desecrated, the last
+        # target is desecrated and revealed
+        plain = copy.deepcopy(c)
+        plain.item.prefix[0].desecrated = False
+        for bp_id in ("close-a-side", "rare-clean-then-slam"):
+            with self.subTest(control=bp_id):
+                self.assertEqual(steps_of(sm.plan(sm.BLUEPRINTS[bp_id], plain).record()),
+                                 DESECRATE_PREFIX)
+        # control: an unrevealed desecrated modifier counts too; it is revealed,
+        # never joined by a second desecration
+        waiting = copy.deepcopy(c)
+        waiting.item.prefix[0] = sm.Mod("unrevealed", "junk", desecrated=True, unrevealed=True,
+                                        waits_for="p1")
+        record = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], waiting).record()
+        self.assertEqual(steps_of(record), SIDE_SLAM_PREFIX + [("reveal", None, "reveal", [ECHOES])])
+
 
 class Invariants(unittest.TestCase):
     def test_no_unrestricted_exalt_while_a_reserved_side_shares_the_open_slots(self):
@@ -257,8 +348,9 @@ class Invariants(unittest.TestCase):
         route = sm.plan(plain_only, owner)
         self.assertEqual(route.record(), {"rejected": {"kind": "route-cannot-finish"}})
         self.assertEqual(route.why, "no-candidate")
-        # control: with one side open the plain exalt fits (close-a-side's last slam)
-        last = sm.plan(sm.BLUEPRINTS["close-a-side"], owner).record()["steps"][-1]
+        # control: with one side open the plain exalt fits (close-a-side's last
+        # slam, where the last-target desecration cannot apply)
+        last = sm.plan(sm.BLUEPRINTS["close-a-side"], case("rare-2p1s-necromancy-blocked")).record()["steps"][-1]
         self.assertEqual((last["currency"], last["omens"]), ("perfect-exalted-orb", []))
 
     def test_side_annulment_only_when_the_other_side_holds_a_target(self):
@@ -389,12 +481,14 @@ class Invariants(unittest.TestCase):
         self.assertGreater(greaters, 0)
 
         # control: one free prefix slot, no Greater
-        first = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], case("rare-2p1s-prefix-missing")).record()["steps"][0]
+        first = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], case("rare-2p1s-necromancy-blocked")).record()["steps"][0]
+        self.assertEqual((first["goal"], first["side"]), ("add-wanted", "prefix"))
         self.assertNotIn(GREATER, first["omens"])
-        # control: Greater blocked, one prefix per slam
+        # control: Greater blocked, one prefix per slam (the suffix, then the
+        # last target, is desecrated)
         c = with_changes(case("rare-one-target"), blocked=frozenset({GREATER}))
         steps = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], c).record()["steps"]
-        self.assertEqual([s["omens"] for s in steps[1:]], [[SIN_EX], [SIN_EX], [DEX_EX]])
+        self.assertEqual([s["omens"] for s in steps[1:]], [[SIN_EX], [SIN_EX], [DEX_NEC], [ECHOES]])
 
     def test_every_projected_step_lists_all_its_omens(self):
         checked = 0
@@ -407,17 +501,84 @@ class Invariants(unittest.TestCase):
 
         # controls: a mutated record must be refused
         owner = case("rare-2p1s-prefix-missing")
-        route = sm.plan(sm.BLUEPRINTS["close-a-side"], owner)
+        route = sm.plan(sm.BLUEPRINTS["close-a-side"], case("rare-2p1s-necromancy-blocked"))
         fill = copy.deepcopy(route.steps[0])
+        self.assertEqual(fill.record["goal"], "fill")
         fill.record["omens"] = [GREATER]
         self.assertTrue(sm.omen_problems(fill))
-        route = sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], owner)
-        desecrate = copy.deepcopy(route.steps[0])
-        desecrate.record["omens"] = []
-        self.assertTrue(sm.omen_problems(desecrate))
-        wrong_side = copy.deepcopy(route.steps[0])
-        wrong_side.record["omens"] = ["omen-of-dextral-necromancy"]
-        self.assertTrue(sm.omen_problems(wrong_side))
+        for bp_id in ("essence-desecrate-double-slam", "close-a-side"):
+            route = sm.plan(sm.BLUEPRINTS[bp_id], owner)
+            desecrate = copy.deepcopy(route.steps[0])
+            self.assertEqual(desecrate.record["goal"], "desecrate")
+            desecrate.record["omens"] = []
+            self.assertTrue(sm.omen_problems(desecrate))
+            wrong_side = copy.deepcopy(route.steps[0])
+            wrong_side.record["omens"] = [DEX_NEC]
+            self.assertTrue(sm.omen_problems(wrong_side))
+        # the plain bone is no problem only where the player blocked the omen
+        plain = sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], case("rare-2p1s-necromancy-blocked"))
+        self.assertEqual(plain.steps[0].record["omens"], [])
+        self.assertEqual(sm.omen_problems(plain.steps[0]), [])
+
+    def test_the_last_target_is_desecrated_when_it_can_be(self):
+        applied = 0
+        for c, bp_id, route in every_route():
+            for step in route.steps:
+                t = last_target_to_desecrate(step.before, step.accounting)
+                if t is None:
+                    continue
+                applied += 1
+                with self.subTest(case=c.id, blueprint=bp_id, step=step.record):
+                    self.assertEqual(
+                        (step.record["goal"], step.record["side"], step.record["omens"]),
+                        ("desecrate", t.side, [sm.SIDE_OMENS["desecrate"][t.side]]),
+                    )
+                    # its unrevealed modifier waits for that target, and the
+                    # route's next step reveals it
+                    unrevealed = [m for m in step.after.item.side(t.side) if m.unrevealed]
+                    self.assertEqual([m.waits_for for m in unrevealed], [t.alias])
+                    later = route.steps[route.steps.index(step) + 1:]
+                    self.assertTrue(later)
+                    self.assertEqual(later[0].record["goal"], "reveal")
+        self.assertGreater(applied, 0)
+        # each blueprint that had no desecration takes the rule's step somewhere
+        took = {bp_id for _, bp_id, route in every_route()
+                for s in route.steps if s.step.bind == "last-remaining" and s.record["goal"] == "desecrate"}
+        self.assertLessEqual({"close-a-side", "magic-augment-essence", "rare-clean-then-slam"}, took)
+
+        owner = case("rare-2p1s-prefix-missing")
+        close = sm.BLUEPRINTS["close-a-side"]
+        # controls where it must not apply: the bone or the Necromancy omen
+        # blocked, and a last target outside the class's desecration pool
+        for blocked in ({"desecrate"}, {SIN_NEC}):
+            with self.subTest(blocked=blocked):
+                c = with_changes(owner, blocked=frozenset(blocked))
+                self.assertEqual(steps_of(sm.plan(close, c).record()), CLOSE_THEN_SLAM)
+        no_pool = with_changes(owner, desecration_pool=frozenset({"suffix"}))
+        self.assertEqual(steps_of(sm.plan(close, no_pool).record()), CLOSE_THEN_SLAM)
+        # the other side's Necromancy omen blocked changes nothing
+        c = with_changes(owner, blocked=frozenset({DEX_NEC}))
+        self.assertEqual(steps_of(sm.plan(close, c).record()), DESECRATE_PREFIX)
+        # two targets missing: no desecration until one is left (#28)
+        record = sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], case("rare-one-target")).record()
+        self.assertEqual([s["goal"] for s in record["steps"][:2]], ["remove-unwanted", "add-wanted"])
+        # a magic item: the essence, never a bone
+        record = sm.plan(sm.BLUEPRINTS["magic-augment-essence"], case("magic-one-good")).record()
+        self.assertNotIn("desecrate", [s["goal"] for s in record["steps"]])
+
+        # the binding is made afresh on every item, never kept: a miss that
+        # leaves a second target missing unbinds it
+        st = sm.State.from_case(owner)
+        sm.ensure_bindings(st, close)
+        self.assertEqual(st.bindings.get("last-remaining"), "p3")
+        st.item.prefix.pop(1)
+        sm.ensure_bindings(st, close)
+        self.assertNotIn("last-remaining", st.bindings)
+
+        # a wrong reveal: Omen of Light takes it, then the bone again
+        record = sm.plan(close, case("rare-wrong-reveal")).record()
+        self.assertEqual(record["steps"][0]["certain"], True)
+        self.assertEqual(steps_of(record), [LIGHT_OFF[:4]] + DESECRATE_PREFIX)
 
 
 class Spec(unittest.TestCase):

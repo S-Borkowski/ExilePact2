@@ -175,6 +175,12 @@ export interface TargetChoice {
   best_tier: number;
   /** The default first, then one per reachable tier, best first. */
   floors: FloorOption[];
+  /**
+   * Null when it can be chosen; otherwise why not, Rust's text and the
+   * row's tooltip (`Prefixes full: 2 on the item + 1 chosen = 3 of 3`). A
+   * chosen choice is never disabled.
+   */
+  disabled: string | null;
 }
 
 export interface TargetChoices {
@@ -489,7 +495,14 @@ const item = record<CraftItemView>({
   modifiers: list(itemMod),
 });
 const floorOption = record<FloorOption>({ floor: nullable(uint), label: str });
-const choice = record<TargetChoice>({ mod_id: str, side, text: str, best_tier: uint, floors: list(floorOption) });
+const choice = record<TargetChoice>({
+  mod_id: str,
+  side,
+  text: str,
+  best_tier: uint,
+  floors: list(floorOption),
+  disabled: nullable(str),
+});
 const chosen = record<ChosenTarget>({
   mod_id: str,
   side,

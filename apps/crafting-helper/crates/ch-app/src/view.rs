@@ -292,6 +292,10 @@ pub struct TargetChoice {
     pub best_tier: u32,
     /// The default first, then one per reachable tier, best first.
     pub floors: Vec<FloorOption>,
+    /// `None` when it can be chosen; otherwise why not, the row's tooltip:
+    /// `<Prefixes|Suffixes> full: <a> on the item + <b> chosen = <a+b> of
+    /// <limit>`. A chosen choice is never disabled.
+    pub disabled: Option<String>,
 }
 
 /// The target choices for the item's base, in three groups.
@@ -374,8 +378,10 @@ pub struct StepLineView {
     pub uses: Vec<String>,
     /// The odds in words; `None` for a manual step.
     pub odds: Option<String>,
-    /// Set when an earlier alternative was passed over; never on a step the
-    /// app named by the modifier levels.
+    /// Set when an earlier alternative was passed over (never on a step the
+    /// app named by the modifier levels), or when a state-ordered step was
+    /// taken in place of the last target's desecration, saying why; both
+    /// joined by `; `, the desecration's first.
     pub fallback: Option<String>,
 }
 

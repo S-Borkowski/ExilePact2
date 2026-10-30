@@ -29,6 +29,10 @@ real target ids and floors behind each case's aliases.
 | `magic-one-good.txt` | Magic amulet: Mana T6, no suffix. | Mana T6, Life T8 (the essence's), Fire T5. |
 | `magic-good-and-bad.txt` | Magic amulet: Mana T6; Intelligence T5. | As `magic-one-good`. |
 | `rare-whittle-certain.txt`, `rare-whittle-blocked.txt` | Rare ring: Mana T5, Rarity of Items T3, the one lowest level, Accuracy Rating T3; Fire Resistance T5. The same item twice; the second case blocks Omen of Whittling. | Mana T5, Life T4 (missing), Fire T5. |
+| `rare-2p1s-necromancy-blocked.txt` | `rare-2p1s-prefix-missing`'s ring again; the case blocks Omen of Sinistral Necromancy. | As `rare-2p1s-prefix-missing`. |
+| `body-armour-prefix-no-pool.txt` | Rare Chieftain Cuirass (str), item level 82, no implicit: Life T5, increased Armour T2; Fire Resistance T3. The class has desecrated suffixes only. | Life T5, increased Armour T2, Spirit T3 (missing), Fire T3. |
+| `rare-desecrated-target.txt` | The 2P/1S ring with a revealed desecrated Attack Damage while on Low Life prefix (its one tier, level 65) in Mana's place, then Life T4; Fire Resistance T5. | The desecrated prefix T1, Life T4, Accuracy Rating T3 (missing), Fire T5. |
+| `rare-wrong-reveal.txt` | The 2P/1S ring plus a revealed desecrated Remnant effect prefix (level 65), not a target: a reveal that offered none. | As `rare-2p1s-prefix-missing`. |
 
 ## Walk states (`walks/`)
 

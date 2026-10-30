@@ -390,6 +390,8 @@ describe('the craft window', () => {
       'craft-fallback': 'Doom Loop',
       'craft-no-route': 'Doom Loop',
       'craft-close-side': 'Cord Snare',
+      'craft-last-desecration': 'Cord Snare',
+      'craft-side-full': 'Cord Snare',
       'craft-refused': "Can't plan this item",
       'craft-guiding': 'Doom Loop',
       'craft-miss': 'Doom Loop',
@@ -572,6 +574,105 @@ describe('the craft window', () => {
     for (const li of planning.root.querySelectorAll('.item-panel ul.mods li')) {
       expect(texts(li, '.tag')).not.toContain('target');
     }
+  });
+
+  it('a_full_side_greys_its_other_choices_with_the_reason', async () => {
+    // `craft-side-full`: Life and Mana on the belt and Armour chosen fill
+    // its three prefixes. Every other prefix choice stays listed, greyed,
+    // its checkbox disabled, Rust's reason its tooltip and its accessible
+    // description; the chosen prefixes and every suffix stay selectable.
+    const reason = 'Prefixes full: 2 on the item + 1 chosen = 3 of 3';
+    const view = fixtureView('craft-side-full');
+    const p = view.craft.planning!;
+    const chosenIds = new Set(p.targets.map((t) => t.mod_id));
+    const { root, bridge } = await render(view);
+    const targets = root.querySelector('.targets')!;
+    const prefixes = targets.querySelector('fieldset[data-group="prefixes"]')!;
+    expect(prefixes.querySelectorAll('li').length).toBe(p.choices.prefixes.length);
+    let greyed = 0;
+    for (const choice of [...p.choices.prefixes, ...p.choices.desecrated.filter((c) => c.side === 'prefix')]) {
+      const box = checkbox(targets, choice.text)!;
+      const li = box.closest('li')!;
+      expect(li.hidden, choice.text).toBe(false);
+      if (chosenIds.has(choice.mod_id)) {
+        expect(box.disabled, choice.text).toBe(false);
+        expect(li.classList.contains('disabled'), choice.text).toBe(false);
+        expect(li.getAttribute('title'), choice.text).toBeNull();
+        continue;
+      }
+      greyed += 1;
+      expect(box.disabled, choice.text).toBe(true);
+      expect(li.classList.contains('disabled'), choice.text).toBe(true);
+      expect(li.getAttribute('title'), choice.text).toBe(reason);
+      const described = box.getAttribute('aria-describedby')!;
+      expect(text(root.querySelector(`[id="${described}"]`)), choice.text).toBe(reason);
+    }
+    expect(greyed).toBeGreaterThan(0);
+    for (const choice of [...p.choices.suffixes, ...p.choices.desecrated.filter((c) => c.side === 'suffix')]) {
+      const box = checkbox(targets, choice.text)!;
+      expect(box.disabled, choice.text).toBe(false);
+      expect(box.closest('li')!.getAttribute('title'), choice.text).toBeNull();
+      expect(box.hasAttribute('aria-describedby'), choice.text).toBe(false);
+    }
+    expect(bridge.calls).toEqual([]);
+
+    // Unticking a chosen prefix sends the shorter list; the next view
+    // (Rust's) re-enables the side.
+    click(checkbox(targets, '+# to Armour'));
+    expect(bridge.calls).toEqual([
+      {
+        name: 'set_targets',
+        args: {
+          targets: p.targets.filter((t) => t.mod_id !== 'prefix-to-armour').map((t) => ({ mod_id: t.mod_id, floor: t.floor })),
+        },
+      },
+    ]);
+    // Negative control: in `craft-prefilled` no side is full.
+    const free = await render(fixtureView('craft-prefilled'));
+    for (const box of free.root.querySelectorAll<HTMLInputElement>('.targets input[type="checkbox"]')) {
+      expect(box.disabled).toBe(false);
+    }
+  });
+
+  it('the_last_target_is_desecrated_or_the_fallback_says_why', async () => {
+    // `craft-last-desecration`: the belt's last target missing (Armour) on
+    // a rare with no desecrated modifier: the route's steps are the bone on
+    // the prefix side with Omen of Sinistral Necromancy, then the reveal
+    // with Omen of Abyssal Echoes, each with its odds unknown, in words,
+    // and no Fallback line.
+    const view = fixtureView('craft-last-desecration');
+    const previewed = view.craft.planning!.preview!.route!;
+    const { root } = await render(view);
+    const steps = [...root.querySelectorAll('.route ol.steps > li')];
+    expect(steps).toHaveLength(2);
+    const [desecrate, reveal] = steps;
+    expect(text(desecrate.querySelector('.instruction'))).toBe(previewed.steps[0].instruction);
+    expect(text(desecrate.querySelector('.instruction'))).toContain('Omen of Sinistral Necromancy on the prefix side');
+    expect(text(desecrate.querySelector('.uses'))).toMatch(/^Uses .*Collarbone, Omen of Sinistral Necromancy$/);
+    expect(text(reveal.querySelector('.uses'))).toBe('Uses Reveal at the Well of Souls, Omen of Abyssal Echoes');
+    for (const li of steps) {
+      const odds = li.querySelector('.odds')!;
+      expect(text(odds)).toMatch(/^odds unknown: /);
+      expect(odds.getAttribute('data-known')).toBe('false');
+    }
+    expect(root.querySelector('.route .fallback')).toBeNull();
+
+    // `craft-close-side`: Omen of Sinistral Necromancy blocked, the close
+    // and the slam taken in the desecration's place, each saying why under
+    // its Fallback label; the blocked-list disclosure open.
+    const close = await render(fixtureView('craft-close-side'));
+    const closeSteps = [...close.root.querySelectorAll('.route ol.steps > li')];
+    expect(closeSteps).toHaveLength(2);
+    for (const li of closeSteps) {
+      expect(text(li.querySelector('.fallback .label'))).toBe('Fallback');
+      const line = text(li.querySelector('.fallback .line'));
+      expect(line).toContain('instead of a desecration');
+      expect(line).toMatch(/: Omen of Sinistral Necromancy blocked$/);
+    }
+    expect(text(closeSteps[0].querySelector('.fallback .line'))).toBe(
+      'Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation instead of a desecration: Omen of Sinistral Necromancy blocked',
+    );
+    expect(close.root.querySelector<HTMLDetailsElement>('details.blocked')!.open).toBe(true);
   });
 
   it('route_preview_lists_targets_and_the_craft_not_the_notes', async () => {
@@ -766,17 +867,24 @@ describe('the craft window', () => {
 
     // Checking a choice adds it with the default floor; unchecking removes
     // it; Remove and Clear targets. Each sends the whole list.
+    // The three suffixes fill their side, so a suffix choice is disabled and
+    // a click on it sends nothing; a prefix is taken.
     bridge.calls.length = 0;
     const regen = checkbox(root, '# Life Regeneration per second')!;
-    expect(regen.checked).toBe(false);
-    expect(labelled(group, 'Floor for # Life Regeneration per second')).toBeNull();
+    expect(regen.disabled).toBe(true);
     click(regen);
-    expect(regen.checked).toBe(false);
+    expect(bridge.calls).toEqual([]);
+    const life = checkbox(root, '+# to maximum Life')!;
+    const prefixes = root.querySelector('fieldset.choices[data-group="prefixes"]')!;
+    expect(life.checked).toBe(false);
+    expect(labelled(prefixes, 'Floor for +# to maximum Life')).toBeNull();
+    click(life);
+    expect(life.checked).toBe(false);
     click(checkbox(root, '+#% to Cold Resistance'));
     click(labelled(root, 'Remove +#% to Lightning Resistance'));
     click(button(root, 'Clear targets'));
     expect(bridge.calls).toEqual([
-      { name: 'set_targets', args: { targets: [...whole(3), { mod_id: 'suffix-life-regeneration-per-second', floor: null }] } },
+      { name: 'set_targets', args: { targets: [...whole(3), { mod_id: 'prefix-to-maximum-life', floor: null }] } },
       { name: 'set_targets', args: { targets: [whole(3)[0], whole(3)[2]] } },
       { name: 'set_targets', args: { targets: whole(3).slice(0, 2) } },
       { name: 'set_targets', args: { targets: [] } },

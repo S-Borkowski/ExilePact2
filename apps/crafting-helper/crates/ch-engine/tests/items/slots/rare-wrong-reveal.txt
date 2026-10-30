@@ -1,0 +1,20 @@
+Item Class: Rings
+Rarity: Rare
+Doom Loop
+Amethyst Ring
+--------
+Requires: Level 20
+--------
+Item Level: 76
+--------
+{ Implicit Modifier — Chaos, Resistance }
++7(7-13)% to Chaos Resistance
+--------
+{ Prefix Modifier "Gentian" (Tier: 5) — Mana }
++95(90-104) to maximum Mana
+{ Prefix Modifier "Stout" (Tier: 4) — Life }
++65(60-69) to maximum Life
+{ Desecrated Prefix Modifier "Amanamu's" (Tier: 1) — Remnant }
+Remnants you create have 12(8-15)% increased effect
+{ Suffix Modifier "of the Kiln" (Tier: 5) — Elemental, Fire, Resistance }
++23(21-25)% to Fire Resistance

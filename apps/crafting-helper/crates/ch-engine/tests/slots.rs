@@ -34,6 +34,9 @@ const LIFE: &str = "prefix-to-maximum-life";
 const ACC: &str = "prefix-to-accuracy-rating";
 const EVASION: &str = "prefix-to-evasion-rating";
 const DEFENCES: &str = "desecrated-prefix-increased-global-armour-evasion-and-energy-shield";
+const LOW_LIFE_ATTACK: &str = "desecrated-prefix-increased-attack-damage-while-on-low-life";
+const ARMOUR_PCT: &str = "prefix-increased-armour";
+const SPIRIT: &str = "prefix-to-spirit";
 const FIRE: &str = "suffix-to-fire-resistance";
 const COLD: &str = "suffix-to-cold-resistance";
 const LIGHTNING: &str = "suffix-to-lightning-resistance";
@@ -57,6 +60,52 @@ fn fixture(case: &str) -> Option<Fixture> {
         // Accuracy Rating T3 missing.
         "rare-2p1s-prefix-missing" => Fixture {
             item: "slots/rare-2p1s-prefix-missing.txt",
+            targets: &[
+                ("p1", MANA, Some(5)),
+                ("p2", LIFE, Some(4)),
+                ("p3", ACC, Some(3)),
+                ("s1", FIRE, Some(5)),
+            ],
+        },
+        // The same ring; the case blocks Omen of Sinistral Necromancy.
+        "rare-2p1s-necromancy-blocked" => Fixture {
+            item: "slots/rare-2p1s-necromancy-blocked.txt",
+            targets: &[
+                ("p1", MANA, Some(5)),
+                ("p2", LIFE, Some(4)),
+                ("p3", ACC, Some(3)),
+                ("s1", FIRE, Some(5)),
+            ],
+        },
+        // A str body armour, item level 82: Life T5 and increased Armour T2
+        // (prefixes), Fire Resistance T3 (suffix); Spirit T3 missing. The
+        // class has desecrated suffixes only.
+        "body-armour-prefix-no-pool" => Fixture {
+            item: "slots/body-armour-prefix-no-pool.txt",
+            targets: &[
+                ("p1", LIFE, Some(5)),
+                ("p2", ARMOUR_PCT, Some(2)),
+                ("p3", SPIRIT, Some(3)),
+                ("s1", FIRE, Some(3)),
+            ],
+        },
+        // The 2P/1S ring with a revealed desecrated Attack Damage prefix
+        // (its one tier) in Mana's place, a target; Accuracy Rating T3
+        // missing.
+        "rare-desecrated-target" => Fixture {
+            item: "slots/rare-desecrated-target.txt",
+            targets: &[
+                ("p1", LOW_LIFE_ATTACK, Some(1)),
+                ("p2", LIFE, Some(4)),
+                ("p3", ACC, Some(3)),
+                ("s1", FIRE, Some(5)),
+            ],
+        },
+        // The 2P/1S ring with a revealed desecrated Remnant Effect prefix,
+        // not a target (a reveal that offered none); Accuracy Rating T3
+        // missing.
+        "rare-wrong-reveal" => Fixture {
+            item: "slots/rare-wrong-reveal.txt",
             targets: &[
                 ("p1", MANA, Some(5)),
                 ("p2", LIFE, Some(4)),

@@ -31,6 +31,7 @@ const ACC: &str = "prefix-to-accuracy-rating";
 const EVASION: &str = "prefix-to-evasion-rating";
 const FIRE: &str = "suffix-to-fire-resistance";
 const CHAOS: &str = "suffix-to-chaos-resistance";
+const SINISTRAL_NECROMANCY: &str = "omen-of-sinistral-necromancy";
 
 /// An engine over the four v2 blueprints, read from the shipped folder (not
 /// `Engine::shipped`, so another blueprint cannot break these walks).
@@ -135,10 +136,15 @@ fn close_a_side_hit_and_miss() {
     let list = ring_2p1s();
     let ring = case("rare-2p1s-prefix-missing");
     let greater = "omen-of-greater-exaltation";
+    // Accuracy is the one target missing, so the route would desecrate for
+    // it (tests/last_desecration.rs); with Omen of Sinistral Necromancy
+    // blocked it closes and slams, and says why.
+    let block = vec![SINISTRAL_NECROMANCY.to_string()];
+    let why = Some("Omen of Sinistral Necromancy blocked");
 
     // Hit path: close the suffix side with a Greater, Dextral exalt, then
     // the one open side takes a Perfect exalt with no side omen.
-    let (mut guide, first) = start(&engine, "close-a-side", &ring, &list, &[]);
+    let (mut guide, first) = start(&engine, "close-a-side", &ring, &list, &block);
     is(
         &first,
         "close",
@@ -146,6 +152,7 @@ fn close_a_side_hit_and_miss() {
         "exalted-orb",
         &[greater, "omen-of-dextral-exaltation"],
     );
+    assert_eq!(first.instead_of_desecration.as_deref(), why);
     let closed = state("close-closed");
     let out = observe(&engine, &mut guide, &ring, &closed);
     let slam = then(&out, Hit).clone();
@@ -156,6 +163,7 @@ fn close_a_side_hit_and_miss() {
         "perfect-exalted-orb",
         &[],
     );
+    assert_eq!(slam.instead_of_desecration.as_deref(), why);
     let complete = state("close-complete");
     let out = observe(&engine, &mut guide, &closed, &complete);
     done(&out, &guide);
@@ -164,7 +172,7 @@ fn close_a_side_hit_and_miss() {
     // with Accuracy missing, so the next step is the removal, confined to
     // the prefix side (the suffix side holds Fire), not a whittle (the
     // lowest modifier level is the Life target's).
-    let (mut guide, _) = start(&engine, "close-a-side", &closed, &list, &[]);
+    let (mut guide, _) = start(&engine, "close-a-side", &closed, &list, &block);
     let missed = state("close-slam-miss");
     let out = observe(&engine, &mut guide, &closed, &missed);
     let next = then(&out, Miss).clone();
@@ -175,6 +183,9 @@ fn close_a_side_hit_and_miss() {
         "orb-of-annulment",
         &["omen-of-sinistral-annulment"],
     );
+    // The removal clears the way for the desecration, so it is not taken
+    // in its place.
+    assert_eq!(next.instead_of_desecration, None);
     assert_eq!(engine.current(&guide, &missed).unwrap(), next);
     // A full item has no open side, so close-a-side does not start on it
     // afresh; the clean-up blueprint plans the same removal.
@@ -327,11 +338,16 @@ fn rare_clean_then_slam_hit_and_miss() {
     let list = ring_one_target();
     let ring = case("rare-one-target");
     let greater = "omen-of-greater-exaltation";
+    // Once the prefixes are in, Chaos Resistance is the one target missing
+    // and the route would desecrate for it (tests/last_desecration.rs);
+    // with Omen of Dextral Necromancy blocked it is slammed, and the slam
+    // says why.
+    let block = vec!["omen-of-dextral-necromancy".to_string()];
 
     // Hit path: the Accuracy prefix is annulled (a plain annulment, as the
     // suffix side holds no target), a Greater, Sinistral Perfect exalt adds
     // Life and Evasion, a Dextral one adds Chaos Resistance.
-    let (mut guide, first) = start(&engine, "rare-clean-then-slam", &ring, &list, &[]);
+    let (mut guide, first) = start(&engine, "rare-clean-then-slam", &ring, &list, &block);
     is(
         &first,
         "remove",
@@ -350,12 +366,17 @@ fn rare_clean_then_slam_hit_and_miss() {
     );
     let prefixes = state("clean-two-prefixes");
     let out = observe(&engine, &mut guide, &cleaned, &prefixes);
+    let slam = then(&out, Hit);
     is(
-        then(&out, Hit),
+        slam,
         "side-slam",
         Some(Side::Suffix),
         "perfect-exalted-orb",
         &["omen-of-dextral-exaltation"],
+    );
+    assert_eq!(
+        slam.instead_of_desecration.as_deref(),
+        Some("Omen of Dextral Necromancy blocked")
     );
     let complete = state("clean-complete");
     let out = observe(&engine, &mut guide, &prefixes, &complete);
@@ -364,7 +385,7 @@ fn rare_clean_then_slam_hit_and_miss() {
     // Miss path: the annulment takes the Mana target instead. The prefix
     // side, now one junk for three missing targets, is still blocked: the
     // next step is the same removal, and a fresh plan agrees.
-    let (mut guide, _) = start(&engine, "rare-clean-then-slam", &ring, &list, &[]);
+    let (mut guide, _) = start(&engine, "rare-clean-then-slam", &ring, &list, &block);
     let lost = state("clean-target-annulled");
     let out = observe(&engine, &mut guide, &ring, &lost);
     assert_eq!(out.lost.len(), 1, "{out:?}");

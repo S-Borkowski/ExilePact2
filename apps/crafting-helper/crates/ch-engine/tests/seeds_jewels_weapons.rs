@@ -651,10 +651,13 @@ fn caster_cast_speed_miss_path() {
     );
     let blocked = state(CC, "3-blocked.txt");
     let nothing = common::parse(
-        &common::item_text("jewels-weapons/caster-cast-speed/4-double-slam.txt").replace(
-            "{ Suffix Modifier \"of Ruin\" (Tier: 2) — Caster, Critical }\n56(54-59)% increased Critical Hit Chance for Spells",
-            "{ Suffix Modifier \"of the Savant\" (Tier: 2) — Attribute }\n+29(28-30) to Intelligence",
-        ),
+        // A CRLF checkout must not hide the line pair from the replace.
+        &common::item_text("jewels-weapons/caster-cast-speed/4-double-slam.txt")
+            .replace("\r\n", "\n")
+            .replace(
+                "{ Suffix Modifier \"of Ruin\" (Tier: 2) — Caster, Critical }\n56(54-59)% increased Critical Hit Chance for Spells",
+                "{ Suffix Modifier \"of the Savant\" (Tier: 2) — Attribute }\n+29(28-30) to Intelligence",
+            ),
     );
     let out = observe(&engine, &mut guide, &blocked, &nothing);
     assert_eq!(out.result, OutcomeKind::Miss);

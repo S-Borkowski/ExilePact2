@@ -17,6 +17,9 @@ use ch_blueprint::{
 fn fixture(rel: &str) -> (String, Result<Checked, Vec<Diagnostic>>) {
     let full = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(rel);
     let text = std::fs::read_to_string(&full).unwrap_or_else(|e| panic!("{}: {e}", full.display()));
+    // As the repository stores it: a CRLF checkout would end an unclosed
+    // string at the `\r`, a second error the syntax case does not expect.
+    let text = text.replace("\r\n", "\n");
     let shown = format!("tests/fixtures/{rel}");
     let result = check(&shown, &text);
     (shown, result)

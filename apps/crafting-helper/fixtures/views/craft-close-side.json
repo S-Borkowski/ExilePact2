@@ -5,13 +5,20 @@
     "planning": {
       "blocked": {
         "allowed": [],
-        "blocked": []
+        "blocked": [
+          {
+            "from": "craft",
+            "id": "omen-of-sinistral-necromancy",
+            "name": "Omen of Sinistral Necromancy"
+          }
+        ]
       },
       "can_accept": true,
       "choices": {
         "desecrated": [
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -28,6 +35,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -44,6 +52,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -64,6 +73,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -80,6 +90,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -96,6 +107,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -112,6 +124,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -128,6 +141,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -144,6 +158,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -160,6 +175,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -176,6 +192,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -192,6 +209,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -208,6 +226,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -224,6 +243,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -240,6 +260,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -256,6 +277,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -272,6 +294,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -288,6 +311,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -304,6 +328,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -320,6 +345,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -338,6 +364,7 @@
         "prefixes": [
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -378,6 +405,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -410,6 +438,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -446,6 +475,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": "Prefixes full: 2 on the item + 1 chosen = 3 of 3",
             "floors": [
               {
                 "floor": null,
@@ -482,6 +512,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -534,6 +565,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -586,6 +618,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -636,6 +669,7 @@
         "suffixes": [
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -684,6 +718,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -720,6 +755,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -756,6 +792,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -792,6 +829,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -828,6 +866,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -876,6 +915,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -928,6 +968,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -964,6 +1005,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1008,6 +1050,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1052,6 +1095,7 @@
           },
           {
             "best_tier": 1,
+            "disabled": null,
             "floors": [
               {
                 "floor": null,
@@ -1156,7 +1200,7 @@
           "source": "maxroll, How to Craft in Path of Exile 2, method 3 and the domistae PoE2 Crafting Codex, fetched 2026-10-29",
           "steps": [
             {
-              "fallback": null,
+              "fallback": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation instead of a desecration: Omen of Sinistral Necromancy blocked",
               "id": "close",
               "instruction": "Exalted Orb with Omen of Greater Exaltation and Omen of Dextral Exaltation on the suffix side, for any modifier",
               "number": 1,
@@ -1169,7 +1213,7 @@
               ]
             },
             {
-              "fallback": null,
+              "fallback": "Perfect Exalted Orb instead of a desecration: Omen of Sinistral Necromancy blocked",
               "id": "slam-open-side",
               "instruction": "Perfect Exalted Orb on the prefix side for +# to Armour",
               "number": 2,

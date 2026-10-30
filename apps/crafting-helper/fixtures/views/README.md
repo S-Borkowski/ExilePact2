@@ -49,18 +49,41 @@ lost.`). No status line names the blueprint (`Route chosen.`, `Craft
 started.`). The branch lines name the next step by its composed
 instruction, never the blueprint's text.
 
-Two craft states use the owner's 2P/1S belt (`crates/ch-app/tests/items/`,
+Four craft states use the owner's 2P/1S belt (`crates/ch-app/tests/items/`,
 constructed), with maximum Life T2, maximum Mana T2, Armour T2 (missing)
 and Fire Resistance T3 as the targets and the state-ordered `close-a-side`
 chosen:
 
-- `craft-close-side`: planning on the belt: the route closes the finished
+- `craft-side-full`: planning on the belt right after those targets are
+  set: Life and Mana on it and Armour chosen fill its three prefixes, so
+  every other prefix choice (the desecrated ones included) carries
+  `disabled`, `Prefixes full: 2 on the item + 1 chosen = 3 of 3`, the
+  row's tooltip; the three chosen prefixes and every suffix choice carry
+  `null`. `craft-close-side` and `craft-last-desecration` have the same
+  choices. The ring's planning
+  views (`craft-planning`, `craft-fallback`, `craft-no-route`) choose three
+  suffixes, so their other suffix choices carry `Suffixes full: 0 on the
+  item + 3 chosen = 3 of 3`; in `craft-prefilled` no side is full and every
+  `disabled` is `null`.
+
+- `craft-close-side`: planning on the belt with Omen of Sinistral
+  Necromancy blocked for the craft (its `blocked` list), so the last
+  prefix is slammed rather than desecrated: the route closes the finished
   suffix side first, `Exalted Orb with Omen of Greater Exaltation and Omen
   of Dextral Exaltation on the suffix side, for any modifier` (a fill step's
   instruction, composed from its data), then slams the one open prefix side
   with a Perfect Exalted Orb and no side omen. No step offers an Exalted
-  Orb that could land on the prefix side's reserved slot. The route's
-  source line carries no web address.
+  Orb that could land on the prefix side's reserved slot. Both steps were
+  taken in place of the last target's desecration, so each carries a
+  Fallback line, `<its currency, with its omens> instead of a desecration:
+  Omen of Sinistral Necromancy blocked`. The route's source line carries
+  no web address.
+- `craft-last-desecration`: the same planning with nothing blocked:
+  Armour is the last target missing on a rare with no desecrated
+  modifier, so the route desecrates for it (issue #32): `Preserved
+  Collarbone with Omen of Sinistral Necromancy on the prefix side for +#
+  to Armour`, then the reveal with Omen of Abyssal Echoes, both with
+  `odds unknown: …` and no Fallback line.
 - `craft-miss-clean`: the same craft started, the suffix side closed (a
   hit) and the slam on the prefix side missed (Flask Life Recovery): on
   `remove`, numbered as the craft's third step. Mana, a target, is the

@@ -4,7 +4,9 @@
   // by the page's own filter. Every change (check, uncheck, a floor,
   // Remove, Clear targets) sends `set_targets` with the whole list; the
   // controls show the view's state until the next view says otherwise, so a
-  // refused list never looks taken. The floor labels are Rust's.
+  // refused list never looks taken. The floor labels are Rust's, and so is
+  // a choice's `disabled` reason (its side is full): that row stays listed,
+  // greyed, its checkbox disabled, the reason its tooltip and description.
   import type { Send, TargetPick } from '../bridge';
   import type { ChosenTarget, FloorOption, PlanningView, TargetChoice } from '../ipc';
 
@@ -109,12 +111,22 @@
         <ul>
           {#each group.choices as choice (choice.mod_id)}
             {@const target = chosen.get(choice.mod_id)}
-            <li hidden={!shows(choice)}>
+            {@const why = target === undefined ? choice.disabled : null}
+            <li hidden={!shows(choice)} class:disabled={why !== null} title={why ?? undefined}>
               <label>
-                <input type="checkbox" checked={target !== undefined} onchange={(event) => toggle(event, choice)} />
+                <input
+                  type="checkbox"
+                  checked={target !== undefined}
+                  disabled={why !== null}
+                  aria-describedby={why !== null ? `${uid}-why-${choice.mod_id}` : undefined}
+                  onchange={(event) => toggle(event, choice)}
+                />
                 <span class="name">{choice.text}</span>
                 <span class="best">best T{choice.best_tier}</span>
               </label>
+              {#if why !== null}
+                <span class="visually-hidden" id="{uid}-why-{choice.mod_id}">{why}</span>
+              {/if}
               {#if target}
                 {@render floorSelect(target, choice.floors)}
               {/if}
@@ -251,6 +263,16 @@
 
   .name {
     color: var(--color-text-primary);
+  }
+
+  /* A choice its side has no room for: greyed, still listed and filtered,
+     its reason the row's tooltip and the checkbox's description. */
+  .choices li.disabled label {
+    cursor: not-allowed;
+  }
+
+  .choices li.disabled .name {
+    color: var(--color-text-muted);
   }
 
   .best {

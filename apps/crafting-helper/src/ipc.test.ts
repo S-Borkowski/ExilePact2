@@ -33,6 +33,8 @@ describe('the TypeScript IPC types', () => {
       'craft-fallback': ['paste', true, 'info', false, 'planning', false],
       'craft-no-route': ['paste', true, 'info', false, 'planning', false],
       'craft-close-side': ['paste', true, 'info', false, 'planning', false],
+      'craft-last-desecration': ['paste', true, 'info', false, 'planning', false],
+      'craft-side-full': ['paste', true, 'info', false, 'planning', false],
       'craft-refused': ['paste', true, 'info', false, 'refused', false],
       'craft-guiding': ['paste', true, 'info', false, 'guiding', false],
       'craft-miss': ['paste', true, 'info', false, 'guiding', false],
