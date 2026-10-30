@@ -62,8 +62,9 @@ What it is:
   character still shown as "New character". A skipped quest stays
   tracked: the log keeps moving it, *Show skipped quests* lists it with the
   step it has reached, and Unskip shows it exactly where that progress is.
-- **A find-it tip under a step.** A short "how to find it" hint, the
-  owner's own words, shows under the step it helps with, from a `tip`
+- **A find-it tip under a step.** A short "how to find it" hint, in
+  the owner's own words or paraphrased from the community leveling guides
+  (credited in the data), shows under the step it helps with, from a `tip`
   field in the quest data that can be extended by hand ("Quest data").
 - **A tray icon.** The app's icon sits in the notification area, tooltip
   "Quest Tracker", with three menu entries: *Check for updates*,
@@ -2630,17 +2631,15 @@ Revisit this feature when:
   Corruption, The Crowbell, A Crown of Stone, Ascent to Power, The Well of
   Souls and Legacy of the Vaal, and two replace earlier tips (below).
 - The Crowbell gained a "Find The Crowbell" step, with a tip, after
-  "Reach Hunting Grounds". No log line names The Crowbell, so the step is
-  ticked by hand; the quest is still done on the passive points line in
+  "Reach Hunting Grounds". No log line naming The Crowbell has been seen
+  (checked 2026-10-30), so the step is ticked by hand; the quest is still done on the passive points line in
   Hunting Grounds, and its statuses on a replay are unchanged.
 - Secrets in the Dark: the tips on "Search the Grelwood" (now: follow the
   faintly glowing roots to the Tree of Souls) and "Find the Red Vale" (now:
   follow the river upstream to the Red Vale entrance) were replaced.
-- The Mysterious Shade: the mushroom tip is on "Find the Grim Tangle" and
-  "Travel to the Grim Tangle", not on "Travel through the Grim Tangle".
-  The three steps share one poe2db text and none has a signal, so the tip
-  shows whichever of the first two the ticks leave next; the mushrooms
-  mark the way in, not the way through.
+- The Mysterious Shade: "Find the Grim Tangle" and "Travel to the Grim
+  Tangle" share one tip (mushroom clusters mark the way in), shown on
+  whichever of the two you have not ticked yet.
 
 ### 0.1.3
 
