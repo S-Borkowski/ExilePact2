@@ -1,0 +1,30 @@
+Item Class: Crossbows
+Rarity: Rare
+Gloom Quarrel
+Siege Crossbow
+--------
+Physical Damage: 61-186 (augmented)
+Critical Hit Chance: 8.52% (augmented)
+Attacks per Second: 1.84 (augmented)
+Reload Time: 0.75
+--------
+Requires: Level 79, 89 Str, 89 Dex
+--------
+Item Level: 81
+--------
+{ Implicit Modifier }
+Grenade Skills Fire an additional Projectile
+--------
+{ Prefix Modifier "Vicious" (Tier: 5) — Damage, Physical, Attack }
+92(85-109)% increased Physical Damage
+{ Prefix Modifier "Reaver's" (Tier: 6) — Damage, Physical, Attack }
+28(25-34)% increased Physical Damage
++55(47-72) to Accuracy Rating
+{ Prefix Modifier "Razor-sharp" (Tier: 3) — Damage, Physical, Attack }
+Adds 27(23-35) to 48(39-59) Physical Damage
+{ Suffix Modifier "of Renown" (Tier: 2) — Attack, Speed }
+15(14-16)% increased Attack Speed
+{ Suffix Modifier "of the Jaguar" (Tier: 2) — Attribute }
++29(28-30) to Dexterity
+{ Suffix Modifier "of Calamity" (Tier: 3) — Attack, Critical }
++3.52(3.11-3.8)% to Critical Hit Chance

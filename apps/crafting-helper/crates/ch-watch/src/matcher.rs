@@ -29,7 +29,11 @@
 //! fractured modifier, or a tooltip showing the line under an unrevealed one
 //! ([`UNREVEALED_NOTE`]), is unreadable too: the tooltip draws an unrevealed
 //! modifier as glyphs OCR does not read, and what it draws of a fractured
-//! one is not established.
+//! one is not established. An item two of whose explicit modifiers share a
+//! line (a hybrid beside the plain modifier with that line) reads unchanged
+//! or not at all: if the tooltip shows the two as one line of their sum
+//! (not measured), that line can fit a tier of the plain modifier and the
+//! hybrid's other line one of its own, a different item.
 //!
 //! What the shots measured (2026-10-29) and the tests pin: the plain
 //! tooltip shows each modifier's line with its value and without its header
@@ -277,7 +281,31 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
     if own == key {
         return Ok(ReadKind::Unchanged);
     }
+    // Two of the item's modifiers with the same line (a hybrid beside the
+    // plain modifier it shares a line with): a tooltip that shows them as
+    // one line of their sum reads as other modifiers, so a read that is not
+    // the item is not trusted.
+    if shares_a_line(item) {
+        return Err(Unreadable::Ambiguous);
+    }
     Ok(ReadKind::Changed(Box::new(read_item(item, rarity, &reads))))
+}
+
+/// Whether two of the item's prefixes and suffixes carry the same line
+/// template.
+fn shares_a_line(item: &Item) -> bool {
+    let explicit: Vec<&Modifier> = item
+        .modifiers
+        .iter()
+        .filter(|m| Kind::from_item(m.kind).is_some())
+        .collect();
+    explicit.iter().enumerate().any(|(i, a)| {
+        explicit[i + 1..].iter().any(|b| {
+            a.lines
+                .iter()
+                .any(|la| b.lines.iter().any(|lb| la.template == lb.template))
+        })
+    })
 }
 
 /// Whether a box's name lines carry the base type: a normal item's line is

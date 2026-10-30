@@ -165,6 +165,89 @@ fn hybrid_mod_lines_match_one_modifier() {
     assert_eq!(classify(&read_of(&[&tip]), &hybrid), ReadKind::Unchanged);
 }
 
+/// `ch-item`'s constructed crossbow with a hybrid Physical Damage and
+/// Accuracy prefix beside the plain Physical Damage prefix, LF endings.
+fn hybrid_crossbow_text() -> String {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../ch-item/fixtures/constructed/crossbows-rare-hybrid-physical.txt"
+    );
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
+    text.replace("\r\n", "\n")
+}
+
+/// The plain tooltip of a crossbow text with the plain and the hybrid
+/// `#% increased Physical Damage` lines shown as one line of their sum, in
+/// the plain one's place, and the hybrid's Accuracy line on its own.
+fn summed_tooltip(text: &str, plain: &str, hybrid: &str, sum: &str) -> Tip {
+    let mut tip = tooltip(text, false);
+    let at = tip.lines.iter().position(|l| l == plain).expect("plain line");
+    tip.lines[at] = sum.to_string();
+    let hybrid_at = tip
+        .lines
+        .iter()
+        .position(|l| l == hybrid)
+        .expect("hybrid line");
+    tip.lines.remove(hybrid_at);
+    tip
+}
+
+#[test]
+fn a_summed_hybrid_line_never_reads_as_another_item() {
+    // What the plain tooltip shows for two modifiers with the same line is
+    // not measured; if it sums them, the sum (92 + 28) is a tier of the plain
+    // modifier and the hybrid's Accuracy alone a tier of the plain Accuracy
+    // prefix, three prefixes the item could hold. That reading is not the
+    // item: unreadable, never a change.
+    let text = hybrid_crossbow_text();
+    let crossbow = parse(&text);
+    let own = key(&crossbow);
+    assert!(has(&own, "prefix-increased-physical-damage", 5), "{own:?}");
+    assert!(has(&own, "prefix-increased-physical-damage-2", 6), "{own:?}");
+
+    // Positive control: each modifier on its own line reads unchanged.
+    let separate = tooltip(&text, false);
+    assert_eq!(
+        classify(&read_of(&[&separate]), &crossbow),
+        ReadKind::Unchanged
+    );
+
+    let summed = summed_tooltip(
+        &text,
+        "92% increased Physical Damage",
+        "28% increased Physical Damage",
+        "120% increased Physical Damage",
+    );
+    assert!(summed.lines.contains(&"+55 to Accuracy Rating".to_string()));
+    // The same lines, read as an item of their own, are a different item:
+    // the summed line is the plain prefix's tier 4, the Accuracy line the
+    // Accuracy prefix's tier 9.
+    let read = classify(&read_of(&[&summed]), &crossbow);
+    assert!(
+        matches!(read, ReadKind::Unreadable(_)),
+        "summed line read as {read:?}"
+    );
+
+    // A sum past every plain tier (154 + 28) is unreadable too.
+    let high = text.replace(
+        "{ Prefix Modifier \"Vicious\" (Tier: 5) — Damage, Physical, Attack }\n92(85-109)%",
+        "{ Prefix Modifier \"Cruel\" (Tier: 3) — Damage, Physical, Attack }\n154(135-154)%",
+    );
+    assert_ne!(high, text);
+    let high_item = parse(&high);
+    let summed = summed_tooltip(
+        &high,
+        "154% increased Physical Damage",
+        "28% increased Physical Damage",
+        "182% increased Physical Damage",
+    );
+    let read = classify(&read_of(&[&summed]), &high_item);
+    assert!(
+        matches!(read, ReadKind::Unreadable(_)),
+        "summed line read as {read:?}"
+    );
+}
+
 #[test]
 fn unchanged_item_reads_as_unchanged() {
     for name in ["01-start", "02-chaos-fire", "08-whittle-lightning"] {
