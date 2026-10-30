@@ -32,11 +32,14 @@ runs whatever these crates accept.
 - the two crates agree on each product's exe name and on the signature
   suffix, `.minisig`, the asset the release workflows publish beside each
   exe;
-- each product's exe name is its app's `mainBinaryName` and `.exe` as
+- each product's exe name is the asset its release workflow uploads, as
   GitHub stores an asset name (a run of other characters, a space
-  included, becomes one dot): the crafting helper builds
-  `Crafting Helper.exe` and fetches `Crafting.Helper.exe`, the other two
-  keep their kebab names;
+  included, becomes one dot): the name its Collect step copies the built
+  exe (`mainBinaryName` and `.exe`) to, or the built name when it keeps
+  it. The crafting helper builds `Crafting Helper.exe` and fetches
+  `Crafting.Helper.exe`; the quest tracker builds `Quest Tracker.exe` and
+  its workflow copies it to `quest-tracker.exe`, the name 0.1.x installs
+  fetch; the waystone roller keeps its kebab name;
 - a download's one redirect may go to exactly two hosts,
   `release-assets.githubusercontent.com` and `objects.githubusercontent.com`.
 
@@ -540,28 +543,73 @@ class ReleaseContract(unittest.TestCase):
         self.assertEqual(github_asset_name("Crafting Helper.exe"), "Crafting.Helper.exe")
         self.assertEqual(github_asset_name("quest-tracker.exe"), "quest-tracker.exe")
         self.assertEqual(github_asset_name("a  b (c).exe"), "a.b.c.exe")
+        # The asset is the Collect step's copy of the built exe: its target
+        # name, or the built name when the copy goes to a directory or there
+        # is none (the negative control: no rename means the built name).
+        built_exe = "apps/tool/target/release/Tool App.exe"
+        self.assertEqual(released_asset_name("run: echo\n", "tool", "Tool App.exe"), "Tool.App.exe")
+        self.assertEqual(
+            released_asset_name(f'  cp "{built_exe}" dist-release/\n', "tool", "Tool App.exe"), "Tool.App.exe",
+        )
+        self.assertEqual(
+            released_asset_name(f'  cp "{built_exe}" dist-release/tool.exe\n', "tool", "Tool App.exe"), "tool.exe",
+        )
+        # Another app's copy, or a second copy of the copy, names nothing.
+        self.assertEqual(
+            released_asset_name('  cp "apps/other/target/release/Tool App.exe" dist-release/o.exe\n'
+                                "  cp dist-release/Tool.App.exe dist-release/tool.exe\n", "tool", "Tool App.exe"),
+            "Tool.App.exe",
+        )
+        with self.assertRaises(ValueError):
+            released_asset_name(f'cp "{built_exe}" dist-release/a.exe\ncp "{built_exe}" dist-release/b.exe\n',
+                                "tool", "Tool App.exe")
         _, net = qtnet.non_test_rust(NET_LIB_RS.read_text(encoding="utf-8"))
         _, product = qtnet.non_test_rust(VERSION_RS.read_text(encoding="utf-8"))
-        built = {}
+        built, released = {}, {}
         for app, (_, _, _, exe_const, product_const) in zip((QT, WR, CH), PRODUCTS):
             conf = json.loads((app / "src-tauri" / "tauri.conf.json").read_text(encoding="utf-8"))
             built[product_const] = conf["mainBinaryName"] + ".exe"
-            asset = github_asset_name(built[product_const])
+            workflow = ROOT / ".github" / "workflows" / f"{app.name}-release.yml"
+            asset = released_asset_name(workflow.read_text(encoding="utf-8"), app.name, built[product_const])
+            released[product_const] = asset
             with self.subTest(app=app.name):
                 self.assertEqual(qtnet.rust_const(net, exe_const, "str"), [asset])
                 self.assertEqual(product_fields(product, product_const, "exe_name"), [asset])
-        # Only the crafting helper's exe was renamed: the other two keep
-        # their kebab names.
+        # The crafting helper and the quest tracker build title-case exes;
+        # the quest tracker's workflow uploads its build as the kebab name
+        # 0.1.x installs fetch, and the waystone roller keeps its kebab name.
         self.assertEqual(built, {
-            "QUEST_TRACKER": "quest-tracker.exe",
+            "QUEST_TRACKER": "Quest Tracker.exe",
             "WAYSTONE_ROLLER": "waystone-roller.exe",
             "CRAFTING_HELPER": "Crafting Helper.exe",
+        })
+        self.assertEqual(released, {
+            "QUEST_TRACKER": "quest-tracker.exe",
+            "WAYSTONE_ROLLER": "waystone-roller.exe",
+            "CRAFTING_HELPER": "Crafting.Helper.exe",
         })
 
 
 def github_asset_name(name: str) -> str:
     """The name GitHub stores for a release asset uploaded as `name`."""
     return re.sub(r"[^A-Za-z0-9_+@-]+", ".", name).strip(".")
+
+
+# A release workflow's copy of a file into `dist-release/`: the source (quoted
+# or bare) and the name after the slash, empty when it keeps its own.
+DIST_COPY = re.compile(r'^\s*cp\s+(?:"([^"\n]+)"|(\S+))\s+dist-release/(\S*)\s*$', re.MULTILINE)
+
+
+def released_asset_name(workflow: str, app: str, built: str) -> str:
+    """The asset name, as GitHub stores it, that a release workflow uploads
+    for `app`'s built exe `built`: the name its one copy of
+    `apps/<app>/target/release/<built>` into `dist-release/` gives it, or
+    `built` when no copy renames it. Two such copies are an error."""
+    source = f"apps/{app}/target/release/{built}"
+    names = [m[3] or built for m in DIST_COPY.finditer(workflow) if (m[1] or m[2]) == source]
+    if len(names) > 1:
+        raise ValueError(f"{len(names)} copies of {source} into dist-release/: {names}")
+    return github_asset_name(names[0] if names else built)
 
 
 class KeyAndPins(unittest.TestCase):
