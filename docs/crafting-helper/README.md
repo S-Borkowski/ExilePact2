@@ -17,7 +17,10 @@ and the last outcome. The app reads the clipboard once per grab and never
 watches it; copies of the game's window stay in memory. It uses no
 keyboard hook, sends the game no keys, reads no game memory, moves no
 mouse and clicks nothing. A button opens Craft of Exile in your web
-browser for the crafting this app does not cover.
+browser for the crafting this app does not cover, and the *Find a base on
+trade* panel opens a trade site search, in the same browser, for a magic
+base that already carries the modifiers you want, so a craft can start
+from a bought base.
 
 - UI direction, windows and states: [`ui-design.md`](ui-design.md)
 - The design reviews: the craft window's direction, before it was built
@@ -28,7 +31,7 @@ browser for the crafting this app does not cover.
 - What each crafting item does to an item's modifiers:
   [`crafting-mechanics.md`](crafting-mechanics.md)
 - Research note (poe2db's modifier pages, the data extractor, the data
-  files, the item tooltip on screen):
+  files, the trade site's stat ids, the item tooltip on screen):
   [`crafting-helper-research.md`](crafting-helper-research.md)
 - Writing and checking a crafting blueprint: [`blueprints.md`](blueprints.md)
 - How a state-ordered route uses an item's free slots, and the facts it
@@ -161,12 +164,46 @@ browser for the crafting this app does not cover.
 - **Explore more crafting on Craft of Exile**, a button in the main
   window's header, opens one fixed address,
   `https://beta.craftofexile.com/?game=poe2`, in your default web browser.
-  It is the only address the app opens (Privacy).
+  It is one of the two addresses the app opens; the trade search below is
+  the other (Privacy).
+- **Find a base on trade** (since 0.1.2), a button in the main window's
+  header, shows a panel in place of the craft area for starting a craft
+  from a bought base. Pick an **item class**, a **base type**, an optional
+  **minimum item level** (1 to 100; a higher level reaches better tiers)
+  and up to 8 **modifiers** from the base's ordinary-pool prefixes and
+  suffixes, each "Any tier" or "At least T<n>". Each modifier shows its
+  **weight**, higher the rarer it is to roll on that base (12.0: about 1
+  in 12 modifiers added to that side of the base is this one, at the floor
+  or better), from the modifier data's spawn weights; where the data has
+  none for that base (every jewel, some tiers), the weight is a stated
+  default, tagged "default" with its reason. **Match** chooses *Both
+  slots* (the default: a prefix and a suffix from your picks, two in all,
+  since a magic item holds one of each) or *At least one*; a line says
+  what the search will ask for, and why when it is one. **Search on the
+  trade site** opens `www.pathofexile.com/trade2` in your default browser,
+  searching for a **magic** item of that base, online and not corrupted,
+  carrying those modifiers and ranked by a weighted sum of them (each
+  modifier's value times its weight over its minimum roll, so a rarer
+  modifier counts for more). The link is also shown, read-only, to select
+  and copy yourself. A modifier with more than one line (a hybrid), or one
+  the trade site has no stat for, is listed under *Not searchable on
+  trade* with the reason. The panel never buys, whispers, copies to the
+  clipboard or touches the game, and the craft goes on underneath: *Back
+  to the craft* returns to it as it stands. The selection is kept in
+  memory for this run, never saved. How it looks:
+  [`ui-design.md`](ui-design.md) § "Find a base on trade".
+- **The trade league**: the search opens in the league chosen in
+  Settings, *Trade* (`Forbidden Rites` by default). The **League**
+  dropdown offers the six leagues this version shipped with, and the
+  **refresh icon** beside it asks the trade site for its current leagues
+  (one request, only on that click; Privacy). The refreshed list lasts
+  until the app closes and is never saved; the league you chose is saved
+  and always offered, even when a list lacks it.
 - **A Settings window**, opened from the *Settings* button at the right of
-  the main window's header, holds four sections, *Grab* (the hotkey),
+  the main window's header, holds five sections, *Grab* (the hotkey),
   *Overlay* (where the overlay sits, and whether the app reads the item
-  from the screen), *Blocked currencies* and *Updates*, and the line
-  "Created by ST4H". While a
+  from the screen), *Blocked currencies*, *Trade* (the league) and
+  *Updates*, and the line "Created by ST4H". While a
   check has found a newer version, the *Settings* button says so in words
   (`Update <version>`, beside a green dot).
 - **Blocked currencies**: a saved list of crafting items (currencies,
@@ -269,9 +306,13 @@ Takes no arguments.
   ids), `overlay_position` (where the overlay sits: `top-left`,
   `top-center`, `top-right`, `bottom-left`, `bottom-center` or
   `bottom-right`; any other value, or none, loads the default,
-  `top-center`) and `screen_watch` (*Read the item from the screen*; any
-  value but `false`, or none, loads it on). A craft's own changes to the
-  blocked list are never saved. Written a
+  `top-center`), `screen_watch` (*Read the item from the screen*; any
+  value but `false`, or none, loads it on) and `trade_league` (the league
+  the trade search opens in, as the trade site writes it: 1 to 64
+  characters once trimmed, with no control character; anything else, or
+  none, loads the default, `Forbidden Rites`). A craft's own changes to the
+  blocked list, the trade panel's selection and a refreshed league list
+  are never saved. Written a
   moment after each change, through a temporary file renamed over the old
   one, and when the app quits. A saved hotkey of `Ctrl+Alt+C` is replaced by
   the default at launch, and the status line says so. A saved list of
@@ -344,6 +385,20 @@ Takes no arguments.
     off` when the Settings window changes them.
   - `opened Craft of Exile` after the button, or `error: opening Craft of
     Exile: <e>` when the browser could not be asked to open it.
+  - The trade panel's and the league list's `trade:` lines, counts and
+    reasons only, never a league, a base, a modifier or the link:
+    - `trade: opened, <n> modifiers, at least <k>` (`1 modifier`) after
+      *Search on the trade site* opened the search, `trade: open failed:
+      <error>` when the browser could not be asked to open it (the link in
+      the error replaced by `the trade search`), and `trade: refused:
+      <reason>` for a selection the app did not take or a search it could
+      not open (no class, base type or pick, a link over 2,000
+      characters);
+    - `trade: leagues refreshed, <n> leagues, <s> skipped` (`1 league`)
+      when a refresh's answer was taken, and `trade: league refresh
+      refused: <reason>` when it was not (the request failed, the site
+      answered another status than 200, the answer was over 64 KiB, not a
+      league list, over 50 entries, or left no league).
   - `blocked currencies: N ids` when the list changes; `settings refused:
     <reason>` when the Settings window sends a change the app does not
     take; `error: settings window: <reason>` when that window could not be
@@ -360,8 +415,9 @@ Takes no arguments.
 
 **The main window**, titled "Crafting Helper", 960 by 680 at 1x by default
 and usable from 600 by 480. Its header holds the title, the *Explore more
-crafting on Craft of Exile* button and the *Settings* button; under it, the
-craft area, in two columns from 880 px wide and one below; last, the status
+crafting on Craft of Exile* button, the *Find a base on trade* button and
+the *Settings* button; under it, the craft area (or the trade panel in its
+place), in two columns from 880 px wide and one below; last, the status
 line. With nothing grabbed, the craft area says how to grab (`Ctrl+Alt+C`
 in the game, then the current hotkey or `Ctrl+V` here). The status line is
 the app's last message: `Grabbed an item: N lines.` (with how many targets
@@ -412,6 +468,22 @@ closing the main window quits the app with it. From the top:
   nothing changed. A saved id the catalogue no longer holds is dropped at
   launch and counted in the status line. The craft window's *Blocked for
   this craft* uses the same picker over the craft's own list.
+- **Trade** (since 0.1.2): *League*, a dropdown of the leagues offered,
+  the saved one selected, with the refresh icon beside it ("Refresh the
+  league list from the trade site"), and the help line "The league the
+  trade search opens in. The refresh button asks the trade site
+  (pathofexile.com) for its current leagues; nothing is sent until you
+  click it, and the new list lasts until the app closes." Before a
+  refresh the dropdown offers the six leagues this version shipped with
+  (Forbidden Rites, HC Forbidden Rites, Runes of Aldur, HC Runes of Aldur,
+  Standard, Hardcore); after one, the trade site's Path of Exile 2
+  leagues in its order, leaving out another realm's, a private league
+  and a name the app would not take. The saved league is always offered,
+  last when the list lacks it. While a refresh runs the icon is disabled
+  and the note reads "Refreshing the league list…"; then `Refreshed: <n>
+  leagues from the trade site.` (with `; <s> skipped`), or `! Not
+  refreshed: <reason>. The list and your league are unchanged.` A second
+  click while one runs sends nothing.
 - **Updates**, the waystone roller's section: *Automatically check for
   updates* (off), with the helper text "Asks GitHub once a day whether a
   newer version is out. Downloads nothing: an update is installed only when
@@ -435,7 +507,12 @@ targets, each a modifier id and a floor or none), `set_craft_blocked` (the
 craft's whole blocked list, catalogue ids only; never saved),
 `choose_route` (a blueprint id the preview offers), `accept_craft`,
 `end_craft` and `open_craft_of_exile`, which takes no argument: the
-address is the app's own. Each craft command answers with the view. Both
+address is the app's own; and the trade panel's `set_trade_search` (the
+panel's whole selection: whether it is open, the class, the base type,
+the minimum item level, the picks, each a modifier id and a floor or
+none, and *Both slots*; no field names an address) and
+`open_trade_search`, which takes no argument: the app builds the link from
+its own state. Each craft and trade command answers with the view. Both
 windows may send `get_catalogue`, which answers the catalogue grouped by
 kind, each entry's id and English name. The main window is sent `ch:view`,
 which carries the craft part (its mode and what the mode shows), the
@@ -445,8 +522,10 @@ shows, its position and, while guiding, the step it shows) and
 watch's line. The Settings window's commands are `get_app_settings`,
 `set_hotkey`,
 `update_settings` (an object of `check_updates`, `blocked_currencies`,
-`overlay_position` and `screen_watch`, any of them, and nothing else; a
-position the app does not know is refused whole), `check_for_updates`, `install_update`
+`overlay_position`, `screen_watch` and `trade_league`, any of them, and
+nothing else; a position the app does not know, or a league name it
+would not load, is refused whole), `refresh_trade_leagues` (no argument;
+the only way the league request is sent), `check_for_updates`, `install_update`
 (the only way an install starts) and `cancel_update`; it is sent
 `ch:app-settings`. The overlay listens to `ch:view` and sends nothing but
 `get_view`. The windows load their pages while the app still sets itself
@@ -504,7 +583,8 @@ the research note:
 - **It sends the game nothing.** No key, no mouse input or movement, no
   click, no typed text, no window message, no focus or activation change,
   no simulated Alt, no other process opened (but the web browser Windows
-  starts when you press the Craft of Exile button, below), no game memory
+  starts when you press the Craft of Exile or trade search button,
+  below), no game memory
   read and none of the game's files. Hovering the item is yours to do
   (without Alt: the plain tooltip reads best). The overlay never takes
   focus and lets every click and the cursor through.
@@ -517,25 +597,40 @@ the research note:
   craft's counts, ids, refusal reasons and outcome words.
 - **Its other effects outside its windows** are the overlay over the game
   while a craft is guided, the refusal tone, the
-  update check's requests to GitHub, opening Craft of Exile in the default
-  browser when you press its button and, when you press the install
-  button, replacing its own exe.
-- **One web address, opened only by its button.** *Explore more crafting
-  on Craft of Exile* asks Windows to open
+  update check's requests to GitHub, the trade site's league list when you
+  click the refresh icon, opening Craft of Exile or the trade search in
+  the default browser when you press its button and, when you press the
+  install button, replacing its own exe.
+- **Two web addresses, each opened only by its button.** *Explore more
+  crafting on Craft of Exile* asks Windows to open
   `https://beta.craftofexile.com/?game=poe2` in your default browser, and
-  nothing else: the address is fixed in the app (`ch-app`'s
-  `CRAFT_OF_EXILE_URL`), no command takes an address, and the pages hold
-  none and cannot open one themselves (no link, no `window.open`; the
-  opener plugin's own commands are granted to no window). The app itself
-  sends nothing for it, and nothing of your item, targets or craft goes
-  with it; the page loads in your browser, which connects to Craft of
-  Exile as for any page you open (Craft of Exile is not part of this
-  project). The guard pins each of these
-  (`tests.test_crafting_helper_guard`).
-- **Network: only the update check and the install, only when you ask.**
-  With *Automatically check for updates* off (the default) and no *Check
-  now* pressed, the app sends and receives nothing (the Craft of Exile page
-  is your browser's connection, not the app's). A check is one `GET
+  *Search on the trade site* (the trade panel) asks it to open
+  `https://www.pathofexile.com/trade2/search/poe2/` followed by the
+  league and `?q=` and the search, both percent-encoded, so the league
+  cannot leave its place in the address; nothing else. Both prefixes are
+  fixed in the app (`ch-app`'s `CRAFT_OF_EXILE_URL` and
+  `TRADE_SEARCH_URL`), no command takes an address (the trade search's
+  link is built from the app's own state), and the pages hold none and
+  cannot open one themselves (no link, no `window.open`; the opener
+  plugin's own commands are granted to no window). The app itself sends
+  nothing for either; the page loads in your browser, which connects to
+  the site as for any page you open (neither site is part of this
+  project). Nothing of your item, targets or craft goes with either. **The
+  trade search's link carries** the base type, the minimum item level if
+  you set one, the league and the trade site's ids of the modifiers you
+  picked, with a minimum value where you chose a tier floor and each
+  one's weight; the site sees them, with
+  your browser's own cookies and session there, as for any search you
+  make. The app sends the trade site no search itself (it never asks the
+  site for a search id: the link is built on this machine) and writes
+  nothing to the clipboard: the link is shown for you to select and copy.
+  The guard pins each of these (`tests.test_crafting_helper_guard`).
+- **Network: only the update check, the install and the league list, only
+  when you ask.** With *Automatically check for updates* off (the
+  default), no *Check now* pressed and the league refresh icon not
+  clicked, the app sends and receives nothing (the Craft of Exile page
+  and the trade search are your browser's connections, not the app's). A
+  check is one `GET
   https://api.github.com/repos/S-Borkowski/ExilePact2/releases?per_page=30`,
   port 443 only, from Rust through Windows' own WinHTTP, with three
   headers: `Accept: application/vnd.github+json`, `X-GitHub-Api-Version:
@@ -554,9 +649,22 @@ the research note:
   or keeps the address. Each download stops at the size the release lists
   (at most 64 MiB for the exe, 4 KiB for the signature), after 30 s without
   a byte, or after 15 minutes in all.
+- **The league list** (since 0.1.2), only when you click the refresh icon
+  beside *League* in Settings, *Trade*: one `GET
+  https://www.pathofexile.com/api/trade2/data/leagues`, port 443 only,
+  from Rust through the same shared `ep-net` and WinHTTP, with two
+  headers, `Accept: application/json` and the same `User-Agent`, and
+  nothing of your settings, item or searches. Never at start, on a timer,
+  on opening Settings or the trade panel, after an update check or on a
+  settings change; a click while one runs sends nothing. The answer is
+  read up to 64 KiB within 20 s (the release list's timeouts), only its
+  Path of Exile 2, non-private league names are kept, in memory for this
+  run, and the answer is never saved or logged: the next start offers the
+  shipped list again and sends nothing.
 - For every request: no cookie and no credential is sent, the proxy is the
-  system's, and TLS and its certificate checks are Windows'. GitHub sees
-  your IP address and those headers; nothing else leaves. The app's code
+  system's, and TLS and its certificate checks are Windows'. GitHub, or
+  for the league list the trade site, sees your IP address and those
+  headers; nothing else leaves. The app's code
   outside the shared `ep-net` crate has no network code
   (`tests.test_crafting_helper_guard`). (WebView2, Microsoft's runtime that
   draws the windows, may connect on its own, as for the quest tracker.) The
@@ -565,9 +673,11 @@ the research note:
   reference). The log holds the hotkey, the grabs' line counts, refusals,
   the blocked list's length, the `craft:` lines, the `overlay:` and
   `watch:` lines (states, counts and the game's client size), the Craft of
-  Exile line and the `updates:` lines; nothing about your account or
-  character, no item text, no OCR text, no window title, no image, and
-  nothing of GitHub's answers. An
+  Exile line, the `trade:` lines (counts and reasons) and the `updates:`
+  lines; nothing about your account or character, no item text, no OCR
+  text, no window title, no image, no league, base, modifier or trade
+  link, and nothing of GitHub's or the trade site's answers.
+  `settings.json` holds the league you chose. An
   install also writes beside the exe: `crafting-helper.exe.download` while
   it downloads (deleted when the install fails or is cancelled) and
   `crafting-helper.exe.old`, the replaced exe, which the next start removes.
@@ -576,22 +686,23 @@ the research note:
 
 | Path | What it holds |
 |---|---|
-| `apps/crafting-helper/crates/ch-app/` | The app's logic without Tauri: the store, the grab's checks and normalisation (`grab.rs`), the hotkey's rules (`hotkey.rs`), the saved settings, the blocked currencies and the catalogue grouped for the pickers (`settings.rs`), the craft window (`craft.rs`: its four modes in memory, what a grab does to it, its commands' rules, its view from the engine's plan, guide and outcomes, the copy the design marks Rust's, and `CRAFT_OF_EXILE_URL`), the views (`view.rs`, the IPC contract `src/ipc.ts` mirrors), the commands, the overlay over the game (`overlay.rs`: where it sits from the game's client area, the setting and its size, and the step it shows), the screen watch (`screen.rs`: the `ScreenBackend` trait the glue implements, `GAME_WINDOW_TITLE`, the watch thread with its timings, and the watch's lines; `craft.rs`'s `Craft::screen_change` applies a confirmed read), and the update commands and ticker (`updates.rs`, over the shared `ep-update`). Tested through a recording fake shell, a fake screen backend, a fake transport and a temporary store. |
+| `apps/crafting-helper/crates/ch-app/` | The app's logic without Tauri: the store, the grab's checks and normalisation (`grab.rs`), the hotkey's rules (`hotkey.rs`), the saved settings, the blocked currencies and the catalogue grouped for the pickers (`settings.rs`), the craft window (`craft.rs`: its four modes in memory, what a grab does to it, its commands' rules, its view from the engine's plan, guide and outcomes, the copy the design marks Rust's, and `CRAFT_OF_EXILE_URL`), the views (`view.rs`, the IPC contract `src/ipc.ts` mirrors), the commands, the overlay over the game (`overlay.rs`: where it sits from the game's client area, the setting and its size, and the step it shows), the screen watch (`screen.rs`: the `ScreenBackend` trait the glue implements, `GAME_WINDOW_TITLE`, the watch thread with its timings, and the watch's lines; `craft.rs`'s `Craft::screen_change` applies a confirmed read), and the update commands and ticker (`updates.rs`, over the shared `ep-update`), the *Find a base on trade* panel (`trade.rs`: the selection, its rules and view, `TRADE_SEARCH_URL`, the percent-encoding and the link) and the trade league (`league.rs`: the `trade_league` setting's rules, the shipped list and `DEFAULT_TRADE_LEAGUE`, and the refresh answer read and filtered; the request itself is the shell's `fetch_trade_leagues`). Tested through a recording fake shell, a fake screen backend, a fake transport and a temporary store. |
 | `apps/crafting-helper/crates/ch-watch/` | The screen watch's pure part, with no thread, clock or Windows call: the locator that finds item tooltips in a copy of the game's client (`locator.rs`), the reader that OCRs each tooltip's crop through the calls it is given and reports one under the overlay as covered (`reader.rs`), the matcher that tells no tooltip, covered, another item, unreadable (with the reason), unchanged or changed from the read lines and the item the step was shown on (`matcher.rs`, `text.rs`), and `item_key`, what "the same item" means for the guide. Takes the quest tracker's `qt-screen`, and `qt-capture` for its screenshot tests alone. |
 | `apps/quest-tracker/crates/qt-screen/`, `qt-capture/` | The quest tracker's screen crates, taken **by path and unchanged**: `qt-screen` (the image, the boxes, the OCR line, the fuzzy match) by `ch-watch` and the glue, `qt-capture` (the game's client area, the GDI copy, the overlay's own rect and Windows' OCR) by the glue and by `ch-watch`'s tests. Each takes its package keys from its own workspace; a change there is a change to this app ([Maintenance triggers](#maintenance-triggers)). |
 | `apps/crafting-helper/crates/ch-item/` | The item text parser, a std-only crate; the craft window parses each grab with it: [`crates/ch-item/README.md`](../../apps/crafting-helper/crates/ch-item/README.md). |
-| `apps/crafting-helper/crates/ch-data/` | The modifier data under `data/`, embedded at build time: an item's variant from its base type, what it can roll at its item level, the join of each parsed modifier to its data modifier and tier, the affix limits (`AFFIX_LIMITS`), and one step's add and removal odds, or `unknown` with the reason. |
+| `apps/crafting-helper/crates/ch-data/` | The modifier data under `data/`, embedded at build time: an item's variant from its base type, what it can roll at its item level, the join of each parsed modifier to its data modifier and tier, the affix limits (`AFFIX_LIMITS`), and one step's add and removal odds, or `unknown` with the reason; and the `trade` module, pure and offline: the trade stat ids (`trade-stats.json`, embedded), a modifier's start weight or the stated default, what a base offers the trade panel, and the trade site's search JSON ([`crates/ch-data/README.md`](../../apps/crafting-helper/crates/ch-data/README.md) § "Trade: start weights and the search query"). |
 | `apps/crafting-helper/crates/ch-blueprint/` | The blueprint format: the model (`model.rs`, listed and state order), the static catalogue of currencies, omens, bones, fluxes and catalysts with their ids, and the not-established fact ids `relies_on` may name (`catalogue.rs`), the structural validator whose every error is `<path>:<line>:<col>: <message>` (`validate.rs`), and the shipped blueprints, embedded by `build.rs`. |
 | `apps/crafting-helper/crates/ch-engine/` | The engine: blueprints resolved against the data, route choice for an item, its targets and the blocked currencies (`route.rs`), the slot accounting every state-ordered rule reads (`slots.rs`), the state-ordered next step, side rules, placeholders and preview (`state_order.rs`), the guide's outcomes (`guide.rs`), the full catalogue with the data-backed essences, alloys and liquids, and the `check_blueprints` example. `ch-app` re-exports it and plans, guides and fills the blocked list's catalogue with it. |
 | `docs/models/crafting-slots-spec.md` | The mechanism behind state-ordered routes, in our own words, each fact labelled documented, measured or not established with its source: the slot accounting, what each crafting item does to the slots, the route rules, the preview and the representative crafts. The model and the engine follow it; a gap is fixed there first. |
 | `apps/crafting-helper/blueprints/` | The shipped blueprints, one TOML file each: how to write one is [`blueprints.md`](blueprints.md). |
-| `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start, moved where `ch-app` places it and shown without taking focus), the screen watch's real backend (`screen.rs`, over `qt-capture` and `ch-watch`'s reader) and the one file that reads the window in front and its title (`game_window.rs`), each window with its capability under `capabilities/`, opening Craft of Exile's address through `tauri-plugin-opener` from Rust alone (registered without its link handler, no `opener:` permission in any capability), the update transport over the shared `ep-net`, and the restart into an installed update. |
-| `apps/crafting-helper/src/` | The main page (`App.svelte`; the shared parts under `components/`: the grab prompt, the grabbed text, the status line and `CurrencyPicker.svelte`; the craft area under `craft/`, one component per part, from `CraftArea.svelte`; the commands `bridge.ts`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`) and the overlay's under `src/overlay/` (`overlay.html`, `Overlay.svelte`: the step panel). |
+| `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start, moved where `ch-app` places it and shown without taking focus), the screen watch's real backend (`screen.rs`, over `qt-capture` and `ch-watch`'s reader) and the one file that reads the window in front and its title (`game_window.rs`), each window with its capability under `capabilities/`, opening Craft of Exile's address and the trade search's link through `tauri-plugin-opener` from Rust alone (registered without its link handler, no `opener:` permission in any capability), the update transport and the league list's fetch (`ep_net::fetch_trade_leagues`) over the shared `ep-net`, and the restart into an installed update. |
+| `apps/crafting-helper/src/` | The main page (`App.svelte`; the shared parts under `components/`: the grab prompt, the grabbed text, the status line and `CurrencyPicker.svelte`; the craft area under `craft/`, one component per part, from `CraftArea.svelte`; the trade panel under `trade/`, `TradePanel.svelte` and `TradeModifiers.svelte`; the commands `bridge.ts`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`, the league's `TradeSection.svelte` among them) and the overlay's under `src/overlay/` (`overlay.html`, `Overlay.svelte`: the step panel). |
 | `apps/crafting-helper/theme/` | The quest tracker's theme, copied byte for byte (`theme.test.ts`). |
 | `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), embedded by `ch-data` when the app is built. |
+| `apps/crafting-helper/data/trade-stats.json` | The trade site's stat ids for every class's ordinary-pool modifiers, or why one is not searchable (`hybrid`, `no trade stat`), with the source URL and fetch date; written by `trade_stats.py map`, embedded by `ch-data` ([research note](crafting-helper-research.md#trade-stat-ids)). |
 | `apps/crafting-helper/fixtures/` | `views/`, one main window view per state (the craft window's included, [`views/README.md`](../../apps/crafting-helper/fixtures/views/README.md)), `app-settings/`, one Settings window view per update, install and settings state, and `catalogue.json`, the `get_catalogue` answer, shared by the page's tests and `ch-app`'s. |
-| `apps/shared/` | The update code the three apps share, its own Cargo workspace: `ep-net` (the only network code) and `ep-update`: [`docs/app-updates.md`](../app-updates.md). |
-| `tools/crafting_helper/` | The poe2db data extractor (`poe2db.py`), the release cutter (`release.py`) and the slot model (`slot_model.py`, stdlib only, built from the spec alone: `py -3 -m tools.crafting_helper.slot_model check` plans every case of `cases.json` and names each difference). |
+| `apps/shared/` | The update code the three apps share, its own Cargo workspace: `ep-net` (the only network code, the league list's fixed request included) and `ep-update`: [`docs/app-updates.md`](../app-updates.md). |
+| `tools/crafting_helper/` | The poe2db data extractor (`poe2db.py`), the trade stat mapper (`trade_stats.py`: `fetch` the trade site's public stat list into a cache outside the checkout, `map` it to `trade-stats.json`, `check` the shipped file; developer-only), the release cutter (`release.py`) and the slot model (`slot_model.py`, stdlib only, built from the spec alone: `py -3 -m tools.crafting_helper.slot_model check` plans every case of `cases.json` and names each difference). |
 | `.github/workflows/crafting-helper-release.yml` | The release build: from a pushed tag to a draft release. |
 
 Tests (none opens a window, reads a real clipboard, copies the screen or
@@ -609,11 +720,14 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test settings # the saved settings, the blocked list, the catalogue
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test overlay  # the overlay: when it shows, where it sits, what it says
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test watch    # the screen watch, fake backend
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test trade    # the trade panel and its link, fake shell
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-app --locked --test trade_leagues  # the league setting and its refresh, fake shell
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-watch --locked        # the locator, reader and matcher, synthetic images and lines
 CH_TOOLTIP_SHOTS="$USERPROFILE/crafting-helper-shots" cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-watch --locked --test shots -- --include-ignored  # reads images and OCR: the owner's screenshots
 cargo run --release --manifest-path apps/crafting-helper/Cargo.toml -p ch-watch --locked --example shot_timings -- <image.png> [left top right bottom]  # reads an image and OCR: one shot's times
 cargo test --manifest-path apps/quest-tracker/Cargo.toml -p qt-capture --locked -- --include-ignored  # reads OCR: qt-capture's own tests and its OCR self-test
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked         # the data: join, valid modifiers, odds
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-data --locked --test trade  # start weights, the offer, the trade query
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-blueprint --locked    # the format, the catalogue, the validator
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked       # route choice, outcomes, the seeds' paths, state order, the parity test
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test slots  # the parity test: the engine against the slot model's cases
@@ -623,6 +737,8 @@ npm --prefix apps/crafting-helper test                                          
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
 py -3 -m unittest tests.test_crafting_helper_release                                    # the release cutter and workflow
 py -3 -m unittest tests.test_crafting_helper_poe2db tests.test_crafting_helper_data     # the data extractor and the shipped data
+py -3 -m unittest tests.test_crafting_helper_trade_stats                               # the trade stat mapper, offline
+py -3 -m tools.crafting_helper.trade_stats check                                       # the shipped trade-stats.json against the class files
 cargo test --manifest-path apps/shared/Cargo.toml --locked --workspace                   # the shared update crates, 127.0.0.1 only
 py -3 -m unittest tests.test_app_updates_guard                                          # the shared crates' guard
 ```
@@ -749,6 +865,38 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   pick, a removal names its side annulment, and the route's source line
   carries no web address
   (`the_route_source_carries_no_web_address`).
+- **The trade panel and the league.** `ch-data`'s `tests/trade.rs` holds
+  the baseline (the add pool's odds unchanged,
+  `trade_baseline_add_pool_odds_are_unchanged`) and the targets on the
+  shipped data: a rarer modifier and a stricter floor weigh more, a base
+  without spawn weights takes the default and says why, the offer lists
+  the ordinary pool with what can be searched, and the query asks for a
+  magic item of the base with one entry per modifier, weights ordered by
+  rarity, two only when both sides are picked, the `(Local)` stat on
+  armour and martial weapons, a value floor only for a chosen tier, and
+  refuses a modifier with no trade stat. `ch-app`'s `tests/trade.rs`
+  drives the panel through `App` with the recording fake shell: closed and
+  opening nothing by default
+  (`trade_panel_is_closed_and_opens_nothing_by_default_baseline`), only
+  the trade address built from the app's own state opened
+  (`open_trade_search_opens_only_the_trade_address_built_from_the_state`),
+  the league percent-encoded into one path segment, refusals that keep
+  the state, no link past 2,000 characters, the craft untouched
+  underneath, and log lines with counts only. `tests/trade_leagues.rs`
+  holds the league list: nothing asked for at start or by default
+  (`trade_leagues_are_not_requested_at_startup_or_by_default_baseline`),
+  a refresh fills the list for this run, a failed, malformed or oversized
+  answer keeps the list and the league, other realms, private leagues and
+  bad names skipped, a second refresh while one runs sends no request,
+  the saved league always offered, and log lines with counts only; the
+  fake shell answers, so no test reaches the trade site, and `ep-net`'s
+  own tests send the league request to their 127.0.0.1 server.
+  `tests.test_crafting_helper_trade_stats` runs the mapper's rules
+  (match, hybrid, no trade stat, duplicate ids, local) on a synthetic stat
+  list and class files, each with a negative control, with no network.
+  The page's `src/trade/trade-panel.test.ts` and the Settings window's
+  tests render the trade fixtures (`fixtures/views/trade-*.json`,
+  `fixtures/app-settings/trade-league*.json`).
 - `ch-app`'s `tests/fixtures.rs` (`fixtures_are_current`) writes the
   views under `fixtures/views/` and `fixtures/app-settings/` and
   `fixtures/catalogue.json`, the overlay's and the screen watch's views
@@ -768,12 +916,20 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   window-lookup names allowed in `qt-capture`'s `win.rs` alone), and
   `qt-capture` taken only by the glue and `ch-watch`'s tests; no file
   written by `ch-watch`'s library; no Tauri plugin but the
-  global shortcut, single instance and opener; one web address in the Rust
-  sources, Craft of Exile's, once, in `ch-app`, the opener named and called
-  once in the glue and registered without its link handler, and no command
-  taking an address or a path (`open_craft_of_exile` takes only the app
-  state); no address, `window.open`, change of `location`, new-window link
-  or opener command in the pages; the pinned CSP, the three windows'
+  global shortcut, single instance and opener; two web addresses in the
+  Rust sources, Craft of Exile's and the trade search's, each once, in
+  `ch-app` (`CRAFT_OF_EXILE_URL`, `TRADE_SEARCH_URL`), the opener named and
+  called once in the glue and registered without its link handler, and no
+  command taking an address or a path (`open_craft_of_exile`,
+  `open_trade_search` and `refresh_trade_leagues` take only the app
+  state); the one request beside GitHub's, the trade site's league list:
+  `ep-net`'s `TRADE_LEAGUES_HOST` and `TRADE_LEAGUES_PATH` pinned and
+  defined once outside tests, and `ep_net::fetch_trade_leagues` named by
+  the glue alone, once, and by no source of the quest tracker, the
+  waystone roller or `ep-update`; no address, `window.open`, change of
+  `location`, new-window link or opener command in the pages, and the
+  bridge declaring each of the three commands once, taking
+  `Record<string, never>`; the pinned CSP, the three windows'
   capabilities and the overlay window's settings; one version everywhere
   (`ch-item`'s included); every member crate but `ch-item` taking its
   package keys and external dependencies from the workspace; and every
@@ -827,6 +983,14 @@ py -3 -m unittest tests.test_app_updates_guard                                  
 
 **Refreshing the modifier data**: see the research note's
 [Data extractor](crafting-helper-research.md#data-extractor).
+
+**Refreshing the trade stat ids** (after a data refresh, or when the trade
+site changes its stat list): `py -3 -m tools.crafting_helper.trade_stats
+fetch` (one request, into the cache outside the checkout), then `map`
+(offline; prints the coverage per class) and `check`, then the `ch-data`
+and `ch-app` trade tests, whose anchors move with an id. The rules and the
+last coverage are the research note's
+[Trade stat ids](crafting-helper-research.md#trade-stat-ids).
 
 **Changing the icon**: `src-tauri/icons/source.png` is the one source.
 Regenerate the icon files with
@@ -1075,6 +1239,52 @@ release already exists, only its assets are replaced.
   beta address with `?game=poe2`; if the site moves or drops that address,
   the button opens whatever the site serves there until the app is
   updated.
+- **Not every modifier can be searched on trade.** A modifier with more
+  than one line (a hybrid, 77 of the 900 ordinary-pool modifiers) is not
+  searchable: the trade site lists each line as a stat of its own, and a
+  search by one line would also find the plain modifier with that line.
+  Neither is a modifier whose text the site's stat list does not carry
+  (32, such as `#% reduced Attribute Requirements`, which the site lists
+  only as `increased`); the app does not guess a rewrite. Both are listed
+  under *Not searchable on trade* with the reason
+  ([research note](crafting-helper-research.md#trade-stat-ids)).
+- **The weighted sum ranks by value times weight.** The trade site sums
+  each modifier's rolled value times its weight; the app divides each
+  weight by the modifier's minimum roll at its floor so that a
+  large-valued modifier does not win by its numbers alone, but a high roll
+  of a common modifier can still outrank a low roll of a rare one. The
+  ranking is a guide, not the odds.
+- **A weight is one add's odds**, from poe2db's spawn weights: about 1 in
+  N modifiers added to that side of that base is this one, at the floor
+  or better. Where the data has no usable spawn weight (every jewel page,
+  the `str_dex_int` body armour page, a tier without one), the
+  weight is a stated default (the median of that side's weighed
+  modifiers, or 1.0), tagged "default" with its reason, not a measurement.
+- **The league goes stale each league.** The default (`Forbidden Rites`)
+  and the six shipped leagues are the trade site's list of 2026-10-29 and
+  2026-10-30. When a new league starts, the refresh icon fetches the
+  current list for that run (it is not saved: the next start offers the
+  shipped six again, and your chosen league, which is saved); the default
+  and the shipped list change only with a new version.
+- **The local-stat rule is a reading.** Armour classes (but for Accuracy
+  Rating) and martial weapons search the trade site's `(Local)` stat ids,
+  the others its plain ids. This follows the site's list and the game's
+  local-modifier convention and was not measured; a wrong choice finds
+  the wrong items, or none.
+- **The trade site's interface can change.** The search link's `?q=`
+  form, the query's `count` and `weight` groups, the stat ids and the
+  league list's shape are the site's, read from its public lists and not
+  confirmed by GGG; a change can make the link open an empty or refused
+  search, or a refresh refused, until the app is updated (Maintenance
+  triggers). The app never sends a search itself, so a broken link shows
+  in your browser, not in the app.
+- **The link is copied by hand.** The app writes nothing to the
+  clipboard; select the link in the panel and press `Ctrl+C`.
+- **0.1.2's trade panel and league list are proven by tests.** The panel,
+  the link it builds and the league refresh run in `ch-app`'s tests with a
+  fake shell, and the league request in `ep-net`'s against a 127.0.0.1
+  server; whether the trade site answers the built link as intended is
+  checked in a live session, not by the tests.
 
 ## Maintenance triggers
 
@@ -1134,7 +1344,22 @@ release already exists, only its assets are replaced.
   `beta.craftofexile.com`, or `?game=poe2` no longer choosing Path of
   Exile 2): change `CRAFT_OF_EXILE_URL` in `ch-app`'s `craft.rs` and the
   guard's `CRAFT_OF_EXILE_URL` in `tests/test_crafting_helper_guard.py`
-  together, with this guide's Privacy section; it stays the one address.
+  together, with this guide's Privacy section.
+- **The trade site changing its stat list, its search or its leagues**: a
+  stat id moved, renamed or added, or a modifier's text changed, means
+  rerunning `trade_stats.py fetch` and `map` (Working on the app,
+  "Refreshing the trade stat ids") and the `ch-data` and `ch-app` trade
+  tests; a data refresh means `map` again too, since `check` refuses a
+  `trade-stats.json` whose modifier ids are not the class files'. A change
+  to the search address or the query's form: `TRADE_SEARCH_URL` in
+  `ch-app`'s `trade.rs` and the guard's `TRADE_SEARCH_URL` together, or
+  `ch-data`'s `trade_query`, with this guide's Privacy section. A change
+  to the league list's address or shape: `ep-net`'s `TRADE_LEAGUES_HOST`
+  and `TRADE_LEAGUES_PATH` with the guard's pins, or `ch-app`'s
+  `league.rs`.
+- **A new league**: `DEFAULT_TRADE_LEAGUE` and `SHIPPED_TRADE_LEAGUES` in
+  `ch-app`'s `league.rs` (the refresh icon covers a run until then), with
+  the tests and fixtures that name them (`CH_FIXTURES=1`) and this guide.
 - **A dependency bump**: keep the versions equal to the quest tracker's
   (`LockedToQuestTrackerPins`); bump them together.
 - **GitHub changes its API or its release flow**: the release list's
@@ -1148,6 +1373,35 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.1.2
+
+- **Find a base on trade** (#30): a new button in the header opens a panel
+  for starting a craft from a bought base. Pick an item class, a base
+  type, an optional minimum item level and the modifiers you want (up to
+  8, each any tier or at least a tier you choose), and *Search on the
+  trade site* opens the official trade site in your browser, searching
+  for a magic item of that base carrying two of them, a prefix and a
+  suffix (or at least one, if you choose), ranked so the rarer modifiers
+  count for more.
+- Each modifier shows its weight, higher the rarer it is to roll on that
+  base: 12.0 means about 1 in 12 modifiers added to that side is this
+  one. Where the data has no weight for it (every jewel, some tiers), the
+  weight is a stated default, marked "default" with the reason.
+- Modifiers with more than one line, and the few the trade site has no
+  stat for, are listed as not searchable, with the reason.
+- The search link is shown in the panel, for you to select and copy. The
+  app copies nothing to your clipboard, never buys or whispers for you,
+  and sends the trade site no search itself: your browser opens the link.
+- **A League setting** in Settings, *Trade*: the league the search opens
+  in (Forbidden Rites by default), with a refresh icon beside it that asks
+  the trade site for its current leagues. That click is the only time the
+  app asks; the new list lasts until the app closes, and your choice is
+  saved.
+- The craft is untouched while the panel is open: a guided craft, the
+  overlay and the screen watch carry on, and *Back to the craft* returns
+  to it.
+- The app still sends the game nothing.
 
 ### 0.1.1
 

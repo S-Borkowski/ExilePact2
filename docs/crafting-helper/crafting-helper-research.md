@@ -10,7 +10,10 @@ The data is poe2db's reference data about item classes, not a structure of
 the game client, so nothing here goes into `docs/RUNTIME_DATA_MODELS.md`. No
 decompiler was used. The sources are poe2db.tw's item-class pages, fetched
 2026-10-28 by the tool below (52 pages and robots.txt, one request at a time,
-3 s apart). poe2wiki and craftofexile are not read.
+3 s apart). poe2wiki and craftofexile are not read. The trade search's
+stat ids come from the trade site's public stat list, fetched 2026-10-30
+(§ "Trade stat ids"); the trade site's ids and query format are a
+website's interface, not a fact about the game client either.
 
 ## poe2db ModsView pages
 
@@ -198,6 +201,92 @@ Facts the tests pin from this run: 22 classes with variant counts 3, 6, 6,
 int page, tier 1 at item level 60, and Lesser Essence of the Body matches its
 tier 7; every jewel page is `not-established` for normal weights, jewels
 have liquid emotions and no essences; Sceptres have no desecrated rows.
+
+## Trade stat ids
+
+The *Find a base on trade* panel searches the trade site by its own stat
+ids, which poe2db does not carry. They come from the trade site's public
+stat list, mapped to the class files' modifiers by a developer tool and
+shipped as `apps/crafting-helper/data/trade-stats.json`. The app never
+asks the site for them.
+
+**Source.** `https://www.pathofexile.com/api/trade2/data/stats`, public, no
+login. `py -3 -m tools.crafting_helper.trade_stats fetch` sends one `GET`
+with a User-Agent naming the tool and this repository and keeps the raw
+answer outside every checkout
+(`%LOCALAPPDATA%\ExilePact2\crafting-helper\trade-cache\`, `stats.json` and
+`index.json`); it is never committed. The shipped file was mapped from the
+fetch of 2026-10-30 (HTTP 200). The answer's `result` is a list of groups
+(`pseudo`, `explicit`, `implicit`, `fractured`, `crafted`, `enchant`,
+`rune`, `desecrated`, `sanctum`, `skill`), each with `entries` of `{id,
+text, type}`. Only `explicit` is read: 3108 entries, ids of the form
+`explicit.stat_<number>`, texts written as templates like ours but without
+a leading `+` (`# to maximum Life` where the class files have `+# to
+maximum Life`). `trade-stats.json` keeps the source URL, the fetch date, a
+source note (the texts are game text by Grinding Gear Games, quoted under
+the owner's 2026-10-24 decision) and, per class and per ordinary-pool
+modifier id, either the matched `{text, ids}` or `{searchable: false,
+reason}`; nothing else of the list. `trade_stats check` refuses a file
+whose ids do not start `explicit.stat_`, whose modifier ids are not the
+class file's normal modifiers, or that lacks the source or the date.
+
+**Matching.** Only `normal` (ordinary-pool) modifiers are mapped; a magic
+base is bought for those, so desecrated modifiers are left out.
+
+- A modifier matches by its first line with one leading `+` removed,
+  against the `explicit` texts, exactly.
+- A modifier with more than one line is a hybrid and is not searchable
+  (reason `hybrid`). The site lists each line as a stat of its own, and a
+  hybrid's first line is often a plain modifier's text (`#% increased
+  Armour` with `+# to maximum Life`), so a search by one line would find
+  the plain modifier too. A hybrid is never mapped by a line.
+- A line the list does not carry is not searchable (reason `no trade
+  stat`). Nothing is rewritten to make it match (a `reduced` read as a
+  negative `increased`, say): a guess is a wrong search.
+- A text listed under several ids keeps every id, and the search lists
+  each in the same group. The list held 26 such texts; the shipped mapping
+  uses three of them (`# to Spirit`, `# to all Attributes`, `#% increased
+  Spirit`), in five class entries.
+- **Local stats**, a static reading of the site's list and the game's
+  local-modifier convention, not measured: the `explicit` group carries
+  eight texts ending ` (Local)` (such as `# to Armour (Local)` and `# to
+  Accuracy Rating (Local)`) beside their plain twins. An armour class
+  (Gloves, Boots, Helmets, Body Armours, Shields, Bucklers, Foci) takes the
+  `(Local)` id where the site lists one, except for Accuracy Rating, which
+  is global on armour; a martial weapon (Bows, Crossbows, One Hand Maces,
+  Two Hand Maces, Quarterstaves, Spears, Talismans) takes it too. Every
+  other class (Rings, Amulets, Belts, Quivers, Jewels, Wands, Sceptres,
+  Staves) takes the plain id. The live checks `gloves-local` and
+  `gloves-global` test the rule on Gloves.
+
+**Coverage**, as `trade_stats map` printed it for the 2026-10-30 list: 900
+normal modifiers over the 22 classes, 791 searchable (42 of them by a
+`(Local)` id), 77 hybrid and 32 with no trade stat. Quivers, Belts and
+Amulets are fully searchable; Rings lose one hybrid, Jewels 11 modifiers
+with no trade stat; Helmets (16 hybrids) and Body Armours (15 hybrids, 3
+with no trade stat) lose the most.
+
+**Not matched, and why.** The 32 with no trade stat are:
+
+- `#% reduced Attribute Requirements`, on all 17 weapon and armour classes
+  that roll it. The site lists `#% increased Attribute Requirements` only.
+- `#% reduced Duration of Bleeding on You` and `#% reduced Poison Duration
+  on you` (Body Armours): the site lists the `increased` forms.
+- `Loads # additional bolts` (Crossbows): the site lists `Loads an
+  additional bolt`, a different template.
+- `Allies in your Presence have +#% to all Elemental Resistances`
+  (Sceptres).
+- 11 jewel modifiers: `#% chance to Daze on Hit` and `#% chance for Attack
+  Hits to apply Incision` (the site words them `Dazes on Hit` and `Attack
+  Hits apply Incision`, with no number), `#% reduced Slowing Potency of
+  Debuffs on You`, the minions' elemental and chaos resistances, and six
+  "Notable/Small Passive Skills in Radius also grant ..." lines (of those
+  and of `+# to maximum Rage`).
+
+Each would need a rewrite of the text, or of its sign, that the site's list
+does not confirm, so each stays not searchable, and the panel lists it as
+such, until a refreshed list carries its text. A refresh is `fetch` then
+`map` (README § "Maintenance triggers").
 
 ## Not established and negatives
 
