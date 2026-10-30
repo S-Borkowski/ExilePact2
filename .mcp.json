@@ -16,6 +16,10 @@
       "command": "npx",
       "args": ["-y", "@playwright/mcp@0.0.82", "--browser", "msedge", "--headless", "--isolated"]
     },
+    "app-webview": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.82", "--cdp-endpoint", "http://127.0.0.1:9333"]
+    },
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",

@@ -742,6 +742,7 @@ when a contributor trusts the repository.
 | `x64dbg` | a live debugger on the running game, for `live-operator` only: headless x64dbg with the [AgentSmithers/x64DbgMCPServer](https://github.com/AgentSmithers/x64DbgMCPServer) plugin, both pinned, attached under the game lease, and eight tools of our own served over stdio by `tools/x64dbg_mcp.py`, which forwards to the plugin on `127.0.0.1:50300` — see [`docs/tools/x64dbg-mcp.md`](../docs/tools/x64dbg-mcp.md) |
 | `context7` | live library documentation, pinned to `@upstash/context7-mcp@4.1.1` |
 | `playwright` | driving a browser; pinned to `@playwright/mcp@0.0.82`, run headless on Microsoft Edge (`--browser msedge --headless`) because Edge ships with Windows and the default, Chrome, often is not installed, and with `--isolated` (an in-memory profile per server) because concurrent sessions in `.claude/worktrees/` otherwise collide on one shared profile |
+| `app-webview` | driving one of this repository's own Tauri apps, for `live-operator`: the same pinned `@playwright/mcp@0.0.82` attached over CDP to `127.0.0.1:9333` (`--cdp-endpoint`), where only an app started by `py -3 tools/app_webview.py launch <exe>` listens (it sets `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` for that process alone); never the game — see [`docs/tools/app-webview-mcp.md`](../docs/tools/app-webview-mcp.md) |
 | `github` | issues, pull requests and Actions for this repository, over GitHub's hosted MCP endpoint |
 
 `ghidra` is a local entry, `py -3 -m tools.ghidra_mcp`. It needs Ghidra, a JDK
