@@ -2631,9 +2631,10 @@ Revisit this feature when:
   Corruption, The Crowbell, A Crown of Stone, Ascent to Power, The Well of
   Souls and Legacy of the Vaal, and two replace earlier tips (below).
 - The Crowbell gained a "Find The Crowbell" step, with a tip, after
-  "Reach Hunting Grounds". No log line naming The Crowbell has been seen
-  (checked 2026-10-30), so the step is ticked by hand; the quest is still done on the passive points line in
-  Hunting Grounds, and its statuses on a replay are unchanged.
+  "Reach Hunting Grounds". No quest or NPC line naming The Crowbell was
+  observed in the one log checked (2026-10-30), so the step is ticked by
+  hand; the quest is still done on the passive points line in Hunting
+  Grounds, and its statuses on a replay are unchanged.
 - Secrets in the Dark: the tips on "Search the Grelwood" (now: follow the
   faintly glowing roots to the Tree of Souls) and "Find the Red Vale" (now:
   follow the river upstream to the Red Vale entrance) were replaced.

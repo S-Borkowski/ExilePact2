@@ -1320,7 +1320,7 @@
       "evidence": "measured",
       "source_url": "https://poe2db.tw/us/Quest",
       "fetched": "2026-10-25",
-      "notes": "Done on the passive points line in Hunting Grounds. Listed in poe2db's community table of permanent rewards, not as a quest page. \"Find The Crowbell\" has no signal: no line naming The Crowbell was found in the one Client.txt checked (2026-10-30), so it is ticked by hand."
+      "notes": "Done on the passive points line in Hunting Grounds. Listed in poe2db's community table of permanent rewards, not as a quest page. \"Find The Crowbell\" has no signal: no NPC or quest line naming The Crowbell was found in the one Client.txt checked (2026-10-30), so it is ticked by hand."
     },
     {
       "id": "candlemass",
