@@ -394,10 +394,15 @@ pub struct TradeEntry {
     pub weight: StartWeight,
     /// The floor tier's minimum roll as the site values it (the first `#`'s
     /// minimum; the mean of the minimums for a two-`#` line); `None` for a
-    /// modifier without a value.
+    /// modifier without a value. The count group's value floor.
     pub reference: Option<f64>,
-    /// The weight group's weight: the rarity weight over the reference value
-    /// (four significant digits).
+    /// The top value: the maximum roll, as the site values it, of the best
+    /// tier the pick can have at the item level (tier 1 with no item level);
+    /// `None` for a modifier without a value.
+    pub top: Option<f64>,
+    /// The weight group's weight: the rarity weight over the top value (four
+    /// significant digits), so a pick adds at most its rarity weight and no
+    /// roll of a commoner modifier outweighs a rarer one at its floor.
     pub trade_weight: f64,
     pub stat_ids: Vec<String>,
 }
@@ -414,16 +419,26 @@ pub struct TradeQuery {
     pub entries: Vec<TradeEntry>,
 }
 
-/// The reference value of a tier: the minimum of the first line's `#`s,
-/// averaged when the line has two.
-fn reference_value(first_line: &str, values: &[[f64; 2]]) -> Option<f64> {
+/// A tier's value as the site reads it: one end (0 the minimum, 1 the
+/// maximum) of the first line's `#`s, averaged when the line has two.
+fn tier_value(first_line: &str, values: &[[f64; 2]], end: usize) -> Option<f64> {
     let hashes = first_line.matches('#').count().min(values.len());
     if hashes == 0 {
         return None;
     }
-    let sum: f64 = values[..hashes].iter().map(|v| v[0]).sum();
+    let sum: f64 = values[..hashes].iter().map(|v| v[end]).sum();
     let mean = sum / hashes as f64;
     (mean.abs() > 0.0).then_some(mean.abs())
+}
+
+/// The reference value of a tier: its minimum roll.
+fn reference_value(first_line: &str, values: &[[f64; 2]]) -> Option<f64> {
+    tier_value(first_line, values, 0)
+}
+
+/// The top value of a tier: its maximum roll.
+fn top_value(first_line: &str, values: &[[f64; 2]]) -> Option<f64> {
+    tier_value(first_line, values, 1)
 }
 
 fn round_significant(x: f64, digits: i32) -> f64 {
@@ -495,17 +510,24 @@ pub fn trade_query(search: &TradeSearch) -> Result<TradeQuery, String> {
             .iter()
             .find(|t| t.tier == weight.floor)
             .ok_or_else(|| format!("{} has no tier {} on {variant}", m.id, weight.floor))?;
-        let reference = m
-            .lines
-            .first()
-            .and_then(|line| reference_value(line, &tier.values));
-        let trade_weight = round_significant(weight.weight / reference.unwrap_or(1.0), 4);
+        let first_line = m.lines.first();
+        let reference = first_line.and_then(|line| reference_value(line, &tier.values));
+        // The best tier the item level reaches (every tier with none).
+        let best = m
+            .tiers_on(variant)
+            .iter()
+            .filter(|t| t.ilvl <= level)
+            .min_by_key(|t| t.tier)
+            .unwrap_or(tier);
+        let top = first_line.and_then(|line| top_value(line, &best.values));
+        let trade_weight = round_significant(weight.weight / top.unwrap_or(1.0), 4);
         entries.push(TradeEntry {
             id: m.id.clone(),
             kind: m.kind,
             floor: pick.floor,
             weight,
             reference,
+            top,
             trade_weight,
             stat_ids: search_for.ids,
         });

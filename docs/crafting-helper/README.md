@@ -183,9 +183,10 @@ from a bought base.
   trade site** opens `www.pathofexile.com/trade2` in your default browser,
   searching for a **magic** item of that base, online and not corrupted,
   carrying those modifiers and ranked by a weighted sum of them (each
-  modifier's value times its weight over its minimum roll, so a rarer
-  modifier counts for more). The link is also shown, read-only, to select
-  and copy yourself. A modifier with more than one line (a hybrid), or one
+  modifier's value times its weight over its top value, the best roll it
+  can have at that item level, so a modifier counts for at most its
+  weight and a rarer modifier counts for more). The link is also shown,
+  read-only, to select and copy yourself. A modifier with more than one line (a hybrid), or one
   the trade site has no stat for, is listed under *Not searchable on
   trade* with the reason. The panel never buys, whispers, copies to the
   clipboard or touches the game, and the craft goes on underneath: *Back
@@ -874,7 +875,10 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   without spawn weights takes the default and says why, the offer lists
   the ordinary pool with what can be searched, and the query asks for a
   magic item of the base with one entry per modifier, weights ordered by
-  rarity, two only when both sides are picked, the `(Local)` stat on
+  rarity and over each modifier's top value, so Live 2's ring with
+  Accuracy at T1 outranks Life and Cold Resistance at their best rolls
+  (`trade_weight_rarer_floor_outranks_commoner_best_rolls`), two only
+  when both sides are picked, the `(Local)` stat on
   armour and martial weapons, a value floor only for a chosen tier, and
   refuses a modifier with no trade stat. `ch-app`'s `tests/trade.rs`
   drives the panel through `App` with the recording fake shell: closed and
@@ -1252,10 +1256,14 @@ release already exists, only its assets are replaced.
   ([research note](crafting-helper-research.md#trade-stat-ids)).
 - **The weighted sum ranks by value times weight.** The trade site sums
   each modifier's rolled value times its weight; the app divides each
-  weight by the modifier's minimum roll at its floor so that a
-  large-valued modifier does not win by its numbers alone, but a high roll
-  of a common modifier can still outrank a low roll of a rare one. The
-  ranking is a guide, not the odds.
+  weight by the modifier's top value (the maximum roll of the best tier
+  it can have at the item level, tier 1 with none) so that a modifier
+  adds at most its rarity weight and a large-valued one does not win by
+  its numbers alone. A high roll of a common modifier can still outrank a
+  low roll of a rare one, most of all when the rare one's floor is far
+  below its best tier. The ranking is a guide, not the odds. (Until Live
+  2, 2026-10-30, the weight was over the floor's minimum roll, which let a
+  high roll of a commoner modifier outrank the rarer one at its floor.)
 - **A weight is one add's odds**, from poe2db's spawn weights: about 1 in
   N modifiers added to that side of that base is this one, at the floor
   or better. Where the data has no usable spawn weight (every jewel page,

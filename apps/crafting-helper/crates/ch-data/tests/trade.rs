@@ -288,13 +288,16 @@ fn trade_query_weights_are_ordered_by_spawn_rarity() {
     // The rarer modifier carries the higher rarity weight.
     assert!(accuracy.weight.weight > life.weight.weight);
     assert!((accuracy.weight.weight / life.weight.weight - 2.5).abs() < 1e-9);
-    // The trade weight is the rarity weight over the reference value (the
-    // floor tier's minimum roll), so a large-valued modifier is not ranked
-    // by its value alone.
+    // The trade weight is the rarity weight over the top value (the best
+    // reachable tier's maximum roll), so a large-valued modifier is not
+    // ranked by its value alone; the reference (the floor tier's minimum
+    // roll) stays the count group's value floor.
     assert_eq!(life.reference, Some(100.0));
     assert_eq!(accuracy.reference, Some(347.0));
+    assert_eq!(life.top, Some(119.0));
+    assert_eq!(accuracy.top, Some(450.0));
     for e in [life, accuracy] {
-        let expected = e.weight.weight / e.reference.unwrap();
+        let expected = e.weight.weight / e.top.unwrap();
         assert!((e.trade_weight - expected).abs() / expected < 1e-3, "{e:?}");
     }
     let weights: Vec<f64> = group(&q, 1)["filters"]
@@ -305,7 +308,8 @@ fn trade_query_weights_are_ordered_by_spawn_rarity() {
         .collect();
     assert_eq!(weights, vec![life.trade_weight, accuracy.trade_weight]);
 
-    // Two-# lines: the reference is the mean of the two minimums.
+    // Two-# lines: the reference is the mean of the two minimums, the top
+    // value the mean of the two maximums.
     let adds = class("Rings")
         .find_mod("prefix-adds-to-cold-damage-to-attacks")
         .unwrap();
@@ -319,6 +323,58 @@ fn trade_query_weights_are_ordered_by_spawn_rarity() {
     assert_eq!(
         q.entries[0].reference,
         Some((t1.values[0][0] + t1.values[1][0]) / 2.0)
+    );
+    assert_eq!(
+        q.entries[0].top,
+        Some((t1.values[0][1] + t1.values[1][1]) / 2.0)
+    );
+
+    // Any tier with no item level: the reference is the worst tier's
+    // minimum, the top value tier 1's maximum.
+    let q = query(&search(
+        "Rings",
+        "Amethyst Ring",
+        None,
+        vec![pick(RING_LIFE, None)],
+    ));
+    assert_eq!(q.entries[0].reference, Some(10.0));
+    assert_eq!(q.entries[0].top, Some(119.0));
+}
+
+/// Live 2 (2026-10-30): with the weight over the floor's minimum roll, a high
+/// roll of a common modifier outranked the rarer one at its floor, so the
+/// link's order did not follow the panel's rarity order. Over the top value
+/// at the item level, no roll of a commoner pick outweighs a rarer one.
+#[test]
+fn trade_weight_rarer_floor_outranks_commoner_best_rolls() {
+    let q = query(&search(
+        "Rings",
+        "Sapphire Ring",
+        Some(75),
+        vec![
+            pick(RING_LIFE, None),
+            pick(RING_COLD_RES, None),
+            pick(RING_ACCURACY, Some(1)),
+        ],
+    ));
+    let life = &q.entries[0];
+    let cold = &q.entries[1];
+    let accuracy = &q.entries[2];
+    // The panel's rarity order on this base.
+    assert!(accuracy.weight.weight > cold.weight.weight, "{q:?}");
+    assert!(cold.weight.weight > life.weight.weight, "{q:?}");
+
+    // (a) At each pick's floor minimum, the link follows that order.
+    let at_floor = |e: &ch_data::TradeEntry| e.trade_weight * e.reference.unwrap();
+    assert!(at_floor(accuracy) > at_floor(cold), "{q:?}");
+    assert!(at_floor(cold) > at_floor(life), "{q:?}");
+
+    // (b) Accuracy at its T1 minimum (347) outranks Life at its best roll at
+    // item level 75 (T1's 119) plus Cold Resistance at its best (T2's 40).
+    assert_eq!(accuracy.reference, Some(347.0));
+    assert!(
+        accuracy.trade_weight * 347.0 > life.trade_weight * 119.0 + cold.trade_weight * 40.0,
+        "{q:?}"
     );
 }
 
