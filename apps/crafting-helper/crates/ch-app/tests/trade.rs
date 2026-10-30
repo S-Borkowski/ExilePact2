@@ -733,3 +733,132 @@ fn trade_log_lines_carry_counts_only() {
         assert!(!all.contains(secret), "{secret} reached the log:\n{all}");
     }
 }
+
+// The item-level suggestion ------------------------------------------------
+
+const BOOTS: &str = "Boots";
+const BANGLED_SANDALS: &str = "Bangled Sandals";
+const SPEED: &str = "prefix-increased-movement-speed";
+
+/// The query ch-data builds for one pick on the sandals at `item_level`.
+fn sandals_query(item_level: Option<u32>, floor: Option<u32>) -> Value {
+    trade_query(&TradeSearch {
+        class: BOOTS.to_string(),
+        base: BANGLED_SANDALS.to_string(),
+        item_level,
+        picks: vec![TradePick {
+            id: SPEED.to_string(),
+            floor,
+        }],
+        both_slots: true,
+    })
+    .unwrap()
+    .query
+}
+
+fn ilvl_filter(query: &Value) -> &Value {
+    &query["query"]["filters"]["type_filters"]["filters"]["ilvl"]
+}
+
+#[test]
+fn trade_search_with_a_blank_item_level_uses_the_suggestion() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+
+    // Baseline: no floor picked, nothing suggested, and the query is the one
+    // a blank field always built (no item-level filter).
+    let view = choose(&app, BOOTS, BANGLED_SANDALS, None, &[pick(SPEED, None)]);
+    assert_eq!(view.trade.suggested_item_level, None);
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(query, sandals_query(None, None));
+    assert!(ilvl_filter(&query).is_null(), "{query}");
+
+    // Movement speed at least T2 needs item level 65: the blank field
+    // searches with it, as if it had been typed.
+    let mut sel = view.trade.selection.clone();
+    sel.picks = vec![pick(SPEED, Some(2))];
+    let view = app.set_trade_search(&sel);
+    assert_eq!(
+        view.trade.selection.item_level, None,
+        "the field stays blank"
+    );
+    assert_eq!(view.trade.suggested_item_level, Some(65));
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(query, sandals_query(Some(65), Some(2)));
+    assert_eq!(ilvl_filter(&query)["min"], 65);
+
+    // At least T1 needs 82.
+    sel.picks = vec![pick(SPEED, Some(1))];
+    let view = app.set_trade_search(&sel);
+    assert_eq!(view.trade.suggested_item_level, Some(82));
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(ilvl_filter(&query)["min"], 82);
+
+    // The link opened is the one the view shows.
+    let shown = view.trade.link.clone().unwrap();
+    app.open_trade_search();
+    assert_eq!(shell.rec().opened, vec![shown]);
+
+    // A ring: fire resistance at least T1 and life at any tier gives 82.
+    let view = choose(
+        &app,
+        RINGS,
+        SAPPHIRE_RING,
+        None,
+        &[pick(FIRE, Some(1)), pick(LIFE, None)],
+    );
+    assert_eq!(view.trade.suggested_item_level, Some(82));
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(ilvl_filter(&query)["min"], 82);
+    app.shutdown();
+}
+
+#[test]
+fn trade_search_keeps_a_typed_item_level() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+
+    // A typed 70 with movement speed at least T2: the suggestion (65) is
+    // still shown, and the query searches with the typed level.
+    let view = choose(
+        &app,
+        BOOTS,
+        BANGLED_SANDALS,
+        Some(70),
+        &[pick(SPEED, Some(2))],
+    );
+    assert_eq!(view.trade.selection.item_level, Some(70));
+    assert_eq!(view.trade.suggested_item_level, Some(65));
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(query, sandals_query(Some(70), Some(2)));
+    assert_eq!(ilvl_filter(&query)["min"], 70);
+
+    // A typed level above the suggestion on a ring wins too.
+    let view = choose(
+        &app,
+        RINGS,
+        SAPPHIRE_RING,
+        Some(90),
+        &[pick(FIRE, Some(1)), pick(LIFE, None)],
+    );
+    assert_eq!(view.trade.suggested_item_level, Some(82));
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(ilvl_filter(&query)["min"], 90);
+
+    // Clearing the field goes back to the suggestion.
+    let mut sel = view.trade.selection.clone();
+    sel.item_level = None;
+    let view = app.set_trade_search(&sel);
+    assert_eq!(view.trade.selection.picks.len(), 2, "both picks kept");
+    let (_, query) = split_link(view.trade.link.as_deref().expect("a link"));
+    assert_eq!(ilvl_filter(&query)["min"], 82);
+
+    // The panel closed carries no suggestion, as it carries no link.
+    sel.open = false;
+    let view = app.set_trade_search(&sel);
+    assert_eq!(view.trade.suggested_item_level, None);
+    assert!(view.trade.link.is_none());
+    app.shutdown();
+}

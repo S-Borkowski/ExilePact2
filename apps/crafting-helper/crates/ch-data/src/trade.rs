@@ -407,6 +407,27 @@ pub struct TradeEntry {
     pub stat_ids: Vec<String>,
 }
 
+/// The item level a selection's floors need: the highest item level any
+/// pick's floor tier needs on the base's variant (a better tier needs more),
+/// so that a search with no minimum of its own can ask for one. `None` with
+/// no floor picked, and for an unknown class or base; a pick that is not a
+/// modifier of the class, or whose floor is not a tier of the variant, adds
+/// nothing.
+pub fn suggested_item_level(class: &str, base: &str, picks: &[TradePick]) -> Option<u32> {
+    let (data, base) = base_of(class, base).ok()?;
+    picks
+        .iter()
+        .filter_map(|pick| {
+            let floor = pick.floor?;
+            let m = data.find_mod(&pick.id)?;
+            m.tiers_on(&base.variant)
+                .iter()
+                .find(|t| t.tier == floor)
+                .map(|t| t.ilvl)
+        })
+        .max()
+}
+
 /// The trade query for a selection, with what it says about each pick.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct TradeQuery {

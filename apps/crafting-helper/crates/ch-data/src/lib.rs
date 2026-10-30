@@ -13,9 +13,10 @@
 //!   modifier and tier.
 //! - [`add_odds`], [`removal_odds`], [`AFFIX_LIMITS`]: slots, pools and the
 //!   chance of one random add or removal.
-//! - [`start_weight`], [`trade_offer`], [`trade_query`]: how rare a modifier
-//!   is to roll on a base, what a base offers a trade search, and the trade
-//!   site's search query for a pick (no address, no league).
+//! - [`start_weight`], [`trade_offer`], [`trade_query`],
+//!   [`suggested_item_level`]: how rare a modifier is to roll on a base, what
+//!   a base offers a trade search, the trade site's search query for a pick
+//!   (no address, no league), and the item level the picked floors need.
 //!
 //! ```
 //! let text = "Item Class: Rings\nRarity: Rare\nDoom Loop\nAmethyst Ring\n--------\nItem Level: 76\n";
@@ -51,7 +52,7 @@ pub use odds::{
     CONTEMPT_EXTRA_SUFFIX_LINE, PLACEHOLDER_WEIGHT,
 };
 pub use trade::{
-    searchability, start_weight, trade_offer, trade_query, OfferedMod, Searchability, StartWeight,
-    TradeEntry, TradeOffer, TradePick, TradeQuery, TradeSearch, TradeStat, TradeStats,
-    WeightSource, DEFAULT_WEIGHT_WITHOUT_PEERS, MAX_TRADE_PICKS,
+    searchability, start_weight, suggested_item_level, trade_offer, trade_query, OfferedMod,
+    Searchability, StartWeight, TradeEntry, TradeOffer, TradePick, TradeQuery, TradeSearch,
+    TradeStat, TradeStats, WeightSource, DEFAULT_WEIGHT_WITHOUT_PEERS, MAX_TRADE_PICKS,
 };

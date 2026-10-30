@@ -3,8 +3,9 @@
 //! start weights, the modifiers a base offers, and the trade query.
 
 use ch_data::{
-    class_data_by_name, start_weight, trade_offer, trade_query, trade_stats, ClassData, Kind, Odds,
-    StartWeight, TradePick, TradeQuery, TradeSearch, WeightSource, MAX_TRADE_PICKS,
+    class_data_by_name, start_weight, suggested_item_level, trade_offer, trade_query, trade_stats,
+    ClassData, Kind, Odds, StartWeight, TradePick, TradeQuery, TradeSearch, WeightSource,
+    MAX_TRADE_PICKS,
 };
 use serde_json::{json, Value};
 
@@ -565,4 +566,59 @@ fn trade_query_sets_a_value_floor_only_for_a_chosen_tier() {
         assert!(f["value"]["weight"].as_f64().unwrap() > 0.0);
         assert!(f["value"].get("min").is_none());
     }
+}
+
+// The item-level suggestion --------------------------------------------------
+
+const BOOTS_SPEED: &str = "prefix-increased-movement-speed";
+const RING_FIRE_RES: &str = "suffix-to-fire-resistance";
+
+/// Before the suggestion: a selection with no floor picked asks for no item
+/// level, so its query is the one it always was.
+#[test]
+fn trade_suggested_item_level_is_none_without_floors_baseline() {
+    let picks = vec![pick(RING_LIFE, None), pick(RING_FIRE_RES, None)];
+    assert_eq!(suggested_item_level("Rings", "Amethyst Ring", &picks), None);
+    assert_eq!(suggested_item_level("Rings", "Amethyst Ring", &[]), None);
+    let q = query(&search("Rings", "Amethyst Ring", None, picks));
+    assert!(
+        q.query["query"]["filters"]["type_filters"]["filters"]
+            .get("ilvl")
+            .is_none(),
+        "no item level: no ilvl filter"
+    );
+    // Negative control: an unknown base suggests nothing, floor or not.
+    let floored = [pick(RING_FIRE_RES, Some(1))];
+    assert_eq!(
+        suggested_item_level("Rings", "No Such Ring", &floored),
+        None
+    );
+}
+
+/// The suggestion is the item level of the most demanding floor tier.
+#[test]
+fn trade_suggested_item_level_is_the_highest_floor_tier_level() {
+    let boots =
+        |floor| suggested_item_level("Boots", "Bangled Sandals", &[pick(BOOTS_SPEED, floor)]);
+    assert_eq!(boots(Some(1)), Some(82));
+    assert_eq!(boots(Some(2)), Some(65));
+    assert_eq!(boots(None), None);
+    // Fire resistance at least T1 needs 82; life at any tier needs nothing.
+    let ring = [pick(RING_FIRE_RES, Some(1)), pick(RING_LIFE, None)];
+    assert_eq!(
+        suggested_item_level("Rings", "Amethyst Ring", &ring),
+        Some(82)
+    );
+    // Two floors: the higher of the two tier levels (life T1 54, fire T3 60).
+    let two = [pick(RING_LIFE, Some(1)), pick(RING_FIRE_RES, Some(3))];
+    assert_eq!(
+        suggested_item_level("Rings", "Amethyst Ring", &two),
+        Some(60)
+    );
+    // The suggested level reaches every floor: the query at it is accepted.
+    let q = query(&search("Rings", "Amethyst Ring", Some(82), ring.to_vec()));
+    assert_eq!(
+        q.query["query"]["filters"]["type_filters"]["filters"]["ilvl"]["min"],
+        json!(82)
+    );
 }
