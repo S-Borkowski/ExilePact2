@@ -1302,17 +1302,18 @@ release already exists, only its assets are replaced.
   **A hybrid modifier's summed line** cannot be read either. Where a
   hybrid (two lines under one modifier, such as increased Physical Damage
   with Accuracy) shares a line with a plain modifier on the item, the
-  plain tooltip shows one line with the two values added up, which no
-  tier accounts for. Since 0.1.4 the watch refuses a read (unreadable, as
-  for a value that fits two tiers) when two different modifiers on the
-  read carry two lines of a hybrid the base can roll and at least one of
-  them is new since the item before the step, or at a new tier: only then
-  can a summed line hide in it. It never reads one as another item. An
-  item that already held such a plain pair (an attack weapon with
-  increased Physical Damage and an Accuracy prefix, an armour with a
-  defence and Life or Mana, a caster with spell damage and Mana) reads as
-  before. The narrow case where both sums stay inside their tiers reads
-  as unchanged, and the refusal reuses the ambiguous-tier wording rather
+  plain tooltip may show one line with the two values added up (not
+  measured), which no tier accounts for. Since 0.1.4 the watch refuses a
+  read (unreadable, as for a value that fits two tiers) when two different
+  modifiers on the read carry two lines of a hybrid the base can roll and
+  at least one of them is not on the item before the step with the same
+  tier and values: only then can a summed line hide in it. It never reads
+  one as another item. An item that already held such a plain pair, with
+  the same values, (an attack weapon with increased Physical Damage and an
+  Accuracy prefix, an armour with a defence and Life or Mana, a caster
+  with spell damage and Mana) reads as before; a step that rerolls the
+  pair's values (a Divine Orb) is refused. The narrow case where both
+  sums stay inside their tiers reads as unchanged, and the refusal reuses the ambiguous-tier wording rather
   than naming the hybrid; grab the item after a step that may have added
   one. Eight of the ten
   plain equipment shots read as their item's copy and the rest unreadable,
@@ -1728,11 +1729,13 @@ What the maxroll and Mobalytics crafting guides teach (#35).
   tier floor, the empty item-level field shows the level that floor needs
   (65 for at least T2 movement speed on boots), the search asks for that
   level and up, and the help line says so. Type a level to use your own.
-- **The screen watch reads armour and weapons with a plain pair.** A
-  hybrid modifier's line added up with a plain modifier's on the tooltip
-  is never read as another item: the watch asks for a grab only where a
-  step could have brought one in, and an item that already held, say,
-  increased Physical Damage and an Accuracy prefix is read as before.
+- **The screen watch no longer risks misreading a hybrid modifier.** If
+  the tooltip adds a hybrid modifier's line (such as increased Physical
+  Damage with Accuracy) to a plain modifier's line, the sum could be read
+  as a different tier. The watch now asks for a grab when a step could
+  have brought such a line in. An item that already held, say, increased
+  Physical Damage and an Accuracy prefix with the same values is read as
+  in 0.1.3.
 - **Spacing fixes**: the checkboxes of the currency filter (Settings and
   *Blocked for this craft*) and of the target choices line up with their
   labels, and button and field text no longer touches their edges.
