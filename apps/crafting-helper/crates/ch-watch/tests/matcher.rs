@@ -223,12 +223,15 @@ fn a_summed_hybrid_line_never_reads_as_another_item() {
     // the summed line is the plain prefix's tier 4, the Accuracy line the
     // Accuracy prefix's tier 9.
     let read = classify(&read_of(&[&summed]), &crossbow);
-    assert!(
-        matches!(read, ReadKind::Unreadable(_)),
+    assert_eq!(
+        read,
+        ReadKind::Unreadable(Unreadable::Ambiguous),
         "summed line read as {read:?}"
     );
 
-    // A sum past every plain tier (154 + 28) is unreadable too.
+    // A sum past every plain tier (154 + 28) is unreadable too. Not by the
+    // hybrid guard: no tier of the plain modifier holds 182, so the line
+    // reads as no modifier at all.
     let high = text.replace(
         "{ Prefix Modifier \"Vicious\" (Tier: 5) — Damage, Physical, Attack }\n92(85-109)%",
         "{ Prefix Modifier \"Cruel\" (Tier: 3) — Damage, Physical, Attack }\n154(135-154)%",
@@ -246,6 +249,39 @@ fn a_summed_hybrid_line_never_reads_as_another_item() {
         matches!(read, ReadKind::Unreadable(_)),
         "summed line read as {read:?}"
     );
+}
+
+#[test]
+fn a_held_plain_pair_with_a_hybrids_lines_reads_as_a_change() {
+    // The crossbow with the Reaver's hybrid swapped for a plain Accuracy
+    // prefix: it holds plain %Physical (tier 5) and plain Accuracy (tier 8),
+    // the two lines of the Physical Damage and Accuracy hybrid, and no
+    // modifier shares a line with another.
+    let reavers = "{ Prefix Modifier \"Reaver's\" (Tier: 6) — Damage, Physical, Attack }\n28(25-34)% increased Physical Damage\n+55(47-72) to Accuracy Rating\n";
+    let focused =
+        "{ Prefix Modifier \"Focused\" (Tier: 8) — Attack }\n+70(61-84) to Accuracy Rating\n";
+    let calamity = "\n{ Suffix Modifier \"of Calamity\" (Tier: 3) — Attack, Critical }\n+3.52(3.11-3.8)% to Critical Hit Chance";
+    let text = hybrid_crossbow_text();
+    assert!(text.contains(reavers) && text.contains(calamity));
+    let after = text.replace(reavers, focused);
+    let before = after.replace(calamity, "");
+    let prior = parse(&before);
+    let own = key(&prior);
+    assert!(has(&own, "prefix-increased-physical-damage", 5), "{own:?}");
+    assert!(has(&own, "prefix-to-accuracy-rating", 8), "{own:?}");
+    assert!(prior.modifiers.iter().all(|m| m.lines.len() == 1));
+
+    // The step adds "of Calamity": both carriers are held by the item before
+    // it, so no summed hybrid line can hide in the read, which is the
+    // change it is in either form.
+    for alt in [false, true] {
+        let read = changed(classify(&read_of(&[&tooltip(&after, alt)]), &prior));
+        assert_eq!(key(&read), key(&parse(&after)), "alt={alt}");
+        assert!(
+            has(&key(&read), "suffix-to-critical-hit-chance", 3),
+            "alt={alt}"
+        );
+    }
 }
 
 #[test]

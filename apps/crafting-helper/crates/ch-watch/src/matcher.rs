@@ -296,8 +296,10 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
     // the plain modifier (the item before it has no shared line): a read
     // whose modifiers carry two lines of one hybrid the base can roll, each
     // as a modifier of its own, may be that hybrid summed into the plain
-    // line, and is not trusted either.
-    if splits_a_hybrid(&reads, data, variant, item_level) {
+    // line, and is not trusted either. A summed line shows only through a
+    // carrier the item before the step does not hold, so a pair the item
+    // already held is read as it is.
+    if splits_a_hybrid(&reads, &own, data, variant, item_level) {
         return Err(Unreadable::Ambiguous);
     }
     Ok(ReadKind::Changed(Box::new(read_item(item, rarity, &reads))))
@@ -308,12 +310,22 @@ fn classify_boxes(boxes: &[TooltipBox], item: &Item) -> Result<ReadKind, Unreada
 /// whose line templates are carried by two different read modifiers, both
 /// other than it: the plain `#% increased Physical Damage` and the plain
 /// Accuracy prefix, where the Physical Damage and Accuracy hybrid exists.
+/// Only when at least one of the two is a modifier (id and tier) that `own`,
+/// the item before the step, does not hold: a pair it already held cannot
+/// hide a hybrid summed into either line.
 fn splits_a_hybrid(
     reads: &[ReadMod],
+    own: &ItemKey,
     data: &'static ClassData,
     variant: &str,
     item_level: u32,
 ) -> bool {
+    let held = |n: usize| {
+        let r = &reads[n];
+        own.mods
+            .iter()
+            .any(|(id, tier)| *id == r.data.id && *tier == r.tier.tier)
+    };
     let valid = data.valid_mods(variant, item_level);
     let carriers = |hybrid: &DataMod, line: &String| -> Vec<usize> {
         reads
@@ -336,9 +348,10 @@ fn splits_a_hybrid(
                 .map(|line| carriers(hybrid, line))
                 .collect();
             by_line.iter().enumerate().any(|(i, a)| {
-                by_line[i + 1..]
-                    .iter()
-                    .any(|b| a.iter().any(|x| b.iter().any(|y| x != y)))
+                by_line[i + 1..].iter().any(|b| {
+                    a.iter()
+                        .any(|&x| b.iter().any(|&y| x != y && !(held(x) && held(y))))
+                })
             })
         })
 }
@@ -1220,5 +1233,62 @@ mod tests {
             &prior,
         );
         assert_eq!(read, ReadKind::Unreadable(Unreadable::Ambiguous));
+    }
+
+    #[test]
+    fn a_summed_hybrid_read_is_refused_by_the_guard_alone() {
+        const VICIOUS: &str =
+            "{ Prefix Modifier \"Vicious\" (Tier: 5) — Damage, Physical, Attack }\n92(85-109)%";
+        // Each summed tooltip of the two tests above, and the item it reads
+        // as: the plain %Physical at the sum's tier, the hybrid's Accuracy
+        // line as the plain Accuracy prefix's tier 9.
+        let high = crossbow_text();
+        let high_as = swap(
+            &swap(
+                &high,
+                VICIOUS,
+                "{ Prefix Modifier \"Bloodthirsty\" (Tier: 4) — Damage, Physical, Attack }\n120(110-134)%",
+            ),
+            REAVERS,
+            "{ Prefix Modifier \"Reliable\" (Tier: 9) — Attack }\n+55(33-60) to Accuracy Rating\n",
+        );
+        let low = swap(
+            &swap(&high, "92(85-109)%", "85(85-109)%"),
+            REAVERS,
+            JOURNEYMANS,
+        );
+        let low_as = swap(
+            &swap(&high, "92(85-109)%", "105(85-109)%"),
+            REAVERS,
+            "{ Prefix Modifier \"Reliable\" (Tier: 9) — Attack }\n+40(33-60) to Accuracy Rating\n",
+        );
+        let cases = [
+            (&high, &high_as, REAVERS, "92", "28", "120"),
+            (&low, &low_as, JOURNEYMANS, "85", "20", "105"),
+        ];
+        for (text, read_as, hybrid, plain, part, sum) in cases {
+            let tip = summed(
+                text,
+                &format!("{plain}% increased Physical Damage"),
+                &format!("{part}% increased Physical Damage"),
+                &format!("{sum}% increased Physical Damage"),
+            );
+            // The lines decode cleanly: the item they read as reads unchanged.
+            let read_as = parse(read_as);
+            assert!(key_has(&read_as, "prefix-to-accuracy-rating", 9), "{sum}");
+            assert_eq!(classify(&tip, &read_as), ReadKind::Unchanged, "{sum}");
+
+            // The item before the hybrid shares no line, so only the hybrid
+            // guard stands between that read and a change: its Accuracy
+            // carrier is one the item does not hold.
+            let prior = parse(&swap(text, hybrid, ""));
+            assert!(!shares_a_line(&prior), "{sum}");
+            assert!(!key_has(&prior, "prefix-to-accuracy-rating", 9), "{sum}");
+            assert_eq!(
+                classify(&tip, &prior),
+                ReadKind::Unreadable(Unreadable::Ambiguous),
+                "{sum}"
+            );
+        }
     }
 }
