@@ -182,10 +182,12 @@ from a bought base.
   what the search will ask for, and why when it is one. **Search on the
   trade site** opens `www.pathofexile.com/trade2` in your default browser,
   searching for a **magic** item of that base, online and not corrupted,
-  carrying those modifiers and ranked by a weighted sum of them (each
-  modifier's value times its weight over its top value, the best roll it
-  can have at that item level, so a modifier counts for at most its
-  weight and a rarer modifier counts for more). The link is also shown,
+  carrying those modifiers, and the search carries a weighted sum of them
+  (each modifier's value times its weight over its top value, the best
+  roll it can have at that item level, so a modifier counts for at most
+  its weight and a rarer modifier counts for more). The site opens the
+  results sorted by price: click the Weighted Sum column to rank them by
+  that sum. The link is also shown,
   read-only, to select and copy yourself. A modifier with more than one line (a hybrid), or one
   the trade site has no stat for, is listed under *Not searchable on
   trade* with the reason. The panel never buys, whispers, copies to the
@@ -1264,6 +1266,12 @@ release already exists, only its assets are replaced.
   below its best tier. The ranking is a guide, not the odds. (Until Live
   2, 2026-10-30, the weight was over the floor's minimum roll, which let a
   high roll of a commoner modifier outrank the rarer one at its floor.)
+- **The trade page opens sorted by price.** The link asks for the
+  weighted sum as the sort (`sort: {"statgroup.1":"desc"}`), yet in Live
+  3 (2026-10-30) the trade site opened the search sorted by price;
+  whether the site honours a sort carried in the link is not
+  established. Click the Weighted Sum column to rank the results by
+  rarity.
 - **A weight is one add's odds**, from poe2db's spawn weights: about 1 in
   N modifiers added to that side of that base is this one, at the floor
   or better. Where the data has no usable spawn weight (every jewel page,
@@ -1392,8 +1400,10 @@ release already exists, only its assets are replaced.
   8, each any tier or at least a tier you choose), and *Search on the
   trade site* opens the official trade site in your browser, searching
   for a magic item of that base carrying two of them, a prefix and a
-  suffix (or at least one, if you choose), ranked so the rarer modifiers
-  count for more.
+  suffix (or at least one, if you choose). The search carries a weighted
+  sum of them in which the rarer modifiers count for more; the site opens
+  the results sorted by price, so click the Weighted Sum column to rank
+  them by it.
 - Each modifier shows its weight, higher the rarer it is to roll on that
   base: 12.0 means about 1 in 12 modifiers added to that side is this
   one. Where the data has no weight for it (every jewel, some tiers), the
