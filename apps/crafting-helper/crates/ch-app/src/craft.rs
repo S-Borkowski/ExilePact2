@@ -1005,6 +1005,8 @@ fn preview(
         Err(why) => {
             return PreviewView {
                 route: None,
+                route_number: None,
+                routes: Vec::new(),
                 other_routes: Vec::new(),
                 rejected: vec![RejectedLine {
                     blueprint: String::new(),
@@ -1017,6 +1019,8 @@ fn preview(
     let Some(route) = previewed(&plan.routes, chosen) else {
         return PreviewView {
             route: None,
+            route_number: None,
+            routes: Vec::new(),
             other_routes: Vec::new(),
             rejected: plan
                 .rejected
@@ -1077,6 +1081,16 @@ fn preview(
             without,
         ));
     }
+    let routes: Vec<RouteChoice> = plan
+        .routes
+        .iter()
+        .enumerate()
+        .map(|(i, r)| RouteChoice {
+            number: i + 1,
+            blueprint: r.blueprint.clone(),
+            name: r.name.clone(),
+        })
+        .collect();
     PreviewView {
         route: Some(RouteView {
             blueprint: route.blueprint.clone(),
@@ -1084,15 +1098,18 @@ fn preview(
             source: source_line(&route.source),
             steps,
         }),
-        other_routes: plan
-            .routes
+        // A route's number is its place in the engine's order, so choosing
+        // one moves only which is previewed, never its number.
+        route_number: routes
+            .iter()
+            .find(|r| r.blueprint == route.blueprint)
+            .map(|r| r.number),
+        other_routes: routes
             .iter()
             .filter(|r| r.blueprint != route.blueprint)
-            .map(|r| RouteChoice {
-                blueprint: r.blueprint.clone(),
-                name: r.name.clone(),
-            })
+            .cloned()
             .collect(),
+        routes,
         rejected: Vec::new(),
     }
 }

@@ -1620,19 +1620,23 @@
         "other_routes": [
           {
             "blueprint": "rings-flat-attack",
-            "name": "Rings: flat attack damage and resistances"
+            "name": "Rings: flat attack damage and resistances",
+            "number": 1
           },
           {
             "blueprint": "close-a-side",
-            "name": "Close the finished side, then slam the open one"
+            "name": "Close the finished side, then slam the open one",
+            "number": 3
           },
           {
             "blueprint": "essence-desecrate-double-slam",
-            "name": "Essence, desecrate the hardest, then side slams"
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 4
           },
           {
             "blueprint": "rare-clean-then-slam",
-            "name": "Clean a rare, then side slams"
+            "name": "Clean a rare, then side slams",
+            "number": 5
           }
         ],
         "rejected": [],
@@ -1703,7 +1707,35 @@
               ]
             }
           ]
-        }
+        },
+        "route_number": 2,
+        "routes": [
+          {
+            "blueprint": "rings-flat-attack",
+            "name": "Rings: flat attack damage and resistances",
+            "number": 1
+          },
+          {
+            "blueprint": "rings-resist-whittle",
+            "name": "Rings: resistances by whittling",
+            "number": 2
+          },
+          {
+            "blueprint": "close-a-side",
+            "name": "Close the finished side, then slam the open one",
+            "number": 3
+          },
+          {
+            "blueprint": "essence-desecrate-double-slam",
+            "name": "Essence, desecrate the hardest, then side slams",
+            "number": 4
+          },
+          {
+            "blueprint": "rare-clean-then-slam",
+            "name": "Clean a rare, then side slams",
+            "number": 5
+          }
+        ]
       },
       "targets": [
         {

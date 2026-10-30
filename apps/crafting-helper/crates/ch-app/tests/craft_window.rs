@@ -493,6 +493,94 @@ fn targets_plan_a_route_with_odds_in_words() {
     assert!(log.contains(&format!("craft: route {WHITTLE}")), "{log:?}");
 }
 
+#[test]
+fn choosing_a_route_previews_it_baseline() {
+    // Today's behaviour, kept: choosing the whittling route on the ring
+    // previews it.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(&ring("01-start")));
+    app.set_targets(&ring_targets());
+    let view = app.choose_route(WHITTLE);
+    let preview = planning(&view).preview.as_ref().unwrap();
+    assert_eq!(preview.route.as_ref().unwrap().blueprint, WHITTLE);
+}
+
+/// Each route the preview lists, as (number, blueprint).
+fn route_numbers(view: &View) -> Vec<(usize, String)> {
+    planning(view)
+        .preview
+        .as_ref()
+        .unwrap()
+        .routes
+        .iter()
+        .map(|r| (r.number, r.blueprint.clone()))
+        .collect()
+}
+
+/// The previewed route's number and blueprint.
+fn previewed(view: &View) -> (Option<usize>, String) {
+    let preview = planning(view).preview.as_ref().unwrap();
+    (
+        preview.route_number,
+        preview.route.as_ref().unwrap().blueprint.clone(),
+    )
+}
+
+#[test]
+fn route_numbers_stay_with_their_routes() {
+    // Every applicable route is listed with a number from 1, in the
+    // engine's order, and choosing one moves only which is previewed: the
+    // list, its order and its numbers stay as they were.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = start(tmp.path(), &shell);
+    app.grab_text(Some(&ring("01-start")));
+    let view = app.set_targets(&ring_targets());
+    let engine = Engine::shipped().unwrap();
+    let ring_item = ch_app::ch_item::parse(&ring("01-start")).unwrap();
+    let plan = engine.plan(&ring_item, &ring_targets(), &[]).unwrap();
+    let expected: Vec<(usize, String)> = plan
+        .routes
+        .iter()
+        .enumerate()
+        .map(|(i, r)| (i + 1, r.blueprint.clone()))
+        .collect();
+    assert!(expected.len() >= 2, "{expected:?}");
+    assert_eq!(route_numbers(&view), expected);
+    assert_eq!(previewed(&view), (Some(1), expected[0].1.clone()));
+
+    // Route 2 is previewed as route 2; the others keep their numbers.
+    let view = app.choose_route(&expected[1].1);
+    assert_eq!(route_numbers(&view), expected);
+    assert_eq!(previewed(&view), (Some(2), expected[1].1.clone()));
+    let others: Vec<(usize, String)> = planning(&view)
+        .preview
+        .as_ref()
+        .unwrap()
+        .other_routes
+        .iter()
+        .map(|r| (r.number, r.blueprint.clone()))
+        .collect();
+    let mut without_two = expected.clone();
+    without_two.remove(1);
+    assert_eq!(others, without_two);
+
+    // Route 2 again changes nothing.
+    let again = app.choose_route(&expected[1].1);
+    assert_eq!(
+        planning(&again).preview,
+        planning(&view).preview,
+        "choosing route 2 twice"
+    );
+
+    // Route 1 is previewed as route 1.
+    let view = app.choose_route(&expected[0].1);
+    assert_eq!(route_numbers(&view), expected);
+    assert_eq!(previewed(&view), (Some(1), expected[0].1.clone()));
+}
+
 /// A ring target's text, as the planning list writes it.
 fn ring_text(id: &str) -> &'static str {
     match id {

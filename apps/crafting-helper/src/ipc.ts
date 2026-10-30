@@ -246,6 +246,8 @@ export interface RouteView {
 }
 
 export interface RouteChoice {
+  /** The route's number, from 1: its place in Rust's order, whichever is previewed. */
+  number: number;
   blueprint: string;
   name: string;
 }
@@ -258,7 +260,11 @@ export interface RejectedLine {
 
 export interface PreviewView {
   route: RouteView | null;
-  /** The other applicable routes, in the engine's order. */
+  /** The previewed route's number in `routes`. */
+  route_number: number | null;
+  /** Every applicable route, the previewed one included, in the engine's order. */
+  routes: RouteChoice[];
+  /** The applicable routes other than the previewed one, in the engine's order. */
   other_routes: RouteChoice[];
   /** Filled only when there is no route. */
   rejected: RejectedLine[];
@@ -526,6 +532,7 @@ const stepLine = record<StepLineView>({
   odds: nullable(str),
   fallback: nullable(str),
 });
+const routeChoice = record<RouteChoice>({ number: uint, blueprint: str, name: str });
 const planning = record<PlanningView>({
   item,
   choices: record<TargetChoices>({ prefixes: list(choice), suffixes: list(choice), desecrated: list(choice) }),
@@ -537,7 +544,9 @@ const planning = record<PlanningView>({
   preview: nullable(
     record<PreviewView>({
       route: nullable(record<RouteView>({ blueprint: str, name: str, source: str, steps: list(stepLine) })),
-      other_routes: list(record<RouteChoice>({ blueprint: str, name: str })),
+      route_number: nullable(uint),
+      routes: list(routeChoice),
+      other_routes: list(routeChoice),
       rejected: list(record<RejectedLine>({ blueprint: str, name: str, reason: str })),
     }),
   ),

@@ -350,6 +350,7 @@ const BLUEPRINT_NAMES = [
         view.craft.guiding?.route_name,
         view.overlay.guide?.route_name,
         preview?.route?.name,
+        ...(preview?.routes ?? []).map((choice) => choice.name),
         ...(preview?.other_routes ?? []).map((other) => other.name),
         ...(preview?.rejected ?? []).map((line) => line.name),
       ].filter((n): n is string => typeof n === 'string' && n !== '');
@@ -723,9 +724,9 @@ describe('the craft window', () => {
   it('route_preview_does_not_name_the_blueprint', async () => {
     // The blueprint's name is the app's recipe, not the player's: the Route
     // panel has no route-name line, its chooser labels the routes `Route 1`,
-    // `Route 2`, ... in Rust's order (the previewed one first) with the
-    // blueprint id as each option's value, and a rejection is its reason
-    // alone.
+    // `Route 2`, ... with Rust's numbers in Rust's order (the previewed one
+    // selected where it stands) with the blueprint id as each option's
+    // value, and a rejection is its reason alone.
     expect(BLUEPRINT_NAMES.length).toBeGreaterThan(2);
     for (const name of ['craft-prefilled', 'craft-planning', 'craft-fallback', 'craft-no-route']) {
       const { root } = await renderPreview(name);
@@ -737,16 +738,18 @@ describe('the craft window', () => {
 
     // The chooser, shown only with other routes.
     const p = fixtureView('craft-planning').craft.planning!.preview!;
-    expect(p.other_routes.length).toBeGreaterThan(0);
+    expect(p.routes.length).toBeGreaterThan(1);
     const planning = await renderPreview('craft-planning');
     const select = labelled<HTMLSelectElement>(planning.root.querySelector('.route')!, 'Route')!;
     expect([...select.options].map((o) => o.textContent)).toEqual(['Route 1', 'Route 2', 'Route 3', 'Route 4', 'Route 5']);
-    expect([...select.options].map((o) => o.value)).toEqual([p.route!.blueprint, ...p.other_routes.map((o) => o.blueprint)]);
+    expect([...select.options].map((o) => o.value)).toEqual(p.routes.map((o) => o.blueprint));
     expect(select.value).toBe(p.route!.blueprint);
     // A route with no other (every fixture's item now has several): the
     // chooser is left out.
     const alone = fixtureView('craft-fallback');
-    alone.craft.planning!.preview!.other_routes = [];
+    const fallbackPreview = alone.craft.planning!.preview!;
+    fallbackPreview.routes = fallbackPreview.routes.filter((r) => r.blueprint === fallbackPreview.route!.blueprint);
+    fallbackPreview.other_routes = [];
     const single = await render(alone);
     expect(labelled(single.root.querySelector('.route')!, 'Route')).toBeNull();
 
@@ -755,6 +758,43 @@ describe('the craft window', () => {
     expect(rejected.length).toBeGreaterThan(0);
     const noRoute = await renderPreview('craft-no-route');
     expect(texts(noRoute.root, 'ul.rejected li')).toEqual(rejected.map((r) => r.reason));
+  });
+
+  it('route_select_keeps_each_routes_number', async () => {
+    // Each route keeps its number when chosen: the options, their labels
+    // and their values are the same before and after route 2 is previewed,
+    // and the selected one is `Route 2`. `craft-planning` is Rust's view
+    // after the whittling route, route 2, was chosen; before it, the same
+    // view previewing route 1.
+    const after = fixtureView('craft-planning');
+    const q = after.craft.planning!.preview!;
+    expect(q.routes.length).toBeGreaterThan(2);
+    expect(q.route_number).toBe(2);
+    const second = q.routes[1];
+    expect(q.route!.blueprint).toBe(second.blueprint);
+    expect(q.other_routes).toEqual(q.routes.filter((r) => r.number !== 2));
+    const before = fixtureView('craft-planning');
+    const p = before.craft.planning!.preview!;
+    p.route!.blueprint = p.routes[0].blueprint;
+    p.route_number = 1;
+    p.other_routes = p.routes.slice(1);
+
+    const { root, bridge } = await render(before);
+    const select = () => labelled<HTMLSelectElement>(root.querySelector('.route')!, 'Route')!;
+    const options = () => [...select().options].map((o) => [o.value, o.textContent]);
+    const expected = q.routes.map((r) => [r.blueprint, `Route ${r.number}`]);
+    expect(expected.map(([, label]) => label)).toEqual(q.routes.map((_, i) => `Route ${i + 1}`));
+    expect(options()).toEqual(expected);
+    expect(select().selectedOptions[0].textContent).toBe('Route 1');
+
+    // Choosing route 2 sends its blueprint; Rust's next view previews it.
+    choose(select(), second.blueprint);
+    expect(bridge.calls).toEqual([{ name: 'choose_route', args: { blueprint: second.blueprint } }]);
+    bridge.pushView(after);
+    await settle();
+    expect(options()).toEqual(expected);
+    expect(select().value).toBe(second.blueprint);
+    expect(select().selectedOptions[0].textContent).toBe('Route 2');
   });
 
   it('step_lines_name_their_target_mods', async () => {

@@ -398,10 +398,13 @@ pub struct RouteView {
     pub steps: Vec<StepLineView>,
 }
 
-/// Another applicable route, for the route select.
+/// An applicable route, for the route select.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RouteChoice {
+    /// The route's number, from 1: its place in the engine's order, the
+    /// same whichever route is previewed.
+    pub number: usize,
     pub blueprint: String,
     pub name: String,
 }
@@ -422,7 +425,13 @@ pub struct RejectedLine {
 #[serde(deny_unknown_fields)]
 pub struct PreviewView {
     pub route: Option<RouteView>,
-    /// The other applicable routes, in the engine's order.
+    /// The previewed route's number in `routes`.
+    pub route_number: Option<usize>,
+    /// Every applicable route, the previewed one included, in the engine's
+    /// order.
+    pub routes: Vec<RouteChoice>,
+    /// The applicable routes other than the previewed one, in the engine's
+    /// order, each with its number in `routes`.
     pub other_routes: Vec<RouteChoice>,
     /// Filled only when there is no route.
     pub rejected: Vec<RejectedLine>,

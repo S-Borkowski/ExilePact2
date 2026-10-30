@@ -1,8 +1,9 @@
 <script lang="ts">
   // The route preview (`ui-design.md` § "Mode planning"): nothing but a
   // prompt with no target; with a route, its source, the route select when
-  // other routes apply (`Route 1`, `Route 2`, ... in Rust's order, the
-  // previewed one first), the chosen targets with their floors, and the
+  // other routes apply (every route as `Route <n>`, its number from Rust,
+  // in Rust's order, the previewed one selected where it stands, so a
+  // route keeps its number when chosen), the chosen targets with their floors, and the
   // numbered steps, each naming its target modifiers; with no route, one
   // reason per rejected blueprint in Rust's order. No blueprint's name: the
   // route is the app's recipe, not the player's. What the craft targets
@@ -40,12 +41,11 @@
     <p class="no-target">Pick a target to see a route.</p>
   {:else if preview.route}
     {@const route = preview.route}
-    {#if preview.other_routes.length > 0}
+    {#if preview.routes.length > 1}
       <div class="head">
         <select class="field" aria-label="Route" value={route.blueprint} onchange={(event) => chooseRoute(event, route.blueprint)}>
-          <option value={route.blueprint}>Route 1</option>
-          {#each preview.other_routes as other, i (other.blueprint)}
-            <option value={other.blueprint}>Route {i + 2}</option>
+          {#each preview.routes as choice (choice.blueprint)}
+            <option value={choice.blueprint}>Route {choice.number}</option>
           {/each}
         </select>
       </div>

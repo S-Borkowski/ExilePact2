@@ -1711,7 +1711,9 @@
             "reason": "not a blueprint for Rings"
           }
         ],
-        "route": null
+        "route": null,
+        "route_number": null,
+        "routes": []
       },
       "targets": [
         {
