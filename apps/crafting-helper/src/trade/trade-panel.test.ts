@@ -301,6 +301,8 @@ describe('the trade panel', () => {
     // Out of range goes to Rust, which refuses it in words.
     setValue(level, '101');
     expect(bridge.calls.at(-1)).toEqual({ name: 'set_trade_search', args: { search: { ...sel, item_level: 101 } } });
+    // Rust's refusal is a view with the selection as it was.
+    bridge.pushView(fixtureView('trade-picking'));
 
     // Match.
     click(radio(root, 'At least one'));
@@ -336,6 +338,58 @@ describe('the trade panel', () => {
     expect(root.querySelector('.trade')).toBeNull();
     expect(root.querySelector('.craft')).not.toBeNull();
     expect(document.activeElement).toBe(button(root, 'Find a base on trade'));
+  });
+
+  it('trade_item_level_typed_before_a_pick_is_kept', async () => {
+    // Live 2: a level typed before picking was lost once a modifier was
+    // picked, because the pick was sent with the view's level before Rust's
+    // answer to the level had come back.
+    const view = fixtureView('trade-picking');
+    view.trade.selection.item_level = null;
+    const sel = view.trade.selection;
+    const unpicked = view.trade.prefixes.find((m) => !m.picked)!;
+    const withPick = [...sel.picks, { mod_id: unpicked.mod_id, floor: null }];
+
+    // Committed (the field left): the pick sent before the next view carries it.
+    {
+      const { root, bridge } = await render(view);
+      const level = field<HTMLInputElement>(root, 'Minimum item level');
+      setValue(level, '75');
+      expect(bridge.calls.at(-1)).toEqual({ name: 'set_trade_search', args: { search: { ...sel, item_level: 75 } } });
+      click(modBox(root, unpicked.text));
+      expect(bridge.calls.at(-1)).toEqual({
+        name: 'set_trade_search',
+        args: { search: { ...sel, item_level: 75, picks: withPick } },
+      });
+      // Once a view has answered, the view's level stands again.
+      bridge.pushView(fixtureView('trade-picking'));
+      bridge.calls.length = 0;
+      click(radio(root, 'At least one'));
+      expect(bridge.calls.at(-1)).toEqual({
+        name: 'set_trade_search',
+        args: { search: { ...tradeOf('trade-picking').selection, both_slots: false } },
+      });
+    }
+
+    // Typed and not yet committed: a pick carries it, and a view does not wipe it.
+    {
+      const { root, bridge } = await render(view);
+      const level = field<HTMLInputElement>(root, 'Minimum item level');
+      level.value = '75';
+      level.dispatchEvent(new Event('input', { bubbles: true }));
+      bridge.pushView(view);
+      expect(level.value).toBe('75');
+      click(modBox(root, unpicked.text));
+      expect(bridge.calls.at(-1)).toEqual({
+        name: 'set_trade_search',
+        args: { search: { ...sel, item_level: 75, picks: withPick } },
+      });
+      // Text that is not a whole number is not sent: the view's level goes.
+      level.value = '2.5';
+      level.dispatchEvent(new Event('input', { bubbles: true }));
+      click(radio(root, 'At least one'));
+      expect(bridge.calls.at(-1)).toEqual({ name: 'set_trade_search', args: { search: { ...sel, both_slots: false } } });
+    }
   });
 
   it('trade_default_weight_is_labelled_with_its_reason', async () => {

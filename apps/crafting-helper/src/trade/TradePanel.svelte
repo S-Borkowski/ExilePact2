@@ -23,13 +23,37 @@
 
   const sel = $derived(trade.selection);
 
+  // The item level the player has typed but the view does not hold yet:
+  // `typed`, the field's text since it was last committed; `sent`, the level
+  // committed while `view` was the view on screen, until the next view
+  // answers. Without them a pick made before Rust's answer was sent with the
+  // view's old level and undid the one just typed (Live 2).
+  let typed: string | null = null;
+  let sent: { view: TradeView; level: number | null } | null = null;
+
+  /** A field's text as a level to send: empty is none, `undefined` is not a whole number. */
+  function parseLevel(raw: string): number | null | undefined {
+    const text = raw.trim();
+    if (text === '') return null;
+    const level = Number(text);
+    return Number.isInteger(level) && level >= 0 && level <= 0xffff_ffff ? level : undefined;
+  }
+
+  /** The level to send with any change: what was typed, else what was sent, else the view's. */
+  function currentLevel(): number | null {
+    const level = typed === null ? undefined : parseLevel(typed);
+    if (level !== undefined) return level;
+    if (sent !== null && sent.view === trade) return sent.level;
+    return sel.item_level;
+  }
+
   /** The view's selection as plain objects, with `change` applied: what `set_trade_search` sends. */
   function selectionWith(change: Partial<TradeSelection>): TradeSelection {
     return {
       open: sel.open,
       class: sel.class,
       base: sel.base,
-      item_level: sel.item_level,
+      item_level: currentLevel(),
       picks: sel.picks.map((p) => ({ mod_id: p.mod_id, floor: p.floor })),
       both_slots: sel.both_slots,
       ...change,
@@ -63,15 +87,17 @@
    */
   function setItemLevel(event: Event): void {
     const field = event.currentTarget as HTMLInputElement;
-    const raw = field.value.trim();
+    const level = parseLevel(field.value);
+    typed = null;
     field.value = sel.item_level === null ? '' : String(sel.item_level);
-    if (raw === '') {
-      if (sel.item_level !== null) setSearch({ item_level: null });
-      return;
-    }
-    const level = Number(raw);
-    if (!Number.isInteger(level) || level < 0 || level > 0xffff_ffff) return;
+    if (level === undefined || (level === null && sel.item_level === null)) return;
+    sent = { view: trade, level };
     setSearch({ item_level: level });
+  }
+
+  /** What is typed is kept, and goes with any change made before it is committed. */
+  function typeItemLevel(event: Event): void {
+    typed = (event.currentTarget as HTMLInputElement).value;
   }
 
   function setBothSlots(event: Event, both: boolean): void {
@@ -132,6 +158,7 @@
             autocomplete="off"
             aria-describedby="{uid}-level-help"
             value={sel.item_level === null ? '' : String(sel.item_level)}
+            oninput={typeItemLevel}
             onchange={setItemLevel}
           />
         </div>
