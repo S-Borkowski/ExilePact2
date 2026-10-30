@@ -9,11 +9,5 @@ Item Level: 81
 30% increased Movement Speed (fractured)
 { Prefix Modifier }
 27(24-30)% increased Runic Ward
-{ Prefix Modifier "Stout" (Tier: 5) — Life }
-+64(60-69) to maximum Life
 { Suffix Modifier "of the Leopard" (Tier: 3) — Attribute }
 +26(25-27) to Dexterity
-{ Suffix Modifier }
-60% increased effect of Socketed Augment Items
-{ Desecrated Suffix Modifier "of the Sage" (Tier: 3) — Attribute }
-+26(25-27) to Intelligence

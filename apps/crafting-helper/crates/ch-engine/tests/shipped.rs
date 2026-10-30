@@ -1,7 +1,9 @@
 //! The blueprints embedded from `apps/crafting-helper/blueprints/`: exactly
-//! the nine seeds still shipped and the four state-ordered v2 blueprints
+//! the eight seeds still shipped and the four state-ordered v2 blueprints
 //! (`fill-desecrate-exalt` is retired: its file is a test blueprint under
-//! `tests/items/gear/fill-desecrate-exalt/`), each passing the
+//! `tests/items/gear/fill-desecrate-exalt/`; `weapons-alloy-budget` is
+//! retired outright, its two alloys being two crafted modifiers where 0.5
+//! allows one), each passing the
 //! structural check (`ch-blueprint`) and the data-backed one (`ch-engine`),
 //! and together loading as the shipped engine. The walks of each seed are
 //! in `seeds_gear.rs` and `seeds_jewels_weapons.rs`, the v2 ones' in
@@ -12,7 +14,7 @@ use ch_engine::{resolve, Engine};
 
 /// The shipped blueprint ids, sorted (the embedded list is in file-name
 /// order).
-const SEEDS: [&str; 13] = [
+const SEEDS: [&str; 12] = [
     "amulets-resist-spirit",
     "boots-runic-ward",
     "caster-cast-speed",
@@ -25,7 +27,6 @@ const SEEDS: [&str; 13] = [
     "rings-flat-attack",
     "rings-resist-whittle",
     "time-lost-jewel-radius",
-    "weapons-alloy-budget",
 ];
 
 #[test]

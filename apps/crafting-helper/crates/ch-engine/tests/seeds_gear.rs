@@ -541,6 +541,39 @@ fn gloves_crit_melee_miss_path() {
     assert_eq!(gained(&outs[10]), [ATTACK_SPEED]);
 }
 
+#[test]
+fn gloves_crit_melee_essence_miss_goes_on() {
+    // Intelligence is a target here, so Dextral Crystallisation taking it
+    // for the critical damage is a miss. Since 0.5 the item holds at most
+    // one crafted modifier, and the essence's is it: a second Essence of
+    // Hysteria cannot apply, so the miss goes on to the blocker and never
+    // repeats the essence.
+    let list = targets(&[
+        (CRIT_DAMAGE, Some(2)),
+        ("suffix-to-intelligence", Some(5)),
+        (ATTACK_SPEED, Some(2)),
+    ]);
+    let engine = gear();
+    let blueprint = "gloves-crit-melee";
+    let first = state(blueprint, "01-start.txt");
+    let (mut guide, step) = start(&engine, blueprint, &first, &list, &[]);
+    assert_eq!(step.id, "exalt-suffix");
+    let exalted = state(blueprint, "02-exalt-suffix.txt");
+    let out = observe(&engine, &mut guide, &first, &exalted);
+    assert_eq!(out.result, Hit, "{:?}", out.reasons);
+    assert_eq!(next_of(&out).id, "hysteria");
+
+    let essence = state(blueprint, "03-hysteria.txt");
+    let out = observe(&engine, &mut guide, &exalted, &essence);
+    assert_eq!(out.result, Miss, "{:?}", out.reasons);
+    assert_eq!(gained(&out), [CRIT_DAMAGE]);
+    let lost: Vec<&str> = out.lost.iter().map(|w| w.mod_id.as_str()).collect();
+    assert_eq!(lost, ["suffix-to-intelligence"]);
+    assert_eq!(out.transition.as_deref(), Some("next"));
+    assert_eq!(next_of(&out).id, "block-prefix");
+    assert_eq!(guide.status, Status::Active);
+}
+
 // --- amulets-resist-spirit (post 14) -------------------------------------
 
 const ES_FLAT: &str = "prefix-to-maximum-energy-shield";

@@ -1,5 +1,5 @@
 //! The seed blueprints for jewels, weapons and boots (the owner's posts 3,
-//! 6, 8, 12 and 13), each walked from its start to its end twice: a hit
+//! 6, 8 and 13), each walked from its start to its end twice: a hit
 //! path, where every step hits and the guide reaches done, and a miss path,
 //! where a miss follows the blueprint's miss transition and the walk then
 //! reaches done or abandon. The item states are constructed, under
@@ -11,15 +11,14 @@ use ch_engine::{Engine, Guide, Next, Odds, OutcomeKind, Status, Target};
 use ch_item::Item;
 use common::{crate_dir, item, next_step, observe, start, targets};
 
-const SEEDS: [&str; 5] = [
+const SEEDS: [&str; 4] = [
     "jewels-three-one-side",
     "time-lost-jewel-radius",
-    "weapons-alloy-budget",
     "caster-cast-speed",
     "boots-runic-ward",
 ];
 
-/// An engine over this item's five seed blueprints, read from
+/// An engine over this item's four seed blueprints, read from
 /// `apps/crafting-helper/blueprints/` (the other seeds are another test's).
 fn seeds() -> Engine {
     let dir = crate_dir().join("..").join("..").join("blueprints");
@@ -398,150 +397,6 @@ fn time_lost_jewel_radius_miss_path() {
     assert_eq!(guide.status, Status::Abandoned);
 }
 
-// --- weapons-alloy-budget (post 12) --------------------------------------
-
-const WB: &str = "weapons-alloy-budget";
-const W_PHYS: &str = "prefix-increased-physical-damage";
-const W_FLAT: &str = "prefix-adds-to-physical-damage";
-const W_WARCRY: &str = "desecrated-suffix-increased-warcry-cooldown-recovery-rate";
-
-/// Physical damage at T2 or better (the hardest), flat physical damage at
-/// T3 or better, a desecrated suffix.
-fn wb_targets() -> Vec<Target> {
-    targets(&[(W_FLAT, Some(3)), (W_PHYS, Some(2)), (W_WARCRY, None)])
-}
-
-#[test]
-fn weapons_alloy_budget_hit_path() {
-    let engine = seeds();
-    let (mut guide, first, start_item) = started(&engine, WB, &wb_targets());
-    // The chaos aims at the hardest target, wherever it is listed.
-    assert_eq!(first.id, "chaos");
-    assert_eq!(first.target.as_deref(), Some(W_PHYS));
-    assert!(first.odds.as_ref().unwrap().percent().is_some());
-    assert_eq!(guide.bindings.get("slam").map(String::as_str), Some(W_FLAT));
-    assert_eq!(
-        guide.bindings.get("desecrate").map(String::as_str),
-        Some(W_WARCRY)
-    );
-
-    let next = walk(
-        &engine,
-        &mut guide,
-        WB,
-        start_item,
-        &[
-            hit("chaos", "1-chaos.txt", "next"),
-            hit("filler-one", "2-filler-one.txt", "next"),
-        ],
-    );
-    let celestial = next_step(&next);
-    let action = celestial.action.as_ref().unwrap();
-    assert_eq!(
-        (action.uses.as_str(), action.omens.as_slice()),
-        (
-            "celestial-alloy",
-            &["omen-of-dextral-crystallisation".to_string()][..]
-        )
-    );
-    assert!(celestial.odds.is_none(), "a manual step has no odds");
-
-    let next = walk(
-        &engine,
-        &mut guide,
-        WB,
-        state(WB, "2-filler-one.txt"),
-        &[
-            // The alloy's modifier joins nothing in the data; its own lines
-            // are what the engine accepts.
-            hit("celestial", "3-celestial.txt", "next"),
-            hit("filler-two", "4-filler-two.txt", "next"),
-            hit("transcendent", "5-transcendent.txt", "next"),
-        ],
-    );
-    let slam = next_step(&next);
-    let action = slam.action.as_ref().unwrap();
-    assert_eq!(
-        (action.uses.as_str(), action.omens.as_slice()),
-        (
-            "perfect-exalted-orb",
-            &["omen-of-sinistral-exaltation".to_string()][..]
-        )
-    );
-
-    let next = walk(
-        &engine,
-        &mut guide,
-        WB,
-        state(WB, "5-transcendent.txt"),
-        &[hit("slam", "6-slam.txt", "next")],
-    );
-    let desecrate = next_step(&next);
-    let action = desecrate.action.as_ref().unwrap();
-    assert_eq!(
-        (action.uses.as_str(), action.omens.as_slice()),
-        (
-            "preserved-jawbone",
-            &["omen-of-dextral-necromancy".to_string()][..]
-        )
-    );
-
-    let next = walk(
-        &engine,
-        &mut guide,
-        WB,
-        state(WB, "6-slam.txt"),
-        &[
-            hit("desecrate", "7-desecrated.txt", "next"),
-            hit("reveal", "8-revealed.txt", "done"),
-        ],
-    );
-    assert_eq!(next, Next::Done);
-    assert_eq!(guide.status, Status::Done);
-}
-
-#[test]
-fn weapons_alloy_budget_miss_path() {
-    let engine = seeds();
-    let (mut guide, _, start_item) = started(&engine, WB, &wb_targets());
-
-    // The first chaos rolls physical damage at T5: below its floor, a miss
-    // that repeats the step.
-    let below = state(WB, "1-chaos-below-floor.txt");
-    let out = observe(&engine, &mut guide, &start_item, &below);
-    assert_eq!(out.result, OutcomeKind::Miss);
-    assert_eq!(out.below_floor.len(), 1);
-    assert_eq!(
-        (out.below_floor[0].mod_id.as_str(), out.below_floor[0].tier),
-        (W_PHYS, Some(5))
-    );
-    assert_eq!(out.transition.as_deref(), Some("repeat"));
-    assert_eq!((guide.step.as_str(), guide.tries), ("chaos", 1));
-
-    // Then a bad reveal goes back through Omen of Light to the desecration.
-    let next = walk(
-        &engine,
-        &mut guide,
-        WB,
-        below,
-        &[
-            hit("chaos", "1-chaos.txt", "next"),
-            hit("filler-one", "2-filler-one.txt", "next"),
-            hit("celestial", "3-celestial.txt", "next"),
-            hit("filler-two", "4-filler-two.txt", "next"),
-            hit("transcendent", "5-transcendent.txt", "next"),
-            hit("slam", "6-slam.txt", "next"),
-            hit("desecrate", "7-desecrated.txt", "next"),
-            miss("reveal", "8-revealed-other.txt", "goto:unseal"),
-            hit("unseal", "6-slam.txt", "goto:desecrate"),
-            hit("desecrate", "7-desecrated.txt", "next"),
-            hit("reveal", "8-revealed.txt", "done"),
-        ],
-    );
-    assert_eq!(next, Next::Done);
-    assert_eq!(guide.status, Status::Done);
-}
-
 // --- caster-cast-speed (post 13) -----------------------------------------
 
 const CC: &str = "caster-cast-speed";
@@ -692,11 +547,9 @@ fn boots_runic_ward_hit_path() {
         start_item,
         &[
             hit("attribute", "1-chaos.txt", "next"),
-            hit("filler-one", "2-filler-one.txt", "next"),
-            hit("augment", "3-augment.txt", "next"),
-            hit("filler-two", "4-filler-two.txt", "next"),
-            hit("rune", "4-filler-two.txt", "next"),
-            hit("runic-ward", "5-runic-ward.txt", "next"),
+            hit("filler", "2-filler.txt", "next"),
+            hit("rune", "2-filler.txt", "next"),
+            hit("runic-ward", "3-runic-ward.txt", "next"),
         ],
     );
     // One attribute left: the desecration aims at it, on the suffixes.
@@ -715,12 +568,12 @@ fn boots_runic_ward_hit_path() {
         &engine,
         &mut guide,
         BR,
-        state(BR, "5-runic-ward.txt"),
+        state(BR, "3-runic-ward.txt"),
         &[
-            hit("desecrate", "6-desecrated.txt", "next"),
-            hit("reveal", "7-revealed.txt", "next"),
-            hit("last-prefix", "8-last-prefix.txt", "next"),
-            hit("runes", "8-last-prefix.txt", "done"),
+            hit("desecrate", "4-desecrated.txt", "next"),
+            hit("reveal", "5-revealed.txt", "next"),
+            hit("last-prefix", "6-last-prefix.txt", "next"),
+            hit("runes", "6-last-prefix.txt", "done"),
         ],
     );
     assert_eq!(next, Next::Done);
@@ -739,18 +592,16 @@ fn boots_runic_ward_miss_path() {
         &[
             miss("attribute", "1-chaos-other.txt", "repeat"),
             hit("attribute", "1-chaos.txt", "next"),
-            hit("filler-one", "2-filler-one.txt", "next"),
-            hit("augment", "3-augment.txt", "next"),
-            hit("filler-two", "4-filler-two.txt", "next"),
-            hit("rune", "4-filler-two.txt", "next"),
-            hit("runic-ward", "5-runic-ward.txt", "next"),
-            hit("desecrate", "6-desecrated.txt", "next"),
-            miss("reveal", "7-revealed-other.txt", "goto:unseal"),
-            hit("unseal", "5-runic-ward.txt", "goto:desecrate"),
-            hit("desecrate", "6-desecrated.txt", "next"),
-            hit("reveal", "7-revealed.txt", "next"),
-            hit("last-prefix", "8-last-prefix.txt", "next"),
-            hit("runes", "8-last-prefix.txt", "done"),
+            hit("filler", "2-filler.txt", "next"),
+            hit("rune", "2-filler.txt", "next"),
+            hit("runic-ward", "3-runic-ward.txt", "next"),
+            hit("desecrate", "4-desecrated.txt", "next"),
+            miss("reveal", "5-revealed-other.txt", "goto:unseal"),
+            hit("unseal", "3-runic-ward.txt", "goto:desecrate"),
+            hit("desecrate", "4-desecrated.txt", "next"),
+            hit("reveal", "5-revealed.txt", "next"),
+            hit("last-prefix", "6-last-prefix.txt", "next"),
+            hit("runes", "6-last-prefix.txt", "done"),
         ],
     );
     assert_eq!(next, Next::Done);
