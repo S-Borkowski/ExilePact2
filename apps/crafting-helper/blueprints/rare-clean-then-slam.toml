@@ -37,6 +37,7 @@ relies_on = [
     "omens-active-before-use",
     "lord-with-side-omen",
     "lord-omen-classes",
+    "open-side-landing",
 ]
 
 [[start]]

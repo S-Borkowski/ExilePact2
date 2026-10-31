@@ -41,6 +41,7 @@ relies_on = [
     "desecrated-unfracturable",
     "lord-with-side-omen",
     "lord-omen-classes",
+    "open-side-landing",
 ]
 
 [[start]]
