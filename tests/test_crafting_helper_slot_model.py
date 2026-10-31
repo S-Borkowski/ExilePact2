@@ -74,6 +74,14 @@ CERTAIN_FIRST_CASES = [
 LIGHT_WAITS_CASES = [
     "rare-wrong-reveal-same-side-exalt",
 ]
+# A side Exaltation omen with the other side full (2026-10-31, #42): the
+# exalt can only land on the open side, so the omen is left out; with the
+# Dextral omen blocked the exalt is still taken.
+SIDE_EXALT_FULL_CASES = [
+    "rare-prefixes-full",
+    "rare-prefixes-full-dextral-blocked",
+    "rare-suffixes-full",
+]
 
 GREATER ="omen-of-greater-exaltation"
 SIN_EX, DEX_EX = "omen-of-sinistral-exaltation", "omen-of-dextral-exaltation"
@@ -97,6 +105,7 @@ LORD_TARGETS = {
     "magic-two-good": ("p3", "amanamu"),
     "rare-certain-removal-first": ("s2", "ulaman"),
     "rare-uncertain-removal-keeps-order": ("s2", "ulaman"),
+    "rare-suffixes-full": ("s3", "ulaman"),
 }
 
 # The steps the last-target desecration takes on a prefix (suffix).
@@ -109,6 +118,10 @@ CLOSE_THEN_SLAM = [
 ]
 SIDE_SLAM_PREFIX = [("add-wanted", "prefix", "perfect-exalted-orb", [SIN_EX])]
 LIGHT_OFF = ("remove-desecrated", None, "orb-of-annulment", [LIGHT], True)
+# The slam on the one open side when the other is full (#42): no side
+# Exaltation omen; Greater where two targets fit.
+FULL_PREFIXES_SLAM = [("add-wanted", "suffix", "perfect-exalted-orb", [GREATER])]
+FULL_SUFFIXES_SLAM = [("add-wanted", "prefix", "perfect-exalted-orb", [])]
 
 # What the spec's "Representative crafts" says must hold, step by step:
 # (goal, side, currency, omens[, certain]); `done` when the route must end
@@ -146,7 +159,9 @@ MUST_HOLD = {
         # the desecrated prefix is Amanamu's, on an amulet: Omen of the Liege
         ("desecrate", "prefix", "desecrate", [SIN_NEC, LIEGE]),
         ("reveal", None, "reveal", [ECHOES]),
-        ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER, DEX_EX]),
+        # the prefixes are full after the desecration, so the slam names no
+        # Dextral Exaltation (it used to)
+        ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER]),
     ], True),
     ("magic-two-good", "close-a-side"): "no-start-fits",
     ("magic-two-good", "rare-clean-then-slam"): "no-start-fits",
@@ -175,7 +190,9 @@ MUST_HOLD = {
         ("remove-unwanted", "prefix", "orb-of-annulment", []),
         ("remove-unwanted", "suffix", "orb-of-annulment", []),
         ("add-wanted", "prefix", "perfect-exalted-orb", [GREATER, SIN_EX]),
-        ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER, DEX_EX]),
+        # the prefixes are full after their slam: no Dextral Exaltation (it
+        # used to name it)
+        ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER]),
     ], True),
     ("magic-one-good", "magic-augment-essence"): ([
         ("add-wanted", None, "perfect-orb-of-augmentation", []),
@@ -204,6 +221,28 @@ MUST_HOLD = {
     ], True),
     ("rare-certain-removal-first", "magic-augment-essence"): "no-start-fits",
     ("rare-uncertain-removal-keeps-order", "magic-augment-essence"): "no-start-fits",
+    # a side Exaltation omen with the other side full: left out, the side
+    # and Greater kept (#42)
+    ("rare-prefixes-full", "rare-clean-then-slam"): (FULL_PREFIXES_SLAM, True),
+    ("rare-prefixes-full", "close-a-side"): (FULL_PREFIXES_SLAM, True),
+    ("rare-prefixes-full", "essence-desecrate-double-slam"): ([
+        ("desecrate", "suffix", "desecrate", [DEX_NEC]),
+        ("reveal", None, "reveal", [ECHOES]),
+        ("add-wanted", "suffix", "perfect-exalted-orb", []),
+    ], True),
+    ("rare-prefixes-full", "magic-augment-essence"): "no-start-fits",
+    ("rare-prefixes-full-dextral-blocked", "rare-clean-then-slam"): (FULL_PREFIXES_SLAM, True),
+    ("rare-prefixes-full-dextral-blocked", "close-a-side"): (FULL_PREFIXES_SLAM, True),
+    ("rare-prefixes-full-dextral-blocked", "essence-desecrate-double-slam"): ([
+        ("desecrate", "suffix", "desecrate", [DEX_NEC]),
+        ("reveal", None, "reveal", [ECHOES]),
+        ("add-wanted", "suffix", "perfect-exalted-orb", []),
+    ], True),
+    ("rare-prefixes-full-dextral-blocked", "magic-augment-essence"): "no-start-fits",
+    ("rare-suffixes-full", "rare-clean-then-slam"): (FULL_SUFFIXES_SLAM, True),
+    ("rare-suffixes-full", "essence-desecrate-double-slam"): (FULL_SUFFIXES_SLAM, True),
+    ("rare-suffixes-full", "close-a-side"): (FULL_SUFFIXES_SLAM, True),
+    ("rare-suffixes-full", "magic-augment-essence"): "no-start-fits",
     ("rare-whittle-certain", "close-a-side"): ([
         ("remove-unwanted", "prefix", "chaos-orb", ["omen-of-whittling"], True),
     ], False),
@@ -316,7 +355,8 @@ class Cases(unittest.TestCase):
     def test_cases_cover_the_owners_crafts(self):
         cases = {c.id: c for c in load_cases()}
         self.assertEqual(sorted(cases), sorted(OWNERS_CRAFTS + WHITTLE_CONTROLS + LAST_TARGET_CASES
-                                               + CERTAIN_FIRST_CASES + LIGHT_WAITS_CASES))
+                                               + CERTAIN_FIRST_CASES + LIGHT_WAITS_CASES
+                                               + SIDE_EXALT_FULL_CASES))
         raw = json.loads(CASES.read_text(encoding="utf-8"))
         self.assertIn("crafting-slots-spec.md", raw.get("spec", ""))
 
@@ -524,6 +564,146 @@ class LightWaits(unittest.TestCase):
         self.assertIsNone(sm.light_waits(sm.State.from_case(hit),
                                          sm.BLUEPRINTS["rare-clean-then-slam"],
                                          sm.LIGHT_LAST, sm.accounting(sm.State.from_case(hit))))
+
+
+def side_exalt_beside_full(acc, omens):
+    """The side Exaltation omens in `omens` that name a side with a free
+    slot while the other side has none, written from the spec's § "A side
+    Exaltation omen with the other side full" apart from the model."""
+    names = {SIN_EX: "prefix", DEX_EX: "suffix"}
+    other = {"prefix": "suffix", "suffix": "prefix"}
+    return [o for o in omens
+            if o in names and acc[names[o]].free > 0 and acc[other[names[o]]].free <= 0]
+
+
+class SideExaltationFullOtherSide(unittest.TestCase):
+    """Spec § "A side Exaltation omen with the other side full" (#42): on an
+    Exalted Orb, a Sinistral or Dextral Exaltation omen is left out while the
+    side it names has a free slot and the other side has none; the exalt
+    lands on the open side anyway. The side and Greater stay."""
+
+    def test_baseline_side_exaltation_omen_kept_while_the_other_side_has_room(self):
+        # the owner's craft with Necromancy blocked: one free prefix slot,
+        # two free suffix slots; both slams keep their side omen
+        c = case("rare-2p1s-necromancy-blocked")
+        acc = sm.accounting(sm.State.from_case(c))
+        self.assertEqual((acc["prefix"].free, acc["suffix"].free), (1, 2))
+        self.assertEqual(steps_of(sm.plan(sm.BLUEPRINTS["close-a-side"], c).record())[0],
+                         ("fill", "suffix", "exalted-orb", [GREATER, DEX_EX]))
+        self.assertEqual(steps_of(sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], c).record()),
+                         SIDE_SLAM_PREFIX)
+        # #28's belt: the prefix slam comes while the suffixes still have room
+        steps = steps_of(sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], case("rare-no-target")).record())
+        self.assertEqual(steps[2], ("add-wanted", "prefix", "perfect-exalted-orb", [GREATER, SIN_EX]))
+        # the suffix slam on the magic start, the prefixes not yet full
+        steps = steps_of(sm.plan(sm.BLUEPRINTS["magic-augment-essence"], case("magic-two-good")).record())
+        self.assertEqual(steps[1], ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER, DEX_EX]))
+        # a literal side omen is kept the same way (a fill: the one missing
+        # target is a prefix)
+        st = sm.State.from_case(c)
+        literal = sm.Step("literal", "fill", side="suffix",
+                          actions=(sm.Action("exalted-orb", (DEX_EX,)),))
+        got = sm.evaluate(st, literal, sm.accounting(st))
+        self.assertIsInstance(got, sm.Choice)
+        self.assertEqual(got.omens, [DEX_EX])
+
+    def test_full_other_side_drops_the_side_exaltation_omen(self):
+        full = case("rare-prefixes-full")
+        st = sm.State.from_case(full)
+        acc = sm.accounting(st)
+        self.assertEqual((acc["prefix"].free, acc["suffix"].free), (0, 2))
+        for bp_id in ("rare-clean-then-slam", "close-a-side"):
+            with self.subTest(blueprint=bp_id):
+                route = sm.plan(sm.BLUEPRINTS[bp_id], full)
+                self.assertTrue(route.complete)
+                self.assertEqual(steps_of(route.record()), FULL_PREFIXES_SLAM)
+                # both suffixes land on the open side
+                self.assertEqual({m.alias for m in route.steps[-1].after.item.suffix},
+                                 {"s1", "s2", "s3"})
+        # the last suffix slam after the desecration and its reveal; the
+        # desecration beside the full side keeps its Necromancy omen
+        steps = steps_of(sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], full).record())
+        self.assertEqual(steps[0], ("desecrate", "suffix", "desecrate", [DEX_NEC]))
+        self.assertEqual(steps[-1], ("add-wanted", "suffix", "perfect-exalted-orb", []))
+        # the other way round: the suffixes full, one prefix missing, no Greater
+        for bp_id in ("rare-clean-then-slam", "essence-desecrate-double-slam", "close-a-side"):
+            with self.subTest(case="rare-suffixes-full", blueprint=bp_id):
+                record = sm.plan(sm.BLUEPRINTS[bp_id], case("rare-suffixes-full")).record()
+                self.assertEqual(steps_of(record), FULL_SUFFIXES_SLAM)
+        # a later slam whose other side an earlier step filled
+        steps = steps_of(sm.plan(sm.BLUEPRINTS["rare-clean-then-slam"], case("rare-no-target")).record())
+        self.assertEqual(steps[3], ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER]))
+        steps = steps_of(sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], case("magic-two-good")).record())
+        self.assertEqual(steps[3], ("add-wanted", "suffix", "perfect-exalted-orb", [GREATER]))
+        # a literal side omen is left out too
+        literal = sm.Step("literal", "add-wanted", side="suffix",
+                          actions=(sm.Action("exalted-orb", (DEX_EX,)),))
+        got = sm.evaluate(st, literal, acc)
+        self.assertIsInstance(got, sm.Choice)
+        self.assertEqual(got.omens, [])
+        # control: an omen naming the full side itself is not dropped; the
+        # exalt has nowhere to land (today's behaviour)
+        wrong = sm.Step("wrong", "add-wanted", actions=(sm.Action("exalted-orb", (SIN_EX,)),))
+        self.assertEqual(sm.fit(st, wrong, None, 0, acc), (None, "no free slot where it lands"))
+
+    def test_blocked_redundant_exaltation_omen_does_not_pass_the_exalt_over(self):
+        blocked = case("rare-prefixes-full-dextral-blocked")
+        self.assertIn(DEX_EX, blocked.blocked)
+        for bp_id in ("rare-clean-then-slam", "close-a-side"):
+            with self.subTest(blueprint=bp_id):
+                route = sm.plan(sm.BLUEPRINTS[bp_id], blocked)
+                self.assertTrue(route.complete)
+                self.assertEqual(steps_of(route.record()), FULL_PREFIXES_SLAM)
+        steps = steps_of(sm.plan(sm.BLUEPRINTS["essence-desecrate-double-slam"], blocked).record())
+        self.assertEqual(steps[-1], ("add-wanted", "suffix", "perfect-exalted-orb", []))
+        # the same routes as on the item with nothing blocked
+        free = case("rare-prefixes-full")
+        for bp_id in sm.BLUEPRINTS:
+            with self.subTest(same=bp_id):
+                self.assertEqual(sm.plan(sm.BLUEPRINTS[bp_id], blocked).record(),
+                                 sm.plan(sm.BLUEPRINTS[bp_id], free).record())
+        # control: while the other side has room the blocked omen is needed,
+        # so every alternative of the suffix close is blocked
+        roomy = with_changes(case("rare-2p1s-necromancy-blocked"),
+                             blocked=frozenset({SIN_NEC, DEX_EX}))
+        st = sm.State.from_case(roomy)
+        bp = sm.BLUEPRINTS["close-a-side"]
+        sm.ensure_bindings(st, bp)
+        close = next(s for s in bp.steps if s.id == "close")
+        self.assertEqual(sm.evaluate(st, close, sm.accounting(st)), "every alternative blocked")
+
+    def test_side_exaltation_omen_beside_a_full_side_is_an_omen_problem(self):
+        exalts = kept = 0
+        for c, bp_id, route in every_route():
+            for step in route.steps:
+                if step.record["currency"] not in sm.EXALTS:
+                    continue
+                exalts += 1
+                kept += any(o in (SIN_EX, DEX_EX) for o in step.record["omens"])
+                with self.subTest(case=c.id, blueprint=bp_id, step=step.record):
+                    self.assertEqual(side_exalt_beside_full(step.accounting, step.record["omens"]), [])
+                    # today's records are not refused
+                    self.assertEqual(sm.omen_problems(step), [])
+        self.assertGreater(exalts, 0)
+        self.assertGreater(kept, 0)
+
+        # controls: the omen put back beside a full side must be refused
+        for case_id, bp_id, index, omen in (
+            ("rare-prefixes-full", "rare-clean-then-slam", 0, DEX_EX),
+            ("rare-suffixes-full", "rare-clean-then-slam", 0, SIN_EX),
+            ("rare-no-target", "rare-clean-then-slam", 3, DEX_EX),
+            ("magic-two-good", "essence-desecrate-double-slam", 3, DEX_EX),
+        ):
+            with self.subTest(control=(case_id, bp_id)):
+                step = copy.deepcopy(sm.plan(sm.BLUEPRINTS[bp_id], case(case_id)).steps[index])
+                self.assertEqual(sm.omen_problems(step), [])
+                step.record["omens"] = step.record["omens"] + [omen]
+                self.assertEqual(side_exalt_beside_full(step.accounting, step.record["omens"]), [omen])
+                self.assertTrue(sm.omen_problems(step))
+        # and the same omen beside a side with room is no problem
+        fill = sm.plan(sm.BLUEPRINTS["close-a-side"], case("rare-2p1s-necromancy-blocked")).steps[0]
+        self.assertEqual(fill.record["omens"], [GREATER, DEX_EX])
+        self.assertEqual(sm.omen_problems(fill), [])
 
 
 class Invariants(unittest.TestCase):
