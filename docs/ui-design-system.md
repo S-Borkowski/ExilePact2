@@ -10,9 +10,11 @@ The existing app-specific behavior, native window limits, backend-owned state
 and export contracts remain authoritative: [Quest Tracker design
 brief](quest-tracker/ui-design-brief.md), [Waystone Roller UI
 design](waystone-roller/ui-design.md) and [Crafting Helper UI
-design](crafting-helper/ui-design.md). A later implementation must use the
-documented theme source and generator, rather than editing generated token
-files, and preserve the sibling apps' theme-copy equality checks.
+design](crafting-helper/ui-design.md). A later implementation must edit Quest Tracker's
+`apps/quest-tracker/theme/theme.json` and `apps/quest-tracker/theme/tokens.css`
+together, keeping JSON/CSS consistent, then copy `tokens.css` byte-for-byte
+to both sibling apps' theme directories. Retain the token-key consistency
+and theme-copy equality tests.
 
 ## Reference analysis
 
@@ -72,7 +74,7 @@ styling must not conceal uncertainty, imply automation or invent progress.
 ## Color palette
 
 These are proposed values, not sampled game colors or values already applied
-to the generated theme. A later restyle maps the semantic roles to the
+to the current theme. A later restyle maps the semantic roles to the
 existing theme source.
 
 | Role | Hex | Application |
@@ -178,7 +180,7 @@ one-off gaps. Borders of 1px and a 2px focus outline are optical exceptions.
 Keep Quest Tracker's existing 320×240 native minimum and scroll the body
 independently. Use square corners with a proposed 2px bevel/chamfer on
 buttons and 6px cut on major panels. These geometric dimensions are design
-values, not instructions to change generated chamfers in this documentation
+values, not instructions to change current chamfers in this documentation
 change. Shadows indicate elevation only: dark `0 8px 24px` at approximately
 35% opacity, subtle enough not to form another border.
 
@@ -352,7 +354,7 @@ implementation checks.
 ## Adoption boundaries
 
 This document is a proposal alongside existing app specifications. It does
-not change product code, generated themes, fonts, assets, dependencies,
+not change product code, current themes, fonts, assets, dependencies,
 view-model contracts, native minimum sizes or game interaction. No Figma
 file, interactive prototype, build or release is produced by publishing it.
 Current shipped specifications remain intact. Release notes do not claim an
@@ -369,8 +371,8 @@ Use this checklist before adoption:
   with long text, reduced-motion and light/dark/busy overlay backdrops.
 - Verify each essential text/control/focus contrast pairing in its rendered
   states, keyboard traversal, accessible semantics and refusal states.
-- Preserve the shared theme source/generator and copy-equality checks, the
-  app export contracts, backend-owned state and existing app tests.
+- Follow the manual theme maintenance procedure above and preserve consistency
+  and copy-equality checks, app export contracts, backend-owned state and existing app tests.
 - Run an available impeccable design audit when UI changes. Do not install
   design plugins into the repository.
 - Keep reference screenshots, copied game art and extracted assets out of
