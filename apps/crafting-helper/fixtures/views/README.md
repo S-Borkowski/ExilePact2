@@ -23,7 +23,9 @@ the targets and the whittling route chosen:
   strength, each at T5) ticked as targets and met, and the route the
   engine previews for them.
 - `craft-planning`: planning, the route previewed with known odds for the
-  orbs and `odds unknown: …` for the desecration and the reveal. Each step
+  orbs, `odds unknown: …` for the desecration, and an estimate for the
+  reveal (`~15% (an estimate: …; rests on the not-established
+  reveal-exclusive-row, reveal-ordinary-exalt-weights)`, since 0.3.0). Each step
   line carries the target modifiers a hit of it may place (`targets`) and
   an instruction composed from its data (the currency, its omens, the side
   and those modifiers); the route carries no blueprint notes. The
@@ -79,9 +81,11 @@ chosen:
   Necromancy blocked for the craft (its `blocked` list), so the last
   prefix is slammed rather than desecrated: the route closes the finished
   suffix side first, `Exalted Orb with Omen of Greater Exaltation and Omen
-  of Dextral Exaltation on the suffix side, for any modifier` (a fill step's
-  instruction, composed from its data), then slams the one open prefix side
-  with a Perfect Exalted Orb and no side omen. No step offers an Exalted
+  of Dextral Exaltation, for any modifier` (a fill step's instruction,
+  composed from its data; since 0.3.0 an exalt or a bone step names no
+  side, which its omen or the free slots already decide), then slams the
+  one open prefix side with a Perfect Exalted Orb and no side omen,
+  `Perfect Exalted Orb for +# to Armour`. No step offers an Exalted
   Orb that could land on the prefix side's reserved slot. Both steps were
   taken in place of the last target's desecration, so each carries a
   Fallback line, `<its currency, with its omens> instead of a desecration:
@@ -92,8 +96,12 @@ chosen:
   modifier, so the route desecrates for it (issue #32): `Use Omen of
   Sinistral Necromancy, then apply the Preserved Collarbone; the
   desecrated modifier will be a prefix, for +# to Armour` (the wording
-  since 0.2.0), then the reveal with Omen of Abyssal Echoes, both with
-  `odds unknown: …` and no Fallback line.
+  since 0.2.0), then the reveal with Omen of Abyssal Echoes, neither with
+  a Fallback line. The desecration's odds are `odds unknown: …`, its
+  reason pointing at the reveal; the reveal's are an estimate naming the
+  facts it rests on and the Echoes reroll (0.3.0). Every other view's
+  route says the same: a reveal's odds an estimate, a desecration's
+  unknown.
 - `craft-miss-clean`: the same craft started, the suffix side closed (a
   hit) and the slam on the prefix side missed (Flask Life Recovery): on
   `remove`, numbered as the craft's third step. Mana, a target, is the
@@ -115,8 +123,9 @@ Resistance as the targets:
   Insulation adds.
 - `craft-blocker`: the relaxation accepted (fire at T3) and
   `essence-desecrate-double-slam` chosen: the essence, the suffix
-  desecration for cold, its reveal, then a Perfect Exalted Orb on the
-  suffix side. The reveal's line alone carries `blocker`: if cold is not
+  desecration for cold, its reveal, then a Perfect Exalted Orb with Omen of
+  Dextral Exaltation for lightning (`… for +#% to Lightning Resistance`, no
+  side named). The reveal's line alone carries `blocker`: if cold is not
   offered, take `+# to Strength and Dexterity` or `+# to Strength and
   Intelligence`, which keep the ordinary `+# to Strength` out of the
   exalt's pool, and that exalt's chance of a target before and after.

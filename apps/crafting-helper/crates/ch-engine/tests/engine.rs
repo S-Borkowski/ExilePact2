@@ -403,7 +403,12 @@ fn odds_unknown_for_desecration_and_jewels() {
         .unwrap();
     let steps = &plan.routes[0].steps;
     assert!(unknown(&steps[0].odds).contains("desecration"));
-    assert!(unknown(&steps[1].odds).contains("desecration"));
+    // The reveal's odds are an estimate (docs/models/crafting-slots-spec.md,
+    // "Reveal odds"; tests/reveal_odds.rs).
+    match &steps[1].odds {
+        Some(Odds::Known { basis, .. }) => assert!(basis.contains("estimate"), "{basis}"),
+        other => panic!("expected the reveal's estimate, got {other:?}"),
+    }
 
     // Every jewel page has no established spawn weights.
     let jewel = engine(&["engine/test-jewel.toml"]);

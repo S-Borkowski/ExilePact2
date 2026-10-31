@@ -137,7 +137,8 @@ fn an_item_with_a_desecrated_target_keeps_its_route() {
 
 /// The owner's belt, Armour the one target missing: both rare routes
 /// desecrate on the prefix side with Omen of Sinistral Necromancy and
-/// reveal with Omen of Abyssal Echoes, odds unknown, instead of closing the
+/// reveal with Omen of Abyssal Echoes (the desecration's odds unknown, the
+/// reveal's an estimate: tests/reveal_odds.rs), instead of closing the
 /// suffix side and slamming; the guide walks the same two steps to done.
 #[test]
 fn the_last_target_on_an_undesecrated_rare_is_desecrated() {
@@ -163,11 +164,19 @@ fn the_last_target_on_an_undesecrated_rare_is_desecrated() {
         let desecrate = &r.steps[0];
         assert_eq!(desecrate.goal, Goal::Desecrate);
         assert_eq!(desecrate.target.as_deref(), Some(ARMOUR));
+        assert!(
+            desecrate
+                .odds
+                .as_ref()
+                .is_some_and(|o| o.percent().is_none()),
+            "{desecrate:?}"
+        );
+        let reveal = &r.steps[1];
+        assert!(
+            reveal.odds.as_ref().is_some_and(|o| o.percent().is_some()),
+            "{reveal:?}"
+        );
         for s in &r.steps {
-            assert!(
-                s.odds.as_ref().is_some_and(|o| o.percent().is_none()),
-                "{s:?}"
-            );
             assert_eq!(s.instead_of_desecration, None, "{s:?}");
         }
     }

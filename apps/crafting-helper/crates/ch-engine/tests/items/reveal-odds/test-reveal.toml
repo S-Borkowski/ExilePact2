@@ -1,0 +1,18 @@
+# A test blueprint (engine tests only): one plain reveal at the Well of
+# Souls, aimed at every remaining target.
+id = "test-reveal"
+name = "Test: reveal for any remaining target"
+classes = ["Belts", "Body Armours", "Jewels", "Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "reveal"
+say = "Reveal the unrevealed modifier at the Well of Souls"
+goal = "reveal"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "reveal"

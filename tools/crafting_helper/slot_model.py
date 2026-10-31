@@ -3,16 +3,18 @@
 Developer-only, stdlib only. Built from `docs/models/crafting-slots-spec.md`
 alone (a gap the spec leaves is filled in the spec first, then here), and
 held against the engine (`ch-engine`) through the shared case file
-`apps/crafting-helper/crates/ch-engine/tests/items/slots/cases.json`:
+`apps/crafting-helper/crates/ch-engine/tests/items/slots/cases.json`, and
+since 0.3.0 its reveal estimate through `reveal-odds.json` beside it:
 
-    py -3 -m tools.crafting_helper.slot_model check [--cases FILE]
-    py -3 -m tools.crafting_helper.slot_model show [--cases FILE]
+    py -3 -m tools.crafting_helper.slot_model check [--cases FILE] [--reveal FILE]
+    py -3 -m tools.crafting_helper.slot_model show [--cases FILE] [--reveal FILE]
 
 `check` plans every case with the four v2 blueprints (and reads the listed
-`fill-desecrate-exalt` for the baseline) and fails, naming each difference,
-when a result departs from the case file. `show` prints what the model
-computes, for writing a new case; a recorded expectation is never edited to
-match the model (a difference is a spec or model defect).
+`fill-desecrate-exalt` for the baseline), computes every reveal case's
+chance, and fails, naming each difference, when a result departs from its
+file. `show` prints what the model computes, for writing a new case; a
+recorded expectation is never edited to match the model (a difference is a
+spec or model defect).
 
 What is here:
 
@@ -31,10 +33,14 @@ What is here:
   (`plan`), with the rejections in the spec's order;
 - a reader for a listed blueprint, for the baselines only
   (`listed_first_step`);
-- readers for the spec's facts table and its relied-on table.
+- readers for the spec's facts table and its relied-on table;
+- new in 0.3.0, the reveal's estimate (`reveal_chance`, the spec's "Reveal
+  odds"), with its equal-weight switch `EXCLUSIVE_EQUAL_WEIGHT` and a
+  reader for `reveal-odds.json` (`reveal_problems`, which `check` runs).
 
 The model has no spawn weights, no floors and no odds beyond a removal's
-certainty; those are the engine's (the spec's "Not covered").
+certainty and the reveal's estimate, which takes its ordinary chance as
+given; the rest are the engine's (the spec's "Not covered").
 """
 from __future__ import annotations
 
@@ -50,6 +56,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = ROOT / "docs" / "models" / "crafting-slots-spec.md"
 CASES = ROOT / "apps" / "crafting-helper" / "crates" / "ch-engine" / "tests" / "items" / "slots" / "cases.json"
+REVEAL_ODDS = CASES.with_name("reveal-odds.json")
+# A recorded reveal chance matches the model's within this.
+REVEAL_TOLERANCE = 1e-9
+# The reveal's estimate takes a class's exclusive modifiers as equally
+# likely (`exclusive-weights-unknown`, a reversible default). Off, an aimed
+# exclusive modifier makes the estimate unknown; the engine has a twin.
+EXCLUSIVE_EQUAL_WEIGHT = True
 # The listed blueprint the baselines read: the engine's test copy once it
 # exists, the shipped file before it does.
 LISTED_PATHS = (
@@ -1228,6 +1241,54 @@ def relied_on_table(text):
     return out
 
 
+# --- the reveal's estimate (spec § "Reveal odds") -----------------------------
+
+
+def reveal_chance(exclusive_pool, exclusive_hits, ordinary, echoes):
+    """The chance one reveal offers a target, or None when it is unknown.
+
+    `exclusive_pool` is n, the exclusive modifiers that can be offered on
+    the side; `exclusive_hits` is h, the aimed ones among them (a share of
+    tiers may make it fractional); `ordinary` is q, the chance one Exalted
+    Orb draw on the side adds an aimed ordinary modifier (0 with none
+    aimed, None when unknown); `echoes` is whether Omen of Abyssal Echoes'
+    reroll counts. Inputs no item can give raise ValueError.
+    """
+    if exclusive_pool < 0 or exclusive_hits < 0 or exclusive_hits > exclusive_pool:
+        raise ValueError(f"exclusive hits {exclusive_hits} of a pool of {exclusive_pool}")
+    if ordinary is not None and not 0 <= ordinary <= 1:
+        raise ValueError(f"ordinary chance {ordinary} is not a fraction")
+    if ordinary is None:
+        return None
+    if exclusive_hits > 0 and not EXCLUSIVE_EQUAL_WEIGHT:
+        return None
+    if exclusive_pool > 0:
+        miss = (1 - exclusive_hits / exclusive_pool) * (1 - ordinary) ** 2
+    else:
+        miss = (1 - ordinary) ** 3
+    if echoes:
+        miss = miss ** 2
+    return 1 - miss
+
+
+def load_reveal_cases(path=None):
+    data = json.loads(Path(path or REVEAL_ODDS).read_text(encoding="utf-8"))
+    return data["cases"]
+
+
+def reveal_problems(path=None):
+    """Each recorded reveal case whose chance departs from `reveal_chance`."""
+    problems = []
+    for c in load_reveal_cases(path):
+        want = c["chance"]
+        got = reveal_chance(c["exclusive_pool"], c["exclusive_hits"], c["ordinary"], c["echoes"])
+        same = (got is None and want is None) or (
+            got is not None and want is not None and abs(got - want) < REVEAL_TOLERANCE)
+        if not same:
+            problems.append(f"{c['id']} / reveal_chance: recorded {json.dumps(want)}, model {json.dumps(got)}")
+    return problems
+
+
 # --- command line -----------------------------------------------------------
 
 
@@ -1239,8 +1300,8 @@ def computed(case):
     return result
 
 
-def check(path=CASES):
-    problems = []
+def check(path=CASES, reveal_path=None):
+    problems = reveal_problems(reveal_path)
     for case in load_cases(path):
         got = computed(case)
         for bp_id in BLUEPRINTS:
@@ -1258,11 +1319,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="py -3 -m tools.crafting_helper.slot_model", description=__doc__.split("\n")[0])
     ap.add_argument("command", choices=["check", "show"])
     ap.add_argument("--cases", default=str(CASES))
+    ap.add_argument("--reveal", default=str(REVEAL_ODDS))
     args = ap.parse_args(argv)
     if args.command == "show":
         print(json.dumps({c.id: computed(c) for c in load_cases(args.cases)}, indent=2))
+        print(json.dumps({c["id"]: reveal_chance(c["exclusive_pool"], c["exclusive_hits"], c["ordinary"],
+                                                 c["echoes"]) for c in load_reveal_cases(args.reveal)}, indent=2))
         return 0
-    problems = check(args.cases)
+    problems = check(args.cases, args.reveal)
     for p in problems:
         print(p)
     print("ok" if not problems else f"{len(problems)} difference(s)")

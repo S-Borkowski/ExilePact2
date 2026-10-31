@@ -1,13 +1,15 @@
 //! The rough single-step odds of a step's first try on the item: never a
 //! simulation, and "unknown" with the reason where the weights are not
-//! established (every jewel page, desecration, reveals, fluxes).
+//! established (every jewel page, desecration, fluxes). A reveal's are an
+//! estimate from the spec's model ("Reveal odds"), its basis naming the
+//! not-established facts it rests on.
 
 use ch_blueprint::catalogue::{self, Effect, OmenChange};
 use ch_blueprint::{Goal, Rarity as BpRarity};
 use ch_data::{Kind, Odds, Removal, Section, WeightBasis, PLACEHOLDER_WEIGHT};
 
 use crate::catalogue::data_entries;
-use crate::context::{item_rarity, kind_of, Ctx, ModInfo, Role, State};
+use crate::context::{item_rarity, kind_of, side_word, Ctx, ModInfo, Role, State};
 use crate::route::ChosenAction;
 
 /// The data-backed id of Essence of the Abyss, whose modifier (the Mark of
@@ -17,6 +19,233 @@ const ABYSS_ESSENCE: &str = "essence-of-the-abyss";
 /// The odds basis note of a slam with Omen of Catalysing Exaltation.
 pub const CATALYST_NOTE: &str =
     "the catalyst's favour is not counted (Omen of Catalysing Exaltation)";
+
+/// The reveal estimate's switch: exclusive modifiers taken as equally
+/// likely (not established: `exclusive-weights-unknown`). Off, an aimed
+/// exclusive modifier makes a reveal's chance unknown. The slot model's
+/// `EXCLUSIVE_EQUAL_WEIGHT` (tools/crafting_helper/slot_model.py).
+pub const EXCLUSIVE_EQUAL_WEIGHT: bool = true;
+
+/// The chance one reveal offers a target, or `None` when it is unknown:
+/// the slot model's `reveal_chance` (docs/models/crafting-slots-spec.md,
+/// "Reveal odds"), with [`EXCLUSIVE_EQUAL_WEIGHT`].
+pub fn reveal_chance(
+    exclusive_pool: u32,
+    exclusive_hits: f64,
+    ordinary: Option<f64>,
+    echoes: bool,
+) -> Option<f64> {
+    reveal_chance_with(
+        exclusive_pool,
+        exclusive_hits,
+        ordinary,
+        echoes,
+        EXCLUSIVE_EQUAL_WEIGHT,
+    )
+}
+
+/// [`reveal_chance`] with the equal-weight switch given. `exclusive_pool`
+/// is n, the exclusive modifiers that can be offered on the side;
+/// `exclusive_hits` h, the aimed ones among them (a tier share may make it
+/// fractional); `ordinary` q, one Exalted Orb draw's chance on the side of
+/// an aimed ordinary modifier (0 with none aimed, `None` unknown); `echoes`
+/// whether Omen of Abyssal Echoes' reroll counts. One set of options
+/// misses with `(1 - h/n)(1 - q)^2` (n > 0) or `(1 - q)^3`; the reroll
+/// squares the miss. Panics on inputs no item can give.
+pub fn reveal_chance_with(
+    exclusive_pool: u32,
+    exclusive_hits: f64,
+    ordinary: Option<f64>,
+    echoes: bool,
+    equal_weight: bool,
+) -> Option<f64> {
+    let n = f64::from(exclusive_pool);
+    assert!(
+        (0.0..=n).contains(&exclusive_hits),
+        "exclusive hits {exclusive_hits} of a pool of {exclusive_pool}"
+    );
+    let q = ordinary?;
+    assert!(
+        (0.0..=1.0).contains(&q),
+        "ordinary chance {q} is not a fraction"
+    );
+    if exclusive_hits > 0.0 && !equal_weight {
+        return None;
+    }
+    let mut miss = if exclusive_pool > 0 {
+        (1.0 - exclusive_hits / n) * (1.0 - q).powi(2)
+    } else {
+        (1.0 - q).powi(3)
+    };
+    if echoes {
+        miss *= miss;
+    }
+    Some(1.0 - miss)
+}
+
+/// The "rests on" list of a reveal's estimate: its not-established facts.
+const REVEAL_ROW: &str = "reveal-exclusive-row";
+const REVEAL_DRAWS: &str = "reveal-ordinary-exalt-weights";
+const EXCLUSIVE_WEIGHTS: &str = "exclusive-weights-unknown";
+const NO_POOL: &str = "necromancy-without-pool";
+
+/// A reveal's estimated odds (docs/models/crafting-slots-spec.md, "Reveal
+/// odds"), the same in both orders. The side is the unrevealed modifier's
+/// on the item as the step finds it; with none (a listed route evaluates
+/// every step on the starting item), the one side every aim is on.
+fn reveal_odds(ctx: &Ctx, st: &State, aims: &[usize], action: &ChosenAction) -> Odds {
+    if aims.is_empty() {
+        return Odds::certain(false, "no remaining target");
+    }
+    let side = match st.mods.iter().find(|m| m.unrevealed) {
+        Some(m) => m.side,
+        None => {
+            let first = ctx.targets[aims[0]].side;
+            if aims.iter().any(|&t| ctx.targets[t].side != first) {
+                return Odds::unknown(
+                    "the side the reveal offers is not known before the desecration: \
+                     the targets are on both sides",
+                );
+            }
+            first
+        }
+    };
+    let word = side_word(side);
+    let on_side: Vec<usize> = aims
+        .iter()
+        .copied()
+        .filter(|&t| ctx.targets[t].side == side)
+        .collect();
+    if on_side.is_empty() {
+        return Odds::certain(
+            false,
+            format!("no target is a {word}, the side the reveal offers"),
+        );
+    }
+    let ordinary: Vec<usize> = on_side
+        .iter()
+        .copied()
+        .filter(|&t| ctx.targets[t].section == Section::Normal)
+        .collect();
+
+    // n: the class's exclusive modifiers on the side at the item's level,
+    // less those sharing a family with a modifier on the item.
+    let on_item: Vec<&String> = st
+        .mods
+        .iter()
+        .filter(|m| !m.unrevealed)
+        .flat_map(|m| m.family.iter())
+        .collect();
+    let valid = ctx.data.valid_mods(ctx.variant, ctx.item_level);
+    let pool: Vec<_> = valid
+        .desecrated
+        .iter()
+        .filter(|m| m.kind == side && !m.family.iter().any(|f| on_item.contains(&f)))
+        .collect();
+    let n = pool.len() as u32;
+    // h: the aimed ones, each the share of its reachable tiers at or better
+    // than its floor.
+    let hits: f64 = on_side
+        .iter()
+        .filter_map(|&t| {
+            let target = &ctx.targets[t];
+            let m = pool.iter().find(|m| m.id == target.mod_id)?;
+            let counting = m.tiers.iter().filter(|x| x.tier <= target.floor).count();
+            Some(counting as f64 / m.tiers.len() as f64)
+        })
+        .sum();
+    // q: one Exalted Orb draw on the side, as an exalt's add odds.
+    let q = if ordinary.is_empty() {
+        Some(0.0)
+    } else {
+        match add_chance(ctx, st, &ordinary, &[side], None) {
+            Odds::Known { percent, .. } => Some(percent / 100.0),
+            Odds::Unknown { reason } => {
+                return Odds::unknown(format!(
+                    "{reason}, and a reveal's ordinary options are drawn like an Exalted Orb's \
+                     (not established: {REVEAL_DRAWS})"
+                ))
+            }
+        }
+    };
+    let echoes = has_omen_change(action, OmenChange::RerollOptions);
+    let Some(chance) = reveal_chance(n, hits, q, echoes) else {
+        return Odds::unknown(format!(
+            "the weights among the exclusive {word} modifiers are not established \
+             ({EXCLUSIVE_WEIGHTS})"
+        ));
+    };
+
+    let mut rests_on = vec![REVEAL_ROW];
+    let mut said: Vec<String> = Vec::new();
+    let exalt = |count: &str| {
+        match q {
+        Some(q) if !ordinary.is_empty() => format!(
+            "{count} drawn like an Exalted Orb over the ordinary {word}es, each a target {:.2}% \
+             of the time",
+            q * 100.0
+        ),
+        _ => format!("{count} drawn like an Exalted Orb over the ordinary {word}es, none a target"),
+    }
+    };
+    if n > 0 {
+        let aimed = if hits > 0.0 {
+            rests_on.push(EXCLUSIVE_WEIGHTS);
+            format!(", {} of them aimed, each taken as equally likely", trim(hits))
+        } else {
+            String::new()
+        };
+        said.push(format!(
+            "the first option one of {n} exclusive {word} modifiers{aimed}"
+        ));
+        said.push(exalt("the other two"));
+    } else {
+        let any_level = ctx.data.valid_mods(ctx.variant, u32::MAX);
+        let why = if !any_level.desecrated.iter().any(|m| m.kind == side) {
+            rests_on.push(NO_POOL);
+            format!(
+                "no exclusive {word} modifier on {}",
+                ctx.data.class.as_str()
+            )
+        } else if !valid.desecrated.iter().any(|m| m.kind == side) {
+            format!(
+                "item level {} is below every exclusive {word} modifier's level",
+                ctx.item_level
+            )
+        } else {
+            format!("every exclusive {word} modifier shares a family with one on the item")
+        };
+        said.push(format!("{why}: {}", exalt("all three options")));
+    }
+    if !ordinary.is_empty() {
+        rests_on.insert(1, REVEAL_DRAWS);
+    }
+    if echoes {
+        said.push(
+            "rerolled once with Omen of Abyssal Echoes when no target is offered".to_string(),
+        );
+    }
+    Odds::estimate(
+        chance,
+        format!(
+            "an estimate: {}; rests on the not-established {}",
+            said.join("; "),
+            rests_on.join(", ")
+        ),
+    )
+}
+
+/// `0.5`, `1`: a tier share without trailing zeros.
+fn trim(x: f64) -> String {
+    let s = format!("{x:.2}");
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
+/// Why a desecration's own odds are unknown: it adds an unrevealed
+/// modifier, and the chance that becomes a target is the reveal step's
+/// estimate, not the desecration's.
+const DESECRATION_UNKNOWN: &str =
+    "a desecration only adds an unrevealed modifier: whether it becomes a target is the reveal's chance";
 
 /// The odds of the step's goal on its first try, or `None` for a manual
 /// step (no check, no odds).
@@ -35,15 +264,10 @@ pub(crate) fn step_odds(
             if let Some(odds) = full_side_desecration_odds(st, action) {
                 return Some(odds);
             }
-            return Some(Odds::unknown(
-                "desecration and reveals have no established weights",
-            ));
+            return Some(Odds::unknown(DESECRATION_UNKNOWN));
         }
-        Effect::Desecrate | Effect::Reveal => {
-            return Some(Odds::unknown(
-                "desecration and reveals have no established weights",
-            ))
-        }
+        Effect::Desecrate => return Some(Odds::unknown(DESECRATION_UNKNOWN)),
+        Effect::Reveal => return Some(reveal_odds(ctx, st, aims, action)),
         Effect::Convert => return Some(Odds::unknown("how a flux maps tiers is not established")),
         _ => {}
     }
@@ -58,9 +282,10 @@ pub(crate) fn step_odds(
             }
         }
         Goal::AddWanted => add_wanted_odds(ctx, st, aims, action),
-        Goal::Desecrate | Goal::Reveal | Goal::Convert => {
-            Odds::unknown("desecration, reveals and fluxes have no established weights")
-        }
+        Goal::Desecrate | Goal::Reveal | Goal::Convert => Odds::unknown(format!(
+            "{} does not desecrate, reveal or convert: no odds for this goal",
+            action.name
+        )),
         Goal::Fracture => fracture_odds(ctx, st),
         Goal::Manual => return None,
     })

@@ -134,9 +134,9 @@ fn an_already_desecrated_item_keeps_its_route() {
 
 /// The owner's belt, Armour the one target missing: the route's last two
 /// lines are the bone on the prefix side with Omen of Sinistral Necromancy
-/// for Armour, then the reveal with Omen of Abyssal Echoes, each with its
-/// odds in words, unknown. Neither has a Fallback line, and the guide's
-/// first step is the desecration.
+/// for Armour, then the reveal with Omen of Abyssal Echoes. Neither has a
+/// Fallback line, and the guide's first step is the desecration. (Their
+/// odds lines are the two tests below.)
 #[test]
 fn the_last_step_is_a_desecration_and_reveal() {
     let tmp = tempfile::tempdir().unwrap();
@@ -173,8 +173,6 @@ fn the_last_step_is_a_desecration_and_reveal() {
     assert_eq!(reveal.id, "reveal-last");
     assert_eq!(reveal.uses.last().map(String::as_str), Some(ECHOES));
     for s in [desecrate, reveal] {
-        let odds = s.odds.as_deref().unwrap_or_default();
-        assert!(odds.starts_with("odds unknown: "), "{}: {odds}", s.id);
         assert_eq!(s.fallback, None, "{}", s.id);
     }
 
@@ -183,6 +181,95 @@ fn the_last_step_is_a_desecration_and_reveal() {
     assert_eq!(current.step.id, "desecrate-last");
     assert_eq!(current.step.uses, desecrate.uses);
     assert_eq!(current.step.fallback, None);
+    app.shutdown();
+}
+
+// --- Issue #49, Part B: a reveal's estimate --------------------------------
+
+/// The facts every estimate of the belt's reveal rests on: the guaranteed
+/// exclusive row (the belt has desecrated prefixes at its level) and the
+/// ordinary rows drawn like an Exalted Orb (Armour is an ordinary prefix).
+const BELT_REVEAL_FACTS: [&str; 4] = [
+    "estimate",
+    "rests on",
+    "reveal-exclusive-row",
+    "reveal-ordinary-exalt-weights",
+];
+
+/// `odds` is an estimate's line: the percent first, then a basis that says
+/// it is an estimate, names the facts it rests on and the Echoes reroll,
+/// and does not read as a weight count.
+fn assert_belt_estimate(odds: &str) {
+    assert!(
+        odds.starts_with('~') || odds.starts_with("under 1%"),
+        "{odds}"
+    );
+    for fact in BELT_REVEAL_FACTS.iter().chain(&["Abyssal Echoes"]) {
+        assert!(odds.contains(fact), "{fact}: {odds}");
+    }
+    // Armour is an ordinary target, so no exclusive weight is assumed, and
+    // the belt has desecrated prefixes, so Necromancy has a pool.
+    for absent in ["exclusive-weights-unknown", "necromancy-without-pool"] {
+        assert!(!odds.contains(absent), "{absent}: {odds}");
+    }
+    assert!(!odds.contains(" weight"), "{odds}");
+}
+
+/// The belt's reveal shows an estimated chance instead of `odds unknown`,
+/// in the route preview and on the guide's current step once the
+/// desecration has left its unrevealed prefix; the basis names the
+/// not-established facts it rests on.
+#[test]
+fn reveal_step_shows_an_estimate_that_names_its_facts() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = planned(tmp.path(), &shell, &belt("belt-2p1s"), &belt_targets(), &[]);
+    let view = app.get_view();
+    let reveal = route(&view)
+        .steps
+        .iter()
+        .find(|s| s.id == "reveal-last")
+        .expect("the reveal step")
+        .clone();
+    assert_belt_estimate(reveal.odds.as_deref().unwrap_or_default());
+
+    // The guide: the desecration done, the belt holds an unrevealed prefix
+    // and the reveal is the current step, with the same kind of estimate.
+    app.accept_craft();
+    let view = app.grab_text(Some(&engine_item("last-desecration", "belt-unrevealed")));
+    let current = step(&view);
+    assert_eq!(current.step.id, "reveal-last");
+    assert_belt_estimate(current.step.odds.as_deref().unwrap_or_default());
+    app.shutdown();
+}
+
+/// Beside the reveal's estimate, the desecration's own odds stay unknown,
+/// and the reason no longer says reveals have no established weights.
+#[test]
+fn desecration_step_odds_stay_unknown_beside_the_reveal_estimate() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = planned(tmp.path(), &shell, &belt("belt-2p1s"), &belt_targets(), &[]);
+    let check = |odds: &str| {
+        assert!(odds.starts_with("odds unknown: "), "{odds}");
+        assert!(odds.contains("reveal"), "{odds}");
+        assert!(!odds.contains("no established weights"), "{odds}");
+    };
+    let view = app.get_view();
+    let steps = &route(&view).steps;
+    let desecrate = steps
+        .iter()
+        .find(|s| s.id == "desecrate-last")
+        .expect("the desecration step");
+    check(desecrate.odds.as_deref().unwrap_or_default());
+    // Its neighbour, the control: the reveal's odds are known.
+    let reveal = steps.iter().find(|s| s.id == "reveal-last").unwrap();
+    assert!(reveal.odds.as_deref().is_some_and(|o| o.starts_with('~')));
+
+    let view = app.accept_craft();
+    let current = step(&view);
+    assert_eq!(current.step.id, "desecrate-last");
+    check(current.step.odds.as_deref().unwrap_or_default());
     app.shutdown();
 }
 

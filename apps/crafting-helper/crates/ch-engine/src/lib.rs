@@ -40,6 +40,12 @@
 //!   and, when that includes an unrevealed desecrated modifier, the chance
 //!   it survives and the step the route takes next if it stays and if it
 //!   goes ([`Survival`]).
+//! - Either order: a Well of Souls reveal's odds are an estimate from the
+//!   spec's model (docs/models/crafting-slots-spec.md, "Reveal odds"), with
+//!   a basis naming the not-established facts it rests on;
+//!   [`reveal_chance`] is its pure formula, the slot model's twin, and
+//!   [`EXCLUSIVE_EQUAL_WEIGHT`] its equal-weight switch. A desecration's own
+//!   odds stay unknown.
 //! - [`catalogue`]: every crafting item a blueprint or the blocked list may
 //!   name, static and data-backed.
 //!
@@ -106,7 +112,7 @@ pub use engine::{check_path, resolve, toml_files, Engine, Resolved};
 pub use guide::{
     Guide, GuideError, Next, Outcome, OutcomeKind, Started, Status, WantedMod, PICKED,
 };
-pub use odds::CATALYST_NOTE;
+pub use odds::{reveal_chance, reveal_chance_with, CATALYST_NOTE, EXCLUSIVE_EQUAL_WEIGHT};
 pub use relax::Relaxation;
 pub use route::{
     ChosenAction, Plan, Rejected, Rejection, Route, Skipped, Stall, StepView, WaitingLordOmen,

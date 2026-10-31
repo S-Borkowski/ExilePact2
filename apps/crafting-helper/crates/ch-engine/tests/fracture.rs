@@ -148,7 +148,11 @@ fn a_desecration_on_a_full_side_shows_the_removal_odds() {
     assert_eq!(action.omens, ["omen-of-sinistral-necromancy"]);
     match &step.odds {
         Some(Odds::Unknown { reason }) => {
-            assert_eq!(reason, "desecration and reveals have no established weights")
+            assert_eq!(
+                reason,
+                "a desecration only adds an unrevealed modifier: \
+                 whether it becomes a target is the reveal's chance"
+            )
         }
         other => panic!("expected unknown odds, got {other:?}"),
     }

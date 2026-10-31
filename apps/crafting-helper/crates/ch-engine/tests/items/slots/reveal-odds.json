@@ -1,0 +1,114 @@
+{
+  "spec": "docs/models/crafting-slots-spec.md",
+  "about": "The reveal's estimate (the spec's 'Reveal odds'), shared by the slot model's reveal_chance (tools/crafting_helper/slot_model.py) and the engine's twin. Each case gives n, the exclusive modifiers that can be offered on the revealed side (exclusive_pool); h, the aimed ones among them, a tier share possibly fractional (exclusive_hits); q, the chance one Exalted Orb draw on that side adds an aimed ordinary modifier, 0 with none aimed and null when unknown (ordinary); whether Omen of Abyssal Echoes' reroll counts (echoes); and the chance one reveal offers a target, null when unknown (chance), worked by hand from the spec with the equal-weight default on. A recorded chance is never edited to match the model or the engine: a difference is a spec or model defect.",
+  "cases": [
+    {
+      "id": "exclusive-only",
+      "about": "A ring revealing a prefix: seven exclusive prefixes can be offered, one is the target, no ordinary target on the side. The guaranteed exclusive option is the target one time in seven.",
+      "exclusive_pool": 7,
+      "exclusive_hits": 1,
+      "ordinary": 0.0,
+      "echoes": false,
+      "chance": 0.14285714285714285
+    },
+    {
+      "id": "exclusive-only-reroll",
+      "about": "As exclusive-only, with Omen of Abyssal Echoes: 1 - (6/7)^2 = 13/49.",
+      "exclusive_pool": 7,
+      "exclusive_hits": 1,
+      "ordinary": 0.0,
+      "echoes": true,
+      "chance": 0.2653061224489796
+    },
+    {
+      "id": "no-pool",
+      "about": "A body armour revealing a prefix (no exclusive prefix on the class): three exalt-like draws, each hitting the ordinary target with chance 0.1: 1 - 0.9^3.",
+      "exclusive_pool": 0,
+      "exclusive_hits": 0,
+      "ordinary": 0.1,
+      "echoes": false,
+      "chance": 0.271
+    },
+    {
+      "id": "no-pool-reroll",
+      "about": "As no-pool, with Omen of Abyssal Echoes: 1 - 0.729^2.",
+      "exclusive_pool": 0,
+      "exclusive_hits": 0,
+      "ordinary": 0.1,
+      "echoes": true,
+      "chance": 0.468559
+    },
+    {
+      "id": "ordinary-beside-pool",
+      "about": "Ten exclusive modifiers can be offered and none is aimed; an ordinary target with chance 0.1 per draw fills one of the two drawn options: 1 - 0.9^2.",
+      "exclusive_pool": 10,
+      "exclusive_hits": 0,
+      "ordinary": 0.1,
+      "echoes": false,
+      "chance": 0.19
+    },
+    {
+      "id": "mixed-aim",
+      "about": "One of ten exclusive modifiers aimed and an ordinary target with chance 0.2 per draw: 1 - 0.9 * 0.8^2.",
+      "exclusive_pool": 10,
+      "exclusive_hits": 1,
+      "ordinary": 0.2,
+      "echoes": false,
+      "chance": 0.424
+    },
+    {
+      "id": "mixed-aim-reroll",
+      "about": "As mixed-aim, with Omen of Abyssal Echoes: 1 - 0.576^2.",
+      "exclusive_pool": 10,
+      "exclusive_hits": 1,
+      "ordinary": 0.2,
+      "echoes": true,
+      "chance": 0.668224
+    },
+    {
+      "id": "no-aim-on-side",
+      "about": "No target is aimed on the revealed side: certain not to hit.",
+      "exclusive_pool": 10,
+      "exclusive_hits": 0,
+      "ordinary": 0.0,
+      "echoes": false,
+      "chance": 0.0
+    },
+    {
+      "id": "no-aim-no-pool",
+      "about": "No pool and no target aimed on the side: certain not to hit.",
+      "exclusive_pool": 0,
+      "exclusive_hits": 0,
+      "ordinary": 0.0,
+      "echoes": false,
+      "chance": 0.0
+    },
+    {
+      "id": "ordinary-unknown",
+      "about": "An ordinary target is aimed but its exalt chance is unknown (placeholder weights): unknown.",
+      "exclusive_pool": 10,
+      "exclusive_hits": 0,
+      "ordinary": null,
+      "echoes": false,
+      "chance": null
+    },
+    {
+      "id": "ordinary-unknown-no-pool-reroll",
+      "about": "No pool, an ordinary target whose exalt chance is unknown (a jewel), with the reroll: still unknown.",
+      "exclusive_pool": 0,
+      "exclusive_hits": 0,
+      "ordinary": null,
+      "echoes": true,
+      "chance": null
+    },
+    {
+      "id": "exclusive-tier-share",
+      "about": "Five exclusive modifiers can be offered; the aimed one has two reachable tiers, one at or better than its floor, so it counts a half: 0.5 / 5.",
+      "exclusive_pool": 5,
+      "exclusive_hits": 0.5,
+      "ordinary": 0.0,
+      "echoes": false,
+      "chance": 0.1
+    }
+  ]
+}

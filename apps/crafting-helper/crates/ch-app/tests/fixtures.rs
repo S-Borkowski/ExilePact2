@@ -782,22 +782,29 @@ fn fixtures_are_current() {
         );
     }
     // Nothing blocked: the route's last two steps are the desecration on
-    // the prefix side and the reveal, odds unknown, no fallback line.
+    // the prefix side, odds unknown, and the reveal, an estimate naming the
+    // facts it rests on; no fallback line.
     let last = preview("craft-last-desecration").route.as_ref().unwrap();
     assert_eq!(last.blueprint, CLOSE);
     let ids: Vec<&str> = last.steps.iter().map(|s| s.id.as_str()).collect();
     assert_eq!(ids, ["desecrate-last", "reveal-last"]);
     assert_eq!(last.steps[0].uses[1], "Omen of Sinistral Necromancy");
     assert_eq!(last.steps[1].uses[1], "Omen of Abyssal Echoes");
+    let odds: Vec<&str> = last
+        .steps
+        .iter()
+        .map(|s| s.odds.as_deref().unwrap_or_default())
+        .collect();
+    assert!(odds[0].starts_with("odds unknown: "), "{}", odds[0]);
+    assert!(
+        odds[1].starts_with('~')
+            && ["estimate", "rests on", "reveal-exclusive-row"]
+                .iter()
+                .all(|f| odds[1].contains(f)),
+        "{}",
+        odds[1]
+    );
     for s in &last.steps {
-        assert!(
-            s.odds
-                .as_deref()
-                .is_some_and(|o| o.starts_with("odds unknown: ")),
-            "{}: {:?}",
-            s.id,
-            s.odds
-        );
         assert_eq!(s.fallback, None, "{}", s.id);
     }
     assert!(plan("craft-last-desecration").can_accept);

@@ -105,6 +105,11 @@ derived tier equals the game's `Tier:`; the two revealed desecrated ones
   essence's certain add by its removal factor.
 - Desecration and reveal odds are not computed here: no weights are
   established for them (`weights.desecrated` is `not-established`).
+  Since 0.3.0 `ch-engine` works a reveal's estimate from a formula and
+  hands it back as `Odds::estimate(fraction, basis)`: known, the percent
+  the fraction's, `hits` of `total` the fraction in millionths (so it never
+  overflows and stays within 0.0001 percentage points of the percent),
+  and a basis that says what the estimate rests on, not a weight.
 
 ## Trade: start weights and the search query
 
@@ -191,7 +196,9 @@ cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-data
 `tests/data.rs` checks the embedded files against the index, the variant
 from the base type, the join and its tiers on the real fixtures (read in
 place from `crates/ch-item/fixtures/real/`), the valid modifiers, the ring
-anchor above, unknown odds on a jewel and the essence lookup by floor. The
+anchor above, unknown odds on a jewel, the essence lookup by floor and
+(0.3.0) an estimate's ratio and basis
+(`an_estimate_is_known_with_a_small_ratio_and_its_basis`). The
 data itself is refreshed by `tools/crafting_helper/poe2db.py`; a refresh
 that moves a weight or tier changes the anchors here, and the tests say so.
 

@@ -1085,5 +1085,128 @@ class Spec(unittest.TestCase):
                 self.assertTrue(sm.fact_problems(bad))
 
 
+# The reveal's estimate (#49, the spec's "Reveal odds"): hand values worked
+# from the spec's formula, written here apart from the parity file so
+# neither can drift to match the other. Each is (exclusive pool n, aimed
+# exclusive h, ordinary chance q or None, Abyssal Echoes, chance or None).
+REVEAL_ANCHORS = [
+    (7, 1, 0.0, False, 1 / 7),
+    (7, 1, 0.0, True, 13 / 49),
+    (0, 0, 0.1, False, 0.271),
+    (0, 0, 0.1, True, 0.468559),
+    (10, 0, 0.1, False, 0.19),
+    (10, 1, 0.2, False, 0.424),
+    (10, 0, 0.0, False, 0.0),
+    (10, 0, None, False, None),
+]
+# The facts the estimate rests on, with the source each must cite.
+REVEAL_FACTS = {
+    "reveal-exclusive-row": ["poe2wiki.net", "exiledesk.com"],
+    "reveal-ordinary-exalt-weights": ["poe2wiki.net"],
+    "exclusive-weights-unknown": ["exiledesk.com"],
+    "necromancy-without-pool": ["poe2wiki.net"],
+}
+
+
+def assert_chance(test, got, want):
+    if want is None:
+        test.assertIsNone(got)
+    else:
+        test.assertIsNotNone(got)
+        test.assertAlmostEqual(got, want, places=9)
+
+
+class RevealOdds(unittest.TestCase):
+    def test_reveal_chance_matches_the_recorded_cases(self):
+        data = json.loads(sm.REVEAL_ODDS.read_text(encoding="utf-8"))
+        self.assertEqual(data["spec"], "docs/models/crafting-slots-spec.md")
+        cases = data["cases"]
+        self.assertGreaterEqual(len(cases), 8)
+        self.assertEqual(len({c["id"] for c in cases}), len(cases))
+        for c in cases:
+            with self.subTest(case=c["id"]):
+                got = sm.reveal_chance(c["exclusive_pool"], c["exclusive_hits"], c["ordinary"], c["echoes"])
+                assert_chance(self, got, c["chance"])
+        self.assertEqual(sm.reveal_problems(), [])
+        # the kinds the spec asks the file to cover
+        self.assertTrue(any(c["chance"] is None for c in cases), "an unknown")
+        self.assertTrue(any(c["echoes"] for c in cases), "a reroll")
+        self.assertTrue(any(c["exclusive_pool"] == 0 for c in cases), "no pool")
+        self.assertTrue(any(c["exclusive_hits"] and c["ordinary"] for c in cases),
+                        "a mixed exclusive and ordinary aim")
+        for anchor in REVEAL_ANCHORS:
+            with self.subTest(anchor=anchor):
+                self.assertTrue(any(
+                    (c["exclusive_pool"], c["exclusive_hits"], c["ordinary"], c["echoes"]) == anchor[:4]
+                    for c in cases))
+
+    def test_reveal_chance_anchors(self):
+        for n, h, q, echoes, want in REVEAL_ANCHORS:
+            with self.subTest(n=n, h=h, q=q, echoes=echoes):
+                assert_chance(self, sm.reveal_chance(n, h, q, echoes), want)
+        self.assertIs(sm.EXCLUSIVE_EQUAL_WEIGHT, True)
+        # control: with the equal-weight switch off an exclusive aim is
+        # unknown, and an estimate with no exclusive aim is unchanged
+        saved = sm.EXCLUSIVE_EQUAL_WEIGHT
+        sm.EXCLUSIVE_EQUAL_WEIGHT = False
+        try:
+            self.assertIsNone(sm.reveal_chance(7, 1, 0.0, False))
+            self.assertIsNone(sm.reveal_chance(10, 1, 0.2, True))
+            assert_chance(self, sm.reveal_chance(10, 0, 0.1, False), 0.19)
+            assert_chance(self, sm.reveal_chance(0, 0, 0.1, False), 0.271)
+        finally:
+            sm.EXCLUSIVE_EQUAL_WEIGHT = saved
+        # controls: inputs no item can give are refused, not estimated
+        for bad in ((0, 1, 0.0, False), (3, 4, 0.0, False), (5, 1, 1.5, False), (-1, 0, 0.1, False)):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    sm.reveal_chance(*bad)
+
+    def test_reveal_case_check_reports_a_changed_expectation(self):
+        import tempfile
+        data = json.loads(sm.REVEAL_ODDS.read_text(encoding="utf-8"))
+        mutations = []
+        known = next(c for c in data["cases"] if c["chance"] is not None and c["chance"] > 0)
+        unknown = next(c for c in data["cases"] if c["chance"] is None)
+        for case_id, chance in ((known["id"], known["chance"] + 0.01),
+                                (known["id"], None),
+                                (unknown["id"], 0.5)):
+            mutated = copy.deepcopy(data)
+            next(c for c in mutated["cases"] if c["id"] == case_id)["chance"] = chance
+            mutations.append((case_id, mutated))
+        with tempfile.TemporaryDirectory() as tmp:
+            same = Path(tmp) / "same.json"
+            same.write_text(json.dumps(data), encoding="utf-8")
+            self.assertEqual(sm.reveal_problems(same), [])
+            for i, (case_id, mutated) in enumerate(mutations):
+                with self.subTest(case=case_id, chance=next(
+                        c for c in mutated["cases"] if c["id"] == case_id)["chance"]):
+                    path = Path(tmp) / f"mutated-{i}.json"
+                    path.write_text(json.dumps(mutated), encoding="utf-8")
+                    problems = sm.reveal_problems(path)
+                    self.assertEqual(len(problems), 1, problems)
+                    self.assertIn(case_id, problems[0])
+                    self.assertTrue(sm.check(CASES, path))
+
+    def test_reveal_facts_are_not_established(self):
+        text = SPEC.read_text(encoding="utf-8")
+        rows = {r["id"]: r for r in sm.spec_facts(text)}
+        for fact_id, sources in REVEAL_FACTS.items():
+            with self.subTest(fact=fact_id):
+                self.assertIn(fact_id, rows)
+                self.assertEqual(rows[fact_id]["label"], "not established")
+                for s in sources:
+                    self.assertIn(s, rows[fact_id]["source"])
+        # the three new rows close the table, in this order
+        self.assertEqual([r["id"] for r in sm.spec_facts(text)][-3:],
+                         ["reveal-exclusive-row", "reveal-ordinary-exalt-weights", "exclusive-weights-unknown"])
+        # no blueprint relies on them: the odds' basis names them instead
+        table = sm.relied_on_table(text)
+        for fact_id in list(REVEAL_FACTS)[:3]:
+            with self.subTest(relied_on=fact_id):
+                self.assertEqual(table.get(fact_id), [])
+        self.assertIn("\n## Reveal odds\n", text.replace("\r\n", "\n"))
+
+
 if __name__ == "__main__":
     unittest.main()
