@@ -10,6 +10,10 @@ runtime, with an HTML/CSS/TypeScript UI), shipped as one `quest-tracker.exe`
 — the owner's decision of 2026-10-25. Everything below is designed with the
 web's means; the names in [Export contract](#export-contract) are final.
 
+The [proposed shared UI design system](../ui-design-system.md) explores a
+future visual direction. This brief's app-specific behavior and export
+contract remain authoritative; the proposal is not a shipped restyle.
+
 ## Design constraints
 
 - **Over a moving game.** The panel sits on top of bright, dark and busy

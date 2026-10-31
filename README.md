@@ -3,6 +3,10 @@
 Tools and mods for Path of Exile 2, three apps: the quest tracker, the
 waystone roller and the crafting helper.
 
+The [proposed shared UI design system](docs/ui-design-system.md) describes a
+future visual direction; current app behavior and export contracts remain
+authoritative.
+
 ## Quest tracker
 
 `Quest Tracker.exe` (`quest-tracker.exe` as a release download) is a small
