@@ -1207,7 +1207,7 @@
               "id": "desecrate-last",
               "instruction": "Use Omen of Sinistral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a prefix, for +# to Armour",
               "number": 1,
-              "odds": "odds unknown: desecration and reveals have no established weights",
+              "odds": "odds unknown: a desecration only adds an unrevealed modifier: whether it becomes a target is the reveal's chance",
               "survival": null,
               "targets": [
                 "+# to Armour"
@@ -1223,7 +1223,7 @@
               "id": "reveal-last",
               "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +# to Armour (prefix)",
               "number": 2,
-              "odds": "odds unknown: desecration and reveals have no established weights",
+              "odds": "~24% (an estimate: the first option one of 8 exclusive prefix modifiers; the other two drawn like an Exalted Orb over the ordinary prefixes, each a target 6.54% of the time; rerolled once with Omen of Abyssal Echoes when no target is offered; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights, if the earlier steps hit)",
               "survival": null,
               "targets": [
                 "+# to Armour"

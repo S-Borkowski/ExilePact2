@@ -1050,10 +1050,7 @@ fn desecration_step_names_the_lord_omen() {
     let text = step_targets(step, &item);
     assert_eq!(
         step_instruction(step, &item, &ulaman),
-        format!(
-            "{} with Omen of the Sovereign on the prefix side for {}",
-            action.name, text[0]
-        )
+        format!("{} with Omen of the Sovereign for {}", action.name, text[0])
     );
 
     // The whittle's desecration with a suffix and Ulaman's prefix missing:
@@ -1071,6 +1068,72 @@ fn desecration_step_names_the_lord_omen() {
             .contains(", then apply the Preserved Collarbone"),
         "{}",
         line.instruction
+    );
+}
+
+#[test]
+fn plain_bone_step_names_no_side() {
+    use ch_app::ch_engine::ch_blueprint::Goal;
+    use ch_app::craft::{step_instruction, step_targets};
+    // Issue #49: a desecration names its bone, its omen and its target, and
+    // no side, even when it is tied to one. The 2P/1S ring with Ulaman's
+    // prefix missing and both Necromancy omens blocked:
+    // essence-desecrate-double-slam's plain bone with Omen of the Sovereign.
+    let engine = Engine::shipped().unwrap();
+    let path = app_root().join("crates/ch-engine/tests/items/lord-omen/ring-2p1s.txt");
+    let text = std::fs::read_to_string(&path)
+        .unwrap()
+        .replace("\r\n", "\n");
+    let item = ch_app::ch_item::parse(&text).unwrap();
+    let ulaman: Vec<Target> = [
+        ("prefix-to-maximum-mana", Some(5)),
+        ("prefix-to-maximum-life", Some(4)),
+        (ULAMAN_PREFIX, Some(1)),
+        (FIRE, Some(5)),
+    ]
+    .iter()
+    .map(|(id, floor)| Target::new(*id, *floor))
+    .collect();
+    let necromancy = [
+        "omen-of-sinistral-necromancy".to_string(),
+        "omen-of-dextral-necromancy".to_string(),
+    ];
+    let plan = engine.plan(&item, &ulaman, &necromancy).unwrap();
+    let route = plan
+        .routes
+        .iter()
+        .find(|r| r.blueprint == "essence-desecrate-double-slam")
+        .expect("the ring plans essence-desecrate-double-slam");
+    let step = route
+        .steps
+        .iter()
+        .find(|s| s.goal == Goal::Desecrate)
+        .unwrap();
+    let action = step.action.as_ref().unwrap();
+    assert_eq!(action.omens, ["omen-of-the-sovereign"]);
+    let text = step_targets(step, &item);
+    let said = step_instruction(step, &item, &ulaman);
+    assert_eq!(
+        said,
+        format!("{} with Omen of the Sovereign for {}", action.name, text[0])
+    );
+    assert!(!said.contains(" side"), "{said}");
+}
+
+#[test]
+fn baseline_chaos_step_keeps_its_side() {
+    use ch_app::ch_engine::ch_blueprint::Side;
+    use ch_app::craft::step_instruction;
+    // Issue #49 drops the side phrase off exalt and desecration steps
+    // only: a Chaos Orb step tied to a side still names it.
+    let (route, item) = whittle_route();
+    let mut tied = route.steps[1].clone();
+    assert_eq!(tied.id, "whittle");
+    tied.side = Some(Side::Suffix);
+    let said = step_instruction(&tied, &item, &ring_targets());
+    assert!(
+        said.starts_with("Chaos Orb with Omen of Whittling on the suffix side for "),
+        "{said}"
     );
 }
 

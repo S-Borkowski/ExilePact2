@@ -94,11 +94,18 @@ from a bought base.
     other side still has a free slot (since 0.2.1, issue #42): on an item
     whose other side is full the exalt can only land on the open side, so
     the omen would be spent for nothing, and the step reads as a plain
-    exalt on that side (`Perfect Exalted Orb with Omen of Greater
-    Exaltation on the suffix side for …` on a ring whose prefixes are
-    full), with the same odds; a blocked side Exaltation omen no longer
-    passes that exalt over. This holds in the route preview, the guide's
-    current step, the overlay and a fallback line. A removal step names
+    exalt (`Perfect Exalted Orb with Omen of Greater Exaltation for …` on
+    a ring whose prefixes are full), with the same odds; a blocked side
+    Exaltation omen no longer passes that exalt over. This holds in the
+    route preview, the guide's current step, the overlay and a fallback
+    line. An Exalted Orb step of any grade and a desecration step do not
+    say which side they land on (since 0.3.0, issue #49): the free slots
+    or the side omen they name already decide it, so the text ends with
+    its targets (`… for +# to Armour`) or `, for any modifier`, with no
+    "on the prefix side" before them. The step still lands on the same
+    side with the same odds, currency and omens; other currencies (a
+    Chaos Orb, an Orb of Augmentation, an essence, an annulment) still
+    name the side. A removal step names
     the currency with its omens and the modifier it removes, by its text
     on the item (`Orb of Annulment to remove +95(90-104) to maximum Mana
     or +200(168-236) to Accuracy Rating; it takes one modifier at
@@ -131,8 +138,8 @@ from a bought base.
     a step names Omen
     of Greater Exaltation where two free slots take two targets; a step
     that closes a finished side says so in the app's words (`Exalted Orb
-    with Omen of Greater Exaltation and Omen of Dextral Exaltation on the
-    suffix side, for any modifier`); a removal is a whittle only when it
+    with Omen of Greater Exaltation and Omen of Dextral Exaltation, for
+    any modifier`); a removal is a whittle only when it
     is certain to take a modifier you do not want, and names Omen of
     Sinistral or Dextral Annulment when the other side holds a target;
     and the engine's choice is final (the app does not decide again by
@@ -150,7 +157,21 @@ from a bought base.
     reveal with Omen of Abyssal Echoes. A reveal that offers no target is
     taken off with Omen of Light and an Orb of Annulment, and the bone is
     used again (since 0.2.0, only once no Exalted Orb step can still add a
-    target on that side: below). Both steps say "odds unknown" with the reason. When the
+    target on that side: below). The desecration says "odds unknown":
+    it only adds an unrevealed modifier, and whether that becomes a target
+    is the reveal's chance. The reveal shows an **estimated chance**
+    (since 0.3.0, issue #49; before, "odds unknown"), worked from
+    community counts and the wiki's observations rather than measured
+    weights: one of the three options is always one of the class's
+    exclusive (desecrated) modifiers while it has one on that side at the
+    item's level, each taken as equally likely; the other two are drawn
+    like an Exalted Orb over the side's ordinary modifiers; with no
+    exclusive modifier on that side, all three are; and Omen of Abyssal
+    Echoes counts as one reroll when no target is offered (`~24% (an
+    estimate: the first option one of 8 exclusive prefix modifiers; …;
+    rests on the not-established reveal-exclusive-row, …)`). The odds name
+    the not-established facts the estimate rests on, and stay unknown
+    where an Exalted Orb's would (a jewel's ordinary target). When the
     last target cannot be desecrated, the route keeps the step it took
     before, and that step's Fallback line says why (`Perfect Exalted Orb
     instead of a desecration: Omen of Sinistral Necromancy blocked`): the
@@ -922,8 +943,9 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test essence_swap  # the fractured essence swap: survival, both outcomes, the Dusk Ring
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test lord_omen  # the lord omens: which desecrations name one, and which do not
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test full_side_omen  # no side Exaltation omen on an exalt whose other side is full, both orders
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test reveal_odds  # a reveal's estimated chance against the model's cases, both orders
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test seeds_codex  # jewellery-catalyst-exalt: hit, miss, refused start
-py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
+py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases, invariants and reveal odds
 py -3 -m unittest tests.test_crafting_helper_mechanics_doc                             # crafting-mechanics.md: headings, sources, labels
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
 npm --prefix apps/crafting-helper test                                                  # the pages, in jsdom
@@ -1225,6 +1247,33 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   and `craft.rs`'s unit test
   `listed_fallback_names_no_left_out_exaltation_omen` a listed step's
   fallback line.
+- **0.3.0's step wording and reveal estimate (#49).** `ch-app`'s
+  `tests/state_order.rs` holds that an exalt step names no side, on a
+  full other side (`full_prefixes_exalt_step_names_no_side`) and with a
+  side Exaltation omen (`side_exaltation_omen_step_names_the_omen_and_no_side`),
+  and `tests/craft_window.rs` that a plain bone with a lord omen names
+  none (`plain_bone_step_names_no_side`) while a Chaos Orb keeps its side
+  (`baseline_chaos_step_keeps_its_side`). The reveal model is written in
+  the spec's § "Reveal odds" first, then modelled in
+  `tools/crafting_helper/slot_model.py` (`reveal_chance`), whose
+  `RevealOdds` tests in `tests.test_crafting_helper_slot_model` check the
+  parity file `tests/items/slots/reveal-odds.json` against it, the hand
+  anchors, a mutated case being reported, and the three new facts' labels
+  and sources. `ch-engine`'s `tests/reveal_odds.rs` runs the same parity
+  file through the engine (`reveal_chance_matches_the_model_cases`), keeps
+  a desecration's own odds unknown and its routes unchanged
+  (`baseline_desecration_odds_stay_unknown`), and plans over the owner's
+  belt and the constructed items in `tests/items/reveal-odds/`: an
+  ordinary target's two exalt draws and reroll, an exclusive target's
+  one in the side's pool, three draws with no pool or below its level,
+  no reroll without Omen of Abyssal Echoes, a jewel's ordinary target
+  unknown, and a listed reveal before its desecration taking its aims'
+  side. `ch-data`'s `tests/data.rs` holds the estimate's ratio and basis
+  (`an_estimate_is_known_with_a_small_ratio_and_its_basis`). `ch-app`'s
+  `tests/last_desecration.rs` shows the estimate in the craft window
+  (`reveal_step_shows_an_estimate_that_names_its_facts`, beside
+  `desecration_step_odds_stay_unknown_beside_the_reveal_estimate`), and
+  the page's `src/app.test.ts` renders it from `craft-last-desecration`.
 - `tests.test_crafting_helper_mechanics_doc` reads
   [`crafting-mechanics.md`](crafting-mechanics.md): its headings, a
   source for every entry, and since 0.1.4 every guide fact labelled
@@ -1536,12 +1585,30 @@ release already exists, only its assets are replaced.
   the craft, and the next start begins with nothing grabbed.
 - **The crafting engine's limits** show in the craft window:
   - **Odds are often unknown.** Every jewel (poe2db shows no spawn weights
-    for jewels), every desecration and reveal (no established weights; a
-    reveal may also offer normal-pool modifiers, whose share is not
-    established), every flux (how it maps tiers is not established), and a
-    target whose weight is the site's placeholder 1 give `unknown` with the
-    reason. Known odds are one step's rough chance, never a simulation or
-    an expected cost.
+    for jewels), every desecration (it only adds an unrevealed modifier;
+    the reveal decides whether it becomes a target), every flux (how it
+    maps tiers is not established), and a target whose weight is the
+    site's placeholder 1 give `unknown` with the reason. Known odds are
+    one step's rough chance, never a simulation or an expected cost.
+  - **A reveal's chance is an estimate** (since 0.3.0). It rests on three
+    facts that are not established, each named in the odds: that one
+    option is always an exclusive modifier while the class has one on
+    that side at the item's level (`reveal-exclusive-row`: the wiki's
+    observation and a community count of 563 ring reveals, which also
+    found two exclusive options about one time in seven and three about
+    one in a hundred; the estimate leaves those out); that the other
+    options are drawn like
+    an Exalted Orb over the side's ordinary modifiers, independently and
+    with the exclusive ones left out (`reveal-ordinary-exalt-weights`);
+    and that the exclusive modifiers are equally likely
+    (`exclusive-weights-unknown`: their real weights are unknown and
+    uneven, poe2db's 1 being a placeholder). Omen of Abyssal Echoes counts
+    as one reroll taken only when no target is offered; a lord omen's
+    narrowing of the exclusive option, a bone's minimum modifier level and
+    its effect on the number of exclusive options are not counted. The
+    estimate looks like any other known chance in the craft window and
+    the overlay, its basis saying it is an estimate; routes do not use it
+    to choose a step.
   - **The affix limits are assumed**: Magic 1 prefix and 1 suffix, Rare 3
     and 3, Rare jewel 2 and 2, one more on the other side with a Contempt
     liquid emotion, and one more or one fewer on a side for each base
@@ -1564,8 +1631,10 @@ release already exists, only its assets are replaced.
     the item's level is read from the shipped data (every equipment
     desecrated modifier is level 65 there), not measured; nor is what
     share of a reveal's options a normal-pool target gets, which is why
-    the rule offers any target on a side with a pool and its odds are
-    unknown. The Necromancy and Abyssal Echoes omens are assumed active
+    the rule offers any target on a side with a pool and the reveal's
+    chance is only an estimate (above). That a reveal on a side with no
+    exclusive modifier offers ordinary ones is the wiki's observation
+    (`necromancy-without-pool`). The Necromancy and Abyssal Echoes omens are assumed active
     before use (`omens-active-before-use`, now all seven state-ordered
     routes').
   - **The fractured essence swap rests on statements, not measurements**
@@ -1949,6 +2018,37 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.3.0
+
+Shorter exalt and desecration steps, and a chance for the reveal (#49).
+
+- **An Exalted Orb or desecration step no longer ends with "on the
+  prefix side" or "on the suffix side".** The free slots, or the side
+  omen the step already names, decide where it lands, so the side was
+  said twice. "Perfect Exalted Orb with Omen of Greater Exaltation on the
+  suffix side for …" now reads "Perfect Exalted Orb with Omen of Greater
+  Exaltation for …". This holds for every grade of Exalted Orb and every
+  bone, in the route preview, the guide's current step, the overlay and
+  the "On a hit" and fallback lines. The step lands where it did, with
+  the same currency, omens and odds. A Chaos Orb, an Orb of Augmentation,
+  an essence or an annulment still names its side, and so does the
+  Necromancy step ("the desecrated modifier will be a prefix").
+- **A reveal at the Well of Souls now shows an estimated chance** instead
+  of "odds unknown", for example "~24% (an estimate: …)". It counts one
+  of the three options as one of your item's exclusive desecrated
+  modifiers on that side, when its class has one at the item's level,
+  each of them taken as equally likely, and the other two as drawn like
+  an Exalted Orb on that side; with no exclusive modifier there, all three
+  are. With Omen of Abyssal Echoes, the reveal counts as having one
+  reroll, used when no target is offered.
+- **The estimate rests on community counts and the wiki's
+  observations**, not on measured weights. The odds say it is an
+  estimate and name the facts it rests on, so you can judge how far to
+  trust it. The chances of two or three exclusive options, and the real,
+  uneven weights among the exclusive modifiers, are not counted. A
+  desecration's own odds stay unknown, with a reason that no longer says
+  reveals have no weights; the routes themselves are unchanged.
 
 ### 0.2.1
 

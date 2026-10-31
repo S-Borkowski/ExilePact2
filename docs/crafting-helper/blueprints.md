@@ -402,8 +402,10 @@ desecration: <reason>`: `no desecrated <side> modifier on <class> at item
 level <n>`, `<names> blocked` (the class's bones, the Necromancy omen), or
 the engine's own reason ([`ui-design.md`](ui-design.md) § "Rust-produced
 copy"). The steps before it (a reveal, Omen of Light, a removal) clear the
-way for it and carry no such line. The odds of both steps are "odds
-unknown": desecration and reveals have no established weights.
+way for it and carry no such line. The desecration's odds are "odds
+unknown": it only adds an unrevealed modifier, and whether that becomes a
+target is the reveal's chance. Since 0.3.0 the reveal's odds are an
+estimate (§ "Odds" below).
 
 **Side rules** (`side = ...`):
 
@@ -607,11 +609,25 @@ that came in below their floor.
 
 **Odds** are one step's rough chance, never a simulation: a known percent
 with its basis ("8000 of 69500 weight"), or `unknown` with the reason.
-Unknown for every jewel (no spawn weights), for a desecration and a reveal
-(no established weights; a reveal may offer normal-pool modifiers too), for
-a target whose weight is the site's placeholder 1, for a flux, and for a
-whittle when two modifiers tie for the lowest level. An essence, alloy or
-liquid's add is certain.
+Unknown for every jewel (no spawn weights), for a desecration (it only
+adds an unrevealed modifier), for a target whose weight is the site's
+placeholder 1, for a flux, and for a whittle when two modifiers tie for
+the lowest level. An essence, alloy or liquid's add is certain.
+
+Since 0.3.0 (issue #49) a reveal's odds are an **estimate**, from the
+spec's § "Reveal odds": on the side of the unrevealed modifier (in a
+listed preview, the one side every aim is on), one option is one of the
+class's exclusive modifiers there at the item's level, each taken as
+equally likely, and the other two are drawn like an Exalted Orb over the
+side's ordinary pool; with no exclusive modifier on that side, all three
+are; Omen of Abyssal Echoes counts as one reroll. The odds are known, with
+a basis that says `an estimate` and names the not-established facts it
+`rests on` (`reveal-exclusive-row` always; `reveal-ordinary-exalt-weights`,
+`exclusive-weights-unknown` and `necromancy-without-pool` where they
+apply). They stay unknown where an ordinary aim's Exalted Orb odds are (a
+jewel), and when the side is not known before the desecration. Routing
+does not use the estimate: `hardest` still counts a desecrated-pool target
+as unknown.
 
 Since 0.1.4:
 
@@ -742,7 +758,7 @@ list). "The first four" are `close-a-side`,
 | `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | the first four |
 | `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | the first four, `fracture-first`, `fractured-essence-swap` (its essence's removal too) |
 | `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), the four of 0.1.4, `fractured-essence-swap`, and `jewellery-catalyst-exalt` (its Catalysing and side omens before each slam) |
-| `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes. | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` |
+| `necromancy-without-pool` | What Sinistral Necromancy does on a class with no desecrated prefixes: a reveal of ordinary prefixes, by the wiki's observation (reviewed 2026-10-31), untested here. | `essence-desecrate-double-slam`, `full-rare-desecration-rescue` |
 | `removal-equally-likely` | Each modifier a random removal may take is equally likely to go. | `full-rare-desecration-rescue`, `fractured-essence-swap` (the unrevealed modifier's survival and the annulment's odds) |
 | `abyss-mark-unfracturable` | A Fracturing Orb never picks the Mark of the Abyssal Lord (Essence of the Abyss's modifier). | `fracture-first` |
 | `desecrated-unfracturable` | A Fracturing Orb never picks a desecrated modifier, revealed or not. | `fracture-first` |
@@ -751,6 +767,14 @@ list). "The first four" are `close-a-side`,
 | `lord-with-side-omen` | A lord omen and a Necromancy omen on one desecration both apply: the modifier is that lord's, on that side. | every blueprint whose desecration carries `lord-omen`: the first four, `amulets-resist-spirit`, `caster-cast-speed`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `rings-resist-whittle`, `weapons-physical-generic` |
 | `lord-omen-classes` | The lord omens work on the jawbone classes but Quivers, Amulets and Rings; Belts and Quivers take none. | the same eleven |
 | `catalysing-with-side-omen` | Omen of Catalysing Exaltation and a side Exaltation omen on one exalt both apply. | `jewellery-catalyst-exalt` |
+| `reveal-exclusive-row` | One option of a reveal is always an exclusive (desecrated-section) modifier while the class has one on that side at the item's level; more than one can be. | none (since 0.3.0, issue #49: every reveal's estimated odds name it) |
+| `reveal-ordinary-exalt-weights` | A reveal's other options are drawn like an Exalted Orb, by spawn weight over the side's ordinary pool; the estimate draws them independently and leaves exclusive modifiers out. | none (a reveal's estimate names it when an ordinary target counted) |
+| `exclusive-weights-unknown` | The exclusive modifiers' weights are unknown and uneven; the estimate takes them as equal. | none (a reveal's estimate names it when an exclusive target counted) |
+
+The last three are the facts a Well of Souls reveal's estimated odds rest
+on (since 0.3.0); no route decision rests on them, so no blueprint names
+them in `relies_on`, and `hardest` still counts a desecrated-pool target's
+odds as unknown.
 
 `ch-blueprint`'s list of these ids is read against the spec's table by a
 test, so a fact relabelled there means editing the list, and a blueprint

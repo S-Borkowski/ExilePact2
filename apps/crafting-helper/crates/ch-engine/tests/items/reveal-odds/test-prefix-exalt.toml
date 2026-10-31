@@ -1,0 +1,20 @@
+# A test blueprint (engine tests only): one Exalted Orb with Omen of
+# Sinistral Exaltation, for any remaining target: the prefix side's exalt
+# chance a reveal's ordinary draws are compared with.
+id = "test-prefix-exalt"
+name = "Test: exalt a prefix for any remaining target"
+classes = ["Belts", "Body Armours", "Rings"]
+source = "ch-engine tests"
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt a prefix for a remaining target"
+goal = "add-wanted"
+bind = "any-remaining"
+
+[[step.action]]
+currency = "exalted-orb"
+omens = ["omen-of-sinistral-exaltation"]
