@@ -33,7 +33,7 @@ and `trim` are dry runs unless `--apply`: the dry run prints exactly the lines
 
 **`report`** lists every registered worktree, the main one first, with its
 branch or HEAD and its flags (`main`, `current`, `locked`, `folder missing`,
-`dirty`, `merged into <ref>` or `not merged into <ref>`), the size of each `apps/*/target` and
+`dirty`, `status error` (git status failed there), `merged into <ref>` or `not merged into <ref>`), the size of each `apps/*/target` and
 `apps/*/node_modules` in it and their total; then each folder under
 `<main>/.claude/worktrees/` that git does not list, with its size; then the
 free GiB on the drive. It changes nothing.
@@ -82,7 +82,10 @@ it runs `report` and the `worktrees` dry run, shows the owner both, and runs
 - **A worktree with work in it.** Modified, staged or untracked files make it
   `keep`; only files git ignores (build output, `node_modules`) may be
   present for `remove`. `remove` never passes `--force`, so git's own checks
-  still apply on top.
+  still apply on top. A worktree that carries a submodule is therefore always
+  refused: git will not remove one without `--force`, the tool counts the
+  refusal (exit 1), and a person checks it is merged and clean and runs
+  `git worktree remove --force <path>` by hand.
 - **A worktree whose work is not on `--into`.** Its HEAD has to be an ancestor
   of the ref, `origin/main` by default; run `git fetch` first if the ref is
   stale, because a stale ref only makes the tool keep more.

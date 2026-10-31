@@ -147,10 +147,10 @@ def delete_tree(path, errors: list) -> None:
 
     def remove_link(p):
         try:
-            if os.path.isdir(p):
+            if os.name == "nt" and os.path.isdir(p):
                 os.rmdir(p)  # a directory junction or symlink: removes the link only
             else:
-                os.unlink(p)
+                os.unlink(p)  # POSIX: rmdir on a symlink fails with ENOTDIR
         except OSError as exc:
             errors.append(f"{p}: {exc}")
 

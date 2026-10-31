@@ -351,6 +351,25 @@ class TrimTests(Fixture):
         self.assertTrue((outside / "big.bin").is_file(), out)
         self.assertEqual((outside / "big.bin").stat().st_size, 8000)
 
+    def test_trim_never_follows_a_directory_symlink(self):
+        outside = self.tmp / "elsewhere"
+        write(outside / "big.bin", 8000)
+        target = self.main / "apps" / "app" / "target"
+        write(target / "debug" / "deps" / "libapp.rlib", 100)
+        try:
+            os.symlink(str(outside), str(target / "debug" / "linked"),
+                       target_is_directory=True)
+        except (OSError, NotImplementedError) as exc:
+            self.skipTest(f"cannot create a directory symlink here: {exc}")
+        rc, out = self.trim(1000, "--apply")
+        self.assertEqual(rc, 0, out)
+        self.assertTrue((target / "debug" / "deps" / "libapp.rlib").is_file(), out)
+        rc, out = self.trim(50, "--apply")
+        self.assertEqual(rc, 0, out)
+        self.assertFalse(os.path.lexists(target / "debug" / "linked"), out)
+        self.assertFalse(target.exists(), out)
+        self.assertEqual((outside / "big.bin").stat().st_size, 8000)
+
 
 class CheckAndReportTests(Fixture):
     def test_check_exit_code_follows_threshold(self):
