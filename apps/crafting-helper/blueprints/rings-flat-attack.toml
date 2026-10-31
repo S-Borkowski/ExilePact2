@@ -13,6 +13,7 @@ poster names a desecration as the other way to the last flat modifier, and \
 says nothing about a missed slam; here a miss is annulled from the prefix \
 side and slammed again. The poster warns that rings get expensive on bad \
 luck."""
+relies_on = ["open-side-landing"]
 
 [[start]]
 rarity = ["rare"]

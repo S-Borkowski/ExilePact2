@@ -344,7 +344,10 @@ fn rare_clean_then_slam_hit_and_miss() {
 
     // Hit path: the Accuracy prefix is annulled (a plain annulment, as the
     // suffix side holds no target), a Greater, Sinistral Perfect exalt adds
-    // Life and Evasion, a Dextral one adds Chaos Resistance.
+    // Life and Evasion, a plain one adds Chaos Resistance: the prefixes are
+    // then full, so the exalt lands on the suffix side without Dextral
+    // Exaltation (docs/models/crafting-slots-spec.md, "A side Exaltation
+    // omen with the other side full").
     let (mut guide, first) = start(&engine, "rare-clean-then-slam", &ring, &list, &block);
     is(
         &first,
@@ -370,7 +373,7 @@ fn rare_clean_then_slam_hit_and_miss() {
         "side-slam",
         Some(Side::Suffix),
         "perfect-exalted-orb",
-        &["omen-of-dextral-exaltation"],
+        &[],
     );
     assert_eq!(
         slam.instead_of_desecration.as_deref(),

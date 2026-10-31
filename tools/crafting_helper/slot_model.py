@@ -26,8 +26,9 @@ What is here:
 - the next-step rules (certain removals first and Omen of Light waiting
   for a same-side exalt among them), the side
   rules, the `greater-omen`, `side-omen` and `lord-omen`
-  placeholders (a target's lord read from the case), the removal rules and the projection (`plan`), with the
-  rejections in the spec's order;
+  placeholders (a target's lord read from the case), a side Exaltation
+  omen left out beside a full side, the removal rules and the projection
+  (`plan`), with the rejections in the spec's order;
 - a reader for a listed blueprint, for the baselines only
   (`listed_first_step`);
 - readers for the spec's facts table and its relied-on table.
@@ -503,7 +504,8 @@ BLUEPRINTS = {
             DESECRATE_LAST,
             SIDE_SLAM,
         ],
-        relies_on=ALL_GREATER + LORD_FACTS + ("omens-active-before-use", "necromancy-without-pool"),
+        relies_on=ALL_GREATER + LORD_FACTS + ("open-side-landing", "omens-active-before-use",
+                                              "necromancy-without-pool"),
     ),
     "magic-augment-essence": Blueprint(
         id="magic-augment-essence",
@@ -532,7 +534,7 @@ BLUEPRINTS = {
         classes=EQUIPMENT_CLASSES,
         starts=[{"rarity": ("rare",)}],
         steps=[REVEAL_LAST, LIGHT_LAST, REMOVE, DESECRATE_LAST, SIDE_SLAM],
-        relies_on=ALL_GREATER + LORD_FACTS + ("omens-active-before-use",),
+        relies_on=ALL_GREATER + LORD_FACTS + ("open-side-landing", "omens-active-before-use"),
     ),
 }
 
@@ -685,15 +687,30 @@ def greater_fits(state, step, side, acc):
     return False
 
 
+def exaltation_omen_left_out(omen, acc):
+    """Whether a side Exaltation omen on an Exalted Orb is left out (spec
+    § "A side Exaltation omen with the other side full"): the side it names
+    has a free slot and the other side has none, so the exalt lands there
+    without it."""
+    s = omen_side(omen)
+    if omen not in SIDE_OMENS["exalt"].values() or s is None:
+        return False
+    return acc[s].free > 0 and acc[other(s)].free <= 0
+
+
 def resolve_omens(state, step, side, action, acc):
     """The action's omens with the placeholders resolved; None when a
-    `side-omen` has no side to resolve to."""
+    `side-omen` has no side to resolve to. On an Exalted Orb a side
+    Exaltation omen, literal or resolved, is left out while the other side
+    is full, before the blocked list is read (`fit`)."""
     k = kind(action.currency)
     out = []
     for o in action.omens:
         if o == "side-omen":
             if side is None or k not in SIDE_OMENS:
                 return None
+            if k == "exalt" and exaltation_omen_left_out(SIDE_OMENS[k][side], acc):
+                continue
             out.append(SIDE_OMENS[k][side])
         elif o == "greater-omen":
             if k != "exalt":
@@ -706,6 +723,8 @@ def resolve_omens(state, step, side, action, acc):
             lord = lord_omen(state, step)
             if lord is not None:
                 out.append(lord)
+        elif k == "exalt" and exaltation_omen_left_out(o, acc):
+            continue
         else:
             out.append(o)
     return out
@@ -1064,6 +1083,11 @@ def omen_problems(pstep):
             problems.append("Greater Exaltation without a side omen while both sides are open")
     if k == "exalt" and not sided and two_open_one_reserved(acc):
         problems.append("an unrestricted exalt while a reserved side shares the open slots")
+    if k == "exalt":
+        for o in sided:
+            if exaltation_omen_left_out(o, acc):
+                problems.append(f"{o} beside a full {other(omen_side(o))} side: the exalt lands "
+                                "on the open side without it")
     if (k == "desecrate" and side is not None and SIDE_OMENS["desecrate"][side] not in omens
             and SIDE_OMENS["desecrate"][side] not in pstep.before.blocked):
         problems.append(f"a {side} desecration without its Necromancy omen")

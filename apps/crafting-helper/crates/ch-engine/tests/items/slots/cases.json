@@ -300,7 +300,7 @@
             {"goal": "add-wanted", "side": null, "currency": "lesser-essence-of-the-body", "omens": []},
             {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy", "omen-of-the-liege"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
-            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]}
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
           ]
         },
         "magic-augment-essence": {
@@ -393,7 +393,7 @@
             {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": [], "certain": false},
             {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
-            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-sinistral-exaltation"]}
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
           ]
         },
         "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
@@ -439,7 +439,7 @@
             {"goal": "desecrate", "side": "prefix", "currency": "desecrate", "omens": ["omen-of-sinistral-necromancy"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
             {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]},
-            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]}
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
           ]
         },
         "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
@@ -449,7 +449,7 @@
             {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": [], "certain": true},
             {"goal": "remove-unwanted", "side": "suffix", "currency": "orb-of-annulment", "omens": [], "certain": true},
             {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-sinistral-exaltation"]},
-            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation", "omen-of-dextral-exaltation"]}
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
           ]
         }
       }
@@ -722,6 +722,144 @@
             {"goal": "remove-unwanted", "side": "prefix", "currency": "orb-of-annulment", "omens": ["omen-of-sinistral-annulment"], "certain": false},
             {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": ["omen-of-sinistral-exaltation"]},
             {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-prefixes-full",
+      "about": "A side Exaltation omen with the other side full (2026-10-31, issue #42). A rare ring whose three prefixes are targets and whose one suffix is a target; two suffix targets are missing, s2 the hardest. The prefixes are full, so the suffix exalts name no Dextral Exaltation (the exalt can only land on the suffix side); Greater stays where two suffixes fit. close-a-side's slam on the one open side is the control: the same step. Two targets are missing, so nothing is the last target.",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "p2", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 52},
+        {"alias": "p3", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 46}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p3", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s3", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": [],
+      "hardest": "s2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-prefixes-full-dextral-blocked",
+      "about": "rare-prefixes-full with Omen of Dextral Exaltation blocked: the omen would be left out, so the block passes no exalt over and every route is the one on the unblocked item (before the rule every suffix slam was blocked).",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60},
+        {"alias": "p2", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 52},
+        {"alias": "p3", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 46}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p3", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s3", "side": "suffix", "pool": "base", "essence": null}
+      ],
+      "blocked": ["omen-of-dextral-exaltation"],
+      "hardest": "s2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "desecrate", "side": "suffix", "currency": "desecrate", "omens": ["omen-of-dextral-necromancy"]},
+            {"goal": "reveal", "side": null, "currency": "reveal", "omens": ["omen-of-abyssal-echoes"]},
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "suffix", "currency": "perfect-exalted-orb", "omens": ["omen-of-greater-exaltation"]}
+          ]
+        }
+      }
+    },
+    {
+      "id": "rare-suffixes-full",
+      "about": "A side Exaltation omen with the other side full, the prefix way round (2026-10-31, issue #42). A rare ring whose one prefix is a target and whose three suffixes are targets, s3 a revealed desecrated one (Ulaman's); the prefix p2, the hardest, is missing. The item already has its desecrated modifier, so nothing desecrates; the prefix exalt names no Sinistral Exaltation, and no Greater (one target).",
+      "class": "Rings",
+      "rarity": "rare",
+      "prefixes": [
+        {"alias": "p1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 60}
+      ],
+      "suffixes": [
+        {"alias": "s1", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 48},
+        {"alias": "s2", "role": "target", "fractured": false, "desecrated": false, "unrevealed": false, "level": 44},
+        {"alias": "s3", "role": "target", "fractured": false, "desecrated": true, "unrevealed": false, "level": 65}
+      ],
+      "targets": [
+        {"alias": "p1", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "p2", "side": "prefix", "pool": "base", "essence": null},
+        {"alias": "s1", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s2", "side": "suffix", "pool": "base", "essence": null},
+        {"alias": "s3", "side": "suffix", "pool": "desecrated", "essence": null, "lord": "ulaman"}
+      ],
+      "blocked": [],
+      "hardest": "p2",
+      "expect": {
+        "close-a-side": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "essence-desecrate-double-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
+          ]
+        },
+        "magic-augment-essence": {"rejected": {"kind": "no-start-fits"}},
+        "rare-clean-then-slam": {
+          "complete": true,
+          "steps": [
+            {"goal": "add-wanted", "side": "prefix", "currency": "perfect-exalted-orb", "omens": []}
           ]
         }
       }

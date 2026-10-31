@@ -87,7 +87,8 @@
 //! ([`summary`]).
 
 use ch_engine::ch_blueprint::catalogue::{
-    bones_for, Currency, ItemGroup, OmenChange, OmenFits, GREATER_OMEN, LORD_OMEN, SIDE_OMEN,
+    bones_for, Currency, ItemGroup, OmenChange, OmenFits, EXALTED_ORBS, GREATER_OMEN, LORD_OMEN,
+    SIDE_OMEN,
 };
 use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
@@ -2253,13 +2254,15 @@ pub fn fallback_line(
     let first = bp_step.actions.first()?.get_ref();
     let first_name = action_name(first.currency.get_ref());
     let sides = side_omen_sides(item, step);
+    // A listed step is evaluated on `item` itself.
+    let left_out = exaltation_left_out(item);
     let mut names: Vec<String> = Vec::new();
     for passed in bp_step.actions.iter().take(action.alternative) {
         let ids = match sides.as_slice() {
-            [] => action_ids(passed.get_ref(), item, None),
+            [] => action_ids(passed.get_ref(), item, None, &left_out),
             _ => sides
                 .iter()
-                .flat_map(|&side| action_ids(passed.get_ref(), item, Some(side)))
+                .flat_map(|&side| action_ids(passed.get_ref(), item, Some(side), &left_out))
                 .collect(),
         };
         for id in ids {
@@ -2287,7 +2290,10 @@ pub fn fallback_line(
 /// with a list that leaves out the blocked ids the passed-over alternatives
 /// name; when it then takes an earlier alternative, the line is `<used, with
 /// its omens> instead of <that alternative, with its omens>: <names>
-/// blocked`. `None` otherwise.
+/// blocked`. `None` otherwise. A side Exaltation omen the engine left out
+/// of either pick (`ChosenAction::omens_left_out`, on the item as the
+/// projection finds it, which `item` need not be) is in neither half and
+/// is no reason.
 pub fn state_fallback_line(
     blueprint: &Blueprint,
     step: &StepView,
@@ -2302,13 +2308,14 @@ pub fn state_fallback_line(
     }
     let bp_step = blueprint_step(blueprint, &step.id)?;
     let side = target_side(item, step);
+    let mut left_out = action.omens_left_out.clone();
     // The blocked ids each passed-over alternative names.
     let named: Vec<Vec<String>> = bp_step
         .actions
         .iter()
         .take(used)
         .map(|a| {
-            let mut ids = action_ids(a.get_ref(), item, side);
+            let mut ids = action_ids(a.get_ref(), item, side, &left_out);
             ids.retain(|id| blocked.contains(id));
             ids
         })
@@ -2328,19 +2335,33 @@ pub fn state_fallback_line(
         .cloned()
         .collect();
     let other = without(&list).filter(|s| s.id == step.id)?;
-    let taken = other.action.as_ref()?.alternative;
+    let other = other.action.as_ref()?;
+    let taken = other.alternative;
     if taken >= used {
         return None;
     }
+    for id in &other.omens_left_out {
+        if !left_out.contains(id) {
+            left_out.push(id.clone());
+        }
+    }
+    let reason = |ids: &[String]| -> Vec<String> {
+        ids.iter()
+            .filter(|id| !left_out.contains(id))
+            .cloned()
+            .collect()
+    };
     // A whittle can be kept from fitting by its annulments being blocked:
     // then the ids it names itself are not the reason, the others are.
-    let ids = if named[taken].is_empty() {
-        &passed
-    } else {
-        &named[taken]
-    };
+    let mut ids = reason(&named[taken]);
+    if ids.is_empty() {
+        ids = reason(&passed);
+    }
+    if ids.is_empty() {
+        return None;
+    }
     let mut names: Vec<String> = Vec::new();
-    for id in ids {
+    for id in &ids {
         let name = currency_name(id);
         if !names.contains(&name) {
             names.push(name);
@@ -2349,7 +2370,7 @@ pub fn state_fallback_line(
     Some(format!(
         "{} instead of {}: {} blocked",
         uses_words(action),
-        alternative_words(bp_step.actions[taken].get_ref(), side),
+        alternative_words(bp_step.actions[taken].get_ref(), side, &left_out),
         names.join(", ")
     ))
 }
@@ -2366,10 +2387,16 @@ fn blueprint_step<'a>(blueprint: &'a Blueprint, id: &str) -> Option<&'a Step> {
 /// A blueprint action in words: its currency, `with` each omen it names,
 /// the side omen resolved for `side`. Omen of Greater Exaltation's
 /// placeholder is left out: it names the omen only where two slots are free;
-/// so is the lord omen's, which names one only for a lord's target.
-fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side>) -> String {
+/// so is the lord omen's, which names one only for a lord's target, and a
+/// side Exaltation omen in `left_out` ([`exaltation_left_out`]).
+fn alternative_words(
+    action: &ch_engine::ch_blueprint::Action,
+    side: Option<Side>,
+    left_out: &[String],
+) -> String {
     let written = action.currency.get_ref().as_str();
     let currency = Currency::of(written);
+    let exalt = EXALTED_ORBS.contains(&written);
     let omens: Vec<String> = action
         .omens
         .iter()
@@ -2377,10 +2404,12 @@ fn alternative_words(action: &ch_engine::ch_blueprint::Action, side: Option<Side
             SIDE_OMEN => currency
                 .zip(side)
                 .and_then(|(c, s)| c.side_omen(s))
-                .map(|e| currency_name(e.id)),
+                .map(|e| e.id),
             GREATER_OMEN | LORD_OMEN => None,
-            id => Some(currency_name(id)),
+            id => Some(id),
         })
+        .filter(|id| !(exalt && left_out.iter().any(|l| l == id)))
+        .map(currency_name)
         .collect();
     let mut words = action_name(written);
     if !omens.is_empty() {
@@ -2414,16 +2443,48 @@ fn side_omen_sides(item: &Item, step: &StepView) -> Vec<Side> {
     sides
 }
 
+/// The side Exaltation omen an Exalted Orb of any grade lands without on
+/// `item`, as the engine leaves it out (`ChosenAction::omens_left_out`):
+/// the one naming the side that has a free slot while the other side has
+/// none (docs/models/crafting-slots-spec.md, "A side Exaltation omen with
+/// the other side full"). A side's free slots are the item's limit for its
+/// rarity less its modifiers there, fractured, desecrated and unrevealed
+/// ones counted, as the engine counts them. Empty while both sides have
+/// room, or neither.
+fn exaltation_left_out(item: &Item) -> Vec<String> {
+    let Some(limits) = ch_data::item_affix_limits(item, &item.rarity) else {
+        return Vec::new();
+    };
+    let join = ch_data::join(item);
+    let free = |kind: Kind| {
+        let used = join.mods.iter().filter(|m| m.kind == kind).count();
+        limits.on(kind).saturating_sub(used)
+    };
+    let open = match (free(Kind::Prefix), free(Kind::Suffix)) {
+        (0, s) if s > 0 => Side::Suffix,
+        (p, 0) if p > 0 => Side::Prefix,
+        _ => return Vec::new(),
+    };
+    Currency::of(EXALTED_ORBS[0])
+        .and_then(|c| c.side_omen(open))
+        .map(|e| vec![e.id.to_string()])
+        .unwrap_or_default()
+}
+
 /// Every id a blueprint action names, its placeholders resolved as far as
 /// the item allows (every bone `desecrate` may use; the side omen of the
-/// target's side).
+/// target's side), less a side Exaltation omen in `left_out` on an Exalted
+/// Orb ([`exaltation_left_out`]): the engine never checks it against the
+/// blocked list.
 fn action_ids(
     action: &ch_engine::ch_blueprint::Action,
     item: &Item,
     side: Option<Side>,
+    left_out: &[String],
 ) -> Vec<String> {
     let written = action.currency.get_ref().as_str();
     let currency = Currency::of(written);
+    let exalt = EXALTED_ORBS.contains(&written);
     let mut ids = Vec::new();
     match currency {
         Some(Currency::Desecrate) => {
@@ -2436,15 +2497,16 @@ fn action_ids(
         Some(Currency::Reveal) => {}
         _ => ids.push(written.to_string()),
     }
+    let kept = |id: &str| !(exalt && left_out.iter().any(|l| l == id));
     for omen in &action.omens {
         let id = omen.get_ref().as_str();
         if id == SIDE_OMEN {
             let resolved = currency.zip(side).and_then(|(c, s)| c.side_omen(s));
-            ids.extend(resolved.map(|e| e.id.to_string()));
+            ids.extend(resolved.filter(|e| kept(e.id)).map(|e| e.id.to_string()));
         } else if id == LORD_OMEN {
             // A blocked lord omen resolves to nothing and never passes an
             // alternative over, so it names no id here.
-        } else {
+        } else if kept(id) {
             ids.push(id.to_string());
         }
     }
@@ -2812,6 +2874,70 @@ mod tests {
             step.odds
         );
         assert_eq!(step.fallback, None);
+    }
+
+    /// `ch-engine`'s listed `test-literal-exalt` (a suffix exalt naming Omen
+    /// of Dextral Exaltation literally, Perfect then Greater) on the
+    /// `rare-prefixes-full` ring with `blocked`: its slam's fallback line.
+    fn literal_slam_fallback(targets: &[Target], blocked: &[&str]) -> Option<String> {
+        let tests =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../ch-engine/tests/items");
+        let read = |path: std::path::PathBuf| {
+            std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()))
+        };
+        let text = read(tests.join("engine/test-literal-exalt.toml"));
+        let checked =
+            ch_engine::ch_blueprint::check("blueprints/test-literal-exalt.toml", &text).unwrap();
+        let engine = Engine::new(vec![checked]).unwrap();
+        let mut craft = Craft::default();
+        let item = read(tests.join("slots/rare-prefixes-full.txt"));
+        craft.grab(Some(&engine), &item, true);
+        craft.set_targets(Some(&engine), targets, &[]).unwrap();
+        let list: Vec<String> = blocked.iter().map(|s| s.to_string()).collect();
+        craft.set_blocked(list, &[]).unwrap();
+        let view = craft.view(Some(&engine), &[]);
+        let route = view.planning.unwrap().preview.unwrap().route.unwrap();
+        assert_eq!(route.steps[0].id, "slam");
+        route.steps[0].fallback.clone()
+    }
+
+    /// A listed step's blocked-id list leaves out a side Exaltation omen the
+    /// exalt lands without (issue #42); with room on the other side the
+    /// omen still passes the alternative over and says so.
+    #[test]
+    fn listed_fallback_names_no_left_out_exaltation_omen() {
+        let full: Vec<Target> = [
+            ("prefix-to-maximum-mana", 4),
+            ("prefix-to-maximum-life", 4),
+            ("prefix-to-accuracy-rating", 4),
+            ("suffix-to-fire-resistance", 4),
+            ("suffix-to-cold-resistance", 2),
+            ("suffix-to-lightning-resistance", 3),
+        ]
+        .iter()
+        .map(|(id, floor)| Target::new(*id, Some(*floor)))
+        .collect();
+        assert_eq!(
+            literal_slam_fallback(
+                &full,
+                &["perfect-exalted-orb", "omen-of-dextral-exaltation"]
+            )
+            .as_deref(),
+            Some("Greater Exalted Orb instead of Perfect Exalted Orb: Perfect Exalted Orb blocked")
+        );
+
+        // The slot count behind it: Dextral on the full-prefix ring; nothing
+        // where a prefix is free (Mana and Life only), the control.
+        let parsed = |name: &str| {
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../ch-engine/tests/items/slots/{name}.txt"));
+            ch_item::parse(&std::fs::read_to_string(path).unwrap()).unwrap()
+        };
+        assert_eq!(
+            exaltation_left_out(&parsed("rare-prefixes-full")),
+            ["omen-of-dextral-exaltation"]
+        );
+        assert!(exaltation_left_out(&parsed("rare-2p1s-prefix-missing")).is_empty());
     }
 
     #[test]

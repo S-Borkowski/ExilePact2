@@ -1,0 +1,32 @@
+# A test blueprint (engine tests only): a listed suffix exalt that writes
+# Omen of Dextral Exaltation literally (Perfect, then Greater), then a
+# manual finish. On a ring whose prefixes are full the omen is left out.
+id = "test-literal-exalt"
+name = "Test: a suffix exalt with a literal side omen"
+classes = ["Rings"]
+source = "ch-engine tests"
+relies_on = ["open-side-landing"]
+
+[[start]]
+rarity = ["rare"]
+
+[[step]]
+id = "slam"
+say = "Exalt a suffix for a remaining target"
+goal = "add-wanted"
+side = "suffix"
+on_hit = "goto:finish"
+
+[[step.action]]
+currency = "perfect-exalted-orb"
+omens = ["omen-of-dextral-exaltation"]
+
+[[step.action]]
+currency = "greater-exalted-orb"
+omens = ["omen-of-dextral-exaltation"]
+
+[[step]]
+id = "finish"
+say = "Divine the values"
+goal = "manual"
+on_hit = "done"

@@ -18,7 +18,11 @@ starts from a rare with no modifier that is not a target, so a missed slam \
 leaves the one unwanted modifier on the slam's side, and the annulment \
 on that side takes it. That Catalysing and a side Exaltation omen both \
 apply to one exalt is not established (catalysing-with-side-omen)."""
-relies_on = ["catalysing-with-side-omen", "omens-active-before-use"]
+relies_on = [
+    "catalysing-with-side-omen",
+    "omens-active-before-use",
+    "open-side-landing",
+]
 
 [[start]]
 rarity = ["rare"]

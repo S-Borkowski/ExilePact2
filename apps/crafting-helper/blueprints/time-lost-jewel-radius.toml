@@ -13,6 +13,7 @@ so Greater and Perfect ones add nothing. Fixing a bad suffix is the costly \
 stage. The Ancient Potent Liquid Melancholy (Very Large radius) adds no \
 modifier the data knows, so its step is manual: confirm it once the radius \
 is Very Large. Jewel odds are unknown."""
+relies_on = ["open-side-landing"]
 
 [[start]]
 rarity = ["rare"]
