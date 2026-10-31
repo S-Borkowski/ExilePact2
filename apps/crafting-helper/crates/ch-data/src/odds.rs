@@ -198,6 +198,26 @@ impl Odds {
         }
     }
 
+    /// A chance worked from a formula, not counted in one weighted draw
+    /// (a reveal's estimate): `fraction`, 0 to 1, clamped. `hits` of
+    /// `total` is the fraction in millionths, rounded, so it never
+    /// overflows and stays within 0.0001 percentage points of `percent`;
+    /// `basis` says what the formula rests on.
+    pub fn estimate(fraction: f64, basis: impl Into<String>) -> Odds {
+        const MILLIONTHS: u64 = 1_000_000;
+        let fraction = if fraction.is_nan() {
+            0.0
+        } else {
+            fraction.clamp(0.0, 1.0)
+        };
+        Odds::Known {
+            percent: fraction * 100.0,
+            hits: (fraction * MILLIONTHS as f64).round() as u64,
+            total: MILLIONTHS,
+            basis: basis.into(),
+        }
+    }
+
     pub fn unknown(reason: impl Into<String>) -> Odds {
         Odds::Unknown {
             reason: reason.into(),

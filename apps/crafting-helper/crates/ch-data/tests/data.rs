@@ -313,6 +313,34 @@ fn ring_life_exalt_odds_match_the_weights() {
     assert_eq!(add_odds(&with_life, life, 8, &prefix).percent(), Some(0.0));
 }
 
+/// An estimate keeps its own basis and a hits/total ratio within 0.01
+/// percentage points of its percent, at the ends and for a chance whose
+/// exact ratio would not fit (`1 - (1 - 1/7)^2` with weights in the
+/// thousands).
+#[test]
+fn an_estimate_is_known_with_a_small_ratio_and_its_basis() {
+    for fraction in [0.0, 1.0, 13.0 / 49.0, 0.271, 1e-9, 0.999_999_9] {
+        match Odds::estimate(fraction, "an estimate, rests on a model") {
+            Odds::Known {
+                percent,
+                hits,
+                total,
+                basis,
+            } => {
+                assert!((percent - fraction * 100.0).abs() < 1e-9, "{fraction}");
+                assert!(total > 0 && hits <= total, "{hits} of {total}");
+                let ratio = hits as f64 * 100.0 / total as f64;
+                assert!((ratio - percent).abs() <= 0.01, "{ratio} vs {percent}");
+                assert_eq!(basis, "an estimate, rests on a model");
+            }
+            other => panic!("expected known odds, got {other:?}"),
+        }
+    }
+    // Out of range is clamped, never a percent past 0..100.
+    assert_eq!(Odds::estimate(1.5, "b").percent(), Some(100.0));
+    assert_eq!(Odds::estimate(-0.5, "b").percent(), Some(0.0));
+}
+
 #[test]
 fn odds_unknown_without_spawn_weights() {
     let jewel = bare_item("Jewels", "Rare", "Sapphire", 82);

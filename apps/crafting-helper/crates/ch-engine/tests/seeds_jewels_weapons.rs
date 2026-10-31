@@ -114,13 +114,6 @@ fn started(
     (guide, step, first)
 }
 
-fn unknown(odds: &Option<Odds>) -> &str {
-    match odds {
-        Some(Odds::Unknown { reason }) => reason,
-        other => panic!("expected unknown odds, got {other:?}"),
-    }
-}
-
 // --- jewels-three-one-side (post 6) --------------------------------------
 
 const J3: &str = "jewels-three-one-side";
@@ -340,7 +333,15 @@ fn time_lost_jewel_radius_hit_path() {
     let reveal = next_step(&next);
     assert_eq!(reveal.id, "reveal");
     assert_eq!(reveal.target.as_deref(), Some(TL_MANA));
-    assert!(unknown(&reveal.odds).contains("desecration"));
+    // The target is an exclusive (desecrated) jewel prefix: the reveal's
+    // odds are the equal-weight estimate (docs/models/crafting-slots-spec.md,
+    // "Reveal odds"; tests/reveal_odds.rs).
+    match &reveal.odds {
+        Some(Odds::Known { basis, .. }) => {
+            assert!(basis.contains("exclusive-weights-unknown"), "{basis}")
+        }
+        other => panic!("expected the reveal's estimate, got {other:?}"),
+    }
 
     let next = walk(
         &engine,

@@ -1,0 +1,16 @@
+Item Class: Body Armours
+Rarity: Rare
+Storm Shell
+Chieftain Cuirass
+--------
+Requires: Level 50
+--------
+Item Level: 82
+--------
+{ Prefix Modifier "Athlete's" (Tier: 5) — Life }
++130(120-149) to maximum Life
+{ Prefix Modifier "Impregnable" (Tier: 2) — Defences, Armour }
+95(92-100)% increased Armour
+{ Unrevealed Desecrated Prefix Modifier }
+{ Suffix Modifier "of the Volcano" (Tier: 3) — Elemental, Fire, Resistance }
++33(31-35)% to Fire Resistance
