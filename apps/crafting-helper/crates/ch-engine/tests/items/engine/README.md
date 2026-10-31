@@ -44,6 +44,10 @@ the same way as the shipped ones:
   taken only when bound, then an exalt; a Magic start needs an essence
   binding.
 - `test-jewel.toml` (Jewels): one exalt.
+- `test-literal-exalt.toml` (Rings): a suffix exalt that writes Omen of
+  Dextral Exaltation literally (Perfect, then Greater), then a manual
+  finish; `tests/full_side_omen.rs` takes it on a ring whose prefixes are
+  full and on one with room.
 
 State-ordered test blueprints (`order = "state"`, `tests/state_order.rs`):
 

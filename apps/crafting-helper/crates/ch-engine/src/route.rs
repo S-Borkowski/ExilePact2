@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use ch_blueprint::catalogue::{
-    self, bones_for, Currency, Effect, Entry, ItemGroup, GREATER_EXALTATION, GREATER_OMEN,
-    LORD_CLASSES, LORD_OMEN, LORD_OMENS, SIDE_OMEN,
+    self, bones_for, Currency, Effect, Entry, ItemGroup, OmenChange, EXALTED_ORBS,
+    GREATER_EXALTATION, GREATER_OMEN, LORD_CLASSES, LORD_OMEN, LORD_OMENS, SIDE_OMEN,
 };
 use ch_blueprint::{Action, Binding, Goal, Order, Rarity as BpRarity, Side, Spanned, Step, When};
 use ch_data::{Kind, Odds, Section};
@@ -63,6 +63,14 @@ pub struct ChosenAction {
     /// Empty otherwise; no omen id stands for it in `omens`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub lord_omens_waiting: Vec<WaitingLordOmen>,
+    /// The side Exaltation omens the alternative names (literally or by
+    /// `side-omen`) and leaves out, because the exalt can only land on the
+    /// side they name: it has a free slot and the other side has none
+    /// (docs/models/crafting-slots-spec.md, "A side Exaltation omen with
+    /// the other side full"). Not in `omens`, never checked against the
+    /// blocked list. Empty otherwise.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub omens_left_out: Vec<String>,
 }
 
 /// A lord omen a desecration names once `target` is the last one left.
@@ -1080,8 +1088,10 @@ fn choose_action(
 /// One alternative with its placeholders resolved: `side-omen` to the
 /// currency's omen for `side` (the bound target's, or the step's), and
 /// `greater-omen` to Omen of Greater Exaltation when `greater` says it
-/// fits, else to nothing, and `lord-omen` to `lord`. `Blocked` when an id
-/// it uses is blocked.
+/// fits, else to nothing, and `lord-omen` to `lord`. A side Exaltation
+/// omen the exalt lands without is left out first
+/// ([`ChosenAction::omens_left_out`]). `Blocked` when an id it uses is
+/// blocked.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn try_alternative(
     ctx: &Ctx,
@@ -1230,6 +1240,7 @@ fn alternative_on(
     let mut omen_side = None;
     let mut side_omen_waits = false;
     let mut lord_omens_waiting = Vec::new();
+    let mut omens_left_out = Vec::new();
     let side_omen = |s: Side| {
         currency.side_omen(s).ok_or_else(|| {
             AltProblem::Unfit(format!("`{written}` has no {} omen", side_word(kind_of(s))))
@@ -1275,6 +1286,10 @@ fn alternative_on(
         } else {
             catalogue::entry(id).ok_or_else(|| AltProblem::Unfit(format!("unknown omen `{id}`")))?
         };
+        if lands_there_anyway(st, currency, entry) {
+            omens_left_out.push(entry.id.to_string());
+            continue;
+        }
         if ctx.is_blocked(entry.id) {
             return Err(AltProblem::Blocked);
         }
@@ -1299,7 +1314,29 @@ fn alternative_on(
         removes,
         side_omen_waits,
         lord_omens_waiting,
+        omens_left_out,
     })
+}
+
+/// Whether `omen`, on `currency`, is a side Exaltation omen on an Exalted
+/// Orb of any grade whose side has a free slot on `st` while the other side
+/// has none: the exalt lands on that side without it, so it is left out
+/// (docs/models/crafting-slots-spec.md, "A side Exaltation omen with the
+/// other side full"; `open-side-landing`). An omen naming the full side is
+/// kept: the exalt then has nowhere to land and does not fit.
+fn lands_there_anyway(st: &State, currency: Currency, omen: &Entry) -> bool {
+    let Currency::Static(orb) = currency else {
+        return false;
+    };
+    let Some(side) = omen
+        .omen
+        .filter(|o| o.change == OmenChange::Side)
+        .and_then(|o| o.side)
+    else {
+        return false;
+    };
+    let side = kind_of(side);
+    EXALTED_ORBS.contains(&orb.id) && st.free(side) > 0 && st.free(side.other()) == 0
 }
 
 #[cfg(test)]
