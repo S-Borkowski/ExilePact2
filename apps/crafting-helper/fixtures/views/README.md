@@ -79,9 +79,11 @@ chosen:
   Necromancy blocked for the craft (its `blocked` list), so the last
   prefix is slammed rather than desecrated: the route closes the finished
   suffix side first, `Exalted Orb with Omen of Greater Exaltation and Omen
-  of Dextral Exaltation on the suffix side, for any modifier` (a fill step's
-  instruction, composed from its data), then slams the one open prefix side
-  with a Perfect Exalted Orb and no side omen. No step offers an Exalted
+  of Dextral Exaltation, for any modifier` (a fill step's instruction,
+  composed from its data; since 0.3.0 an exalt or a bone step names no
+  side, which its omen or the free slots already decide), then slams the
+  one open prefix side with a Perfect Exalted Orb and no side omen,
+  `Perfect Exalted Orb for +# to Armour`. No step offers an Exalted
   Orb that could land on the prefix side's reserved slot. Both steps were
   taken in place of the last target's desecration, so each carries a
   Fallback line, `<its currency, with its omens> instead of a desecration:
@@ -115,8 +117,9 @@ Resistance as the targets:
   Insulation adds.
 - `craft-blocker`: the relaxation accepted (fire at T3) and
   `essence-desecrate-double-slam` chosen: the essence, the suffix
-  desecration for cold, its reveal, then a Perfect Exalted Orb on the
-  suffix side. The reveal's line alone carries `blocker`: if cold is not
+  desecration for cold, its reveal, then a Perfect Exalted Orb with Omen of
+  Dextral Exaltation for lightning (`… for +#% to Lightning Resistance`, no
+  side named). The reveal's line alone carries `blocker`: if cold is not
   offered, take `+# to Strength and Dexterity` or `+# to Strength and
   Intelligence`, which keep the ordinary `+# to Strength` out of the
   exalt's pool, and that exalt's chance of a target before and after.

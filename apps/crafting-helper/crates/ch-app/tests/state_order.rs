@@ -107,13 +107,12 @@ fn a_fill_step_names_its_currency_omens_and_side() {
     let view = app.choose_route(CLOSE);
     let close = &route(&view).steps[0];
     assert_eq!(close.id, "close");
-    // Composed from its data: the currency, `with` each omen, the side it
-    // fills; never the blueprint's text.
+    // Composed from its data: the currency, `with` each omen (Omen of
+    // Dextral Exaltation says the side it fills, so the step does not);
+    // never the blueprint's text.
     assert_eq!(
         close.instruction,
-        format!(
-            "Exalted Orb with {GREATER} and {DEXTRAL_EXALT} on the suffix side, for any modifier"
-        )
+        format!("Exalted Orb with {GREATER} and {DEXTRAL_EXALT}, for any modifier")
     );
     assert_eq!(close.uses, ["Exalted Orb", GREATER, DEXTRAL_EXALT]);
     assert!(!close.instruction.contains("Close the finished side"));
@@ -285,7 +284,7 @@ fn a_state_ordered_hit_line_names_the_next_projected_step() {
     // The projection's next step, by its composed instruction.
     assert_eq!(
         current.on_hit,
-        "On a hit: Perfect Exalted Orb on the prefix side for +# to Armour"
+        "On a hit: Perfect Exalted Orb for +# to Armour"
     );
     let view = app.grab_text(Some(&belt("belt-closed")));
     let current = step(&view);
@@ -592,7 +591,7 @@ fn full_prefixes_step_names_no_exaltation_omen() {
     assert_eq!(slam.uses, [PERFECT, GREATER]);
     assert!(
         slam.instruction
-            .starts_with(&format!("{PERFECT} with {GREATER} on the suffix side")),
+            .starts_with(&format!("{PERFECT} with {GREATER} for ")),
         "{}",
         slam.instruction
     );
@@ -622,6 +621,71 @@ fn full_prefixes_step_names_no_exaltation_omen() {
     assert_eq!(
         route(&view).steps[1].uses,
         [PERFECT, GREATER, SINISTRAL_EXALT]
+    );
+    app.shutdown();
+}
+
+/// Whether `text` names a side, as ` on the prefix side` or ` on the suffix
+/// side` says it.
+fn names_a_side(text: &str) -> bool {
+    text.contains(" on the prefix side") || text.contains(" on the suffix side")
+}
+
+#[test]
+fn full_prefixes_exalt_step_names_no_side() {
+    // Issue #49: the prefixes are full, so the free slots already decide
+    // where the exalt lands; the slam names its currency, its omen and its
+    // targets, and no side.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = planned(
+        tmp.path(),
+        &shell,
+        &slots_item(PREFIXES_FULL),
+        &prefixes_full_targets(),
+    );
+    let view = app.choose_route("rare-clean-then-slam");
+    let slam = &route(&view).steps[0];
+    assert_eq!(slam.id, "side-slam");
+    assert!(
+        slam.instruction
+            .starts_with(&format!("{PERFECT} with {GREATER} for ")),
+        "{}",
+        slam.instruction
+    );
+    assert!(!names_a_side(&slam.instruction), "{}", slam.instruction);
+
+    // The guide's current step says the same.
+    let view = app.accept_craft();
+    let s = &step(&view).step;
+    assert_eq!(s.instruction, slam.instruction);
+    app.shutdown();
+}
+
+#[test]
+fn side_exaltation_omen_step_names_the_omen_and_no_side() {
+    // The belt's `close-a-side` fill: Omen of Dextral Exaltation already
+    // says the suffix side, so the step names the omen and no side.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = belt_closing(tmp.path(), &shell);
+    let view = app.choose_route(CLOSE);
+    let close = &route(&view).steps[0];
+    assert_eq!(close.id, "close");
+    assert_eq!(
+        close.instruction,
+        format!("Exalted Orb with {GREATER} and {DEXTRAL_EXALT}, for any modifier")
+    );
+    assert!(!names_a_side(&close.instruction), "{}", close.instruction);
+
+    // Guiding: the current step and its hit line, the prefix slam, name
+    // no side either.
+    let view = app.accept_craft();
+    let current = step(&view);
+    assert_eq!(current.step.instruction, close.instruction);
+    assert_eq!(
+        current.on_hit,
+        format!("On a hit: {PERFECT} for +# to Armour")
     );
     app.shutdown();
 }

@@ -87,8 +87,8 @@
 //! ([`summary`]).
 
 use ch_engine::ch_blueprint::catalogue::{
-    bones_for, Currency, ItemGroup, OmenChange, OmenFits, EXALTED_ORBS, GREATER_OMEN, LORD_OMEN,
-    SIDE_OMEN,
+    bones_for, Currency, Effect, ItemGroup, OmenChange, OmenFits, EXALTED_ORBS, GREATER_OMEN,
+    LORD_OMEN, SIDE_OMEN,
 };
 use ch_engine::ch_blueprint::{Blueprint, Goal, Order, Side, Step, Transition};
 use ch_engine::ch_data::{self, JoinedMod, Kind, Odds, Section, ValidMod};
@@ -1688,16 +1688,24 @@ pub fn step_targets(step: &StepView, item: &Item) -> Vec<String> {
 /// - `Chaos Orb with Omen of Whittling for +#% to Cold Resistance (suffix)
 ///   or +#% to Lightning Resistance (suffix)`: not tied to a side, so each
 ///   target says its own;
-/// - `Exalted Orb on the prefix side for +# to maximum Life or +# to
-///   maximum Mana`: tied to a side, named once.
+/// - `Chaos Orb on the suffix side for +#% to Fire Resistance or +#% to
+///   Cold Resistance`: tied to a side, named once.
+///
+/// An Exalted Orb of any grade or a desecration (a bone) never names the
+/// side it is tied to ([`names_its_side`]): the item's free slots or its
+/// side omen already decide where it lands, and its targets all sit on that
+/// side, so none gets a `(suffix)` in its place:
+///
+/// - `Perfect Exalted Orb with Omen of Greater Exaltation for +#% to Cold
+///   Resistance or +#% to Lightning Resistance`.
 ///
 /// A removal step with a currency names the modifiers it removes
 /// ([`removal_instruction`]); `wanted` (the craft's targets) tells which are
 /// unwanted. A fill step with a currency names it, `with` each omen, and the
-/// side it fills, any modifier being its aim:
+/// side it fills (not for an exalt or a bone), any modifier being its aim:
 ///
 /// - `Exalted Orb with Omen of Greater Exaltation and Omen of Dextral
-///   Exaltation on the suffix side, for any modifier`.
+///   Exaltation, for any modifier`.
 ///
 /// A desecration whose action carries a Necromancy omen says the omen comes
 /// first, then the bone, then the side the omen gives the desecrated
@@ -1724,7 +1732,7 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
     if step.goal == Goal::Fill {
         if let Some(action) = &step.action {
             let uses = uses_words(action);
-            return match step.side.or(action.side) {
+            return match step.side.or(action.side).filter(|_| names_its_side(action)) {
                 Some(side) => format!("{uses} on the {} side, for any modifier", side_word(side)),
                 None => format!("{uses}, for any modifier"),
             };
@@ -1736,6 +1744,11 @@ pub fn step_instruction(step: &StepView, item: &Item, wanted: &[Target]) -> Stri
     };
     let uses = uses_words(action);
     let said = match step.side {
+        // Tied to a side, an exalt's or a bone's targets all sit on it: no
+        // side, and no `(prefix)` beside each target in its place.
+        Some(_) if !names_its_side(action) => {
+            format!("{uses} for {}", word_list(&targets, "or"))
+        }
         Some(side) => format!(
             "{uses} on the {} side for {}",
             side_word(side),
@@ -2023,6 +2036,13 @@ fn necromancy_instruction(step: &StepView, action: &ChosenAction, item: &Item) -
         said.push_str(&format!(", for {}", word_list(&each, "or")));
     }
     Some(said)
+}
+
+/// Whether a step with `action` says the side it is tied to: not for an
+/// Exalted Orb of any grade ([`EXALTED_ORBS`]) nor a desecration (a bone),
+/// whose side the item's free slots or its side omen already decide.
+fn names_its_side(action: &ChosenAction) -> bool {
+    !(EXALTED_ORBS.contains(&action.uses.as_str()) || action.effect == Effect::Desecrate)
 }
 
 /// The currency, `with` each omen.

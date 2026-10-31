@@ -1220,7 +1220,7 @@
               "blocker": null,
               "fallback": null,
               "id": "side-slam",
-              "instruction": "Perfect Exalted Orb with Omen of Dextral Exaltation on the suffix side for +#% to Lightning Resistance",
+              "instruction": "Perfect Exalted Orb with Omen of Dextral Exaltation for +#% to Lightning Resistance",
               "number": 4,
               "odds": "~9.9% (2000 of 20150 weight, if the earlier steps hit)",
               "survival": null,
