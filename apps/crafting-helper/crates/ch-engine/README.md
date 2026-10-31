@@ -278,8 +278,9 @@ One step, never a simulation: an add is the targets' counting weight
 on (`ch-data`'s pool, Minimum Modifier Level included); a removal is the
 chance the removed modifier is not a wanted one (whittling: certain when
 the lowest level is unique; Omen of Light: the desecrated one); an essence
-is certain, times the removal factor when it removes. Desecration, reveals,
-fluxes and every jewel are unknown, with the exceptions below.
+is certain, times the removal factor when it removes. Desecration, fluxes
+and every jewel are unknown, with the exceptions below; a reveal is an
+estimate since 0.3.0 (below).
 
 Since 0.1.4: an add whose pool's exclusions leave only the target, every
 tier counting, is certain, and one that leaves it out is certain not to
@@ -298,6 +299,29 @@ Since 0.2.0: an exalt with Omen of Catalysing Exaltation has the plain
 slam's odds, its basis ending with `CATALYST_NOTE` ("the catalyst's favour
 is not counted"): the favour's size is not established and the helper
 does not read catalyst quality.
+
+Since 0.3.0 (issue #49): a reveal's odds are an estimate from the slot
+spec's § "Reveal odds", the same in both orders. On the side of the
+unrevealed modifier on the item as the step finds it (with none, the one
+side every aim is on; aims on both sides leave it unknown), n is the
+class's desecrated-section modifiers of that side at the item's level not
+sharing a family with one on the item (the list `has_desecration_pool`
+reads), h the aimed ones among them (each its share of reachable tiers at
+the floor), q the side's plain exalt chance for the ordinary aims
+(`add_chance`). One set is `1 - (1 - h/n)(1 - q)^2` with a pool and
+`1 - (1 - q)^3` without; Omen of Abyssal Echoes makes it `1 - (1 - p)^2`.
+`reveal_chance` is that pure formula, the slot model's twin;
+`EXCLUSIVE_EQUAL_WEIGHT` is the switch that takes exclusive modifiers as
+equally likely (off, an exclusive aim is unknown). The result is
+`ch_data::Odds::estimate`, known, its basis saying `an estimate`, what it
+counted and the not-established facts it `rests on`:
+`reveal-exclusive-row` always, `reveal-ordinary-exalt-weights` when an
+ordinary aim counted, `exclusive-weights-unknown` when an exclusive one
+did, `necromancy-without-pool` when the class has no exclusive modifier on
+that side at any level. Unknown when q is and an ordinary aim is on the
+side. A desecration's own odds stay unknown (its reason: it only adds an
+unrevealed modifier), and `hardest` still counts a desecrated-pool target
+as unknown, so no route changes.
 
 ## Tier relaxation in brief
 
@@ -395,6 +419,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test essence_swap
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test lord_omen
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test seeds_codex
+cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --test reveal_odds
 cargo test --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine
 cargo clippy --manifest-path apps/crafting-helper/Cargo.toml --locked -p ch-engine --all-targets -- -D warnings
 ```
@@ -510,6 +535,17 @@ constructed ring in `tests/items/codex/` (its README lists them), and its
 slam's odds: the plain slam's numbers with the catalyst note
 (`a_catalysing_slam_says_the_favour_is_not_counted`), and no note on a
 slam without Catalysing (`a_plain_slam_carries_no_catalyst_note_baseline`).
+`tests/reveal_odds.rs` (0.3.0) runs the slot model's reveal cases,
+`tests/items/slots/reveal-odds.json`, through `reveal_chance`
+(`reveal_chance_matches_the_model_cases`, with the equal-weight switch on
+and off), keeps a desecration's own odds unknown and its binding as
+before (`baseline_desecration_odds_stay_unknown`), and plans over the
+owner's belt and the constructed items and test blueprints in
+`tests/items/reveal-odds/` (its README lists them): an ordinary target's
+two exalt draws and reroll, an exclusive target's one in the side's pool,
+three draws with no pool on the side or below its level, no reroll
+without Omen of Abyssal Echoes, a jewel's ordinary target unknown, and a
+listed reveal before its desecration taking its aims' side.
 `tests/common/` holds the helpers every engine test file shares. A `-p` build does not need the npm
 build.
 
@@ -525,4 +561,7 @@ record Omen of the Liege, from the model's side. The model owns it
 (`tests/test_crafting_helper_slot_model.py`); the engine's parity test,
 `tests/slots.rs`, builds a constructed item per case and asserts every
 expectation. A disagreement is settled by the spec, never by editing the
-case file from the engine's side.
+case file from the engine's side. `tests/items/slots/reveal-odds.json`
+(0.3.0) is the same kind of contract for a reveal's estimate: each case's
+n, h, q and reroll and the chance the model gives, which
+`tests/reveal_odds.rs` checks against `reveal_chance`.
