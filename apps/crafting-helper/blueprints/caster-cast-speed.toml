@@ -20,7 +20,7 @@ blueprint's."""
 # The last desecration names the target lord's omen beside the Necromancy
 # omen on a wand or a staff (docs/models/crafting-slots-spec.md,
 # "`lord-omen`").
-relies_on = ["lord-with-side-omen", "lord-omen-classes"]
+relies_on = ["lord-with-side-omen", "lord-omen-classes", "open-side-landing"]
 
 [[start]]
 rarity = ["rare"]

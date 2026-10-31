@@ -89,7 +89,16 @@ from a bought base.
     app's to follow, not the player's to read. A step that places a
     target says so in the app's own words, naming the currency, its omens,
     the side and the modifiers (`Chaos Orb for +#% to Fire Resistance
-    (suffix) or +#% to Cold Resistance (suffix)`). A removal step names
+    (suffix) or +#% to Cold Resistance (suffix)`). An Exalted Orb of any
+    grade names Omen of Sinistral or Dextral Exaltation only while the
+    other side still has a free slot (since 0.2.1, issue #42): on an item
+    whose other side is full the exalt can only land on the open side, so
+    the omen would be spent for nothing, and the step reads as a plain
+    exalt on that side (`Perfect Exalted Orb with Omen of Greater
+    Exaltation on the suffix side for …` on a ring whose prefixes are
+    full), with the same odds; a blocked side Exaltation omen no longer
+    passes that exalt over. This holds in the route preview, the guide's
+    current step, the overlay and a fallback line. A removal step names
     the currency with its omens and the modifier it removes, by its text
     on the item (`Orb of Annulment to remove +95(90-104) to maximum Mana
     or +200(168-236) to Accuracy Rating; it takes one modifier at
@@ -116,7 +125,10 @@ from a bought base.
     starts where it is. Their route is the path the craft takes if each
     step hits, from this item, so a step may appear twice. On such a
     route no step offers an Exalted Orb without a side omen while a side's
-    last free slots are kept for its missing targets; a step names Omen
+    last free slots are kept for its missing targets and the other side
+    has room (when the other side is full the exalt can only land on the
+    open side, so the step names no side Exaltation omen, since 0.2.1);
+    a step names Omen
     of Greater Exaltation where two free slots take two targets; a step
     that closes a finished side says so in the app's words (`Exalted Orb
     with Omen of Greater Exaltation and Omen of Dextral Exaltation on the
@@ -909,6 +921,7 @@ cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test blocker  # the reveal step's blocker advice
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test essence_swap  # the fractured essence swap: survival, both outcomes, the Dusk Ring
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test lord_omen  # the lord omens: which desecrations name one, and which do not
+cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test full_side_omen  # no side Exaltation omen on an exalt whose other side is full, both orders
 cargo test --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --test seeds_codex  # jewellery-catalyst-exalt: hit, miss, refused start
 py -3 -m unittest tests.test_crafting_helper_slot_model                                # the slot model: its baselines, cases and invariants
 py -3 -m unittest tests.test_crafting_helper_mechanics_doc                             # crafting-mechanics.md: headings, sources, labels
@@ -1195,6 +1208,23 @@ py -3 -m unittest tests.test_app_updates_guard                                  
   armour, a belt, a blocked omen); `tests/seeds_codex.rs` walks
   `jewellery-catalyst-exalt`; `ch-data`'s `tests/codex_breakpoints.rs`
   holds the codex's item-level breakpoints against the modifier data.
+- **0.2.1's full-side omen (#42).** `ch-engine`'s
+  `tests/full_side_omen.rs` holds that an Exalted Orb of any grade names
+  no Sinistral or Dextral Exaltation omen when the other side is full, in
+  state order and in a listed blueprint (the test blueprint
+  `tests/items/engine/test-literal-exalt.toml`, which names Omen of
+  Dextral Exaltation literally), over constructed rings in
+  `tests/items/slots/`: the baseline keeps the omen while the other side
+  has room, a blocked redundant omen passes nothing over, a desecration
+  beside a full side keeps its Necromancy omen, and the open side's odds
+  are unchanged. `tests/slots.rs` runs the new parity cases from
+  `cases.json`, which `tests.test_crafting_helper_slot_model` checks
+  against the slot model. `ch-app`'s `tests/state_order.rs` holds the
+  craft window's step (`full_prefixes_step_names_no_exaltation_omen`)
+  and fallback line (`full_prefixes_fallback_line_names_no_exaltation_omen`),
+  and `craft.rs`'s unit test
+  `listed_fallback_names_no_left_out_exaltation_omen` a listed step's
+  fallback line.
 - `tests.test_crafting_helper_mechanics_doc` reads
   [`crafting-mechanics.md`](crafting-mechanics.md): its headings, a
   source for every entry, and since 0.1.4 every guide fact labelled
@@ -1634,8 +1664,9 @@ release already exists, only its assets are replaced.
     never raises a floor or lowers two targets together, so a list that
     would need two lowered gets no proposal.
   - **The state-ordered routes rely on facts that are not established.**
-    Each of the seven names them in its `relies_on`, by their id in the
-    spec's facts table
+    Each of the seven names them in its `relies_on` (and since 0.2.1 every
+    listed blueprint with a side-omened exalt names `open-side-landing`
+    too, below), by their id in the spec's facts table
     ([`crafting-slots-spec.md`](../models/crafting-slots-spec.md)
     § "Facts"); community guides state them or they are inferred, and
     none was measured in the game. "The first four" below are
@@ -1646,10 +1677,15 @@ release already exists, only its assets are replaced.
     `weapons-physical-generic`), Greater Exaltation needing two free
     slots (`greater-needs-two-free`, the same and
     `body-armours-single-prefix`), an exalt or augment with no side omen
-    landing on the open side when the other is full
-    (`open-side-landing`, `close-a-side`, `magic-augment-essence`,
-    `weapons-physical-generic`'s augment and
-    `body-armours-single-prefix`'s isolating Greater exalt), Whittling
+    landing on the open side when the other is full (`open-side-landing`:
+    the first four, `weapons-physical-generic`'s augment and
+    `body-armours-single-prefix`'s isolating Greater exalt, and since
+    0.2.1, when the app stops naming a side Exaltation omen on an exalt
+    whose other side is full, every blueprint with a side-omened exalt,
+    listed ones included: `amulets-resist-spirit`, `boots-runic-ward`,
+    `caster-cast-speed`, `fracture-first`, `gloves-crit-melee`,
+    `jewellery-catalyst-exalt`, `rings-flat-attack` and
+    `time-lost-jewel-radius`), Whittling
     taking the lowest modifier level (`whittling-mod-level`, the first
     four), a fractured modifier never being annulled or chaosed
     (`fractured-not-removed`, the first four), the Necromancy and Abyssal
@@ -1661,8 +1697,9 @@ release already exists, only its assets are replaced.
     desecration is never offered without a pool, so it does not rely on
     it). The two listed guide blueprints of 0.1.4 name theirs too:
     `fracture-first` relies on `fractured-not-removed`,
-    `omens-active-before-use`, `abyss-mark-unfracturable` and
-    `desecrated-unfracturable`, and `full-rare-desecration-rescue` on
+    `omens-active-before-use`, `abyss-mark-unfracturable`,
+    `desecrated-unfracturable` and (0.2.1) `open-side-landing`, and
+    `full-rare-desecration-rescue` on
     `omens-active-before-use`, `necromancy-without-pool`,
     `removal-equally-likely` and `full-desecration-same-side`. The
     state-ordered `fractured-essence-swap` (0.2.0) relies on
@@ -1912,6 +1949,29 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### 0.2.1
+
+No wasted side omen on a full item (#42).
+
+- **An Exalted Orb on an item whose other side is full no longer asks for
+  Omen of Sinistral Exaltation or Omen of Dextral Exaltation.** With no
+  free slot on the other side the exalt can only land on the open one, so
+  the omen would be used up for nothing. The step now reads as a plain
+  exalt on that side, for example "Perfect Exalted Orb with Omen of
+  Greater Exaltation on the suffix side for …" on a ring whose prefixes
+  are full, with the same odds as before. This holds for every grade of
+  Exalted Orb and every route, in the route preview, the guide's current
+  step and the overlay. While the other side still has room, the omen is
+  named exactly as before.
+- **A blocked side omen no longer stops that slam.** If you blocked Omen
+  of Sinistral Exaltation or Omen of Dextral Exaltation, a step that does
+  not need it is no longer passed over for another currency, and a
+  fallback line no longer gives it as the reason.
+- **This rests on a community reading**, not on a measurement: that an
+  exalt with no side omen lands on the open side when the other is full.
+  The blueprint file of every route that relies on it now names it
+  (`open-side-landing`).
 
 ### 0.2.0
 

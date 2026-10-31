@@ -89,7 +89,12 @@ unknown with the reason.
   (Preserved, Ancient, Gnawed), `side-omen` to the Sinistral or Dextral
   omen of the bound target's side (or the step's `side`), and
   `greater-omen` to Omen of Greater Exaltation where two fit (below) or to
-  nothing. Since 0.2.0, a listed step with `when = "bound"` and
+  nothing. Since 0.2.1 (issue #42), on an Exalted Orb of any grade a
+  Sinistral or Dextral Exaltation omen, resolved from `side-omen` or
+  written literally, is left out when its side has a free slot and the
+  other side has none (`lands_there_anyway`): it goes to
+  `ChosenAction::omens_left_out`, not to the action's omens, and is never
+  checked against the blocked list, in both orders. Since 0.2.0, a listed step with `when = "bound"` and
   `bind = "last-remaining"` and no `side` (the whittle's desecration),
   planned while several targets are still missing, resolves `side-omen`
   to the side they all share; when they lie on both sides, the
@@ -195,7 +200,9 @@ engine computes the same numbers and picks the same steps.
   and places the target. Alloys and liquid emotions stay listed-order
   only.
 - **Fitting**: an Exalted Orb without a side omen is passed over while both
-  sides are open and one is reserved; `greater-omen` resolves to Omen of
+  sides are open and one is reserved; a side Exaltation omen on an exalt
+  whose other side is full is left out rather than named (above), so a
+  blocked one passes nothing over; `greater-omen` resolves to Omen of
   Greater Exaltation only where the side has two free slots the step can
   use (two placeable targets, or a fill) and the omen is not blocked; a
   removal takes Omen of Whittling only when the whittle is certain (one

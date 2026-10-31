@@ -50,6 +50,16 @@ struct Fixture {
     targets: &'static [(&'static str, &'static str, Option<u32>)],
 }
 
+/// `rare-prefixes-full`'s targets, shared with its blocked twin.
+const PREFIXES_FULL: &[(&str, &str, Option<u32>)] = &[
+    ("p1", MANA, Some(4)),
+    ("p2", LIFE, Some(4)),
+    ("p3", ACC, Some(4)),
+    ("s1", FIRE, Some(4)),
+    ("s2", COLD, Some(2)),
+    ("s3", LIGHTNING, Some(3)),
+];
+
 /// Case id to its item text and its targets. Every floor is the tier the
 /// case's currency reaches: a Perfect Exalted Orb (modifier level 50 and
 /// up) and a Perfect Orb of Augmentation (70 and up) have a tier at or
@@ -235,6 +245,32 @@ fn fixture(case: &str) -> Option<Fixture> {
                 ("p2", LIFE, Some(4)),
                 ("s1", FIRE, Some(5)),
                 ("s2", SKILL_SPEED, Some(1)),
+            ],
+        },
+        // Mana T4, Life T1 and Accuracy Rating T4 (prefixes, full, Accuracy
+        // the lowest level), Fire Resistance T4 (suffix). Cold Resistance T2
+        // (one tier a Perfect Exalted Orb reaches) is harder than Lightning
+        // Resistance T3 (two).
+        "rare-prefixes-full" => Fixture {
+            item: "slots/rare-prefixes-full.txt",
+            targets: PREFIXES_FULL,
+        },
+        // The same ring; the case blocks Omen of Dextral Exaltation.
+        "rare-prefixes-full-dextral-blocked" => Fixture {
+            item: "slots/rare-prefixes-full-dextral-blocked.txt",
+            targets: PREFIXES_FULL,
+        },
+        // Mana T4 (prefix); Fire Resistance T4, Cold Resistance T5 (the
+        // lowest level) and a revealed desecrated Skill Speed (suffixes,
+        // full). Life, the one missing target, is the hardest.
+        "rare-suffixes-full" => Fixture {
+            item: "slots/rare-suffixes-full.txt",
+            targets: &[
+                ("p1", MANA, Some(4)),
+                ("p2", LIFE, Some(4)),
+                ("s1", FIRE, Some(4)),
+                ("s2", COLD, Some(5)),
+                ("s3", SKILL_SPEED, Some(1)),
             ],
         },
         _ => return None,

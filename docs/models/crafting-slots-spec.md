@@ -90,7 +90,7 @@ the session; it does not change the id.
 |---|---|---|
 | `greater-with-side-omen` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic` | The side slam (and `close-a-side`'s close) resolves `greater-omen` beside `side-omen`; `weapons-physical-generic`'s two suffixes come from Greater with Dextral Exaltation. |
 | `greater-needs-two-free` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `weapons-physical-generic`, `body-armours-single-prefix` | `greater-omen` resolves only where two slots are free; the two listed blueprints name Omen of Greater Exaltation where two are. |
-| `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix`, `weapons-physical-generic` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full; `weapons-physical-generic`'s augment lands on the magic weapon's free side. |
+| `open-side-landing` | `close-a-side`, `magic-augment-essence`, `body-armours-single-prefix`, `weapons-physical-generic`, `amulets-resist-spirit`, `boots-runic-ward`, `caster-cast-speed`, `essence-desecrate-double-slam`, `fracture-first`, `gloves-crit-melee`, `jewellery-catalyst-exalt`, `rare-clean-then-slam`, `rings-flat-attack`, `time-lost-jewel-radius` | `close-a-side`'s slam on the one open side has no side omen; `magic-augment-essence`'s augment lands on the magic item's free side; `body-armours-single-prefix`'s Greater exalt with no side omen adds its two prefixes because the suffixes are full; `weapons-physical-generic`'s augment lands on the magic weapon's free side. Every blueprint whose Exalted Orb action carries a side Exaltation omen (`amulets-resist-spirit`, `boots-runic-ward`, `caster-cast-speed`, `essence-desecrate-double-slam`, `fracture-first`, `gloves-crit-melee`, `jewellery-catalyst-exalt`, `rare-clean-then-slam`, `rings-flat-attack`, `time-lost-jewel-radius`, and `close-a-side`, `magic-augment-essence` and `weapons-physical-generic` beside them) leaves that omen out while the other side has no free slot (§ "A side Exaltation omen with the other side full"), so the exalt lands on the open side by this fact (added 2026-10-31, issue #42). |
 | `whittling-mod-level` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam` | The removal step's whittle alternative is certain only by this reading of "lowest level". |
 | `fractured-not-removed` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `fractured-essence-swap` | A removal's odds and the blocked-side test leave fractured modifiers out; `fracture-first` annuls and Chaos-rolls around its fractured target; `fractured-essence-swap`'s essence removes from the side's other modifiers. |
 | `omens-active-before-use` | `close-a-side`, `essence-desecrate-double-slam`, `magic-augment-essence`, `rare-clean-then-slam`, `fracture-first`, `weapons-physical-generic`, `body-armours-single-prefix`, `full-rare-desecration-rescue`, `fractured-essence-swap`, `jewellery-catalyst-exalt` | The desecrations' Necromancy omen and the reveals' Abyssal Echoes; the last-target desecration (§ "The last-target desecration") brings them to the three blueprints that had none. `jewellery-catalyst-exalt`'s Catalysing and side omens are active before each slam. |
@@ -161,8 +161,8 @@ of the rarity the item has after the currency.
 | `orb-of-transmutation`, Greater, Perfect | A normal item. | The item turns magic with one modifier, on either side. | `transmute-adds-one`, `currency-min-level` |
 | `orb-of-augmentation`, Greater, Perfect | A magic item with a free slot. | One modifier on a free side; with one side full it lands on the other. | `augment-adds-one`, `open-side-landing` |
 | `exalted-orb`, Greater, Perfect | A rare item with a free slot. | One modifier on an open side; with one side full it lands on the other. | `exalt-adds-one`, `rare-slots`, `open-side-landing` |
-| + `omen-of-sinistral-exaltation` / `omen-of-dextral-exaltation` | A free slot on that side. | The modifier lands on that side. | `side-exaltation` |
-| + `omen-of-greater-exaltation` | Two free slots (on the restricted side, with a side omen). | Two modifiers instead of one. | `greater-exaltation-adds-two`, `greater-needs-two-free`, `greater-with-side-omen` |
+| + `omen-of-sinistral-exaltation` / `omen-of-dextral-exaltation` | A free slot on that side. Named only while the other side has a free slot too: with the other side full the exalt lands on the open side without it, so the routes leave it out (§ "A side Exaltation omen with the other side full"). | The modifier lands on that side. | `side-exaltation`, `open-side-landing` |
+| + `omen-of-greater-exaltation` | Two free slots (on the restricted side, with a side omen; on the open side when the other side is full and the side omen is left out). | Two modifiers instead of one. | `greater-exaltation-adds-two`, `greater-needs-two-free`, `greater-with-side-omen` |
 | Lesser, plain or Greater essence | A magic item with no crafted modifier. | The item turns rare with its modifiers kept, plus the essence's modifier on that modifier's side. | `essence-magic-to-rare`, `one-crafted-one-desecrated` |
 | `desecrate` (a bone that fits the class) | A rare item with no desecrated modifier. The routes also ask a free slot on the resolved side, so the game never removes a random modifier for it; a `last-remaining` desecration also asks the class's desecration pool on that side (§ "The last-target desecration"). | One unrevealed desecrated modifier, on the side its omen names. | `desecrate-adds-unrevealed`, `desecrate-no-free-slot`, `one-crafted-one-desecrated` |
 | + `omen-of-sinistral-necromancy` / `omen-of-dextral-necromancy` | Active before the bone. | The unrevealed modifier is a prefix (suffix). | `side-necromancy`, `omens-active-before-use`, `necromancy-without-pool` |
@@ -301,7 +301,10 @@ The four new condition keys, each a bool, true when:
 | `blocked` | The blocked side; with two, the larger deficit (need - free) first, ties to the side of the first missing target in target order. |
 
 `side-omen` resolves to the currency's Sinistral omen on the prefix side
-and its Dextral omen on the suffix side.
+and its Dextral omen on the suffix side. On an Exalted Orb of any grade
+it resolves to nothing while the other side has no free slot (§ "A side
+Exaltation omen with the other side full"): the Exaltation omen is named
+only while the other side has a free slot.
 
 ### The unrestricted exalt
 
@@ -309,6 +312,31 @@ While two sides are open and one of them is reserved, an Exalted Orb of any
 grade without a side omen does not fit: the alternative is passed over as
 not fitting, and the step falls to its next alternative. An unrestricted
 exalt could take the slot the reserved side's target needs.
+
+### A side Exaltation omen with the other side full
+
+On an Exalted Orb of any grade (`exalted-orb`, `greater-exalted-orb`,
+`perfect-exalted-orb`), a Sinistral or Dextral Exaltation omen, whether the
+action writes it literally or `side-omen` resolves to it, is left out of
+the chosen alternative when the side it names has a free slot and the
+other side has none, on the item as the step finds it (the projected item
+in state order). "Free" is § "Slot accounting"'s: the cap less every
+modifier on the side, fractured, desecrated and unrevealed ones counted.
+The exalt can only land on the open side (`open-side-landing`), so the
+omen would be spent for nothing (issue #42, added 2026-10-31).
+
+- Left out means it is not in the step's omens, and it is never checked
+  against the blocked list: a blocked omen that would have been left out
+  does not pass the alternative over.
+- Everything else stays: the step's side (the open one), Omen of Greater
+  Exaltation where two free slots there take two targets or two fillers
+  (§ "`greater-omen`"), any other omen the action names, and the step's
+  odds (an exalt with no side omen adds on the open side alone).
+- While the other side has a free slot the omen is named as before. An
+  omen that names the full side itself is not left out: the exalt has no
+  free slot where it lands and does not fit.
+- Only the two side Exaltation omens. A desecration beside a full side
+  keeps its Necromancy omen, an annulment its Annulment omen.
 
 ### `greater-omen`
 
@@ -734,7 +762,8 @@ is a spec or model defect, never a reason to change the expectation.
   - `essence-desecrate-double-slam`: the essence; desecrate on the prefix
     side with Sinistral Necromancy and Omen of the Liege (`lord-omen`);
     reveal with Abyssal Echoes; add the two suffixes with a Perfect
-    Exalted Orb, Greater and Dextral Exaltation. Done.
+    Exalted Orb and Greater, no side omen: the desecration filled the
+    prefixes. Done (it used to name Dextral Exaltation too).
   - `magic-augment-essence`: the essence; add the two suffixes with a
     Perfect Exalted Orb, Greater and Dextral Exaltation; the desecrated
     prefix is then the last target, so desecrate on the prefix side with
@@ -764,12 +793,21 @@ is a spec or model defect, never a reason to change the expectation.
     exalt the suffix with Dextral Exaltation).
   - `close-a-side`: rejected, `no-start-fits` (no side closable, both
     open).
+  - `essence-desecrate-double-slam` (pinned in `cases.json`): its last
+    step, the two prefixes after the suffix desecration and reveal filled
+    the suffixes, names Greater and no side omen (it used to name Sinistral
+    Exaltation too).
 - **`rare-no-target`** (#28's belt): a rare with two junk prefixes and two
   junk suffixes; two prefix targets and two suffix targets.
   - `rare-clean-then-slam`: a plain annulment on the prefix side, then one
     on the suffix side; then the two prefixes with a Perfect Exalted Orb,
     Greater and Sinistral Exaltation, and the two suffixes with a Perfect
-    Exalted Orb, Greater and Dextral Exaltation. Done.
+    Exalted Orb and Greater, no side omen: the prefix slam filled the
+    prefixes. Done (the suffix slam used to name Dextral Exaltation too).
+  - `essence-desecrate-double-slam` (pinned in `cases.json`): its last
+    step, the one prefix after the suffix slam filled the suffixes, is a
+    Perfect Exalted Orb with no omen (it used to name Sinistral
+    Exaltation).
 - **`magic-one-good`**: a magic item with a target prefix and an open
   suffix; missing a suffix and a prefix an essence adds.
   - `magic-augment-essence`: augment (the suffix), then the essence. Done.
@@ -805,18 +843,53 @@ is a spec or model defect, never a reason to change the expectation.
   - `close-a-side`, `rare-clean-then-slam`: as above, the annulment not
     certain.
   - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`rare-prefixes-full`** (2026-10-31, issue #42): a rare ring whose
+  three prefixes are targets and whose one suffix is a target; two suffix
+  targets are missing, one of them the hardest. The prefix side is full,
+  so no exalt names a side Exaltation omen (§ "A side Exaltation omen with
+  the other side full"). Two targets are missing, so nothing is the last
+  target.
+  - `rare-clean-then-slam`: add the two suffixes with a Perfect Exalted
+    Orb and Greater, no side omen. Done (it used to name Dextral
+    Exaltation too).
+  - `close-a-side`: its slam on the one open side, the same step. Done
+    (unchanged: the control the rule generalises).
+  - `essence-desecrate-double-slam`: desecrate the hardest on the suffix
+    side with Omen of Dextral Necromancy (the side omen of a desecration is
+    kept beside a full side); reveal with Abyssal Echoes; add the last
+    suffix with a Perfect Exalted Orb and no omen (one free slot, so no
+    Greater). Done (it used to name Dextral Exaltation).
+  - `magic-augment-essence`: rejected, `no-start-fits`.
+- **`rare-prefixes-full-dextral-blocked`**: the same item with
+  `omen-of-dextral-exaltation` on the blocked list. Each route is the one
+  above: the blocked omen would be left out, so it passes nothing over (it
+  used to pass every suffix slam over).
+- **`rare-suffixes-full`** (2026-10-31, issue #42): a rare ring whose one
+  prefix is a target and whose three suffixes are targets, one of them a
+  revealed desecrated one (Ulaman's); a second prefix target, the hardest,
+  is missing. The item already has its desecrated modifier, so nothing
+  desecrates.
+  - `rare-clean-then-slam`, `essence-desecrate-double-slam`: add the prefix
+    with a Perfect Exalted Orb and no omen (one target, so no Greater; it
+    used to name Sinistral Exaltation). Done.
+  - `close-a-side`: its slam on the one open side, the same step. Done.
+  - `magic-augment-essence`: rejected, `no-start-fits`.
 
 Invariants over every case and every route:
 
 - no Exalted Orb without a side omen while two sides are open and one is
   reserved;
+- no side Exaltation omen on an Exalted Orb whose named side has a free
+  slot while the other side has none (§ "A side Exaltation omen with the
+  other side full");
 - Omen of Greater Exaltation only where two free slots fit two placeable
   targets (an add) or two fillers (a fill);
 - a side annulment only where the other side holds a target an annulment
   could take;
 - a whittle only when it is certain and an annulment could take a target;
 - a fractured modifier is never projected as removed;
-- every omen a step needs is in its list (the side omen with Greater, the
+- every omen a step needs is in its list (the side omen with Greater
+  while both sides are open, the
   Necromancy omen with a side desecration), unless the player blocked it
   and the step took its plain alternative (a reveal without Abyssal
   Echoes, `essence-desecrate-double-slam`'s plain bone); a desecration

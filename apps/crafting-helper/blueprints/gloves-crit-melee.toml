@@ -18,6 +18,7 @@ attack speed lands. When the slammed prefixes are poor and of a lower level \
 than the ones to keep, the poster clears them with the Omen of Whittling; \
 do that by hand and plan again. The poster warns that without a large \
 budget it is mostly luck."""
+relies_on = ["open-side-landing"]
 
 [[start]]
 rarity = ["rare"]

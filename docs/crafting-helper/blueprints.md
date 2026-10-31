@@ -319,7 +319,7 @@ Five placeholders stand for a choice the engine makes on the item:
 |---|---|---|
 | `desecrate` | `currency` | The bones that fit the item's class and level, tried Preserved, Ancient, Gnawed (Gnawed only up to item level 64). |
 | `reveal` | `currency` | The reveal at the Well of Souls. It names no crafting item, so nothing blocks it. |
-| `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`, or the side its side rule resolved): Sinistral for a prefix, Dextral for a suffix. Needs a `bind` or a `side`, and a currency that has side omens. A listed step with `when = "bound"`, `bind = "last-remaining"` and no `side`, planned while several targets are missing, takes the side they all share; with targets on both sides its omen waits for the last target's side (the preview names both omens, and either one blocked passes the alternative over), and the guide names the one omen once a single target is left. |
+| `side-omen` | `omens` | The Sinistral or Dextral omen of the action's currency for the bound target's side (or the step's `side`, or the side its side rule resolved): Sinistral for a prefix, Dextral for a suffix. Needs a `bind` or a `side`, and a currency that has side omens. On an Exalted Orb of any grade, a Sinistral or Dextral Exaltation omen (resolved here or written literally) is left out when the other side has no free slot, since 0.2.1 (§ "State-ordered blueprints", "No side Exaltation omen beside a full side"; `open-side-landing`). A listed step with `when = "bound"`, `bind = "last-remaining"` and no `side`, planned while several targets are missing, takes the side they all share; with targets on both sides its omen waits for the last target's side (the preview names both omens, and either one blocked passes the alternative over), and the guide names the one omen once a single target is left. |
 | `greater-omen` | `omens` | Omen of Greater Exaltation, on an Exalted Orb of any grade only, where the step's side (the item, with no side) has two free slots and the step can use two (an add: two missing targets it can place there; a fill: always), and the omen is not blocked; otherwise nothing, with no fallback line. It may sit beside `side-omen`, and is an error beside an explicit `omen-of-greater-exaltation`. Whether Greater with a side omen adds both to that side, and whether Greater needs two free slots, are not established (`greater-with-side-omen`, `greater-needs-two-free`). |
 | `lord-omen` | `omens` | Since 0.2.0 (issue #40): the lord omen of the desecration's bound target, on the `desecrate` placeholder only: Omen of the Sovereign for an Ulaman modifier, the Liege for Amanamu, the Blackblooded for Kurgal, where the target is a desecrated modifier every tier of which names that one lord (`Ulaman's`, `of Ulaman`), the class is a weapon (a jawbone class but Quivers), an Amulet or a Ring, and the omen is not blocked; otherwise nothing, with no fallback line (an ordinary target never takes one: the omen would rule it out of the offer). The instruction names it beside the Necromancy omen, both before the bone. It needs no `side-omen` beside it: the plain bone `rings-resist-whittle` and `essence-desecrate-double-slam` fall back to when the Necromancy omen is blocked carries `lord-omen` alone, and names the lord's omen alone. On a listed `last-remaining` desecration planned while several targets are missing, it waits for the last one with the side omen, and the preview names which target would take which lord omen. It is an error on any other currency and beside an explicit lord omen. That a lord omen and a Necromancy omen both apply, and which classes count, are not established (`lord-with-side-omen`, `lord-omen-classes`). |
 
@@ -417,6 +417,19 @@ unknown": desecration and reveals have no established weights.
 open and one is reserved, an Exalted Orb of any grade with no side omen
 does not fit: it could take the slot the reserved side's target needs, so
 the step falls to its next alternative.
+
+**No side Exaltation omen beside a full side** (since 0.2.1, issue #42;
+the spec's § "A side Exaltation omen with the other side full"). On an
+Exalted Orb of any grade, Omen of Sinistral or Dextral Exaltation,
+written literally or resolved from `side-omen`, is left out of the chosen
+action when the side it names has a free slot and the other side has
+none on the item as the step finds it: the exalt can only land on the
+open side, so the omen would be spent for nothing (`open-side-landing`).
+A left-out omen is never checked against the blocked list, so a blocked
+one passes nothing over, and it gets no fallback line. The landing side,
+`greater-omen`, Catalysing and the step's odds are unchanged. This holds
+in listed blueprints too; an omen naming the full side itself is kept,
+and that exalt does not fit.
 
 **Removals.** A `remove-unwanted` step (usually `side = "blocked"`) tries
 its alternatives in order: Chaos Orb with Omen of Whittling only when the
@@ -725,7 +738,7 @@ list). "The first four" are `close-a-side`,
 |---|---|---|
 | `greater-with-side-omen` | Greater Exaltation with a Sinistral or Dextral Exaltation omen adds two modifiers, both on that side. | the first four, `weapons-physical-generic` |
 | `greater-needs-two-free` | Greater Exaltation needs two free slots (on the restricted side, with a side omen). | the first four, `weapons-physical-generic`, `body-armours-single-prefix` |
-| `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side. | `close-a-side`, `magic-augment-essence`, `weapons-physical-generic` (its augment), `body-armours-single-prefix` (its isolating Greater exalt) |
+| `open-side-landing` | An exalt or augment with no side omen, on an item whose other side is full, lands on the open side; since 0.2.1 (issue #42) the engine leaves a side Exaltation omen out of an exalt whose other side is full, so every blueprint with a side-omened exalt relies on it. | the first four, `weapons-physical-generic` (its augment, and its side-omened exalts), `body-armours-single-prefix` (its isolating Greater exalt), and the listed `amulets-resist-spirit`, `boots-runic-ward`, `caster-cast-speed`, `fracture-first`, `gloves-crit-melee`, `jewellery-catalyst-exalt`, `rings-flat-attack`, `time-lost-jewel-radius` |
 | `whittling-mod-level` | Whittling takes the modifier with the lowest modifier level. | the first four |
 | `fractured-not-removed` | A fractured modifier is never taken by an annulment or a Chaos Orb. | the first four, `fracture-first`, `fractured-essence-swap` (its essence's removal too) |
 | `omens-active-before-use` | A Necromancy omen must be active before the bone, Abyssal Echoes before the reveal. | all four state-ordered ones of 0.1.1 (the other three since 0.1.2's last-target desecration), the four of 0.1.4, `fractured-essence-swap`, and `jewellery-catalyst-exalt` (its Catalysing and side omens before each slam) |

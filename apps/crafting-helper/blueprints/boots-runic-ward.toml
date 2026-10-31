@@ -17,6 +17,7 @@ step is manual; the alloy with Sinistral Crystallisation rests on a \
 mechanic the docs mark not established. The two attributes are your \
 targets: the Chaos Orb lands one, the desecration the other. Rune sockets \
 are manual: the helper does not read them."""
+relies_on = ["open-side-landing"]
 
 [[start]]
 rarity = ["rare"]

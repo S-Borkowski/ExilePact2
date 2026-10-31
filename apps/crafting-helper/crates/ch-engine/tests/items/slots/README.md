@@ -36,6 +36,8 @@ real target ids and floors behind each case's aliases.
 | `rare-wrong-reveal-same-side-exalt.txt` | `rare-wrong-reveal`'s ring without its Life prefix: Mana T5 and the desecrated Remnant effect prefix; Fire Resistance T5. One prefix slot free. | Mana T5, Life T4 (missing, the hardest), Fire T5. |
 | `rare-certain-removal-first.txt` | `rare-fractured`'s ring with Fire Resistance T5, the lowest level, and an unrevealed desecrated suffix. | Mana T4, Life T4 (missing), Fire T5, the desecrated Skill Speed suffix T1 (missing, the hardest). |
 | `rare-uncertain-removal-keeps-order.txt` | The same ring with its Mana not fractured. | As `rare-certain-removal-first`. |
+| `rare-prefixes-full.txt`, `rare-prefixes-full-dextral-blocked.txt` | Rare Amethyst Ring, item level 76: Mana T4, Life T1, Accuracy Rating T4, the lowest level; Fire Resistance T4. The prefixes are full. The same item twice; the second case blocks Omen of Dextral Exaltation. | Mana T4, Life T4, Accuracy Rating T4, Fire T4, Cold Resistance T2 (missing, the hardest), Lightning Resistance T3 (missing). |
+| `rare-suffixes-full.txt` | Rare ring: Mana T4; Fire Resistance T4, Cold Resistance T5, the lowest level, and a revealed desecrated Skill Speed suffix (`of Ulaman`). The suffixes are full. | Mana T4, Life T4 (missing, the hardest), Fire T4, Cold T5, the desecrated Skill Speed suffix T1. |
 
 ## Walk states (`walks/`)
 

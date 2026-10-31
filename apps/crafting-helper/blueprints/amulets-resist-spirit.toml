@@ -20,7 +20,7 @@ blocker off before the desecration for Spirit; with the blocker gone, one \
 suffix is left open."""
 # Each desecration names the target lord's omen beside the Necromancy omen
 # (docs/models/crafting-slots-spec.md, "`lord-omen`").
-relies_on = ["lord-with-side-omen", "lord-omen-classes"]
+relies_on = ["lord-with-side-omen", "lord-omen-classes", "open-side-landing"]
 
 [[start]]
 rarity = ["rare"]
