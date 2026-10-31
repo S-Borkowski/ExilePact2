@@ -643,8 +643,9 @@ describe('the craft window', () => {
     // `craft-last-desecration`: the belt's last target missing (Armour) on
     // a rare with no desecrated modifier: the route's steps are Omen of
     // Sinistral Necromancy then the bone, the desecrated modifier a prefix,
-    // then the reveal with Omen of Abyssal Echoes, each with its odds
-    // unknown, in words, and no Fallback line.
+    // then the reveal with Omen of Abyssal Echoes, and no Fallback line.
+    // The desecration's odds are unknown, in words; the reveal's are an
+    // estimate that names the not-established facts it rests on.
     const view = fixtureView('craft-last-desecration');
     const previewed = view.craft.planning!.preview!.route!;
     const { root } = await render(view);
@@ -657,11 +658,14 @@ describe('the craft window', () => {
     );
     expect(text(desecrate.querySelector('.uses'))).toMatch(/^Uses .*Collarbone, Omen of Sinistral Necromancy$/);
     expect(text(reveal.querySelector('.uses'))).toBe('Uses Reveal at the Well of Souls, Omen of Abyssal Echoes');
-    for (const li of steps) {
-      const odds = li.querySelector('.odds')!;
-      expect(text(odds)).toMatch(/^odds unknown: /);
-      expect(odds.getAttribute('data-known')).toBe('false');
-    }
+    const desecrateOdds = desecrate.querySelector('.odds')!;
+    expect(text(desecrateOdds)).toMatch(/^odds unknown: /);
+    expect(text(desecrateOdds)).not.toContain('no established weights');
+    expect(desecrateOdds.getAttribute('data-known')).toBe('false');
+    const revealOdds = reveal.querySelector('.odds')!;
+    expect(text(revealOdds)).toBe(previewed.steps[1].odds);
+    expect(text(revealOdds)).toMatch(/^~\d+% \(an estimate: .*; rests on the not-established reveal-exclusive-row, /);
+    expect(revealOdds.getAttribute('data-known')).toBe('true');
     expect(root.querySelector('.route .fallback')).toBeNull();
 
     // `craft-close-side`: Omen of Sinistral Necromancy blocked, the close
@@ -1412,8 +1416,9 @@ describe('the craft window', () => {
     const shown = texts(root, 'ol.steps > li .odds');
     expect(shown).toEqual(steps.map((s) => s.odds));
     // Known odds and unknown ones, each as sent; never a blank or a dash.
-    expect(shown.filter((o) => o.startsWith('~'))).toHaveLength(2);
-    expect(shown.filter((o) => o.startsWith('odds unknown: '))).toHaveLength(2);
+    // The orbs' and the reveal's estimate known, the desecration's unknown.
+    expect(shown.filter((o) => o.startsWith('~'))).toHaveLength(3);
+    expect(shown.filter((o) => o.startsWith('odds unknown: '))).toHaveLength(1);
     for (const odds of shown) {
       expect(odds.trim()).not.toBe('');
       expect(odds).not.toMatch(/^[-—–]$/);
@@ -1430,9 +1435,9 @@ describe('the craft window', () => {
 
     // The guide says unknown odds the same way.
     const guiding = fixtureView('craft-guiding');
-    guiding.craft.guiding!.step!.step.odds = 'odds unknown: desecration and reveals have no established weights';
+    guiding.craft.guiding!.step!.step.odds = "odds unknown: a desecration only adds an unrevealed modifier: whether it becomes a target is the reveal's chance";
     const gr = await render(guiding);
-    expect(text(gr.root.querySelector('.card .odds'))).toBe('odds unknown: desecration and reveals have no established weights');
+    expect(text(gr.root.querySelector('.card .odds'))).toBe("odds unknown: a desecration only adds an unrevealed modifier: whether it becomes a target is the reveal's chance");
   });
 
   it('craft_of_exile_link_sends_its_command_without_a_url', async () => {

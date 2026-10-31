@@ -23,7 +23,9 @@ the targets and the whittling route chosen:
   strength, each at T5) ticked as targets and met, and the route the
   engine previews for them.
 - `craft-planning`: planning, the route previewed with known odds for the
-  orbs and `odds unknown: …` for the desecration and the reveal. Each step
+  orbs, `odds unknown: …` for the desecration, and an estimate for the
+  reveal (`~15% (an estimate: …; rests on the not-established
+  reveal-exclusive-row, reveal-ordinary-exalt-weights)`, since 0.3.0). Each step
   line carries the target modifiers a hit of it may place (`targets`) and
   an instruction composed from its data (the currency, its omens, the side
   and those modifiers); the route carries no blueprint notes. The
@@ -94,8 +96,12 @@ chosen:
   modifier, so the route desecrates for it (issue #32): `Use Omen of
   Sinistral Necromancy, then apply the Preserved Collarbone; the
   desecrated modifier will be a prefix, for +# to Armour` (the wording
-  since 0.2.0), then the reveal with Omen of Abyssal Echoes, both with
-  `odds unknown: …` and no Fallback line.
+  since 0.2.0), then the reveal with Omen of Abyssal Echoes, neither with
+  a Fallback line. The desecration's odds are `odds unknown: …`, its
+  reason pointing at the reveal; the reveal's are an estimate naming the
+  facts it rests on and the Echoes reroll (0.3.0). Every other view's
+  route says the same: a reveal's odds an estimate, a desecration's
+  unknown.
 - `craft-miss-clean`: the same craft started, the suffix side closed (a
   hit) and the slam on the prefix side missed (Flask Life Recovery): on
   `remove`, numbered as the craft's third step. Mana, a target, is the

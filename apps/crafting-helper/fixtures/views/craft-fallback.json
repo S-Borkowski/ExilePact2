@@ -1687,7 +1687,7 @@
               "id": "desecrate",
               "instruction": "Use Omen of Dextral Necromancy, then apply the Preserved Collarbone; the desecrated modifier will be a suffix, for +#% to Fire Resistance, +#% to Cold Resistance or +#% to Lightning Resistance",
               "number": 3,
-              "odds": "odds unknown: desecration and reveals have no established weights",
+              "odds": "odds unknown: a desecration only adds an unrevealed modifier: whether it becomes a target is the reveal's chance",
               "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
@@ -1705,7 +1705,7 @@
               "id": "reveal",
               "instruction": "Reveal at the Well of Souls for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 4,
-              "odds": "odds unknown: desecration and reveals have no established weights",
+              "odds": "~15% (an estimate: the first option one of 13 exclusive suffix modifiers; the other two drawn like an Exalted Orb on the suffix side, each a target 8.02% of the time; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights)",
               "survival": null,
               "targets": [
                 "+#% to Fire Resistance",

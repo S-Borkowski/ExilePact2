@@ -1709,7 +1709,7 @@
               "id": "reveal-last",
               "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +#% to Cold and Chaos Resistances (suffix)",
               "number": 2,
-              "odds": "odds unknown: desecration and reveals have no established weights",
+              "odds": "~13% (an estimate: the first option one of 15 exclusive suffix modifiers, 1 of them aimed, each taken as equally likely; the other two drawn like an Exalted Orb on the suffix side, none a target; rerolled once with Omen of Abyssal Echoes when no target is offered; rests on the not-established reveal-exclusive-row, exclusive-weights-unknown, if the earlier steps hit)",
               "survival": null,
               "targets": [
                 "+#% to Cold and Chaos Resistances"
