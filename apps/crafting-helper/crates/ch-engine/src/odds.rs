@@ -181,10 +181,11 @@ fn reveal_odds(ctx: &Ctx, st: &State, aims: &[usize], action: &ChosenAction) -> 
     let exalt = |count: &str| {
         match q {
         Some(q) if !ordinary.is_empty() => format!(
-            "{count} drawn like an Exalted Orb on the {word} side, each a target {:.2}% of the time",
+            "{count} drawn like an Exalted Orb over the ordinary {word}es, each a target {:.2}% \
+             of the time",
             q * 100.0
         ),
-        _ => format!("{count} drawn like an Exalted Orb on the {word} side, none a target"),
+        _ => format!("{count} drawn like an Exalted Orb over the ordinary {word}es, none a target"),
     }
     };
     if n > 0 {

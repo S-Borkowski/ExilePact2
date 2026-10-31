@@ -1206,7 +1206,7 @@
               "id": "reveal",
               "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +#% to Cold Resistance (suffix)",
               "number": 3,
-              "odds": "~12% (an estimate: the first option one of 12 exclusive suffix modifiers; the other two drawn like an Exalted Orb on the suffix side, each a target 3.19% of the time; rerolled once with Omen of Abyssal Echoes when no target is offered; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights, if the earlier steps hit)",
+              "odds": "~12% (an estimate: the first option one of 12 exclusive suffix modifiers; the other two drawn like an Exalted Orb over the ordinary suffixes, each a target 3.19% of the time; rerolled once with Omen of Abyssal Echoes when no target is offered; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights, if the earlier steps hit)",
               "survival": null,
               "targets": [
                 "+#% to Cold Resistance"

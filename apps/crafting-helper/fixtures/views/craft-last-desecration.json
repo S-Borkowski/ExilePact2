@@ -1223,7 +1223,7 @@
               "id": "reveal-last",
               "instruction": "Reveal at the Well of Souls with Omen of Abyssal Echoes for +# to Armour (prefix)",
               "number": 2,
-              "odds": "~24% (an estimate: the first option one of 8 exclusive prefix modifiers; the other two drawn like an Exalted Orb on the prefix side, each a target 6.54% of the time; rerolled once with Omen of Abyssal Echoes when no target is offered; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights, if the earlier steps hit)",
+              "odds": "~24% (an estimate: the first option one of 8 exclusive prefix modifiers; the other two drawn like an Exalted Orb over the ordinary prefixes, each a target 6.54% of the time; rerolled once with Omen of Abyssal Echoes when no target is offered; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights, if the earlier steps hit)",
               "survival": null,
               "targets": [
                 "+# to Armour"

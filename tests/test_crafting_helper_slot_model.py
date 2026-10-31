@@ -1117,7 +1117,7 @@ def assert_chance(test, got, want):
 
 
 class RevealOdds(unittest.TestCase):
-    def test_recorded_reveal_cases_match_reveal_chance(self):
+    def test_reveal_chance_matches_the_recorded_cases(self):
         data = json.loads(sm.REVEAL_ODDS.read_text(encoding="utf-8"))
         self.assertEqual(data["spec"], "docs/models/crafting-slots-spec.md")
         cases = data["cases"]
@@ -1140,7 +1140,7 @@ class RevealOdds(unittest.TestCase):
                     (c["exclusive_pool"], c["exclusive_hits"], c["ordinary"], c["echoes"]) == anchor[:4]
                     for c in cases))
 
-    def test_hand_anchors(self):
+    def test_reveal_chance_anchors(self):
         for n, h, q, echoes, want in REVEAL_ANCHORS:
             with self.subTest(n=n, h=h, q=q, echoes=echoes):
                 assert_chance(self, sm.reveal_chance(n, h, q, echoes), want)
@@ -1162,7 +1162,7 @@ class RevealOdds(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     sm.reveal_chance(*bad)
 
-    def test_check_reports_a_mutated_reveal_case(self):
+    def test_reveal_case_check_reports_a_changed_expectation(self):
         import tempfile
         data = json.loads(sm.REVEAL_ODDS.read_text(encoding="utf-8"))
         mutations = []
@@ -1188,7 +1188,7 @@ class RevealOdds(unittest.TestCase):
                     self.assertIn(case_id, problems[0])
                     self.assertTrue(sm.check(CASES, path))
 
-    def test_reveal_facts_are_not_established_with_their_sources(self):
+    def test_reveal_facts_are_not_established(self):
         text = SPEC.read_text(encoding="utf-8")
         rows = {r["id"]: r for r in sm.spec_facts(text)}
         for fact_id, sources in REVEAL_FACTS.items():

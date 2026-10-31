@@ -1705,7 +1705,7 @@
               "id": "reveal",
               "instruction": "Reveal at the Well of Souls for +#% to Fire Resistance (suffix), +#% to Cold Resistance (suffix) or +#% to Lightning Resistance (suffix)",
               "number": 4,
-              "odds": "~15% (an estimate: the first option one of 13 exclusive suffix modifiers; the other two drawn like an Exalted Orb on the suffix side, each a target 8.02% of the time; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights)",
+              "odds": "~15% (an estimate: the first option one of 13 exclusive suffix modifiers; the other two drawn like an Exalted Orb over the ordinary suffixes, each a target 8.02% of the time; rests on the not-established reveal-exclusive-row, reveal-ordinary-exalt-weights)",
               "survival": null,
               "targets": [
                 "+#% to Fire Resistance",
