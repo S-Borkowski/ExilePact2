@@ -74,7 +74,7 @@ the session; it does not change the id.
 | `whittling-mod-level` | not established | The modifier Whittling takes is the one with the lowest modifier level (its required item level), not the lowest tier or value; ties between equal levels are unresolved (the domistae codex and maxroll's crafting guide). | https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html, fetched 2026-10-29 |
 | `fractured-not-removed` | not established | A fractured modifier is never taken by an Orb of Annulment or a Chaos Orb, Whittling included (the domistae codex; maxroll's overview says only that it cannot be changed). | https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html and https://maxroll.gg/poe2/resources/path-of-exile-2-crafting-overview, fetched 2026-10-29 |
 | `omens-active-before-use` | not established | A Necromancy omen must be active before the bone is used and Abyssal Echoes before the reveal (maxroll's Abyss and crafting guides). | https://maxroll.gg/poe2/resources/abyss, fetched 2026-10-29 |
-| `necromancy-without-pool` | not established | What Sinistral Necromancy does on a class with no desecrated prefixes (body armour, gloves, boots, helmets): presumably a reveal of ordinary prefixes, but no source tests it. | https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-29 |
+| `necromancy-without-pool` | not established | What Sinistral Necromancy does on a class with no desecrated prefixes (body armour, gloves, boots, helmets): a reveal of ordinary prefixes, by the wiki's observation; no test of it by this project or a named tester is known. | https://poe2db.tw/us/Desecrated_Modifiers, fetched 2026-10-29; https://www.poe2wiki.net/wiki/Desecrated_modifier#Exclusive_desecrated_modifiers, reviewed 2026-10-31 (the owner's copy, issue #50) |
 | `removal-equally-likely` | not established | Each modifier an Orb of Annulment may take is equally likely to go (poe2db says only "random"). | https://poe2db.tw/us/Orb_of_Annulment, fetched 2026-10-29 |
 | `abyss-mark-unfracturable` | not established | The Mark of the Abyssal Lord, the modifier Essence of the Abyss adds, is never the one a Fracturing Orb picks, so on a four-modifier rare holding it the orb picks among the other three: one chance in three for a given wanted one instead of one in four (Mobalytics' SSF and Lightning Arrow crafting guides; its essences guide also says the mark seems to raise the tier of a later reveal, which nothing here relies on). | https://mobalytics.gg/poe-2/guides/ssf-crafting, https://mobalytics.gg/poe-2/guides/lightning-arrow-crafting and https://mobalytics.gg/poe-2/guides/essences, fetched 2026-10-30 |
 | `desecrated-unfracturable` | not established | A Fracturing Orb never picks a desecrated modifier (Mobalytics' SSF crafting guide); that an unrevealed one is skipped too is our reading. | https://mobalytics.gg/poe-2/guides/ssf-crafting, fetched 2026-10-30 |
@@ -83,6 +83,9 @@ the session; it does not change the id.
 | `lord-with-side-omen` | not established | A lord's omen (Omen of the Sovereign for Ulaman, the Liege for Amanamu, the Blackblooded for Kurgal) and a Sinistral or Dextral Necromancy omen used on one desecration both apply: the desecrated modifier is that lord's, on that side (the domistae codex; poe2db documents each omen alone, a lord's omen guaranteeing that lord's modifier on a weapon or jewellery desecration). | https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#tricks and https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#abyss, fetched 2026-10-30; https://poe2db.tw/us/Omen, fetched 2026-10-28 |
 | `lord-omen-classes` | not established | The classes a lord's omen works on (poe2db names weapons and jewellery): the jawbone classes but Quivers, and Amulets and Rings. Whether a Belt or a Quiver counts is not stated, so neither takes one (the owner's default, 2026-10-30). | https://poe2db.tw/us/Omen, fetched 2026-10-28 |
 | `catalysing-with-side-omen` | not established | Omen of Catalysing Exaltation and a Sinistral or Dextral Exaltation omen used on one Exalted Orb both apply: the catalyst's favour and the side restriction (the domistae codex says omens of different kinds stack; no source tests these two together). | https://domistae.github.io/poe2-leveling/poe2_crafting_codex.html#omens, fetched 2026-10-30 |
+| `reveal-exclusive-row` | not established | While the item's class has an exclusive (desecrated-section) modifier on the revealed side at the item's level, at least one of the three offered options is such an exclusive modifier; sometimes two or three are (the wiki's observation; ExileDesk's count of 563 ring reveals found one in about 85%, two in about 14%, three in about 1%). | https://www.poe2wiki.net/wiki/Desecrated_modifier#Exclusive_desecrated_modifiers, reviewed 2026-10-31 (the owner's copy, issue #50); https://exiledesk.com/en/blog/desecration-weights/, fetched 2026-10-31 (the 563-ring count) |
+| `reveal-ordinary-exalt-weights` | not established | The offered options that are not exclusive are drawn the way an Exalted Orb draws, by spawn weight over the side's ordinary pool (the wiki's observation and a second tester's numbers in issue #50); whether the draws can repeat is not stated, and the estimate takes them as independent draws that leave exclusive modifiers out. | https://www.poe2wiki.net/wiki/Desecrated_modifier#Exclusive_desecrated_modifiers, reviewed 2026-10-31 (the owner's copy, issue #50); https://github.com/S-Borkowski/ExilePact2/issues/50, reviewed 2026-10-31 (the second tester's numbers) |
+| `exclusive-weights-unknown` | not established | The weights among a class's exclusive modifiers are not published and are uneven (ExileDesk's ring count ranges from about 19% to about 1% of offers; poe2db's weight of 1 for each is a placeholder); the estimate takes them as equal. | https://exiledesk.com/en/blog/desecration-weights/, fetched 2026-10-31; https://www.poe2wiki.net/wiki/Desecrated_modifier#Exclusive_desecrated_modifiers, reviewed 2026-10-31 (the owner's copy, issue #50) |
 
 ### Which blueprint relies on which not-established fact
 
@@ -103,6 +106,9 @@ the session; it does not change the id.
 | `lord-with-side-omen` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | Each desecration that carries `side-omen` also carries `lord-omen` (§ "`lord-omen`"): for one lord's desecrated target it names that lord's omen beside the Necromancy omen. The plain bone `rings-resist-whittle` and `essence-desecrate-double-slam` fall back to when the Necromancy omen is blocked carries `lord-omen` alone, so it names the lord's omen alone (added 2026-10-30). |
 | `lord-omen-classes` | `amulets-resist-spirit`, `caster-cast-speed`, `close-a-side`, `essence-desecrate-double-slam`, `fracture-first`, `fractured-essence-swap`, `full-rare-desecration-rescue`, `magic-augment-essence`, `rare-clean-then-slam`, `rings-resist-whittle`, `weapons-physical-generic` | `lord-omen` resolves only on the lord classes; on the blueprints' armour classes, Belts and Quivers it resolves to nothing. |
 | `catalysing-with-side-omen` | `jewellery-catalyst-exalt` | Each slam names Omen of Catalysing Exaltation beside the side's Exaltation omen. |
+| `reveal-exclusive-row` | none | No route decision rests on it: a reveal step's estimated odds (§ "Reveal odds") name it in their basis, always (added 2026-10-31, issue #49). |
+| `reveal-ordinary-exalt-weights` | none | No route decision rests on it: a reveal's estimate names it when an ordinary target counted (added 2026-10-31, issue #49). |
+| `exclusive-weights-unknown` | none | No route decision rests on it: a reveal's estimate names it when an exclusive target counted (added 2026-10-31, issue #49). |
 
 ## Slot accounting
 
@@ -272,7 +278,8 @@ the last. An unrevealed modifier a `last-remaining` desecration left waits
 for that target (§ "Slot accounting", need).
 
 `hardest` in the model: a missing desecrated-pool target first (its odds
-are unknown, so it counts as hardest), the first in target order; else the
+are unknown, so it counts as hardest; a reveal's estimate, § "Reveal
+odds", does not change that), the first in target order; else the
 case's `hardest` alias when the case gives one; else the first missing
 target in target order. The engine computes it from odds as in listed
 order; a case whose route depends on it names it.
@@ -524,8 +531,12 @@ item level <n>`), the bone or the Necromancy omen blocked (`<names>
 blocked`), or otherwise the engine's own reason. The model does not compute
 it and the parity test does not compare it, as with odds.
 
-**Odds.** A desecration and a reveal have no established weights, so their
-odds are unknown, with that reason, as in listed order.
+**Odds.** A desecration's own odds are unknown, as in listed order (or,
+on a full side, the share of its random removal that spares the targets):
+which modifier it leaves is decided only at the reveal, so its reason says
+that rather than that reveals have no weights. A reveal's odds are the
+estimate of § "Reveal odds" (changed 2026-10-31, issue #49; they were
+unknown before).
 
 ### A wrong reveal waits for the same-side exalt
 
@@ -661,7 +672,111 @@ item (the item as it would stand if every earlier step hit), where a
 filler takes its slot and excludes no modifier family; they read as "if the
 earlier steps hit". A step whose odds cannot be computed there is unknown,
 with the reason, as in listed order. The parity test does not compare odds;
-the model gives only a removal's certainty.
+the model gives only a removal's certainty, and the reveal's estimate on
+the numbers § "Reveal odds" defines, held to the engine through its own
+file.
+
+## Reveal odds
+
+Added 2026-10-31 (issue #49; the model is the owner's decision recorded
+there, its sources in issue #50). A Well of Souls reveal step shows an
+estimated chance that the offered options include a target, instead of
+unknown. It is an estimate: every fact it rests on is labelled not
+established above. It changes no route: `hardest` still counts a missing
+desecrated-pool target as unknown (§ "Candidates and the next step"), and
+a desecration's own odds stay as § "The last-target desecration" says.
+
+**The model.** One reveal on side S offers three options:
+
+- while the class has an exclusive modifier on S at the item's level, the
+  first is one of those exclusive modifiers (`reveal-exclusive-row`), and
+  the other two are each drawn like one Exalted Orb over S's ordinary pool,
+  by spawn weight, the exclusive modifiers left out
+  (`reveal-ordinary-exalt-weights`);
+- otherwise all three are drawn like that (`reveal-ordinary-exalt-weights`;
+  what a reveal offers on a class with no exclusive modifier on S is
+  `necromancy-without-pool`).
+
+**Which side.** S is the side of the unrevealed modifier on the item as the
+step finds it (in state order, the projected item). With none (a listed
+preview evaluates every step on the starting item), S is the one side
+every target the step aims at is on. Otherwise the side is not known
+before the desecration, and the odds are unknown with that reason.
+
+**The numbers.**
+
+- n: the exclusive modifiers that can be offered: the class's
+  desecrated-section modifiers of kind S on the item's variant at its item
+  level, less any sharing a family with a modifier on the item (the list
+  the last-target desecration's pool condition reads). On the shipped data
+  every equipment exclusive modifier is level 65 and every jewel one level
+  1, so n > 0 means exactly a pool on S and an item level high enough.
+- h: the aimed exclusive modifiers among those n, each counting as the
+  share of its reachable tiers at or better than its floor (every shipped
+  one but one belt modifier has a single tier, so it counts 1). With equal
+  weights (`exclusive-weights-unknown`) the first option is an aimed one
+  with chance h/n.
+- q: the chance one Exalted Orb draw on S adds an aimed ordinary modifier,
+  computed as an Exalted Orb's add odds are: spawn weights, families on the
+  item left out, no minimum modifier level. q is unknown where an Exalted
+  Orb's odds are (jewels, placeholder weights), and 0 when no ordinary
+  target is aimed on S.
+
+**One set of options** hits with chance
+
+- p = 1 - (1 - h/n) (1 - q)^2 when n > 0;
+- p = 1 - (1 - q)^3 when n = 0.
+
+With Omen of Abyssal Echoes on the reveal's action the options are offered
+twice, the second set only when the first holds no target, so the chance
+is 1 - (1 - p)^2. The estimate assumes the player rerolls exactly when the
+first set holds no target.
+
+**Unknown and zero.** The chance is unknown when q is unknown and an
+ordinary target is aimed on S, or when an exclusive target counts and the
+equal-weight default below is switched off. It is 0, certain not to hit,
+when no target is aimed on S.
+
+**The label.** The odds are shown as known, with a basis that says they are
+an estimate: it always contains `estimate` and `rests on`, and names
+`reveal-exclusive-row`; it names `reveal-ordinary-exalt-weights` when an
+ordinary target counted, `exclusive-weights-unknown` and the word `equal`
+when an exclusive target counted, `necromancy-without-pool` when the class
+has no exclusive modifier on S at any level, and `Abyssal Echoes` when the
+reroll counted. The basis does not read as a count of hits in a total
+weight: the estimate is a formula, not one weighted draw.
+
+**Defaults** for what the sources leave open. Each is reversible, and each
+rests on the fact named:
+
+- The two ordinary draws are independent and may repeat
+  (`reveal-ordinary-exalt-weights`). Undo: change the two-draw factor to
+  draws without replacement in the model's `reveal_chance` and its engine
+  twin, then re-derive the parity file from this section.
+- Exclusive modifiers are left out of the second and third options
+  (`reveal-ordinary-exalt-weights`). So a set with two or three exclusive
+  options, which `reveal-exclusive-row`'s count saw in about 15% of
+  reveals, is not modelled.
+- Exclusive modifiers are equally likely (`exclusive-weights-unknown`):
+  the model's switch `EXCLUSIVE_EQUAL_WEIGHT` is on. Off, an exclusive
+  target makes the chance unknown. Undo: set the switch off in the model
+  and its engine twin, and re-derive the exclusive cases of the parity
+  file.
+- A lord's omen (Sovereign, Liege, Blackblooded) is not counted as
+  narrowing the first option: n is the side's whole exclusive pool.
+- The 85/14/1 split of `reveal-exclusive-row` is not used by the formula,
+  so how a bone's kind or the item class changes it does not matter here;
+  nor does a bone's minimum modifier level.
+
+**The parity file.** The model's `reveal_chance(exclusive_pool,
+exclusive_hits, ordinary, echoes)` takes n, h, q (a fraction, or null for
+unknown) and whether Abyssal Echoes counts, and returns the chance or null.
+`apps/crafting-helper/crates/ch-engine/tests/items/slots/reveal-odds.json`
+records, from this section, cases of those four inputs and the chance
+(within 1e-9), and both the model's `check` and the engine's tests read
+it. Worked values: n 7, h 1, q 0 is 1/7, with the reroll 13/49; n 0, q 0.1
+is 0.271, with the reroll 0.468559; n 10, h 0, q 0.1 is 0.19; n 10, h 1,
+q 0.2 is 0.424; n 10, h 0, q 0 is 0; n 10, h 0, q unknown is unknown.
 
 ## Representative crafts
 
@@ -905,7 +1020,9 @@ Invariants over every case and every route:
 
 - Spawn weights, costs, the expected number of tries, and odds beyond one
   step: the model has no weights; where they decide, the cases record only
-  the first steps.
+  the first steps. Its one odds function is the reveal's estimate
+  (§ "Reveal odds"), which takes its ordinary chance as given; the route
+  rules never read it.
 - Floors and minimum modifier levels: the model treats a target as on the
   item or missing; checking floors and which currency grade meets them is
   the engine's.

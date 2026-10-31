@@ -544,6 +544,9 @@ pub const NOT_ESTABLISHED: &[&str] = &[
     "lord-with-side-omen",
     "lord-omen-classes",
     "catalysing-with-side-omen",
+    "reveal-exclusive-row",
+    "reveal-ordinary-exalt-weights",
+    "exclusive-weights-unknown",
 ];
 
 /// The catalogue entry for an id.
