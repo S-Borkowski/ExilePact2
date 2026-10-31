@@ -544,3 +544,150 @@ fn the_route_source_carries_no_web_address() {
     let plain = "Discord post 6 (and post 5's note), owner's paste, 2026-10-28";
     assert_eq!(source_line(plain), plain);
 }
+
+/// `cases.json`'s `rare-prefixes-full` ring: Mana T4, Life T1 and Accuracy
+/// Rating T4 fill the prefixes; Fire Resistance T4 is the one suffix.
+const PREFIXES_FULL: &str = "rare-prefixes-full";
+const PERFECT: &str = "Perfect Exalted Orb";
+
+/// Its targets: every prefix and Fire as they are, Cold Resistance T2 (the
+/// hardest) and Lightning Resistance T3 missing.
+fn prefixes_full_targets() -> Vec<Target> {
+    [
+        ("prefix-to-maximum-mana", 4),
+        ("prefix-to-maximum-life", 4),
+        ("prefix-to-accuracy-rating", 4),
+        ("suffix-to-fire-resistance", 4),
+        ("suffix-to-cold-resistance", 2),
+        ("suffix-to-lightning-resistance", 3),
+    ]
+    .iter()
+    .map(|(id, floor)| Target::new(*id, Some(*floor)))
+    .collect()
+}
+
+/// Whether `text` names a side Exaltation omen.
+fn names_side_exaltation(text: &str) -> bool {
+    text.contains(SINISTRAL_EXALT) || text.contains(DEXTRAL_EXALT)
+}
+
+#[test]
+fn full_prefixes_step_names_no_exaltation_omen() {
+    // Issue #42: the prefixes are full, so the exalt can only land on the
+    // suffix side; Omen of Dextral Exaltation would be spent for nothing.
+    // Two suffixes are free, so Greater stays.
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let app = planned(
+        &tmp.path().join("full"),
+        &shell,
+        &slots_item(PREFIXES_FULL),
+        &prefixes_full_targets(),
+    );
+    let view = app.choose_route("rare-clean-then-slam");
+    let steps = &route(&view).steps;
+    assert_eq!(steps.len(), 1, "{steps:?}");
+    let slam = &steps[0];
+    assert_eq!(slam.id, "side-slam");
+    assert_eq!(slam.uses, [PERFECT, GREATER]);
+    assert!(
+        slam.instruction
+            .starts_with(&format!("{PERFECT} with {GREATER} on the suffix side")),
+        "{}",
+        slam.instruction
+    );
+    assert!(
+        !names_side_exaltation(&slam.instruction),
+        "{}",
+        slam.instruction
+    );
+    assert_eq!(slam.fallback, None);
+
+    // The guide's current step, on the item as it is.
+    let view = app.accept_craft();
+    let s = &step(&view).step;
+    assert_eq!(s.uses, [PERFECT, GREATER]);
+    assert!(!names_side_exaltation(&s.instruction), "{}", s.instruction);
+    app.shutdown();
+
+    // Baseline: issue #28's ring has room on its suffix side, so its prefix
+    // slam still names Omen of Sinistral Exaltation.
+    let app = planned(
+        &tmp.path().join("room"),
+        &shell,
+        &slots_item("rare-one-target"),
+        &one_target_targets(),
+    );
+    let view = app.choose_route("rare-clean-then-slam");
+    assert_eq!(
+        route(&view).steps[1].uses,
+        [PERFECT, GREATER, SINISTRAL_EXALT]
+    );
+    app.shutdown();
+}
+
+#[test]
+fn full_prefixes_fallback_line_names_no_exaltation_omen() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shell = FakeShell::default();
+    let slam_with = |dir: &str, blocked: &[&str]| {
+        let app = planned(
+            &tmp.path().join(dir),
+            &shell,
+            &slots_item(PREFIXES_FULL),
+            &prefixes_full_targets(),
+        );
+        app.choose_route("rare-clean-then-slam");
+        let view = app.set_craft_blocked(&lines(blocked));
+        let slam = route(&view).steps[0].clone();
+        app.shutdown();
+        slam
+    };
+
+    // Perfect Exalted Orb blocked: the Greater one stands in, and neither
+    // half of the line names the omen the engine left out.
+    let slam = slam_with("perfect", &["perfect-exalted-orb"]);
+    assert_eq!(slam.uses, ["Greater Exalted Orb", GREATER]);
+    let line = slam.fallback.expect("a fallback line");
+    assert_eq!(
+        line,
+        format!("Greater Exalted Orb with {GREATER} instead of {PERFECT}: {PERFECT} blocked")
+    );
+    assert!(!names_side_exaltation(&line), "{line}");
+
+    // Omen of Dextral Exaltation blocked as well: it passed nothing over,
+    // so it is not a reason either.
+    let slam = slam_with(
+        "both",
+        &["perfect-exalted-orb", "omen-of-dextral-exaltation"],
+    );
+    let line = slam.fallback.expect("a fallback line");
+    assert_eq!(
+        line,
+        format!("Greater Exalted Orb with {GREATER} instead of {PERFECT}: {PERFECT} blocked")
+    );
+
+    // Omen of Dextral Exaltation alone blocked: no fallback at all.
+    let slam = slam_with("dextral", &["omen-of-dextral-exaltation"]);
+    assert_eq!(slam.uses, [PERFECT, GREATER]);
+    assert_eq!(slam.fallback, None);
+
+    // Control: on the belt, whose other side has room, the passed-over
+    // alternative keeps its side omen in the line.
+    let app = planned(
+        &tmp.path().join("belt"),
+        &shell,
+        &belt("belt-2p1s"),
+        &belt_targets(),
+    );
+    app.choose_route(CLOSE);
+    let view = app.set_craft_blocked(&lines(&[NECRO, "perfect-exalted-orb"]));
+    let lines_with_omen: Vec<String> = route(&view)
+        .steps
+        .iter()
+        .filter_map(|s| s.fallback.clone())
+        .filter(|l| names_side_exaltation(l))
+        .collect();
+    assert!(!lines_with_omen.is_empty(), "{:?}", route(&view).steps);
+    app.shutdown();
+}
