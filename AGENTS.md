@@ -359,6 +359,24 @@ debugger question becomes a step of a written live procedure. See
 
 Story and evidence: [docs/agents/limit-rebuilds-reruns.md](docs/agents/limit-rebuilds-reruns.md)
 
+## Keep Build Outputs From Filling the Disk
+
+Every checkout, the main one and each `git worktree`, builds into its own
+`apps/<app>/target/`, and a debug `target/` grows by gigabytes per build; on
+2026-10-30 that filled C: during a workorder (issue #38). Build output stays in
+each checkout: do not set `CARGO_TARGET_DIR`, `build.target-dir` or
+`build.build-dir`, because one shared dir serialises every build on the machine
+and out-of-tree output outlives its worktree. Reclaim the space instead with
+`py -3 tools/disk_hygiene.py`: `report` shows what each checkout costs, and
+after a pull request merges, run the `worktrees` dry run, read it, then
+`py -3 tools/disk_hygiene.py worktrees --apply` to remove the merged worktrees
+(never a locked, dirty or unmerged one; branches are never deleted). `trim`
+cuts an app's `target/` that grew past a cap. `/workorder` refuses to launch
+with `DISK-LOW` when the drive has less than 30 GiB free; free space with the
+tool, and launch anyway only on the owner's word.
+
+Commands, safety rules and measurements: [docs/tools/disk-hygiene.md](docs/tools/disk-hygiene.md)
+
 ## Prove the Instrument Before Trusting a Negative Result
 
 Before a "0 calls" / "no effect" / "never fires" result is allowed to close a

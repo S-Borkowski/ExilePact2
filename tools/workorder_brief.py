@@ -62,7 +62,7 @@ The driver's launch arguments, as JSON, in one call:
     py -3 tools/workorder_brief.py --launch-args <slug> [--reviewers A,B]
         [--submodules X,Y] [--implementer-model M] [--implementer-effort E]
         [--research-headings H] [--answered ID,ID] [--first-implementation]
-        [--final-gate] [--checkout DIR]
+        [--final-gate] [--checkout DIR] [--min-free-gib N]
 
 prints the `workorder-rounds.js` args the driver passes through unchanged
 (SKILL.md "Driver discipline"): slug, planPath, contextPath, checkoutRoot,
@@ -81,7 +81,11 @@ calls, largely to copy these values through their own context by hand.
 
 Run `tools/workorder_record.py apply` on the previous launch first: State and
 the Log are read from the files. Exit 1 when the plan's lint has a finding
-(it goes back to the planner, as it always did), 2 when the plan is missing.
+(it goes back to the planner, as it always did), 2 when the plan is missing,
+6 (`DISK-LOW`, nothing on stdout) when the checkout's drive has less than
+`--min-free-gib` GiB free (default `disk_hygiene.DEFAULT_MIN_FREE_GIB`; 0
+skips the check): build outputs filled C: during a workorder (issue #38), and
+`py -3 tools/disk_hygiene.py report` shows what is using it.
 """
 
 from __future__ import annotations
@@ -97,6 +101,7 @@ TOOLS = Path(__file__).resolve().parent
 SKILL = TOOLS.parent / ".claude" / "skills" / "workorder"
 sys.path.insert(0, str(TOOLS))
 sys.path.insert(1, str(SKILL))
+import disk_hygiene  # noqa: E402
 import plan_lint  # noqa: E402
 import round_delta  # noqa: E402
 import run_criteria  # noqa: E402
@@ -606,6 +611,14 @@ def launch_args(a) -> dict:
         raise LintFailed(f"{plan_path} has no '## Acceptance criteria' heading")
     if findings:
         raise LintFailed("\n".join(f"{plan_path}: {where}: {rule}: {excerpt}" for where, rule, excerpt in findings))
+    if a.min_free_gib > 0:
+        free = disk_hygiene.free_gib(root)
+        if free < a.min_free_gib:
+            need = f"{a.min_free_gib:.0f}" if a.min_free_gib == int(a.min_free_gib) else f"{a.min_free_gib}"
+            raise DiskLow(f"DISK-LOW: {free:.1f} GiB free on the drive of {root.as_posix()}, "
+                          f"{need} GiB required to launch. See what is using it with "
+                          f"`py -3 tools/disk_hygiene.py report`, free it with `py -3 tools/disk_hygiene.py "
+                          f"worktrees` (a dry run; --apply removes), or launch anyway with --min-free-gib 0")
 
     def h2(name):
         k = plan.h2(name)
@@ -669,6 +682,10 @@ class LintFailed(Exception):
     pass
 
 
+class DiskLow(Exception):
+    pass
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="workorder_brief.py",
                                 description="Print one implementer's slice of a /workorder plan.")
@@ -683,7 +700,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--answered")
     p.add_argument("--first-implementation", dest="first_implementation", action="store_true")
     p.add_argument("--final-gate", dest="final_gate", action="store_true")
-    one = p.add_mutually_exclusive_group()
+    p.add_argument("--min-free-gib", dest="min_free_gib", type=float, default=disk_hygiene.DEFAULT_MIN_FREE_GIB)
+    one =p.add_mutually_exclusive_group()
     one.add_argument("--round", type=int)
     one.add_argument("--lane")
     one.add_argument("--join", action="store_true")
@@ -712,6 +730,9 @@ def main(argv=None) -> int:
         except Fence as exc:
             print(f"workorder_brief: {exc}", file=sys.stderr)
             return 5
+        except DiskLow as exc:
+            print(exc, file=sys.stderr)
+            return 6
         sys.stdout.buffer.write(text.encode("utf-8"))
         sys.stdout.buffer.flush()
         return 0

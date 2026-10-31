@@ -851,7 +851,8 @@ the Workflow tool requires, so don't ask again. It carried
 ```bash
 py -3 tools/workorder_brief.py --launch-args <slug> [--reviewers <name,...>] \
     [--implementer-effort high|medium] [--implementer-model opus|sonnet] \
-    [--research-headings '<heading>'] [--first-implementation] [--answered <id,...>] [--final-gate]
+    [--research-headings '<heading>'] [--first-implementation] [--answered <id,...>] [--final-gate] \
+    [--min-free-gib <N>]
 ```
 
 ```
@@ -872,6 +873,14 @@ workorder files and 536 `section.py` calls doing that by hand (the sister
 project's 2026-10-11 /workorder audit, F04/F16). Add to the JSON only what no file
 holds: `reviewScopes` and the items budgets ([`items.md`](items.md)). Exit 1
 means `plan_lint` has a finding: it goes back to the planner, as in Step 1.
+Exit 6 (`DISK-LOW` on stderr, nothing on stdout) means the checkout's drive
+has less free space than `--min-free-gib` (default 30 GiB,
+`disk_hygiene.DEFAULT_MIN_FREE_GIB`): build outputs filled C: during a
+workorder once (issue #38). Do not launch. Run `py -3 tools/disk_hygiene.py
+report` and the `py -3 tools/disk_hygiene.py worktrees` dry run, show the
+owner both, and only on the owner's word run `worktrees --apply` (or `trim
+--apply`) or relaunch with `--min-free-gib 0`
+([docs/tools/disk-hygiene.md](../../../docs/tools/disk-hygiene.md)).
 
 `--reviewers` names the reviewers that apply to this change (Step 3 table,
 first column) and that State does not list yet; the Step 0.5 triage row

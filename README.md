@@ -235,6 +235,11 @@ holds the rules for both. Some of them are enforced by hooks, and the
 - **Decompiled game code never reaches a tracked file.** Write down what was
   learned, in your own words, never the decompiled text itself (`AGENTS.md`,
   "Legal").
+- **Build outputs stay in each checkout, so reclaim them.** Every worktree
+  builds its own `apps/<app>/target/`. `py -3 tools/disk_hygiene.py report`
+  shows what each checkout costs, and its `worktrees` and `trim` commands
+  remove merged worktrees and oversized targets (dry runs unless `--apply`);
+  see [docs/tools/disk-hygiene.md](docs/tools/disk-hygiene.md).
 
 ## Path of Exile 2 is an online game
 

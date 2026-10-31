@@ -60,3 +60,8 @@ tempfile = "=3.27.0"
 opt-level = "s"
 lto = true
 strip = true
+
+# Debug builds: dependencies keep only line tables, which shrinks `target/`
+# (issue #38); this workspace's own crates keep full debuginfo.
+[profile.dev.package."*"]
+debug = "line-tables-only"

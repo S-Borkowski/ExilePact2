@@ -9,7 +9,9 @@ items mode). Most of what they do is independent, but three things are not:
   * a commit -- `.git/index.lock` fails the second `git commit` at once
     instead of waiting (`tools/item_commit.py` takes `commit`);
   * a build -- two builds in one tree race on their artifacts
-    (`tools/run_criteria.py --jobs` takes `build` around a build criterion);
+    (`tools/run_criteria.py --jobs` takes `build` around a build criterion,
+    and `tools/disk_hygiene.py trim --apply` takes it, without waiting, while
+    it deletes a `target/`);
   * a browser suite beyond the cap -- `run_criteria.py --jobs` takes one of
     `browser-0..browser-<n-1>`, so two items' checks together still run at
     most n suites.
