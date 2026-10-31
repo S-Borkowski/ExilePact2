@@ -460,7 +460,9 @@ The round loop spawns no bookkeeping agents:
 - **Reviewers:** per § "Which reviewer runs when" above.
 - **Fix rounds** continue inside one launch up to the caps.
 - **Launch args:** the driver builds them with `py -3 tools/workorder_brief.py
-  --launch-args <slug>`.
+  --launch-args <slug>`. It refuses with exit 6 and a `DISK-LOW` line when the
+  checkout's drive has less than `--min-free-gib` (default 30) GiB free,
+  pointing at `py -3 tools/disk_hygiene.py report`.
 - **Criteria reuse:** a development verify passes `run_criteria.py --reuse
   <implementer criteria dir>`.
 
