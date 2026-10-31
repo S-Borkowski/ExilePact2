@@ -80,9 +80,10 @@ class LaunchArgsTest(unittest.TestCase):
         if ctx is not None:
             (self.wo / "zz-context.md").write_text(ctx, encoding="utf-8")
 
-    def launch(self, *argv):
-        r = subprocess.run([sys.executable, str(SCRIPT), "--launch-args", "zz", "--checkout", str(self.root), *argv],
-                           capture_output=True)
+    def launch(self, *argv, min_free="0"):
+        # The free-space threshold is 0 unless a test sets it, so no test depends on this machine's disk.
+        r = subprocess.run([sys.executable, str(SCRIPT), "--launch-args", "zz", "--checkout", str(self.root),
+                            "--min-free-gib", min_free, *argv], capture_output=True)
         out = r.stdout.decode("utf-8")
         return r.returncode, (json.loads(out) if r.returncode == 0 else None), r.stderr.decode("utf-8")
 
@@ -164,6 +165,43 @@ class LaunchArgsTest(unittest.TestCase):
         self.assertEqual(args["priorFindings"], {})
         r = subprocess.run([sys.executable, str(SCRIPT), "--launch-args", "nope", "--checkout", str(self.root)], capture_output=True)
         self.assertEqual(r.returncode, 2)
+
+    # Issue #38: build outputs filled C: during a workorder. A launch below the free-space
+    # threshold is refused with exit 6, before any agent spends a round on a full disk.
+    def test_launch_refused_below_free_space_threshold(self):
+        self.write("round: 0\nphase: plan")
+        code, args, err = self.launch(min_free="1000000")
+        self.assertEqual(code, 6, err)
+        self.assertIsNone(args)
+        r = subprocess.run([sys.executable, str(SCRIPT), "--launch-args", "zz", "--checkout", str(self.root),
+                            "--min-free-gib", "1000000"], capture_output=True)
+        self.assertEqual(r.stdout, b"", "a refused launch prints no args")
+        self.assertTrue(err.startswith("DISK-LOW:"), err)
+        self.assertRegex(err, r"\d+(\.\d+)? GiB free")
+        self.assertIn("1000000 GiB", err)
+        self.assertIn("py -3 tools/disk_hygiene.py report", err)
+        # A missing plan and a lint finding keep their own exits, threshold or not.
+        r = subprocess.run([sys.executable, str(SCRIPT), "--launch-args", "nope", "--checkout", str(self.root),
+                            "--min-free-gib", "1000000"], capture_output=True)
+        self.assertEqual(r.returncode, 2)
+        self.write("round: 0\nphase: plan", criteria="- [ ] it looks right\n")
+        code, args, err = self.launch(min_free="1000000")
+        self.assertEqual(code, 1, err)
+
+    def test_launch_threshold_zero_keeps_the_old_behaviour(self):
+        self.write("round: 0\nphase: plan")
+        code, args, err = self.launch(min_free="0")
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("DISK-LOW", err)
+        self.assertEqual(args["slug"], "zz")
+        self.assertNotIn("minFreeGib", args, "the threshold is not a workflow arg")
+
+    def test_default_threshold_matches_disk_hygiene(self):
+        sys.path.insert(0, str(REPO / "tools"))
+        import disk_hygiene
+        import workorder_brief
+        parsed = workorder_brief.build_parser().parse_args(["--launch-args", "zz"])
+        self.assertEqual(parsed.min_free_gib, disk_hygiene.DEFAULT_MIN_FREE_GIB)
 
 
 if __name__ == "__main__":

@@ -28,4 +28,6 @@ Sections not listed here (`Shared Agent Tooling…`, `Offer /workorder…`,
 Maintenance`, `Fold What a Mod Learned…`, `One Branch and One Pull Request
 per Feature` and `Every Pull Request Gets ai-review…`) carry no incident
 narrative worth splitting out — the rule and its one-sentence why are the
-whole story.
+whole story. `Keep Build Outputs From Filling the Disk` is this repository's
+own incident (issue #38), not the sister project's; its story and
+measurements live in [docs/tools/disk-hygiene.md](../tools/disk-hygiene.md).
