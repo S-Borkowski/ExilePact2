@@ -110,7 +110,7 @@
     <div class="body">
       {#if view.frame === 'panel-campaign'}
         {#each view.acts as act (act.act)}
-          <ActSection {act} {edit} {send} />
+          <ActSection {act} {edit} {send} exile={journal} />
         {/each}
       {:else if view.frame === 'panel-next-up'}
         {#if view.next_up.length === 0}
@@ -119,12 +119,12 @@
           {#each groups as group, i (i)}
             <p class="group-label">{WORTH_LABEL[group.worth]}</p>
             {#each group.rows as row (row.id)}
-              <QuestRow {row} {edit} {send} />
+              <QuestRow {row} {edit} {send} exile={journal} />
             {/each}
           {/each}
         {/if}
       {:else if view.frame === 'quest-detail' && view.detail}
-        <QuestDetail detail={view.detail} {edit} {send} />
+        <QuestDetail detail={view.detail} {edit} {send} exile={journal} />
       {:else if view.frame === 'character-picker'}
         <CharacterPicker {view} {send} />
       {:else if view.frame === 'settings'}
@@ -134,10 +134,14 @@
       {/if}
     </div>
     {#if edit}
-      <button type="button" class="back-to-play" onclick={() => send('set_mode', { mode: 'play' })}>
+      <button type="button" class="back-to-play" aria-label={journal ? `${view.settings.hotkey} returns to play mode (click-through)` : undefined} onclick={() => send('set_mode', { mode: 'play' })}>
+        {#if journal}<span>{view.settings.hotkey} · Play</span>{:else}
         <Icon id="ui-click-through" size="12px" />
         <span><span class="key">{view.settings.hotkey}</span> returns to play mode (click-through)</span>
+        {/if}
       </button>
+    {:else if journal}
+      <div class="play-footer">{view.settings.hotkey} · Edit</div>
     {/if}
 {/snippet}
 

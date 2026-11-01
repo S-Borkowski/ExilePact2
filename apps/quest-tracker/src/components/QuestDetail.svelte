@@ -22,7 +22,7 @@
 
   const CONFIRM_MS = 3000;
 
-  let { detail, edit, send }: { detail: QuestDetail; edit: boolean; send: Send } = $props();
+  let { detail, edit, send, exile = false }: { detail: QuestDetail; edit: boolean; send: Send; exile?: boolean } = $props();
 
   const row = $derived(detail.row);
   const facts = $derived(
@@ -83,7 +83,7 @@
     {/if}
 
     <div class="head">
-      <StatusMark status={row.status} />
+      <StatusMark status={row.status} {exile} />
       {#if row.inferred}<InferredMark />{/if}
       <h2 class="name">{row.name}</h2>
     </div>

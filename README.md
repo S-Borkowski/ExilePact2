@@ -4,7 +4,7 @@ Tools and mods for Path of Exile 2, three apps: the quest tracker, the
 waystone roller and the crafting helper.
 
 The [shared UI design system](docs/ui-design-system.md) is the approved visual
-direction, implemented in Quest Tracker as its default Exile theme; current
+direction, implemented in Quest Tracker as its default compact steel Exile theme; current
 app behavior and export contracts remain authoritative.
 
 ## Quest tracker

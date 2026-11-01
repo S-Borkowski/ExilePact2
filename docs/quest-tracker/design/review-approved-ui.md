@@ -1,5 +1,80 @@
 # Approved UI adoption review
 
+**Latest handoff — design only:** [neutral steel/masonry kit](steel-masonry-kit/HANDOFF.md). The owner rejected the preceding app rendering as too yellow, then deferred coding/wiring to another session. The prototype's minimum-size whole-scroll corner overlap remains blocking. The observations below are historical implementation evidence, not a final visual PASS or verification of this kit in the application.
+
+## Current compact steel implementation — 2026-11-01
+
+### Reference fidelity
+
+The authority is [quest-tracker-overlay-approved.png](../../ui-design-system/quest-tracker-overlay-approved.png), the owner's original approved AI close-up, SHA256 `ec36548bdbf2dcd33ef41cf984c84ffc3a8b51ffba04202963faa7c65cbdd874`. Earlier passes selected the wrong ornate journal study. Their visual approvals did not establish fidelity to this steel design; this correction addresses our error, not a new owner design direction. The full reference is documentation only. Runtime uses the separately generated transparent steel-frame reconstruction and quiet darkened stone texture; all text, status symbols, dividers and controls are live UI. Exact asset/prompt provenance is in [harvest](harvest.md#approved-steel-frame-prompt).
+
+The first-screen checkpoint was captured with Playwright MCP at364×384 before expanding the remaining states: [first-screen-compact-steel.png](frames/approved/first-screen-compact-steel.png) and [edit checkpoint](frames/approved/first-screen-compact-steel-edit.png). A fresh independent reviewer compared both to the canonical close-up and returned PASS with no blocking findings; the driver independently agreed. Those checkpoint captures establish steel/layout fidelity; their inner status icons are superseded by the owner's latest all-six diamond-treatment decision below. Character/class/level, worth headings and reward labels remain visible in play. Long current tips continue through scrolling; future detail steps are not invented as active objectives.
+
+| Reference feature | Implemented and observed |
+|---|---|
+| Thin weathered double steel rails and intertwined corner knots | Original transparent `tracker-steel-frame.png`; slice224/destination64px/stretch/outset12px, no fill. No runtime gold architecture, crest or full concept image. Ordinary Settings uses the same frame with0 outset. |
+| Compact Quest Tracker / Act bar | Narrow live Cinzel bar. Roman Act is the sole received progress-derived act, including empty Next up; absent with zero/multiple acts. No player-zone field is invented. Compact character context follows it. |
+| Flat separated quest sections | Computed row background transparent, box-shadow none, top/left/right borders0; fine1px bottom rule and small central diamond. No rounded boxed cards or inset card bevels. |
+| Gold serif titles / white serif current objectives | Georgia19/25px weight400 titles, gold `#f0d779`; Georgia16/22px current objectives, white `#eeece5`; secondary Georgia14/20px tips. Metadata/rewards remain secondary. |
+| Diamond status marks | Six distinct live CSS diamond fill/outline/pattern treatments without inner icons in Exile rows/detail; exact status names/tooltips and existing worth/manual/inferred marks retained. Claude keeps its six original icons. |
+| Small footer | Passive actual configured-shortcut · Edit in play, zero controls. Edit keeps the same return command, compact shortcut · Play text and full accessible description. |
+| Art-only outer border | Exile legacy panel `::after` ring is hidden and outer box-shadow none. Claude keeps its original ring, fonts and layout. |
+
+Final app-only views: [Exile play](frames/approved/exile-play.png), [All/edit](frames/approved/exile-journal.png) (the filename is historical), [ordinary Settings](frames/approved/exile-settings.png), [ordinary Settings end](frames/approved/steel-ordinary-settings-end.png), [characters](frames/approved/steel-characters.png), [minimum detail](frames/approved/steel-detail-min.png). These replace the old gold-journal screenshots at the established current filenames.
+
+### Diamond status revision — 2026-11-01
+
+The owner replaced the earlier inner-icon choice: “use the diamond fill instead of icons” and “Use distinct diamond treatments for all statuses.” Status meanings remain the six existing enum values. Each Exile mark has one exact `STATUS_LABEL` accessible name and matching hover title, no inner icon/SVG/glyph, and a decorative16px diamond inside a22px status slot. Claude's original labelled icons remain unchanged; separate manual, inferred and worth marks remain.
+
+| Status | Diamond treatment |
+|---|---|
+| In progress | Solid gold, single outline |
+| Available | Hollow gold, double outline |
+| Locked / not yet available | Hollow, thin muted single outline |
+| Done | Muted silver fill, double outline |
+| Skipped | Diagonal hatch, single outline |
+| Unknown | Hollow, dotted outline |
+
+The [six-status app comparison](frames/approved/exile-status-diamonds.png) uses the unchanged campaign fixture at364×1024, so every mark fits in one actual app capture. Top to bottom: done, skipped, locked, in progress, available, unknown. Filled versus hollow, single versus double/dotted edges and hatching distinguish the states beyond colour alone. Current default play/edit captures were refreshed, plus [minimum All/edit](frames/approved/steel-diamonds-min.png) and minimum detail. The previous18-case geometry and53-control evidence below is retained for unchanged layout rather than repeated.
+
+Playwright MCP measured all six marks with zero inner icons, exact accessible names and matching titles. Default play remains340×360 at12,12, no horizontal body overflow, zero controls and footer at29,324,306×32. Minimum320×240 detail and All/edit have no horizontal body overflow and a hittable fixed drag region; after whole-well scrolling to462/544px respectively, both footers fit at y180–212 inside the y22–212 reading well, and the fixed drag grip remains hittable. Claude comparison at364×384 has zero diamond elements and the six original status icon IDs/labels. The new row/detail/theme-transition target was red before implementation; focused approved/row/detail/inferred checks then passed22 tests in4 files, and the production build reported0 errors/0 warnings. The only browser console error was the development server's missing favicon404. No native movement or in-game measurement is inferred.
+
+### Frame and scroll checks
+
+Playwright MCP exercised18 focused overlay combinations after font loading and two animation frames for layout/ResizeObserver settling. All expanded cases had no horizontal well/page overflow and a reachable footer inside the inset well at scroll end. The outer frame stayed fixed; the fixed edit grab region remained hit-testable after scrolling. Play had zero controls and no drag region. Scrolling uses the body normally and the whole clipped well when enlarged chrome leaves insufficient body space. Header/tool groups and settings input rows wrap at narrow effective widths.
+
+| Surface / viewport / scale | Frame x,y,w,h | Well x,y,w,h | Scroll start / middle / end; footer at end |
+|---|---|---|---|
+| Next up/play364×384,1× |12,12,340,360|29,22,306,334|Body0/22/43; footer29,324,306,32 |
+| All/edit364×384,1× |12,12,340,360|29,22,306,334|Body0/176/351; same fixed footer |
+| Settings/edit320×240,1× |12,12,296,216|29,22,262,190|Whole0/266/531; footer29,180,262,32 |
+| Detail/edit320×240,1× |12,12,296,216|29,22,262,190|Whole0/231/462; footer29,180,262,32 |
+| Next up / All play320×240,1× |12,12,296,216|29,22,262,190|Body0/106/212 and0/244/487; footer29,180,262,32; controls0 |
+| No log / no character edit320×240,1× |12,12,296,216|29,22,262,190|Body0/69/138 and0/47/94; footer inside well |
+| Picker / act done edit364×384,1× |12,12,340,360|29,22,306,334|No scrolling required; footer inside well. Collapsed separately retained its badge at320×240. |
+| Settings/edit364×384,2× |12,12,340,360|46,32,272,308|Whole0/484/968; footer46,236,272,104 |
+| Next up/play364×384,2× |12,12,340,360|46,32,272,308|Whole0/250/499; same footer rectangle; controls0 |
+| Detail/edit364×384,1.33× |12,12,340,360|34.6,25.3,294.8,325.4|Whole0/267/534; footer34.6,309.2,294.8,41.5 |
+| Settings/edit364×384,0.75× runtime override |12,12,340,360|24.8,19.5,314.5,340.5|Body0/109/220; footer24.8,336.3,314.5,23.8 |
+| Settings/edit364×384,text200% |12,12,340,360|29,22,306,334|Whole0/394/788; footer29,304,306,52 |
+| Settings/edit320×240,text200% |12,12,296,216|29,22,262,190|Whole0/636/1272; footer29,120,262,92 |
+| Detail/edit364×384,text200% |12,12,340,360|29,22,306,334|Whole0/508/1015; footer29,304,306,52 |
+| Ordinary Settings420×328,normal/text200% |0,0,420,328|28,28,364,256|Well0/68/136 and0/246/492; credit28,243,364,41 and28,227,364,57; frame fixed |
+
+Text200% doubles every HTML element's original computed font size and numeric line height, not page zoom. The ordinary Settings title measured15→30px. Scale0.75 was an explicit runtime CSS/page-zoom override; no unsupported query is claimed. Representative [2×](frames/approved/steel-settings-scale2.png), [200% default](frames/approved/steel-settings-text200.png) and [200% minimum](frames/approved/steel-settings-min-text200.png) captures show whole-well scrolling. The final ordinary Settings paint check found status text crossing the lower-left knot before scroll; increasing only its bottom clearance from28 to44px fixed it. Its controls/credit remain reachable.
+
+Across minimum overlay Settings/detail, default picker and ordinary available/failed/unsigned/downloading states, all53 enabled controls accepted focus and could be scrolled into their clipping area; no unreachable focus target was observed. Existing deterministic tests cover exact commands, reversal/refusal states, drag dispatch/control and right-click exclusions, eight resize directions, long content, passive play, and reduced-motion2.5s feedback. Browser hit tests establish a reachable drag surface, not successful native movement. Claude comparison at identical overlay bounds retained Alegreya Sans, no Exile artwork/footer and its original ring; ordinary Claude retained its original page scrolling.
+
+White, black and striped busy backings at opacity0/.9/1 gave matching backing/texture alpha while text stayed opacity1. Transparency does not promise contrast over arbitrary scenes. Opaque CSS-color contrast against `#090b0c`: gold quest13.81:1, objective white16.68:1, secondary9.65:1, footer8.88:1; essential divider4.11:1 and diamond11.45:1. These calculations cover the stated flat color pairs, not every textured pixel.
+
+First-screen targeted checks passed20 tests; broader targeted checks passed44 in8 files before the last responsive/selector fixes. Fresh verification caught the old first-`h1` character assertion after the intentional static tracker heading was introduced. It now checks the actual `.header .name` for both provisional and named-negative cases, retaining level/class/act/picker assertions. Row-change and ordinary Settings targeted rerun passed18 in2 files. The production build reported0 errors/0 warnings and both root UI network/release guards passed. Final independent verification and final reference/interaction review are recorded by the workorder driver; no full-backend rerun is implied here.
+
+No new native or in-game measurement was made for this frontend correction. The native app was closed during this matrix; previous native evidence below is historical. Free window dragging still uses the existing native bridge; successful OS movement and simultaneous two-native-window propagation are not newly claimed. No game store/settings/input, permissions or native-HUD operation was introduced.
+
+## Historical implementation evidence — superseded visual authority
+
+Everything below records earlier passes, including their then-current claims and screenshots. Those passes compared the wrong ornate concept and cannot establish current reference fidelity. Current screenshots at reused filenames are the steel implementation linked above; older numeric observations remain history only.
+
 ## Compact functional header and art-only border — 2026-11-01
 
 The owner removed the added Campaign journal/crest header because it occupied quest space, and removed the extra CSS border because Exile already has a custom art frame. The attached compact tracker close-up guides this space-efficient layout. No reference image was copied into runtime artwork, no new art was generated, and the existing custom frame and stone texture remain unchanged. The crest source PNG/prompt remains historical provenance; the current panel does not import or render it.

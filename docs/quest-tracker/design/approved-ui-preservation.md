@@ -8,13 +8,13 @@ The order matches the 22 existing feature groups in [the design system](../../ui
 | 2 | Global shortcut and binding/refusal states | Existing Settings hotkey and edit footer | live2.test.ts; Rust shell |
 | 3 | Header drag, eight resize directions, saved bounds, independent zoom | Functional header and fixed top rail retain existing drag bridge after decorative-header removal; native geometry unchanged; new-store364×384, minimum320×240 | approved-ui.test.ts drag/control exclusions; resize.test.ts; Rust shell saved-size/theme tests |
 | 4 | Collapse/expand, count, warning and change badge | Existing Collapsed with selected theme tokens | app.test.ts; live2.test.ts; row-change.test.ts |
-| 5 | Next up / All, worth grouping, act disclosures | Existing Header, Panel and ActSection commands | app.test.ts; finish-header.test.ts; finish-rows.test.ts |
-| 6 | Statuses, worth, rewards, step/tip, manual/inferred marks | Same QuestRow data; Exile wrapping and original Claude layout | finish-rows.test.ts; live3.test.ts; inferred.test.ts |
+| 5 | Next up / All, worth grouping, act disclosures | Existing Header, Panel and ActSection commands; truthful sole received Act in compact title bar, worth headings visible in play | app.test.ts; approved-ui.test.ts; finish-header.test.ts; finish-rows.test.ts |
+| 6 | Statuses, worth, rewards, step/tip, manual/inferred marks | Same QuestRow data; six Exile diamond fill/outline/pattern treatments with exact labels/tooltips, Claude symbols retained; separate manual/inferred/worth marks unchanged; rewards visible in play | finish-rows.test.ts; approved-ui.test.ts; live3.test.ts; inferred.test.ts |
 | 7 | Detail facts, reason, steps/tips, rewards and fetched date | Same in-panel QuestDetail | finish-detail.test.ts; app.test.ts |
 | 8 | Tick/untick, inferred refusal, done/unmark, skip/unskip, confirmed reset | Same detail actions and timers | finish-detail.test.ts; inferred.test.ts; Rust shell |
 | 9 | Skipped progress and retained manual marks | Existing engine/store and Show skipped preference | live3.test.ts; Rust viewmodel/shell |
 | 10 | Open source and fetched date | Existing open_source payload and metadata | app.test.ts; finish-detail.test.ts |
-| 11 | Character detection/name/class/level/new/unconfirmed, select/pin/mine | Existing Header and CharacterPicker | finish-header.test.ts; finish-frames.test.ts; Rust shell |
+| 11 | Character detection/name/class/level/new/unconfirmed, select/pin/mine | Compact visible play context, existing Header picker and CharacterPicker; no invented current zone | approved-ui.test.ts; finish-header.test.ts; finish-frames.test.ts; Rust shell |
 | 12 | Show skipped and Only worth-it | Existing settings patches and Rust filtering | app.test.ts; Rust viewmodel |
 | 13 | Opacity0–100%, Auto/fixed zoom and live sliders | Same slider mechanics; theme never resizes window | live2.test.ts; live3.test.ts; resize.test.ts; Rust shell |
 | 14 | Opt-in screen reading/privacy/refusals and automatic/override log | Existing controls, helpers and source settings | screen-reading.test.ts; app.test.ts |

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FRAMES } from './ipc';
+import { FRAMES, QUEST_STATUSES } from './ipc';
+import { STATUS_ICON, STATUS_LABEL } from './labels';
 import EXILE from '../theme/exile.json';
 import { CONTROL_SELECTOR, fakeBridge, fixtureView, readText, renderApp, type Rendered } from './test-support';
 
@@ -7,6 +8,89 @@ let rendered: Rendered | null = null;
 afterEach(() => { rendered?.destroy(); rendered = null; });
 
 describe('approved material adoption', () => {
+  it('uses the compact tracker title, truthful act and visible character context', async () => {
+    const view = fixtureView('panel-next-up', 'play');
+    view.character!.name = 'Steel_Probe';
+    view.acts[0].act = 4;
+    view.settings.hotkey = 'Ctrl+Shift+J';
+    const bridge = fakeBridge(view);
+    rendered = await renderApp(bridge);
+    expect(rendered.root.querySelector('.tracker-title')?.textContent).toBe('Quest Tracker');
+    expect(rendered.root.querySelector('.tracker-act')?.textContent).toBe('Act IV');
+    expect(rendered.root.querySelector('.character-context')?.textContent).toContain('Steel_Probe');
+    expect(rendered.root.querySelector('.character-context')?.textContent).toContain(String(view.character!.level));
+    expect(rendered.root.querySelector('.play-footer')?.textContent).toContain('Ctrl+Shift+J');
+    expect(rendered.root.querySelectorAll(CONTROL_SELECTOR)).toHaveLength(0);
+    expect(rendered.root.querySelector('.group-label')?.textContent).toBeTruthy();
+    expect(rendered.root.querySelector('.rewards')?.textContent).toBeTruthy();
+    bridge.pushView({ ...view, acts: [], next_up: [] });
+    expect(rendered.root.querySelector('.tracker-act')).toBeNull();
+    bridge.pushView({ ...view, acts: [view.acts[0], { ...view.acts[0], act: 5 }], next_up: [] });
+    expect(rendered.root.querySelector('.tracker-act')).toBeNull();
+    bridge.pushView({ ...view, next_up: [] });
+    expect(rendered.root.querySelector('.tracker-act')?.textContent).toBe('Act IV');
+    expect(bridge.calls).toEqual([]);
+  });
+
+  it('uses only the approved steel runtime surround', async () => {
+    const frame = await readText('./components/MaterialFrame.svelte');
+    expect(frame).toContain('tracker-steel-frame.png');
+    expect(frame).not.toContain('journal-frame.png');
+  });
+
+  it('preserves all six Claude status symbols and current objective data', async () => {
+    const view = fixtureView('panel-next-up', 'play');
+    view.settings.theme = 'claude';
+    const base = view.next_up[0];
+    view.next_up = QUEST_STATUSES.map((status, i) => ({ ...base, id: `status-${i}`, status,
+      current_step: status === 'in_progress' ? 'Current objective probe' : null,
+      current_tip: status === 'in_progress' ? 'Current tip probe' : null }));
+    const bridge = fakeBridge(view);
+    rendered = await renderApp(bridge);
+    for (const row of view.next_up) {
+      const shown = rendered.root.querySelector(`[data-quest="${row.id}"]`)!;
+      expect(shown.querySelector('.status-mark .icon')?.getAttribute('data-icon')).toBe(STATUS_ICON[row.status]);
+      expect(shown.querySelector('.status-mark .icon')?.getAttribute('aria-label')).toBe(STATUS_LABEL[row.status]);
+      expect(shown.querySelector('.step')?.textContent ?? null).toBe(row.current_step);
+      expect(shown.querySelector('.tip')?.textContent ?? null).toBe(row.current_tip);
+    }
+    expect(bridge.calls).toEqual([]);
+  });
+
+  it('uses labelled diamond treatments for all six Exile statuses in rows and detail', async () => {
+    const view = fixtureView('panel-next-up', 'play');
+    view.settings.theme = 'exile';
+    const base = view.next_up[0];
+    view.next_up = QUEST_STATUSES.map((status, i) => ({ ...base, id: `diamond-${i}`, status }));
+    const bridge = fakeBridge(view);
+    rendered = await renderApp(bridge);
+    function checkMark(mark: Element, status: typeof QUEST_STATUSES[number]): void {
+      expect(mark.getAttribute('role')).toBe('img');
+      expect(mark.getAttribute('aria-label')).toBe(STATUS_LABEL[status]);
+      expect(mark.getAttribute('title')).toBe(STATUS_LABEL[status]);
+      expect(mark.querySelector('.status-diamond')).not.toBeNull();
+      expect(mark.querySelector('.icon, svg, .glyph')).toBeNull();
+      expect(mark.querySelector('[aria-label]')).toBeNull();
+    }
+    for (const row of view.next_up) {
+      checkMark(rendered.root.querySelector(`[data-quest="${row.id}"] > .status-mark`)!, row.status);
+    }
+    const detail = fixtureView('quest-detail', 'play');
+    detail.settings.theme = 'exile';
+    for (const status of QUEST_STATUSES) {
+      detail.detail!.row.status = status;
+      bridge.pushView(detail);
+      checkMark(rendered.root.querySelector('.detail .head > .status-mark')!, status);
+    }
+    bridge.pushView({ ...view, settings: { ...view.settings, theme: 'claude' } });
+    for (const row of view.next_up) {
+      const mark = rendered.root.querySelector(`[data-quest="${row.id}"] > .status-mark`)!;
+      expect(mark.querySelector('.status-diamond')).toBeNull();
+      expect(mark.querySelector('.icon')?.getAttribute('data-icon')).toBe(STATUS_ICON[row.status]);
+      expect(mark.querySelector('.icon')?.getAttribute('aria-label')).toBe(STATUS_LABEL[row.status]);
+    }
+    expect(bridge.calls).toEqual([]);
+  });
   it('keeps the selected material across every mode and expanded frame', async () => {
     for (const theme of ['exile', 'claude'] as const) for (const mode of ['play', 'edit'] as const) for (const frame of FRAMES) {
       const view = fixtureView(frame, mode);
@@ -149,9 +233,10 @@ describe('approved material adoption', () => {
       'journal-frame.png': '0745d20818040cf3b5796acab4d54de981b38ddf53b47a611437992dae57a3c2',
       'lantern-astrolabe-crest.png': '1ff2e55ca20f94f2614b929543f7148f3a997261e1d51660974ebcae3ca443d6',
       'charcoal-stone-well.png': '72cdd6a41d7f5f7ea89dc76de917407c3533f12df8733cddc4e41bee6f7cb225',
+      'tracker-steel-frame.png': '438cc3a542d639ef948243f45d6a6870970bc7d5cf3bc18779e44c244beda796',
     };
     const crypto = await import(/* @vite-ignore */ 'node:crypto' as string) as { createHash(name: string): { update(data: Uint8Array): { digest(encoding: string): string } } };
-    expect(Object.keys(import.meta.glob('../theme/materials/raster/*.png'))).toHaveLength(3);
+    expect(Object.keys(import.meta.glob('../theme/materials/raster/*.png'))).toHaveLength(4);
     for (const [name, hash] of Object.entries(rasters)) {
       const path = `../theme/materials/raster/${name}`;
       const png = fs.readFileSync(new URL(path, import.meta.url));

@@ -37,7 +37,7 @@
   import StatusMark from './StatusMark.svelte';
   import WorthMark from './WorthMark.svelte';
 
-  let { row, edit, send }: { row: QuestRow; edit: boolean; send: Send } = $props();
+  let { row, edit, send, exile = false }: { row: QuestRow; edit: boolean; send: Send; exile?: boolean } = $props();
 
   // The column shows the short labels; the game's full text is the title.
   const rewardShort = $derived(rewardShortText(row.rewards));
@@ -98,7 +98,7 @@
 </script>
 
 {#snippet content()}
-  <StatusMark status={row.status} />
+  <StatusMark status={row.status} {exile} />
   <span class="title" class:entering={phase === 'in' && !row.current_step}>
     {#if row.inferred}<InferredMark />{/if}
     <span class="name">{row.name}</span>

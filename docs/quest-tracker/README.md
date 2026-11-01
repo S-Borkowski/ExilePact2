@@ -1,5 +1,7 @@
 # Quest tracker
 
+Design handoff: [neutral steel/masonry artwork, components and next-session instructions](design/steel-masonry-kit/HANDOFF.md). This latest packet is design-only; wiring is deferred. Earlier prototype UI descriptions/screens below do not mean the rejected warm palette or minimum-size corner overlap has been accepted or fixed.
+
 A small always-on-top overlay for Path of Exile 2 that lists the campaign
 quests, says which ones are worth doing and why, and keeps each character's
 progress. It learns that progress from the game's `Client.txt` log and from
@@ -24,10 +26,16 @@ works" › "Hiding under game panels"); that is always on since 0.1.1.
 
 What it is:
 
-- **Two visual themes, the same tracker.** Exile is the default: carved
-  stone/gold surfaces throughout play, edit, Next up, All and Settings,
-  original raster stone/gold relief, compact Cinzel headings, cream serif quest names
-  and warm gold controls. Select
+- **Two visual themes, the same tracker.** Exile is the default: thin weathered
+  steel rails and knot corners around a quiet dark field, a compact Quest Tracker /
+  current Act bar, flat gold serif quest titles and white serif objectives.
+  Character/class/level, worth headings and reward labels remain visible in play;
+  six diamond fill/outline/pattern treatments show quest status without inner
+  icons: solid gold in progress, hollow double-outline gold available, thin muted
+  outline not yet available, silver-filled double outline done, hatched skipped,
+  and dotted unknown. Existing status labels remain accessible and in tooltips.
+  A small footer shows the
+  configured edit shortcut. Toggles and sliders use warm gold. Select
   **Claude** to restore the previous visual theme. Use *Theme* in overlay
   Settings (edit mode), or *Appearance → Theme* in the tray's ordinary Settings
   window. The choice is saved and updates both windows; it changes no progress,
@@ -90,10 +98,10 @@ What it is:
   available: X*, sits at the top and opens the Settings window, where the
   install button is.
 - **A Settings window of its own**, opened from the tray, separate from
-  the panel's settings frame. For now it holds one setting, *Automatically
-  check for updates*, off by default, a *Check now* button with what the
-  last check said, the install of a newer version, and the line "Created
-  by ST4H".
+  the panel's settings frame. *Appearance → Theme* selects Exile or Claude.
+  It also holds *Automatically check for updates*, off by default, a
+  *Check now* button with the last check result, installation of a newer
+  version, and the line "Created by ST4H".
 - **An update check, only when you ask.** *Check for updates* in the tray,
   or *Check now* in the Settings window, asks GitHub once whether a newer
   Quest Tracker release is published; with *Automatically check for
@@ -2655,10 +2663,14 @@ Revisit this feature when:
 
 ### Unreleased
 
-- Removed Exile's oversized Campaign journal/crest header and duplicate outer
-  CSS border. The custom art frame, functional controls and edit drag rail remain.
-- Default Exile UI: consistent carved stone/gold across play and edit surfaces,
-  original decorative relief, local Cinzel titles and palette-matched controls.
+- Implemented the approved compact steel tracker: thin original art frame,
+  compact Quest Tracker / actual Act bar, flat quest sections, gold/white serif
+  text, six distinct diamond status treatments and a small configured-shortcut footer.
+  Character/class/level, worth headings and reward labels remain visible in play.
+  The oversized header and boxed quest cards are replaced with compact, flat
+  sections; the custom art frame is the only outer border. Edit drag rail remains.
+  Exile status diamonds use fill, outline and pattern instead of inner icons;
+  Claude retains its previous symbols. Quest status meanings are unchanged.
 - Switching play/edit or opening Settings keeps the selected Exile/Claude
   theme. Mode changes controls and click-through behavior, not materials.
 - Theme in overlay Settings and ordinary Settings Appearance selects Exile or

@@ -7,7 +7,7 @@
   import Icon from './Icon.svelte';
   import QuestRow from './QuestRow.svelte';
 
-  let { act, edit, send }: { act: ActView; edit: boolean; send: Send } = $props();
+  let { act, edit, send, exile = false }: { act: ActView; edit: boolean; send: Send; exile?: boolean } = $props();
 
   // Counted from the act's rows, which the view carries only while the act
   // is expanded; a collapsed act shows the mark (`has_available`) alone.
@@ -38,7 +38,7 @@
   {#if act.expanded}
     <div class="rows">
       {#each act.quests as row (row.id)}
-        <QuestRow {row} {edit} {send} />
+        <QuestRow {row} {edit} {send} {exile} />
       {/each}
     </div>
   {/if}

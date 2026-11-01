@@ -2,7 +2,9 @@
 
 ## Exile adoption, 2026-10-31
 
-The original harvest below is retained as the **Claude** theme. The default **Exile** theme pairs QT-local `theme/exile.json` and `theme/exile.css` manually; no theme generator exists. Its selectors are scoped to the received theme. The final rich materials use three new original raster assets below. The earlier outline-only SVG approximation was rejected during rendered review and is not shipped. The concept PNG remains documentation only. Optional per-quest illustration niches were omitted because there is no authoritative art mapping. Rich quest names use system Georgia with a serif fallback for title-case cream lettering; Cinzel remains the engraved display face and Alegreya Sans remains prose. No Georgia font file is redistributed.
+The owner's 2026-11-01 status revision replaces inner icons with live CSS diamonds in Exile rows and detail headings: solid gold/single outline in progress; hollow gold/double outline available; thin muted hollow outline locked; silver fill/double outline done; diagonal hatch skipped; dotted hollow outline unknown. These need no bitmap asset. Each mark keeps one exact status accessible name and tooltip. Claude icons and separate worth/manual/inferred marks remain unchanged.
+
+The original harvest below is retained as the **Claude** theme. The default **Exile** theme pairs QT-local `theme/exile.json` and `theme/exile.css` manually; no theme generator exists. Its selectors are scoped to the received theme. The current authority is the [approved compact steel close-up](../../ui-design-system/quest-tracker-overlay-approved.png), copied byte-for-byte from the owner's original AI design (SHA256 `ec36548bdbf2dcd33ef41cf984c84ffc3a8b51ffba04202963faa7c65cbdd874`). The separate ornate journal concept was our earlier wrong reference choice and is historical. Runtime uses the steel frame and quiet stone texture, with live text and controls. Quest titles and objective prose use system Georgia/serif; Cinzel is the compact bar face and Alegreya Sans remains secondary metadata/forms. No Georgia font file is redistributed. Historical original assets/prompts remain below; the strict curated PNG inventory contains exactly four files.
 
 Cinzel SemiBold is bundled unmodified as `fonts/Cinzel-SemiBold.woff2`: Fontsource's [complete family ZIP](https://api.fontsource.org/v1/download/cinzel), fetched2026-10-31 from the [family download page](https://fontsource.org/fonts/cinzel/use), entry `static/cinzel-latin-600-normal.woff2`. Family ZIP companion TTF name table reports **Cinzel SemiBold, Version2.000**; OS/2 weight600; bundled file begins `wOF2`, length15204bytes, SHA256 `61efc27ceb7d08bb841652fa8979c0b6833b92548b7f9544c07968a6c02f28e4`. Latin coverage is the source subset; other characters use the serif fallback.
 
@@ -10,17 +12,26 @@ The ZIP's original full license ships as `fonts/Cinzel-OFL.txt`: copyright2020 T
 
 ## Original production material assets
 
-Generated 2026-10-31 UTC with the built-in image-generation tool from this project's original AI concept as a material/sculpture reference. No game pixels, screenshots, extracted assets, letters or controls are baked in. The tool exposed no model identifier. Selected outputs were copied byte-for-byte, without pixel edits, resizing or conversion.
+The first three assets were generated2026-10-31 UTC from the historical original AI journal concept. The steel frame was generated2026-11-01 UTC from the approved tracker close-up. All used the built-in image-generation tool; no model identifier was exposed. Selected outputs were copied byte-for-byte without pixel edits, resizing or conversion. No game composite, extracted asset, letters or controls are baked in.
 
 | Asset under `apps/quest-tracker/theme/materials/raster/` | Dimensions / mode | Bytes | SHA-256 |
 |---|---|---:|---|
 | `journal-frame.png` | 1254×1254 RGBA | 1237083 | `0745d20818040cf3b5796acab4d54de981b38ddf53b47a611437992dae57a3c2` |
 | `lantern-astrolabe-crest.png` | 1983×793 RGBA | 1811176 | `1ff2e55ca20f94f2614b929543f7148f3a997261e1d51660974ebcae3ca443d6` |
 | `charcoal-stone-well.png` | 1254×1254 RGB | 3736261 | `72cdd6a41d7f5f7ea89dc76de917407c3533f12df8733cddc4e41bee6f7cb225` |
+| `tracker-steel-frame.png` | 1189×1323 RGBA | 532634 | `438cc3a542d639ef948243f45d6a6870970bc7d5cf3bc18779e44c244beda796` |
 
-Frame and crest have genuine alpha spanning 0–255; frame center is fully transparent. The frame uses nine-slice 208/190/208/190 with 34px/30px rails, horizontal stretch and vertical rounding, preserving niche proportions. Short windows reduce the overlay rails to 28px top, 12px sides and 14px bottom; ordinary Settings retains 20px/18px rails. Content scrolls in a separately inset well; rail art never paints over it. The owner removed the separate Campaign journal/crest header on 2026-11-01. Its crest PNG and exact prompt remain here as source provenance, but the current overlay does not import or render it. The frame and stone texture remain runtime art; no replacement art was generated. Stone is subdued by a dark CSS layer; tile seamlessness was requested, not mathematically established. All artwork is decorative, unfocusable and takes no pointer input.
+Current `tracker-steel-frame.png` reproduces thin weathered silver double rails, intertwined pointed corner knots and tiny aged-gold accents. It was a reference-derived generative extraction/reconstruction, not a deterministic crop. Alpha spans0–255; center/perimeter samples are transparent; alpha bbox31,38–1157,1298 (exclusive end). Midrail samples: x53–92/1096–1136 and y54–87/1217–1248. The central opening has at most1/255 generated matte; non-filled nine-slicing does not paint that cell. Runtime uses slice224 on every side, destination64px, stretch and12px outset (ordinary Settings outset0). Source transparent margins make corner width different from visible rail thickness. Reading content is independently clipped inside the fixed frame. No runtime import of the historical gold `journal-frame.png` or crest remains. Stone is darkened by CSS; seamlessness was requested, not mathematically established. Artwork is decorative, unfocusable and pointer-transparent.
 
-Exact generation prompts:
+### Approved steel frame prompt
+
+Edit target: the original AI approved tracker close-up, now the documentation PNG linked above. Built-in image generation used `transparent_background=true`; the chosen output was copied unchanged. Original generation output: `exec-cfc6efc2-ef4b-47b7-995b-b5b09f7ecd0e.png`, same hash as the runtime file.
+
+```text
+Use case: background-extraction / precise-object-edit. Asset type: reusable production UI outer frame PNG, not a mockup. Edit target: the supplied ORIGINAL APPROVED Quest Tracker artwork. Extract/reconstruct ONLY its exact OUTER rectangular frame: thin weathered silver/steel double rails and the four intertwined, pointed corner ornaments with tiny aged-gold rivet accents. Preserve this reference's actual frame shape, proportions, silver/charcoal colors, material texture, scuffs and corner geometry as faithfully as possible. Do not redesign or embellish it. Delete all text, all quest/status/objective diamonds, all interior black stone field, and the internal header/footer/quest separator bars. Those will be live UI. The central opening and all space outside the outer frame must be genuinely transparent alpha. Keep every part of all four corner ornaments intact, with a small transparent safety margin. Straight front-on orthographic view, portrait rectangle matching the reference, no perspective. No statues, pillars, lantern, crest, astrolabe, gold architectural surround, additional motifs, lettering, labels, watermark, shadow backdrop or opaque padding. Deliver the isolated frame only at high detail; the same approved artwork, with everything except the outer frame removed.
+```
+
+Historical journal-generation prompts (frame/crest no longer imported):
 
 ### Frame prompt
 

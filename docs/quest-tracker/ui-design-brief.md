@@ -1,8 +1,8 @@
-# Quest Tracker Overlay — Figma Design Brief
+# Quest Tracker Overlay — Design Brief
 
-The owner designs the overlay's look in Figma from this brief; the code then
-consumes the Figma file through the Figma MCP design-to-code workflow. The
-overlay is a separate always-on-top window drawn over Path of Exile 2
+The latest design deliverable is the [steel/masonry kit and implementation handoff](design/steel-masonry-kit/HANDOFF.md), with finished local artwork, vector components and editable previews. No Figma import or further art generation is required. Application wiring is explicitly deferred; the earlier warm prototype is unfinished and has a known whole-scroll corner-overlap defect.
+
+The overlay is a separate always-on-top window drawn over Path of Exile 2
 (windowed or borderless fullscreen), fed only by the game's `Client.txt`.
 
 Status: toolkit settled. The overlay is a Tauri app (Rust and the WebView2
@@ -15,11 +15,24 @@ Quest Tracker as the default **Exile** theme. **Claude** in either Settings
 surface restores the prior visual theme. Existing behavior and fixed icon/frame
 IDs below remain authoritative; theme preference is the explicit settings addition.
 The selected theme alone chooses expanded-panel materials and typography:
-Exile keeps the same carved stone/gold frame in play, edit, Next up, All and
+Exile keeps the approved thin weathered-steel frame in play, edit, Next up, All and
 Settings. Modes change controls/input only; they do not substitute a compact
 theme. The collapsed badge retains its small shape and selected palette.
-The expanded overlay uses its existing functional header only: no separate
-Campaign journal label or crest consumes quest space. Exile's custom art frame
+The authority is the [approved compact tracker close-up](../ui-design-system/quest-tracker-overlay-approved.png),
+not the historical ornate journal concept. A narrow live Quest Tracker / actual
+Roman Act bar precedes compact character/class/level context and existing edit
+controls. Next up retains Worth it / Optional headings and reward labels in play.
+Flat full-width quest sections have gold Georgia titles, white Georgia objectives,
+fine separators and six distinct diamond fill/outline/pattern status marks without
+inner icons. In progress is solid gold; available hollow gold with a double outline;
+not yet available a thin muted outline; done silver-filled with a double outline;
+skipped hatched; unknown dotted. Labels/tooltips and status meanings stay unchanged;
+Claude retains the original symbols. Only the
+received current step/tip is shown; no future objective or player location is invented.
+Act comes from the sole `view.acts` entry, including empty Next up; omit it for
+zero/multiple acts. Play has a passive configured-hotkey · Edit footer. The
+existing edit return command has a compact footer and full accessible label.
+No separate Campaign journal plaque or crest consumes quest space. Exile's custom art frame
 is its only outer border; the legacy CSS ring and synthetic inset frame shadows
 are disabled for Exile, while control focus outlines and Claude remain intact.
 
