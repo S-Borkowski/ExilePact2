@@ -30,6 +30,18 @@ const TS = import.meta.glob(['./**/*.ts', '!./**/*.test.ts', '!./test-support.ts
 const KIT_ASSETS = '../../../docs/quest-tracker/design/steel-masonry-kit/assets/';
 const RASTERS = '../theme/materials/raster/';
 const RETIRED = ['tracker-steel-frame.png', 'charcoal-stone-well.png', 'journal-frame.png', 'lantern-astrolabe-crest.png'];
+/** Every kit diamond's outer ring. */
+const RING = 'M12 2 22 12 12 22 2 12Z';
+/** The statuses whose kit ring is filled, and that fill: drawn inside the ring instead (owner, Live 2). */
+const INSIDE_FILL: Partial<Record<QuestStatus, string>> = { in_progress: '#E6E5DE', done: '#818D95' };
+/** How far an absolute polygon path reaches from the diamond's centre, in the diamond's own (L1) measure. */
+function radius(d: string): number {
+  expect(d, d).toMatch(/^M[\d.\s]+Z$/);
+  const n = d.slice(1, -1).trim().split(/\s+/).map(Number);
+  let most = 0;
+  for (let i = 0; i + 1 < n.length; i += 2) most = Math.max(most, Math.abs(n[i] - 12) + Math.abs(n[i + 1] - 12));
+  return most;
+}
 /** The paint attributes a drawing element carries, its own or from the group around it. */
 const PAINT = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-linecap', 'opacity'] as const;
 
@@ -114,7 +126,7 @@ describe('the steel/masonry kit in the Exile theme', () => {
     }
   });
 
-  it('draws each Exile status mark from the kit geometry, in rows and in detail', async () => {
+  it('draws each Exile status mark from the kit geometry, with the fill moved inside the ring, in rows and in detail', async () => {
     const view = fixtureView('panel-next-up', 'play');
     view.settings.theme = 'exile';
     const base = view.next_up[0];
@@ -133,7 +145,37 @@ describe('the steel/masonry kit in the Exile theme', () => {
       expect(svg.getAttribute('focusable')).toBe('false');
       expect(svg.querySelector('style, title, [role], [aria-label], [transform]')).toBeNull();
       expect(mark.querySelector('.icon, .glyph')).toBeNull();
-      expect(drawing(svg), status).toEqual(drawing(kitSvg(status)));
+      const kit = drawing(kitSvg(status));
+      const drawn = drawing(svg);
+      const fill = INSIDE_FILL[status];
+      if (!fill) {
+        // Hollow statuses are the kit's drawing exactly.
+        expect(drawn, status).toEqual(kit);
+        return;
+      }
+      // Owner, Live 2 (2026-11-02): the status colour fills only the inside.
+      // The kit's ring keeps its stroke, width, dash and geometry, unfilled...
+      const kitRing = kit.find((p) => p.d === RING)!;
+      expect(kitRing.fill, `${status} kit ring fill`).toBe(fill);
+      const rings = drawn.filter((p) => p.d === RING);
+      expect(rings, status).toHaveLength(1);
+      expect(rings[0], status).toEqual({ ...kitRing, fill: 'none' });
+      // ...and the kit's fill colour lies on one inner diamond wholly inside
+      // the ring's inner edge (radius 10 less the half stroke, about 9), with
+      // a gap of the well between them (radius 8 at most).
+      const filled = drawn.filter((p) => p.fill === fill);
+      expect(filled, status).toHaveLength(1);
+      expect(radius(filled[0].d!), `${status} inner fill`).toBeLessThanOrEqual(8);
+      // The kit's other details stay, inside that fill.
+      for (const detail of kit.filter((p) => p.d !== RING)) {
+        const same = drawn.find((p) => p.d === detail.d && p.stroke === detail.stroke && p.fill === detail.fill);
+        if (same) continue;
+        // In progress's upper-facet highlight is moved inside the inner fill, its paint unchanged.
+        const moved = drawn.find((p) => p !== filled[0] && p.fill === detail.fill && p.opacity === detail.opacity && p.d !== RING);
+        expect(moved, `${status} detail ${detail.d}`).toBeDefined();
+        expect(radius(moved!.d!), `${status} detail inside the fill`).toBeLessThanOrEqual(radius(filled[0].d!));
+      }
+      expect(drawn.length, status).toBe(kit.length + 1);
     }
     for (const row of view.next_up) check(rendered.root.querySelector(`[data-quest="${row.id}"] > .status-mark`)!, row.status);
     const detail = fixtureView('quest-detail', 'play');
@@ -272,5 +314,31 @@ describe('the steel/masonry kit in the Exile theme', () => {
     }
     // The negative control: the rejected warm gold is caught.
     expect(allowed.has(normal('#EDCF86'))).toBe(false);
+  });
+
+  it('hides the scrollbar in Exile play only, keeping edit and the 8 px kit scrollbar', async () => {
+    // Owner, Live 2 (2026-11-02): play is click-through, so its scrollbar
+    // cannot be used. The scrollers still scroll (overflow stays auto); only
+    // the bar goes, and only in play.
+    const css = await readText('./approved.css');
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim(), body: m[2] }));
+    const hiding = rules.filter((r) => /scrollbar-width:\s*none/.test(r.body));
+    expect(hiding.length).toBeGreaterThan(0);
+    for (const rule of hiding) {
+      for (const selector of rule.selector.split(',').map((s) => s.trim())) {
+        expect(selector, 'a rule that hides a scrollbar').toMatch(/^:root\[data-theme='exile'\] \.overlay\[data-mode='play'\] /);
+        expect(selector).not.toMatch(/edit/);
+      }
+      expect(rule.body).not.toMatch(/overflow/);
+    }
+    // It reaches every scroller of the panel: the body, whole-content scrolling, the status line.
+    const scoped = hiding.flatMap((r) => r.selector.split(',').map((s) => s.trim()));
+    expect(scoped).toContain(":root[data-theme='exile'] .overlay[data-mode='play'] .panel *");
+    // Edit, the overlay Settings frame, the picker and the ordinary Settings window keep the kit's 8 px bar.
+    expect(css).toMatch(/:root\[data-theme='exile'\] ::-webkit-scrollbar \{ width: 8px; height: 8px; \}/);
+    expect(css).toMatch(/:root\[data-theme='exile'\] ::-webkit-scrollbar-thumb \{[^}]*background: #64727C;/);
+    expect(css).not.toMatch(/data-mode='edit'[^{]*\{[^}]*scrollbar-width:\s*none/);
+    // The scrollers themselves still scroll in play.
+    expect(css).toMatch(/:root\[data-theme='exile'\] \.panel\[data-scroll='whole'\] \.panel-content \{[^}]*overflow-y: auto;/);
   });
 });

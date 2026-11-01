@@ -821,7 +821,7 @@ Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
 | `tauri` | The Tauri CLI. |
 | `start` | `tauri dev`: the real overlay against the dev server, rebuilt on change. |
 | `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/Quest Tracker.exe` and `quest-tracker-replay.exe`. |
-| `corner-safety` | `node scripts/corner-safety.mjs`: renders every Exile preview in the installed Microsoft Edge (headless, through `playwright-core`; no browser download) at 364×384 and 320×240 (Settings 420×328), scales 0.75, 1, 1.33 and 2 and text 200%, at the top, middle and end of each scroller, and fails when any text, mark or control covers a frame pixel, a box can never be fully seen, play has a control, edit's drag strip is covered or a focused control is clipped. It also checks that the frame is flush: its art within 2 px of every window edge, no art pixel cut off by the window, and in edit each of the eight resize handles hit 2 px inside its edge or corner (the summary line counts these cases). A probe over a real frame knot must be detected on every run. `--self-check` runs the kit frame alone (no app), including a 12 px-margin frame that must be reported not flush and a flush one that must pass; `--only <text>`, `--root <app dir>`, `--screenshots <dir>` and `--full` are described at the top of the script. Limitation: an edit-mode quest row whose wrapped text is taller than the reading well is checked line by line (each line and mark must fit), not as a whole. |
+| `corner-safety` | `node scripts/corner-safety.mjs`: renders every Exile preview in the installed Microsoft Edge (headless, through `playwright-core`; no browser download) at 364×384 and 320×240 (Settings 420×328), scales 0.75, 1, 1.33 and 2 and text 200%, at the top, middle and end of each scroller, and fails when any text, mark or control covers a frame pixel, a box can never be fully seen, play has a control, edit's drag strip is covered or a focused control is clipped. It also checks that the frame is flush: its art within 2 px of every window edge, no art pixel cut off by the window, and in edit each of the eight resize handles hit 2 px inside its edge or corner (the summary line counts these cases). Readability: every text run on screen must render at least 14 px for quest names and titles, 13 px for objectives, tips and detail text and 12 px for everything else, reach 4.5:1 contrast against the worst pixel behind it (read from a render with the text made transparent; a disabled control's text is exempt), and use no faux small caps, no caps face under 13 px, no weight under 400 and no wide tracking at small sizes. Play scrollbar: in play every overflowing scroller shows no scrollbar and still scrolls, while edit and both Settings surfaces keep theirs; the browser is started without Playwright's headless `--hide-scrollbars` switch so scrollbars are drawn as in the app. The summary line counts the cases each of these ran on. A probe over a real frame knot must be detected on every run. `--self-check` runs the kit frame alone (no app), including a 12 px-margin frame that must be reported not flush and a flush one that must pass, four text runs (9 px, the disabled colour, small caps: each must be reported; a compliant one must pass) and a play scroller with its bar shown (reported) and hidden (passes); `--only <text>`, `--root <app dir>`, `--screenshots <dir>` and `--full` are described at the top of the script. Limitation: an edit-mode quest row whose wrapped text is taller than the reading well is checked line by line (each line and mark must fit), not as a whole. |
 
 **Browser preview.** Outside Tauri, `npm --prefix apps/quest-tracker run dev`
 serves the UI over one of the serialised views in `fixtures/viewmodels/`,
@@ -2687,6 +2687,16 @@ Revisit this feature when:
   the whole content scrolls instead, in a well that stays clear of the knots.
   The edit drag strip stays fixed and reachable, and the eight resize
   handles lie along the window's outer edge.
+- Readable at every scale: text no longer shrinks below 14 px on screen for
+  quest names and titles, 13 px for objectives, tips and detail text, and
+  12 px for everything else, whatever the scale setting; the caps face is
+  kept to 13 px and up; every text run keeps at least 4.5:1 contrast over the
+  masonry well.
+- Status diamonds: the in-progress and done colours fill only the inside of
+  the diamond, inside its steel ring, with a gap of the well between them.
+- No scrollbar in play: play is click-through, so its scrollbar is hidden
+  there (the list still scrolls to follow the game); edit and Settings keep
+  the kit's scrollbar.
 - Character/class/level, worth headings and reward labels remain visible in
   play; the footer shows the configured hotkey.
 - Switching play/edit or opening Settings keeps the selected Exile/Claude

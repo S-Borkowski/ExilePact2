@@ -5,7 +5,11 @@
   // The Exile diamonds are the steel/masonry kit's six finished status marks
   // (`docs/quest-tracker/design/steel-masonry-kit/components/status-*.svg`),
   // their drawing copied as live markup: same paths, paint and clip, without
-  // the kit file's font styles or its own accessible name. The mark around
+  // the kit file's font styles or its own accessible name. One change from
+  // the kit, on the owner's word (Live 2, 2026-11-02): a status colour fills
+  // only the inside. The ring keeps the kit's stroke and is never filled; in
+  // progress and done carry the kit's fill colour on an inner diamond, with a
+  // gap of the well between it and the ring. The mark around
   // the svg carries the one name; the svg is decoration. The skipped hatch's
   // clip gets an id of its own per mark, so two skipped rows never share one.
   import type { QuestStatus } from '../ipc';
@@ -23,15 +27,17 @@
   <span class="status-mark diamond-mark" data-status={status} role="img" aria-label={STATUS_LABEL[status]} title={STATUS_LABEL[status]}>
     <svg class="status-diamond" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       {#if status === 'in_progress'}
-        <path d="M12 2 22 12 12 22 2 12Z" fill="#E6E5DE" stroke="#B8C0C5" stroke-width="1.4" />
-        <path d="M12 4 20 12 12 11 4 12Z" fill="#FFFFFF" opacity=".42" />
+        <path d="M12 2 22 12 12 22 2 12Z" fill="none" stroke="#B8C0C5" stroke-width="1.4" />
+        <path d="M12 5 19 12 12 19 5 12Z" fill="#E6E5DE" />
+        <path d="M12 5 19 12 12 11 5 12Z" fill="#FFFFFF" opacity=".42" />
       {:else if status === 'available'}
         <path d="M12 2 22 12 12 22 2 12Z" fill="none" stroke="#D0BF94" stroke-width="1.4" />
         <path d="M12 5 19 12 12 19 5 12Z" fill="none" stroke="#D0BF94" stroke-width=".8" />
       {:else if status === 'locked'}
         <path d="M12 2 22 12 12 22 2 12Z" fill="none" stroke="#69747C" stroke-width="1.4" />
       {:else if status === 'done'}
-        <path d="M12 2 22 12 12 22 2 12Z" fill="#818D95" stroke="#B8C0C5" stroke-width="1.4" />
+        <path d="M12 2 22 12 12 22 2 12Z" fill="none" stroke="#B8C0C5" stroke-width="1.4" />
+        <path d="M12 5 19 12 12 19 5 12Z" fill="#818D95" />
         <path d="M12 5 19 12 12 19 5 12Z" fill="none" stroke="#D2D7DA" stroke-width=".8" />
       {:else if status === 'skipped'}
         <path d="M12 2 22 12 12 22 2 12Z" fill="none" stroke="#8D979E" stroke-width="1.4" />
