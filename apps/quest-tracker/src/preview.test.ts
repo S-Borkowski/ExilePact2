@@ -1,6 +1,8 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DEFAULT_PREVIEW_FRAME, parsePreviewQuery, previewBridge, previewFixture } from './preview';
+import { SCALE_MIN } from './ipc';
+import { DEFAULT_PREVIEW_FRAME, PREVIEW_SCALES, parsePreviewQuery, previewBridge, previewFixture } from './preview';
+import { parseSettingsPreviewQuery } from './settings/preview';
 import { type Rendered, renderApp } from './test-support';
 
 let rendered: Rendered | null = null;
@@ -8,8 +10,15 @@ let rendered: Rendered | null = null;
 afterEach(() => {
   rendered?.destroy();
   rendered = null;
-  delete document.documentElement.dataset.previewScale;
+  clearScale();
 });
+
+function clearScale() {
+  const root = document.documentElement;
+  delete root.dataset.previewScale;
+  root.style.removeProperty('--preview-scale');
+  root.style.removeProperty('--page-zoom');
+}
 
 describe('the browser preview', () => {
   it('preview_mode_runs_without_tauri', async () => {
@@ -42,5 +51,29 @@ describe('the browser preview', () => {
     expect(unknown.view.status?.text).toMatch(/no frame "no-such-frame"/);
     // `toast` is no frame any more (owner, 2026-10-25, after Live 1).
     expect((await previewFixture('toast', null)).view.status?.text).toMatch(/no frame "toast"/);
+  });
+
+  it('preview_accepts_the_smallest_scale', async () => {
+    // `0.75` is `SCALE_MIN`, the corner-safety runner's smallest scale; a
+    // value the slider cannot reach is still ignored, on both pages.
+    expect(PREVIEW_SCALES).toContain(String(SCALE_MIN));
+    expect(parsePreviewQuery('?scale=0.75').scale).toBe('0.75');
+    expect(parsePreviewQuery('?scale=0.5').scale).toBeNull();
+    expect(parseSettingsPreviewQuery('?scale=0.75').scale).toBe('0.75');
+    expect(parseSettingsPreviewQuery('?scale=0.5').scale).toBeNull();
+
+    const root = document.documentElement;
+    rendered = await renderApp(previewBridge('?frame=panel-next-up&scale=0.75', root));
+    expect(root.dataset.previewScale).toBe('0.75');
+    expect(root.style.getPropertyValue('--preview-scale')).toBe('0.75');
+    expect(root.style.getPropertyValue('--page-zoom')).toBe('0.75');
+    rendered.destroy();
+    rendered = null;
+    clearScale();
+
+    // An unknown scale leaves the page unzoomed.
+    rendered = await renderApp(previewBridge('?frame=panel-next-up&scale=0.5', root));
+    expect(root.dataset.previewScale).toBeUndefined();
+    expect(root.style.getPropertyValue('--preview-scale')).toBe('');
   });
 });

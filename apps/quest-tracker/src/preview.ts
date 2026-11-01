@@ -6,8 +6,9 @@
 //
 // `frame` is a frame id of the brief (default `panel-next-up`), `mode`
 // overrides the fixture's mode (`play`|`edit`), `scale` zooms the page as the
-// webview zoom would (`1`|`1.33`|`2`). Commands are logged, not acted on: the
-// preview shows a view, it does not run the engine.
+// webview zoom would (`0.75`|`1`|`1.33`|`2`; any other value is ignored).
+// Commands are logged, not acted on: the preview shows a view, it does not
+// run the engine.
 //
 // The fixtures are reached only behind `import.meta.env.DEV`, which is false
 // in `vite build`, so the release bundle carries none of them.
@@ -30,7 +31,8 @@ const STAND_INS: Record<string, { fixture: string; mode?: Mode }> = {
   'mode-edit': { fixture: 'panel-campaign', mode: 'edit' },
 };
 
-export const PREVIEW_SCALES = ['1', '1.33', '2'] as const;
+/** The zooms the preview accepts; `0.75` is the smallest the Appearance slider reaches. */
+export const PREVIEW_SCALES = ['0.75', '1', '1.33', '2'] as const;
 
 export interface PreviewQuery {
   frame: string;
