@@ -1,0 +1,16 @@
+{
+  "canvas": "#111518",
+  "well": "#090D10",
+  "steel": "#8D979E",
+  "edge": "#B8C0C5",
+  "muted": "#A9AFB3",
+  "text": "#E4E6E7",
+  "gold": "#D0BF94",
+  "ivory": "#E6E5DE",
+  "control": "#424D54",
+  "hover": "#536169",
+  "line": "#5D686F",
+  "disabled": "#535D64",
+  "error": "#D0A3A0",
+  "warn": "#CAB990"
+}
