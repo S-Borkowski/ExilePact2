@@ -1,6 +1,6 @@
 # Quest tracker
 
-Design handoff: [neutral steel/masonry artwork, components and next-session instructions](design/steel-masonry-kit/HANDOFF.md). This latest packet is design-only; wiring is deferred. Earlier prototype UI descriptions/screens below do not mean the rejected warm palette or minimum-size corner overlap has been accepted or fixed.
+Design: the Exile theme is built from the [neutral steel/masonry kit](design/steel-masonry-kit/HANDOFF.md): its two finished rasters, its diamond status marks and its control treatments. The rejected warm palette is gone, and `npm --prefix apps/quest-tracker run corner-safety` measures that no text, mark or control paints over the frame artwork at any size, scale, text size or scroll position ([review](design/review-approved-ui.md)).
 
 A small always-on-top overlay for Path of Exile 2 that lists the campaign
 quests, says which ones are worth doing and why, and keeps each character's
@@ -817,12 +817,14 @@ Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
 | `tauri` | The Tauri CLI. |
 | `start` | `tauri dev`: the real overlay against the dev server, rebuilt on change. |
 | `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/Quest Tracker.exe` and `quest-tracker-replay.exe`. |
+| `corner-safety` | `node scripts/corner-safety.mjs`: renders every Exile preview in the installed Microsoft Edge (headless, through `playwright-core`; no browser download) at 364×384 and 320×240 (Settings 420×328), scales 0.75, 1, 1.33 and 2 and text 200%, at the top, middle and end of each scroller, and fails when any text, mark or control covers a frame pixel, a box can never be fully seen, play has a control, edit's drag strip is covered or a focused control is clipped. A probe over a real frame knot must be detected on every run. `--self-check` runs the kit frame alone (no app); `--only <text>`, `--root <app dir>`, `--screenshots <dir>` and `--full` are described at the top of the script. Limitation: an edit-mode quest row whose wrapped text is taller than the reading well is checked line by line (each line and mark must fit), not as a whole. |
 
 **Browser preview.** Outside Tauri, `npm --prefix apps/quest-tracker run dev`
 serves the UI over one of the serialised views in `fixtures/viewmodels/`,
 chosen by query: `http://127.0.0.1:1420/?frame=quest-detail&mode=play&scale=2`.
 `frame` is a frame id of the brief (default `panel-next-up`), `mode` is
-`play`|`edit`, `scale` is `1`|`1.33`|`2`. Commands are logged to the console,
+`play`|`edit`, `scale` is `0.75`|`1`|`1.33`|`2` (any other value is ignored;
+the Settings window's preview, `/settings.html`, takes the same scales). Commands are logged to the console,
 not acted on. The fixtures are reached only in the dev server; the release
 bundle carries none of them.
 
@@ -2663,14 +2665,23 @@ Revisit this feature when:
 
 ### Unreleased
 
-- Implemented the approved compact steel tracker: thin original art frame,
-  compact Quest Tracker / actual Act bar, flat quest sections, gold/white serif
-  text, six distinct diamond status treatments and a small configured-shortcut footer.
-  Character/class/level, worth headings and reward labels remain visible in play.
-  The oversized header and boxed quest cards are replaced with compact, flat
-  sections; the custom art frame is the only outer border. Edit drag rail remains.
-  Exile status diamonds use fill, outline and pattern instead of inner icons;
-  Claude retains its previous symbols. Quest status meanings are unchanged.
+- The Exile theme now uses the finished steel/masonry kit: a neutral steel
+  nine-slice frame (48 px corners, 8 px outset, the same size on screen at
+  every scale) around a charcoal masonry well, a neutral grey palette with
+  gold kept for the title bar, quest titles and worth headings, and the kit's
+  six diamond status marks (in progress, available, locked, done, skipped,
+  unknown) in rows and quest detail. Buttons, toggles, selects, sliders,
+  checkboxes, text fields, scrollbars and focus rings in the overlay and the
+  Settings window follow the kit. Claude keeps its look and its status icons;
+  status names and meanings are unchanged.
+- Corner-safe scrolling: the compact title bar and the footer sit between the
+  frame's corner knots and only the quest list scrolls, inside the rails, so
+  no text, mark or control slides under the frame's corners at any scroll
+  position. When the window is small, the scale large or the text enlarged,
+  the whole content scrolls instead, in a well that stays clear of the knots.
+  The edit drag strip stays fixed and reachable.
+- Character/class/level, worth headings and reward labels remain visible in
+  play; the footer shows the configured hotkey.
 - Switching play/edit or opening Settings keeps the selected Exile/Claude
   theme. Mode changes controls and click-through behavior, not materials.
 - Theme in overlay Settings and ordinary Settings Appearance selects Exile or

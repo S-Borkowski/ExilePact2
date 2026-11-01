@@ -1,6 +1,6 @@
 # Quest Tracker Overlay — Design Brief
 
-The latest design deliverable is the [steel/masonry kit and implementation handoff](design/steel-masonry-kit/HANDOFF.md), with finished local artwork, vector components and editable previews. No Figma import or further art generation is required. Application wiring is explicitly deferred; the earlier warm prototype is unfinished and has a known whole-scroll corner-overlap defect.
+The latest design deliverable is the [steel/masonry kit and implementation handoff](design/steel-masonry-kit/HANDOFF.md), with finished local artwork, vector components and editable previews. No Figma import or further art generation is required. The Exile theme is wired to that kit, replacing the earlier warm prototype, and its whole-scroll corner overlap is fixed; `npm --prefix apps/quest-tracker run corner-safety` measures it ([review](design/review-approved-ui.md)).
 
 The overlay is a separate always-on-top window drawn over Path of Exile 2
 (windowed or borderless fullscreen), fed only by the game's `Client.txt`.

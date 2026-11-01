@@ -1,6 +1,32 @@
 # Approved UI adoption review
 
-**Latest handoff — design only:** [neutral steel/masonry kit](steel-masonry-kit/HANDOFF.md). The owner rejected the preceding app rendering as too yellow, then deferred coding/wiring to another session. The prototype's minimum-size whole-scroll corner overlap remains blocking. The observations below are historical implementation evidence, not a final visual PASS or verification of this kit in the application.
+**Latest:** the Exile theme is wired to the [neutral steel/masonry kit](steel-masonry-kit/HANDOFF.md) and the minimum-size whole-scroll corner overlap is fixed; the first section below records how that was measured. Every later section is history: it describes the warm prototype the owner rejected as too yellow, and is not evidence about the kit in the application.
+
+## Steel/masonry kit wired, measured by artwork — 2026-11-01
+
+### What changed
+
+The Exile frame is the kit's `frame-neutral-steel.png`, unchanged, as a nine-slice (224 source px, drawn 48 px with an 8 px outset, constant on screen at every scale) over one `cover` crop of `masonry-charcoal.png`. Palette, diamonds and controls come from the kit's `palette.json`, `components/*.svg` and previews; the diamonds are the kit's six status SVGs reproduced as inline markup, with the same accessible names as before. No art was generated, edited or extracted, and no asset request was raised. The compact title bar and the footer sit between the corner knots and only the body scrolls inside the rails; when that leaves too little room, the whole content scrolls in a well clear of the knots.
+
+### The corner-safety runner
+
+`npm --prefix apps/quest-tracker run corner-safety` replaces the rectangle checks of the earlier reviews, which passed while text crossed the knots. It renders each preview in headless Microsoft Edge, takes the frame artwork alone as a mask (alpha 64 and above), and intersects it with the painted boxes of every text line, mark, icon, control, divider and scrollbar, each clipped by its scrolling ancestors. Its matrix covers the Exile overlay surfaces (Next up and All in play and edit, quest detail, character picker, overlay Settings, the four empty states) at 364×384 and 320×240 and the ordinary Settings window at 420×328 (idle, update available, downloading, failed), at scales 0.75, 1, 1.33 and 2 with normal text and at scale 1 with text doubled, each at the top, middle and end of every scroller. It also fails a box that can never be fully seen, sideways overflow, any control in play, an edit drag strip that is covered, a focused control that is clipped or over the art, and a header or footer that moves or clips in the fixed-chrome layout. As a positive control, a probe placed over a real frame knot must be reported at every scale.
+
+Results on this tree:
+
+- `corner-safety -- --self-check` (the kit frame alone, a probe on a knot and one in the centre, at each scale): 4 cases, 0 failures, control detected.
+- `corner-safety`: 140 cases, 0 failures, control detected.
+- Baseline, the same runner against the warm prototype (tag `quest-tracker-steel-masonry-base`) at 320×240: 60 cases, 204 failures, control detected. The failures are the known defect: the title bar, the footer, rows, diamonds and divider decorations painted over the frame art at every scale. (That tree's preview ignores scale 0.75, so its 0.75 cases render at 1.)
+
+Limitation: an edit-mode quest row is a button, and at scale 2 or with text doubled its wrapped title can make it taller than the reading well, so it can never be seen whole. Such a row is checked line by line: each of its text lines and marks must fit the scroller and stay off the art, and when focused only its ring's left and right edges must be unclipped. Every other box is checked whole.
+
+### Claude unchanged
+
+The Claude Next up play, overlay Settings edit and quest detail edit at 364×384, and the Claude ordinary Settings window at 420×328, all at scale 1, rendered byte-identical screenshots at the base tag and on this tree.
+
+### Screenshots
+
+Written by `corner-safety -- --screenshots`, scale 1, in [frames/steel/](frames/steel/): [play-default](frames/steel/play-default.png) and [edit-all-default](frames/steel/edit-all-default.png) at 364×384, [detail-min](frames/steel/detail-min.png) and [all-min](frames/steel/all-min.png) in edit at 320×240 (the whole content scrolls there; the images show the top), [overlay-settings-default](frames/steel/overlay-settings-default.png), [ordinary-settings](frames/steel/ordinary-settings.png) (idle) and [claude-play-default](frames/steel/claude-play-default.png). Compared beside the kit's `previews/play.png`, `edit.png`, `overlay-settings.png`, `ordinary-settings.png` and `secondary-views.png`, they show the same frame, well, palette, title bar, diamonds and controls; the text is the fixture's, not the previews' illustrative strings. The owner's check in the native app is still to come.
 
 ## Current compact steel implementation — 2026-11-01
 
