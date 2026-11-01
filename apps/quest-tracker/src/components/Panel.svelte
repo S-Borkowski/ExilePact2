@@ -1,10 +1,8 @@
 <script lang="ts">
   // The expanded panel: header, the status line, the body the view's frame
-  // names, and in edit mode the way back to play mode. Cut corners (6 px), the
-  // background at the opacity setting while text and icons stay opaque, a
-  // 1 px border that edit mode turns into the 2 px accent. At opacity 0 the
-  // background is gone and the border and accent still draw: they are the
-  // ring (`.cut::after`), which the setting does not touch.
+  // names, and in edit mode the way back to play mode. Claude keeps its
+  // cut-corner ring and edit accent; Exile uses only its custom art frame.
+  // Background opacity never fades text, icons or the visible frame.
   //
   // The panel fills the window inside its shadow margin, in both directions,
   // and its body scrolls: the player sizes the window, the scale only zooms
@@ -24,7 +22,6 @@
   import Header from './Header.svelte';
   import Icon from './Icon.svelte';
   import MaterialFrame from './MaterialFrame.svelte';
-  import crest from '../../theme/materials/raster/lantern-astrolabe-crest.png';
   import stone from '../../theme/materials/raster/charcoal-stone-well.png';
   import QuestDetail from './QuestDetail.svelte';
   import QuestRow from './QuestRow.svelte';
@@ -40,7 +37,6 @@
   const edit = $derived(view.mode === 'edit');
   // Modes change input and controls; only the saved theme chooses the material.
   const journal = $derived(view.settings.theme !== 'claude');
-  const plaque = $derived(view.frame === 'settings' ? 'Overlay settings' : view.frame === 'character-picker' ? 'Characters' : view.frame === 'quest-detail' ? 'Quest details' : 'Campaign journal');
   let panelElement = $state<HTMLDivElement>();
   let wholeScroll = $state(false);
 
@@ -103,14 +99,6 @@
 </script>
 
 {#snippet panelContents()}
-    {#if journal}
-      <!-- The native window gesture has no keyboard action; the controls remain buttons. -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="journal-plaque" aria-hidden="true" onpointerdown={pressDragSurface}>
-        <img class="journal-crest" src={crest} alt="" draggable="false" />
-        <span>{plaque}</span>
-      </div>
-    {/if}
     <Header {view} {send} {drag} />
     {#if status}
       {@const icon = STATUS_ICON[status.kind]}

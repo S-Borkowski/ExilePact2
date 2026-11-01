@@ -18,6 +18,10 @@ The selected theme alone chooses expanded-panel materials and typography:
 Exile keeps the same carved stone/gold frame in play, edit, Next up, All and
 Settings. Modes change controls/input only; they do not substitute a compact
 theme. The collapsed badge retains its small shape and selected palette.
+The expanded overlay uses its existing functional header only: no separate
+Campaign journal label or crest consumes quest space. Exile's custom art frame
+is its only outer border; the legacy CSS ring and synthetic inset frame shadows
+are disabled for Exile, while control focus outlines and Claude remain intact.
 
 Both settings views receive Rust's saved `theme` (`exile` or `claude`) and send
 the existing `update_settings` command. Missing/invalid stored values default to

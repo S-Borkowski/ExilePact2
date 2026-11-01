@@ -6,7 +6,7 @@ The order matches the 22 existing feature groups in [the design system](../../ui
 |---|---|---|---|
 | 1 | Passive play / interactive edit; close edit frames on return | Existing shell modes and shared App/Panel behavior; selected material remains unchanged across modes | app.test.ts; finish-frames.test.ts; approved-ui.test.ts; Rust shell |
 | 2 | Global shortcut and binding/refusal states | Existing Settings hotkey and edit footer | live2.test.ts; Rust shell |
-| 3 | Header drag, eight resize directions, saved bounds, independent zoom | Existing bridge/native geometry; new-store364×384, minimum320×240 | resize.test.ts; Rust shell saved-size/theme tests |
+| 3 | Header drag, eight resize directions, saved bounds, independent zoom | Functional header and fixed top rail retain existing drag bridge after decorative-header removal; native geometry unchanged; new-store364×384, minimum320×240 | approved-ui.test.ts drag/control exclusions; resize.test.ts; Rust shell saved-size/theme tests |
 | 4 | Collapse/expand, count, warning and change badge | Existing Collapsed with selected theme tokens | app.test.ts; live2.test.ts; row-change.test.ts |
 | 5 | Next up / All, worth grouping, act disclosures | Existing Header, Panel and ActSection commands | app.test.ts; finish-header.test.ts; finish-rows.test.ts |
 | 6 | Statuses, worth, rewards, step/tip, manual/inferred marks | Same QuestRow data; Exile wrapping and original Claude layout | finish-rows.test.ts; live3.test.ts; inferred.test.ts |

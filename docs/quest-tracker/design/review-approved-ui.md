@@ -1,5 +1,33 @@
 # Approved UI adoption review
 
+## Compact functional header and art-only border — 2026-11-01
+
+The owner removed the added Campaign journal/crest header because it occupied quest space, and removed the extra CSS border because Exile already has a custom art frame. The attached compact tracker close-up guides this space-efficient layout. No reference image was copied into runtime artwork, no new art was generated, and the existing custom frame and stone texture remain unchanged. The crest source PNG/prompt remains historical provenance; the current panel does not import or render it.
+
+The functional character/view/settings/collapse Header and fixed edit-mode top-rail drag area remain. The extra plaque is absent in every expanded mode/frame. Exile disables only the outer panel's legacy `::after` ring and synthetic inset frame shadows; its custom art frame remains. Ordinary Exile Settings also removes its synthetic inset frame shadows. Button/control focus outlines, the clipped scroll well, resize edges and Claude's original ring/shadow remain intact.
+
+Playwright MCP measured the same browser fixture before and after at364×384:
+
+| Surface | Before | After |
+|---|---|---|
+| Exile campaign/edit | Decorative header84px; body starts y218; outer frame12,12,340,360 | No plaque/crest; body starts y134; same outer frame;84px header space reclaimed |
+| Exile play/edit outer CSS | `::after` displayed and three inset frame shadows | `::after` display none; box-shadow none; custom art present in both modes |
+| Claude play/edit | Original ring displayed and white5% inset highlight | Exact same ring/shadow; no Exile art |
+| Ordinary Exile Settings | Two inset frame shadows behind custom art | Box-shadow none; custom art retained |
+
+At320×240, Next up/Settings/detail kept frame12,12,296,216 and well24,40,272,174 fixed. Their scroll start/middle/end values were0/173/346,0/277/554 and0/276/551 respectively; every footer reached y174–214 inside the well at the end. At364×384, the frame stayed12,12,340,360 and well42,46,280,292; body scroll values were0/122/244,0/218/436 and0/205/409, with footer y298–338 visible throughout. All six cases had no horizontal page overflow, and the fixed drag grip remained hit-testable after scrolling. Updated journal/play/ordinary Settings/minimum scroll-end screenshots show the compact functional header and art-only outer border.
+
+Fresh headerless Settings checks used Playwright MCP at `/?frame=settings&mode=edit&theme=exile` with every HTML element's computed font size and numeric line height doubled from its unmodified value. Normal line heights remained proportional to the doubled font. The Theme label measured13/16px before and26/32px after; help text and the functional Header measured14/20px before and28/40px after. Browser scale, root CSS zoom and panel CSS zoom all stayed1. Measurements followed font loading and responsive layout settling; this is200% text, not page zoom.
+
+| Current headerless Settings at200% text | Scroll start / middle / end | Fixed frame and inset well (x,y,w,h) | Footer at scroll end | Overflow and fixed drag grip |
+|---|---|---|---|---|
+| Exile edit,320×240 | Whole well0 /576 /1151 | Frame12,12,296,216; well24,40,272,174 at all three positions |24,99,272,115; fully inside well and hit-testable | Page width320; well/body scroll width equals client width272; grip hit-testable at all three positions |
+| Exile edit,364×384 | Whole well0 /504 /1008 | Frame12,12,340,360; well42,46,280,292 at all three positions |42,223,280,115; fully inside well and hit-testable | Page width364; well/body scroll width equals client width280; grip hit-testable at all three positions |
+
+In both200% cases the footer scrolls with the whole well, becomes fully reachable at the end, and stays clipped while below the viewport at the start/middle. Both retained custom art, zero plaque/crest elements, `::after` display none and outer box-shadow none. These fresh browser checks leave the native app closed and do not touch its store.
+
+The new header-absence assertion failed before the change and passed afterward. All existing functional Header, mode/theme, passive-play and drag/control-exclusion assertions remain. Native app-webview endpoint9333 was unavailable and no tracker process was running; the application was left closed. These are browser observations, not a new native or in-game measurement. The earlier native/crest captures below describe the previous UI stages.
+
 ## Selected-theme mode consistency — 2026-11-01
 
 The selected theme now chooses the expanded-panel material independently of mode and frame. Exile retains its carved stone/gold frame, textured wells, ornament and serif quest titles in play/edit, Next up/All, Settings/detail/picker and empty states. Claude retains its original presentation. Mode changes interaction and controls only; returning to play still closes edit-only frames as before. Earlier compact-play captures and counts below are historical, not the current mode contract.
@@ -17,7 +45,7 @@ Actual Tauri app-webview MCP observed the following in the disposable test profi
 
 `window.outerWidth/outerHeight` stayed582×703 throughout; opacity0.9, scale1, disabled screen reading, hotkey and synthetic log path were unchanged. The app was restored to Exile edit/Settings after inspection. No live game or installed/user store was changed.
 
-Playwright fixture checks covered Next up and All at320×240 and364×384: the first quest title remained fully inside the well, there were no play controls and no horizontal overflow. At the default size, reducing the crown to48px at short viewports left the first Next up card fully visible (y224–336 inside the well y46–338). This responsive rule is identical in play and edit; it does not choose a different material. The minimum window retains its existing smaller ornament rules. The [current Exile play screenshot](frames/approved/exile-play.png) records the retained frame.
+Playwright fixture checks at that stage covered Next up and All at320×240 and364×384: the first quest title remained fully inside the well, there were no play controls and no horizontal overflow. Before the later header removal, reducing the crown to48px at short viewports left the first Next up card fully visible (y224–336 inside the well y46–338). Those crown measurements are historical; the crown is now removed uniformly across modes. The [current Exile play screenshot](frames/approved/exile-play.png) records the retained custom frame without the extra header.
 
 ## First-screen critique — 2026-10-31
 
@@ -33,7 +61,7 @@ The owner rejected the initial vector/gray-tile interpretation above as unlike t
 
 Reopened the original concept and compared the new representative journal beside it before expanding checks. The screen uses original generated black carved masonry/niche rails, worn warm-gold inlay, a dimensional amber lantern/astrolabe crown, subdued physical stone, rectangular recessed wells with double fine gold lines, cream Georgia title-case quest names and readable Sans prose. Header/act/control bands share dark recessed stone/blackened metal and selected warm-gold treatment; the old flat gray bands and rounded gray cards are gone. The illustrative act tabs, fictional Track button and quest art mapping remain absent. The later mode-consistency correction above retains these Exile materials in play as well.
 
-The generated frame uses nine-slicing with vertically rounded side segments, preserving sculpture proportions. The outer frame is fixed; a separately inset well clips its scrolling contents. The crown belongs to the title plate inside that well. A fixed top-rail drag region remains available after Settings scrolls down; the rich title plate also uses the existing drag bridge. Art takes no input; controls and all resize edges retain their actions. Exact provenance and hashes are in [harvest](harvest.md#original-production-material-assets).
+The generated frame uses nine-slicing with vertically rounded side segments, preserving sculpture proportions. The outer frame is fixed; a separately inset well clips its scrolling contents. At this stage the crown belonged to a title plate inside that well; that extra header is now removed. The fixed top-rail and functional Header retain the existing edit-mode drag bridge. Art takes no input; controls and all resize edges retain their actions. Exact provenance and hashes are in [harvest](harvest.md#original-production-material-assets).
 
 Current app-only screenshots: [rich journal](frames/approved/exile-journal.png), [Exile play](frames/approved/exile-play.png), [ordinary Settings](frames/approved/exile-settings.png), and [minimum overlay Settings scrolled to the end](frames/approved/exile-settings-scroll-end.png). Claude screenshots retain the unchanged baseline cascade. These are rendered live controls, not the concept PNG used as a runtime mockup.
 

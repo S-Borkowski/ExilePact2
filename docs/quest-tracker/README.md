@@ -26,7 +26,7 @@ What it is:
 
 - **Two visual themes, the same tracker.** Exile is the default: carved
   stone/gold surfaces throughout play, edit, Next up, All and Settings,
-  original raster stone/gold relief, Cinzel plaques, cream serif quest names
+  original raster stone/gold relief, compact Cinzel headings, cream serif quest names
   and warm gold controls. Select
   **Claude** to restore the previous visual theme. Use *Theme* in overlay
   Settings (edit mode), or *Appearance → Theme* in the tray's ordinary Settings
@@ -35,9 +35,10 @@ What it is:
   changes interaction and controls, never the selected theme or its material. See the
   [22-feature preservation map](design/approved-ui-preservation.md) and
   [rendered review](design/review-approved-ui.md). In edit/settings mode, drag
-  the header or rich title plate to move it; a fixed top-rail grab area stays
+  the functional header to move it; a fixed top-rail grab area stays
   available while the inset Settings content scrolls. Controls and resize edges
-  keep their own actions.
+  keep their own actions. Exile has no separate Campaign journal artwork/header;
+  its custom art frame is the only outer border, without the legacy CSS ring.
 
 - **One window, `Quest Tracker.exe`.** The build's name since 0.2.0; a
   release download is `quest-tracker.exe`, the same program. A Tauri app:
@@ -2165,8 +2166,11 @@ scoped to the root's received theme, and `src/approved.css` for its material,
 type, layout and control states. Original component/shared CSS stays intact for
 Claude. `theme.ts` switches derived shadows too. Cinzel and original raster material
 provenance are in [harvest](design/harvest.md); the concept PNG is never runtime
-art. The fixed material frame and inset content well scroll independently, so
-lower rails do not float over text or controls. New stores start at364×384 native pixels before existing first-start zoom
+art. The fixed material frame surrounds a separately scrolling inset content well,
+so lower rails do not float over text or controls. Exile removes the decorative
+Campaign journal/crest header and synthetic outer CSS ring/inset shadows; the
+functional header and fixed edit-mode drag rail remain. The custom art frame is
+the only outer border. New stores start at364×384 native pixels before existing first-start zoom
 (340×360 paint plus12px transparent margin each side). Saved bounds and the
 320×240 minimum are preserved; selecting a theme never resizes the window.
 
@@ -2651,6 +2655,8 @@ Revisit this feature when:
 
 ### Unreleased
 
+- Removed Exile's oversized Campaign journal/crest header and duplicate outer
+  CSS border. The custom art frame, functional controls and edit drag rail remain.
 - Default Exile UI: consistent carved stone/gold across play and edit surfaces,
   original decorative relief, local Cinzel titles and palette-matched controls.
 - Switching play/edit or opening Settings keeps the selected Exile/Claude

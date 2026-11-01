@@ -20,6 +20,8 @@ describe('approved material adoption', () => {
           theme === 'exile' ? 'journal' : 'claude',
         );
         expect(Boolean(rendered.root.querySelector('.material-art'))).toBe(theme === 'exile');
+        expect(rendered.root.querySelector('.journal-plaque, .journal-crest')).toBeNull();
+        expect(rendered.root.querySelector('.header h1')).not.toBeNull();
       }
       expect(document.documentElement.dataset.theme).toBe(theme);
       expect(bridge.calls).toEqual([]);
@@ -94,7 +96,7 @@ describe('approved material adoption', () => {
     expect(grab.closest('.panel-content')).toBeNull();
     press(grab);
     expect(bridge.drags).toBe(1);
-    press(rendered.root.querySelector('.journal-plaque')!);
+    press(rendered.root.querySelector('.header')!);
     expect(bridge.drags).toBe(2);
     press(grab, 2);
     for (const control of rendered.root.querySelectorAll('button,input,select')) press(control);
@@ -135,7 +137,7 @@ describe('approved material adoption', () => {
     expect(rendered.root.querySelector('.material-art')).not.toBeNull();
   });
 
-  it('bundles original material art and the licensed display face locally', async () => {
+  it('keeps original material source art and the licensed display face locally', async () => {
     const art = import.meta.glob('../theme/materials/*.svg', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
     for (const svg of Object.values(art)) {
       expect(svg).toMatch(/^<svg/);
