@@ -18,6 +18,12 @@
 //     checks below (sideways overflow, a box taller or wider than its
 //     scroller, controls in play, the edit drag strip, focus, fixed chrome).
 //
+// One exemption: a button whose text wraps (an edit-mode quest row at a
+// large scale or text size) may be taller than its scroller. It is then
+// checked line by line, not whole: each of its text lines and marks must fit
+// the scroller, and when focused only its ring's left and right edges must be
+// unclipped.
+//
 // A control runs at every scale: a probe placed over the bottom-left knot of
 // the rendered frame must be reported, or the run fails. `--self-check` runs
 // only a synthetic page that draws the kit frame PNG as the 48/8 nine-slice,
@@ -42,7 +48,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import zlib from 'node:zlib';
 import { chromium } from 'playwright-core';
-import { alphaMask, artPixels, clipRect, containsRect, decodePng, findOverlaps, grow, summaryLine } from './corner-safety-core.mjs';
+import { alphaMask, artPixels, clipRect, decodePng, findOverlaps, grow, summaryLine } from './corner-safety-core.mjs';
 
 const APP = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const KIT_FRAME = path.resolve(APP, '../../docs/quest-tracker/design/steel-masonry-kit/assets/frame-neutral-steel.png');
@@ -293,6 +299,25 @@ function measureInPage(options) {
   const cutScrollers = new Set();
   /** A box that holds other content (text, a graphic, a control) rather than being one. */
   const holder = (el) => !!el.textContent?.trim() || !!el.querySelector(`svg, ${CONTROLS}`);
+  /**
+   * A button holding text that wraps onto two or more lines (an edit-mode
+   * quest row). When it is taller than its scroller it can never be seen
+   * whole; its lines and marks are measured one by one instead, each of
+   * which must fit (they are boxes of their own).
+   */
+  const wrapsText = (el) => {
+    if (!el.matches('button, [role="button"]')) return false;
+    const tops = new Set();
+    const lines = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const r = document.createRange();
+    for (let node = lines.nextNode(); node; node = lines.nextNode()) {
+      if (!node.data.trim()) continue;
+      r.selectNodeContents(node);
+      for (const rect of r.getClientRects()) tops.add(Math.round(rect.top));
+      if (tops.size > 1) return true;
+    }
+    return false;
+  };
   const addBox = (label, rect, el, self, sized) => {
     if (rect.right - rect.left <= 0 || rect.bottom - rect.top <= 0) return;
     const box = { label, rect: plain(rect), clips: clipsFor(el, self) };
@@ -320,7 +345,7 @@ function measureInPage(options) {
       const w = rect.right - rect.left;
       const h = rect.bottom - rect.top;
       if (!clip) unreachable.push(`${label} in a hidden scroller`);
-      else if (h > clip.bottom - clip.top + 0.5 || w > clip.right - clip.left + 0.5) {
+      else if ((h > clip.bottom - clip.top + 0.5 && (self || !wrapsText(el))) || w > clip.right - clip.left + 0.5) {
         unreachable.push(`${label} ${Math.round(w)}x${Math.round(h)} > scroller ${Math.round(clip.right - clip.left)}x${Math.round(clip.bottom - clip.top)}`);
       }
     }
@@ -532,12 +557,31 @@ function focusedInPage() {
   const classes = [...el.classList].slice(0, 2).map((c) => `.${c}`).join('');
   const label = `${el.tagName.toLowerCase()}${classes} "${(el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24)}"`;
   const art = document.querySelector('.material-art')?.getBoundingClientRect();
+  // A button whose text wraps (an edit-mode quest row) and whose ring is
+  // taller than the window its clips leave can never show that ring whole:
+  // only its left and right edges are held to it. Its lines are checked one
+  // by one at the scroll positions.
+  let wraps = false;
+  if (el.matches('button, [role="button"]')) {
+    const tops = new Set();
+    const lines = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let node = lines.nextNode(); node && tops.size < 2; node = lines.nextNode()) {
+      if (!node.data.trim()) continue;
+      range.selectNodeContents(node);
+      for (const rect of range.getClientRects()) tops.add(Math.round(rect.top));
+    }
+    wraps = tops.size > 1;
+  }
+  const window_ = clips.reduce((w, c) => ({ top: Math.max(w.top, c.top), bottom: Math.min(w.bottom, c.bottom) }), { top: -Infinity, bottom: Infinity });
+  const tall = wraps && r.height + 4 * zoom > window_.bottom - window_.top + 0.5;
   return {
     key: el.getAttribute('data-cs-focus'),
     label,
     rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
     clips,
     zoom,
+    tall,
     art: art ? { left: art.left, top: art.top, right: art.right, bottom: art.bottom } : null,
   };
 }
@@ -628,10 +672,12 @@ async function focusReasons(page, topMask, topArt) {
     const ring = grow(f.rect, 2 * f.zoom);
     const shown = clipRect(ring, f.clips);
     if (!shown) reasons.push(`${f.label} hidden when focused`);
-    else if (!containsRect(shown, ring, 0.5)) {
+    else {
+      // A focused row taller than its scroller is held to its left and right edges only.
+      const sides = f.tall ? ['left', 'right'] : ['left', 'top', 'right', 'bottom'];
       const cut = [['left', shown.left - ring.left], ['top', shown.top - ring.top], ['right', ring.right - shown.right], ['bottom', ring.bottom - shown.bottom]]
-        .filter(([, by]) => by > 0.5).map(([side, by]) => `${side} ${Math.round(by * 10) / 10}px`);
-      reasons.push(`${f.label} clipped when focused (${cut.join(', ')})`);
+        .filter(([side, by]) => sides.includes(side) && by > 0.5).map(([side, by]) => `${side} ${Math.round(by * 10) / 10}px`);
+      if (cut.length) reasons.push(`${f.label} clipped when focused (${cut.join(', ')})`);
     }
     const mask = sameRect(f.art, topArt) ? topMask : await takeMask(page);
     const pixels = shown ? artPixels(mask, shown) : 0;
