@@ -36,6 +36,8 @@ limitations.)
   version's changelog. After that, a newer version installs from the app.
 - Guide (prerequisites, commands, how detection works, privacy, known
   limitations): [`docs/quest-tracker/README.md`](docs/quest-tracker/README.md)
+- UI: Exile is the default; choose the previous Claude theme in either
+  Settings surface. [Feature preservation and review](docs/quest-tracker/design/approved-ui-preservation.md).
 
 ### Requirements
 

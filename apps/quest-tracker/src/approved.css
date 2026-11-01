@@ -1,0 +1,153 @@
+/* Exile presentation only. Claude keeps the original component/shared CSS. */
+:root[data-theme='exile'] .panel-shadow[data-material='journal'] { --frame-inset: var(--material-journal-surround); }
+:root[data-theme='exile'] .panel-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+:root[data-theme='exile'] .frame-drag-region { position: absolute; z-index: 2; top: 9px; right: 34px; left: 34px; height: 20px; cursor: move; }
+:root[data-theme='exile'] .journal-plaque { cursor: move; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='compact'] {
+  --cut: var(--material-compact-chamfer);
+  padding: var(--material-compact-trim);
+  box-shadow: inset 0 0 0 2px var(--color-material-stone), inset 0 0 0 3px var(--color-panel-border), inset 0 1px 0 #ffffff2e;
+}
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] {
+  --cut: var(--material-journal-chamfer);
+  padding: 34px 30px;
+  box-shadow: inset 0 0 0 2px #14120d, inset 0 0 0 28px #121416, inset 0 0 0 30px #615035;
+  isolation: isolate;
+}
+:root[data-theme='exile'] .panel[data-material='journal']::before,
+:root[data-theme='exile'] .window::before { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(#080a0b70, #080a0b70), var(--well-image); background-size: auto, 360px 360px; pointer-events: none; }
+:root[data-theme='exile'] .panel[data-material='journal']::before { opacity: var(--panel-opacity, var(--opacity-default)); }
+:root[data-theme='exile'] .window { isolation: isolate; }
+:root[data-theme='exile'] [data-theme='exile'] .journal-plaque {
+  flex: none;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 8px 8px;
+  color: var(--color-worth-gold);
+  font: 600 var(--size-display)/var(--line-display) var(--font-family-caps);
+  text-align: center;
+  letter-spacing: .04em;
+  overflow-wrap: anywhere;
+  background: linear-gradient(90deg, transparent, #41464a30, transparent);
+}
+:root[data-theme='exile'] .journal-crest { display: block; width: 100%; height: 96px; margin: 0 auto; object-fit: contain; object-position: center bottom; pointer-events: none; }
+:root[data-theme='exile'] [data-theme='exile'] .header {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  padding-block: 6px;
+  border-bottom: 1px solid var(--color-panel-border);
+  background: linear-gradient(180deg, #a3adb112, transparent);
+  max-height: 40%;
+  overflow-y: auto;
+}
+:root[data-theme='exile'] [data-theme='exile'] .header.edit { grid-template-columns: auto minmax(0, 1fr) auto auto; background: var(--color-edit-tint); }
+:root[data-theme='exile'] .panel[data-material='journal'] .header {
+  background: linear-gradient(#151816ee, #090c0bee);
+  border-top: 1px solid #77613c;
+  border-bottom: 1px solid #473b2a;
+  box-shadow: inset 0 1px 0 #d0b78020;
+}
+:root[data-theme='exile'] .header .switch { background: #090b0c; border-color: #75603c; }
+:root[data-theme='exile'] .header .switch button[aria-pressed='true'] { color: #f1e4c8; }
+:root[data-theme='exile'] .header .switch button[aria-pressed='true']::before { background: linear-gradient(#70552c, #3f301d); box-shadow: inset 0 0 0 1px #bfa36b; }
+:root[data-theme='exile'] [data-theme='exile'] .header .name { overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; font-family: var(--font-family-caps); font-weight: 600; letter-spacing: .06em; }
+:root[data-theme='exile'] [data-theme='exile'] .header .meta { grid-column: 2; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+:root[data-theme='exile'] [data-theme='exile'] .header .kind { grid-column: 3; grid-row: 1 / 3; }
+:root[data-theme='exile'] [data-theme='exile'] .header .spacer { display: none; }
+:root[data-theme='exile'] [data-theme='exile'] .header .who { max-width: 100%; min-height: 32px; }
+:root[data-theme='exile'] [data-theme='exile'] .header .switch { grid-column: 1 / 3; grid-row: 2; justify-self: start; }
+:root[data-theme='exile'] [data-theme='exile'] .header .switch button { min-height: 32px; margin: 0; }
+:root[data-theme='exile'] [data-theme='exile'] .header.edit .title, :root[data-theme='exile'] [data-theme='exile'] .header.edit .name.none { grid-column: 2 / -1; }
+:root[data-theme='exile'] [data-theme='exile'] .header.edit > .icon-btn { grid-row: 2; width: 32px; height: 32px; }
+:root[data-theme='exile'] [data-theme='exile'] .header.edit > .icon-btn[aria-label='Collapse'] { grid-column: 3; }
+:root[data-theme='exile'] [data-theme='exile'] .header.edit > .icon-btn[aria-label='Settings'] { grid-column: 4; }
+:root[data-theme='exile'] [data-theme='exile'] .body { overflow-x: hidden; overflow-wrap: anywhere; scroll-padding: 6px; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .body { box-shadow: inset 0 2px 8px #0006; }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest] { grid-template-columns: var(--size-icon-sm) minmax(0, 1fr) var(--size-icon-sm); row-gap: 4px; border-bottom: 1px solid var(--color-panel-divider); }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest] > .worth-mark { grid-column: 3; grid-row: 1; }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest] .name { overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; color: var(--color-worth-gold); }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest].finished .name { color: var(--color-text-muted); }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest][data-worth='no'] .name { color: var(--color-text-secondary); }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest] .rewards { grid-column: 2; grid-row: 2; max-width: none; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+:root[data-theme='exile'] [data-theme='exile'] .row[data-quest] .step, :root[data-theme='exile'] [data-theme='exile'] .row[data-quest] .tip { grid-column: 2; display: block; overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; font-size: var(--size-step); line-height: var(--line-step); -webkit-line-clamp: unset; line-clamp: unset; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row[data-quest] {
+  width: calc(100% - 24px);
+  margin: 8px 12px 12px;
+  padding: var(--space-reading-inset);
+  border: 1px solid #8f7344;
+  border-radius: 1px;
+  background: color-mix(in srgb, #0b0d0f calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent);
+  box-shadow: inset 0 0 0 2px #090b0c, inset 0 0 0 3px #4f422b, inset 0 2px 8px #000c, 0 2px 8px #0008;
+}
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row[data-quest] .name,
+:root[data-theme='exile'] [data-theme='exile'] .detail .name { font-family: var(--font-family-quest); font-size: 20px; font-weight: 400; line-height: 26px; letter-spacing: 0; color: var(--color-text-primary); text-shadow: 0 1px 2px #000; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row.finished { background: color-mix(in srgb, #111315 calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent); border-color: #635c4e; box-shadow: inset 0 0 0 2px #090b0c, inset 0 0 0 3px #39372f, inset 0 2px 8px #000a; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row.finished .name { color: var(--color-text-muted); font-size: 18px; line-height: 24px; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row .step,
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row .tip { font-size: 16px; line-height: 24px; }
+:root[data-theme='exile'] [data-theme='exile'] .act-header { flex-wrap: wrap; padding-block: 4px; }
+:root[data-theme='exile'] .panel[data-material='journal'] .act-header { background: linear-gradient(#181a16, #101310); border-block: 1px solid #655337; box-shadow: inset 0 1px 0 #d0b78014; }
+:root[data-theme='exile'] [data-theme='exile'] .act-header .title { color: var(--color-worth-gold); font-weight: 600; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .act-header .title { font-size: var(--size-section); line-height: var(--line-section); }
+:root[data-theme='exile'] [data-theme='exile'] .detail .chip, :root[data-theme='exile'] [data-theme='exile'] .character, :root[data-theme='exile'] [data-theme='exile'] .settings .row { border-bottom: 1px solid var(--color-panel-divider); box-shadow: inset 0 1px 0 #a3adb112; }
+:root[data-theme='exile'] .panel[data-material='journal'] .frame-head { background: linear-gradient(#151816, #0d100e); border-block: 1px solid #4a3c27; }
+:root[data-theme='exile'] .panel[data-material='journal'] .frame-title { color: var(--color-worth-gold); font-family: var(--font-family-caps); font-weight: 600; }
+:root[data-theme='exile'] .panel[data-material='journal'] .settings .row,
+:root[data-theme='exile'] .panel[data-material='journal'] .character { border-bottom-color: #6a563733; }
+:root[data-theme='exile'] .panel[data-material='journal'] .character.active { background: #282318; }
+:root[data-theme='exile'] .panel[data-material='journal'] .detail .chip { border: 1px solid #756343; background: #101310; box-shadow: inset 0 1px 3px #0009; }
+:root[data-theme='exile'] [data-theme='exile'] .detail .name { color: var(--color-worth-gold); font-size: var(--size-section); line-height: var(--line-section); }
+:root[data-theme='exile'] [data-theme='exile'] .detail .reason, :root[data-theme='exile'] [data-theme='exile'] .detail .step-text, :root[data-theme='exile'] [data-theme='exile'] .detail .step-tip { font-size: 16px; line-height: 24px; }
+:root[data-theme='exile'] [data-theme='exile'] .picker .name { overflow: visible; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; }
+:root[data-theme='exile'] [data-theme='exile'] button, :root[data-theme='exile'] [data-theme='exile'] input, :root[data-theme='exile'] [data-theme='exile'] select { max-width: 100%; }
+:root[data-theme='exile'] .overlay button { min-width: 32px; min-height: 32px; }
+:root[data-theme='exile'] .window select, :root[data-theme='exile'] .window input, :root[data-theme='exile'] .window button { min-width: 40px; min-height: 40px; }
+:root[data-theme='exile'] [data-theme='exile'] button:focus-visible { outline: 2px solid var(--color-edit-accent); outline-offset: -3px; }
+:root[data-theme='exile'] [data-theme='exile'] .btn { height: auto; min-height: 32px; white-space: normal; box-shadow: inset 0 1px 0 #a3adb126, inset 0 -2px 0 #0005; }
+:root[data-theme='exile'] [data-theme='exile'] .select,
+:root[data-theme='exile'] [data-theme='exile'] .text-input,
+:root[data-theme='exile'] [data-theme='exile'] .small,
+:root[data-theme='exile'] [data-theme='exile'] .btn:not(.primary) { background-color: #0d100e; border-color: #756343; --ring-color: #756343; box-shadow: inset 0 1px 4px #000a; }
+:root[data-theme='exile'] [data-theme='exile'] .btn:not(.primary):hover,
+:root[data-theme='exile'] [data-theme='exile'] .small:hover { background-color: #29271f; --ring-color: #bfa36b; }
+:root[data-theme='exile'] [data-theme='exile'] .link, :root[data-theme='exile'] [data-theme='exile'] .detail button.back, :root[data-theme='exile'] [data-theme='exile'] .small, :root[data-theme='exile'] [data-theme='exile'] .character button.who { min-height: 32px; min-width: 32px; }
+:root[data-theme='exile'] [data-theme='exile'] .status-line, :root[data-theme='exile'] [data-theme='exile'] .help { font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+:root[data-theme='exile'] [data-theme='exile'] .status-line { max-height: 25%; overflow-y: auto; }
+:root[data-theme='exile'] [data-theme='exile'] .back-to-play { min-height: 40px; }
+:root[data-theme='exile'] .panel[data-material='journal'] .back-to-play { background: linear-gradient(#111411, #0b0e0c); border-top: 1px solid #75603c; color: #d0b780; }
+:root[data-theme='exile'] [data-theme='exile'] .toggle:checked { background: var(--color-worth-gold); border-color: var(--color-worth-gold); }
+:root[data-theme='exile'] [data-theme='exile'] input { accent-color: var(--color-worth-gold); }
+:root[data-theme='exile'] [data-theme='exile'] .toggle { accent-color: var(--color-worth-gold); }
+:root[data-theme='exile'] [data-theme='exile'] .toggle:focus-visible, :root[data-theme='exile'] [data-theme='exile'] .slider:focus-visible, :root[data-theme='exile'] [data-theme='exile'] .select:focus-visible, :root[data-theme='exile'] [data-theme='exile'] .text-input:focus-visible { outline: 2px solid var(--color-worth-gold); outline-offset: 1px; }
+:root[data-theme='exile'] [data-theme='exile'] .slider::-webkit-slider-thumb { background: var(--color-worth-gold); }
+:root[data-theme='exile'] [data-theme='exile'] .step .tick { accent-color: var(--color-worth-gold); }
+:root[data-theme='exile'] [data-theme='exile'] .slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--color-worth-gold) var(--fill), var(--color-panel-divider) var(--fill)); }
+:root[data-theme='exile'] .window[data-theme='exile'] { --frame-inset: 18px; position: relative; display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; min-height: 0; padding: 20px 18px; border: 0; background: var(--color-panel-bg); box-shadow: inset 0 0 0 16px #121416, inset 0 0 0 18px #615035; overflow: hidden; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .window-content { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--color-panel-border) transparent; }
+:root[data-theme='exile'] .window[data-theme='exile'] .title { font-family: var(--font-family-caps); font-size: var(--size-window-title); font-weight: 600; line-height: 32px; color: var(--color-worth-gold); }
+:root[data-theme='exile'] .window[data-theme='exile'] .btn, :root[data-theme='exile'] .window[data-theme='exile'] .toggle { min-height: 40px; }
+:root[data-theme='exile'] .window[data-theme='exile'] .group-label { color: var(--color-worth-gold); }
+:root[data-theme='exile'] .window[data-theme='exile'] .check { padding: 12px; border: 1px solid var(--color-material-stone); box-shadow: inset 0 2px 8px #0006; }
+@media (max-height: 440px) {
+  :root[data-theme='exile'] [data-theme='exile'] .journal-plaque { font-size: 20px; line-height: 28px; }
+  :root[data-theme='exile'] .journal-crest { height: 72px; }
+}
+@media (max-height: 320px), (max-width: 300px) {
+  :root[data-theme='exile'] [data-theme='exile'] .journal-plaque { display: none; }
+  :root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] { padding: 28px 12px 14px; box-shadow: inset 0 0 0 10px #121416, inset 0 0 0 12px #615035; }
+  :root[data-theme='exile'] .frame-drag-region { top: 5px; right: 20px; left: 20px; height: 18px; }
+  :root[data-theme='exile'] .panel-shadow[data-material='journal'] { --frame-inset: 6px; }
+}
+@media (max-width: 340px) { :root[data-theme='exile'] [data-theme='exile'] .panel[data-material='journal'] .row[data-quest] { margin-inline: 6px; width: calc(100% - 12px); padding: 12px; } }
+@media (max-height: 240px) {
+  :root[data-theme='exile'] [data-theme='exile'] .panel-content { display: block; overflow-y: auto; }
+  :root[data-theme='exile'] [data-theme='exile'] .panel .body { overflow: visible; }
+  :root[data-theme='exile'] [data-theme='exile'] .header, :root[data-theme='exile'] [data-theme='exile'] .status-line { max-height: none; overflow: visible; }
+}
+html[data-preview-scale='2'][data-theme='exile'] [data-theme='exile'] .panel-content { display: block; overflow-y: auto; }
+html[data-preview-scale='2'][data-theme='exile'] [data-theme='exile'] .panel .body { overflow: visible; }
+html[data-preview-scale='2'][data-theme='exile'] [data-theme='exile'] .header, html[data-preview-scale='2'][data-theme='exile'] [data-theme='exile'] .status-line { max-height: none; overflow: visible; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-scroll='whole'] .panel-content { display: block; overflow-y: auto; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-scroll='whole'] .body { overflow: visible; }
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-scroll='whole'] .header,
+:root[data-theme='exile'] [data-theme='exile'] .panel[data-scroll='whole'] .status-line { max-height: none; overflow: visible; }

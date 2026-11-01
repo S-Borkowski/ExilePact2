@@ -1,10 +1,12 @@
 # ExilePact2 — Proposed UI Design System
 
-**Status: approved visual direction; proposed production specification, 2026-10-31.**
+**Status: approved visual direction; Quest Tracker UI adoption, 2026-10-31.**
 Quest Tracker is the primary example in a shared family with Waystone Roller
 and Crafting Helper. Rich journal/detail/settings views use a carved campaign
 folio; the gameplay overlay uses restrained weathered steel and dark masonry.
-This is a design specification, not a shipped restyle or a product rename.
+Quest Tracker implements this direction as its default **Exile** theme, with
+the original **Claude** theme selectable in both Settings surfaces. This is not
+a product rename. Waystone/Crafting retain their existing appearance.
 
 The apps remain separate tools. Existing behavior, native window limits,
 backend-owned state and export contracts remain authoritative:
@@ -14,8 +16,10 @@ backend-owned state and export contracts remain authoritative:
 All numerical values below are proposed production metrics, not measurements
 or color samples from AI artwork or screenshot crops.
 Reference analysis distinguishes observed details from proposed decisions.
-For gameplay placement, native-HUD suppression is not established; the visual
-replacement below requires separately scoped runtime research and implementation.
+The current adoption is a one-to-one UI conversion: [preservation map](quest-tracker/design/approved-ui-preservation.md)
+and [rendered review](quest-tracker/design/review-approved-ui.md). It adds no
+native-HUD operation, game setup or automatic positioning; placement illustrations
+below remain design studies. The concept image remains documentation artwork.
 
 ## Reference analysis
 
@@ -48,7 +52,7 @@ Define two explicit variants rather than scaling the rich concept down. Gameplay
 
 Journal/detail/ordinary windows: 12px carved masonry surround, 3px steel inner rail, 1px muted-gold inlay and 16px reading-well inset. Short title plate 48px high; optional original relief cap up to 56px within the window bounds. Illustration niche 76×112px only at effective widths ≥480px and only where existing data fits; at narrower widths reduce to a 24px decorative seal or omit art. Recessed cards use 8px corners/4px bevel face, 16px padding, a 28px title rail and 1px etched dividers. Contact shadows remain local (0 2px 8px black at 40%); no sprawling glow. Rich art may never increase the native window beyond its current contract or obscure controls.
 
-Material states: hover lightens a control well by one palette step and steel edge; pressed deepens the well with a 1px inward shadow; selected adds a 2px muted-gold side marker plus words/shape; disabled flattens relief and retains legible labels; keyboard focus adds an independent 2px cyan ring with 2px offset. Status illumination is a small mark, not a glowing whole card. Original texture/relief assets remain an inventory for later runtime work; only the review concept image is delivered here.
+Material states: hover lightens a control well by one palette step and steel edge; pressed deepens the well with a 1px inward shadow; selected adds a 2px muted-gold side marker plus words/shape; disabled flattens relief and retains legible labels; keyboard focus adds an independent 2px ring with 2px offset, warm gold (#BFA36B) in Exile and legacy cyan (#87C9D1) in Claude. Status illumination is a small mark, not a glowing whole card. Quest Tracker bundles three original production rasters for its frame, crest and stone wells; optional artwork and sibling adoption remain proposals.
 
 ### Original art inventory
 
@@ -72,18 +76,21 @@ no copied game artwork. This is not a set of reusable sliced runtime assets.
 
 | Original asset | Purpose | Compact / full variant | Provenance and status |
 |---|---|---|---|
-| Crest / relief cap | Family silhouette and ceremonial heading | Omitted in play / original lantern-astrolabe cap within full frame | Original AI concept study; individual runtime artwork proposed, not produced |
-| Masonry / steel frame corners | Structural depth and wear | Thin 3px trim / carved surround and inner rail | Original construction recipe; runtime corners proposed, not produced |
-| Engraved title plate | Display hierarchy | Shallow 36px header / 48px title plate | Original concept anatomy; runtime plate proposed, not produced |
+| Crest / relief cap | Family silhouette and ceremonial heading | Omitted in play / original lantern-astrolabe cap within full frame | Original generated raster crown bundled in Quest Tracker Exile; sibling adoption remains proposed |
+| Masonry / steel frame corners | Structural depth and wear | Thin 3px trim / carved surround and inner rail | Original generated raster surround bundled in Quest Tracker Exile; sibling adoption remains proposed |
+| Engraved title plate | Display hierarchy | Shallow header / rich title plate | Quest Tracker Exile uses the bundled crown and CSS title plate; sibling adoption remains proposed |
 | Three vignette / emblem studies | Optional chapter identity | Omitted in play, optional 24px narrow-journal seal / aqueduct, lantern-marsh and bell niches | Fictional original AI illustrations, not game/lore data; individual runtime artwork proposed, not produced |
-| Etched divider | Quiet grouping | 1px line / original marginal engraving | Original design recipe; runtime motif proposed, not produced |
+| Etched divider | Quiet grouping | 1px line / original marginal engraving | Quest Tracker Exile uses CSS dividers; additional illustrated motifs remain proposed |
 | Status shapes | Available/current/done/skipped/locked/unknown distinction | Simple shape plus words / embossed seal with same meaning | Original glyph production proposed, not produced; existing semantics authoritative |
-| Reward / control wells | Task/reward/action hierarchy | Plain labelled content / recessed cells and bevels | Original concept anatomy; runtime slices proposed, not produced |
-| Complete journal concept | Reviewable material direction | Heavy overlay half superseded / rich journal direction retained | Sole delivered image, documentation-only PNG above, copied unchanged from original generation |
+| Reward / control wells | Task/reward/action hierarchy | Plain labelled content / recessed cells and bevels | Quest Tracker Exile bundles original stone texture with CSS recessed wells; sibling adoption remains proposed |
+| Complete journal concept | Reviewable material direction | Heavy overlay half superseded / rich journal direction retained | Original documentation-only PNG above, copied unchanged from original generation; separate production assets now bundled |
 
-Later original art production, slicing/bundling and font-source/license verification
-need separate scope. Game-background compositions and source screenshots remain
-local and outside version control; no other image is delivered here.
+Quest Tracker now bundles three separately generated original production rasters
+and licensed Cinzel; exact prompts, hashes and provenance are in
+[harvest](quest-tracker/design/harvest.md#original-production-material-assets).
+Optional vignettes/glyphs and sibling material adoption remain proposals.
+Game-background compositions and source screenshots remain local and outside
+version control; the concept PNG itself is not a runtime asset.
 
 ## Color palette
 
@@ -100,7 +107,7 @@ These are proposed production hex values chosen for the approved material family
 | bone-primary | #E8E0CF | Main task/body words |
 | bone-secondary / metadata | #C7C2B6 / #AAA99F | Supporting explanation / secondary labels |
 | muted-gold / gold-hover / gold-pressed | #BFA36B / #D0B780 / #AA8E58 | Quest titles, inlay, primary control |
-| focus-edit | #87C9D1 | Independent focus ring and edit cue |
+| focus-edit | Exile #BFA36B / Claude #87C9D1 | Independent focus ring and edit cue; each theme retains its palette |
 | available-success | #A5C5A1 | Open diamond/check + status words |
 | in-progress-info | #A6C3D8 | Arrow + status words |
 | warning | #E0BE7C | Triangle + explicit warning |
@@ -108,11 +115,11 @@ These are proposed production hex values chosen for the approved material family
 | unknown | #C4B4DD | Question mark + unknown words |
 | disabled | #AAA99F | Words on raised well, flattened decoration |
 
-Normal text target ≥4.5:1 and essential control/focus boundary target ≥3:1 against adjacent surfaces, including state variants. These are targets, not an accessibility certification or uncalculated ratio claim. Do not reduce whole completed/disabled cards with opacity. Theme token opacity currently 0.92 and actual setting default 0.9 are distinct existing facts. Preserve opacity including 0%; later rendered verification must cover white/black/busy backgrounds and all user backing values. No backdrop-filter or promised game blur. This documentation revision changes no tokens.
+Normal text target ≥4.5:1 and essential control/focus boundary target ≥3:1 against adjacent surfaces, including state variants. These are targets, not an accessibility certification or uncalculated ratio claim. Do not reduce whole completed/disabled cards with opacity. Theme token opacity currently 0.92 and actual setting default 0.9 are distinct existing facts. Preserve opacity including 0%; later rendered verification must cover white/black/busy backgrounds and all user backing values. No backdrop-filter or promised game blur. Shared baseline token values remain unchanged; Quest Tracker adds local Exile overrides.
 
 ## Typography scale
 
-Proposed display face: Cinzel, Roman serif, for engraved short titles, with normal-cased accessible source text and small-cap appearance only for short labels. This deliberately differs from the prior Alegreya Sans SC-only heading solution. Proposed body/form face: existing readable locally bundled Alegreya Sans, retained for compact steps, controls and long explanations. Use existing system mono for literal output/keycaps. Cinzel is a design selection for later local bundling, not an installed dependency; do not download fonts or assert an unverified license. Record actual source/license before any later bundle.
+Quest Tracker's Exile display face is locally bundled Cinzel600, a Roman serif for engraved short titles, with normal-cased accessible source text and small-cap appearance for short labels. Claude retains Alegreya Sans SC. Alegreya Sans remains the body/form face; literal output/keycaps use system mono. Actual source, version, hash and original OFL license are recorded in [harvest](quest-tracker/design/harvest.md#exile-adoption-2026-10-31). Sibling typography changes remain proposals.
 
 | Style | Size / line px | Weight / tracking | Use |
 |---|---|---|---|
@@ -120,14 +127,15 @@ Proposed display face: Cinzel, Roman serif, for engraved short titles, with norm
 | Window title | 24 / 32 | Cinzel 600 / 0.035em | Ordinary app title plate |
 | Section / act | 20 / 28 | Cinzel 600 / 0.03em | Rich act/detail strip |
 | Overlay header | 15 / 20 | Cinzel 600 / 0.06em | Short engraved small-cap header |
-| Quest heading | 16 / 22 | Cinzel 600 / 0.015em | Muted-gold short title; wraps |
+| Compact quest heading | 16 / 22 | Cinzel 600 / 0.015em | Muted-gold short title; wraps |
+| Rich quest heading | 20 / 26 | System Georgia / normal | Cream title-case quest title; wraps |
 | Body / detail | 16 / 24 | Alegreya Sans 400 / normal | Long guidance and reward explanation |
 | Compact step / label | 14 / 20 | Alegreya Sans 400 / normal | Gameplay action and forms |
 | Button | 14 / 20 | Alegreya Sans 600 / 0.01em | Actions |
 | Caption | 12 / 16 | Alegreya Sans 400 / normal | Nonessential metadata only |
 | Output / keycap | 14 / 20 | system mono 400 / normal | Literal strings/current shortcuts |
 
-All metrics are proposed, not extracted from the concept. Do not use inscription tracking for sentences. Keep ordinary prose measure 45–75 characters, overlay naturally shorter; title, task and actionable errors wrap instead of clip. Important privacy/error explanation remains ≥14px. Tabular numbers for counts/odds. Later first-screen critique verifies Cinzel readability at 320px and 200% text zoom; no product font work is part of this revision.
+Metrics are production targets, not extracted from the concept. Inscription tracking is limited to titles; prose remains plain and wraps. Important privacy/error explanation is at least14px and counts use tabular numbers. Quest Tracker's [rendered review](quest-tracker/design/review-approved-ui.md) records the first-screen critique,320px and200% text checks; other apps retain their original type.
 
 ## Spacing system
 
@@ -139,7 +147,7 @@ Full views use the material dimensions above, 16px control gutters and 24px page
 
 ## Component library
 
-All components inherit semantic tokens; the following is a design inventory, not new shipped functionality. Existing behavior wins where listed. Every interactive control needs default, hover, pressed, focus-visible and disabled variants; hover never substitutes for selected. Focus is a 2px cyan outline with 2px offset, not clipped by chamfer/overflow. Disabled shows why adjacent to the control where a refusal/limit causes it.
+All components inherit semantic tokens; the following is a design inventory, not new shipped functionality. Existing behavior wins where listed. Every interactive control needs default, hover, pressed, focus-visible and disabled variants; hover never substitutes for selected. Focus is a 2px outline with 2px offset, warm gold (#BFA36B) in Exile and legacy cyan (#87C9D1) in Claude, not clipped by chamfer/overflow. Disabled shows why adjacent to the control where a refusal/limit causes it.
 
 | Component | Anatomy and variants | Behavior / limits |
 |---|---|---|
@@ -232,30 +240,22 @@ Status always pairs color with words or a distinct shape. A completed row uses a
 
 ## Adoption boundaries
 
-The approved rich journal/settings and lean steel/masonry gameplay directions
-are settled. This document and sole original concept image replace the rejected
-proposal. No app source, runtime theme, font, dependency, game action, native-HUD
-mechanism, build or release changes here. Existing app-guide/README proposal
-links remain accurate; current app behavior wins.
+Quest Tracker adopts the rich journal/settings and lean steel/masonry direction
+as **Exile**, its default theme. **Claude** in either Settings surface selects the
+original appearance. Rust saves the preference and sends it to both windows;
+all22 existing feature groups and native window contracts remain covered by the
+[preservation map](quest-tracker/design/approved-ui-preservation.md).
 
-There is **no theme generator**. For later separately scoped adoption, manually
-maintain Quest Tracker's `apps/quest-tracker/theme/theme.json` and
-`apps/quest-tracker/theme/tokens.css` together, keeping JSON/CSS consistent,
-then copy `tokens.css` **byte-for-byte** to both sibling app theme directories.
-Retain token-key consistency and CSS-copy equality tests. This revision edits
-none of those files and proposes no generation.
+There is **no theme generator**. Baseline `theme/theme.json` and `tokens.css`
+retain Claude values; the CSS remains byte-identical in all three apps. QT-local
+`theme/exile.json` and root-scoped `exile.css` are maintained manually. Local Cinzel
+and its full license join the byte-identical font directories for parity; sibling
+apps continue selecting their original fonts/colors/layout. Original raster
+material artwork is Quest-Tracker-local; the concept PNG remains documentation only.
 
-Future product work must preserve every matrix row, backend/export/window
-contract and passive-play behavior; update relevant guides and release notes;
-verify font/art provenance and license before local bundling; review the first
-rendered screen before expansion; and run available impeccable audit for changed
-product UI then, without installing plugins here. Native-HUD suppression needs
-separate mechanism research and implementation. A visual replacement establishes
-no runtime capability: the current app does not suppress native quest text or
-automatically locate the minimap.
-
-Mechanical checks establish content/link/path completeness, not rendered quality.
-Retain prior suite evidence without repeating root/app suites or builds for this
-prose/art revision. Independent documentation-sync and decompile-output reviews
-precede commit; document criteria follow their batched fixes. This specification
-does not certify current application accessibility.
+The [rendered review](quest-tracker/design/review-approved-ui.md) records actual
+screens, checks and limitations. Content/token tests establish their stated
+contracts; they do not certify accessibility or every visual state. Independent
+documentation and legal reviews precede commit. No release is published here.
+This adoption adds no native-HUD suppression, game setup, docking or automatic
+minimap detection; current game-facing behavior remains unchanged.

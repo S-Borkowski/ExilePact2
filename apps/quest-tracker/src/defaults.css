@@ -74,6 +74,7 @@
   --color-action-disabled-fg: #6a6a6a;
   --color-warning: #e99568;
   --font-family-caps: var(--font-family);
+  --font-family-quest: Georgia, serif;
   --line-title: 20px;
   --line-row: 20px;
   --line-step: 18px;
@@ -104,6 +105,17 @@
   --opacity-min: 0;
   --opacity-stale-rows: 0.55;
   --motion-confirm-ms: 3000ms;
+  --color-material-stone: #41464A;
+  --material-compact-trim: 3px;
+  --material-compact-chamfer: 2px;
+  --material-journal-surround: 16px;
+  --material-journal-chamfer: 8px;
+  --size-display: 28px;
+  --line-display: 36px;
+  --size-window-title: 24px;
+  --size-section: 20px;
+  --line-section: 28px;
+  --space-reading-inset: 16px;
 
   /*
    * Derived, not harvested: `shadow.panel` as a `filter` drop shadow, which

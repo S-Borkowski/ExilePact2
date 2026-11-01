@@ -1,5 +1,15 @@
 # Quest tracker component spec
 
+## Exile and Claude adoption
+
+**Exile is the default theme**; **Claude** preserves the original specifications below. Both overlay Settings and the ordinary Settings window offer Theme → Exile / Claude. The preference is saved by Rust, sent to both windows and applied without changing mode, open frame, progress, opacity, zoom or saved geometry.
+
+Exile uses locally bundled Cinzel for short engraved titles, system Georgia/serif for cream title-case quest names, Alegreya Sans prose, warm gold controls and original raster masonry/niche/lantern-astrolabe relief. Every play frame and edit Next up use 3px restrained trim and a uniform reading field; edit All/detail/characters/settings use a physical carved surround, gold inlay and rectangular double-lined recessed wells. Header, act and selected controls use the same blackened-metal/warm-inlay material. Ordinary Settings uses smaller rails. Decorative art is hidden from assistive technology and takes no input. All controls/actions and 22 feature groups remain: [preservation map](approved-ui-preservation.md).
+
+The Exile outer frame stays fixed. Its content scrolls in a separately inset, clipped well; the crown scrolls with its title plate rather than floating above content. A fixed noninteractive top-rail grab area and the rich title plate use the existing header-drag bridge in edit mode. The rail remains reachable after scrolling Settings to the end. Buttons, selects, fields, right clicks and passive play start no drag; all eight resize edges remain separate. Claude retains its original header gesture and cascade.
+
+Exile wraps titles/steps/tips and permits vertical scrolling. At extreme effective heights the whole content well scrolls, including title controls/footer, within the fixed outer frame. Rich ornament contracts before content at narrow/short sizes. Native default364×384 includes the existing12px margin around340×360 paint; saved sizes win, minimum320×240 remains. Theme selection never changes native bounds. [Rendered review](review-approved-ui.md) records evidence and limits. This UI adoption introduces no new game behavior.
+
 Harvested from the Figma comps on 2026-10-25. Sizes are px at 1× (1920×1080);
 the app scales them by Auto (from the monitor) or a fixed factor from 0.75×
 to 2× the player sets. Token names are the keys of
@@ -13,8 +23,9 @@ use the same name with the dot as a dash: `color.panel-bg` →
 - **Grid:** 4 px (`space.unit`). Panel width 320 (`size.panel-width`) in
   the comps. Since 0.1.1 the panel fills the window inside its 12 px
   shadow margin, in both directions, and its body scrolls: the player sizes
-  the window by the panel's edges in edit mode (320×384 by default, the
-  window at least 320×240), and the scale only zooms the content.
+  the window by the panel's edges in edit mode. The original comp paint was
+  320×384; current new-store paint is340×360 in a364×384 native window.
+  Saved sizes win, minimum320×240 remains, and scale only zooms content.
 - **Shape:** radius 0 everywhere (`radius`, `radius.row`, `radius.button`).
   Corners are cut at 45° on the top-left and bottom-right only: panel 6 px
   (`chamfer.panel`), buttons 3 px, the badge 4 px. In CSS, a
@@ -172,6 +183,8 @@ Square (radius 0). On = `color.edit-accent` track. Slider track
 `color.panel-divider`, fill `color.edit-accent`, thumb `color.text-primary`.
 
 ### SettingRow — 320×40
+Both themes add Theme first in overlay Settings: Exile (default) / Claude,
+using the existing saved settings command. All previous settings follow.
 Padding 0/12; label (Label) left, control right. Helper text below a row
 (Caption, `color.text-muted`, padding 0/12/6): under opacity "Text and icons
 always stay fully opaque."; under "Read the screen" "Reads the game's

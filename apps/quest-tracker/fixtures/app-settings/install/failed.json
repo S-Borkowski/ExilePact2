@@ -5,6 +5,7 @@
     "state": "failed",
     "text": "Could not install Quest Tracker 1.3.0: GitHub answered 404."
   },
+  "theme": "exile",
   "update": {
     "newer": "1.3.0",
     "state": "available",

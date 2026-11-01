@@ -822,6 +822,27 @@ fn check_updates_is_off_by_default_and_patched_as_a_bool() {
 }
 
 #[test]
+fn theme_defaults_tolerantly_on_load_but_patches_are_strict_and_atomic() {
+    use serde_json::json;
+    for value in [json!({}), json!({"theme":"unknown","opacity":0.4}), json!({"theme":null}), json!({"theme":7})] {
+        let loaded: Settings = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&loaded).unwrap()["theme"], json!("exile"));
+        if value.get("opacity").is_some() { assert_eq!(loaded.opacity, 0.4); }
+    }
+    let baseline = Settings::default();
+    let claude = baseline.patched(&json!({"theme":"claude"})).unwrap();
+    assert_eq!(serde_json::to_value(&claude).unwrap()["theme"], json!("claude"));
+    assert_eq!(claude.opacity, baseline.opacity);
+    assert!(!claude.check_updates);
+    for bad in [json!("unknown"), json!(null), json!(true), json!(7)] {
+        assert!(claude.patched(&json!({"theme":bad,"opacity":0.2})).unwrap_err().contains("theme"));
+        assert_eq!(claude.opacity, baseline.opacity);
+        assert_eq!(serde_json::to_value(&claude).unwrap()["theme"], json!("claude"));
+    }
+    assert_eq!(claude.patched(&json!({"theme":"exile"})).unwrap(), baseline);
+}
+
+#[test]
 fn scale_fixed_factor_roundtrips_and_clamps() {
     // Serialised form: the string "auto", or the factor as a JSON number.
     assert_eq!(serde_json::to_value(Scale::Auto).unwrap(), Value::String("auto".into()));

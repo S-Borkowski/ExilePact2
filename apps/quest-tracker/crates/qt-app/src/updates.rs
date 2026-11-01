@@ -36,11 +36,27 @@
 pub use ep_update::{
     cleanup_line, newest_release, outcome_line, outcome_of, spawn_cleanup, started_line,
     transport_reason, turned_line, Answer,
-    AppSettingsView, AssetKind, DownloadError, InstallProgress, InstallState, InstallView,
+    AssetKind, DownloadError, InstallProgress, InstallState, InstallView,
     Outcome, Product, Release, ReleaseAsset, TransportError, Unreadable, UpdateConfig,
     UpdateState, UpdateTransport, UpdateView, Version, CHECK_INTERVAL_MS, NO_TRANSPORT,
     RETRY_AFTER_FAILURE_MS,
 };
+
+/// Quest Tracker's flat Settings snapshot, extended only with its local theme.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct AppSettingsView {
+    pub version: String,
+    pub check_updates: bool,
+    pub update: UpdateView,
+    pub install: InstallView,
+    pub theme: qt_viewmodel::Theme,
+}
+
+impl AppSettingsView {
+    pub fn with_theme(view: ep_update::AppSettingsView, theme: qt_viewmodel::Theme) -> Self {
+        Self { version: view.version, check_updates: view.check_updates, update: view.update, install: view.install, theme }
+    }
+}
 
 /// The product the quest tracker's updater works for: "Quest Tracker", its
 /// tags `quest-tracker-v<version>` and its exe asset `quest-tracker.exe`.

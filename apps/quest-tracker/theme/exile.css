@@ -1,0 +1,145 @@
+/* Exile material palette. Maintain manually alongside exile.json; local URLs are relative to theme/. Original harvest: 2026-10-25. */
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-ExtraBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cinzel";
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/Cinzel-SemiBold.woff2") format("woff2");
+}
+
+:root[data-theme='exile'] {
+  --color-panel-bg: #171A1C;
+  --color-panel-border: #7E898E;
+  --color-text-primary: #E8E0CF;
+  --color-text-secondary: #C7C2B6;
+  --color-text-muted: #AAA99F;
+  --color-edit-accent: #BFA36B;
+  --color-status-locked: #AAA99F;
+  --color-status-available: #A5C5A1;
+  --color-status-in-progress: #A6C3D8;
+  --color-status-done: #A5C5A1;
+  --color-status-skipped: #AAA99F;
+  --color-status-unknown: #C4B4DD;
+  --color-worth-gold: #BFA36B;
+  --color-res-fire: #E99568;
+  --color-res-cold: #91C9DE;
+  --color-res-lightning: #E3C76F;
+  --color-res-chaos: #BA9ACD;
+  --font-family: "Alegreya Sans", sans-serif;
+  --font-file: url("fonts/AlegreyaSans-Medium.woff2");
+  --size-title: 15px;
+  --size-row: 16px;
+  --size-step: 14px;
+  --size-caption: 12px;
+  --space-unit: 4px;
+  --space-row-pad: 12px;
+  --space-section-gap: 8px;
+  --space-panel-pad: 8px;
+  --radius: 0px;
+  --border-width: 1px;
+  --opacity-default: 0.92;
+  --shadow-panel: 0 0 0 1px rgba(0,0,0,0.63), 0 4px 12px rgba(0,0,0,0.5);
+  --radius-row: 0px;
+  --radius-button: 0px;
+  --font-weight-title: 700;
+  --font-weight-row: 400;
+  --color-panel-raised: #23282B;
+  --color-panel-sunken: #0B0D0F;
+  --color-panel-divider: #4B5358;
+  --color-text-on-light: #101214;
+  --color-edit-tint: #23282B;
+  --color-row-active-bg: #293034;
+  --color-select-active-bg: #293034;
+  --color-hover-outline: #A3ADB1;
+  --color-worth-none: #AAA99F;
+  --color-action-primary-bg: #BFA36B;
+  --color-action-primary-hover: #D0B780;
+  --color-action-primary-pressed: #AA8E58;
+  --color-action-secondary-bg: #23282B;
+  --color-action-secondary-hover: #2B3236;
+  --color-action-secondary-pressed: #0B0D0F;
+  --color-action-danger: #DEA09A;
+  --color-action-disabled-bg: #23282B;
+  --color-action-disabled-fg: #AAA99F;
+  --color-warning: #E0BE7C;
+  --font-family-caps: "Cinzel", serif;
+  --font-family-quest: "Georgia", serif;
+  --font-file-regular: url("fonts/AlegreyaSans-Regular.woff2");
+  --font-file-bold: url("fonts/AlegreyaSans-Bold.woff2");
+  --font-file-extrabold: url("fonts/AlegreyaSans-ExtraBold.woff2");
+  --font-file-caps-bold: url("fonts/Cinzel-SemiBold.woff2");
+  --line-title: 20px;
+  --line-row: 22px;
+  --line-step: 20px;
+  --line-caption: 16px;
+  --size-act: 13px;
+  --size-label: 13px;
+  --size-button-text: 14px;
+  --size-badge-count: 22px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 20px;
+  --size-icon-lg: 24px;
+  --size-manual-tick: 12px;
+  --size-control: 32px;
+  --size-button: 32px;
+  --size-row-height: 52px;
+  --size-row-height-tall: 56px;
+  --size-row-height-finished: 40px;
+  --size-header: 36px;
+  --size-act-header: 28px;
+  --size-badge: 48px;
+  --size-panel-width: 320px;
+  --border-width-strong: 2px;
+  --bar-in-progress: 3px;
+  --bar-countdown: 2px;
+  --chamfer-panel: 2px;
+  --chamfer-button: 3px;
+  --chamfer-badge: 4px;
+  --opacity-min: 0;
+  --opacity-stale-rows: 0.55;
+  --motion-confirm-ms: 3000ms;
+  --color-material-stone: #41464A;
+  --material-compact-trim: 3px;
+  --material-compact-chamfer: 2px;
+  --material-journal-surround: 16px;
+  --material-journal-chamfer: 8px;
+  --size-display: 28px;
+  --line-display: 36px;
+  --size-window-title: 24px;
+  --size-section: 20px;
+  --line-section: 28px;
+  --space-reading-inset: 16px;
+}

@@ -17,8 +17,8 @@ export const APP_SETTINGS_EVENT = 'qt:app-settings';
 
 /** Every command the window sends, with its arguments. `get_app_settings` is the bridge's own. */
 export interface SettingsCommandArgs {
-  /** The setting; the window only ever sends `check_updates`. */
-  update_settings: { patch: Pick<SettingsPatch, 'check_updates'> };
+  /** The app's appearance and automatic update preferences. */
+  update_settings: { patch: Pick<SettingsPatch, 'check_updates' | 'theme'> };
   /** Starts a manual check; the views it causes arrive on `qt:app-settings`. */
   check_for_updates: Record<string, never>;
   /**
