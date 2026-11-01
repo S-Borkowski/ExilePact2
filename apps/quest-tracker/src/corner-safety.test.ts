@@ -13,7 +13,15 @@ import {
   flushGaps,
   flushReasons,
   grow,
+  MIN_CONTRAST,
+  TYPE_FLOORS,
+  contrastRatio,
+  contrastReasons,
+  parseColour,
+  scrollbarReasons,
   summaryLine,
+  typeReasons,
+  worstContrast,
 } from '../scripts/corner-safety-core.mjs';
 
 // The pure core of `npm run corner-safety` (scripts/corner-safety-core.mjs),
@@ -101,8 +109,12 @@ describe('the corner-safety core', () => {
     expect(grow(box, 2)).toEqual({ left: 8, top: 8, right: 32, bottom: 32 });
     expect(containsRect({ left: 0, top: 0, right: 30, bottom: 30 }, box)).toBe(true);
     expect(containsRect({ left: 0, top: 0, right: 29, bottom: 30 }, box)).toBe(false);
-    expect(summaryLine(3, 0, true, 3)).toBe('corner-safety: 3 cases, 0 failures, control detected, flush checked on 3 cases');
-    expect(summaryLine(3, 1, false, 0)).toBe('corner-safety: 3 cases, 1 failures, control not detected, flush checked on 0 cases');
+    expect(summaryLine(3, 0, true, 3, 3, 1)).toBe(
+      'corner-safety: 3 cases, 0 failures, control detected, flush checked on 3 cases, readability checked on 3 cases, play scrollbar checked on 1 cases',
+    );
+    expect(summaryLine(3, 1, false, 0, 0, 0)).toBe(
+      'corner-safety: 3 cases, 1 failures, control not detected, flush checked on 0 cases, readability checked on 0 cases, play scrollbar checked on 0 cases',
+    );
   });
 });
 
@@ -172,5 +184,79 @@ describe('the flush check', () => {
     expect(flushReasons(ring(364, 384, 12), drawn(inset, [8, 8, 8, 8]), padding)).toHaveLength(4);
     expect(flushReasons(ring(364, 384, 0), drawn(full, [9, 8, 13.5, 8.5]), padding)).toEqual([]);
     expect(flushReasons(ring(364, 384, 0), null, padding)).toEqual(['no .material-art to measure']);
+  });
+});
+
+// The readability check (owner, Live 2, 2026-11-02: text at the smaller
+// scales was hard to read): a minimum rendered size per role, WCAG 2
+// contrast of 4.5:1 against the worst pixel behind a run, and no faux small
+// caps, thin weight or wide tracking.
+describe('the readability check', () => {
+  /** A run of `role` at `fontSize` CSS px under `zoom`, otherwise compliant. */
+  function run(role: 'title' | 'body' | 'meta', fontSize: number, zoom: number, extra: Record<string, unknown> = {}) {
+    return { role, fontSize, zoom, variantCaps: 'normal', weight: 400, letterSpacing: 0, capsFace: false, ...extra };
+  }
+
+  it('corner_safety_readability_floors_by_role_and_zoom', () => {
+    expect(TYPE_FLOORS).toEqual({ title: 14, body: 13, meta: 12 });
+    // 11 px metadata at scale 0.75 renders 8.25 px: under the 12 px floor.
+    expect(typeReasons(run('meta', 11, 0.75))).toEqual(['readability meta 8.3px < 12']);
+    // 12 px at scale 1 meets it, and so does a floor divided by the zoom.
+    expect(typeReasons(run('meta', 12, 1))).toEqual([]);
+    expect(typeReasons(run('meta', 12 / 0.75, 0.75))).toEqual([]);
+    expect(typeReasons(run('body', 16, 0.75))).toEqual(['readability body 12px < 13']);
+    expect(typeReasons(run('title', 19, 0.75))).toEqual([]);
+    expect(typeReasons(run('title', 13, 1))).toEqual(['readability title 13px < 14']);
+    // Text 200% passes on size.
+    expect(typeReasons(run('meta', 22, 0.75))).toEqual([]);
+  });
+
+  it('corner_safety_readability_rejects_small_caps_thin_weight_and_wide_tracking', () => {
+    expect(typeReasons(run('meta', 14, 1, { variantCaps: 'small-caps' }))).toEqual(['caps: font-variant-caps small-caps']);
+    expect(typeReasons(run('meta', 14, 1, { variantCaps: 'all-small-caps' }))).toEqual(['caps: font-variant-caps all-small-caps']);
+    // The caps face only at 13 px rendered and above.
+    expect(typeReasons(run('meta', 12, 1, { capsFace: true }))).toEqual(['caps: the caps face at 12px < 13']);
+    expect(typeReasons(run('meta', 13, 1, { capsFace: true }))).toEqual([]);
+    expect(typeReasons(run('meta', 14, 1, { weight: 300 }))).toEqual(['weight 300 < 400']);
+    // 0.08em tracking: too wide below 13 px, allowed above.
+    expect(typeReasons(run('meta', 12, 1, { letterSpacing: 0.96 }))).toEqual(['tracking 0.08em > 0.05em']);
+    expect(typeReasons(run('meta', 14, 1, { letterSpacing: 1.12 }))).toEqual([]);
+    expect(typeReasons(run('meta', 14, 1, { letterSpacing: 2.1 }))).toEqual(['tracking 0.15em > 0.1em']);
+  });
+
+  it('corner_safety_contrast_is_wcag_4.5_against_the_worst_pixel', () => {
+    expect(MIN_CONTRAST).toBe(4.5);
+    // The kit text on the well passes; the disabled colour does not.
+    expect(contrastRatio('#E4E6E7', '#090D10')).toBeCloseTo(15.58, 1);
+    expect(contrastReasons(contrastRatio('#E4E6E7', '#090D10'))).toEqual([]);
+    expect(contrastRatio('#535D64', '#090D10')).toBeLessThan(4.5);
+    expect(contrastReasons(contrastRatio('#535D64', '#090D10'))).toEqual(['contrast 2.89 < 4.5']);
+    expect(contrastRatio('#FFFFFF', '#000000')).toBeCloseTo(21, 5);
+    // Computed colours as the browser reports them.
+    expect(parseColour('rgb(228, 230, 231)')).toEqual({ r: 228, g: 230, b: 231, a: 1 });
+    expect(parseColour('rgba(0, 0, 0, 0.5)')).toEqual({ r: 0, g: 0, b: 0, a: 0.5 });
+    expect(parseColour('color(srgb 1 1 1 / 0.25)')).toEqual({ r: 255, g: 255, b: 255, a: 0.25 });
+    // The worst pixel decides: one bright pixel under light text fails it.
+    const fg = parseColour('#E4E6E7')!;
+    const image = { width: 2, height: 1, rgba: new Uint8Array([9, 13, 16, 255, 200, 200, 200, 255]) };
+    expect(worstContrast(fg, image, [{ left: 0, top: 0, right: 1, bottom: 1 }])).toBeCloseTo(15.58, 1);
+    expect(worstContrast(fg, image, [{ left: 0, top: 0, right: 2, bottom: 1 }])!).toBeLessThan(MIN_CONTRAST);
+    expect(worstContrast(fg, image, [])).toBeNull();
+    // Half-transparent text is blended over the pixel first.
+    expect(contrastRatio({ r: 228, g: 230, b: 231, a: 0.5 }, '#090D10')).toBeLessThan(contrastRatio('#E4E6E7', '#090D10'));
+  });
+});
+
+// The play-scrollbar check (owner, Live 2: play is click-through): no
+// scrollbar on an overflowing play scroller, which still scrolls; edit keeps one.
+describe('the play-scrollbar check', () => {
+  it('corner_safety_reports_a_play_scrollbar_and_a_missing_edit_one', () => {
+    const shown = { label: 'div.body', thickness: 8, scrollable: true };
+    const hidden = { label: 'div.body', thickness: 0, scrollable: true };
+    expect(scrollbarReasons('play', [shown])).toEqual(['play scrollbar visible: div.body 8px']);
+    expect(scrollbarReasons('play', [hidden])).toEqual([]);
+    expect(scrollbarReasons('play', [{ ...hidden, scrollable: false }])).toEqual(['play not scrollable: div.body']);
+    expect(scrollbarReasons('edit', [shown])).toEqual([]);
+    expect(scrollbarReasons('edit', [hidden])).toEqual(['edit scrollbar missing: div.body']);
   });
 });

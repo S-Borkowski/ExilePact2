@@ -32,13 +32,29 @@
 // handles is what the page hits 2 px inside the middle of its window edge or
 // inside its corner.
 //
+// The readability check (every case, every scroll position; owner, Live 2):
+// each text run on screen renders at least 14 px for quest names and titles,
+// 13 px for objectives, tips and detail text, and 12 px for everything else
+// (computed size times the page zoom); is at least 4.5:1 against the worst
+// pixel behind it, read from a screenshot with all text made transparent (a
+// disabled control's text is exempt); has no `font-variant-caps`, no caps
+// face (Cinzel) below 13 px, a weight of at least 400, and tracking of at
+// most 0.05em below 13 px (0.1em above).
+//
+// The play-scrollbar check (owner, Live 2: play is click-through): in play
+// every overflowing scroller shows no scrollbar and still scrolls; in edit
+// and both Settings surfaces each keeps one. Playwright hides scrollbars in
+// headless mode, so the browser is started without that switch.
+//
 // A control runs at every scale: a probe placed over the bottom-left knot of
 // the rendered frame must be reported, or the run fails. `--self-check` runs
 // only synthetic pages that draw the kit frame PNG as the 48 px nine-slice:
 // one with a probe on a knot and one in the centre, one 12 px in from the
-// window that must be reported not flush, and one flush that must pass. It
-// needs no app, so it shows the instrument works while the app is being
-// changed.
+// window that must be reported not flush, and one flush that must pass; plus
+// a page of four text runs (9 px, the disabled colour, small caps: each must
+// be reported; a compliant one must pass) and a play-marked scroller with
+// its bar shown (must be reported) and hidden (must pass). It needs no app,
+// so it shows the instrument works while the app is being changed.
 //
 // Flags:
 //   --root <app dir>     serve another checkout's app (the baseline)
@@ -49,8 +65,10 @@
 //
 // Output: one line per case and position, `ok` or `FAIL <reasons>`, then
 // `corner-safety: <n> cases, <f> failures, control detected, flush checked
-// on <k> cases`. Exit 0 only when nothing failed, every declared case ran
-// and the control was detected.
+// on <k> cases, readability checked on <r> cases, play scrollbar checked on
+// <p> cases` (r: cases with text runs read; p: play cases with an
+// overflowing scroller). Exit 0 only when nothing failed, every declared
+// case ran and the control was detected.
 
 import fs from 'node:fs';
 import net from 'node:net';
@@ -59,7 +77,10 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import zlib from 'node:zlib';
 import { chromium } from 'playwright-core';
-import { alphaMask, artPadding, artPixels, clipRect, decodePng, findOverlaps, flushReasons, grow, summaryLine } from './corner-safety-core.mjs';
+import {
+  alphaMask, artPadding, artPixels, clipRect, contrastReasons, decodePng, findOverlaps, flushReasons, grow, parseColour,
+  scrollbarReasons, summaryLine, typeReasons, worstContrast,
+} from './corner-safety-core.mjs';
 
 const APP = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const KIT_FRAME = path.resolve(APP, '../../docs/quest-tracker/design/steel-masonry-kit/assets/frame-neutral-steel.png');
@@ -87,6 +108,15 @@ const INTERACTIVE = 'button, input, select, textarea, a[href], [role="button"], 
 const KNOT_PROBE = { x: 12 / 48, y: 16 / 48, width: 10 / 48, height: 12 / 48 };
 /** How many offenders one line names before it counts the rest. */
 const NAMED = 4;
+/**
+ * The readability check's roles, by the run's nearest matching ancestor:
+ * quest names and frame or window titles are `title`, objective and step
+ * text, tips and detail text `body`, every other run `meta`.
+ */
+const TEXT_ROLES = {
+  title: '.row[data-quest] .name, .detail .head .name, .empty .title, .tracker-title, .tracker-act, .frame-title, #settings-title',
+  body: '.row[data-quest] .step, .row[data-quest] .tip, .detail .step-title, .detail .step-text, .detail .step-tip, .detail .reason, .empty .text',
+};
 
 // ---------------------------------------------------------------- arguments
 
@@ -486,6 +516,118 @@ function measureInPage(options) {
   };
 }
 
+/**
+ * Every text run the panel shows at this scroll position, for the
+ * readability check: its role (by `options.title` / `options.body`, else
+ * meta), its computed type, its colour with the opacity of everything above
+ * it, and its line rects clipped to what is on screen. A run clipped away
+ * here is left for the position that shows it.
+ */
+function textRunsInPage(options) {
+  const root = document.querySelector('.panel') || document.querySelector('.window');
+  if (!root) return [];
+  const EXCLUDED = '.material-art, .frame-drag-region, .resize-edge, [data-cs-probe], .sr-only';
+  const viewport = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
+  const ratio = (el) => {
+    const r = el.getBoundingClientRect();
+    return el.offsetWidth > 0 ? r.width / el.offsetWidth : (el.currentCSSZoom || 1);
+  };
+  const clipOf = (a) => {
+    const cs = getComputedStyle(a);
+    if (cs.overflowX === 'visible' && cs.overflowY === 'visible' && !/paint|strict|content/.test(cs.contain)) return null;
+    const r = a.getBoundingClientRect();
+    const z = ratio(a);
+    const left = r.left + a.clientLeft * z;
+    const top = r.top + a.clientTop * z;
+    return {
+      left: cs.overflowX === 'visible' ? -Infinity : left,
+      right: cs.overflowX === 'visible' ? Infinity : left + a.clientWidth * z,
+      top: cs.overflowY === 'visible' ? -Infinity : top,
+      bottom: cs.overflowY === 'visible' ? Infinity : top + a.clientHeight * z,
+    };
+  };
+  const intersect = (a, b) => {
+    const r = { left: Math.max(a.left, b.left), top: Math.max(a.top, b.top), right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom) };
+    return r.right > r.left && r.bottom > r.top ? r : null;
+  };
+  const runs = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.data.trim();
+    const parent = node.parentElement;
+    if (!text || !parent || parent.closest(EXCLUDED)) continue;
+    if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
+    const clips = [];
+    for (let a = parent; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+      const c = clipOf(a);
+      if (c) clips.push(c);
+    }
+    clips.push(viewport);
+    range.selectNodeContents(node);
+    const rects = [];
+    for (const r of range.getClientRects()) {
+      let shown = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      for (const c of clips) shown = shown && intersect(shown, c);
+      if (shown) rects.push(shown);
+    }
+    if (!rects.length) continue;
+    const cs = getComputedStyle(parent);
+    let opacity = 1;
+    for (let a = parent; a; a = a.parentElement) opacity *= parseFloat(getComputedStyle(a).opacity);
+    runs.push({
+      label: `text "${text.replace(/\s+/g, ' ').slice(0, 24)}"`,
+      role: parent.closest(options.title) ? 'title' : parent.closest(options.body) ? 'body' : 'meta',
+      fontSize: parseFloat(cs.fontSize),
+      zoom: parent.currentCSSZoom || ratio(parent),
+      variantCaps: cs.fontVariantCaps,
+      weight: parseFloat(cs.fontWeight),
+      letterSpacing: cs.letterSpacing === 'normal' ? 0 : parseFloat(cs.letterSpacing),
+      capsFace: /cinzel/i.test(cs.fontFamily.split(',')[0]),
+      colour: cs.color,
+      opacity,
+      disabled: !!parent.closest(':disabled, [aria-disabled="true"]'),
+      rects,
+    });
+  }
+  return runs;
+}
+
+/** Makes every text run transparent (no shadow either), or undoes that: the contrast check's background. */
+function hideTextInPage(on) {
+  const id = 'corner-safety-no-text';
+  document.getElementById(id)?.remove();
+  if (!on) return;
+  const style = document.createElement('style');
+  style.id = id;
+  style.textContent = '*, *::before, *::after, *::placeholder { color: transparent !important; -webkit-text-fill-color: transparent !important; text-shadow: none !important; text-decoration-color: transparent !important; caret-color: transparent !important; }';
+  document.head.append(style);
+}
+
+/**
+ * The panel's overflowing scrollers, for the play-scrollbar check: each
+ * one's scrollbar thickness (CSS px) and whether setting `scrollTop` moves
+ * it. Each is put back where it was.
+ */
+function scrollersInPage() {
+  const root = document.querySelector('.panel') || document.querySelector('.window');
+  if (!root) return [];
+  const out = [];
+  for (const el of [root, ...root.querySelectorAll('*')]) {
+    if (!(el instanceof HTMLElement) || el.closest('.material-art, .resize-edge')) continue;
+    const cs = getComputedStyle(el);
+    if (!/(auto|scroll)/.test(cs.overflowY) || el.scrollHeight <= el.clientHeight + 1) continue;
+    const thickness = el.offsetWidth - el.clientWidth - el.clientLeft - (parseFloat(cs.borderRightWidth) || 0);
+    const was = el.scrollTop;
+    el.scrollTop = was > 0 ? 0 : el.scrollHeight;
+    const scrollable = el.scrollTop !== was;
+    el.scrollTop = was;
+    const classes = [...el.classList].slice(0, 2).map((c) => `.${c}`).join('');
+    out.push({ label: `${el.tagName.toLowerCase()}${classes}`, thickness, scrollable });
+  }
+  return out;
+}
+
 /** Places the knot probe and returns its box and clips, or removes it. */
 function probeInPage(options) {
   document.querySelectorAll('[data-cs-probe]').forEach((el) => el.remove());
@@ -670,6 +812,44 @@ async function takeMask(page) {
   return alphaMask(decodePng(new Uint8Array(png), inflate));
 }
 
+/**
+ * The page as it stands with every text run transparent: what lies behind
+ * the text. Not `omitBackground`: where the panel lets the page through, the
+ * browser's white stands in for whatever is behind the window, the worst
+ * case for light text.
+ */
+async function takeBackground(page) {
+  await page.evaluate(hideTextInPage, true);
+  await settle(page);
+  const png = await page.screenshot({ type: 'png' });
+  await page.evaluate(hideTextInPage, false);
+  await settle(page);
+  return decodePng(new Uint8Array(png), inflate);
+}
+
+/**
+ * The readability check at one scroll position: each run on screen against
+ * its role's size floor, the caps, weight and tracking rules, and 4.5:1
+ * against the worst pixel behind it (a disabled control's text is exempt
+ * from contrast, as WCAG exempts it). Each reason names its run.
+ */
+async function readabilityReasons(page) {
+  const runs = await page.evaluate(textRunsInPage, TEXT_ROLES);
+  if (!runs.length) return { reasons: [], runs: 0 };
+  const image = await takeBackground(page);
+  const reasons = [];
+  for (const run of runs) {
+    const own = typeReasons(run);
+    if (!run.disabled) {
+      const fg = parseColour(run.colour);
+      if (fg) own.push(...contrastReasons(worstContrast({ ...fg, a: fg.a * run.opacity }, image, run.rects)));
+      else own.push(`colour ${run.colour} not read`);
+    }
+    for (const r of own) reasons.push(`${run.label} ${r}`);
+  }
+  return { reasons, runs: runs.length };
+}
+
 const sameRect = (a, b, tolerance = 0.5) =>
   !!a && !!b && ['left', 'top', 'right', 'bottom'].every((k) => Math.abs(a[k] - b[k]) <= tolerance);
 
@@ -779,6 +959,9 @@ async function runCase(page, base, c, withControl, padding, print) {
   let topMask = null;
   let topArt = null;
   const measures = [];
+  const unreadable = new Set();
+  let runs = 0;
+  let played = 0;
   for (const p of positions) {
     await page.evaluate(scrollInPage, p.target);
     await settle(page);
@@ -786,7 +969,22 @@ async function runCase(page, base, c, withControl, padding, print) {
     const m = await page.evaluate(measureInPage, { interactive: INTERACTIVE });
     if (m.error) throw new Error(m.error);
     measures.push(m);
-    if (!topMask) { topMask = mask; topArt = m.art; }
+    if (!topMask) {
+      topMask = mask;
+      topArt = m.art;
+      // Play: no scrollbar, still scrollable; edit and both Settings keep theirs.
+      const scrollers = await page.evaluate(scrollersInPage);
+      if (scrollers.length) {
+        const mode = c.kind === 'settings' ? 'edit' : m.mode;
+        const reasons = scrollbarReasons(mode, scrollers);
+        if (mode === 'play') played = 1;
+        print(`${c.name} @scrollbar: ${reasons.length ? `FAIL ${named(reasons)}` : `ok (${mode}, ${scrollers.length} scrollers)`}`);
+        if (reasons.length) failures++;
+      }
+    }
+    const readable = await readabilityReasons(page);
+    runs += readable.runs;
+    for (const r of readable.reasons) unreadable.add(r);
     if (withControl && control === null) {
       const probe = await page.evaluate(probeInPage, KNOT_PROBE);
       await page.evaluate(probeInPage, null);
@@ -798,6 +996,8 @@ async function runCase(page, base, c, withControl, padding, print) {
     print(`${c.name} @${p.label}: ${reasons.length ? `FAIL ${reasons.join('; ')}` : 'ok'}`);
     if (reasons.length) failures++;
   }
+  print(`${c.name} @readability: ${unreadable.size ? `FAIL ${named([...unreadable])}` : `ok (${runs} runs)`}`);
+  if (unreadable.size) failures++;
   if (c.fixedChrome) {
     const reasons = chromeReasons(measures);
     print(`${c.name} @fixed-chrome: ${reasons.length ? `FAIL ${reasons.join('; ')}` : 'ok'}`);
@@ -815,7 +1015,7 @@ async function runCase(page, base, c, withControl, padding, print) {
     print(`${c.name} @focus: ${reasons.length ? `FAIL ${named(reasons)}` : `ok (${count} stops)`}`);
     if (reasons.length) failures++;
   }
-  return { failures, control, flushed: 1 };
+  return { failures, control, flushed: 1, readable: runs > 0 ? 1 : 0, played };
 }
 
 // ---------------------------------------------------------------- self-check
@@ -860,6 +1060,32 @@ function flushPage(scale, margin, padding) {
   </style></head><body><div class="panel-shadow"><div class="material-art"></div></div></body></html>`;
 }
 
+/**
+ * The readability self-check's page, at a constant rendered size: over the
+ * well colour, a 9 px run, a run in the disabled colour and a small-caps run
+ * (each must be reported) and a compliant run (must pass).
+ */
+const TYPE_RUNS = { tiny: 'Nine pixel run', dim: 'Disabled colour run', caps: 'Small caps run', good: 'Compliant run' };
+function typePage(scale) {
+  const z = Number(scale);
+  const run = (key, css) => `<p style="margin:0 0 ${8 / z}px;${css}">${TYPE_RUNS[key]}</p>`;
+  return `<!doctype html><html style="zoom:${scale}"><head><style>
+    html, body { margin: 0; background: #090D10; }
+    .panel { position: absolute; inset: 0; padding: ${20 / z}px; background: #090D10; color: #E4E6E7; font-family: Georgia, serif; font-size: ${14 / z}px; }
+  </style></head><body><div class="panel">
+    ${run('tiny', `font-size:${9 / z}px`)}${run('dim', 'color:#535D64')}${run('caps', 'font-variant-caps:small-caps')}${run('good', '')}
+  </div></body></html>`;
+}
+
+/** The play-scrollbar self-check's page: a play-marked overflowing scroller, its 8 px bar shown or hidden. */
+function scrollbarPage(hidden) {
+  return `<!doctype html><html><head><style>
+    html, body { margin: 0; }
+    .body { height: 120px; overflow-y: auto; ${hidden ? 'scrollbar-width: none;' : ''} }
+    .body::-webkit-scrollbar { width: 8px; }
+  </style></head><body><div class="overlay" data-mode="play"><div class="panel"><div class="body"><div style="height:600px">Tall</div></div></div></div></body></html>`;
+}
+
 /** The self-check's reading of one page: the knot box seen, the centre box clear. */
 function selfCheckReasons(m, mask) {
   const reasons = [];
@@ -876,6 +1102,8 @@ async function selfCheck(page, padding, print) {
   let failures = 0;
   let control = true;
   let flushed = 0;
+  let readable = 0;
+  let played = 0;
   for (const scale of SCALES) {
     // The flush check: the 12 px margin must be reported, the flush frame must pass.
     await page.setViewportSize({ width: 364, height: 384 });
@@ -909,8 +1137,41 @@ async function selfCheck(page, padding, print) {
     const { reasons, knot: pixels } = selfCheckReasons(m, mask);
     print(`self-check s${scale} @boxes: ${reasons.length ? `FAIL ${reasons.join('; ')}` : `ok (knot box ${pixels} art px, centre box 0)`}`);
     if (reasons.length) failures++;
+
+    // Readability: the three bad runs each reported for their own rule, the compliant one not at all.
+    await page.setContent(typePage(scale));
+    await settle(page);
+    const type = await readabilityReasons(page);
+    const of = (key) => type.reasons.filter((r) => r.startsWith(`text "${TYPE_RUNS[key]}" `));
+    const typeProblems = [];
+    if (!of('tiny').some((r) => r.includes('readability meta'))) typeProblems.push('the 9px run was not reported');
+    if (!of('dim').some((r) => r.includes('contrast'))) typeProblems.push('the #535D64 run was not reported');
+    if (!of('caps').some((r) => r.includes('caps'))) typeProblems.push('the small-caps run was not reported');
+    if (of('good').length) typeProblems.push(`the compliant run was reported: ${named(of('good'))}`);
+    if (type.runs !== 4) typeProblems.push(`${type.runs} of 4 runs read`);
+    print(`self-check s${scale} @readability: ${typeProblems.length ? `FAIL ${typeProblems.join('; ')}` : `ok (${named(type.reasons)}; compliant run passes)`}`);
+    if (typeProblems.length) failures++;
+    readable++;
+
+    // Play scrollbar: a visible bar on a play scroller reported, a hidden one passes and still scrolls.
+    const bars = [];
+    for (const hidden of [false, true]) {
+      await page.setContent(scrollbarPage(hidden));
+      await settle(page);
+      const mode = await page.evaluate(() => document.querySelector('.overlay')?.getAttribute('data-mode') ?? null);
+      const scrollers = await page.evaluate(scrollersInPage);
+      bars.push({ scrollers, reasons: scrollbarReasons(mode, scrollers) });
+    }
+    const [shown, hiddenBar] = bars;
+    const barProblems = [];
+    if (shown.scrollers.length !== 1 || hiddenBar.scrollers.length !== 1) barProblems.push(`scrollers found: ${shown.scrollers.length} and ${hiddenBar.scrollers.length}, expected 1 each`);
+    if (!shown.reasons.some((r) => r.startsWith('play scrollbar visible'))) barProblems.push('the visible play scrollbar was not reported');
+    if (hiddenBar.reasons.length) barProblems.push(`the hidden play scrollbar was reported: ${named(hiddenBar.reasons)}`);
+    print(`self-check s${scale} @scrollbar: ${barProblems.length ? `FAIL ${barProblems.join('; ')}` : `ok (${named(shown.reasons)}; hidden bar passes)`}`);
+    if (barProblems.length) failures++;
+    played++;
   }
-  return { cases: SCALES.length, failures, control, flushed };
+  return { cases: SCALES.length, failures, control, flushed, readable, played };
 }
 
 // --------------------------------------------------------------------- main
@@ -945,7 +1206,9 @@ async function main() {
     lines.push(line);
     console.log(line);
   };
-  const browser = await chromium.launch({ channel: 'msedge', headless: true });
+  // Playwright hides every scrollbar in headless mode; the app shows them, and
+  // the play-scrollbar and scrollbar-as-content checks need them drawn.
+  const browser = await chromium.launch({ channel: 'msedge', headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] });
   let server = null;
   try {
     const context = await browser.newContext({ deviceScaleFactor: 1, viewport: { width: 364, height: 384 } });
@@ -954,7 +1217,7 @@ async function main() {
     const padding = artPadding(alphaMask(decodePng(new Uint8Array(fs.readFileSync(KIT_FRAME)), inflate)));
     if (args.selfCheck) {
       const r = await selfCheck(page, padding, print);
-      console.log(summaryLine(r.cases, r.failures, r.control, r.flushed));
+      console.log(summaryLine(r.cases, r.failures, r.control, r.flushed, r.readable, r.played));
       return r.failures === 0 && r.control ? 0 : 1;
     }
 
@@ -989,6 +1252,8 @@ async function main() {
     let failures = 0;
     let ran = 0;
     let flushed = 0;
+    let readable = 0;
+    let played = 0;
     const controlled = new Map();
     for (const c of declared) {
       const withControl = !controlled.has(c.scale);
@@ -996,6 +1261,8 @@ async function main() {
         const r = await runCase(page, base, c, withControl, padding, print);
         failures += r.failures;
         flushed += r.flushed;
+        readable += r.readable;
+        played += r.played;
         if (withControl) controlled.set(c.scale, r.control === true);
         ran++;
       } catch (error) {
@@ -1019,7 +1286,7 @@ async function main() {
       console.log(`corner-safety: ${SCREENSHOTS.length} screenshots in ${args.screenshots}`);
     }
 
-    console.log(summaryLine(declared.length, failures, control, flushed));
+    console.log(summaryLine(declared.length, failures, control, flushed, readable, played));
     return failures === 0 && ran === declared.length && control ? 0 : 1;
   } finally {
     await browser.close();

@@ -358,16 +358,183 @@ export function flushReasons(mask, frame, padding) {
   return reasons;
 }
 
+// ---------------------------------------------------------------- readability
+// Owner, Live 2 (2026-11-02): text at the smaller scales was hard to read.
+// Every text run is held to a minimum rendered size for its role, a WCAG 2
+// contrast of 4.5:1 against the worst pixel behind it, and no faux small
+// caps, thin weight or wide tracking at small sizes.
+
+/** The minimum rendered size (window px) of each text role. */
+export const TYPE_FLOORS = /** @type {const} */ ({ title: 14, body: 13, meta: 12 });
+/** The minimum contrast of a text run against every pixel behind it (WCAG 2 AA, normal text). */
+export const MIN_CONTRAST = 4.5;
+/** Below this rendered size the caps face (Cinzel) is not used and tracking stays tight. */
+export const SMALL_TEXT = 13;
+
+/**
+ * @typedef {{ r: number, g: number, b: number, a: number }} Colour  0-255 channels, alpha 0-1
+ * @typedef {'title' | 'body' | 'meta'} Role
+ * @typedef {{
+ *   role: Role, fontSize: number, zoom: number, variantCaps: string, weight: number,
+ *   letterSpacing: number, capsFace: boolean,
+ * }} TypeRun  computed values in unzoomed CSS px; `zoom` turns them into window px
+ */
+
+/**
+ * A computed CSS colour (`rgb()`, `rgba()`, `#hex`, or `color(srgb ...)`)
+ * as 0-255 channels and an alpha; null for anything else.
+ *
+ * @param {string} css
+ * @returns {Colour | null}
+ */
+export function parseColour(css) {
+  const text = String(css).trim().toLowerCase();
+  if (text === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+  const hex = text.match(/^#([0-9a-f]{3,8})$/)?.[1];
+  if (hex && [3, 4, 6, 8].includes(hex.length)) {
+    const full = hex.length <= 4 ? [...hex].map((c) => c + c).join('') : hex;
+    const n = (/** @type {number} */ i) => parseInt(full.slice(i, i + 2), 16);
+    return { r: n(0), g: n(2), b: n(4), a: full.length === 8 ? n(6) / 255 : 1 };
+  }
+  const srgb = text.match(/^color\(srgb\s+([\d.e+-]+)\s+([\d.e+-]+)\s+([\d.e+-]+)(?:\s*\/\s*([\d.e+-]+)(%?))?\s*\)$/);
+  if (srgb) {
+    const c = (/** @type {string} */ v) => Math.round(Math.min(1, Math.max(0, parseFloat(v))) * 255);
+    const a = srgb[4] === undefined ? 1 : parseFloat(srgb[4]) / (srgb[5] ? 100 : 1);
+    return { r: c(srgb[1]), g: c(srgb[2]), b: c(srgb[3]), a };
+  }
+  const rgb = text.match(/^rgba?\(([^)]*)\)$/);
+  if (rgb) {
+    const parts = rgb[1].split(/[\s,/]+/).filter(Boolean);
+    if (parts.length < 3) return null;
+    const c = (/** @type {string} */ v) => Math.round(v.endsWith('%') ? (parseFloat(v) * 255) / 100 : parseFloat(v));
+    const a = parts[3] === undefined ? 1 : parts[3].endsWith('%') ? parseFloat(parts[3]) / 100 : parseFloat(parts[3]);
+    return { r: c(parts[0]), g: c(parts[1]), b: c(parts[2]), a };
+  }
+  return null;
+}
+
+/** WCAG 2 relative luminance of an opaque colour. @param {Colour} c */
+export function luminance(c) {
+  const lin = (/** @type {number} */ v) => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+}
+
+/**
+ * The WCAG 2 contrast ratio of two colours, `fg` laid over `bg` by its alpha
+ * (the background is taken as opaque, as a screenshot pixel is).
+ *
+ * @param {Colour | string} fg
+ * @param {Colour | string} bg
+ */
+export function contrastRatio(fg, bg) {
+  const b = typeof bg === 'string' ? parseColour(bg) : bg;
+  const f = typeof fg === 'string' ? parseColour(fg) : fg;
+  if (!f || !b) throw new Error(`not a colour: ${!f ? fg : bg}`);
+  const a = f.a ?? 1;
+  const over = { r: f.r * a + b.r * (1 - a), g: f.g * a + b.g * (1 - a), b: f.b * a + b.b * (1 - a), a: 1 };
+  const l1 = luminance(over);
+  const l2 = luminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+/**
+ * The lowest contrast of `fg` against the screenshot pixels whose centre
+ * lies inside each of `rects` (viewport px); null when no pixel is covered.
+ *
+ * @param {Colour} fg
+ * @param {Image} image  the case's screenshot with every text run made transparent
+ * @param {Rect[]} rects
+ * @returns {number | null}
+ */
+export function worstContrast(fg, image, rects) {
+  let worst = null;
+  for (const rect of rects) {
+    const x0 = Math.max(0, Math.floor(rect.left + 0.5));
+    const x1 = Math.min(image.width - 1, Math.ceil(rect.right - 0.5) - 1);
+    const y0 = Math.max(0, Math.floor(rect.top + 0.5));
+    const y1 = Math.min(image.height - 1, Math.ceil(rect.bottom - 0.5) - 1);
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const i = (y * image.width + x) * 4;
+        const ratio = contrastRatio(fg, { r: image.rgba[i], g: image.rgba[i + 1], b: image.rgba[i + 2], a: 1 });
+        if (worst === null || ratio < worst) worst = ratio;
+      }
+    }
+  }
+  return worst;
+}
+
+/** The contrast rule on a measured ratio. @param {number | null} ratio */
+export function contrastReasons(ratio) {
+  return ratio !== null && ratio < MIN_CONTRAST ? [`contrast ${Math.floor(ratio * 100) / 100} < ${MIN_CONTRAST}`] : [];
+}
+
+/**
+ * The size, caps, weight and tracking rules on one text run.
+ *
+ * @param {TypeRun} run
+ * @returns {string[]}
+ */
+export function typeReasons(run) {
+  const reasons = [];
+  const rendered = run.fontSize * run.zoom;
+  const floor = TYPE_FLOORS[run.role];
+  // A hair under the floor is rounding in the zoom, not a smaller size.
+  if (rendered < floor - 0.05) reasons.push(`readability ${run.role} ${round1(rendered)}px < ${floor}`);
+  if (run.variantCaps && run.variantCaps !== 'normal') reasons.push(`caps: font-variant-caps ${run.variantCaps}`);
+  if (run.capsFace && rendered < SMALL_TEXT - 0.05) reasons.push(`caps: the caps face at ${round1(rendered)}px < ${SMALL_TEXT}`);
+  if (run.weight < 400) reasons.push(`weight ${run.weight} < 400`);
+  const tracking = run.fontSize > 0 ? run.letterSpacing / run.fontSize : 0;
+  const most = rendered < SMALL_TEXT - 0.05 ? 0.05 : 0.1;
+  if (tracking > most + 0.001) reasons.push(`tracking ${Math.round(tracking * 1000) / 1000}em > ${most}em`);
+  return reasons;
+}
+
+// ------------------------------------------------------------ play scrollbar
+// Owner, Live 2: play is click-through, so a scrollbar there cannot be used.
+// In play every overflowing scroller shows none and still scrolls (a data
+// update or a restored position moves it); edit keeps the kit's scrollbar.
+
+/**
+ * @typedef {{ label: string, thickness: number, scrollable: boolean }} Scroller
+ *   an overflowing scroller: its scrollbar's thickness (CSS px) and whether
+ *   setting `scrollTop` moved it
+ */
+
+/**
+ * @param {string | null} mode  the overlay's `data-mode`
+ * @param {Scroller[]} scrollers
+ * @returns {string[]}
+ */
+export function scrollbarReasons(mode, scrollers) {
+  const reasons = [];
+  for (const s of scrollers) {
+    if (mode === 'play') {
+      if (s.thickness > 0.5) reasons.push(`play scrollbar visible: ${s.label} ${round1(s.thickness)}px`);
+      if (!s.scrollable) reasons.push(`play not scrollable: ${s.label}`);
+    } else if (mode === 'edit' && s.thickness <= 0.5) {
+      reasons.push(`edit scrollbar missing: ${s.label}`);
+    }
+  }
+  return reasons;
+}
+
 /**
  * The runner's last line. `control` is whether the knot probe was reported
  * at every scale the run covered; `flushed` how many cases the flush check
- * ran on.
+ * ran on, `readable` how many had their text runs checked, and `played` how
+ * many play cases had an overflowing scroller checked.
  *
  * @param {number} cases
  * @param {number} failures
  * @param {boolean} control
  * @param {number} flushed
+ * @param {number} readable
+ * @param {number} played
  */
-export function summaryLine(cases, failures, control, flushed) {
-  return `corner-safety: ${cases} cases, ${failures} failures, ${control ? 'control detected' : 'control not detected'}, flush checked on ${flushed} cases`;
+export function summaryLine(cases, failures, control, flushed, readable, played) {
+  return `corner-safety: ${cases} cases, ${failures} failures, ${control ? 'control detected' : 'control not detected'}, flush checked on ${flushed} cases, readability checked on ${readable} cases, play scrollbar checked on ${played} cases`;
 }
