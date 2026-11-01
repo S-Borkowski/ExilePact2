@@ -4,7 +4,7 @@ The order matches the 22 existing feature groups in [the design system](../../ui
 
 | # | Existing feature | Implementation | Verification |
 |---|---|---|---|
-| 1 | Passive play / interactive edit; close edit frames on return | Existing shell modes and shared App/Panel behavior | app.test.ts; finish-frames.test.ts; Rust shell |
+| 1 | Passive play / interactive edit; close edit frames on return | Existing shell modes and shared App/Panel behavior; selected material remains unchanged across modes | app.test.ts; finish-frames.test.ts; approved-ui.test.ts; Rust shell |
 | 2 | Global shortcut and binding/refusal states | Existing Settings hotkey and edit footer | live2.test.ts; Rust shell |
 | 3 | Header drag, eight resize directions, saved bounds, independent zoom | Existing bridge/native geometry; new-store364×384, minimum320×240 | resize.test.ts; Rust shell saved-size/theme tests |
 | 4 | Collapse/expand, count, warning and change badge | Existing Collapsed with selected theme tokens | app.test.ts; live2.test.ts; row-change.test.ts |
@@ -27,4 +27,4 @@ The order matches the 22 existing feature groups in [the design system](../../ui
 | 21 | Tray entries and hidden-overlay quit | Existing tray/action IDs unchanged | Rust updates/shell |
 | 22 | Keyboard/focus/shapes/announcements and runtime/developer interfaces | Shared controls and existing commands; update_settings.theme added | ipc.test.ts; approved-ui.test.ts; rendered review; Rust shell |
 
-Theme checks cover default/invalid stored values, atomic refusal of invalid patches, both windows receiving the choice, no updater request, saved preference reload, unchanged geometry, local licensed assets and separate JSON/CSS value parity. See [rendered review](review-approved-ui.md). No game integration mechanism is introduced by this restyle.
+Theme checks cover default/invalid stored values, atomic refusal of invalid patches, both windows receiving the choice, no updater request, saved preference reload, unchanged geometry, local licensed assets and separate JSON/CSS value parity. Every expanded frame retains its selected material across play/edit; mode changes request no theme patch and play remains control-free. See [rendered review](review-approved-ui.md). No game integration mechanism is introduced by this restyle.

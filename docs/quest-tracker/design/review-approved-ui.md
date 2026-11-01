@@ -1,5 +1,24 @@
 # Approved UI adoption review
 
+## Selected-theme mode consistency — 2026-11-01
+
+The selected theme now chooses the expanded-panel material independently of mode and frame. Exile retains its carved stone/gold frame, textured wells, ornament and serif quest titles in play/edit, Next up/All, Settings/detail/picker and empty states. Claude retains its original presentation. Mode changes interaction and controls only; returning to play still closes edit-only frames as before. Earlier compact-play captures and counts below are historical, not the current mode contract.
+
+The new regression failed before the correction (`expected journal, received compact`) and passed after removing mode/frame from material selection. It checks both themes across every frame/mode, preserved commands and control-free play, and no `update_settings` request during mode/frame changes.
+
+Actual Tauri app-webview MCP observed the following in the disposable test profile after hot reload:
+
+| Selected theme | Mode / frame | Expanded material | Decorative frame | Controls |
+|---|---|---|---|---|
+| Exile | edit / settings | journal | present | 13 |
+| Exile | play / empty-waiting | journal | present | 0 |
+| Claude | edit / settings | claude | absent | 13 |
+| Claude | play / empty-waiting | claude | absent | 0 |
+
+`window.outerWidth/outerHeight` stayed582×703 throughout; opacity0.9, scale1, disabled screen reading, hotkey and synthetic log path were unchanged. The app was restored to Exile edit/Settings after inspection. No live game or installed/user store was changed.
+
+Playwright fixture checks covered Next up and All at320×240 and364×384: the first quest title remained fully inside the well, there were no play controls and no horizontal overflow. At the default size, reducing the crown to48px at short viewports left the first Next up card fully visible (y224–336 inside the well y46–338). This responsive rule is identical in play and edit; it does not choose a different material. The minimum window retains its existing smaller ornament rules. The [current Exile play screenshot](frames/approved/exile-play.png) records the retained frame.
+
 ## First-screen critique — 2026-10-31
 
 Reviewed the rendered 364×384 compact Next up/play and campaign/edit screens before extending the material system. The compact frame has the specified 3px steel/masonry trim and a quiet uniform reading field. Existing status shapes, rewards, steps and tips remain visible. The rich shell has original carved corners, a steel inner rail, gold inlay and lantern-astrolabe relief; it is visibly distinct from the gameplay instrument.
@@ -12,11 +31,11 @@ The user-wide impeccable/taste skills were absent during planning; no plugin was
 
 The owner rejected the initial vector/gray-tile interpretation above as unlike the approved original and reported the lower frame floating over scrolled content. That feedback was correct: the first pass preserved functions but did not reproduce the physical material language, and its decoration sat above a whole-panel scroll area.
 
-Reopened the original concept and compared the new representative journal beside it before expanding checks. The final screen now uses original generated black carved masonry/niche rails, worn warm-gold inlay, a dimensional amber lantern/astrolabe crown, subdued physical stone, rectangular recessed wells with double fine gold lines, cream Georgia title-case quest names and readable Sans prose. Header/act/control bands now share dark recessed stone/blackened metal and selected warm-gold treatment; the old flat gray bands and rounded gray cards are gone. The illustrative act tabs, fictional Track button and quest art mapping remain absent. Quiet play stays a restrained 3px instrument.
+Reopened the original concept and compared the new representative journal beside it before expanding checks. The screen uses original generated black carved masonry/niche rails, worn warm-gold inlay, a dimensional amber lantern/astrolabe crown, subdued physical stone, rectangular recessed wells with double fine gold lines, cream Georgia title-case quest names and readable Sans prose. Header/act/control bands share dark recessed stone/blackened metal and selected warm-gold treatment; the old flat gray bands and rounded gray cards are gone. The illustrative act tabs, fictional Track button and quest art mapping remain absent. The later mode-consistency correction above retains these Exile materials in play as well.
 
 The generated frame uses nine-slicing with vertically rounded side segments, preserving sculpture proportions. The outer frame is fixed; a separately inset well clips its scrolling contents. The crown belongs to the title plate inside that well. A fixed top-rail drag region remains available after Settings scrolls down; the rich title plate also uses the existing drag bridge. Art takes no input; controls and all resize edges retain their actions. Exact provenance and hashes are in [harvest](harvest.md#original-production-material-assets).
 
-Current app-only screenshots: [rich journal](frames/approved/exile-journal.png), [quiet play](frames/approved/exile-play.png), [ordinary Settings](frames/approved/exile-settings.png), and [minimum overlay Settings scrolled to the end](frames/approved/exile-settings-scroll-end.png). Claude screenshots retain the unchanged baseline cascade. These are rendered live controls, not the concept PNG used as a runtime mockup.
+Current app-only screenshots: [rich journal](frames/approved/exile-journal.png), [Exile play](frames/approved/exile-play.png), [ordinary Settings](frames/approved/exile-settings.png), and [minimum overlay Settings scrolled to the end](frames/approved/exile-settings-scroll-end.png). Claude screenshots retain the unchanged baseline cascade. These are rendered live controls, not the concept PNG used as a runtime mockup.
 
 ### Frame and scroll checks
 
@@ -27,7 +46,7 @@ Each case below was measured at scroll start, middle and end using actual app-we
 | Native overlay Settings, app-webview, viewport511×571 | 12,12,487,547 | 42,46,427,479 | Inner body0/181/362; footer reachable; fixed drag region y21 throughout |
 | Same actual native window, text metrics doubled | 12,12,487,547 | 42,46,427,479 | Inner well0/416/831; footer reachable; drag region y21 unchanged; font overrides restored afterward |
 | Browser overlay minimum320×240 | 12,12,296,216 | 24,40,272,174 | Inner well0/277/554; footer bottom inside the well at end |
-| Browser overlay default364×384 | 12,12,340,360 | 42,46,280,292 | Inner well0/272/544; footer reachable |
+| Browser overlay default364×384, after mode-consistency correction | 12,12,340,360 | 42,46,280,292 | Inner body0/260/520; footer fixed at y298–338 and reachable at every position |
 | Browser ordinary Settings420×328 | 0,0,420,328 | 18,20,384,288 | Inner well0/91/182; credit reachable |
 | Browser ordinary Settings420×280, normal/doubled text | 0,0,420,280 | 18,20,384,240 | Inner well0/115/230 and0/313/626; credit reachable. Ordinary plaque rails remain20px/18px; the small-overlay media rule excludes this window. |
 

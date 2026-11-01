@@ -14,6 +14,10 @@ The [approved shared UI design system](../ui-design-system.md) is adopted in
 Quest Tracker as the default **Exile** theme. **Claude** in either Settings
 surface restores the prior visual theme. Existing behavior and fixed icon/frame
 IDs below remain authoritative; theme preference is the explicit settings addition.
+The selected theme alone chooses expanded-panel materials and typography:
+Exile keeps the same carved stone/gold frame in play, edit, Next up, All and
+Settings. Modes change controls/input only; they do not substitute a compact
+theme. The collapsed badge retains its small shape and selected palette.
 
 Both settings views receive Rust's saved `theme` (`exile` or `claude`) and send
 the existing `update_settings` command. Missing/invalid stored values default to

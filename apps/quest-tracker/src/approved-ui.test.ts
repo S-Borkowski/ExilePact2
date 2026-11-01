@@ -7,23 +7,48 @@ let rendered: Rendered | null = null;
 afterEach(() => { rendered?.destroy(); rendered = null; });
 
 describe('approved material adoption', () => {
-  it('keeps every play frame compact and chooses rich edit surfaces from the existing frame', async () => {
-    for (const mode of ['play', 'edit'] as const) for (const frame of FRAMES) {
+  it('keeps the selected material across every mode and expanded frame', async () => {
+    for (const theme of ['exile', 'claude'] as const) for (const mode of ['play', 'edit'] as const) for (const frame of FRAMES) {
       const view = fixtureView(frame, mode);
-      rendered = await renderApp(fakeBridge(view));
+      view.settings.theme = theme;
+      const bridge = fakeBridge(view);
+      rendered = await renderApp(bridge);
       if (frame === 'collapsed') {
         expect(rendered.root.querySelector('.panel')).toBeNull();
       } else {
         expect(rendered.root.querySelector('.panel')?.getAttribute('data-material')).toBe(
-          mode === 'edit' && frame !== 'panel-next-up' ? 'journal' : 'compact',
+          theme === 'exile' ? 'journal' : 'claude',
         );
+        expect(Boolean(rendered.root.querySelector('.material-art'))).toBe(theme === 'exile');
       }
+      expect(document.documentElement.dataset.theme).toBe(theme);
+      expect(bridge.calls).toEqual([]);
       if (mode === 'play') expect(rendered.root.querySelectorAll(CONTROL_SELECTOR)).toHaveLength(0);
       rendered.destroy(); rendered = null;
     }
   });
 
-  it('keeps text and commands across a compact/rich edit switch without making ornament interactive', async () => {
+  it('changes mode controls without changing the selected theme or requesting a theme patch', async () => {
+    for (const theme of ['exile', 'claude'] as const) {
+      const view = fixtureView('settings', 'edit');
+      view.settings.theme = theme;
+      const bridge = fakeBridge(view);
+      rendered = await renderApp(bridge);
+      (rendered.root.querySelector('.back-to-play') as HTMLButtonElement).click();
+      expect(bridge.calls).toEqual([{ name: 'set_mode', args: { mode: 'play' } }]);
+      bridge.pushView({ ...view, mode: 'play', frame: 'panel-next-up' });
+      expect(document.documentElement.dataset.theme).toBe(theme);
+      expect(rendered.root.querySelector('.panel')?.getAttribute('data-material')).toBe(theme === 'exile' ? 'journal' : 'claude');
+      expect(Boolean(rendered.root.querySelector('.material-art'))).toBe(theme === 'exile');
+      expect(rendered.root.querySelectorAll(CONTROL_SELECTOR)).toHaveLength(0);
+      bridge.pushView(view);
+      expect((rendered.root.querySelector('.theme-choice select') as HTMLSelectElement).value).toBe(theme);
+      expect(bridge.calls.some((call) => call.name === 'update_settings')).toBe(false);
+      rendered.destroy(); rendered = null;
+    }
+  });
+
+  it('keeps text and commands across frame changes without making ornament interactive', async () => {
     const view = fixtureView('panel-campaign', 'edit');
     const long = 'The long invented campaign name '.repeat(8);
     view.character!.name = long;

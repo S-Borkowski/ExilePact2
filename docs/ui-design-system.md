@@ -1,9 +1,9 @@
-# ExilePact2 — Proposed UI Design System
+# ExilePact2 — Approved UI Design System
 
 **Status: approved visual direction; Quest Tracker UI adoption, 2026-10-31.**
 Quest Tracker is the primary example in a shared family with Waystone Roller
-and Crafting Helper. Rich journal/detail/settings views use a carved campaign
-folio; the gameplay overlay uses restrained weathered steel and dark masonry.
+and Crafting Helper. Quest Tracker uses its selected theme consistently across
+play, edit, Next up, All and Settings; Exile uses the carved stone/gold folio.
 Quest Tracker implements this direction as its default **Exile** theme, with
 the original **Claude** theme selectable in both Settings surfaces. This is not
 a product rename. Waystone/Crafting retain their existing appearance.
@@ -38,17 +38,17 @@ Evidence: ten owner-supplied screenshots received 2026-10-31, identified below b
 | 120029 quest HUD | Right-edge placement, grouped headings, subordinate objectives, short rules, indentation and collapse indicator | Compact contextual task display. Use left-aligned text inside a movable right-positioned panel; one indentation level; explicit status and next action. Do not require reading right-aligned multiline text. |
 | 120759 world map | Engraved cartographic terrain, prominent compass rose, sculpted circular markers, title plaque, act selector and selective luminous emphasis | Use original cartographic/engraved motifs in chapter dividers and subdued marginal artwork; use embossed seals for actual state distinctions. Keep route ordering keyboard-readable and do not invent a world-map capability. |
 
-The references' character comes from material depth, architectural framing, original-looking sculpture, illustrated niches and ceremonial type, not their palette alone. Modernization means clear task hierarchy, restrained motion, sufficient contrast and usable targets inside that visual world. It does not mean erasing the material/ornamental language. Reduce density in the combat overlay while retaining a recognizable carved edge and seal; let journal and ordinary windows carry fuller craft detail.
+The references' character comes from material depth, architectural framing, original-looking sculpture, illustrated niches and ceremonial type, not their palette alone. Modernization means clear task hierarchy, restrained motion, sufficient contrast and usable targets inside that visual world. Keep that material identity across modes; responsive sizing reduces ornament before text without substituting another theme.
 
 ## Design rationale
 
-Approved family: carved campaign folio with a restrained gameplay instrument. This is an original design family, not an approved product rename. Rich journal/detail/settings views use weathered charcoal masonry, cool dull-steel hardware, worn muted-gold inlay, original gothic relief and a ceremonial Roman serif title plate over deeply recessed content. The gameplay variant reduces that construction to a thin weathered steel/dark masonry frame, engraved small-cap header, bone copy, muted-gold quest headings/status shapes and simple etched dividers. No giant crest, statues, lanterns or portraits surround play mode.
+Approved family: carved campaign folio. This is an original design family, not an approved product rename. Every expanded Exile panel uses weathered charcoal masonry, cool dull-steel hardware, worn muted-gold inlay, original gothic relief and a ceremonial Roman serif title plate over deeply recessed content. Play/edit changes input and controls only; Next up, All, detail, Settings and empty states retain the selected material and typography. Claude keeps the prior visual theme, and the collapsed badge keeps its small shape and selected palette.
 
 Material relief, shaped geometry, typography and original art distinguish this from the rejected flat-card recolor. Highlights are narrow and restrained, without glossy bronze, broad specular rims or glowing every edge. Rich views can carry original crest/title hardware, arches, marginal engraving and illustration niches; text wells stay quiet. Task hierarchy remains title → next action → rationale/reward → metadata. No new lore/portrait mapping, health meter, map capability or automatic game action is introduced. All numerical values below are proposed production design metrics, chosen for the accepted direction; none are measured pixel values or sampled colors from AI artwork.
 
 ### Material and ornament system
 
-Define two explicit variants rather than scaling the rich concept down. Gameplay: 2px outer dark-masonry rail plus 1px cool-steel inner rule (3px total), 2px chamfered corners, 1px etched row dividers, shallow 0 1px 0 inset highlight at 18% maximum opacity and 0 2px 6px black contact shadow at 35%. No broad luminous rims, external sculpture or art wells. Texture stays in frame/header; body reading field is uniform. Proposed 0.9 backing follows the actual setting default; 0% remains supported by contract, without promising contrast against every game scene.
+Quest Tracker chooses its expanded-panel material from the saved theme, independently of mode or view. Exile retains its sculpted stone/gold frame, lantern relief and quiet textured wells in play and edit. At short viewports, reduce the crown and padding before content using the same responsive rules in both modes. Ornament stays inside existing native bounds. The 0.9 backing follows the actual setting default; 0% remains supported by contract, without promising contrast against every game scene.
 
 Journal/detail/ordinary windows: 12px carved masonry surround, 3px steel inner rail, 1px muted-gold inlay and 16px reading-well inset. Short title plate 48px high; optional original relief cap up to 56px within the window bounds. Illustration niche 76×112px only at effective widths ≥480px and only where existing data fits; at narrower widths reduce to a 24px decorative seal or omit art. Recessed cards use 8px corners/4px bevel face, 16px padding, a 28px title rail and 1px etched dividers. Contact shadows remain local (0 2px 8px black at 40%); no sprawling glow. Rich art may never increase the native window beyond its current contract or obscure controls.
 
@@ -60,9 +60,10 @@ Material states: hover lightens a control well by one palette step and steel edg
 
 **Provenance:** original AI review concept, generated 2026-10-31, with no game
 pixels or extracted assets; documentation art, **not a shipped runtime asset**.
-The rich journal/settings material direction remains approved. The image's heavy
-gameplay-overlay half is **superseded** by the separately approved lean
-steel/masonry overlay below. Its fictional **Track Quest** button is **not an existing command**.
+The rich material direction remains approved and is used by Exile in both play
+and edit. The earlier lean steel/masonry play substitution is historical; the
+selected theme keeps its rich frame and crest, with responsive ornament sizing.
+Its fictional **Track Quest** button is **not an existing command**.
 The image's Act I / Act II / Act III tabs are illustrative and do not authorize
 chapter navigation; retain the current act heading and existing act expand/collapse.
 Text, fictional quest examples and geometry are illustrative, not measured
@@ -74,16 +75,16 @@ carved charcoal masonry, aged metal inlay/title hardware, gothic relief,
 lantern/astrolabe crest and inset task/reward wells, legible bone text;
 no copied game artwork. This is not a set of reusable sliced runtime assets.
 
-| Original asset | Purpose | Compact / full variant | Provenance and status |
+| Original asset | Purpose | Responsive / proposed variants | Provenance and status |
 |---|---|---|---|
-| Crest / relief cap | Family silhouette and ceremonial heading | Omitted in play / original lantern-astrolabe cap within full frame | Original generated raster crown bundled in Quest Tracker Exile; sibling adoption remains proposed |
-| Masonry / steel frame corners | Structural depth and wear | Thin 3px trim / carved surround and inner rail | Original generated raster surround bundled in Quest Tracker Exile; sibling adoption remains proposed |
+| Crest / relief cap | Family silhouette and ceremonial heading | Same rich frame/crown in play and edit; crown contracts at short viewports | Original generated raster crown bundled in Quest Tracker Exile; sibling adoption remains proposed |
+| Masonry / steel frame corners | Structural depth and wear | Same carved surround and inner rail in both modes; responsive padding | Original generated raster surround bundled in Quest Tracker Exile; sibling adoption remains proposed |
 | Engraved title plate | Display hierarchy | Shallow header / rich title plate | Quest Tracker Exile uses the bundled crown and CSS title plate; sibling adoption remains proposed |
 | Three vignette / emblem studies | Optional chapter identity | Omitted in play, optional 24px narrow-journal seal / aqueduct, lantern-marsh and bell niches | Fictional original AI illustrations, not game/lore data; individual runtime artwork proposed, not produced |
 | Etched divider | Quiet grouping | 1px line / original marginal engraving | Quest Tracker Exile uses CSS dividers; additional illustrated motifs remain proposed |
 | Status shapes | Available/current/done/skipped/locked/unknown distinction | Simple shape plus words / embossed seal with same meaning | Original glyph production proposed, not produced; existing semantics authoritative |
 | Reward / control wells | Task/reward/action hierarchy | Plain labelled content / recessed cells and bevels | Quest Tracker Exile bundles original stone texture with CSS recessed wells; sibling adoption remains proposed |
-| Complete journal concept | Reviewable material direction | Heavy overlay half superseded / rich journal direction retained | Original documentation-only PNG above, copied unchanged from original generation; separate production assets now bundled |
+| Complete journal concept | Reviewable material direction | Illustrative geometry and controls; rich material reference used across Exile modes | Original documentation-only PNG above, copied unchanged from original generation; separate production assets now bundled |
 
 Quest Tracker now bundles three separately generated original production rasters
 and licensed Cinzel; exact prompts, hashes and provenance are in
@@ -127,8 +128,8 @@ Quest Tracker's Exile display face is locally bundled Cinzel600, a Roman serif f
 | Window title | 24 / 32 | Cinzel 600 / 0.035em | Ordinary app title plate |
 | Section / act | 20 / 28 | Cinzel 600 / 0.03em | Rich act/detail strip |
 | Overlay header | 15 / 20 | Cinzel 600 / 0.06em | Short engraved small-cap header |
-| Compact quest heading | 16 / 22 | Cinzel 600 / 0.015em | Muted-gold short title; wraps |
-| Rich quest heading | 20 / 26 | System Georgia / normal | Cream title-case quest title; wraps |
+| Compact proposal heading | 16 / 22 | Cinzel 600 / 0.015em | Optional compact composition; not selected by Quest Tracker mode |
+| Exile quest heading | 20 / 26 | System Georgia / normal | Cream title-case quest title in play/edit; wraps |
 | Body / detail | 16 / 24 | Alegreya Sans 400 / normal | Long guidance and reward explanation |
 | Compact step / label | 14 / 20 | Alegreya Sans 400 / normal | Gameplay action and forms |
 | Button | 14 / 20 | Alegreya Sans 600 / 0.01em | Actions |
@@ -174,16 +175,16 @@ All components inherit semantic tokens; the following is a design inventory, not
 
 ### Quest Tracker feature preservation
 
-Inventory checked against the current guide and UI command/control symbols on 2026-10-31. Stripping down the gameplay composition removes visual bulk, not capabilities. "Journal" below means the existing All/campaign view, not a new native window. Keep current commands, data truth and persistence. No character rename/delete or per-quest Track Quest capability exists in this UI inventory; do not invent them from the concept image.
+Inventory checked against the current guide and UI command/control symbols on 2026-10-31; selected-theme mode consistency corrected on 2026-11-01. "Journal" below means the existing All/campaign view, not a new native window. Keep current commands, data truth and persistence. No character rename/delete or per-quest Track Quest capability exists in this UI inventory; do not invent them from the concept image.
 
 | Existing feature / behavior | Access in the proposed design | Evidence |
 |---|---|---|
-| Play is click-through, unfocused, always-on-top/off-taskbar; edit takes clicks and typing; returning to play closes settings/picker/detail to the quest list | Lean play overlay; existing edit mode for every control | README.md → Overview; src/bridge.ts CommandArgs.set_mode; src/components/Panel.svelte |
+| Play is click-through, unfocused, always-on-top/off-taskbar; edit takes clicks and typing; returning to play closes settings/picker/detail to the quest list | Same selected-theme shell; existing edit mode for every control | README.md → Overview; src/bridge.ts CommandArgs.set_mode; src/components/Panel.svelte |
 | Global mode shortcut, default Ctrl+Alt+Q, user-editable binding and existing refusal/warning behavior | Hotkey remains available even when overlay hidden; edit footer's Back to play; hotkey setting | README.md → Overview / Command reference → Quest Tracker.exe; components/Settings.svelte Edit-mode hotkey; bridge.ts SettingsPatch.hotkey |
-| Drag by non-button header, resize all eight edges/corners, saved position/size, independent content zoom; 320×240 minimum | Minimal drag/title region and edit-only resize affordances; no permanent oversized outer sculpture | README.md → Overview / Command reference; bridge.ts startDrag/startResize and RESIZE_DIRECTIONS |
+| Drag by non-button header, resize all eight edges/corners, saved position/size, independent content zoom; 320×240 minimum | Fixed drag/title regions and edit-only resize affordances; ornament stays inside existing bounds | README.md → Overview / Command reference; bridge.ts startDrag/startResize and RESIZE_DIRECTIONS |
 | Collapse/expand; collapsed worth-it-available count, status warning and live-change indication | Existing ~48×48 badge; expand in edit; play remains passive | components/Header.svelte set_collapsed; components/Collapsed.svelte |
-| Next up and All; Next up groups available/in-progress by worth; All has act groups and expand/collapse | Same edit view switch; compact Next up for gameplay; richer existing All/campaign view when intentionally opened | README.md → Overview; components/Header.svelte set_view_kind; Panel.svelte; ActSection.svelte toggle_act |
-| Six quest statuses, worth-it/optional/not-worth classifications, short rewards, current step, find-it tip, manual-needed and probably-done/inferred marks | Keep essential row content/marks in compact overlay with wrapping/scrolling; fuller card treatment in All/detail | README.md → Overview; components/QuestRow.svelte; ipc.ts QUEST_STATUSES/WORTHS/DETECTIONS |
+| Next up and All; Next up groups available/in-progress by worth; All has act groups and expand/collapse | Same edit view switch; Next up and All retain the same selected-theme material | README.md → Overview; components/Header.svelte set_view_kind; Panel.svelte; ActSection.svelte toggle_act |
+| Six quest statuses, worth-it/optional/not-worth classifications, short rewards, current step, find-it tip, manual-needed and probably-done/inferred marks | Keep essential row content/marks with wrapping/scrolling in the selected material | README.md → Overview; components/QuestRow.svelte; ipc.ts QUEST_STATUSES/WORTHS/DETECTIONS |
 | Quest detail: existing facts/notes, worth reason, all steps and tips, full reward labels, source fetch date | Edit click opens existing in-panel detail; Back returns; decorative art cannot displace these fields | components/QuestDetail.svelte; bridge.ts open_detail |
 | Eligible step tick/untick; inferred steps remain noninteractive; Mark done/Unmark done; Skip/Unskip; Reset with Confirm reset | Existing detail actions in edit, with all reversal/confirmation states; no play-mode buttons | components/QuestDetail.svelte tick_step/quest_action; bridge.ts CommandArgs |
 | Skipped quests continue progressing and unskip restores current progress; manual marks retained | Preserve engine/store behavior and Show skipped access; no deletion disguised as simplification | README.md → Overview; QuestDetail.svelte; Settings.svelte |
@@ -194,8 +195,8 @@ Inventory checked against the current guide and UI command/control symbols on 20
 | Read the screen (off by default), privacy helper, existing OCR/refusal states; Log file override and blank=automatic discovery | Existing overlay Settings and precise status messages; no screenshot-storage or new game-input behavior | README.md → Overview / Reading the screen / Privacy; Settings.svelte; bridge.ts SettingsPatch.screen_reading/log_path |
 | Automatic log/screen detection, per-character progress/persistence, skipped progress and catch-up behavior | Existing Rust behavior unchanged; rendering shows the same view rather than re-deriving progress | README.md → Overview / How detection works; bridge.ts qt:view and qt:row-change |
 | Visibility only over game in play; hidden before a character enters an area; edit always visible; always-on hiding under seven game panels, Escape menu exception | Preserve shell visibility behavior; no decorative protrusions that require a larger overlay hit/paint area; no replacement toggle | README.md → Overview / Hiding under game panels |
-| Row-change highlight, step transition, reduced-motion alternative, one meaningful screen-reader announcement, no catch-up animation | Same row/badge feedback in the lean material vocabulary, without ambient flicker or extra toast stacks | README.md → Overview; src/rowchange.ts; components/QuestRow.svelte / Collapsed.svelte |
-| Warning/error status and empty no-log/waiting/no-character/act-done frames; manual ticks kept | Compact, readable in-panel status/empty state with existing recovery access; do not erase warnings to save pixels | components/Panel.svelte / EmptyState.svelte; ipc.ts FRAMES/StatusLine |
+| Row-change highlight, step transition, reduced-motion alternative, one meaningful screen-reader announcement, no catch-up animation | Same row/badge feedback in the selected material, without ambient flicker or extra toast stacks | README.md → Overview; src/rowchange.ts; components/QuestRow.svelte / Collapsed.svelte |
+| Warning/error status and empty no-log/waiting/no-character/act-done frames; manual ticks kept | Readable selected-theme status/empty state with existing recovery access; do not erase warnings to save pixels | components/Panel.svelte / EmptyState.svelte; ipc.ts FRAMES/StatusLine |
 | Separate ordinary Settings window: Automatically check for updates (off), Check now, latest check state, version and Created by ST4H | Keep this distinct from overlay Settings; richer frame can live here without covering the game | README.md → Overview / Command reference; src/settings/sections.ts / UpdatesSection.svelte |
 | Signed update install/restart, download bytes/known-or-unknown total, Cancel, Try again, unsigned/refused/failure/restart states | All existing ordinary Settings actions/states; never auto-install or put update announcements into play overlay | README.md → Overview / Command reference; src/settings/bridge.ts check_for_updates/install_update/cancel_update; UpdatesSection.svelte |
 | Tray: optional Update available, Check for updates, Settings, Quit Quest Tracker; hidden-overlay exit remains possible | Existing notification-area menu, opening/focusing ordinary Settings as documented | README.md → Overview / Command reference; not moved into gameplay chrome |
@@ -207,7 +208,7 @@ All source paths abbreviated above are beneath apps/quest-tracker/; the guide is
 
 Sizes are content pixels at 1×, excluding native title bars. Plain schematic regions below specify composition, not pixel-perfect screenshot replicas.
 
-1. **Quest Tracker lean gameplay overlay, play/edit, proposed 340×360.** Proposed width range 320–360px, initial 360px height, configurable using existing resize. Place directly beneath the minimap in the native quest-text region, replacing that text in the design. Plain schematic: minimap / 16–24px proposed gap / engraved 36px header / 24px act strip / scrollable quest rows / edit-only footer. Thin weathered steel/dark masonry frame, bone step copy, muted-gold titles/status shapes and etched dividers; no giant crest/statues/portraits. Existing drag/saved placement wins; no new minimap detector. Play remains click-through; every current control is available through edit/detail/All/settings/tray as inventoried; 320×240 remains usable, with ~48×48 collapse and warning/count feedback. Native-HUD suppression is not established by the visual comp or current app; no runtime mechanism is authorized here.
+1. **Quest Tracker selected-theme overlay, play/edit, 340×360 painted default.** Existing resize controls the native window; saved placement wins. Plain schematic: carved title plate / character and view header / act or worth strip / recessed quest rows / edit-only footer. Exile keeps the same stone/gold frame, texture and typography in both modes; short viewports reduce ornament before text. Play remains click-through and control-free; every current action remains available through edit/detail/All/settings/tray. The 320×240 native minimum and ~48×48 collapsed badge remain. No automatic minimap placement or native-HUD suppression capability is introduced.
 2. **Quest Tracker campaign journal/detail, 480×720 study with 320px fallback.** This is an existing campaign/detail view in a resized overlay, not a new native window or new journal capability. The current act heading sits under an engraved title plaque; the existing Next up / All switch remains the only view selector. Stacked architectural quest cards have gilded title rails, recessed task/reward wells and original vignette niches. At 320px the niche becomes a small seal and rewards wrap below the prose, retaining material identity. Completed cards use cooled/desaturated relief plus explicit status and readable text. Selecting a quest in edit replaces the body with its existing reason, steps, reward/giver/zone, source and mark/skip/reset actions; an illustrated detail cap must not consume the action area. No fictional lore/portrait data is added.
 3. **Quest Tracker ordinary Settings, approximately 420×328.** Native title bar; 16px padded Settings heading; Updates section with automatic check switch and privacy helper; status/install lines; progress; Check now and the app-owned install/cancel/retry action; version; divider and Created by ST4H footer. It remains the small ordinary window, not a merge with overlay settings. Overlay settings retain opacity/scale/filter/read-screen/hotkey/log controls from their current contract, arranged as stacked groups.
 4. **Waystone Roller, 800×860.** Header [title | Settings]; compact filter area with visible labels; middle modifier list with each row [modifier words | tier | Want / Ignore / Avoid]; bottom pinned output [full search string, count/250, over-limit breakdown when necessary | Copy]. Search remains local filtering; header/footer do not masquerade as separate card dashboards. At 560×480, filter controls wrap and segments sit beneath row text; ensure the pinned footer does not cover rows.

@@ -38,7 +38,8 @@
   }: { view: View; send: Send; drag?: () => void; resize?: (direction: ResizeDirection) => void } = $props();
 
   const edit = $derived(view.mode === 'edit');
-  const journal = $derived(view.settings.theme !== 'claude' && edit && view.frame !== 'panel-next-up');
+  // Modes change input and controls; only the saved theme chooses the material.
+  const journal = $derived(view.settings.theme !== 'claude');
   const plaque = $derived(view.frame === 'settings' ? 'Overlay settings' : view.frame === 'character-picker' ? 'Characters' : view.frame === 'quest-detail' ? 'Quest details' : 'Campaign journal');
   let panelElement = $state<HTMLDivElement>();
   let wholeScroll = $state(false);

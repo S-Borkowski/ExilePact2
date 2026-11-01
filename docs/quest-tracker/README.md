@@ -24,14 +24,15 @@ works" › "Hiding under game panels"); that is always on since 0.1.1.
 
 What it is:
 
-- **Two visual themes, the same tracker.** Exile is the default: restrained
-  steel/masonry in play, carved journal/detail/settings surfaces in edit,
+- **Two visual themes, the same tracker.** Exile is the default: carved
+  stone/gold surfaces throughout play, edit, Next up, All and Settings,
   original raster stone/gold relief, Cinzel plaques, cream serif quest names
   and warm gold controls. Select
   **Claude** to restore the previous visual theme. Use *Theme* in overlay
   Settings (edit mode), or *Appearance → Theme* in the tray's ordinary Settings
   window. The choice is saved and updates both windows; it changes no progress,
-  mode, open frame, opacity, scale or saved window bounds. See the
+  mode, open frame, opacity, scale or saved window bounds. Switching modes
+  changes interaction and controls, never the selected theme or its material. See the
   [22-feature preservation map](design/approved-ui-preservation.md) and
   [rendered review](design/review-approved-ui.md). In edit/settings mode, drag
   the header or rich title plate to move it; a fixed top-rail grab area stays
@@ -2650,8 +2651,10 @@ Revisit this feature when:
 
 ### Unreleased
 
-- Default Exile UI: restrained gameplay trim, richer journal/detail/settings,
+- Default Exile UI: consistent carved stone/gold across play and edit surfaces,
   original decorative relief, local Cinzel titles and palette-matched controls.
+- Switching play/edit or opening Settings keeps the selected Exile/Claude
+  theme. Mode changes controls and click-through behavior, not materials.
 - Theme in overlay Settings and ordinary Settings Appearance selects Exile or
   the previous Claude UI, persists, and updates both windows without changing
   quest behavior, other preferences or saved bounds. All22 existing feature
