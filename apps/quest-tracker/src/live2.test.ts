@@ -336,7 +336,7 @@ describe('the settings frame after Live 2', () => {
     flushSync();
     expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { scale: 'auto' } } }]);
     // No dropdown is left for the scale.
-    expect(root.querySelector('select')).toBeNull();
+    expect([...root.querySelectorAll('select')].filter((select) => !select.closest('.theme-choice'))).toEqual([]);
     close();
 
     // Play mode lists the value, with no control.
@@ -367,6 +367,7 @@ describe('the settings frame after Live 2', () => {
       // The play-mode list matches the controls: one entry per setting.
       if (mode === 'play') {
         expect([...root.querySelectorAll('dt')].map((d) => d.textContent?.trim())).toEqual([
+          'Theme',
           'Background opacity',
           'Scale',
           'Show skipped quests',

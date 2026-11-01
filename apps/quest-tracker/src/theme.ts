@@ -8,6 +8,7 @@
 // imports to the top of its module, so importing the defaults here would put
 // them after the tokens. Same `:root` selector, so the later file wins.
 import.meta.glob('../theme/tokens.css', { eager: true });
+import.meta.glob('../theme/exile.css', { eager: true });
 
 type ThemeValues = Record<string, string | number>;
 
@@ -18,6 +19,16 @@ const THEME_FILES = import.meta.glob('../theme/theme.json', { eager: true, impor
 
 /** The harvested `theme.json` (token key -> value), or null before the harvest. */
 export const THEME: ThemeValues | null = Object.values(THEME_FILES)[0] ?? null;
+
+const EXILE_FILES = import.meta.glob('../theme/exile.json', { eager: true, import: 'default' }) as Record<string, ThemeValues>;
+export const EXILE_THEME: ThemeValues | null = Object.values(EXILE_FILES)[0] ?? null;
+
+/** A received view chooses the cascade; no independent browser preference. */
+export function applyPresentationTheme(root: HTMLElement, theme: 'exile' | 'claude' = 'exile'): void {
+  root.dataset.theme = theme;
+  root.style.removeProperty('--drop-panel');
+  applyDerivedTokens(root, theme === 'exile' ? EXILE_THEME ?? THEME : THEME);
+}
 
 const RAW_ICONS = import.meta.glob('../theme/icons/*.svg', {
   query: '?raw',

@@ -10,6 +10,34 @@ runtime, with an HTML/CSS/TypeScript UI), shipped as one `quest-tracker.exe`
 — the owner's decision of 2026-10-25. Everything below is designed with the
 web's means; the names in [Export contract](#export-contract) are final.
 
+The [approved shared UI design system](../ui-design-system.md) is adopted in
+Quest Tracker as the default **Exile** theme. **Claude** in either Settings
+surface restores the prior visual theme. Existing behavior and fixed icon/frame
+IDs below remain authoritative; theme preference is the explicit settings addition.
+The selected theme alone chooses expanded-panel materials and typography:
+Exile keeps the same carved stone/gold frame in play, edit, Next up, All and
+Settings. Modes change controls/input only; they do not substitute a compact
+theme. The collapsed badge retains its small shape and selected palette.
+The expanded overlay uses its existing functional header only: no separate
+Campaign journal label or crest consumes quest space. Exile's custom art frame
+is its only outer border; the legacy CSS ring and synthetic inset frame shadows
+are disabled for Exile, while control focus outlines and Claude remain intact.
+
+Both settings views receive Rust's saved `theme` (`exile` or `claude`) and send
+the existing `update_settings` command. Missing/invalid stored values default to
+Exile; invalid command patches are refused atomically. Theme selection changes no
+mode/frame/progress/zoom/opacity/native geometry. The ordinary Settings snapshot
+keeps the shared updater's fields flat and adds QT-local `theme`.
+
+Baseline `theme.json`/`tokens.css` and component rules retain Claude and sibling
+appearance. QT-local `exile.json`/`exile.css` are paired manually, with root-scoped
+overrides; no generator. Additional semantic keys: `color.material-stone`,
+`material.compact-trim`, `material.compact-chamfer`, `material.journal-surround`,
+`material.journal-chamfer`, `size.display`, `line.display`, `size.window-title`,
+`size.section`, `line.section`, `space.reading-inset`, `font.family-quest`. All have safe fallback
+declarations. Exile warm accents cover sliders, toggles, inputs and actions.
+See [preservation](design/approved-ui-preservation.md) and [review](design/review-approved-ui.md).
+
 ## Design constraints
 
 - **Over a moving game.** The panel sits on top of bright, dark and busy
@@ -267,12 +295,13 @@ the tray's "Settings" and "Check for updates", so the
 Settings frame stays as it is; nothing moves between the two and neither
 links to the other.
 
-- **Purpose.** For now it holds one setting, "Automatically check for
-  updates", off by default, and the line "Created by ST4H". It is built to
+- **Purpose.** Appearance holds Theme (Exile / Claude), followed by Updates
+  with "Automatically check for updates", off by default, and the line
+  "Created by ST4H". It is built to
   take more: its body is a list of sections drawn in order, so a later
   setting is a new section, not a new layout.
-- **Size.** About 420 px wide at 1×, as tall as its content (328 px with
-  one section, which fits its tallest state, a download in progress), not
+- **Size.** About420×328px at1×, retaining its native window size with
+  vertical page scrolling as sections or update states grow, not
   resizable, centred on the screen. A native,
   dark title bar ("Quest Tracker Settings") with the system's close
   button; it is in the taskbar while open and not always on top.
@@ -323,9 +352,10 @@ links to the other.
 - **Tokens and components it reuses.** The panel's tokens
   (`color.panel-bg` as the window's background, the text colours, the type
   styles, the 4 px grid) and the styled layer's Toggle, Button, group label
-  and Caption, unchanged. No new token, icon or component variant: the
-  download's progress bar is the Slider's track without its thumb.
-- **Keyboard and screen reader.** Tab moves from the toggle to "Check now"
+  and Caption. Claude keeps baseline styling; Exile adds the separately
+  documented material/display tokens and decorative frame. No new icon ID
+  or updater state is introduced; the download bar remains the Slider track.
+- **Keyboard and screen reader.** Tab starts at Theme, then the toggle, "Check now"
   to the install part's button (Install, *Cancel* or *Try again*); Space
   flips the toggle, Enter or Space presses a button; focus shows as the
   edit accent's ring, as in the panel. The toggle is a `switch` named by

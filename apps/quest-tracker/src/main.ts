@@ -5,6 +5,7 @@
 import './defaults.css';
 import { applyDerivedTokens } from './theme';
 import './styled.css';
+import './approved.css';
 import { mount } from 'svelte';
 import { isTauri } from '@tauri-apps/api/core';
 import App from './App.svelte';

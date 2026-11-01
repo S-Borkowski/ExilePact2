@@ -257,7 +257,9 @@ describe('resizing the window by its edges', () => {
     // back to play.
     const { root } = await render(fixtureView('panel-campaign', 'edit'));
     const panelEl = root.querySelector('.panel')!;
-    const kids = [...panelEl.children].map((c) => c.className.split(' ')[0]);
+    // Decorative Exile relief/plaque has no reading or control-order role.
+    const content = panelEl.querySelector('.panel-content') ?? panelEl;
+    const kids = [...content.children].filter((c) => c.getAttribute('aria-hidden') !== 'true').map((c) => c.className.split(' ')[0]);
     expect(kids[0]).toBe('header');
     expect(kids.at(-1)).toBe('back-to-play');
     expect(panelEl.querySelector('.body section.act')).not.toBeNull();

@@ -1,10 +1,8 @@
 <script lang="ts">
   // The expanded panel: header, the status line, the body the view's frame
-  // names, and in edit mode the way back to play mode. Cut corners (6 px), the
-  // background at the opacity setting while text and icons stay opaque, a
-  // 1 px border that edit mode turns into the 2 px accent. At opacity 0 the
-  // background is gone and the border and accent still draw: they are the
-  // ring (`.cut::after`), which the setting does not touch.
+  // names, and in edit mode the way back to play mode. Claude keeps its
+  // cut-corner ring and edit accent; Exile uses only its custom art frame.
+  // Background opacity never fades text, icons or the visible frame.
   //
   // The panel fills the window inside its shadow margin, in both directions,
   // and its body scrolls: the player sizes the window, the scale only zooms
@@ -23,6 +21,8 @@
   import EmptyState from './EmptyState.svelte';
   import Header from './Header.svelte';
   import Icon from './Icon.svelte';
+  import MaterialFrame from './MaterialFrame.svelte';
+  import stone from '../../theme/materials/raster/charcoal-stone-well.png';
   import QuestDetail from './QuestDetail.svelte';
   import QuestRow from './QuestRow.svelte';
   import Settings from './Settings.svelte';
@@ -35,11 +35,42 @@
   }: { view: View; send: Send; drag?: () => void; resize?: (direction: ResizeDirection) => void } = $props();
 
   const edit = $derived(view.mode === 'edit');
+  // Modes change input and controls; only the saved theme chooses the material.
+  const journal = $derived(view.settings.theme !== 'claude');
+  let panelElement = $state<HTMLDivElement>();
+  let wholeScroll = $state(false);
+
+  // Text enlargement can make the fixed chrome taller than the window.
+  // Keep all content reachable in one scroll area in that case. This affects
+  // presentation only; native bounds and the received view never change.
+  $effect(() => {
+    view.frame; view.mode; view.status; view.settings.theme;
+    if (!panelElement || typeof ResizeObserver === 'undefined') return;
+    const panel = panelElement.querySelector<HTMLDivElement>(':scope > .panel-content') ?? panelElement;
+    const measure = () => {
+      const css = getComputedStyle(panel);
+      const chrome = [...panel.children].filter((child) => !child.classList.contains('body'));
+      const remaining = panel.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom)
+        - chrome.reduce((height, child) => height + child.getBoundingClientRect().height, 0);
+      wholeScroll = remaining < 72;
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel);
+    for (const child of panel.children) observer.observe(child);
+    measure();
+    return () => observer.disconnect();
+  });
 
   function pressEdge(event: PointerEvent, direction: ResizeDirection): void {
     if (event.button !== 0) return;
     event.preventDefault();
     resize(direction);
+  }
+
+  function pressDragSurface(event: PointerEvent): void {
+    if (!edit || event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    drag();
   }
   const STATUS_ICON = { ok: 'ui-check', info: null, warn: 'ui-warning', error: 'ui-warning' } as const;
 
@@ -67,8 +98,7 @@
   const status = $derived(view.status && STATED_BY_BODY[view.frame] === view.status.kind ? null : view.status);
 </script>
 
-<div class="panel-shadow">
-  <div class="panel cut" class:edit>
+{#snippet panelContents()}
     <Header {view} {send} {drag} />
     {#if status}
       {@const icon = STATUS_ICON[status.kind]}
@@ -108,6 +138,21 @@
         <Icon id="ui-click-through" size="12px" />
         <span><span class="key">{view.settings.hotkey}</span> returns to play mode (click-through)</span>
       </button>
+    {/if}
+{/snippet}
+
+<div class="panel-shadow" data-material={journal ? 'journal' : 'compact'}>
+  {#if journal}<MaterialFrame />{/if}
+  {#if edit && journal}
+    <!-- Fixed inside the top rail, outside the scroll well and resize bands. -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="frame-drag-region" aria-hidden="true" title="Drag to move Quest Tracker" onpointerdown={pressDragSurface}></div>
+  {/if}
+  <div bind:this={panelElement} class="panel cut" class:edit style:--well-image={journal ? `url("${stone}")` : null} data-scroll={wholeScroll ? 'whole' : 'body'} data-material={view.settings.theme === 'claude' ? 'claude' : journal ? 'journal' : 'compact'}>
+    {#if view.settings.theme !== 'claude'}
+      <div class="panel-content">{@render panelContents()}</div>
+    {:else}
+      {@render panelContents()}
     {/if}
   </div>
   {#if edit}

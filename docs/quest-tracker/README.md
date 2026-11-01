@@ -24,6 +24,22 @@ works" › "Hiding under game panels"); that is always on since 0.1.1.
 
 What it is:
 
+- **Two visual themes, the same tracker.** Exile is the default: carved
+  stone/gold surfaces throughout play, edit, Next up, All and Settings,
+  original raster stone/gold relief, compact Cinzel headings, cream serif quest names
+  and warm gold controls. Select
+  **Claude** to restore the previous visual theme. Use *Theme* in overlay
+  Settings (edit mode), or *Appearance → Theme* in the tray's ordinary Settings
+  window. The choice is saved and updates both windows; it changes no progress,
+  mode, open frame, opacity, scale or saved window bounds. Switching modes
+  changes interaction and controls, never the selected theme or its material. See the
+  [22-feature preservation map](design/approved-ui-preservation.md) and
+  [rendered review](design/review-approved-ui.md). In edit/settings mode, drag
+  the functional header to move it; a fixed top-rail grab area stays
+  available while the inset Settings content scrolls. Controls and resize edges
+  keep their own actions. Exile has no separate Campaign journal artwork/header;
+  its custom art frame is the only outer border, without the legacy CSS ring.
+
 - **One window, `Quest Tracker.exe`.** The build's name since 0.2.0; a
   release download is `quest-tracker.exe`, the same program. A Tauri app:
   the log tailer, parser, quest engine, view-model and per-character store are Rust crates; the UI is
@@ -329,6 +345,10 @@ shows the "no log found" state.
 
 Settings (edit mode, the settings frame) and their defaults:
 
+- **Theme** `exile`: Exile (new UI) or Claude (previous UI), in both Settings
+  surfaces, saved as `settings.json`'s `"theme"`. Missing/invalid stored values
+  use Exile without discarding other preferences. Invalid theme patches are
+  refused as a unit. Theme changes no game setting.
 - **Opacity** `0.9`, a slider from 0 to 1 in 0.05 steps. It is the panel
   background's opacity only: at 0 the background is gone, while text,
   icons, the panel's border and the edit-mode accent stay fully opaque,
@@ -393,11 +413,10 @@ in `settings.json`'s `"window"` object beside `"x"` and `"y"`, as
 `"width"` and `"height"` in whole logical pixels, so a DPI change keeps
 the panel's apparent size; it is applied at the next start. A resize in
 play mode is not kept. The smallest window is 320 by 240 logical pixels,
-whatever the zoom, at which the edit-mode header and the way back to
-play mode each still fit on one line at zoom 1; a saved size below it
-loads as that minimum. With no saved size, as for every 0.1.0 user, the
-window opens at 344 by 408 logical pixels (the panel's 320 by 384 plus
-the margin) times the starting zoom, never below the minimum, and that
+whatever the zoom; content and controls remain reachable by scrolling. A
+saved size below it loads as that minimum. With no saved size, the
+window opens at 364 by 384 logical pixels (340 by 360 paint plus the
+12px margin on each side) times the starting zoom, never below the minimum, and that
 size is not saved until you resize. Seen live (Live 14, 2026-10-28): the
 resize cursor at the left edge, the bottom edge and the bottom-left
 corner, the window resized from each, its size and place kept across a
@@ -2044,12 +2063,15 @@ Commands, UI to Rust: `get_view`, `set_mode`, `set_view_kind`,
 `select_character`, `pin_character`, `confirm_character`, `update_settings`,
 `open_source`. The Settings window has its own: it is sent
 `qt:app-settings` with an `AppSettingsView` (the running version, the
-`check_updates` setting, the update state, text and newer version, and the
-install's state, text and progress; `ep-update`'s type, serialised in
+`check_updates` setting, the update state, text and newer version, the theme, and the
+install's state, text and progress; Quest Tracker's local flat type, serialised in
 `fixtures/app-settings/`), and calls `get_app_settings`,
 `check_for_updates` (starts a check and answers at once),
 `install_update` (starts the install and answers at once; the only way one
-starts), `cancel_update` and `update_settings` (for `check_updates`). Field names in events are snake_case exactly as `serde`
+starts), `cancel_update` and `update_settings` (for `check_updates` or `theme`). The
+flat Settings snapshot is Quest-Tracker-local; the shared updater type stays
+unchanged. A theme patch emits both existing views without starting update work.
+Field names in events are snake_case exactly as `serde`
 writes them; command argument keys are camelCase on the JavaScript side
 (`questId`, `stepId`), Tauri's default. `src/ipc.ts` mirrors the Rust types,
 and `src/ipc.test.ts` holds every file in `fixtures/viewmodels/` against
@@ -2101,12 +2123,12 @@ allows WinHTTP names only in `ep-net`'s sources, and a network crate in a
 manifest or in the compiled graph fails it, so turning on a network
 feature (Tauri's HTTP client, Winsock) is a decision for the guard too.
 
-**The look.** The design is the owner's, made in Figma from
+**The look.** The original Claude design is the owner's, made in Figma from
 [`ui-design-brief.md`](ui-design-brief.md) and harvested once into `theme/`
 and [`design/`](design/). UI work reads those files, never Figma, and uses
 only the brief's icon ids, frame ids and token keys, plus the extras the
 harvest lists in [`design/harvest.md`](design/harvest.md). The picture to
-match is `design/frames/` and `design/component-spec.md`;
+match for Claude is `design/frames/` and `design/component-spec.md`;
 `design/reference/*.tsx` is reference only and never imported.
 
 The UI's CSS comes in three layers, loaded by `src/main.ts` in this order:
@@ -2116,8 +2138,8 @@ The UI's CSS comes in three layers, loaded by `src/main.ts` in this order:
   `theme/tokens.css`, or with a key missing from it, the UI renders from
   these; a missing icon SVG falls back to a text glyph (`src/theme.ts`).
 - `theme/tokens.css`: the harvested values and the `@font-face` rules for
-  the bundled Alegreya Sans faces. Generated from `theme/theme.json`; never
-  edited by hand.
+  the bundled Alegreya Sans faces. Paired manually with `theme/theme.json`;
+  there is no generator. Its values remain identical across all three apps.
 - `src/styled.css`: the shared rules every component uses: the cut-corner
   shape (`.cut`: a `clip-path` plus an `::after` ring for the border), the
   buttons, toggles, slider, dropdowns, keycaps, group labels and countdown
@@ -2139,9 +2161,24 @@ harvested, that every custom property the UI reads has a plain default and
 comes from the harvest (no token invented in code), and that fonts and
 assets load only from the bundle.
 
+Exile adds a separate, manually paired `theme/exile.json` / `theme/exile.css`,
+scoped to the root's received theme, and `src/approved.css` for its material,
+type, layout and control states. Original component/shared CSS stays intact for
+Claude. `theme.ts` switches derived shadows too. Cinzel and original raster material
+provenance are in [harvest](design/harvest.md); the concept PNG is never runtime
+art. The fixed material frame surrounds a separately scrolling inset content well,
+so lower rails do not float over text or controls. Exile removes the decorative
+Campaign journal/crest header and synthetic outer CSS ring/inset shadows; the
+functional header and fixed edit-mode drag rail remain. The custom art frame is
+the only outer border. New stores start at364×384 native pixels before existing first-start zoom
+(340×360 paint plus12px transparent margin each side). Saved bounds and the
+320×240 minimum are preserved; selecting a theme never resizes the window.
+
 To preview a frame in a browser, run `npm --prefix apps/quest-tracker run
 dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
-(`&scale=2` for the 2× zoom); see `src/preview.ts`.
+(`&scale=2` for the 2× zoom, `&theme=exile` or `&theme=claude` for the theme);
+the ordinary Settings preview accepts the same theme query. Commands log only;
+use a fake bridge or the local app to verify persistence. See `src/preview.ts`.
 
 **Cutting a release.** A release is the annotated tag
 `quest-tracker-v<version>` on the tip of `main`. The version is the one in
@@ -2615,6 +2652,20 @@ Revisit this feature when:
   game: record it under "Known limitations".
 
 ## Release notes
+
+### Unreleased
+
+- Removed Exile's oversized Campaign journal/crest header and duplicate outer
+  CSS border. The custom art frame, functional controls and edit drag rail remain.
+- Default Exile UI: consistent carved stone/gold across play and edit surfaces,
+  original decorative relief, local Cinzel titles and palette-matched controls.
+- Switching play/edit or opening Settings keeps the selected Exile/Claude
+  theme. Mode changes controls and click-through behavior, not materials.
+- Theme in overlay Settings and ordinary Settings Appearance selects Exile or
+  the previous Claude UI, persists, and updates both windows without changing
+  quest behavior, other preferences or saved bounds. All22 existing feature
+  groups remain; new-store native size is364×384, existing saved size wins.
+- No game-setting, native quest-list, detection or updater behavior change.
 
 ### 0.2.0
 

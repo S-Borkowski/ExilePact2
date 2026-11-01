@@ -10,6 +10,7 @@
   import { ANNOUNCED_KEEP, RowChanges, setRowChanges } from './rowchange';
   import Collapsed from './components/Collapsed.svelte';
   import Panel from './components/Panel.svelte';
+  import { applyPresentationTheme } from './theme';
 
   let { bridge }: { bridge: Bridge } = $props();
 
@@ -17,6 +18,7 @@
   let announced = $state<Array<{ id: number; text: string }>>([]);
   const changes = setRowChanges(new RowChanges());
   let stop: (() => void) | null = null;
+  $effect(() => { applyPresentationTheme(document.documentElement, view?.settings.theme ?? 'exile'); });
 
   const send: Send = (name, args) => {
     void bridge.command(name, args);
@@ -78,6 +80,7 @@
   class="overlay"
   data-frame={view?.frame ?? 'none'}
   data-mode={view?.mode ?? 'play'}
+  data-theme={view?.settings.theme ?? 'exile'}
   style:--panel-opacity={view?.settings.opacity ?? null}
   style:--page-zoom={pageZoom}
 >

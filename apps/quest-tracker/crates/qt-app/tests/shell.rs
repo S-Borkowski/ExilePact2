@@ -1344,7 +1344,7 @@ fn scale_changes_zoom_only() {
     });
     h.app.start();
     // Baseline: the first start sizes the window once (below).
-    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert_eq!(sizes(&h), vec!["size 364 384"]);
 
     // Target: a fixed scale zooms and never sizes.
     for scale in [json!(1.5), json!(0.75), json!(2.0)] {
@@ -1366,13 +1366,45 @@ fn scale_changes_zoom_only() {
     *h.window.monitor.lock().unwrap() = monitor_at(2160, 1.5);
     h.app.follow_monitor();
     assert_eq!(scales(&h).last().unwrap(), "scale 1.33");
-    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert_eq!(sizes(&h), vec!["size 364 384"]);
+    assert!(h.app.shutdown(Duration::from_secs(2)));
+}
+
+#[test]
+fn theme_choice_persists_without_changing_mode_frame_bounds_or_other_settings() {
+    let h = harness(Setup::default());
+    h.app.start();
+    h.app.set_mode(Mode::Edit).unwrap();
+    h.app.open_frame(Some(Frame::Settings)).unwrap();
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_resized(420.0, 500.0);
+    h.clock.fetch_add(5_000, Ordering::SeqCst);
+    h.app.window_moved(33, 44);
+    let before = h.app.get_view();
+    let calls = h.window.calls();
+    let after = h.app.update_settings(&json!({"theme":"claude"})).unwrap();
+    assert_eq!(serde_json::to_value(&after.settings).unwrap()["theme"], json!("claude"));
+    assert_eq!(after.mode, before.mode);
+    assert_eq!(after.frame, before.frame);
+    assert_eq!(after.settings.opacity, before.settings.opacity);
+    assert_eq!(after.settings.scale, before.settings.scale);
+    assert_eq!(after.acts, before.acts);
+    assert_eq!(h.window.calls(), calls);
+    assert!(h.app.update_settings(&json!({"theme":"invalid","opacity":0.1})).is_err());
+    assert_eq!(h.app.get_view(), after);
+    let h = h.rerun(Setup::default());
+    h.app.start();
+    assert_eq!(serde_json::to_value(h.app.get_view().settings).unwrap()["theme"], json!("claude"));
+    assert_eq!(sizes(&h), vec!["size 420 500"]);
+    assert_eq!(places(&h), vec![format!("place {:?}", Placement::At { x: 33, y: 44 })]);
+    h.app.update_settings(&json!({"theme":"exile"})).unwrap();
+    assert_eq!(sizes(&h), vec!["size 420 500"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 
 #[test]
 fn first_start_sizes_the_window_from_the_zoom() {
-    // No saved size, as for every 0.1.0 user: the panel's 320 x 384 plus the
+    // No saved size: the approved painted panel's 340 x 360 plus the
     // 12 px margin on each side, times the starting zoom, rounded; applied
     // after the zoom and before the window is placed at its default again,
     // so the right margin holds for the size it now has.
@@ -1384,16 +1416,16 @@ fn first_start_sizes_the_window_from_the_zoom() {
     let calls = h.window.calls();
     let docked = format!("place {:?}", Placement::Default);
     let scale = calls.iter().position(|c| c == "scale 1.33").unwrap();
-    let size = calls.iter().position(|c| c == "size 458 543").unwrap_or_else(|| panic!("{calls:?}"));
+    let size = calls.iter().position(|c| c == "size 484 511").unwrap_or_else(|| panic!("{calls:?}"));
     let last_place = calls.iter().rposition(|c| *c == docked).unwrap();
     assert!(scale < size && size < last_place, "{calls:?}");
-    assert_eq!(sizes(&h), vec!["size 458 543"]);
+    assert_eq!(sizes(&h), vec!["size 484 511"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 
     // A fixed scale: that zoom's size.
     let h = harness_in(store_with_settings(json!({ "scale": 2.0 })), Setup::default());
     h.app.start();
-    assert_eq!(sizes(&h), vec!["size 688 816"]);
+    assert_eq!(sizes(&h), vec!["size 728 768"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 
     // A saved position with no size (a 0.1.0 file): the default size, and
@@ -1403,7 +1435,7 @@ fn first_start_sizes_the_window_from_the_zoom() {
         Setup::default(),
     );
     h.app.start();
-    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert_eq!(sizes(&h), vec!["size 364 384"]);
     assert_eq!(places(&h), vec![format!("place {:?}", Placement::At { x: 10, y: 20 })]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 
@@ -1463,7 +1495,7 @@ fn start_forced_into_edit_mode_saves_no_size_of_its_own() {
     h.app.start();
     assert_eq!(h.views.last().mode, Mode::Edit);
     let applied = size_calls(&h);
-    assert_eq!(applied, vec![(458.0, 543.0)]);
+    assert_eq!(applied, vec![(484.0, 511.0)]);
     // Target: the echo, a duplicate of it, and the same size 1 px off in
     // each dimension (a round trip through physical pixels at a fractional
     // DPI) are the app's own sizing, not the player's.
@@ -1489,7 +1521,7 @@ fn start_forced_into_edit_mode_saves_no_size_of_its_own() {
 
     // So the next start, at another `auto` zoom, sizes from that zoom.
     h.app.start();
-    assert_eq!(sizes(&h), vec!["size 344 408"]);
+    assert_eq!(sizes(&h), vec!["size 364 384"]);
     assert!(h.app.shutdown(Duration::from_secs(2)));
 }
 

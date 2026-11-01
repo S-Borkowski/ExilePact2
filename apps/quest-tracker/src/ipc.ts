@@ -152,7 +152,11 @@ export interface QuestDetail {
   fetched: string;
 }
 
+export const THEMES = ['exile', 'claude'] as const;
+export type Theme = (typeof THEMES)[number];
+
 export interface Settings {
+  theme: Theme;
   /** The panel background's opacity, 0-1; text, icons, the border and the edit accent stay opaque. */
   opacity: number;
   scale: Scale;
@@ -312,6 +316,7 @@ const detail = record<QuestDetail>({
   fetched: str,
 });
 const settings = record<Settings>({
+  theme: oneOf(THEMES),
   opacity: num,
   scale,
   show_skipped: bool,

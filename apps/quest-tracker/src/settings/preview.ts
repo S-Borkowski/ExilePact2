@@ -68,7 +68,10 @@ export function previewSettingsBridge(search: string, root: HTMLElement = docume
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
       }
-      onView(await settingsPreviewFixture(query.install ? `install/${query.install}` : query.state));
+      const view = await settingsPreviewFixture(query.install ? `install/${query.install}` : query.state);
+      const theme = new URLSearchParams(search).get('theme');
+      if (theme === 'exile' || theme === 'claude') view.theme = theme;
+      onView(view);
       return () => {};
     },
     async command<C extends SettingsCommand>(name: C, args: SettingsCommandArgs[C]) {

@@ -26,7 +26,7 @@
   // footer's hotkey returns to play mode.
   import { onDestroy } from 'svelte';
   import type { Send } from '../bridge';
-  import { type Scale, type View, SCALE_MAX, SCALE_MIN, SCALE_STEP } from '../ipc';
+  import { type Scale, type Theme, type View, SCALE_MAX, SCALE_MIN, SCALE_STEP } from '../ipc';
   import { THUMB_PX, frameSender, pressValue, screenScale, travelValue } from '../slider';
   import Icon from './Icon.svelte';
 
@@ -142,6 +142,13 @@
   </div>
 
   {#if edit}
+    <label class="row theme-choice">
+      <span class="label">Theme</span>
+      <select class="select" value={s.theme ?? 'exile'} onchange={(event) => send('update_settings', { patch: { theme: event.currentTarget.value as Theme } })}>
+        <option value="exile">Exile</option>
+        <option value="claude">Claude</option>
+      </select>
+    </label>
     <label class="row">
       <span class="label">Background opacity</span>
       <input
@@ -261,6 +268,7 @@
     <p class="help">Empty: found automatically.</p>
   {:else}
     <dl class="values">
+      <div class="row"><dt>Theme</dt><dd>{s.theme === 'claude' ? 'Claude' : 'Exile'}</dd></div>
       <div class="row"><dt>Background opacity</dt><dd>{percent(s.opacity)}</dd></div>
       <div class="row"><dt>Scale</dt><dd>{scaleText(s.scale)}</dd></div>
       <div class="row"><dt>Show skipped quests</dt><dd>{s.show_skipped ? 'On' : 'Off'}</dd></div>

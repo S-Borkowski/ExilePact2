@@ -88,6 +88,8 @@ export function previewBridge(search: string, root: HTMLElement = document.docum
         root.style.setProperty('--page-zoom', query.scale);
       }
       const { view } = await previewFixture(query.frame, query.mode);
+      const theme = new URLSearchParams(search).get('theme');
+      if (theme === 'exile' || theme === 'claude') view.settings.theme = theme;
       onView(view);
       return () => {};
     },
