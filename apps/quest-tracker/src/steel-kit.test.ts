@@ -182,18 +182,25 @@ describe('the steel/masonry kit in the Exile theme', () => {
     }
   });
 
-  it('draws the neutral frame as the kit nine-slice: 224 per side, 48 px wide, 8 px out, no centre', async () => {
+  it('draws the neutral frame as the kit nine-slice: 224 per side, 48 px wide, flush outsets, no centre', async () => {
     const frame = await readText('./components/MaterialFrame.svelte');
     expect(frame).toMatch(/border-image-slice:\s*224;/);
     expect(frame).not.toMatch(/border-image-slice:[^;]*fill/);
     expect(frame).toMatch(/border-image-repeat:\s*stretch;/);
-    // A constant size on screen: divided by the zoom the scale setting applies, as the 12 px margin is.
+    // A constant size on screen: divided by the zoom the scale setting applies.
     expect(frame).toMatch(/--frame-zoom:\s*var\(--page-zoom, var\(--preview-scale, 1\)\);/);
     expect(frame).toMatch(/border-image-width:\s*calc\(48px \/ var\(--frame-zoom\)\);/);
-    expect(frame).toMatch(/border-image-outset:\s*calc\(8px \/ var\(--frame-zoom\)\);/);
-    // The ordinary Settings window has no transparent margin: the plaque sits inside it.
-    expect(frame).toMatch(/\.plaque\s*\{[^}]*border-image-outset:\s*0;/);
+    // Flush to the window (owner, 2026-11-01): top, right, bottom, left just
+    // under the PNG's own padding at 48 px (9 / 8.4 / 13.7 / 9 px), the same
+    // in the overlay and the ordinary Settings window.
+    expect(frame).toMatch(
+      /border-image-outset:\s*calc\(9px \/ var\(--frame-zoom\)\) calc\(8px \/ var\(--frame-zoom\)\) calc\(13\.5px \/ var\(--frame-zoom\)\) calc\(8\.5px \/ var\(--frame-zoom\)\);/,
+    );
+    expect(frame).not.toMatch(/plaque/);
     expect(frame).toMatch(/pointer-events:\s*none;/);
+    // Exile alone drops the overlay's transparent margin; the base rule keeps it for Claude.
+    const approved = await readText('./approved.css');
+    expect(approved).toMatch(/:root\[data-theme='exile'\] \.overlay:not\(\[data-frame='collapsed'\]\) \{ padding: 0; \}/);
 
     rendered = await renderApp(fakeBridge(fixtureView('panel-campaign', 'edit')));
     const art = rendered.root.querySelectorAll('.material-art');

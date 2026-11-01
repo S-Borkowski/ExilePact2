@@ -4,10 +4,11 @@
   // last `AppSettingsView` the bridge delivered; until the first arrives it
   // shows the title and the credit only.
   //
-  // Exile draws the steel/masonry kit's neutral frame inside the window over a
-  // masonry well (`approved.css`): the title and the credit sit between the
-  // frame's corner knots, and the sections scroll between them, inside the
-  // rails, so no line or control ever crosses the artwork.
+  // Exile draws the steel/masonry kit's neutral frame over a masonry well
+  // (`approved.css`), its art meeting the window's edge as the overlay's
+  // does: the title and the credit sit between the frame's corner knots, and
+  // the sections scroll between them, inside the rails, so no line or
+  // control ever crosses the artwork.
   import { onDestroy, onMount } from 'svelte';
   import type { SettingsBridge, SettingsSend } from './bridge';
   import { SECTIONS } from './sections';
@@ -68,7 +69,7 @@
 
 <div class="window" style:--well-image={view?.theme !== 'claude' ? `url("${masonry}")` : null} data-state={view?.update.state ?? 'none'} data-theme={view?.theme ?? 'exile'}>
   {#if view?.theme !== 'claude'}
-    <MaterialFrame plaque />
+    <MaterialFrame />
     <div class="window-content">{@render windowContents()}</div>
   {:else}
     {@render windowContents()}

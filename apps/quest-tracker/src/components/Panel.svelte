@@ -306,7 +306,9 @@
 
   /* Edit mode's resize handles: an 8 px band straddling each edge (half in
      the shadow margin, half over the border) and a 14 px square on each
-     corner, above the edges. Nothing is drawn: the cursor is the affordance. */
+     corner, above the edges. Nothing is drawn: the cursor is the affordance.
+     Exile has no margin, so `approved.css` puts them wholly inside the
+     window's edge instead. */
   .resize-edge {
     --band: 8px;
     --corner: 14px;

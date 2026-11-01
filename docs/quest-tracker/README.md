@@ -413,8 +413,11 @@ each of the panel's four edges and four corners is a resize handle, a
 band a few pixels wide straddling its border that shows the matching
 resize cursor and draws nothing, and a left-button press on it resizes
 the window from that edge or corner, as any Windows window. The panel
-fills the window, minus the 12 px transparent margin that holds its
-shadow, and its body scrolls. In play mode the window is not resizable
+fills the window and its body scrolls. In the Claude theme a 12 px
+transparent margin around it holds its shadow, and each handle straddles
+the panel's border; in the Exile theme the panel and its steel frame reach
+the window's edge, with no margin, and each handle lies just inside that
+edge. In play mode the window is not resizable
 and no handle is there, so the whole window stays click-through; the
 collapsed badge has none. A resize made in edit mode is kept like a move,
 in `settings.json`'s `"window"` object beside `"x"` and `"y"`, as
@@ -423,8 +426,9 @@ the panel's apparent size; it is applied at the next start. A resize in
 play mode is not kept. The smallest window is 320 by 240 logical pixels,
 whatever the zoom; content and controls remain reachable by scrolling. A
 saved size below it loads as that minimum. With no saved size, the
-window opens at 364 by 384 logical pixels (340 by 360 paint plus the
-12px margin on each side) times the starting zoom, never below the minimum, and that
+window opens at 364 by 384 logical pixels (in Claude, 340 by 360 paint
+plus the 12 px margin on each side; in Exile, all of it paint) times the
+starting zoom, never below the minimum, and that
 size is not saved until you resize. Seen live (Live 14, 2026-10-28): the
 resize cursor at the left edge, the bottom edge and the bottom-left
 corner, the window resized from each, its size and place kept across a
@@ -817,7 +821,7 @@ Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
 | `tauri` | The Tauri CLI. |
 | `start` | `tauri dev`: the real overlay against the dev server, rebuilt on change. |
 | `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/Quest Tracker.exe` and `quest-tracker-replay.exe`. |
-| `corner-safety` | `node scripts/corner-safety.mjs`: renders every Exile preview in the installed Microsoft Edge (headless, through `playwright-core`; no browser download) at 364×384 and 320×240 (Settings 420×328), scales 0.75, 1, 1.33 and 2 and text 200%, at the top, middle and end of each scroller, and fails when any text, mark or control covers a frame pixel, a box can never be fully seen, play has a control, edit's drag strip is covered or a focused control is clipped. A probe over a real frame knot must be detected on every run. `--self-check` runs the kit frame alone (no app); `--only <text>`, `--root <app dir>`, `--screenshots <dir>` and `--full` are described at the top of the script. Limitation: an edit-mode quest row whose wrapped text is taller than the reading well is checked line by line (each line and mark must fit), not as a whole. |
+| `corner-safety` | `node scripts/corner-safety.mjs`: renders every Exile preview in the installed Microsoft Edge (headless, through `playwright-core`; no browser download) at 364×384 and 320×240 (Settings 420×328), scales 0.75, 1, 1.33 and 2 and text 200%, at the top, middle and end of each scroller, and fails when any text, mark or control covers a frame pixel, a box can never be fully seen, play has a control, edit's drag strip is covered or a focused control is clipped. It also checks that the frame is flush: its art within 2 px of every window edge, no art pixel cut off by the window, and in edit each of the eight resize handles hit 2 px inside its edge or corner (the summary line counts these cases). A probe over a real frame knot must be detected on every run. `--self-check` runs the kit frame alone (no app), including a 12 px-margin frame that must be reported not flush and a flush one that must pass; `--only <text>`, `--root <app dir>`, `--screenshots <dir>` and `--full` are described at the top of the script. Limitation: an edit-mode quest row whose wrapped text is taller than the reading well is checked line by line (each line and mark must fit), not as a whole. |
 
 **Browser preview.** Outside Tauri, `npm --prefix apps/quest-tracker run dev`
 serves the UI over one of the serialised views in `fixtures/viewmodels/`,
@@ -2180,8 +2184,9 @@ art. The fixed material frame surrounds a separately scrolling inset content wel
 so lower rails do not float over text or controls. Exile removes the decorative
 Campaign journal/crest header and synthetic outer CSS ring/inset shadows; the
 functional header and fixed edit-mode drag rail remain. The custom art frame is
-the only outer border. New stores start at364×384 native pixels before existing first-start zoom
-(340×360 paint plus12px transparent margin each side). Saved bounds and the
+the only outer border. New stores start at364×384 native pixels before existing first-start zoom;
+in Exile the panel paints the whole window, its frame flush with the window edge
+(Claude keeps340×360 paint inside a 12 px transparent margin). Saved bounds and the
 320×240 minimum are preserved; selecting a theme never resizes the window.
 
 To preview a frame in a browser, run `npm --prefix apps/quest-tracker run
@@ -2666,8 +2671,9 @@ Revisit this feature when:
 ### Unreleased
 
 - The Exile theme now uses the finished steel/masonry kit: a neutral steel
-  nine-slice frame (48 px corners, 8 px outset, the same size on screen at
-  every scale) around a charcoal masonry well, a neutral grey palette with
+  nine-slice frame (48 px corners, the same size on screen at every scale)
+  that reaches the window's edge in the overlay and the Settings window,
+  with no transparent margin, around a charcoal masonry well, a neutral grey palette with
   gold kept for the title bar, quest titles and worth headings, and the kit's
   six diamond status marks (in progress, available, locked, done, skipped,
   unknown) in rows and quest detail. Buttons, toggles, selects, sliders,
@@ -2679,7 +2685,8 @@ Revisit this feature when:
   no text, mark or control slides under the frame's corners at any scroll
   position. When the window is small, the scale large or the text enlarged,
   the whole content scrolls instead, in a well that stays clear of the knots.
-  The edit drag strip stays fixed and reachable.
+  The edit drag strip stays fixed and reachable, and the eight resize
+  handles lie along the window's outer edge.
 - Character/class/level, worth headings and reward labels remain visible in
   play; the footer shows the configured hotkey.
 - Switching play/edit or opening Settings keeps the selected Exile/Claude

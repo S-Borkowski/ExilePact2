@@ -244,13 +244,130 @@ export function findOverlaps(mask, boxes) {
 }
 
 /**
+ * The bounding box of a mask's art pixels, right and bottom exclusive; null
+ * when it has none.
+ *
+ * @param {Mask} mask
+ * @returns {Rect | null}
+ */
+export function artBounds(mask) {
+  let left = mask.width;
+  let top = mask.height;
+  let right = 0;
+  let bottom = 0;
+  for (let y = 0; y < mask.height; y++) {
+    const row = y * mask.width;
+    for (let x = 0; x < mask.width; x++) {
+      if (!mask.art[row + x]) continue;
+      if (x < left) left = x;
+      if (x + 1 > right) right = x + 1;
+      if (y < top) top = y;
+      bottom = y + 1;
+    }
+  }
+  return right > left ? { left, top, right, bottom } : null;
+}
+
+/**
+ * An image's own transparent padding: how many source px lie between each
+ * of its edges and its art (alpha >= 64).
+ *
+ * @param {Mask} mask
+ * @returns {{ left: number, top: number, right: number, bottom: number }}
+ */
+export function artPadding(mask) {
+  const b = artBounds(mask);
+  if (!b) throw new Error('the image has no art');
+  return { left: b.left, top: b.top, right: mask.width - b.right, bottom: mask.height - b.bottom };
+}
+
+/** How near (css px) the rendered art must come to each window edge to count as flush. */
+export const FLUSH_TOLERANCE = 2;
+
+const SIDES = /** @type {const} */ (['left', 'top', 'right', 'bottom']);
+/** @param {number} n */
+const round1 = (n) => Math.round(n * 10) / 10;
+
+/**
+ * The flush check's first half, on the rendered art alone: each window edge
+ * the art stays more than `tolerance` px away from. `mask` is a screenshot
+ * of the whole viewport, so its size is the window's.
+ *
+ * @param {Mask} mask
+ * @param {number} [tolerance]
+ * @returns {string[]}
+ */
+export function flushGaps(mask, tolerance = FLUSH_TOLERANCE) {
+  const b = artBounds(mask);
+  if (!b) return ['no art rendered'];
+  const gaps = { left: b.left, top: b.top, right: mask.width - b.right, bottom: mask.height - b.bottom };
+  return SIDES.filter((s) => gaps[s] > tolerance).map((s) => `${s} art ${round1(gaps[s])}px from the window edge`);
+}
+
+/**
+ * @typedef {{ left: number, top: number, right: number, bottom: number }} Sides
+ * @typedef {{ rect: Rect, outset: Sides, width: Sides, slice: Sides }} DrawnFrame
+ *   A nine-slice frame as the page draws it, in viewport px: the element's
+ *   box, its border-image outset and width per side, and its slice per side
+ *   in source px.
+ */
+
+/**
+ * The flush check's second half: each side whose art (alpha >= 64) the
+ * window cuts off. Only the image's own transparent padding may fall
+ * outside the window. Computed from the frame's geometry and the source
+ * image's padding, since art outside the window is not in any screenshot.
+ *
+ * @param {DrawnFrame} frame
+ * @param {Sides} padding  source px, from `artPadding`
+ * @param {Rect} viewport
+ * @param {number} [tolerance]
+ * @returns {string[]}
+ */
+export function clippedArt(frame, padding, viewport, tolerance = 0.5) {
+  /** @param {keyof Sides} s */
+  const scale = (s) => (frame.slice[s] > 0 ? frame.width[s] / frame.slice[s] : 0);
+  const art = {
+    left: frame.rect.left - frame.outset.left + padding.left * scale('left'),
+    top: frame.rect.top - frame.outset.top + padding.top * scale('top'),
+    right: frame.rect.right + frame.outset.right - padding.right * scale('right'),
+    bottom: frame.rect.bottom + frame.outset.bottom - padding.bottom * scale('bottom'),
+  };
+  const cut = {
+    left: viewport.left - art.left,
+    top: viewport.top - art.top,
+    right: art.right - viewport.right,
+    bottom: art.bottom - viewport.bottom,
+  };
+  return SIDES.filter((s) => cut[s] > tolerance).map((s) => `${s} art cut ${round1(cut[s])}px by the window`);
+}
+
+/**
+ * Every reason the frame is not flush with the window: art short of an
+ * edge, or art cut off by one.
+ *
+ * @param {Mask} mask
+ * @param {DrawnFrame | null} frame
+ * @param {Sides} padding
+ * @returns {string[]}
+ */
+export function flushReasons(mask, frame, padding) {
+  const reasons = flushGaps(mask);
+  if (!frame) reasons.push('no .material-art to measure');
+  else reasons.push(...clippedArt(frame, padding, { left: 0, top: 0, right: mask.width, bottom: mask.height }));
+  return reasons;
+}
+
+/**
  * The runner's last line. `control` is whether the knot probe was reported
- * at every scale the run covered.
+ * at every scale the run covered; `flushed` how many cases the flush check
+ * ran on.
  *
  * @param {number} cases
  * @param {number} failures
  * @param {boolean} control
+ * @param {number} flushed
  */
-export function summaryLine(cases, failures, control) {
-  return `corner-safety: ${cases} cases, ${failures} failures, ${control ? 'control detected' : 'control not detected'}`;
+export function summaryLine(cases, failures, control, flushed) {
+  return `corner-safety: ${cases} cases, ${failures} failures, ${control ? 'control detected' : 'control not detected'}, flush checked on ${flushed} cases`;
 }

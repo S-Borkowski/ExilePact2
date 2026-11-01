@@ -24,11 +24,21 @@
 // the scroller, and when focused only its ring's left and right edges must be
 // unclipped.
 //
+// The flush check (every case): the frame meets the window edge. The
+// rendered art (alpha >= 64) comes within 2 px of each viewport edge, and no
+// art pixel is cut off by the window, computed from `.material-art`'s box,
+// its border-image outset and width per side, and the kit PNG's own
+// transparent padding (decoded here). In edit, each of the eight resize
+// handles is what the page hits 2 px inside the middle of its window edge or
+// inside its corner.
+//
 // A control runs at every scale: a probe placed over the bottom-left knot of
 // the rendered frame must be reported, or the run fails. `--self-check` runs
-// only a synthetic page that draws the kit frame PNG as the 48/8 nine-slice,
-// with one probe on a knot and one in the centre: it needs no app, so it
-// shows the instrument works while the app is being changed.
+// only synthetic pages that draw the kit frame PNG as the 48 px nine-slice:
+// one with a probe on a knot and one in the centre, one 12 px in from the
+// window that must be reported not flush, and one flush that must pass. It
+// needs no app, so it shows the instrument works while the app is being
+// changed.
 //
 // Flags:
 //   --root <app dir>     serve another checkout's app (the baseline)
@@ -38,8 +48,9 @@
 //   --full               also text 200% at every scale (not required to pass)
 //
 // Output: one line per case and position, `ok` or `FAIL <reasons>`, then
-// `corner-safety: <n> cases, <f> failures, control detected`. Exit 0 only
-// when nothing failed, every declared case ran and the control was detected.
+// `corner-safety: <n> cases, <f> failures, control detected, flush checked
+// on <k> cases`. Exit 0 only when nothing failed, every declared case ran
+// and the control was detected.
 
 import fs from 'node:fs';
 import net from 'node:net';
@@ -48,7 +59,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import zlib from 'node:zlib';
 import { chromium } from 'playwright-core';
-import { alphaMask, artPixels, clipRect, decodePng, findOverlaps, grow, summaryLine } from './corner-safety-core.mjs';
+import { alphaMask, artPadding, artPixels, clipRect, decodePng, findOverlaps, flushReasons, grow, summaryLine } from './corner-safety-core.mjs';
 
 const APP = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const KIT_FRAME = path.resolve(APP, '../../docs/quest-tracker/design/steel-masonry-kit/assets/frame-neutral-steel.png');
@@ -586,6 +597,61 @@ function focusedInPage() {
   };
 }
 
+/**
+ * The frame as the page draws it, for the flush check: `.material-art`'s
+ * box and its border-image outset, width and slice per side. Computed
+ * lengths are unzoomed CSS px, so each is scaled by the element's own zoom
+ * into viewport px; a bare number is a multiple of the (zero) border width.
+ */
+function frameInPage() {
+  const art = document.querySelector('.material-art');
+  if (!art) return null;
+  const r = art.getBoundingClientRect();
+  const cs = getComputedStyle(art);
+  const zoom = art.offsetWidth > 0 ? r.width / art.offsetWidth : (art.currentCSSZoom || 1);
+  const border = { top: cs.borderTopWidth, right: cs.borderRightWidth, bottom: cs.borderBottomWidth, left: cs.borderLeftWidth };
+  // A one-to-four value list, as CSS expands it to top, right, bottom, left.
+  const sides = (value) => {
+    const v = value.replace(/\bfill\b/, '').trim().split(/\s+/);
+    const [top, right = top, bottom = top, left = right] = v;
+    return { top, right, bottom, left };
+  };
+  const lengths = (value) => {
+    const s = sides(value);
+    const out = {};
+    for (const k of ['top', 'right', 'bottom', 'left']) {
+      const v = s[k];
+      out[k] = (v.endsWith('px') ? parseFloat(v) : parseFloat(v) * parseFloat(border[k])) * zoom;
+    }
+    return out;
+  };
+  const slice = sides(cs.borderImageSlice);
+  return {
+    rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
+    outset: lengths(cs.borderImageOutset),
+    width: lengths(cs.borderImageWidth),
+    slice: { top: parseFloat(slice.top), right: parseFloat(slice.right), bottom: parseFloat(slice.bottom), left: parseFloat(slice.left) },
+  };
+}
+
+/** Edit's resize handles on the window's outer edge: each one the page hits 2 px inside its edge's middle or its corner. */
+function resizeHitsInPage() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const points = [
+    ['North', w / 2, 2], ['South', w / 2, h - 2], ['West', 2, h / 2], ['East', w - 2, h / 2],
+    ['NorthWest', 2, 2], ['NorthEast', w - 2, 2], ['SouthWest', 2, h - 2], ['SouthEast', w - 2, h - 2],
+  ];
+  const misses = [];
+  for (const [direction, x, y] of points) {
+    const hit = document.elementFromPoint(x, y);
+    if (hit?.closest(`.resize-edge[data-resize="${direction}"]`)) continue;
+    const what = hit ? `${hit.tagName.toLowerCase()}${[...hit.classList].slice(0, 2).map((c) => `.${c}`).join('')}${hit.getAttribute('data-resize') ? `[${hit.getAttribute('data-resize')}]` : ''}` : 'nothing';
+    misses.push(`${direction} handle not hit at ${Math.round(x)},${Math.round(y)} (${what})`);
+  }
+  return misses;
+}
+
 // ------------------------------------------------------------- node side
 
 const inflate = (data) => new Uint8Array(zlib.inflateSync(data));
@@ -686,8 +752,11 @@ async function focusReasons(page, topMask, topArt) {
   return { reasons, count };
 }
 
-/** One case: every scroll position, the fixed-chrome rule, focus, and the control when asked. */
-async function runCase(page, base, c, withControl, print) {
+/**
+ * One case: every scroll position, the fixed-chrome rule, the flush check,
+ * focus, and the control when asked. `padding` is the frame PNG's own.
+ */
+async function runCase(page, base, c, withControl, padding, print) {
   await page.setViewportSize({ width: c.width, height: c.height });
   await page.goto(base + c.url, { waitUntil: 'load' });
   const ready = c.kind === 'overlay' ? '.overlay[data-frame]:not([data-frame="none"]) .material-art' : '.window[data-state]:not([data-state="none"]) .material-art';
@@ -734,12 +803,19 @@ async function runCase(page, base, c, withControl, print) {
     print(`${c.name} @fixed-chrome: ${reasons.length ? `FAIL ${reasons.join('; ')}` : 'ok'}`);
     if (reasons.length) failures++;
   }
+  // Flush: the frame does not move with the scroll, so the top position's mask stands for all.
+  {
+    const reasons = flushReasons(topMask, await page.evaluate(frameInPage), padding);
+    if (c.kind === 'overlay' && measures[0].mode === 'edit') reasons.push(...(await page.evaluate(resizeHitsInPage)));
+    print(`${c.name} @flush: ${reasons.length ? `FAIL ${named(reasons)}` : 'ok'}`);
+    if (reasons.length) failures++;
+  }
   if (c.kind === 'settings' || measures[0].mode === 'edit') {
     const { reasons, count } = await focusReasons(page, topMask, topArt);
     print(`${c.name} @focus: ${reasons.length ? `FAIL ${named(reasons)}` : `ok (${count} stops)`}`);
     if (reasons.length) failures++;
   }
-  return { failures, control };
+  return { failures, control, flushed: 1 };
 }
 
 // ---------------------------------------------------------------- self-check
@@ -761,6 +837,29 @@ function selfCheckPage(scale) {
     <div class="panel"><div class="centre"></div><div class="knot"></div></div></div></body></html>`;
 }
 
+/**
+ * The flush self-check's pages: the kit frame as the 48 px nine-slice over
+ * the whole window, at a constant on-screen size. `margin` 12 is the old
+ * Exile geometry (box 12 px in, 8 px out), which must be reported not
+ * flush; `margin` 0 puts the box on the window edge with each side's outset
+ * just under the PNG's own padding at 48 px, which must pass.
+ */
+function flushPage(scale, margin, padding) {
+  const data = fs.readFileSync(KIT_FRAME).toString('base64');
+  const z = Number(scale);
+  const under = (pad) => Math.floor((pad * 48) / 224 * 4) / 4;
+  const outset = margin
+    ? [8, 8, 8, 8]
+    : [under(padding.top), under(padding.right), under(padding.bottom), under(padding.left)];
+  return `<!doctype html><html style="zoom:${scale}"><head><style>
+    html, body { margin: 0; background: transparent; }
+    .panel-shadow { position: fixed; inset: ${margin / z}px; }
+    .material-art { position: absolute; inset: 0; pointer-events: none; border: 0 solid transparent;
+      border-image-source: url("data:image/png;base64,${data}"); border-image-slice: 224;
+      border-image-width: ${48 / z}px; border-image-outset: ${outset.map((o) => `${o / z}px`).join(' ')}; border-image-repeat: stretch; }
+  </style></head><body><div class="panel-shadow"><div class="material-art"></div></div></body></html>`;
+}
+
 /** The self-check's reading of one page: the knot box seen, the centre box clear. */
 function selfCheckReasons(m, mask) {
   const reasons = [];
@@ -773,10 +872,27 @@ function selfCheckReasons(m, mask) {
   return { reasons, knot: hits.find((h) => h.label === 'div.knot')?.pixels ?? 0 };
 }
 
-async function selfCheck(page, print) {
+async function selfCheck(page, padding, print) {
   let failures = 0;
   let control = true;
+  let flushed = 0;
   for (const scale of SCALES) {
+    // The flush check: the 12 px margin must be reported, the flush frame must pass.
+    await page.setViewportSize({ width: 364, height: 384 });
+    const flush = [];
+    for (const margin of [12, 0]) {
+      await page.setContent(flushPage(scale, margin, padding));
+      await settle(page);
+      flush.push(flushReasons(await takeMask(page), await page.evaluate(frameInPage), padding));
+    }
+    const [inset, edge] = flush;
+    const flushProblems = [];
+    if (!inset.length) flushProblems.push('the 12px margin was reported flush');
+    if (edge.length) flushProblems.push(`the flush frame was reported: ${named(edge)}`);
+    print(`self-check s${scale} @flush: ${flushProblems.length ? `FAIL ${flushProblems.join('; ')}` : `ok (12px margin not flush: ${named(inset)}; flush frame passes)`}`);
+    if (flushProblems.length) failures++;
+    flushed++;
+
     await page.setViewportSize({ width: 364, height: 384 });
     await page.setContent(selfCheckPage(scale));
     await settle(page);
@@ -794,7 +910,7 @@ async function selfCheck(page, print) {
     print(`self-check s${scale} @boxes: ${reasons.length ? `FAIL ${reasons.join('; ')}` : `ok (knot box ${pixels} art px, centre box 0)`}`);
     if (reasons.length) failures++;
   }
-  return { cases: SCALES.length, failures, control };
+  return { cases: SCALES.length, failures, control, flushed };
 }
 
 // --------------------------------------------------------------------- main
@@ -834,9 +950,11 @@ async function main() {
   try {
     const context = await browser.newContext({ deviceScaleFactor: 1, viewport: { width: 364, height: 384 } });
     const page = await context.newPage();
+    // The kit frame's own transparent padding, which alone may leave the window.
+    const padding = artPadding(alphaMask(decodePng(new Uint8Array(fs.readFileSync(KIT_FRAME)), inflate)));
     if (args.selfCheck) {
-      const r = await selfCheck(page, print);
-      console.log(summaryLine(r.cases, r.failures, r.control));
+      const r = await selfCheck(page, padding, print);
+      console.log(summaryLine(r.cases, r.failures, r.control, r.flushed));
       return r.failures === 0 && r.control ? 0 : 1;
     }
 
@@ -870,12 +988,14 @@ async function main() {
     }
     let failures = 0;
     let ran = 0;
+    let flushed = 0;
     const controlled = new Map();
     for (const c of declared) {
       const withControl = !controlled.has(c.scale);
       try {
-        const r = await runCase(page, base, c, withControl, print);
+        const r = await runCase(page, base, c, withControl, padding, print);
         failures += r.failures;
+        flushed += r.flushed;
         if (withControl) controlled.set(c.scale, r.control === true);
         ran++;
       } catch (error) {
@@ -899,7 +1019,7 @@ async function main() {
       console.log(`corner-safety: ${SCREENSHOTS.length} screenshots in ${args.screenshots}`);
     }
 
-    console.log(summaryLine(declared.length, failures, control));
+    console.log(summaryLine(declared.length, failures, control, flushed));
     return failures === 0 && ran === declared.length && control ? 0 : 1;
   } finally {
     await browser.close();

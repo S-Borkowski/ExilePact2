@@ -8,12 +8,23 @@
  */
 
 /*
- * Corner safety. The frame is 48 px corners, 8 px out into the overlay's
- * margin, at one size on screen whatever the scale; so are these clearances,
- * divided by the same zoom. Measured on the kit PNG at that size, from the
- * panel's edge: the rails reach 13 px in, the top rail 11 px down and the
- * bottom one 16 px up; the corner knots reach 26 px across, 31 px down from
- * the top and 30 px up from the bottom. Nothing that paints may cross them.
+ * Flush to the window (owner, 2026-11-01): in Exile the panel fills the
+ * whole window, with no transparent margin, so the frame's art meets every
+ * window edge (MaterialFrame's outsets carry only the PNG's own transparent
+ * padding past it). Claude keeps the overlay's margin and shadow, and the
+ * collapsed badge keeps its margin in both themes.
+ */
+:root[data-theme='exile'] .overlay:not([data-frame='collapsed']) { padding: 0; }
+
+/*
+ * Corner safety. The frame is 48 px corners at one size on screen whatever
+ * the scale; so are these clearances, divided by the same zoom. They were
+ * measured on the kit PNG at that size with an 8 px outset, from the panel's
+ * edge: the rails reach 13 px in, the top rail 11 px down and the bottom one
+ * 16 px up; the corner knots reach 26 px across, 31 px down from the top and
+ * 30 px up from the bottom. The flush outsets only move the art outward
+ * (about 1 px, and 5.5 px at the bottom), so they still hold; the runner
+ * re-measures them. Nothing that paints may cross them.
  *  - the side inset (20) clears the rails and keeps the kit's reading inset;
  *  - the title bar and the footer sit between the knots (30 across), the bar
  *    from 14 down, the footer up to 21 from the bottom, each with room for a
@@ -61,9 +72,18 @@
 }
 :root[data-theme='exile'] .panel[data-scroll='whole'] .body { overflow: visible; }
 :root[data-theme='exile'] .panel[data-scroll='whole'] .status-line { max-height: none; overflow: visible; }
-/* Edit's fixed drag strip: in the top rail, outside every scroller and the corner resize handles. */
+/* Edit's eight resize handles lie wholly inside the window, on its outer
+   edge, at one size on screen: an 8 px band along each edge and a 14 px
+   square in each corner. */
+:root[data-theme='exile'] .resize-edge { --band: calc(8px / var(--frame-zoom)); --corner: calc(14px / var(--frame-zoom)); }
+:root[data-theme='exile'] .resize-edge:is([data-resize='North'], [data-resize='NorthWest'], [data-resize='NorthEast']) { top: 0; }
+:root[data-theme='exile'] .resize-edge:is([data-resize='South'], [data-resize='SouthWest'], [data-resize='SouthEast']) { bottom: 0; }
+:root[data-theme='exile'] .resize-edge:is([data-resize='West'], [data-resize='NorthWest'], [data-resize='SouthWest']) { left: 0; }
+:root[data-theme='exile'] .resize-edge:is([data-resize='East'], [data-resize='NorthEast'], [data-resize='SouthEast']) { right: 0; }
+/* Edit's fixed drag strip: in the top rail just below the north resize band,
+   outside every scroller and the corner resize handles. */
 :root[data-theme='exile'] .frame-drag-region {
-  position: absolute; z-index: 2; top: 0; right: calc(45px / var(--frame-zoom)); left: calc(45px / var(--frame-zoom));
+  position: absolute; z-index: 2; top: calc(8px / var(--frame-zoom)); right: calc(45px / var(--frame-zoom)); left: calc(45px / var(--frame-zoom));
   height: calc(12px / var(--frame-zoom)); cursor: move;
 }
 
@@ -252,11 +272,10 @@
 :root[data-theme='exile'] .badge { --cut: 0px; background: color-mix(in srgb, #141D23 calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent); color: var(--color-text-primary); }
 
 /*
- * The ordinary Settings window: the same frame, wholly inside the window
- * (it has no transparent margin), over the same masonry. Its corners sit
- * 8 px further in than the overlay's, so are its clearances: rails 21 px,
- * top rail 19, bottom rail 24, knots 34 across, 39 down and 38 up. The title
- * and the credit sit between the knots; the sections scroll between them.
+ * The ordinary Settings window: the same frame, flush with the window edge
+ * as the overlay's is, over the same masonry, so it keeps the overlay's
+ * clearances (above). The title and the credit sit between the knots; the
+ * sections scroll between them.
  */
 :root[data-theme='exile'] .window[data-theme='exile'] {
   --frame-zoom: var(--preview-scale, 1);
@@ -271,11 +290,11 @@
 }
 :root[data-theme='exile'] .window-content {
   display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;
-  padding: calc(21px / var(--frame-zoom)) calc(26px / var(--frame-zoom)) calc(26px / var(--frame-zoom));
+  padding: calc(14px / var(--frame-zoom)) calc(20px / var(--frame-zoom)) calc(21px / var(--frame-zoom));
 }
 :root[data-theme='exile'] .window-content > main { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
 :root[data-theme='exile'] .window[data-theme='exile'] .title {
-  flex: none; min-height: calc(22px / var(--frame-zoom)); margin: 0 calc(12px / var(--frame-zoom)); padding: 0;
+  flex: none; min-height: calc(22px / var(--frame-zoom)); margin: 0 calc(10px / var(--frame-zoom)); padding: 0;
   color: var(--color-worth-gold); font-family: var(--font-family-caps); font-size: 17px; font-weight: 600; line-height: 22px;
 }
 :root[data-theme='exile'] .window-scroll {
@@ -287,7 +306,7 @@
 :root[data-theme='exile'] .window .section + .section > .group-label { border-top: 1px solid var(--color-panel-divider); }
 :root[data-theme='exile'] .window .group-label { padding: 10px 0 4px; color: var(--color-worth-gold); font-family: var(--font-family-caps); font-size: 13px; font-weight: 600; }
 :root[data-theme='exile'] .window .credit {
-  flex: none; min-height: calc(18px / var(--frame-zoom)); margin: 0 calc(12px / var(--frame-zoom)); padding: 4px 0 0; border: 0;
+  flex: none; min-height: calc(18px / var(--frame-zoom)); margin: 0 calc(10px / var(--frame-zoom)); padding: 4px 0 0; border: 0;
   color: var(--color-text-secondary); font-size: 11px; line-height: 14px; text-align: center;
 }
 :root[data-theme='exile'] .window .bar { height: 8px; box-sizing: border-box; background: linear-gradient(to right, var(--color-panel-border) var(--fill), #1E2931 var(--fill)); box-shadow: inset 0 0 0 1px var(--color-panel-divider); }

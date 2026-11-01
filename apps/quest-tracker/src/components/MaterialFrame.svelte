@@ -1,16 +1,18 @@
 <script lang="ts">
   // The Exile frame: the steel/masonry kit's neutral steel PNG, unchanged, as
-  // a nine-slice border (224 source px per side, 48 px corners, 8 px out into
-  // the overlay's transparent margin, the centre left empty). Decorative only:
-  // hidden from assistive technology, never a target. It keeps one size on
-  // screen at every scale, as the 12 px margin does, so only the content zooms
-  // (owner, 2026-11-01). The ordinary Settings window has no transparent
-  // margin: there (`plaque`) the frame sits wholly inside the window.
+  // a nine-slice border (224 source px per side, 48 px corners, the centre
+  // left empty). Decorative only: hidden from assistive technology, never a
+  // target. Its visible art meets the window's edge (owner, 2026-11-01): the
+  // overlay and the ordinary Settings window both draw it over the whole
+  // window, and each side's outset carries the PNG's own transparent padding
+  // past the edge. That padding is 42 / 44 / 39 / 64 source px (left, top,
+  // right, bottom), 9 / 9.4 / 8.4 / 13.7 px at 48 px; each outset stays a
+  // little under it, so no art pixel is cut. It keeps one size on screen at
+  // every scale, so only the content zooms (owner, 2026-11-01).
   import frame from '../../theme/materials/raster/frame-neutral-steel.png';
-  let { plaque = false }: { plaque?: boolean } = $props();
 </script>
 
-<div class="material-art" class:plaque aria-hidden="true" style:--frame-image={`url("${frame}")`}></div>
+<div class="material-art" aria-hidden="true" style:--frame-image={`url("${frame}")`}></div>
 
 <style>
   .material-art {
@@ -24,7 +26,7 @@
     border-image-slice: 224;
     border-image-width: calc(48px / var(--frame-zoom));
     border-image-repeat: stretch;
-    border-image-outset: calc(8px / var(--frame-zoom));
+    /* Top, right, bottom, left: just under the PNG's padding at 48 px. */
+    border-image-outset: calc(9px / var(--frame-zoom)) calc(8px / var(--frame-zoom)) calc(13.5px / var(--frame-zoom)) calc(8.5px / var(--frame-zoom));
   }
-  .plaque { border-image-outset: 0; }
 </style>

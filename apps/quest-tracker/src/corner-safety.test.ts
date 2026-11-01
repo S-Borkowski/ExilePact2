@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   ART_ALPHA,
+  FLUSH_TOLERANCE,
   alphaMask,
+  artPadding,
   artPixels,
   clipRect,
+  clippedArt,
   containsRect,
   decodePng,
   findOverlaps,
+  flushGaps,
+  flushReasons,
   grow,
   summaryLine,
 } from '../scripts/corner-safety-core.mjs';
@@ -96,7 +101,76 @@ describe('the corner-safety core', () => {
     expect(grow(box, 2)).toEqual({ left: 8, top: 8, right: 32, bottom: 32 });
     expect(containsRect({ left: 0, top: 0, right: 30, bottom: 30 }, box)).toBe(true);
     expect(containsRect({ left: 0, top: 0, right: 29, bottom: 30 }, box)).toBe(false);
-    expect(summaryLine(3, 0, true)).toBe('corner-safety: 3 cases, 0 failures, control detected');
-    expect(summaryLine(3, 1, false)).toBe('corner-safety: 3 cases, 1 failures, control not detected');
+    expect(summaryLine(3, 0, true, 3)).toBe('corner-safety: 3 cases, 0 failures, control detected, flush checked on 3 cases');
+    expect(summaryLine(3, 1, false, 0)).toBe('corner-safety: 3 cases, 1 failures, control not detected, flush checked on 0 cases');
+  });
+});
+
+// The flush check (owner, 2026-11-01): in Exile the frame's visible art meets
+// every window edge, and no art pixel is cut off by the window; only the
+// PNG's own transparent padding may fall outside it.
+describe('the flush check', () => {
+  /** A window-sized mask with art in a 6 px band just inside `inset` px from each edge. */
+  function ring(width: number, height: number, inset: number) {
+    const art = new Uint8Array(width * height);
+    for (let y = inset; y < height - inset; y++) {
+      for (let x = inset; x < width - inset; x++) {
+        const band = x < inset + 6 || x >= width - inset - 6 || y < inset + 6 || y >= height - inset - 6;
+        art[y * width + x] = band ? 1 : 0;
+      }
+    }
+    return { width, height, art };
+  }
+
+  /** The kit frame drawn as the 48 px nine-slice on `rect` with these outsets (top, right, bottom, left). */
+  function drawn(rect: { left: number; top: number; right: number; bottom: number }, [top, right, bottom, left]: number[]) {
+    const all = (n: number) => ({ left: n, top: n, right: n, bottom: n });
+    return { rect, outset: { left, top, right, bottom }, width: all(48), slice: all(224) };
+  }
+
+  it('corner_safety_reads_the_kit_frame_padding', async () => {
+    // alpha >= 64 starts 42 / 44 source px in from the left and top and ends
+    // 39 / 64 px short of the right and bottom (measured with PIL at planning).
+    expect(artPadding(alphaMask(await kitFrame()))).toEqual({ left: 42, top: 44, right: 39, bottom: 64 });
+  });
+
+  it('corner_safety_reports_a_12px_margin_as_not_flush', () => {
+    expect(FLUSH_TOLERANCE).toBe(2);
+    // The frame as it was: art about 12 px in from every edge.
+    const margin = ring(364, 384, 12);
+    expect(flushGaps(margin)).toEqual([
+      'left art 12px from the window edge',
+      'top art 12px from the window edge',
+      'right art 12px from the window edge',
+      'bottom art 12px from the window edge',
+    ]);
+    // Flush, and within the 2 px allowance, passes.
+    expect(flushGaps(ring(364, 384, 0))).toEqual([]);
+    expect(flushGaps(ring(364, 384, 2))).toEqual([]);
+    expect(flushGaps(ring(364, 384, 3))).toHaveLength(4);
+    expect(flushGaps({ width: 4, height: 4, art: new Uint8Array(16) })).toEqual(['no art rendered']);
+  });
+
+  it('corner_safety_reports_art_the_window_cuts_off', async () => {
+    const padding = artPadding(alphaMask(await kitFrame()));
+    const viewport = { left: 0, top: 0, right: 364, bottom: 384 };
+    const full = { left: 0, top: 0, right: 364, bottom: 384 };
+    // Outsets a little under the padding at 48 px (9 / 9.43 / 8.36 / 13.71):
+    // only transparent padding leaves the window.
+    expect(clippedArt(drawn(full, [9, 8, 13.5, 8.5]), padding, viewport)).toEqual([]);
+    // The 12 px margin's frame (8 px out from a box 12 px in) cuts nothing either...
+    const inset = { left: 12, top: 12, right: 352, bottom: 372 };
+    expect(clippedArt(drawn(inset, [8, 8, 8, 8]), padding, viewport)).toEqual([]);
+    // ...but an outset past the padding cuts the art off.
+    expect(clippedArt(drawn(full, [14, 8, 13.5, 8.5]), padding, viewport)).toEqual(['top art cut 4.6px by the window']);
+    expect(clippedArt(drawn(full, [9, 12, 20, 8.5]), padding, viewport)).toEqual([
+      'right art cut 3.6px by the window',
+      'bottom art cut 6.3px by the window',
+    ]);
+
+    // Together: the margin frame is not flush, the flush frame passes.
+    expect(flushReasons(ring(364, 384, 12), drawn(inset, [8, 8, 8, 8]), padding)).toHaveLength(4);
+    expect(flushReasons(ring(364, 384, 0), drawn(full, [9, 8, 13.5, 8.5]), padding)).toEqual([]);
+    expect(flushReasons(ring(364, 384, 0), null, padding)).toEqual(['no .material-art to measure']);
   });
 });

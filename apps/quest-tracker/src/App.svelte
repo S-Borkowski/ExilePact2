@@ -99,16 +99,18 @@
 </div>
 
 <style>
-  /* The window's transparent margin holds the panel's shadow. The overlay is
-     the window's height, so the panel fills the window inside that margin in
-     both directions (the player sizes the window; the scale only zooms). The
-     collapsed badge sits at the window's right edge: with no saved position
-     the shell places the window where the old right dock did (the dock
-     setting went after Live 2).
+  /* Claude's transparent window margin holds the panel's shadow; Exile's
+     panel has none and fills the whole window, its frame flush with the
+     window edge (`approved.css`, owner 2026-11-01). The overlay is the
+     window's height, so the panel fills the window inside the margin in both
+     directions (the player sizes the window; the scale only zooms). The
+     collapsed badge sits at the window's right edge, inside the margin in
+     both themes: with no saved position the shell places the window where
+     the old right dock did (the dock setting went after Live 2).
      Inside the app the webview zoom shrinks the viewport to the window over
      the zoom, so `100vh` is the window's height at every scale, but draws
-     every CSS px that many times larger: the margin is divided by the zoom
-     (`--page-zoom`) to stay 12 window pixels, and the panel's frame keeps
+     every CSS px that many times larger: Claude's margin is divided by the
+     zoom (`--page-zoom`) to stay 12 window pixels, and Exile's frame keeps
      its size while its content zooms. The preview's stand-in for the
      webview zoom is a CSS `zoom` on the page, which leaves the viewport
      alone and scales `vh` with it, so the height is divided by that scale
