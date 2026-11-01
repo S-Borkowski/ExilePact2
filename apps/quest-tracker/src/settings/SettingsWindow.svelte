@@ -3,11 +3,16 @@
   // `SECTIONS` in order under its heading, and the credit. It renders the
   // last `AppSettingsView` the bridge delivered; until the first arrives it
   // shows the title and the credit only.
+  //
+  // Exile draws the steel/masonry kit's neutral frame inside the window over a
+  // masonry well (`approved.css`): the title and the credit sit between the
+  // frame's corner knots, and the sections scroll between them, inside the
+  // rails, so no line or control ever crosses the artwork.
   import { onDestroy, onMount } from 'svelte';
   import type { SettingsBridge, SettingsSend } from './bridge';
   import { SECTIONS } from './sections';
   import MaterialFrame from '../components/MaterialFrame.svelte';
-  import stone from '../../theme/materials/raster/charcoal-stone-well.png';
+  import masonry from '../../theme/materials/raster/masonry-charcoal.png';
   import { applyPresentationTheme } from '../theme';
   import type { AppSettingsView } from './view';
 
@@ -47,19 +52,21 @@
 {#snippet windowContents()}
   <main aria-labelledby="settings-title">
     <h1 class="title" id="settings-title">Settings</h1>
-    {#if view}
-      {#each SECTIONS as section (section.id)}
-        <section class="section" aria-labelledby="section-{section.id}">
-          <h2 class="group-label" id="section-{section.id}">{section.title}</h2>
-          <section.component {view} {send} />
-        </section>
-      {/each}
-    {/if}
+    <div class="window-scroll">
+      {#if view}
+        {#each SECTIONS as section (section.id)}
+          <section class="section" aria-labelledby="section-{section.id}">
+            <h2 class="group-label" id="section-{section.id}">{section.title}</h2>
+            <section.component {view} {send} />
+          </section>
+        {/each}
+      {/if}
+    </div>
   </main>
   <footer class="credit caption">Created by ST4H</footer>
 {/snippet}
 
-<div class="window" style:--well-image={view?.theme !== 'claude' ? `url("${stone}")` : null} data-state={view?.update.state ?? 'none'} data-theme={view?.theme ?? 'exile'}>
+<div class="window" style:--well-image={view?.theme !== 'claude' ? `url("${masonry}")` : null} data-state={view?.update.state ?? 'none'} data-theme={view?.theme ?? 'exile'}>
   {#if view?.theme !== 'claude'}
     <MaterialFrame plaque />
     <div class="window-content">{@render windowContents()}</div>

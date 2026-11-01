@@ -1,8 +1,16 @@
 <script lang="ts">
   // The expanded panel: header, the status line, the body the view's frame
   // names, and in edit mode the way back to play mode. Claude keeps its
-  // cut-corner ring and edit accent; Exile uses only its custom art frame.
+  // cut-corner ring and edit accent; Exile uses only its custom art frame
+  // (the steel/masonry kit's neutral steel nine-slice) over a masonry well.
   // Background opacity never fades text, icons or the visible frame.
+  //
+  // Exile keeps every painted line off the frame's artwork (`approved.css`):
+  // the compact title bar and the footer sit between the corner knots in
+  // the frame's top and bottom bands, and only the body scrolls, its clip
+  // inside the rails. When the fixed chrome leaves the body too little room
+  // (a small window, a large scale, enlarged text), the whole content scrolls
+  // instead, in a well inset below and above the knots' reach.
   //
   // The panel fills the window inside its shadow margin, in both directions,
   // and its body scrolls: the player sizes the window, the scale only zooms
@@ -22,7 +30,7 @@
   import Header from './Header.svelte';
   import Icon from './Icon.svelte';
   import MaterialFrame from './MaterialFrame.svelte';
-  import stone from '../../theme/materials/raster/charcoal-stone-well.png';
+  import masonry from '../../theme/materials/raster/masonry-charcoal.png';
   import QuestDetail from './QuestDetail.svelte';
   import QuestRow from './QuestRow.svelte';
   import Settings from './Settings.svelte';
@@ -39,24 +47,41 @@
   const journal = $derived(view.settings.theme !== 'claude');
   let panelElement = $state<HTMLDivElement>();
   let wholeScroll = $state(false);
+  // What the fixed-chrome layout spends besides the chrome and the body (the
+  // content's insets): whole-content scrolling moves them into margins, and
+  // the test below must not depend on the layout it chooses, or it would flip
+  // back and forth. Measured as drawn, like every height here, so the units
+  // agree under the preview's CSS zoom as under the app's webview zoom.
+  let insets = 0;
 
   // Text enlargement can make the fixed chrome taller than the window.
   // Keep all content reachable in one scroll area in that case. This affects
   // presentation only; native bounds and the received view never change.
+  // Exile also scrolls the whole content when the body would be shorter than
+  // its tallest row or control, which it could then never show at once.
   $effect(() => {
-    view.frame; view.mode; view.status; view.settings.theme;
+    view.frame; view.mode; view.status; view.settings.theme; view.next_up; view.acts; view.detail; view.characters;
     if (!panelElement || typeof ResizeObserver === 'undefined') return;
     const panel = panelElement.querySelector<HTMLDivElement>(':scope > .panel-content') ?? panelElement;
     const measure = () => {
-      const css = getComputedStyle(panel);
-      const chrome = [...panel.children].filter((child) => !child.classList.contains('body'));
-      const remaining = panel.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom)
-        - chrome.reduce((height, child) => height + child.getBoundingClientRect().height, 0);
-      wholeScroll = remaining < 72;
+      const drawn = (element: Element | null) => element?.getBoundingClientRect().height ?? 0;
+      const total = drawn(panelElement!);
+      // Drawn pixels per CSS pixel: the preview's CSS zoom; 1 under the webview zoom.
+      const ratio = panelElement!.offsetHeight > 0 ? total / panelElement!.offsetHeight : 1;
+      const chrome = [...panel.children]
+        .filter((child) => !child.classList.contains('body'))
+        .reduce((height, child) => height + drawn(child), 0);
+      if (!wholeScroll || panel === panelElement) insets = total - chrome - drawn(panel.querySelector(':scope > .body'));
+      const remaining = total - insets - chrome;
+      const tallest = items().reduce((height, item) => Math.max(height, drawn(item)), 0);
+      wholeScroll = remaining < Math.max(72 * ratio, tallest + 8 * ratio);
     };
+    const items = () => (journal ? [...panel.querySelectorAll(':scope > .body :is(button, .row, input, select)')] : []);
     const observer = new ResizeObserver(measure);
     observer.observe(panel);
     for (const child of panel.children) observer.observe(child);
+    // A row grows when the web fonts arrive, inside a body whose own size stays.
+    for (const item of items()) observer.observe(item);
     measure();
     return () => observer.disconnect();
   });
@@ -133,6 +158,7 @@
         <EmptyState {view} {send} />
       {/if}
     </div>
+    {#if journal}<div class="footer-rail" aria-hidden="true"></div>{/if}
     {#if edit}
       <button type="button" class="back-to-play" aria-label={journal ? `${view.settings.hotkey} returns to play mode (click-through)` : undefined} onclick={() => send('set_mode', { mode: 'play' })}>
         {#if journal}<span>{view.settings.hotkey} · Play</span>{:else}
@@ -152,7 +178,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="frame-drag-region" aria-hidden="true" title="Drag to move Quest Tracker" onpointerdown={pressDragSurface}></div>
   {/if}
-  <div bind:this={panelElement} class="panel cut" class:edit style:--well-image={journal ? `url("${stone}")` : null} data-scroll={wholeScroll ? 'whole' : 'body'} data-material={view.settings.theme === 'claude' ? 'claude' : journal ? 'journal' : 'compact'}>
+  <div bind:this={panelElement} class="panel cut" class:edit style:--well-image={journal ? `url("${masonry}")` : null} data-scroll={wholeScroll ? 'whole' : 'body'} data-material={view.settings.theme === 'claude' ? 'claude' : journal ? 'journal' : 'compact'}>
     {#if view.settings.theme !== 'claude'}
       <div class="panel-content">{@render panelContents()}</div>
     {:else}

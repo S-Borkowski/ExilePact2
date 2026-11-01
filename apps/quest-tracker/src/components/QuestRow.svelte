@@ -138,6 +138,7 @@
     onclick={() => send('open_detail', { questId: row.id })}
   >
     {@render body()}
+    {#if exile}<span class="quest-divider" aria-hidden="true"></span>{/if}
   </button>
 {:else}
   <div
@@ -153,6 +154,7 @@
     style:--row-highlight-out-ms={`${ROW_HIGHLIGHT_OUT_MS}ms`}
   >
     {@render body()}
+    {#if exile}<span class="quest-divider" aria-hidden="true"></span>{/if}
   </div>
 {/if}
 

@@ -34,7 +34,8 @@ describe('approved material adoption', () => {
 
   it('uses only the approved steel runtime surround', async () => {
     const frame = await readText('./components/MaterialFrame.svelte');
-    expect(frame).toContain('tracker-steel-frame.png');
+    expect(frame).toContain('frame-neutral-steel.png');
+    expect(frame).not.toContain('tracker-steel-frame.png');
     expect(frame).not.toContain('journal-frame.png');
   });
 
@@ -68,8 +69,11 @@ describe('approved material adoption', () => {
       expect(mark.getAttribute('role')).toBe('img');
       expect(mark.getAttribute('aria-label')).toBe(STATUS_LABEL[status]);
       expect(mark.getAttribute('title')).toBe(STATUS_LABEL[status]);
-      expect(mark.querySelector('.status-diamond')).not.toBeNull();
-      expect(mark.querySelector('.icon, svg, .glyph')).toBeNull();
+      // The kit diamond is drawn inline and announces nothing of its own
+      // (its geometry is pinned in steel-kit.test.ts); no status icon inside.
+      expect(mark.querySelector('svg.status-diamond')?.getAttribute('aria-hidden')).toBe('true');
+      expect(mark.querySelectorAll('svg')).toHaveLength(1);
+      expect(mark.querySelector('.icon, .glyph')).toBeNull();
       expect(mark.querySelector('[aria-label]')).toBeNull();
     }
     for (const row of view.next_up) {
@@ -234,14 +238,18 @@ describe('approved material adoption', () => {
       'lantern-astrolabe-crest.png': '1ff2e55ca20f94f2614b929543f7148f3a997261e1d51660974ebcae3ca443d6',
       'charcoal-stone-well.png': '72cdd6a41d7f5f7ea89dc76de917407c3533f12df8733cddc4e41bee6f7cb225',
       'tracker-steel-frame.png': '438cc3a542d639ef948243f45d6a6870970bc7d5cf3bc18779e44c244beda796',
+      // The steel/masonry kit's two finished rasters, copied unchanged.
+      'frame-neutral-steel.png': '5a716ea986840137e56890dba462be91fb17c119c4584c88d8b2002579249413',
+      'masonry-charcoal.png': 'b0618d6f87b90e115c8f6a7521ab14353be71a0d7f91daa6cfe501d08d254114',
     };
     const crypto = await import(/* @vite-ignore */ 'node:crypto' as string) as { createHash(name: string): { update(data: Uint8Array): { digest(encoding: string): string } } };
-    expect(Object.keys(import.meta.glob('../theme/materials/raster/*.png'))).toHaveLength(4);
+    expect(Object.keys(import.meta.glob('../theme/materials/raster/*.png'))).toHaveLength(6);
     for (const [name, hash] of Object.entries(rasters)) {
       const path = `../theme/materials/raster/${name}`;
       const png = fs.readFileSync(new URL(path, import.meta.url));
       expect([...png.slice(0, 8)], name).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-      expect(png[25], name).toBe(name === 'charcoal-stone-well.png' ? 2 : 6);
+      // Colour type 2 (RGB) for the two masonry wells, 6 (RGBA) for the framed art.
+      expect(png[25], name).toBe(name === 'charcoal-stone-well.png' || name === 'masonry-charcoal.png' ? 2 : 6);
       expect(crypto.createHash('sha256').update(png).digest('hex'), name).toBe(hash);
     }
     const fontPath = '../theme/fonts/Cinzel-SemiBold.woff2';

@@ -44,6 +44,8 @@
       <h1 class="tracker-title">Quest Tracker</h1>
       {#if act}<span class="tracker-act">Act {act}</span>{/if}
     </div>
+    <!-- The kit's header rail: two fine steel lines under the bar, below the corner knots. -->
+    <div class="tracker-rail" aria-hidden="true"></div>
     {#if character}
       <div class="character-context">
         {#if edit}

@@ -1,87 +1,294 @@
-/* Exile follows the approved compact steel tracker. Claude keeps its original CSS. */
-:root[data-theme='exile'] .panel-shadow[data-material='journal'] { --frame-inset: 16px; filter: none; }
+/*
+ * Exile: the finished steel/masonry kit (docs/quest-tracker/design/steel-masonry-kit/HANDOFF.md).
+ * A thin neutral steel frame (MaterialFrame), a charcoal masonry well, a
+ * neutral palette with restrained antique gold, and the kit's control
+ * treatments on the existing live controls. Every rule is scoped to Exile;
+ * Claude keeps its original CSS. Colours are the kit's own (palette.json and
+ * the component SVGs); steel-kit.test.ts holds this file to that list.
+ */
+
+/*
+ * Corner safety. The frame is 48 px corners, 8 px out into the overlay's
+ * margin, at one size on screen whatever the scale; so are these clearances,
+ * divided by the same zoom. Measured on the kit PNG at that size, from the
+ * panel's edge: the rails reach 13 px in, the top rail 11 px down and the
+ * bottom one 16 px up; the corner knots reach 26 px across, 31 px down from
+ * the top and 30 px up from the bottom. Nothing that paints may cross them.
+ *  - the side inset (20) clears the rails and keeps the kit's reading inset;
+ *  - the title bar and the footer sit between the knots (30 across), the bar
+ *    from 14 down, the footer up to 21 from the bottom, each with room for a
+ *    2 px focus ring;
+ *  - the header rail and the footer rail lie below and above the knots;
+ *  - only the body scrolls, its clip between the two;
+ *  - whole-content scrolling (Panel's `data-scroll='whole'`) insets the one
+ *    scroller 24 px from the sides, where the upper knots end 16 px down,
+ *    and 33 px from the bottom, past the lower knots.
+ */
+:root[data-theme='exile'] .panel-shadow[data-material='journal'] {
+  --frame-zoom: var(--page-zoom, var(--preview-scale, 1));
+  --safe-side: calc(20px / var(--frame-zoom));
+  --safe-top: calc(14px / var(--frame-zoom));
+  --safe-bottom: calc(21px / var(--frame-zoom));
+  --safe-knot-x: calc(10px / var(--frame-zoom));
+  --safe-knot-y: calc(33px / var(--frame-zoom));
+  --whole-side: calc(24px / var(--frame-zoom));
+  --whole-top: calc(16px / var(--frame-zoom));
+  filter: none;
+}
 :root[data-theme='exile'] .panel.cut::after { display: none; }
 :root[data-theme='exile'] .panel[data-material='journal'] {
   --cut: 0px;
-  padding: 10px 17px 16px;
+  padding: 0;
   box-shadow: none;
   isolation: isolate;
-  background: color-mix(in srgb, #090b0c calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent);
+  background: color-mix(in srgb, var(--color-panel-bg) calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent);
 }
-:root[data-theme='exile'] .panel[data-material='journal']::before,
-:root[data-theme='exile'] .window::before {
-  content: ''; position: absolute; z-index: -1; inset: 0;
-  background: linear-gradient(#05070890, #05070890), var(--well-image);
-  background-size: auto, 360px 360px; pointer-events: none;
+/* The masonry: one cover crop behind the live content, about 38% over the
+   well, no tint. The opacity setting fades it with the well, never the text
+   or the frame. */
+:root[data-theme='exile'] .panel[data-material='journal']::before {
+  content: ''; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: var(--well-image) center / cover no-repeat;
+  opacity: calc(0.38 * var(--panel-opacity, var(--opacity-default)));
 }
-:root[data-theme='exile'] .panel[data-material='journal']::before { opacity: var(--panel-opacity, var(--opacity-default)); }
-:root[data-theme='exile'] .panel-content { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-:root[data-theme='exile'] .frame-drag-region { position: absolute; z-index: 2; top: 0; right: 45px; left: 45px; height: 10px; cursor: move; }
-:root[data-theme='exile'] .header.steel { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; background: transparent; min-height: 0; }
-:root[data-theme='exile'] .tracker-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; box-sizing: border-box; gap: 2px 12px; min-height: 34px; padding: 0 19px 5px; border-bottom: 3px double #777970; }
-:root[data-theme='exile'] .tracker-title, :root[data-theme='exile'] .tracker-act { margin: 0; color: #edcf86; font-family: var(--font-family-caps); font-weight: 600; line-height: 24px; text-shadow: 0 1px 2px #000; }
-:root[data-theme='exile'] .tracker-title { min-width: 0; overflow-wrap: anywhere; font-size: 17px; }
-:root[data-theme='exile'] .tracker-act { flex: none; padding-left: 12px; border-left: 1px solid #797363; font-size: 15px; }
-:root[data-theme='exile'] .character-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 7px; padding: 8px 5px 3px; color: #bbb5a7; }
-:root[data-theme='exile'] .character-context .name { color: #bcb5a6; font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-weight: 400; white-space: normal; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .character-context .meta { flex: none; font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .character-context .kind { margin-left: auto; font-size: 11px; white-space: normal; }
-:root[data-theme='exile'] .character-context .who { max-width: 100%; min-height: 32px; }
-:root[data-theme='exile'] .tracker-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 4px 0 6px; }
-:root[data-theme='exile'] .tracker-tools .switch button { min-width: 32px; min-height: 32px; margin: 0; }
-:root[data-theme='exile'] .tracker-tools .icon-btn { width: 32px; height: 32px; }
-:root[data-theme='exile'] .header .switch { background: #0a0c0c; border-color: #746b52; }
-:root[data-theme='exile'] .header .switch button[aria-pressed='true']::before { background: #3b3425; box-shadow: inset 0 0 0 1px #a18a54; }
-:root[data-theme='exile'] .panel .body { overflow-x: hidden; overflow-wrap: anywhere; scroll-padding: 5px; padding-bottom: 4px; }
-:root[data-theme='exile'] .panel .group-label { margin: 0; padding: 5px 5px 2px; color: #bbb5a7; font-size: 11px; line-height: 16px; letter-spacing: .04em; }
-:root[data-theme='exile'] .row[data-quest] {
-  grid-template-columns: 22px minmax(0, 1fr) 16px;
-  width: 100%; margin: 0; padding: 9px 5px 12px; column-gap: 10px; row-gap: 4px;
-  border: 0; border-bottom: 1px solid #737368; border-radius: 0;
-  background: transparent; box-shadow: none;
+:root[data-theme='exile'] .panel-content {
+  display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;
+  padding: var(--safe-top) var(--safe-side) var(--safe-bottom);
 }
-:root[data-theme='exile'] .row[data-quest][data-status='in_progress'] { background: transparent; }
-:root[data-theme='exile'] .row[data-quest]::before { content: ''; position: absolute; display: block; top: auto; right: auto; bottom: -4px; left: calc(50% - 3px); width: 6px; height: 6px; border: 1px solid #9b9887; background: #242623; transform: rotate(45deg); pointer-events: none; }
-:root[data-theme='exile'] button.row[data-quest]:hover { background: #bfa36b0b; box-shadow: none; }
-:root[data-theme='exile'] .diamond-mark { align-items: center; justify-content: center; width: 22px; height: 22px; }
-:root[data-theme='exile'] .row[data-quest] > .diamond-mark { margin-top: 2px; }
-:root[data-theme='exile'] .status-diamond { box-sizing: border-box; width: 16px; height: 16px; border: 1px solid #e8c06d; background-clip: padding-box; transform: rotate(45deg); }
-:root[data-theme='exile'] .diamond-mark[data-status='in_progress'] .status-diamond { background-color: #f0d779; }
-:root[data-theme='exile'] .diamond-mark[data-status='available'] .status-diamond { border-width: 3px; border-style: double; }
-:root[data-theme='exile'] .diamond-mark[data-status='locked'] .status-diamond { border-color: #92938c; }
-:root[data-theme='exile'] .diamond-mark[data-status='done'] .status-diamond { border: 3px double #cfcec3; background-color: #9b9e98; }
-:root[data-theme='exile'] .diamond-mark[data-status='skipped'] .status-diamond { background-image: repeating-linear-gradient(0deg, transparent 0 2px, #d2b66e 2px 3px); }
-:root[data-theme='exile'] .diamond-mark[data-status='unknown'] .status-diamond { border: 2px dotted #c0b8a7; }
-:root[data-theme='exile'] .row[data-quest] > .worth-mark { grid-column: 3; grid-row: 1; }
-:root[data-theme='exile'] .row[data-quest] .name { color: #f0d779; font-family: Georgia, 'Times New Roman', serif; font-size: 19px; font-weight: 400; line-height: 25px; white-space: normal; overflow: visible; overflow-wrap: anywhere; text-shadow: 0 1px 2px #000; }
-:root[data-theme='exile'] .row[data-quest].finished .name { color: var(--color-text-muted); font-size: 17px; }
-:root[data-theme='exile'] .row[data-quest] .rewards { grid-column: 2; grid-row: 2; max-width: none; color: #bbb5a7; font-size: 11px; line-height: 16px; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .row[data-quest] .rewards:empty { display: none; }
-:root[data-theme='exile'] .row[data-quest] .step, :root[data-theme='exile'] .row[data-quest] .tip { grid-column: 2 / -1; display: block; color: #eeece5; font-family: Georgia, 'Times New Roman', serif; font-size: 16px; line-height: 22px; white-space: normal; overflow: visible; overflow-wrap: anywhere; -webkit-line-clamp: unset; line-clamp: unset; }
-:root[data-theme='exile'] .row[data-quest] .tip { color: #c7c2b7; font-size: 14px; line-height: 20px; }
-:root[data-theme='exile'] .act-header { flex-wrap: wrap; padding: 5px; background: transparent; border-bottom: 1px solid #68695f; }
-:root[data-theme='exile'] .act-header .title { color: #dfc684; }
-:root[data-theme='exile'] .back-to-play, :root[data-theme='exile'] .play-footer { flex: none; box-sizing: border-box; width: 100%; margin: 0; padding: 6px 22px 3px; border: 0; border-top: 3px double #777970; background: transparent; color: #b8ad96; font-family: Georgia, 'Times New Roman', serif; font-size: 14px; font-weight: 400; line-height: 20px; text-align: center; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .back-to-play { justify-content: center; min-height: 30px; }
-:root[data-theme='exile'] .status-line { max-height: 25%; overflow-y: auto; font-size: 12px; line-height: 17px; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .picker .name { white-space: normal; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .detail .name { color: #f0d779; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; }
-:root[data-theme='exile'] .detail .step-text, :root[data-theme='exile'] .detail .step-tip { font-family: Georgia, 'Times New Roman', serif; }
-:root[data-theme='exile'] button, :root[data-theme='exile'] input, :root[data-theme='exile'] select { max-width: 100%; }
-:root[data-theme='exile'] [data-theme='exile'] button:focus-visible { outline: 2px solid var(--color-edit-accent); outline-offset: -3px; }
-:root[data-theme='exile'] .btn { height: auto; min-height: 32px; white-space: normal; }
-:root[data-theme='exile'] .settings .row { flex-wrap: wrap; padding-block: 4px; }
-:root[data-theme='exile'] .settings .row input, :root[data-theme='exile'] .settings .row select { box-sizing: border-box; }
-:root[data-theme='exile'] .link, :root[data-theme='exile'] .detail button.back, :root[data-theme='exile'] .small, :root[data-theme='exile'] .character button.who { min-height: 32px; min-width: 32px; }
-:root[data-theme='exile'] .toggle:checked { background: var(--color-worth-gold); border-color: var(--color-worth-gold); }
-:root[data-theme='exile'] input { accent-color: var(--color-worth-gold); }
-:root[data-theme='exile'] .slider::-webkit-slider-thumb { background: var(--color-worth-gold); }
-:root[data-theme='exile'] .slider::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--color-worth-gold) var(--fill), var(--color-panel-divider) var(--fill)); }
-:root[data-theme='exile'] .window[data-theme='exile'] { --frame-inset: 28px; position: relative; display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; min-height: 0; padding: 28px 28px 44px; border: 0; background: var(--color-panel-bg); box-shadow: none; isolation: isolate; overflow: hidden; overflow-wrap: anywhere; }
-:root[data-theme='exile'] .window-content { flex: 1; min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--color-panel-border) transparent; }
-:root[data-theme='exile'] .window[data-theme='exile'] .title { font-family: var(--font-family-caps); color: #edcf86; }
-:root[data-theme='exile'] .window select, :root[data-theme='exile'] .window input, :root[data-theme='exile'] .window button { min-width: 40px; min-height: 40px; }
-:root[data-theme='exile'] .window .credit { padding-inline: 38px; }
-:root[data-theme='exile'] .panel[data-scroll='whole'] .panel-content { display: block; overflow-y: auto; }
+:root[data-theme='exile'] .panel[data-scroll='whole'] .panel-content {
+  display: block; overflow-x: hidden; overflow-y: auto;
+  margin: var(--whole-top) var(--whole-side) var(--safe-knot-y); padding: 3px; scroll-padding: 4px;
+}
 :root[data-theme='exile'] .panel[data-scroll='whole'] .body { overflow: visible; }
 :root[data-theme='exile'] .panel[data-scroll='whole'] .status-line { max-height: none; overflow: visible; }
+/* Edit's fixed drag strip: in the top rail, outside every scroller and the corner resize handles. */
+:root[data-theme='exile'] .frame-drag-region {
+  position: absolute; z-index: 2; top: 0; right: calc(45px / var(--frame-zoom)); left: calc(45px / var(--frame-zoom));
+  height: calc(12px / var(--frame-zoom)); cursor: move;
+}
+
+/* Header: the compact "Quest Tracker / Act" bar, the header rail, the character line, edit's tools. */
+:root[data-theme='exile'] .header.steel { display: flex; flex-direction: column; align-items: stretch; gap: 0; min-height: 0; padding: 0; background: transparent; }
+:root[data-theme='exile'] .tracker-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 12px;
+  box-sizing: border-box; min-height: calc(24px / var(--frame-zoom)); margin: 0 var(--safe-knot-x); padding: 0; border: 0;
+}
+:root[data-theme='exile'] .tracker-title, :root[data-theme='exile'] .tracker-act { margin: 0; color: var(--color-worth-gold); font-family: var(--font-family-caps); font-weight: 600; line-height: 24px; text-shadow: 0 1px 2px #000; }
+:root[data-theme='exile'] .tracker-title { min-width: 0; overflow-wrap: anywhere; font-size: 17px; }
+:root[data-theme='exile'] .tracker-act { flex: none; padding-left: 10px; border-left: 1px solid var(--color-panel-divider); font-size: 15px; }
+:root[data-theme='exile'] .tracker-rail { flex: none; height: 3px; margin-top: 2px; border-top: 1px solid #7E898F; border-bottom: 1px solid #3D474E; }
+:root[data-theme='exile'] .character-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 4px 2px; color: var(--color-text-secondary); }
+:root[data-theme='exile'] .character-context .name { color: var(--color-text-primary); font-family: var(--font-family-quest); font-size: 15px; font-weight: 400; line-height: 20px; white-space: normal; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .character-context .meta { flex: none; color: var(--color-text-secondary); font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .character-context .kind { margin-left: auto; color: var(--color-text-secondary); font-size: 11px; white-space: normal; }
+:root[data-theme='exile'] .character-context .who { max-width: 100%; min-height: 32px; color: var(--color-text-primary); }
+:root[data-theme='exile'] .character-context .who .icon { color: var(--color-text-secondary); }
+:root[data-theme='exile'] .tracker-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 4px 6px; }
+:root[data-theme='exile'] .tracker-tools .chip { padding: 0 4px 0 0; background: transparent; color: var(--color-text-secondary); }
+:root[data-theme='exile'] .tracker-tools .mode-tag { font-family: var(--font-family-caps); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; }
+:root[data-theme='exile'] .tracker-tools .icon-btn { width: 32px; height: 32px; color: var(--color-text-secondary); }
+:root[data-theme='exile'] .tracker-tools .icon-btn:hover { background: var(--color-panel-raised); color: var(--color-text-primary); box-shadow: none; }
+/* The view switch: the kit's segmented control, a steel-grey face for the pressed half. */
+:root[data-theme='exile'] .header .switch { padding: 1px; border: 1px solid var(--color-panel-border); background: #10191F; }
+:root[data-theme='exile'] .header .switch button { min-width: 32px; min-height: 32px; margin: 0; padding: 0 12px; color: var(--color-text-secondary); font-size: 14px; }
+:root[data-theme='exile'] .header .switch button[aria-pressed='true'] { color: var(--color-text-primary); }
+:root[data-theme='exile'] .header .switch button[aria-pressed='true']::before { inset: 1px 0; background: var(--color-action-primary-bg); box-shadow: none; }
+
+/* The reading well: worth headings, quest sections with the kit's steel divider, act sections. */
+/* 3 px all round inside each scroller: a focused control's 2 px ring is never cut by the clip. */
+:root[data-theme='exile'] .panel .body { overflow-x: hidden; overflow-wrap: anywhere; scroll-padding: 4px; padding: 3px; }
+:root[data-theme='exile'] .panel .group-label { margin: 0; padding: 8px 4px 0; color: var(--color-text-secondary); font-family: var(--font-family-caps); font-size: 11px; font-weight: 600; line-height: 16px; letter-spacing: 0.08em; }
+:root[data-theme='exile'] .panel .note { padding: 8px 4px; color: var(--color-text-secondary); }
+:root[data-theme='exile'] .row[data-quest] {
+  grid-template-columns: 24px minmax(0, 1fr) 16px; align-content: start;
+  width: 100%; min-height: 0; margin: 0; padding: 3px 4px 13px; column-gap: 10px; row-gap: 2px;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none;
+}
+:root[data-theme='exile'] .row[data-quest][data-status='in_progress'] { min-height: 0; padding-bottom: 13px; background: transparent; }
+:root[data-theme='exile'] .row[data-quest]::before { display: none; }
+:root[data-theme='exile'] .row[data-quest].finished { min-height: 0; padding-top: 3px; padding-bottom: 13px; }
+:root[data-theme='exile'] button.row[data-quest]:hover { background: #424D5433; box-shadow: none; }
+:root[data-theme='exile'] button.row[data-quest]:focus-visible { box-shadow: none; }
+:root[data-theme='exile'] .row[data-quest] > .status-mark { margin-top: 0; }
+:root[data-theme='exile'] .row[data-quest] > .worth-mark { grid-column: 3; grid-row: 1; margin-top: 4px; }
+:root[data-theme='exile'] .row[data-quest] .name { color: var(--color-worth-gold); font-family: var(--font-family-quest); font-size: 19px; font-weight: 400; line-height: 25px; white-space: normal; overflow: visible; overflow-wrap: anywhere; text-shadow: 0 1px 2px #000; }
+:root[data-theme='exile'] .row[data-quest][data-worth='no']:not(.finished) .name { color: var(--color-text-secondary); }
+:root[data-theme='exile'] .row[data-quest].finished .name { color: var(--color-text-muted); font-size: 17px; line-height: 24px; }
+:root[data-theme='exile'] .row[data-quest] .rewards { grid-column: 2; grid-row: 2; max-width: none; color: var(--color-text-secondary); font-size: 11px; line-height: 16px; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .row[data-quest] .rewards:empty { display: none; }
+:root[data-theme='exile'] .row[data-quest] .step, :root[data-theme='exile'] .row[data-quest] .tip { grid-column: 2 / -1; display: block; color: var(--color-text-primary); font-family: var(--font-family-quest); font-size: 16px; line-height: 22px; white-space: normal; overflow: visible; overflow-wrap: anywhere; -webkit-line-clamp: unset; line-clamp: unset; }
+:root[data-theme='exile'] .row[data-quest] .tip { color: var(--color-text-secondary); font-size: 14px; line-height: 20px; }
+:root[data-theme='exile'] .row[data-quest].finished .step, :root[data-theme='exile'] .row[data-quest].finished .tip { color: var(--color-text-muted); }
+/* The kit's quest divider: a fine steel line with a centre diamond, inside the row's own bottom, between quests only. */
+:root[data-theme='exile'] .quest-divider,
+:root[data-theme='exile'] .footer-rail {
+  position: relative; display: block; flex: none; box-sizing: border-box; height: 10px; pointer-events: none;
+  background:
+    linear-gradient(#879197, #879197) 0 4px / 100% 1px no-repeat,
+    linear-gradient(#353E44, #353E44) 0 3px / 100% 3px no-repeat;
+}
+:root[data-theme='exile'] .quest-divider::before,
+:root[data-theme='exile'] .footer-rail::before {
+  content: ''; position: absolute; top: 1.5px; left: calc(50% - 3.5px); box-sizing: border-box; width: 7px; height: 7px;
+  border: 1px solid #A6AEB3; background: #20282D; transform: rotate(45deg);
+}
+:root[data-theme='exile'] .row[data-quest] > .quest-divider { position: absolute; right: 0; bottom: 0; left: 0; }
+:root[data-theme='exile'] .row[data-quest]:last-child > .quest-divider { display: none; }
+:root[data-theme='exile'] .act-header { flex-wrap: wrap; min-height: 32px; padding: 4px 4px; background: transparent; border-bottom: 1px solid var(--color-panel-divider); }
+:root[data-theme='exile'] .act-header .title { color: var(--color-worth-gold); font-size: 13px; font-weight: 600; }
+:root[data-theme='exile'] button.act-header:hover { background: #424D5433; box-shadow: none; }
+:root[data-theme='exile'] button.act-header:focus-visible { box-shadow: none; }
+
+/* The status line: the kit's message strip, a 2 px edge in the message's colour. */
+:root[data-theme='exile'] .status-line { max-height: 25%; margin: 4px 0 2px; padding: 5px 10px; overflow-y: auto; border: 0; border-left: 2px solid var(--color-panel-border); background: #121B20; color: var(--color-text-primary); font-size: 12px; line-height: 17px; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .status-line[data-kind='warn'] { border-left-color: var(--color-warning); color: var(--color-text-primary); }
+:root[data-theme='exile'] .status-line[data-kind='error'] { border-left-color: var(--color-action-danger); color: var(--color-text-primary); }
+:root[data-theme='exile'] .status-line[data-kind='warn'] .icon { color: var(--color-warning); }
+:root[data-theme='exile'] .status-line[data-kind='error'] .icon { color: var(--color-action-danger); }
+
+/* The footer: the actual hotkey, between the lower knots; edit's is the way back to play. */
+:root[data-theme='exile'] .panel-content > .footer-rail { margin-top: 2px; }
+:root[data-theme='exile'] .back-to-play, :root[data-theme='exile'] .play-footer {
+  flex: none; box-sizing: border-box; width: auto; min-height: calc(22px / var(--frame-zoom)); margin: 0 var(--safe-knot-x); padding: 0;
+  border: 0; background: transparent; color: var(--color-text-secondary);
+  font-family: var(--font-family-quest); font-size: 14px; font-weight: 400; line-height: 20px; text-align: center; overflow-wrap: anywhere;
+}
+:root[data-theme='exile'] .back-to-play { justify-content: center; }
+:root[data-theme='exile'] .back-to-play:hover { color: var(--color-text-primary); }
+
+/* Quest detail. */
+:root[data-theme='exile'] .detail .content { padding: 6px 4px 0; }
+:root[data-theme='exile'] .detail .back { color: var(--color-text-secondary); }
+:root[data-theme='exile'] .detail .head { gap: 10px; }
+:root[data-theme='exile'] .detail .name { color: var(--color-worth-gold); font-family: var(--font-family-quest); font-size: 19px; font-weight: 400; line-height: 25px; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .detail .step-title, :root[data-theme='exile'] .detail .step-text, :root[data-theme='exile'] .detail .step-tip, :root[data-theme='exile'] .detail .reason { font-family: var(--font-family-quest); }
+:root[data-theme='exile'] .detail .steps, :root[data-theme='exile'] .detail .chips, :root[data-theme='exile'] .detail .source, :root[data-theme='exile'] .detail .actions { padding-right: 4px; padding-left: 4px; }
+/* The hand tick's 24 px target reaches 5 px left of its glyph: room for it and its focus ring. */
+:root[data-theme='exile'] .detail .steps { padding-left: 6px; }
+:root[data-theme='exile'] .detail .actions { flex-wrap: wrap; }
+:root[data-theme='exile'] .detail .chip { border: 1px solid var(--color-panel-divider); background: #121B20; }
+:root[data-theme='exile'] .detail button.mark:hover, :root[data-theme='exile'] .detail button.mark:focus-visible { border-color: var(--color-panel-border); color: var(--color-text-primary); }
+
+/* Character picker. */
+:root[data-theme='exile'] .picker .frame-head, :root[data-theme='exile'] .settings .frame-head { padding: 0 0 0 4px; }
+:root[data-theme='exile'] .picker .frame-title, :root[data-theme='exile'] .settings .frame-title { color: var(--color-worth-gold); font-family: var(--font-family-caps); font-size: 15px; font-weight: 600; }
+:root[data-theme='exile'] .picker .character { flex-wrap: wrap; row-gap: 2px; padding: 4px 8px; }
+:root[data-theme='exile'] .picker .who { flex: 1 1 8em; }
+:root[data-theme='exile'] .picker .character.active { background: #1E2931; box-shadow: inset 0 0 0 1px var(--color-panel-border); }
+:root[data-theme='exile'] .picker .character.active::before { display: none; }
+:root[data-theme='exile'] .picker .name { color: var(--color-text-primary); font-family: var(--font-family-quest); white-space: normal; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .picker .note { padding: 8px 4px 0; }
+:root[data-theme='exile'] .picker .small { min-width: 32px; min-height: 32px; height: auto; border-color: var(--color-panel-border); background: var(--color-action-secondary-bg); color: var(--color-text-primary); font-weight: 500; }
+:root[data-theme='exile'] .picker .small:hover { border-color: var(--color-hover-outline); background: var(--color-action-secondary-hover); }
+:root[data-theme='exile'] .link, :root[data-theme='exile'] .detail button.back, :root[data-theme='exile'] .character button.who { min-width: 32px; min-height: 32px; }
+
+/* Empty states: the original four frames and their one recovery command each. */
+:root[data-theme='exile'] .empty { padding: 10px 4px 6px; }
+:root[data-theme='exile'] .empty .title { color: var(--color-worth-gold); font-family: var(--font-family-quest); font-size: 19px; font-weight: 400; line-height: 25px; overflow-wrap: anywhere; }
+:root[data-theme='exile'] .empty .text { color: var(--color-text-secondary); overflow-wrap: anywhere; }
+:root[data-theme='exile'] .empty .glyph { color: var(--color-text-secondary); }
+
+/* Overlay Settings. */
+:root[data-theme='exile'] .settings .row { flex-wrap: wrap; padding: 4px; }
+:root[data-theme='exile'] .settings .field { padding-right: 4px; padding-left: 4px; }
+:root[data-theme='exile'] .settings .help { padding-right: 4px; padding-left: 4px; }
+:root[data-theme='exile'] .settings .row input, :root[data-theme='exile'] .settings .row select { box-sizing: border-box; }
+:root[data-theme='exile'] .settings .divider { background: var(--color-panel-divider); }
+
+/* Controls: the kit's button, toggle, select, text field, slider, keycap and scrollbar, steel grey, never gold or cyan fills. */
+:root[data-theme='exile'] button, :root[data-theme='exile'] input, :root[data-theme='exile'] select { max-width: 100%; }
+:root[data-theme='exile'] .btn {
+  --cut: 0px; --ring: 1px; --ring-color: var(--color-panel-border);
+  height: auto; min-height: 34px; padding: 4px 14px; background: var(--color-action-secondary-bg); box-shadow: inset 0 2px 0 -1px #74818A;
+  color: var(--color-text-primary); font-size: 14px; font-weight: 500; letter-spacing: 0; white-space: normal; overflow-wrap: normal;
+}
+:root[data-theme='exile'] .btn:hover { --ring-color: var(--color-hover-outline); background: var(--color-action-secondary-hover); }
+:root[data-theme='exile'] .btn:active { --ring-color: var(--color-panel-border); background: var(--color-action-secondary-pressed); }
+:root[data-theme='exile'] .btn.primary { --ring-color: var(--color-panel-border); background: var(--color-action-primary-bg); color: var(--color-text-primary); }
+:root[data-theme='exile'] .btn.primary:hover { --ring-color: var(--color-hover-outline); background: var(--color-action-primary-hover); }
+:root[data-theme='exile'] .btn.primary:active { background: var(--color-action-primary-pressed); }
+:root[data-theme='exile'] .btn.danger { --ring-color: var(--color-action-danger); background: transparent; box-shadow: none; color: var(--color-action-danger); }
+:root[data-theme='exile'] .btn.danger.confirm { background: var(--color-action-danger); color: var(--color-panel-sunken); }
+:root[data-theme='exile'] .btn:disabled { --ring-color: var(--color-action-disabled-fg); background: var(--color-action-disabled-bg); box-shadow: none; color: var(--color-action-disabled-fg); }
+:root[data-theme='exile'] .btn:focus-visible { --ring: 1px; --ring-color: var(--color-hover-outline); }
+:root[data-theme='exile'] .icon-btn:focus-visible { box-shadow: none; }
+/* Toggle: the kit's pill, a steel-grey track when on. */
+:root[data-theme='exile'] .toggle { width: 38px; height: 22px; border: 1px solid var(--color-panel-border); border-radius: 11px; background: #151E24; }
+:root[data-theme='exile'] .toggle::before { left: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--color-hover-outline); }
+:root[data-theme='exile'] .toggle:checked { border-color: var(--color-panel-border); background: var(--color-action-primary-bg); }
+:root[data-theme='exile'] .toggle:checked::before { left: calc(100% - 16px); background: var(--color-hover-outline); }
+:root[data-theme='exile'] .toggle:disabled { border-color: var(--color-action-disabled-fg); }
+:root[data-theme='exile'] .toggle:disabled::before { background: var(--color-action-disabled-fg); }
+:root[data-theme='exile'] input { accent-color: var(--color-panel-border); }
+/* Select and text field. */
+:root[data-theme='exile'] .select {
+  width: 150px; height: 34px; padding: 0 30px 0 12px; border-color: var(--color-panel-border); color: var(--color-text-primary); font-size: 14px;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.6px), #B8C0C5 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) right 17px center / 5px 5px no-repeat,
+    linear-gradient(to bottom right, transparent calc(50% - 0.6px), #B8C0C5 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) right 12px center / 5px 5px no-repeat,
+    #172127;
+}
+:root[data-theme='exile'] .select option { background: #172127; color: var(--color-text-primary); }
+:root[data-theme='exile'] .select:focus-visible, :root[data-theme='exile'] .text-input:focus-visible { border-color: var(--color-edit-accent); }
+:root[data-theme='exile'] .text-input { height: 34px; border-color: var(--color-panel-border); background: #151E24; color: var(--color-text-primary); font-size: 14px; }
+:root[data-theme='exile'] .text-input:invalid, :root[data-theme='exile'] .text-input[aria-invalid='true'] { border-color: var(--color-action-danger); }
+:root[data-theme='exile'] .text-input:disabled { border-color: var(--color-action-disabled-fg); color: var(--color-action-disabled-fg); }
+/* Slider: a steel fill on a slate track and a round steel thumb. The thumb
+   keeps the 8 px width slider.ts measures the track by; its ring is drawn. */
+:root[data-theme='exile'] .slider::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(to right, var(--color-panel-border) var(--fill), #2F3C44 var(--fill)); }
+:root[data-theme='exile'] .slider::-webkit-slider-thumb { width: 8px; height: 8px; margin-top: -2px; border-radius: 50%; background: var(--color-hover-outline); box-shadow: 0 0 0 3px var(--color-hover-outline), 0 0 0 4px #28363F; }
+:root[data-theme='exile'] .slider.resting::-webkit-slider-thumb { background: var(--color-action-disabled-fg); box-shadow: 0 0 0 3px var(--color-action-disabled-fg), 0 0 0 4px #28363F; }
+:root[data-theme='exile'] .keycap { border-color: var(--color-panel-border); border-radius: 2px; background: #192329; color: var(--color-text-primary); font-weight: 500; }
+/* Focus: a 2 px ivory ring drawn inside every focused control, so it never reaches the frame. */
+:root[data-theme='exile'] :is(button, input, select, textarea, a[href], [role='button'], [tabindex]):focus-visible { outline: 2px solid var(--color-edit-accent) !important; outline-offset: -2px !important; }
+/* Scrollbars: the kit's 8 px slate track and steel thumb. */
+:root[data-theme='exile'] .panel .body, :root[data-theme='exile'] .panel-content, :root[data-theme='exile'] .status-line, :root[data-theme='exile'] .window-scroll { scrollbar-width: auto; scrollbar-color: auto; }
+:root[data-theme='exile'] ::-webkit-scrollbar { width: 8px; height: 8px; }
+:root[data-theme='exile'] ::-webkit-scrollbar-track { background: #10171C; }
+:root[data-theme='exile'] ::-webkit-scrollbar-thumb { border-radius: 3px; background: #64727C; }
+:root[data-theme='exile'] ::-webkit-scrollbar-corner { background: transparent; }
+
+/* The collapsed badge: the kit's slate badge with a steel edge; the existing count, warning and edit states keep their colours. */
+:root[data-theme='exile'] .badge { --cut: 0px; background: color-mix(in srgb, #141D23 calc(var(--panel-opacity, var(--opacity-default)) * 100%), transparent); color: var(--color-text-primary); }
+
+/*
+ * The ordinary Settings window: the same frame, wholly inside the window
+ * (it has no transparent margin), over the same masonry. Its corners sit
+ * 8 px further in than the overlay's, so are its clearances: rails 21 px,
+ * top rail 19, bottom rail 24, knots 34 across, 39 down and 38 up. The title
+ * and the credit sit between the knots; the sections scroll between them.
+ */
+:root[data-theme='exile'] .window[data-theme='exile'] {
+  --frame-zoom: var(--preview-scale, 1);
+  position: relative; display: flex; flex-direction: column; box-sizing: border-box;
+  height: calc(100vh / var(--preview-scale, 1)); min-height: 0; padding: 0; border: 0;
+  background: var(--color-panel-bg); box-shadow: none; isolation: isolate; overflow: hidden; overflow-wrap: anywhere;
+}
+:root[data-theme='exile'] .window[data-theme='exile']::before {
+  content: ''; position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: var(--well-image) center / cover no-repeat;
+  opacity: 0.38;
+}
+:root[data-theme='exile'] .window-content {
+  display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden;
+  padding: calc(21px / var(--frame-zoom)) calc(26px / var(--frame-zoom)) calc(26px / var(--frame-zoom));
+}
+:root[data-theme='exile'] .window-content > main { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+:root[data-theme='exile'] .window[data-theme='exile'] .title {
+  flex: none; min-height: calc(22px / var(--frame-zoom)); margin: 0 calc(12px / var(--frame-zoom)); padding: 0;
+  color: var(--color-worth-gold); font-family: var(--font-family-caps); font-size: 17px; font-weight: 600; line-height: 22px;
+}
+:root[data-theme='exile'] .window-scroll {
+  flex: 1; min-height: 0; margin-top: 4px; padding: 3px; overflow-x: hidden; overflow-y: auto; scroll-padding: 4px;
+  border-top: 1px solid #7E898F; border-bottom: 1px solid var(--color-panel-divider);
+}
+:root[data-theme='exile'] .window .section { padding: 0 6px; }
+:root[data-theme='exile'] .window .section + .section { border-top: 0; }
+:root[data-theme='exile'] .window .section + .section > .group-label { border-top: 1px solid var(--color-panel-divider); }
+:root[data-theme='exile'] .window .group-label { padding: 10px 0 4px; color: var(--color-worth-gold); font-family: var(--font-family-caps); font-size: 13px; font-weight: 600; }
+:root[data-theme='exile'] .window .credit {
+  flex: none; min-height: calc(18px / var(--frame-zoom)); margin: 0 calc(12px / var(--frame-zoom)); padding: 4px 0 0; border: 0;
+  color: var(--color-text-secondary); font-size: 11px; line-height: 14px; text-align: center;
+}
+:root[data-theme='exile'] .window .bar { height: 8px; box-sizing: border-box; background: linear-gradient(to right, var(--color-panel-border) var(--fill), #1E2931 var(--fill)); box-shadow: inset 0 0 0 1px var(--color-panel-divider); }
+:root[data-theme='exile'] .window .bar.open { background: #1E2931; opacity: 1; }
