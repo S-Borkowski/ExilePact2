@@ -1506,5 +1506,8 @@ describe('the craft window', () => {
     }
     expect(open).not.toHaveBeenCalled();
     expect(window.location.href).toBe(before);
-  });
+    // Every fixture rendered, opened and pressed: beside the corner-safety
+    // runners of a parallel verify it took 9.5 s and outran vitest's 5 s
+    // default. The limit only bounds a hang.
+  }, 60_000);
 });
