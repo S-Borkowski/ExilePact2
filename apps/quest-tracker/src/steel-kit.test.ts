@@ -409,4 +409,24 @@ describe('the steel/masonry kit in the Exile theme', () => {
     expect(rendered.root.querySelector('.worth-group, section, .section-break, .quest-divider')).toBeNull();
     expect([...rendered.root.querySelectorAll('.body > p.group-label')].map((p) => p.textContent)).toEqual(['Worth it', 'Optional', 'Not worth it']);
   });
+
+  it('insets the fine line between two quests of one section to the quest name, and keeps the section-break full width', async () => {
+    // Owner, after Live 4: the in-section line starts at the quest name,
+    // after the status diamond, and stops at the row's right padding; the
+    // section break (band, line, diamond) still spans the width.
+    const css = await readText('./approved.css');
+    const rule = (selector: RegExp) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => selector.test(m[1])).map((m) => m[2]).join(' ');
+    const separator = rule(/\.worth-group \.row\[data-quest\] > \.quest-divider(?!::)/);
+    // Its own left offset, no longer the shared `left: 0`: where the name
+    // column starts, past the row's 4px padding, 24px mark column and 10px gap.
+    const left = separator.match(/(?:^|;)\s*left: ([^;]+);/)?.[1].trim();
+    expect(left, 'the in-section separator sets its own left').toBe('calc(4px + 24px + 10px)');
+    expect(separator).toMatch(/(?:^|;)\s*right: 4px;/);
+    // The row grid it measures from.
+    expect(rule(/^\s*:root\[data-theme='exile'\] \.row\[data-quest\] $/)).toMatch(/grid-template-columns: 24px minmax\(0, 1fr\) 16px;[\s\S]*padding: 3px 4px 13px; column-gap: 10px;/);
+    // Every other quest divider (the All view's act sections) keeps the full width.
+    expect(rule(/^\s*:root\[data-theme='exile'\] \.row\[data-quest\] > \.quest-divider $/)).toMatch(/right: 0; bottom: 0; left: 0;/);
+    // The section break sets no inset: the kit divider at the panel's width.
+    expect(rule(/\.section-break(?!::)/)).not.toMatch(/(?:^|;)\s*(left|right|margin(-left|-right)?|width|inset):/);
+  });
 });

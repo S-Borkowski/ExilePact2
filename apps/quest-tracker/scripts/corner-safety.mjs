@@ -52,8 +52,10 @@
 // visible heading (`aria-labelledby`), no separator sits under a section's
 // last quest, every section after the first has exactly one `.section-break`
 // above its heading, a separator between two quests of one section draws no
-// diamond and is at most half a break's height, and no heading touches a
-// separator or a break. The overlay matrix includes the dev-only
+// diamond and is at most half a break's height, and is inset (owner, after
+// Live 4): it starts at or right of its row's quest name and is narrower
+// than any section break, else `separator not inset`; and no heading touches
+// a separator or a break. The overlay matrix includes the dev-only
 // three-section view, `/?frame=next-up-sections` (`src/preview.ts`).
 //
 // A control runs at every scale: a probe placed over the bottom-left knot of
@@ -64,8 +66,10 @@
 // a page of four text runs (9 px, the disabled colour, small caps: each must
 // be reported; a compliant one must pass) and a play-marked scroller with
 // its bar shown (must be reported) and hidden (must pass); and a two-section
-// Next up laid out as before the sections (must be reported) and as
-// sections (must pass). It needs no app,
+// Next up laid out as before the sections (must be reported), as sections
+// with a full-width line between two quests of one section (must be
+// reported not inset) and with that line inset to the quest name (must
+// pass). It needs no app,
 // so it shows the instrument works while the app is being changed.
 //
 // Flags:
@@ -650,7 +654,8 @@ function scrollersInPage() {
  * the engine sends), whatever elements wrap them. For each: the heading its
  * section element's `aria-labelledby` names, if visible; the separator under
  * its last row, if one is displayed; the separators under its other rows,
- * with whether each draws the centre diamond; and the visible
+ * with whether each draws the centre diamond and where that row's visible
+ * quest name starts (null when it shows none); and the visible
  * `.section-break` elements between the previous run's last row and its
  * first. Null on a page that is not a Next up panel.
  */
@@ -686,7 +691,8 @@ function sectionsInPage() {
       const box = visible(sep);
       if (!box) return [];
       const after = getComputedStyle(sep, '::before');
-      return [{ box, diamond: after.content !== 'none' && after.display !== 'none' }];
+      const name = visible(row.querySelector('.name'));
+      return [{ box, diamond: after.content !== 'none' && after.display !== 'none', nameLeft: name ? name.left : null }];
     });
     const previous = i > 0 ? runs[i - 1].rows[runs[i - 1].rows.length - 1] : null;
     return {
@@ -1167,14 +1173,20 @@ function scrollbarPage(hidden) {
 }
 
 /**
- * The sections self-check's pages: a two-section Next up laid out as before
- * Fix 3 (an unlabelled section, the full diamond divider under every quest
- * including a group's last, no break), which must be reported, and the
- * section layout (labelled sections, one break above the second heading, a
- * 1 px line between two quests of one section), which must pass.
+ * The sections self-check's pages, each row a status-mark-sized box then
+ * its `.name`: a two-section Next up laid out as before Fix 3 (`flat`: an
+ * unlabelled section, the full diamond divider under every quest including
+ * a group's last, no break), which must be reported; the Fix 3 layout
+ * (`full`: labelled sections, one break above the second heading, a 1 px
+ * line the row's full width between two quests of one section), which must
+ * be reported as not inset; and that line inset to the quest name
+ * (`inset`), which must pass.
+ *
+ * @param {'flat' | 'full' | 'inset'} layout
  */
-function sectionsPage(compliant) {
-  const row = (id, worth, divider) => `<div class="row" data-quest="${id}" data-worth="${worth}">Quest ${id}${divider ? '<span class="quest-divider"></span>' : ''}</div>`;
+function sectionsPage(layout) {
+  const compliant = layout !== 'flat';
+  const row = (id, worth, divider) => `<div class="row" data-quest="${id}" data-worth="${worth}"><span class="mark"></span><span class="name">Quest ${id}</span>${divider ? '<span class="quest-divider"></span>' : ''}</div>`;
   const body = compliant
     ? `<section aria-labelledby="h-yes"><p class="group-label" id="h-yes">Worth it</p>${row('a', 'yes', true)}${row('b', 'yes', false)}</section>
        <section aria-labelledby="h-opt"><div class="section-break"></div><p class="group-label" id="h-opt">Optional</p>${row('c', 'optional', true)}${row('d', 'optional', false)}</section>`
@@ -1183,11 +1195,13 @@ function sectionsPage(compliant) {
   return `<!doctype html><html><head><style>
     html, body { margin: 0; background: #090D10; color: #E4E6E7; font: 16px Georgia, serif; }
     .group-label { margin: 0; padding: 8px 4px 4px; }
-    .row { position: relative; padding: 4px 4px 14px; }
+    .row { position: relative; display: flex; align-items: flex-start; gap: 10px; padding: 4px 4px 14px; }
+    .mark { flex: none; width: 24px; height: 24px; background: #818D95; }
     .quest-divider { position: absolute; right: 0; bottom: 0; left: 0; height: 10px; background: #353E44; }
     .quest-divider::before { content: ''; position: absolute; top: 1.5px; left: calc(50% - 3.5px); width: 7px; height: 7px; background: #A6AEB3; }
     .section-break { position: relative; height: 10px; background: #353E44; }
     ${compliant ? '.quest-divider { height: 1px; background: #5D686F; } .quest-divider::before { display: none; }' : ''}
+    ${layout === 'inset' ? '.quest-divider { left: 38px; right: 4px; }' : ''}
   </style></head><body><div class="overlay" data-frame="panel-next-up" data-mode="play"><div class="panel"><div class="body">${body}</div></div></div></body></html>`;
 }
 
@@ -1277,22 +1291,24 @@ async function selfCheck(page, padding, print) {
     if (barProblems.length) failures++;
     played++;
 
-    // Sections: today's layout reported for each section rule it breaks, the section layout passes.
+    // Sections: the flat layout reported for each section rule it breaks, the
+    // full-width fine line reported as not inset, the inset layout passes.
     const pages = [];
-    for (const compliant of [false, true]) {
-      await page.setContent(sectionsPage(compliant));
+    for (const layout of ['flat', 'full', 'inset']) {
+      await page.setContent(sectionsPage(layout));
       await settle(page);
       const sections = await page.evaluate(sectionsInPage);
       pages.push({ sections, reasons: sections ? sectionReasons(sections) : [] });
     }
-    const [flat, grouped] = pages;
+    const [flat, full, grouped] = pages;
     const sectionProblems = [];
-    if (flat.sections?.length !== 2 || grouped.sections?.length !== 2) sectionProblems.push(`sections found: ${flat.sections?.length ?? 0} and ${grouped.sections?.length ?? 0}, expected 2 each`);
+    if (pages.some((p) => p.sections?.length !== 2)) sectionProblems.push(`sections found: ${pages.map((p) => p.sections?.length ?? 0).join(', ')}, expected 2 each`);
     for (const want of ['section heading missing yes', 'section heading missing optional', 'separator before heading', 'section break missing optional', 'section break not distinct']) {
-      if (!flat.reasons.includes(want)) sectionProblems.push(`today's layout was not reported: ${want}`);
+      if (!flat.reasons.includes(want)) sectionProblems.push(`the flat layout was not reported: ${want}`);
     }
-    if (grouped.reasons.length) sectionProblems.push(`the section layout was reported: ${named(grouped.reasons)}`);
-    print(`self-check s${scale} @sections: ${sectionProblems.length ? `FAIL ${sectionProblems.join('; ')}` : `ok (${named(flat.reasons)}; section layout passes)`}`);
+    if (full.reasons.length !== 1 || full.reasons[0] !== 'separator not inset') sectionProblems.push(`the full-width line was not reported as only separator not inset: ${named(full.reasons) || 'nothing'}`);
+    if (grouped.reasons.length) sectionProblems.push(`the inset layout was reported: ${named(grouped.reasons)}`);
+    print(`self-check s${scale} @sections: ${sectionProblems.length ? `FAIL ${sectionProblems.join('; ')}` : `ok (${named(flat.reasons)}; full-width line: ${named(full.reasons)}; inset layout passes)`}`);
     if (sectionProblems.length) failures++;
     sectioned++;
   }

@@ -267,17 +267,22 @@ describe('the play-scrollbar check', () => {
 // first, and only a fine line between the quests of one section.
 describe('the Next up sections check', () => {
   const box = (top: number, bottom: number) => ({ left: 0, top, right: 300, bottom });
+  // A line inset to the quest name (38 px in, after the status diamond) and
+  // ending at the row's 4 px right padding; the row's name starts at 38.
+  const NAME = 38;
+  const line = (top: number, bottom: number) => ({ left: NAME, top, right: 296, bottom });
   // Today's layout: a heading paragraph per group but no section element to
   // label, the full divider (diamond) under every quest but the list's last,
   // and nothing between the groups but that divider.
   const today = [
-    { worth: 'yes', heading: null, lastSeparator: box(90, 100), separators: [{ box: box(40, 50), diamond: true }], breaks: [] },
+    { worth: 'yes', heading: null, lastSeparator: box(90, 100), separators: [{ box: box(40, 50), diamond: true, nameLeft: NAME }], breaks: [] },
     { worth: 'optional', heading: null, lastSeparator: null, separators: [], breaks: [] },
   ];
   // The section layout: labelled headings, one 10 px break above the second
-  // heading, a 1 px line between two quests of one section, none after the last.
+  // heading, a 1 px line inset to the quest name between two quests of one
+  // section, none after the last.
   const sections = [
-    { worth: 'yes', heading: box(0, 20), lastSeparator: null, separators: [{ box: box(60, 61), diamond: false }], breaks: [] },
+    { worth: 'yes', heading: box(0, 20), lastSeparator: null, separators: [{ box: line(60, 61), diamond: false, nameLeft: NAME }], breaks: [] },
     { worth: 'optional', heading: box(116, 136), lastSeparator: null, separators: [], breaks: [box(102, 112)] },
     { worth: 'no', heading: box(220, 240), lastSeparator: null, separators: [], breaks: [box(206, 216)] },
   ];
@@ -287,6 +292,7 @@ describe('the Next up sections check', () => {
       'section heading missing yes',
       'separator before heading',
       'section break not distinct',
+      'separator not inset',
       'section heading missing optional',
       'section break missing optional',
     ]);
@@ -313,11 +319,36 @@ describe('the Next up sections check', () => {
     // The last quest of a section paints a separator: it sits right above the next heading.
     expect(sectionReasons([{ ...first, lastSeparator: box(100, 101) }, second])).toEqual(['separator before heading']);
     // An in-section separator with the diamond, or over half a break's height, is not distinct.
-    expect(sectionReasons([{ ...first, separators: [{ box: box(60, 61), diamond: true }] }, second])).toEqual(['section break not distinct']);
-    expect(sectionReasons([{ ...first, separators: [{ box: box(60, 66), diamond: false }] }, second])).toEqual(['section break not distinct']);
-    expect(sectionReasons([{ ...first, separators: [{ box: box(60, 65), diamond: false }] }, second])).toEqual([]);
+    expect(sectionReasons([{ ...first, separators: [{ box: line(60, 61), diamond: true, nameLeft: NAME }] }, second])).toEqual(['section break not distinct']);
+    expect(sectionReasons([{ ...first, separators: [{ box: line(60, 66), diamond: false, nameLeft: NAME }] }, second])).toEqual(['section break not distinct']);
+    expect(sectionReasons([{ ...first, separators: [{ box: line(60, 65), diamond: false, nameLeft: NAME }] }, second])).toEqual([]);
     // A heading touching a break or a separator overlaps it.
     expect(sectionReasons([first, { ...second, breaks: [box(107, 117)] }])).toEqual(['section break missing optional', 'section heading overlaps']);
-    expect(sectionReasons([{ ...first, separators: [{ box: box(19, 20), diamond: false }] }, second])).toEqual(['section heading overlaps']);
+    expect(sectionReasons([{ ...first, separators: [{ box: line(19, 20), diamond: false, nameLeft: NAME }] }, second])).toEqual(['section heading overlaps']);
+  });
+
+  // Owner, after Live 4: the fine line between two quests of one section
+  // starts under the quest name and stops at the row's right padding; only
+  // the section break spans the width.
+  it('corner_safety_section_separator_not_inset', () => {
+    const [first, second] = sections;
+    const separator = (rect: { left: number; top: number; right: number; bottom: number }, nameLeft: number | null) => [
+      { ...first, separators: [{ box: rect, diamond: false, nameLeft }] },
+      second,
+    ];
+    // The Fix 3 line: the row's full width.
+    expect(sectionReasons(separator(box(60, 61), NAME))).toEqual(['separator not inset']);
+    // One starting left of the name, past the half-pixel tolerance, under the diamond.
+    expect(sectionReasons(separator({ ...line(60, 61), left: NAME - 1 }, NAME))).toEqual(['separator not inset']);
+    expect(sectionReasons(separator({ ...line(60, 61), left: NAME - 0.4 }, NAME))).toEqual([]);
+    // One starting at the name but as wide as a section break.
+    expect(sectionReasons(separator({ ...line(60, 61), right: NAME + 300 }, NAME))).toEqual(['separator not inset']);
+    // A row that shows no quest name has nothing to inset to.
+    expect(sectionReasons(separator(line(60, 61), null))).toEqual(['separator not inset']);
+    // The inset line passes.
+    expect(sectionReasons(separator(line(60, 61), NAME))).toEqual([]);
+    // Without a section break on the page, the width rule has nothing to compare.
+    const unbroken = { ...second, breaks: [] };
+    expect(sectionReasons([{ ...first, separators: [{ box: { ...line(60, 61), right: 400 }, diamond: false, nameLeft: NAME }] }, unbroken])).toEqual(['section break missing optional']);
   });
 });

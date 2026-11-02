@@ -182,9 +182,11 @@
 :root[data-theme='exile'] .row[data-quest]:last-child > .quest-divider { display: none; }
 /* Next up's worth sections (owner, Live 3; the kit preview's order): the divider above as the
    section break, the kit gold heading with its worth icon, and between two quests of one
-   section only the divider's fine steel line, no band and no diamond. */
+   section only the divider's fine steel line, no band and no diamond. That line is inset (owner,
+   after Live 4): it starts at the quest name, past the row's 4px padding, 24px mark column and
+   10px gap, and stops at the row's 4px right padding; only the section break spans the width. */
 :root[data-theme='exile'] .worth-group .group-label { display: flex; align-items: center; gap: 6px; padding: 8px 4px 4px; color: var(--color-worth-gold); text-shadow: 0 1px 2px #000; }
-:root[data-theme='exile'] .worth-group .row[data-quest] > .quest-divider { top: auto; bottom: 6px; height: 1px; background: var(--color-panel-divider); }
+:root[data-theme='exile'] .worth-group .row[data-quest] > .quest-divider { top: auto; right: 4px; bottom: 6px; left: calc(4px + 24px + 10px); height: 1px; background: var(--color-panel-divider); }
 :root[data-theme='exile'] .worth-group .row[data-quest] > .quest-divider::before { display: none; }
 :root[data-theme='exile'] .act-header { flex-wrap: wrap; min-height: 32px; padding: 4px 4px; background: transparent; border-bottom: 1px solid var(--color-panel-divider); }
 :root[data-theme='exile'] .act-header .title { color: var(--color-worth-gold); font-size: max(13px, var(--min-caps)); font-weight: 600; }

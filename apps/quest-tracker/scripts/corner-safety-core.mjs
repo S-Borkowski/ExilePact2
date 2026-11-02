@@ -531,11 +531,12 @@ export function scrollbarReasons(mode, scrollers) {
  * no section element, the label resolves to nothing or that element is not
  * visible. `lastSeparator` is the separator its last quest row paints (null
  * when none is displayed); `separators` the ones between its quests, each
- * with whether it draws the divider's centre diamond; `breaks` the visible
- * `.section-break` boxes between the previous section's last quest and this
- * section's first.
+ * with whether it draws the divider's centre diamond and the left edge of
+ * its row's visible `.name` (null when the row shows none); `breaks` the
+ * visible `.section-break` boxes between the previous section's last quest
+ * and this section's first.
  *
- * @typedef {{ box: Rect, diamond: boolean }} Separator
+ * @typedef {{ box: Rect, diamond: boolean, nameLeft: number | null }} Separator
  * @typedef {{
  *   worth: string, heading: Rect | null, lastSeparator: Rect | null,
  *   separators: Separator[], breaks: Rect[],
@@ -548,8 +549,11 @@ export function scrollbarReasons(mode, scrollers) {
  * (it would sit right above the next heading); every section after the
  * first has exactly one section break, ending at or above its heading's top;
  * a separator inside a section draws no diamond and is at most half as tall
- * as a section break; a heading touches no separator or break. Fewer than
- * two sections is no section layout to check.
+ * as a section break; it is inset (owner, after Live 4): it starts at or
+ * right of its row's quest name, half a pixel's tolerance, and is narrower
+ * than the narrowest section break, so only the breaks span the width; a
+ * heading touches no separator or break. Fewer than two sections is no
+ * section layout to check.
  *
  * @param {Section[]} sections
  * @returns {string[]}
@@ -559,6 +563,7 @@ export function sectionReasons(sections) {
   /** @type {Set<string>} */
   const reasons = new Set();
   const breakHeight = Math.max(0, ...sections.flatMap((s) => s.breaks.map((b) => b.bottom - b.top)));
+  const breakWidth = Math.min(Infinity, ...sections.flatMap((s) => s.breaks.map((b) => b.right - b.left)));
   const lines = sections.flatMap((s) => [...s.separators.map((x) => x.box), ...(s.lastSeparator ? [s.lastSeparator] : []), ...s.breaks]);
   sections.forEach((s, i) => {
     if (!s.heading) reasons.add(`section heading missing ${s.worth}`);
@@ -568,6 +573,7 @@ export function sectionReasons(sections) {
     }
     for (const x of s.separators) {
       if (x.diamond || (breakHeight > 0 && x.box.bottom - x.box.top > breakHeight / 2 + 0.01)) reasons.add('section break not distinct');
+      if (x.nameLeft === null || x.box.left < x.nameLeft - 0.5 || x.box.right - x.box.left >= breakWidth) reasons.add('separator not inset');
     }
     const heading = s.heading;
     if (heading && lines.some((line) => intersect(heading, line))) reasons.add('section heading overlaps');
