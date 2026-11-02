@@ -1,7 +1,7 @@
 # ExilePact2 — Approved UI Design System
 
 **Latest status: Quest Tracker's Exile theme is wired to the neutral steel/masonry kit, 2026-11-01.**
-The [finished artwork, component sheets and handoff](quest-tracker/design/steel-masonry-kit/HANDOFF.md) are the source: the app uses the kit's two rasters unchanged and reproduces its vector diamonds and controls as live markup and CSS. The Quest Tracker's Exile theme is wired to this kit (2026-11-01/02, see [review-approved-ui](quest-tracker/design/review-approved-ui.md)); the handoff's "design assets only / deferred wiring" status and its next-session sections are kept unchanged as provenance. The rejected warm prototype palette is replaced, and the minimum-size corner overlap is fixed and measured by `npm --prefix apps/quest-tracker run corner-safety` ([rendered review](quest-tracker/design/review-approved-ui.md)). Earlier notes below that describe the warm prototype are history.
+The [finished artwork, component sheets and handoff](quest-tracker/design/steel-masonry-kit/HANDOFF.md) are the source: the app uses the kit's two rasters unchanged and reproduces its vector diamonds and controls as live markup and CSS. The Quest Tracker's Exile theme is wired to this kit (2026-11-01/02, see [review-approved-ui](quest-tracker/design/review-approved-ui.md)); the kit's "design assets only / deferred wiring" status (HANDOFF.md and the kit README) and its next-session sections are kept unchanged as provenance. The rejected warm prototype palette is replaced, and the minimum-size corner overlap is fixed and measured by `npm --prefix apps/quest-tracker run corner-safety` ([rendered review](quest-tracker/design/review-approved-ui.md)). Earlier notes below that describe the warm prototype are history.
 Quest Tracker is the primary example in a shared family with Waystone Roller
 and Crafting Helper. Quest Tracker uses its selected theme consistently across
 play, edit, Next up, All and Settings; Exile follows the compact steel tracker below.
@@ -104,6 +104,8 @@ Game-background compositions and source screenshots remain local and outside
 version control; the concept PNG itself is not a runtime asset.
 
 ## Color palette
+
+This table is the superseded warm prototype palette; the live Exile values are in `apps/quest-tracker/theme/exile.json` and the kit's `palette.json` (for example focus-edit is now `#E6E5DE`).
 
 These are proposed production hex values chosen for the approved material family, not sampled AI-image colors. Replace the old palette, rather than carrying it as an unresolved baseline. Map each role to compact/full material usage and interaction variants; textured pixels are confined to decorative edges.
 
