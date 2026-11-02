@@ -13,15 +13,20 @@ Tracker's runner; its header comment is the specification), on the final
 tree:
 
 ```
-corner-safety: 120 cases, 0 failures, control detected, flush checked on 110 cases, readability checked on 120 cases
+corner-safety: 120 cases, 0 failures, control detected, flush checked on 120 cases, readability checked on 120 cases
 ```
 
 The matrix: the main window's eight states at 960 x 680 and 600 x 480, the
 Settings window's six states at 440 x 720 and the overlay over a bright and
 a dark scene at 480 x 168, each at device scales 0.75, 1, 1.33 and 2 and at
 text 200 % at scale 1, at the top, middle and end of every scroller. The
-overlay carries no window frame (`.material-art`; its compact frame is the
-panel's own border), so its 10 cases are not flush-checked. The
+overlay carries the kit's window frame (`.material-art`, since the owner's
+decision of 2026-11-02 below), so its 10 cases are flush-checked like every
+other window's, and the knot control runs on the overlay itself: a run of
+its cases alone, `npm --prefix apps/crafting-helper run corner-safety --
+--only 480x168`, reports
+`corner-safety: 10 cases, 0 failures, control detected, flush checked on 10
+cases, readability checked on 10 cases`. The
 `--self-check` (synthetic pages, no app) reports
 `corner-safety: 4 cases, 0 failures, control detected, flush checked on 4
 cases, readability checked on 4 cases`: at every scale the knot probe is
@@ -49,8 +54,14 @@ Layout choices the runner drove, all under Exile only:
 - When text is so large that the panes would keep under 160 px (text 200 %
   at 600 x 480), the main window's content scrolls as a whole inside the
   frame, clear of the corner knots.
-- The overlay's panel scrolls, with no bar, when its text outgrows the
-  168 px window.
+- The overlay's frame and ground fill its 480 x 168 window, and its rows sit
+  inside the frame's reading inset (14 px top, 20 px sides, 21 px bottom),
+  18 px apart with 3 px between groups, so the seven rows of an active
+  guide fit at text 100 %. The first and last rows keep a further 10 px from
+  each side, between the knots (the runner found the status word and the
+  Screen line on them, contrast 1.15). When the rows outgrow the inset (text
+  200 %), they scroll as a whole, with no bar, in the well inset (16 px top,
+  24 px sides, 33 px bottom), clear of the knots.
 - The grabbed text wraps and grows with its pane, rather than scrolling in
   a block of its own inside a scrolling pane.
 - A chosen target's floor and Remove wrap below its text when they do not
@@ -126,7 +137,7 @@ reads `delivered`.
 | Id | Files | What Exile draws, and the CSS it needed |
 |---|---|---|
 | `ch-radio` | `radio-off.svg`, `radio-on.svg`, `radio-focus.svg`, `radio-disabled.svg` | the Match radios as 16 px steel rings, an ivory dot when on. The focus rule was wrong: under `:focus-visible` it replaced the off or on image with the focus image alone, which is a ring with a clear centre, so a focused radio lost its selection. It now layers the ring over the off base, or over the on base when checked; the disabled rule and the 16 px geometry are unchanged |
-| `ch-overlay-frame` | `frame-overlay-compact.png` | the overlay's step panel inside the compact steel frame, a nine-slice (24 source px to a 12 px border, no centre, no outset) over the masonry. The panel now keeps a real 6 px transparent border, the art's painted reach, with the padding reduced by the same 6 px, so the text inset stays 8 px by 12 px and text scrolling inside the panel is clipped before it reaches the art (at text 200 % it ran under the frame's edge, contrast 1.52 to 2.86) |
+| `ch-overlay-frame` | `frame-overlay-compact.png` | delivered, then superseded by the kit frame: nothing draws it. Round 2 drew it as a nine-slice (24 source px to a 12 px border, no centre, no outset) round the overlay's step panel, with a real 6 px transparent border so scrolling text was clipped before the art. After the second live look check the owner asked for the main window's border instead (2026-11-02), so the overlay now takes the kit's neutral steel frame (`MaterialFrame.svelte`), flush with its window (§ "Corner safety"). The file, its manifest entry and its request stay, `delivered`; the request gains a `Superseded:` line. The compact frame's rules can be restored from round 2's `steel.css` |
 | `ch-item-card` | `item-card-frame.png` | the grabbed item's card in the card frame, a nine-slice (32 source px to 16 px, no centre) over the well, the text at its 10 px by 12 px inset; no CSS change |
 | `ch-step-marker` | `step-marker.svg` | each route step's number on the steel plate. Drawn as a 3 px nine-slice with its centre filled rather than stretched whole, so its edge keeps its width as the number grows (stretched, at text 200 % the number sat on the edge, contrast 2.73), and held to a 22 px square at the step's first line rather than a bar the step's height |
 | `ch-update-dot` | `update-dot.svg` | a 10 px round ivory jewel with a steel edge on the header's Settings button when an update is known; no CSS change |
@@ -168,6 +179,22 @@ What the checks printed after the delivery:
 corner-safety: 120 cases, 0 failures, control detected, flush checked on 110 cases, readability checked on 120 cases
 legacy-pixels: 18 cases, 0 differ
 ```
+
+After the owner's choice of the kit frame for the overlay (2026-11-02), the
+compact frame's rules were removed and the overlay framed as above; the
+`exile-overlay-bright.png` and `exile-overlay-dark.png` frames were
+regenerated, and every `claude-*.png` frame is byte-identical. The checks
+then printed:
+
+```
+corner-safety: 120 cases, 0 failures, control detected, flush checked on 120 cases, readability checked on 120 cases
+corner-safety: 10 cases, 0 failures, control detected, flush checked on 10 cases, readability checked on 10 cases
+legacy-pixels: 18 cases, 0 differ
+radio-focus: 2 cases, 0 failures, control detected, art loaded
+```
+
+(the second line is `--only 480x168`, the overlay's cases alone, its
+control run on the overlay's own frame).
 
 ## Design pass
 

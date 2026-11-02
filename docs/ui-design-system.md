@@ -270,7 +270,8 @@ The concept PNG remains documentation only.
 
 **Waystone Roller and Crafting Helper** adopt the same kit as **Exile**, their
 default, in every window (main and Settings, and Crafting Helper's overlay,
-which takes the steel palette without the raster frame). **Claude** in each
+which takes the same raster frame, flush with its window, by the owner's
+choice of 2026-11-02). **Claude** in each
 app's Settings window (*Appearance* → *Theme*) selects the app's original
 appearance, unchanged. Each carries a byte copy of the Quest Tracker's
 `exile.css` and of the kit's two rasters (`frame-neutral-steel.png`,
@@ -283,7 +284,8 @@ dropped into `apps/<app>/theme/materials/requested/` beside its
 requested file on 2026-11-02 (Waystone Roller's Want and Avoid marks and
 update mark; Crafting Helper's radios, compact overlay frame, item card
 frame, step plate and update mark), stored byte for byte; the placeholders
-remain only as the fallback for a missing file. Each app's runner checks that
+remain only as the fallback for a missing file. The compact overlay frame is
+kept but no longer drawn, superseded by the kit frame. Each app's runner checks that
 no content paints over the frame art, that the frame is flush and that text
 meets the readability floors, and compares Claude with a base tag pixel for
 pixel (`--legacy-base`): `npm --prefix apps/waystone-roller run corner-safety`

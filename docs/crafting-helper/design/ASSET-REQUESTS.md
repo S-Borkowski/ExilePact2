@@ -81,7 +81,8 @@ Current: `docs/crafting-helper/design/reference/ch-overlay-frame.png` (today's e
 Placeholder: a 3 px double steel border (`#8D979E`) around the panel, over the masonry well.
 Wiring: `apps/crafting-helper/theme/materials/requested/frame-overlay-compact.png`; manifest entry `ch-overlay-frame` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: 960 x 336 px RGBA; alpha 0 at every pixel more than 12 source px from an edge; `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures and the overlay's readability passes over both scenes.
-Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
+Status: delivered (owner, 2026-11-02; the file is in place)
+Superseded: the owner chose the kit's own window frame for the overlay (2026-11-02, after the second live look check: "the correct border, like the main crafting helper window or quest tracker overlay"). Under Exile the overlay now draws `frame-neutral-steel.png` through `components/MaterialFrame.svelte`, flush with the 480 x 168 window, as the main window and Settings do; this file stays in `requested/` with its manifest entry `delivered`, and no rule draws it.
 
 ## ch-item-card — item-card-frame.png
 

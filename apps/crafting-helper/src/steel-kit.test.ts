@@ -169,6 +169,23 @@ describe('the steel/masonry kit in the Exile theme', () => {
     art = settings.root.querySelectorAll('.material-art');
     expect(art).toHaveLength(1);
     expect(art[0].getAttribute('aria-hidden')).toBe('true');
+
+    // The overlay takes the same frame (the owner's choice over the compact
+    // one), while it shows a step; Claude's overlay and an empty one draw none.
+    const bridge = fakeBridge(fixtureView('overlay-active'));
+    const overlay = await renderComponent(Overlay, { bridge }, (root) => root.querySelector('.panel') !== null);
+    others.push(overlay.destroy);
+    art = overlay.root.querySelectorAll('.material-art');
+    expect(art).toHaveLength(1);
+    expect(art[0].getAttribute('aria-hidden')).toBe('true');
+    expect(art[0].children).toHaveLength(0);
+    expect(overlay.root.querySelectorAll('[data-art-placeholder="ch-overlay-frame"]')).toHaveLength(0);
+    bridge.pushView({ ...fixtureView('overlay-active'), theme: 'claude' });
+    expect(overlay.root.querySelectorAll('.material-art')).toHaveLength(0);
+    expect(overlay.root.querySelector('.panel')).not.toBeNull();
+    const view = fixtureView('overlay-active');
+    bridge.pushView({ ...view, overlay: { ...view.overlay, guide: null } });
+    expect(overlay.root.querySelectorAll('.material-art')).toHaveLength(0);
   });
 
   it('lays the masonry once per well, as a cover crop with no repeat and no warm filter', async () => {
@@ -297,6 +314,11 @@ describe('the steel/masonry kit in the Exile theme', () => {
 
 describe('requested art', () => {
   const manifest = MANIFEST as RequestedManifest;
+  // Delivered, then set aside by the owner (2026-11-02): the overlay takes
+  // the kit's window frame instead of the compact one, so the file stays in
+  // `requested/` and nothing draws it (ASSET-REQUESTS.md, `Superseded:`).
+  const SUPERSEDED = ['ch-overlay-frame'];
+  const drawn = manifest.requests.filter((r) => !SUPERSEDED.includes(r.id));
 
   it('lists each request once, every one delivered', () => {
     const ids = manifest.requests.map((r) => r.id);
@@ -317,13 +339,9 @@ describe('requested art', () => {
       'ch-item-card': async () => (rendered = await renderView(fixtureView('craft-planning'))).root,
       'ch-step-marker': async () => (rendered = await renderView(fixtureView('craft-planning'))).root,
       'ch-update-dot': async () => (rendered = await renderView({ ...fixtureView('empty'), update_available: '0.4.0' })).root,
-      'ch-overlay-frame': async () => {
-        const r = await renderComponent(Overlay, { bridge: fakeBridge(fixtureView('overlay-active')) }, (root) => root.querySelector('.panel') !== null);
-        others.push(r.destroy);
-        return r.root;
-      },
     };
-    for (const r of manifest.requests) {
+    expect(drawn.map((r) => r.id)).toEqual(Object.keys(shows));
+    for (const r of drawn) {
       expect(shows[r.id], r.id).toBeDefined();
       const root = await shows[r.id]();
       expect(root.querySelectorAll(`[data-art-placeholder="${r.id}"]`).length, r.id).toBeGreaterThan(0);
@@ -381,10 +399,19 @@ describe('requested art', () => {
 
   it('has Exile rules that draw each delivered file in place of its placeholder', async () => {
     const css = await readText('./steel.css');
-    for (const r of manifest.requests) {
+    for (const r of drawn) {
       expect(css, r.id).toContain(`[data-art-placeholder='${r.id}']`);
       expect(css, r.id).toContain(`[data-art-${r.id}]`);
       for (const f of r.files) expect(css, `${r.id} ${f}`).toContain(`var(--art-${f.replace(/\.(png|svg)$/, '')})`);
+    }
+    // A superseded file is delivered but never drawn: no rule and no placeholder reads it.
+    for (const id of SUPERSEDED) {
+      const r = manifest.requests.find((x) => x.id === id)!;
+      expect(r.status, id).toBe('delivered');
+      expect(css, id).not.toContain(`[data-art-placeholder='${id}']`);
+      expect(css, id).not.toContain(`[data-art-${id}]`);
+      for (const f of r.files) expect(css, `${id} ${f}`).not.toContain(`--art-${f.replace(/\.(png|svg)$/, '')}`);
+      for (const [path, text] of Object.entries(SVELTE)) expect(text, `${path} ${id}`).not.toContain(`data-art-placeholder="${id}"`);
     }
   });
 });

@@ -15,15 +15,17 @@
   // it (`view.overlay.visible`), so the page draws what the view holds
   // either way and sends no command.
   //
-  // The view's theme marks the document (`../theme.ts`). Exile draws the
-  // panel in the kit's steel palette over the masonry well, with a steel
-  // edge standing in for the compact frame the owner was asked for
-  // (`ch-overlay-frame`, `../steel.css`); the kit's full frame does not fit
-  // a 168 px window. Claude draws today's panel.
+  // The view's theme marks the document (`../theme.ts`). While it shows a
+  // step, Exile frames the whole window with the main window's kit frame
+  // (`../components/MaterialFrame.svelte`), flush with its edge, over the
+  // masonry well and the 0.92 ground; the rows sit inside the frame's
+  // reading inset and scroll there when they do not fit (`../steel.css`).
+  // Claude draws today's panel.
   import { onDestroy, onMount } from 'svelte';
   import type { Bridge } from '../bridge';
   import type { View } from '../ipc';
   import { OUTCOME_LABELS, SOURCE_LABELS, STATUS_LABELS } from '../craft/words';
+  import MaterialFrame from '../components/MaterialFrame.svelte';
   import masonry from '../../theme/materials/raster/masonry-charcoal.png';
   import { applyTheme } from '../theme';
 
@@ -31,12 +33,41 @@
 
   let view = $state<View | null>(null);
   let stop: (() => void) | null = null;
+  let outer = $state<HTMLElement | null>(null);
+  let panel = $state<HTMLElement | null>(null);
+  let whole = $state(false);
 
   const guide = $derived(view?.overlay.guide ?? null);
   const exile = $derived(view?.theme !== 'claude');
 
   $effect(() => {
     applyTheme(document.documentElement, view?.theme);
+  });
+
+  /** The frame's reading inset, top and bottom together (`../steel.css`). */
+  const READING_INSET_Y = 14 + 21;
+
+  // Under Exile the rows fill the frame's reading inset; when they are too
+  // tall for it (large text), they scroll as a whole instead
+  // (`data-scroll="whole"`), in a well held clear of the corner knots. The
+  // rows' height does not depend on the mode (each is one line), so the
+  // choice never flips back and forth.
+  $effect(() => {
+    const box = outer;
+    const rows = panel;
+    void guide;
+    if (!exile || !box || !rows || typeof ResizeObserver === 'undefined') {
+      whole = false;
+      return;
+    }
+    const measure = () => {
+      whole = rows.scrollHeight > box.clientHeight - READING_INSET_Y;
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    for (const group of rows.children) observer.observe(group);
+    measure();
+    return () => observer.disconnect();
   });
 
   onMount(() => {
@@ -62,16 +93,20 @@
   });
 </script>
 
-<div class="overlay" data-visible={view ? String(view.overlay.visible) : 'none'} data-position={view?.overlay.position ?? 'top-center'}>
+<div
+  class="overlay"
+  data-visible={view ? String(view.overlay.visible) : 'none'}
+  data-position={view?.overlay.position ?? 'top-center'}
+  style:--well-image={exile ? `url("${masonry}")` : null}
+  bind:this={outer}
+>
   {#if guide}
     {@const g = guide}
     {@const middle = g.why !== null || g.uses.length > 0 || g.odds !== null || g.on_hit !== null || g.on_miss !== null}
-    <div
-      class="panel"
-      data-status={g.status}
-      data-art-placeholder="ch-overlay-frame"
-      style:--well-image={exile ? `url("${masonry}")` : null}
-    >
+    {#if exile}
+      <MaterialFrame />
+    {/if}
+    <div class="panel" data-status={g.status} data-scroll={exile ? (whole ? 'whole' : 'rows') : null} bind:this={panel}>
       <div class="group">
         <p class="row head">
           <span class="status-word caps" data-status={g.status}>{STATUS_LABELS[g.status]}</span>

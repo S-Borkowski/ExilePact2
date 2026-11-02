@@ -2034,10 +2034,10 @@ release already exists, only its assets are replaced.
 
 - The app now opens in the Exile theme, the Quest Tracker's steel and
   masonry look, in the main window, the Settings window and the overlay: a
-  steel frame along the main and Settings windows' edges, dark stone behind
-  the content, grey text with a little gold and Cinzel headings; the
-  overlay takes the steel palette over the stone, inside a slim steel
-  frame of its own. The trade panel's Match choices are steel radio
+  steel frame along each window's edges (the overlay takes the main
+  window's frame, filling its window while it shows a step), dark stone
+  behind the content, grey text with a little gold and Cinzel headings.
+  The trade panel's Match choices are steel radio
   buttons that keep showing which one is selected while the keyboard is
   on them, the grabbed item sits in a steel-edged card, each route step's
   number sits on a steel plate, and the update mark beside Settings is a

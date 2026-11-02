@@ -594,27 +594,58 @@
 /* --------------------------------------------------------------- overlay */
 
 /*
- * The overlay does not take the kit's window frame (its knots do not fit
- * 168 px): the panel takes the steel palette, the masonry well under the
- * existing 0.92 ground and a kit steel edge, which the owner's compact
- * frame replaces once delivered (ch-overlay-frame, below).
+ * The overlay takes the main window's kit frame (components/
+ * MaterialFrame.svelte), the owner's choice over the compact frame
+ * (2026-11-02; ch-overlay-frame is delivered and superseded, so nothing
+ * here draws it). While a step shows, the frame and its ground fill the
+ * 480 x 168 window, flush with its edge: the overlay's 0.92 ground with the
+ * masonry well behind it. The rows sit inside the frame's reading inset,
+ * as the quest tracker's overlay (14 px top, 20 px sides, 21 px bottom),
+ * anchored where data-position says; only they scroll, clipped inside the
+ * rails, and with no bar, since the window is click-through.
  */
-:root[data-theme='exile'] .overlay .panel {
+:root[data-theme='exile'] .overlay:has(> .material-art) {
   position: relative;
   isolation: isolate;
-  border: 1px solid var(--color-panel-border);
+  box-sizing: border-box;
+  padding: 14px 20px 21px;
   background: color-mix(in srgb, var(--color-panel-bg) calc(var(--opacity-default) * 100%), transparent);
 }
 
 :root[data-theme='exile'] .overlay .panel {
-  /* Text too large for the 168 px window scrolls inside the panel rather
-     than running off it; the window is click-through, so it draws no bar. */
+  gap: 3px;
+  width: auto;
+  min-height: 0;
   max-height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
   overflow-y: auto;
   scrollbar-width: none;
 }
 
-:root[data-theme='exile'] .overlay .panel::before {
+/* Seven one-line rows fit the 133 px the reading inset leaves. */
+:root[data-theme='exile'] .overlay .row {
+  line-height: 18px;
+}
+
+/* The first and last rows reach the corners: they keep a further 10 px from
+   each side, between the knots, as the main window's title bar and status
+   line do. */
+:root[data-theme='exile'] .overlay .panel[data-scroll='rows'] > .group:first-child > .row:first-child,
+:root[data-theme='exile'] .overlay .panel[data-scroll='rows'] > .group:last-child > .row:last-child {
+  padding: 0 10px;
+}
+
+/* Text too large for the reading inset: the rows scroll as a whole, held
+   clear of the knots (2 px further down, 4 px further in at the sides and
+   12 px further up, the well inset: 16 / 24 / 33 px from the edge). */
+:root[data-theme='exile'] .overlay .panel[data-scroll='whole'] {
+  max-height: calc(100% - 14px);
+  margin: 2px 4px 12px;
+}
+
+:root[data-theme='exile'] .overlay:has(> .material-art)::before {
   content: '';
   position: absolute;
   z-index: -1;
@@ -671,24 +702,6 @@
 
 :root[data-theme='exile'][data-art-ch-radio] [data-art-placeholder='ch-radio']:disabled {
   background-image: var(--art-radio-disabled);
-}
-
-/* ----------------------------------------- requested art: overlay frame */
-
-/* Placeholder: a double steel edge, a stand-in for the compact frame. */
-:root[data-theme='exile'] [data-art-placeholder='ch-overlay-frame'] {
-  border: 3px double var(--color-panel-border);
-}
-
-/* Delivered: the compact frame as a nine-slice over the panel's edge, its art
-   within 6 px of it. The 6 px border is real (and transparent), so text that
-   scrolls inside the panel is clipped before it reaches the art; the padding
-   gives back the rest of the 8 px by 12 px text inset. */
-:root[data-theme='exile'][data-art-ch-overlay-frame] [data-art-placeholder='ch-overlay-frame'] {
-  border: 6px solid transparent;
-  padding: calc(var(--space-panel-pad) - 6px) calc(var(--space-row-pad) - 6px);
-  border-image: var(--art-frame-overlay-compact) 24 / 12px / 0 stretch;
-  box-shadow: none;
 }
 
 /* -------------------------------------------- requested art: item card */

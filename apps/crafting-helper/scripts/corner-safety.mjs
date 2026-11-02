@@ -49,9 +49,11 @@
 // over both scenes).
 //
 // The control: at every scale a probe over the rendered bottom-left knot of
-// the main window's frame must be reported as overlapping, or the run
-// fails. The overlay has no frame; the main window's control covers its
-// scale.
+// the frame must be reported as overlapping, or the run fails. It runs on
+// the first case at each scale that is a main window, or an overlay that
+// carries the frame (`.material-art`, as Exile's does while it shows a
+// step), so a run of the overlay's cases alone (`--only 480x168`) proves
+// its own instrument; a Settings case never takes it.
 //
 // Flags:
 //   --root <app dir>        serve another tree's app
@@ -967,7 +969,9 @@ async function runCase(page, base, c, withControl, padding, print) {
     const readable = await readabilityReasons(page);
     runs += readable.runs;
     for (const r of readable.reasons) unreadable.add(r);
-    if (withControl && control === null) {
+    // An overlay takes the control only when it is framed: with no art there
+    // is no knot to probe, and the case leaves the control to another.
+    if (withControl && control === null && (c.kind !== 'overlay' || m.art)) {
       const probe = await page.evaluate(probeInPage, KNOT_PROBE);
       await page.evaluate(probeInPage, null);
       control = !!probe && findOverlaps(mask, [probe]).length === 1;
@@ -1370,14 +1374,15 @@ async function main() {
       const page = await context.newPage();
       try {
         for (const c of cases) {
-          // The control runs on the first main case at each scale (the overlay has no frame).
-          const withControl = !controlled.has(scale) && c.kind === 'main';
+          // The control runs on the first main case at each scale, or on the
+          // first overlay case that carries the frame (runCase decides that).
+          const withControl = !controlled.has(scale) && (c.kind === 'main' || c.kind === 'overlay');
           try {
             const r = await runCase(page, server.base, c, withControl, padding, print);
             failures += r.failures;
             flushed += r.flushed;
             readable += r.readable;
-            if (withControl) controlled.set(scale, r.control === true);
+            if (withControl && r.control !== null) controlled.set(scale, r.control === true);
             ran++;
           } catch (error) {
             print(`${c.name} @top: FAIL error: ${String(error?.message || error).split('\n')[0]}`);

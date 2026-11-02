@@ -98,8 +98,8 @@ The Quest Tracker's steel/masonry kit
   (`theme/materials/raster/frame-neutral-steel.png`), drawn by
   `src/components/MaterialFrame.svelte` as the Quest Tracker draws it: a
   nine-slice of 224 source px a side at 48 px, the centre empty, fixed to
-  the window, its art meeting every window edge (flush). The main window
-  and the Settings window carry it; the overlay does not (below).
+  the window, its art meeting every window edge (flush). The main window,
+  the Settings window and the overlay (while it shows a step) carry it.
 - **Masonry.** The kit's charcoal masonry
   (`theme/materials/raster/masonry-charcoal.png`), one cover crop per well
   at 38 % over `#090D10`, behind the live content of each window. The
@@ -129,12 +129,19 @@ The Quest Tracker's steel/masonry kit
   square checkbox and pill switch; the kit's keycap; 8 px slate scrollbars;
   a 2 px ivory `#E6E5DE` focus ring drawn inside the control. A wanted
   result (a hit, a target met, done) reads ivory.
-- **Overlay.** Not the kit's window frame (its knots do not fit 168 px):
-  the panel takes the steel palette over the masonry well under the 0.92
-  ground, edged by the owner's compact steel frame (`ch-overlay-frame`,
-  below), whose art stays within 6 px of the panel's edge while the text
-  keeps its 8 px by 12 px inset. Text too large for the window scrolls
-  inside the panel, which draws no scrollbar (the window is click-through).
+- **Overlay.** The main window's kit frame, as the Quest Tracker's overlay
+  is framed (the owner's choice, 2026-11-02, over the compact frame he had
+  been asked for): while a step shows, the frame and the 0.92 ground with
+  the masonry well behind it fill the whole 480 × 168 window, flush with
+  its edge. The rows sit inside the frame's reading inset (14 px top, 20 px
+  sides, 21 px bottom), anchored to the top or the bottom as the position
+  says, 18 px apart with 3 px between groups, so the seven rows of an
+  active guide fit at text 100 %; the first and last rows keep a further
+  10 px from each side, between the corner knots. When the rows outgrow the
+  inset (large text), they scroll as a whole (`.panel[data-scroll='whole']`)
+  in the well inset (16 px top, 24 px sides, 33 px bottom), clear of the
+  knots, with no scrollbar (the window is click-through). The window's
+  size, place and click-through are unchanged.
 - **Requested art, delivered.** Five elements have no kit art: the trade
   panel's radio buttons, a compact overlay frame, the grabbed item's card,
   the route's step number plate and the update mark.
@@ -145,12 +152,13 @@ The Quest Tracker's steel/masonry kit
   stay as the fallback for a missing file: the radios from four 16 px SVGs
   (off, on, focus, disabled; under keyboard focus the focus ring, clear in
   the centre, is layered over the off or on base, so the selection stays
-  visible, which `scripts/radio-focus.mjs` checks), the overlay's step
-  panel in the compact steel frame (a nine-slice, 24 source px to a 12 px
-  border, no centre), the grabbed item's card in the card frame (32 source
-  px to 16 px), the step number on the steel plate, and the update mark as
-  a round ivory jewel. `src/requested-art.ts` finds each file and marks the
-  page (`theme/materials/requested/manifest.json`), with no code per file.
+  visible, which `scripts/radio-focus.mjs` checks), the grabbed item's
+  card in the card frame (32 source px to 16 px), the step number on the
+  steel plate, and the update mark as a round ivory jewel. The compact
+  overlay frame (`frame-overlay-compact.png`) stays delivered but is not
+  drawn, superseded by the kit frame (above). `src/requested-art.ts` finds
+  each file and marks the page (`theme/materials/requested/manifest.json`),
+  with no code per file.
 - **Checks.** `npm run corner-safety` (`scripts/corner-safety.mjs`, adapted
   from the Quest Tracker's) renders every window's preview in headless Edge
   at device scales 0.75, 1, 1.33 and 2 and at text 200 %, every scroll
@@ -276,7 +284,9 @@ muted text is kept to labels and the source words. Square
 corners, `--space-panel-pad` (8 px) above and below and `--space-row-pad`
 (12 px) at the sides, so no line starts at the panel's edge over a busy
 scene (the audit's finding 1), no shadow (the window has none to draw it
-in).
+in). That is the Claude theme's panel; under Exile the ground and the kit's
+window frame fill the whole window instead, and the rows keep the frame's
+reading inset (§ "Theme", Overlay).
 
 **The rows**, top to bottom, at most seven, each one line high and cut
 with an ellipsis at its end when too long (the page never wraps a row, so
