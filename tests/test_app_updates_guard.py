@@ -575,12 +575,12 @@ class ReleaseContract(unittest.TestCase):
             with self.subTest(app=app.name):
                 self.assertEqual(qtnet.rust_const(net, exe_const, "str"), [asset])
                 self.assertEqual(product_fields(product, product_const, "exe_name"), [asset])
-        # The crafting helper and the quest tracker build title-case exes;
-        # the quest tracker's workflow uploads its build as the kebab name
-        # 0.1.x installs fetch, and the waystone roller keeps its kebab name.
+        # All three apps build title-case exes; the quest tracker's and the
+        # waystone roller's workflows upload their build as the kebab name
+        # every installed copy fetches.
         self.assertEqual(built, {
             "QUEST_TRACKER": "Quest Tracker.exe",
-            "WAYSTONE_ROLLER": "waystone-roller.exe",
+            "WAYSTONE_ROLLER": "Waystone Roller.exe",
             "CRAFTING_HELPER": "Crafting Helper.exe",
         })
         self.assertEqual(released, {

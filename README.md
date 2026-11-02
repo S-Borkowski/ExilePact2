@@ -68,7 +68,8 @@ Tracker*.
 
 ## Waystone roller
 
-`waystone-roller.exe` helps you roll (craft) waystones. In an ordinary
+`Waystone Roller.exe` (`waystone-roller.exe` as a release download)
+helps you roll (craft) waystones. In an ordinary
 window you pick, from the waystone modifiers listed on poe2db.tw, the mods
 to get (any or all of them) and the mods to avoid, a tier range, the
 rarities and corrupted or not. It builds one search string from those rules
@@ -101,8 +102,11 @@ tracker:
 ```sh
 npm --prefix apps/waystone-roller ci            # only when apps/waystone-roller/node_modules is missing
 npm --prefix apps/waystone-roller run release
-# -> apps/waystone-roller/target/release/waystone-roller.exe
+# -> apps/waystone-roller/target/release/Waystone Roller.exe
 ```
+
+Run `Waystone Roller.exe` (a release download is `waystone-roller.exe`, the
+same program).
 
 ## Crafting helper
 
@@ -208,7 +212,8 @@ The tag `quest-tracker-v<version>` starts
 which builds both of the quest tracker's executables;
 `waystone-roller-v<version>` starts
 [`.github/workflows/waystone-roller-release.yml`](.github/workflows/waystone-roller-release.yml),
-which builds `waystone-roller.exe`; `crafting-helper-v<version>` starts
+which builds `Waystone Roller.exe` and attaches it as `waystone-roller.exe`;
+`crafting-helper-v<version>` starts
 [`.github/workflows/crafting-helper-release.yml`](.github/workflows/crafting-helper-release.yml),
 which builds `Crafting Helper.exe` and attaches it as
 `Crafting.Helper.exe` and, for 0.1.x copies, as `crafting-helper.exe`. Each

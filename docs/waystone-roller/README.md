@@ -19,7 +19,10 @@ game memory, moves no mouse and clicks nothing.
 
 ## Overview
 
-- **One window, `waystone-roller.exe`.** A Tauri app: the search-string
+- **One window, `Waystone Roller.exe`.** The build's name since the
+  rename; a release download is `waystone-roller.exe`, the same program.
+  It opens in the Exile look (the Quest Tracker's steel frame and dark
+  stone); the look it had before is the Claude theme in Settings. A Tauri app: the search-string
   engine (`wr-regex`) and the app's logic (`wr-app`) are Rust crates; the UI
   is Svelte and TypeScript in an ordinary window titled "Waystone Roller",
   resizable and in the taskbar. Closing the window quits the app. Only one
@@ -79,7 +82,7 @@ game memory, moves no mouse and clicks nothing.
 
 - **Windows 10 or 11, 64-bit.**
 - **The Microsoft Edge WebView2 runtime.** Windows 11 ships it, and most
-  Windows 10 machines have it through Edge. `waystone-roller.exe` does not
+  Windows 10 machines have it through Edge. The app does not
   bundle it; without it the window cannot start.
 - **The game in English.** The search terms are English text from the item
   (Known limitations).
@@ -91,9 +94,10 @@ to the quest tracker's versions; build with `--locked` and `npm ci`.
 
 ## Command reference
 
-### `waystone-roller.exe`
+### `Waystone Roller.exe`
 
-Takes no arguments.
+A build makes `target/release/Waystone Roller.exe`; a release download is
+`waystone-roller.exe`, the same program. Takes no arguments.
 
 | Environment variable | Effect |
 |---|---|
@@ -103,8 +107,11 @@ Takes no arguments.
   `auto_paste` (*Paste into the game's search box*, set by the main
   window's checkbox through `set_auto_paste`; a file written before it
   existed, or any value but `false`, loads it on), `selection` (the rules
-  above) and `check_updates` (*Automatically check for updates*; a file
-  written before it existed, or any value but `true`, loads it off). Written a moment after each change, through
+  above), `check_updates` (*Automatically check for updates*; a file
+  written before it existed, or any value but `true`, loads it off) and
+  `theme` (the Settings window's *Theme*, `"exile"` or `"claude"`; a file
+  written before it existed, or any other value, loads Exile;
+  [`ui-design.md`](ui-design.md) § "Theme"). Written a moment after each change, through
   a temporary file renamed over the old one, and when the app quits. Saved
   mods the data no longer has are dropped at launch, and the status line
   names them.
@@ -138,7 +145,8 @@ Takes no arguments.
   - `error: <e>`: the embedded mod data could not be read (a broken build;
     the app then stops), or `error: settings could not be saved: <e>`.
   - `settings refused: <reason>` when the Settings window sends a change
-    other than `check_updates` set to true or false; `error: settings
+    other than `check_updates` set to true or false and `theme` set to
+    `"exile"` or `"claude"`; `error: settings
     window: <reason>` when that window could not be opened.
   - `updates: ...` lines, the same as the quest tracker's:
     `updates: automatic checks turned on` and `updates: automatic checks
@@ -155,7 +163,8 @@ Takes no arguments.
     release not signed, the app closing or restarting) and `updates: the
     partial download could not be removed (<error>)`. At every start, one
     `updates: cleanup: nothing to remove`, or `updates: cleanup: removed
-    waystone-roller.exe.old` (and `could not remove <file> (<error>)` for a
+    waystone-roller.exe.old` (the running exe's own name: `Waystone
+    Roller.exe.old` for a build; and `could not remove <file> (<error>)` for a
     file still held after about 30 s). On those failures: `updates: restart
     failed: the new version did not start (<error>)`, `updates: restart
     failed: the exe's path is not known`, `updates: the exe's path is not
@@ -170,8 +179,11 @@ Takes no arguments.
 **The Settings window**, titled "Waystone Roller Settings", opens from the
 main window's *Settings* button (shown and focused when it is already
 open). It is decorated, dark and not resizable, 420 by 364 at 1x, centred;
-closing the main window quits the app with it. It holds one section,
-*Updates*, and "Created by ST4H" at the bottom. *Updates* has:
+closing the main window quits the app with it. It holds two sections,
+*Appearance* and *Updates*, and "Created by ST4H" at the bottom.
+*Appearance* has one **Theme** select, *Exile* (the default) or *Claude*
+(the look before Exile), which both windows follow at once and which is
+saved as `theme`. *Updates* has:
 
 - **Automatically check for updates** (off), with the helper text "Asks
   GitHub once a day whether a newer version is out. Downloads nothing: an
@@ -196,14 +208,15 @@ closing the main window quits the app with it. It holds one section,
 - **Check now**, disabled while a check or an install runs; under it, the
   running version.
 
-The window's commands are `get_app_settings`, `update_settings` (exactly
-`{"check_updates": <bool>}`), `check_for_updates` (starts a check and
+The window's commands are `get_app_settings`, `update_settings`
+(`{"check_updates": <bool>}`, `{"theme": "exile" | "claude"}` or both, and
+nothing else; a theme change starts no check), `check_for_updates` (starts a check and
 answers at once), `install_update` (starts the install and answers at once;
 the only way one starts) and `cancel_update`; the main window's button
 calls `open_settings`. The window is sent `wr:app-settings` with the view
-(the running version, `check_updates`, the check's state and text and the
-newer version, and the install's state, text and progress), and the main
-window's `wr:view` carries `update_available`. The newest release is the
+(the running version, `check_updates`, `theme`, the check's state and text
+and the newer version, and the install's state, text and progress), and the
+main window's `wr:view` carries `update_available` and `theme`. The newest release is the
 highest published, non-prerelease release tagged
 `waystone-roller-v<major>.<minor>.<patch>`.
 
@@ -239,7 +252,8 @@ Run from `apps/waystone-roller/` (or with `npm --prefix apps/waystone-roller`).
 | `npm run build` | Type-checks the page and writes `dist/`, which the executable embeds. Needed before any `cargo` build of the `waystone-roller` package. |
 | `npm test` | The page's tests, in jsdom. |
 | `npm run start` | The app under `tauri dev`. |
-| `npm run release` | `tauri build --no-bundle`: `target/release/waystone-roller.exe`. |
+| `npm run corner-safety` | Renders both windows' previews in the installed Edge (headless, through `playwright-core`) across sizes, scales, text sizes, scroll positions and both themes, and fails when content paints over the Exile frame's art, the frame is not flush with the window, or text falls under the readability floors (12 px, contrast 4.5:1). `--self-check` runs its controls alone (synthetic pages, no app); `--legacy-base <tag>` compares the Claude theme with that tag's tree pixel for pixel; `--screenshots <dir>` also saves the six review images (`docs/waystone-roller/design/frames/`). The options are in the script's header. |
+| `npm run release` | `tauri build --no-bundle`: `target/release/Waystone Roller.exe` (Cargo builds `waystone-roller.exe`; Tauri names the result from `mainBinaryName`). |
 
 ## How the search is built
 
@@ -351,9 +365,11 @@ HTML, no value ranges. To refresh it, see "Working on the app".
   (Command reference). The log holds the shortcut, the copied search strings,
   refusals, the paste lines and the `updates:` lines; nothing about your account or
   character, and nothing of GitHub's answers. An install also writes beside
-  the exe: `waystone-roller.exe.download` while it downloads (deleted when
-  the install fails or is cancelled) and `waystone-roller.exe.old`, the
-  replaced exe, which the next start removes.
+  the exe: `<exe>.download` while it downloads (deleted when the install
+  fails or is cancelled) and `<exe>.old`, the replaced exe, which the next
+  start removes. Both take the running exe's own name, so a build that runs
+  as `Waystone Roller.exe` gets `Waystone Roller.exe.old`, and a release
+  download `waystone-roller.exe.old`.
 
 ## Working on the app
 
@@ -362,7 +378,9 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 | `apps/waystone-roller/crates/wr-regex/` | The engine: the data loader, token choice, the search builder, and a model of the search box used only by the tests. |
 | `apps/waystone-roller/crates/wr-app/` | The app's logic without Tauri: the store, the selection, the view, the commands, the shortcut and copy path, the paste's decisions and timing (`tests/paste.rs`, through the same fake shell), and the update commands and ticker (`updates.rs`, over the shared `ep-update`; tested in `tests/updates.rs` with a recording fake transport). |
 | `apps/waystone-roller/src-tauri/` | The Tauri glue: the global shortcut, single instance, the Win32 clipboard writer and beep, the paste's key events, key-state read and window-title read (`src/paste.rs`, the app's only input code), the commands, the Settings window (label `settings`, its capability `capabilities/settings.json`, `core:event:default` alone), the update transport over the shared `ep-net`, and the restart into an installed update. |
-| `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, `UpdatesSection.svelte`, `sections.ts`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). |
+| `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, `AppearanceSection.svelte`, `UpdatesSection.svelte`, `sections.ts`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). The Exile theme's own rules are `steel.css`, its frame `components/MaterialFrame.svelte`, the `data-theme` switch `theme.ts` and the requested-art loader `requested-art.ts`. |
+| `apps/waystone-roller/theme/` | `tokens.css` and `fonts/` (the Claude theme's tokens, byte-identical to the quest tracker's), `exile.css` (the Exile palette, a byte copy of the quest tracker's), the kit's two rasters in `materials/raster/`, and `materials/requested/`, where requested art is dropped in by name beside its `manifest.json` ([`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md)). |
+| `apps/waystone-roller/scripts/` | The corner-safety runner (`corner-safety.mjs`, with its pure checks in `corner-safety-core.mjs`; § "npm scripts"). |
 | `apps/waystone-roller/data/` | The mod data file. |
 | `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, the view fixtures shared by the page's tests and `wr-app`'s, and `app-settings/`, one Settings window view per update and install state. |
 | `apps/shared/` | The update code both apps share, its own Cargo workspace: `ep-net` (the only network code, and a trade-leagues request only the crafting helper calls) and `ep-update` (the check, the install, the signature check, the swap): [`docs/app-updates.md`](../app-updates.md). |
@@ -378,6 +396,8 @@ cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-regex --locked 
 npm --prefix apps/waystone-roller test                                                # the page, in jsdom
 py -3 -m unittest tests.test_waystone_roller_poe2db tests.test_waystone_roller_guard  # the data tool and the guard
 py -3 -m unittest tests.test_waystone_roller_release                                  # the release cutter and workflow
+npm --prefix apps/waystone-roller run corner-safety                                   # headless Edge: nothing paints over the Exile frame, readability, flush
+npm --prefix apps/waystone-roller run corner-safety -- --legacy-base <tag>            # the Claude theme against <tag>, pixel for pixel
 cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-app --locked --test updates  # the update commands, fake transport
 cargo test --manifest-path apps/waystone-roller/Cargo.toml -p wr-app --locked --test paste    # the paste, fake shell
 cargo test --manifest-path apps/shared/Cargo.toml --locked --workspace                 # the shared update crates, 127.0.0.1 only
@@ -528,16 +548,17 @@ release already exists, only its assets are replaced.
   at most 60 unauthenticated requests an hour from one IP address (GitHub's
   documentation, not measured here). Windows only.
 - **The install needs a folder it can write.** It downloads into
-  `waystone-roller.exe.download` beside the exe and renames the running exe
-  to `waystone-roller.exe.old`; in a folder the app cannot write (under
+  `<exe>.download` beside the exe and renames the running exe to
+  `<exe>.old`, each under the running exe's own name (`Waystone Roller.exe`
+  or a downloaded `waystone-roller.exe`); in a folder the app cannot write (under
   `Program Files`, for example) the install fails at once with "the app's
   folder cannot be written", before any download.
 - **The `.old` file stays until the next start.** Windows does not let a
-  running exe be deleted, so the replaced exe is left as
-  `waystone-roller.exe.old` and removed by the next start, which retries
-  for about 30 s while the old process ends. Until then, to roll back by
-  hand: quit the app, rename `waystone-roller.exe` away and
-  `waystone-roller.exe.old` back to `waystone-roller.exe`. After that, an
+  running exe be deleted, so the replaced exe is left as `<exe>.old` (for
+  example `waystone-roller.exe.old`) and removed by the next start, which
+  retries for about 30 s while the old process ends. Until then, to roll
+  back by hand: quit the app, rename the exe away and `<exe>.old` back to
+  the exe's name. After that, an
   older version is the earlier release's `waystone-roller.exe`, downloaded
   by hand.
 - **An unsigned release cannot be installed.** A newer release without
@@ -578,6 +599,22 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### Unreleased
+
+- The app now opens in the Exile theme, the Quest Tracker's steel and
+  masonry look: a steel frame along each window's edge, dark stone behind
+  the content, grey text with a little gold and Cinzel headings. The look
+  it had before stays available as the Claude theme, chosen under
+  *Appearance* → *Theme* in the Settings window and saved as `theme` in
+  `settings.json`; a missing or unknown value opens Exile. Claude looks
+  exactly as before. Nothing else changes: the same features, wording and
+  window sizes.
+- A build from source is now `Waystone Roller.exe` (in
+  `target/release/`). A release download is still `waystone-roller.exe`, the same program;
+  renaming it to `Waystone Roller.exe` is fine. An in-app update keeps the
+  installed file's own name, whichever it is, and saved settings stay where
+  they were.
 
 ### 0.1.2
 
