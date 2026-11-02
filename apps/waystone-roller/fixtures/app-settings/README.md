@@ -5,7 +5,8 @@ One file per check state (`update.state`: `idle`, `checking`, `up-to-date`,
 the files named `install-<state>`: `install-unsigned`,
 `install-downloading`, `install-verifying`, `install-restarting`,
 `install-failed`), each an `AppSettingsView` exactly as `wr-app` serialises
-it (`ep-update`'s type) and the shell sends it as `wr:app-settings`, and
+it (`ep-update`'s fields with the app's `theme` beside them, always `exile`
+here) and the shell sends it as `wr:app-settings`, and
 nothing else: `app_settings_fixtures_are_current` fails on any other JSON
 file here. The install state `none` is `idle.json`'s, and `ready` is
 `available.json`'s.

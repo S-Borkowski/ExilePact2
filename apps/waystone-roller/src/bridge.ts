@@ -6,7 +6,10 @@
 // Outside Tauri (`npm run dev`), `previewBridge` renders one of the view
 // fixtures under `fixtures/views/`, chosen by the query:
 //
-//   http://127.0.0.1:1421/?view=too-long
+//   http://127.0.0.1:1421/?view=too-long&theme=claude
+//
+// `theme` (`exile`|`claude`) draws the fixture in that look, overriding the
+// fixture's own `theme`.
 //
 // Commands are logged. A selection patch is echoed into the shown selection,
 // and the paste checkbox into the shown `auto_paste`, so the controls
@@ -17,7 +20,8 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { type Selection, type View, viewProblems } from './ipc';
+import { type Selection, type Theme, type View, viewProblems } from './ipc';
+import { previewTheme } from './theme';
 
 export const VIEW_EVENT = 'wr:view';
 
@@ -39,14 +43,14 @@ export interface CommandArgs {
  * The Settings window's commands, with their arguments; each answers with
  * the window's view (`ep-update`'s `AppSettingsView`, fixtures under
  * `fixtures/app-settings/`), and the shell also pushes it on
- * `wr:app-settings` after every change. `update_settings` takes exactly
- * `{ check_updates }`; it and `install_update` reject with a one-line reason
- * when refused. `install_update` is the only way an install starts; no
- * command opens a release page or a browser.
+ * `wr:app-settings` after every change. `update_settings` takes
+ * `{ check_updates }`, `{ theme }` or both; it and `install_update` reject
+ * with a one-line reason when refused. `install_update` is the only way an
+ * install starts; no command opens a release page or a browser.
  */
 export interface SettingsCommandArgs {
   get_app_settings: Record<string, never>;
-  update_settings: { patch: { check_updates: boolean } };
+  update_settings: { patch: { check_updates: boolean } | { theme: Theme } | { check_updates: boolean; theme: Theme } };
   check_for_updates: Record<string, never>;
   install_update: Record<string, never>;
   cancel_update: Record<string, never>;
@@ -126,6 +130,9 @@ export function previewBridge(search: string): Bridge & { readonly calls: Array<
       if (!load) throw new Error('waystone-roller preview: no view fixtures (the preview runs on the dev server only)');
       // A fresh copy, so an echoed patch never leaks into the module's cached JSON.
       current = JSON.parse(JSON.stringify(await load())) as View;
+      // `theme=exile|claude` draws the fixture in that look.
+      const theme = previewTheme(search);
+      if (theme) current = { ...current, theme };
       push = onView;
       onView(current);
       return () => {

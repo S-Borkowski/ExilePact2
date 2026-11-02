@@ -5,12 +5,14 @@
 //   http://127.0.0.1:1421/settings.html?state=install-downloading&scale=2
 //
 // `state` is a fixture's name (default `idle`), `scale` zooms the page as
-// the webview zoom would (`1`|`1.33`|`2`). Commands are logged, not acted
+// the webview zoom would (`1`|`1.33`|`2`), and `theme` (`exile`|`claude`)
+// draws it in that look over the fixture's own. Commands are logged, not acted
 // on: the preview shows a view, it does not run the app.
 //
 // The fixtures are reached only behind `import.meta.env.DEV`, which is false
 // in `vite build`, so the release bundle carries none of them.
 
+import { previewTheme } from '../theme';
 import type { SettingsBridge, SettingsCommand, SettingsCommandArgs } from './bridge';
 import type { AppSettingsView } from './view';
 
@@ -82,7 +84,9 @@ export function previewSettingsBridge(search: string, root: HTMLElement = docume
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
       }
-      onView(await settingsPreviewFixture(query.state));
+      const view = await settingsPreviewFixture(query.state);
+      const theme = previewTheme(search);
+      onView(theme ? { ...view, theme } : view);
       return () => {};
     },
     async command<C extends SettingsCommand>(name: C, args: SettingsCommandArgs[C]) {

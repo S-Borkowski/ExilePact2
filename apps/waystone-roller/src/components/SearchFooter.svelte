@@ -36,6 +36,9 @@
     avoid: 'Avoided',
     corruption: 'Corruption',
   };
+  // The want and avoid parts carry the rows' marks in Exile: a placeholder
+  // until the requested art arrives (`theme/materials/requested/manifest.json`).
+  const PART_ART: Partial<Record<PartKind, string>> = { want: 'wr-mark-want', avoid: 'wr-mark-avoid' };
 
   // The shortcut field holds what the player types until the shell's view
   // names another shortcut; then it shows that one.
@@ -101,7 +104,7 @@
       <ol class="parts">
         {#each result.parts as part, i (i)}
           <li class="part" data-what={part.what}>
-            <span class="part-what">{PART_NAMES[part.what]}</span>
+            <span class="part-what" data-art-placeholder={PART_ART[part.what]}>{PART_NAMES[part.what]}</span>
             <code class="part-text" title={part.text}>{part.text}</code>
             <span class="part-length">{part.length}</span>
             {#if i === longest}

@@ -1,5 +1,5 @@
 //! The store folder and what it holds: `settings.json` (the shortcut, the
-//! selection, `auto_paste` and `check_updates`), written atomically, and
+//! selection, `auto_paste`, `check_updates` and `theme`), written atomically, and
 //! `diag.log`, the diagnostic log.
 //!
 //! The folder is `WAYSTONE_ROLLER_DIR` when set and non-empty, else

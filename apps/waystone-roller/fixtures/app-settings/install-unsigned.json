@@ -5,6 +5,7 @@
     "state": "unsigned",
     "text": "1.3.0 is available but cannot be installed: the release is not signed."
   },
+  "theme": "exile",
   "update": {
     "newer": "1.3.0",
     "state": "available",

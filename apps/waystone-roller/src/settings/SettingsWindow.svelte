@@ -3,7 +3,17 @@
   // `SECTIONS` in order under its heading, and the credit. It renders the
   // last `AppSettingsView` the bridge delivered; until the first arrives it
   // shows the title and the credit only.
+  //
+  // Exile draws the steel/masonry kit's neutral frame over a masonry well
+  // (`../steel.css`), its art meeting the window's edge as the Quest
+  // Tracker's Settings window does: the title and the credit sit between the
+  // frame's corner knots, and the sections scroll between them, inside the
+  // rails, so no line or control ever crosses the artwork. Claude draws the
+  // window as it was.
   import { onDestroy, onMount } from 'svelte';
+  import MaterialFrame from '../components/MaterialFrame.svelte';
+  import masonry from '../../theme/materials/raster/masonry-charcoal.png';
+  import { applyTheme, themeOf } from '../theme';
   import type { SettingsBridge, SettingsSend } from './bridge';
   import { SECTIONS } from './sections';
   import type { AppSettingsView } from './view';
@@ -12,6 +22,11 @@
 
   let view = $state<AppSettingsView | null>(null);
   let stop: (() => void) | null = null;
+  // The look comes from the view: Exile until a view says otherwise.
+  const exile = $derived(themeOf(view?.theme) === 'exile');
+  $effect(() => {
+    applyTheme(document.documentElement, view?.theme);
+  });
 
   const send: SettingsSend = (name, args) => {
     void bridge.command(name, args);
@@ -40,17 +55,30 @@
   });
 </script>
 
-<div class="window" data-state={view?.update.state ?? 'none'} data-install={view?.install.state ?? 'none'}>
+<!-- In Claude `.window-scroll` is a plain block with nothing of its own to
+     draw, so the window is drawn as it was; switching the theme keeps every
+     element. -->
+<div
+  class="window"
+  data-state={view?.update.state ?? 'none'}
+  data-install={view?.install.state ?? 'none'}
+  style:--well-image={exile ? `url("${masonry}")` : null}
+>
+  {#if exile}<MaterialFrame />{/if}
   <main aria-labelledby="settings-title">
     <h1 class="title caps" id="settings-title">Settings</h1>
-    {#if view}
-      {#each SECTIONS as section (section.id)}
-        <section class="section" aria-labelledby="section-{section.id}">
-          <h2 class="group-label" id="section-{section.id}">{section.title}</h2>
-          <section.component {view} {send} />
-        </section>
-      {/each}
-    {/if}
+    <div class="window-scroll">
+      {#if view}
+        {#each SECTIONS as section (section.id)}
+          <!-- The theme's own section is marked, so a comparison with the
+               window before it can take the new section out and compare the rest. -->
+          <section class="section" aria-labelledby="section-{section.id}" data-theme-setting={section.id === 'appearance' ? '' : undefined}>
+            <h2 class="group-label" id="section-{section.id}">{section.title}</h2>
+            <section.component {view} {send} />
+          </section>
+        {/each}
+      {/if}
+    </div>
   </main>
   <footer class="credit caption">Created by ST4H</footer>
 </div>

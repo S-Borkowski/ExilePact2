@@ -31,6 +31,10 @@ export type PartKind = (typeof PART_KINDS)[number];
 export const STATUS_KINDS = ['info', 'error'] as const;
 export type StatusKind = (typeof STATUS_KINDS)[number];
 
+/** The look both windows draw: the steel/masonry kit (default), or the look before it. */
+export const THEMES = ['exile', 'claude'] as const;
+export type Theme = (typeof THEMES)[number];
+
 /** The tier range a waystone can have. */
 export const TIER_MIN = 1;
 export const TIER_MAX = 16;
@@ -116,6 +120,8 @@ export interface View {
   status: StatusLine | null;
   /** The newer version a check found this run, e.g. `1.3.0`, which the header's Settings button names; null while none is known. */
   update_available: string | null;
+  /** The look the page draws (`settings.json`'s `theme`); a view without one is Exile. */
+  theme?: Theme;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +168,8 @@ const list =
     }
     v.forEach((item, i) => inner(item, `${p}[${i}]`, out));
   };
-function record<T>(spec: Spec<T>): Check {
+/** `optional`: keys a value may leave out (an older shell's view), checked when present. */
+function record<T>(spec: Spec<T>, optional: readonly string[] = []): Check {
   return (v, p, out) => {
     if (!isObject(v)) {
       out.push(`${p}: expected an object`);
@@ -170,8 +177,9 @@ function record<T>(spec: Spec<T>): Check {
     }
     const s = spec as Record<string, Check>;
     for (const key of Object.keys(s)) {
-      if (!(key in v)) out.push(`${p}.${key}: missing`);
-      else s[key](v[key], `${p}.${key}`, out);
+      if (!(key in v)) {
+        if (!optional.includes(key)) out.push(`${p}.${key}: missing`);
+      } else s[key](v[key], `${p}.${key}`, out);
     }
     for (const key of Object.keys(v)) {
       if (!(key in s)) out.push(`${p}.${key}: not in the TypeScript types`);
@@ -220,7 +228,8 @@ const view = record<View>({
   auto_paste: bool,
   status: nullable(statusLine),
   update_available: nullable(str),
-});
+  theme: oneOf(THEMES),
+}, ['theme']);
 
 /** Every way `value` differs from a `View`; empty when it is one. */
 export function viewProblems(value: unknown): string[] {

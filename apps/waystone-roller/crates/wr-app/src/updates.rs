@@ -1,6 +1,7 @@
 //! What the waystone roller's update check and install are built from
-//! ([`UpdateSetup`]), the clock they read ([`Clock`]) and the `check_updates`
-//! patch the Settings window sends. The logic itself is `ep-update`'s
+//! ([`UpdateSetup`]), the clock they read ([`Clock`]), the Settings window's
+//! view ([`AppSettingsView`]) and the `check_updates` and `theme` patch the
+//! window sends ([`settings_patch`]). The logic itself is `ep-update`'s
 //! [`Updater`](ep_update::Updater), shared with the quest tracker; the app's
 //! commands that drive it are on [`crate::App`].
 //!
@@ -14,13 +15,16 @@
 
 use std::time::{Duration, Instant};
 
-use ep_update::{Product, UpdateConfig, WAYSTONE_ROLLER};
+use ep_update::{InstallView, Product, UpdateConfig, UpdateView, WAYSTONE_ROLLER};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::view::Theme;
 
 /// How often the ticker thread asks whether an automatic check is due.
 pub const TICK_EVERY: Duration = Duration::from_secs(60);
 
-/// The only key `update_settings` takes.
+/// The update key `update_settings` takes.
 pub const CHECK_UPDATES_KEY: &str = "check_updates";
 
 /// The app's clock for the update check, in milliseconds.
@@ -76,18 +80,76 @@ impl Default for UpdateSetup {
     }
 }
 
-/// The value of an `update_settings` patch: exactly `{"check_updates":
-/// <bool>}`. Anything else is refused whole, with the reason.
-pub fn check_updates_patch(patch: &Value) -> Result<bool, String> {
+/// The other key `update_settings` takes: the look both windows draw.
+pub const THEME_KEY: &str = "theme";
+
+/// The Settings window's view: `ep-update`'s, which the Quest Tracker's
+/// window shares, with the theme beside it (as the Quest Tracker's own
+/// Settings view carries its theme), so the window draws the chosen look.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AppSettingsView {
+    pub version: String,
+    /// "Automatically check for updates".
+    pub check_updates: bool,
+    pub update: UpdateView,
+    pub install: InstallView,
+    /// The look the window draws (`settings.json`'s `theme`).
+    pub theme: Theme,
+}
+
+impl AppSettingsView {
+    /// `ep-update`'s view with the theme beside it.
+    pub fn with_theme(view: ep_update::AppSettingsView, theme: Theme) -> AppSettingsView {
+        AppSettingsView {
+            version: view.version,
+            check_updates: view.check_updates,
+            update: view.update,
+            install: view.install,
+            theme,
+        }
+    }
+}
+
+/// What one `update_settings` patch changes: either key, or both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SettingsPatch {
+    pub check_updates: Option<bool>,
+    pub theme: Option<Theme>,
+}
+
+/// The value of an `update_settings` patch: an object with
+/// `"check_updates": <bool>`, `"theme": "exile" | "claude"`, or both.
+/// Anything else (another key, another type, another theme, no key at all)
+/// is refused whole, with the reason, so nothing of it is applied.
+pub fn settings_patch(patch: &Value) -> Result<SettingsPatch, String> {
     let patch = patch
         .as_object()
         .ok_or_else(|| "the change is not an object".to_string())?;
-    if let Some(k) = patch.keys().find(|k| k.as_str() != CHECK_UPDATES_KEY) {
+    if let Some(k) = patch
+        .keys()
+        .find(|k| k.as_str() != CHECK_UPDATES_KEY && k.as_str() != THEME_KEY)
+    {
         return Err(format!("{k:?} is not a setting of this window"));
     }
-    match patch.get(CHECK_UPDATES_KEY) {
-        Some(Value::Bool(on)) => Ok(*on),
-        Some(_) => Err(format!("{CHECK_UPDATES_KEY} is not true or false")),
-        None => Err(format!("the change has no {CHECK_UPDATES_KEY}")),
+    let check_updates = match patch.get(CHECK_UPDATES_KEY) {
+        Some(Value::Bool(on)) => Some(*on),
+        Some(_) => return Err(format!("{CHECK_UPDATES_KEY} is not true or false")),
+        None => None,
+    };
+    let theme = match patch.get(THEME_KEY) {
+        Some(Value::String(s)) if s == "exile" => Some(Theme::Exile),
+        Some(Value::String(s)) if s == "claude" => Some(Theme::Claude),
+        Some(_) => return Err(format!("{THEME_KEY} is not \"exile\" or \"claude\"")),
+        None => None,
+    };
+    if check_updates.is_none() && theme.is_none() {
+        return Err(format!(
+            "the change has no {CHECK_UPDATES_KEY} or {THEME_KEY}"
+        ));
     }
+    Ok(SettingsPatch {
+        check_updates,
+        theme,
+    })
 }

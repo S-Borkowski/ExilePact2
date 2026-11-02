@@ -1,0 +1,145 @@
+/* Exile material palette: the steel/masonry kit (docs/quest-tracker/design/steel-masonry-kit/palette.json). Maintain manually alongside exile.json; local URLs are relative to theme/. Original harvest: 2026-10-25; neutral steel palette: 2026-11-01. */
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Alegreya Sans";
+  font-weight: 800;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/AlegreyaSans-ExtraBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cinzel";
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+  src: url("fonts/Cinzel-SemiBold.woff2") format("woff2");
+}
+
+:root[data-theme='exile'] {
+  --color-panel-bg: #090D10;
+  --color-panel-border: #8D979E;
+  --color-text-primary: #E4E6E7;
+  --color-text-secondary: #A9AFB3;
+  --color-text-muted: #A9AFB3;
+  --color-edit-accent: #E6E5DE;
+  --color-status-locked: #69747C;
+  --color-status-available: #D0BF94;
+  --color-status-in-progress: #E6E5DE;
+  --color-status-done: #B8C0C5;
+  --color-status-skipped: #8D979E;
+  --color-status-unknown: #B8C0C5;
+  --color-worth-gold: #D0BF94;
+  --color-res-fire: #E99568;
+  --color-res-cold: #91C9DE;
+  --color-res-lightning: #E3C76F;
+  --color-res-chaos: #BA9ACD;
+  --font-family: "Alegreya Sans", sans-serif;
+  --font-file: url("fonts/AlegreyaSans-Medium.woff2");
+  --size-title: 15px;
+  --size-row: 16px;
+  --size-step: 14px;
+  --size-caption: 12px;
+  --space-unit: 4px;
+  --space-row-pad: 12px;
+  --space-section-gap: 8px;
+  --space-panel-pad: 8px;
+  --radius: 0px;
+  --border-width: 1px;
+  --opacity-default: 0.92;
+  --shadow-panel: 0 0 0 1px rgba(0,0,0,0.63), 0 4px 12px rgba(0,0,0,0.5);
+  --radius-row: 0px;
+  --radius-button: 0px;
+  --font-weight-title: 700;
+  --font-weight-row: 400;
+  --color-panel-raised: #1E272D;
+  --color-panel-sunken: #090D10;
+  --color-panel-divider: #5D686F;
+  --color-text-on-light: #E4E6E7;
+  --color-edit-tint: #1E272D;
+  --color-row-active-bg: #424D54;
+  --color-select-active-bg: #424D54;
+  --color-hover-outline: #B8C0C5;
+  --color-worth-none: #A9AFB3;
+  --color-action-primary-bg: #424D54;
+  --color-action-primary-hover: #536169;
+  --color-action-primary-pressed: #3D474E;
+  --color-action-secondary-bg: #1E272D;
+  --color-action-secondary-hover: #536169;
+  --color-action-secondary-pressed: #424D54;
+  --color-action-danger: #D0A3A0;
+  --color-action-disabled-bg: #1E272D;
+  --color-action-disabled-fg: #535D64;
+  --color-warning: #CAB990;
+  --font-family-caps: "Cinzel", serif;
+  --font-family-quest: "Georgia", serif;
+  --font-file-regular: url("fonts/AlegreyaSans-Regular.woff2");
+  --font-file-bold: url("fonts/AlegreyaSans-Bold.woff2");
+  --font-file-extrabold: url("fonts/AlegreyaSans-ExtraBold.woff2");
+  --font-file-caps-bold: url("fonts/Cinzel-SemiBold.woff2");
+  --line-title: 20px;
+  --line-row: 22px;
+  --line-step: 20px;
+  --line-caption: 16px;
+  --size-act: 13px;
+  --size-label: 13px;
+  --size-button-text: 14px;
+  --size-badge-count: 22px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 20px;
+  --size-icon-lg: 24px;
+  --size-manual-tick: 12px;
+  --size-control: 32px;
+  --size-button: 32px;
+  --size-row-height: 52px;
+  --size-row-height-tall: 56px;
+  --size-row-height-finished: 40px;
+  --size-header: 36px;
+  --size-act-header: 28px;
+  --size-badge: 48px;
+  --size-panel-width: 320px;
+  --border-width-strong: 2px;
+  --bar-in-progress: 3px;
+  --bar-countdown: 2px;
+  --chamfer-panel: 2px;
+  --chamfer-button: 3px;
+  --chamfer-badge: 4px;
+  --opacity-min: 0;
+  --opacity-stale-rows: 0.55;
+  --motion-confirm-ms: 3000ms;
+  --color-material-stone: #3D474E;
+  --material-compact-trim: 3px;
+  --material-compact-chamfer: 2px;
+  --material-journal-surround: 16px;
+  --material-journal-chamfer: 8px;
+  --size-display: 28px;
+  --line-display: 36px;
+  --size-window-title: 24px;
+  --size-section: 20px;
+  --line-section: 28px;
+  --space-reading-inset: 16px;
+}

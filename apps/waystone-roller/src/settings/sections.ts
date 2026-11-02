@@ -5,6 +5,7 @@
 import type { Component } from 'svelte';
 import type { SettingsSend } from './bridge';
 import type { AppSettingsView } from './view';
+import AppearanceSection from './AppearanceSection.svelte';
 import UpdatesSection from './UpdatesSection.svelte';
 
 export interface SectionProps {
@@ -20,4 +21,8 @@ export interface SettingsSection {
   component: Component<SectionProps>;
 }
 
-export const SECTIONS: readonly SettingsSection[] = [{ id: 'updates', title: 'Updates', component: UpdatesSection }];
+// Appearance first, as the Quest Tracker's Settings window has it.
+export const SECTIONS: readonly SettingsSection[] = [
+  { id: 'appearance', title: 'Appearance', component: AppearanceSection },
+  { id: 'updates', title: 'Updates', component: UpdatesSection },
+];

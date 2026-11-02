@@ -94,6 +94,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   clearMocks();
   delete document.documentElement.dataset.previewScale;
+  delete document.documentElement.dataset.theme;
 });
 
 describe('the Settings window', () => {
@@ -505,6 +506,93 @@ describe('the Settings window', () => {
     off();
     await emit(APP_SETTINGS_EVENT, fixture('install-failed'));
     expect(views).toHaveLength(2);
+  });
+
+  it('theme_select_is_first_and_shows_the_saved_theme', async () => {
+    // An Appearance section, first, holding one labelled select "Theme".
+    expect(SECTIONS[0]).toMatchObject({ id: 'appearance', title: 'Appearance' });
+    expect(SECTIONS.map((s) => s.id)).toEqual(['appearance', 'updates']);
+
+    for (const theme of ['exile', 'claude'] as const) {
+      const root = await render(fakeBridge({ ...fixture('idle'), theme }));
+      const regions = [...root.querySelectorAll('section')];
+      expect(text(regions[0].querySelector('h2'))).toBe('Appearance');
+      // The whole section carries the marker the legacy comparison removes,
+      // so the window without it is the window as it was.
+      const row = regions[0].closest('[data-theme-setting]');
+      expect(row, theme).toBe(regions[0]);
+      const select = row!.querySelector('select') as HTMLSelectElement;
+      // Named by its label: "Theme".
+      expect(select.labels?.[0] && text(select.labels[0]).startsWith('Theme')).toBe(true);
+      expect([...select.options].map((o) => [o.value, text(o)])).toEqual([
+        ['exile', 'Exile'],
+        ['claude', 'Claude'],
+      ]);
+      expect(select.value, theme).toBe(theme);
+    }
+    // Only one element carries the marker the legacy comparison removes.
+    const root = await render(fakeBridge(fixture('idle')));
+    expect(root.querySelectorAll('[data-theme-setting]')).toHaveLength(1);
+
+    // A view with no theme (an older shell) shows Exile.
+    const old = fixture('idle') as unknown as Record<string, unknown>;
+    delete old.theme;
+    const oldRoot = await render(fakeBridge(old as unknown as AppSettingsView));
+    expect((oldRoot.querySelector('[data-theme-setting] select') as HTMLSelectElement).value).toBe('exile');
+  });
+
+  it('theme_select_sends_update_settings_with_theme', async () => {
+    const bridge = fakeBridge({ ...fixture('idle'), theme: 'exile' });
+    const root = await render(bridge);
+    const select = root.querySelector('[data-theme-setting] select') as HTMLSelectElement;
+    select.value = 'claude';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    flushSync();
+    // The Updates toggle's argument shape: `{ patch: { <key>: <value> } }`.
+    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { theme: 'claude' } } }]);
+
+    // The select follows the next view, not its own change.
+    bridge.push({ ...fixture('idle'), theme: 'claude' });
+    expect(select.value).toBe('claude');
+    select.value = 'exile';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    flushSync();
+    expect(bridge.calls.at(-1)).toEqual({ name: 'update_settings', args: { patch: { theme: 'exile' } } });
+    // Nothing else was sent: no check, no install.
+    expect(bridge.calls.map((c) => c.name)).toEqual(['update_settings', 'update_settings']);
+  });
+
+  it('theme_is_applied_to_the_settings_document', async () => {
+    // Exile until the first view arrives.
+    await render(fakeBridge(null), false);
+    expect(document.documentElement.dataset.theme).toBe('exile');
+    const bridge = fakeBridge({ ...fixture('idle'), theme: 'claude' });
+    await render(bridge);
+    expect(document.documentElement.dataset.theme).toBe('claude');
+    bridge.push({ ...fixture('idle'), theme: 'exile' });
+    expect(document.documentElement.dataset.theme).toBe('exile');
+  });
+
+  it('theme_problems_catch_a_bad_theme_and_allow_a_missing_one', () => {
+    for (const name of PREVIEW_STATES) expect(fixture(name).theme, name).toBe('exile');
+    const bad = fixture('idle') as unknown as Record<string, unknown>;
+    bad.theme = 'dark';
+    expect(appSettingsProblems(bad)).toEqual(['app_settings.theme: "dark" is not one of exile|claude']);
+    const missing = fixture('idle') as unknown as Record<string, unknown>;
+    delete missing.theme;
+    expect(appSettingsProblems(missing)).toEqual([]);
+  });
+
+  it('preview_reads_the_theme_from_the_query', async () => {
+    const views: AppSettingsView[] = [];
+    await previewSettingsBridge('?state=available&theme=claude').start((v) => views.push(v));
+    expect(views.map((v) => v.theme)).toEqual(['claude']);
+    views.length = 0;
+    await previewSettingsBridge('?state=available&theme=exile').start((v) => views.push(v));
+    expect(views.map((v) => v.theme)).toEqual(['exile']);
+    views.length = 0;
+    await previewSettingsBridge('?state=available&theme=dark').start((v) => views.push(v));
+    expect(views.map((v) => v.theme)).toEqual([fixture('available').theme]);
   });
 
   it('preview_reads_the_state_from_the_query', async () => {

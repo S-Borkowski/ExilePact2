@@ -5,6 +5,7 @@
     "state": "verifying",
     "text": "Checking the signature of Waystone Roller 1.3.0…"
   },
+  "theme": "exile",
   "update": {
     "newer": "1.3.0",
     "state": "available",

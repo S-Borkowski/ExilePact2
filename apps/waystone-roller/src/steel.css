@@ -1,0 +1,642 @@
+/*
+ * Exile: the Quest Tracker's finished steel/masonry kit
+ * (docs/quest-tracker/design/steel-masonry-kit/HANDOFF.md) on Waystone
+ * Roller's two windows. A thin neutral steel frame (MaterialFrame), a
+ * charcoal masonry well, the neutral palette with restrained antique gold
+ * (the window titles and the short group headings), and the kit's control
+ * treatments on the existing live controls. Every rule is scoped to
+ * `:root[data-theme='exile']`; Claude keeps today's CSS untouched. Colours
+ * are the kit's own (palette.json and the component SVGs); steel-kit.test.ts
+ * holds this file to that list.
+ *
+ * Corner safety. The frame is 48 px corners at one size on screen. Measured
+ * on the kit PNG at that size (the Quest Tracker's runner and ours): the
+ * rails reach 13 px in from the sides, the top rail 11 px down and the bottom
+ * one about 16 px up; the corner knots reach 26 px across, 31 px down from
+ * the top and 30 px up from the bottom (5.5 px more at the bottom with the
+ * flush outset). So:
+ *  - the main window scrolls in one scroller (.app-scroll) inset 24 px from
+ *    the sides, where the upper knots end 16 px down, and 33 px from the
+ *    bottom, past the lower knots; 3 px inside it keep a focus ring unclipped;
+ *  - the Settings window keeps its title and credit between the knots (30
+ *    across) and scrolls its sections between them, as the Quest Tracker's
+ *    Settings window does.
+ * `npm run corner-safety` re-measures all of it on rendered pixels.
+ */
+
+/* ------------------------------------------------------------ the well */
+
+/* The masonry: one cover crop behind the live content, about 38% over the
+   well, no tint. The page root of each window carries it. */
+:root[data-theme='exile'] :is(.app, .window)::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background: var(--well-image) center / cover no-repeat;
+  opacity: 0.38;
+}
+
+/* ------------------------------------------------------ the main window */
+
+:root[data-theme='exile'] .app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* The header, the filters and the list, inside the frame's clear interior,
+   above the pinned footer. While the window is tall enough for the list to
+   keep about three rows, only the list scrolls (its own scroller) and this
+   never overflows; on a shorter window, or with larger text, the list gives
+   up its scroller and this scrolls instead, so no scroller ever sits half
+   outside another (`@container wr-page` below). */
+:root[data-theme='exile'] .app-scroll {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  margin: 16px 24px 0;
+  padding: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  scroll-padding: 4px;
+  container: wr-page / size;
+}
+
+/* Header: the title in the kit's caps face and gold, the header rail under it. */
+:root[data-theme='exile'] .app .top {
+  padding: 4px 8px 10px;
+  border-bottom: 1px solid #7E898F;
+}
+
+:root[data-theme='exile'] .app .top h1 {
+  color: var(--color-worth-gold);
+  font-family: var(--font-family-caps);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 30px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px #000;
+}
+
+/* The caps face (Cinzel) has one weight, SemiBold. */
+:root[data-theme='exile'] .caps {
+  font-weight: 600;
+}
+
+:root[data-theme='exile'] .app .update-mark {
+  border-left-color: var(--color-panel-divider);
+}
+
+/* Filter row: on the well, under the second line of the header rail. */
+:root[data-theme='exile'] .app .filters {
+  padding: 10px 8px 8px;
+  border-top: 1px solid #3D474E;
+  border-bottom: 1px solid var(--color-panel-divider);
+  margin-top: 2px;
+  background: transparent;
+}
+
+:root[data-theme='exile'] .app .filter-label {
+  color: var(--color-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+:root[data-theme='exile'] .app .tier select {
+  width: 64px;
+}
+
+/* The rarity toggles: the kit's checkbox treatment, a steel-grey face when pressed. */
+:root[data-theme='exile'] .app .btn.toggle[aria-pressed='true'] {
+  border-color: var(--color-panel-border);
+  background: #424D54;
+  color: var(--color-text-primary);
+}
+
+:root[data-theme='exile'] .app .btn.toggle[aria-pressed='true']:hover {
+  border-color: var(--color-hover-outline);
+  background: #536169;
+}
+
+:root[data-theme='exile'] .app .btn.toggle .check {
+  color: #CDD3D7;
+}
+
+/* Mod list: the toolbar, the scroller, the group headings and their breaks. */
+:root[data-theme='exile'] .app .toolbar {
+  padding: 10px 8px;
+}
+
+:root[data-theme='exile'] .app .list .scroll {
+  padding: 3px 8px 12px;
+  overflow-x: hidden;
+  scroll-padding: 4px;
+}
+
+/* The group headings scroll with their rows: a heading pinned over the
+   rows would paint over them, and the list scrolls inside the frame alone. */
+:root[data-theme='exile'] .app .group h2 {
+  position: static;
+  background: transparent;
+}
+
+:root[data-theme='exile'] .app .group h2 .caps {
+  color: var(--color-worth-gold);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+/* Too short for the list to keep about three rows (`.app-scroll` above):
+   the list runs at its full length and the page scrolls it, so no scroller
+   is ever cut off by another. */
+@container wr-page (max-height: 28em) {
+  :root[data-theme='exile'] .app .list {
+    display: block;
+    align-self: start;
+  }
+
+  :root[data-theme='exile'] .app .list .scroll {
+    overflow: visible;
+  }
+}
+
+/* A section break between groups: the kit divider (quest-divider.svg) as
+   live CSS, a steel line with its centre diamond. */
+:root[data-theme='exile'] .app .group + .group {
+  position: relative;
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+:root[data-theme='exile'] .app .group + .group::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 0;
+  left: 0;
+  height: 3px;
+  border-top: 1px solid #879197;
+  border-bottom: 2px solid #353E44;
+}
+
+:root[data-theme='exile'] .app .group + .group::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  border: 1px solid #A6AEB3;
+  background: #20282D;
+  transform: rotate(45deg);
+}
+
+/* The neutral choice of a row, chosen quietly on the steel well. */
+:root[data-theme='exile'] .app .segmented {
+  padding: 1px;
+  border-color: var(--color-panel-border);
+  background: #10191F;
+}
+
+:root[data-theme='exile'] .app .segmented label {
+  color: var(--color-text-secondary);
+}
+
+:root[data-theme='exile'] .app .segmented label:hover {
+  background: #536169;
+  color: var(--color-text-primary);
+}
+
+:root[data-theme='exile'] .app .segmented label:has(input:checked) {
+  background: #424D54;
+  color: var(--color-text-primary);
+}
+
+:root[data-theme='exile'] .app .segmented label.choice-none:has(input:checked) {
+  background: #1E272D;
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 0 1px var(--color-panel-border);
+}
+
+/* Want and Avoid keep the steel fill; the row's colour is a 2 px rule under the word. */
+:root[data-theme='exile'] .app .choices label.choice-want:has(input:checked) {
+  background: #424D54;
+  box-shadow: inset 0 -2px 0 #D0BF94;
+}
+
+:root[data-theme='exile'] .app .choices label.choice-avoid:has(input:checked) {
+  background: #424D54;
+  box-shadow: inset 0 -2px 0 #D0A3A0;
+}
+
+/* A choice that cannot be made: struck through (app.css), in the kit's
+   bright edge, so it still reads on the steel fill when it is the chosen one. */
+:root[data-theme='exile'] .app .segmented label:has(input:disabled) {
+  color: var(--color-hover-outline);
+}
+
+:root[data-theme='exile'] .app .segmented label:has(input:disabled):not(:has(input:checked)) {
+  background: transparent;
+}
+
+:root[data-theme='exile'] .app .token {
+  background: #151E24;
+}
+
+/* Footer: pinned below the page, above the frame's lower knots, on the
+   well, the header rail turned over above it. When it would take more than
+   three fifths of the window (a long parts list on a short window, larger
+   text) it scrolls itself, its parts list with it. */
+:root[data-theme='exile'] .app .footer {
+  position: relative;
+  flex: none;
+  max-height: 60%;
+  margin: 0 24px 33px;
+  /* 3 px more at the sides than the page above, whose scroller keeps 3 px
+     inside it: the string box lines up with the filter field. */
+  padding: 10px 11px 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-padding: 4px;
+  border-top: 1px solid #7E898F;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root[data-theme='exile'] .app .parts {
+  max-height: none;
+  overflow: visible;
+}
+
+/* The search string grows with its text: the footer scrolls it when it is
+   long, rather than a scroller inside a scroller. */
+:root[data-theme='exile'] .app .string-box {
+  max-height: none;
+  overflow: visible;
+  border-color: var(--color-panel-divider);
+  background: #151E24;
+}
+
+:root[data-theme='exile'] .app .string-box[data-state='ok'] {
+  border-color: var(--color-panel-border);
+}
+
+/* The shortcut in words, as the kit's keycap. */
+:root[data-theme='exile'] .app kbd {
+  padding: 0 6px;
+  border-color: var(--color-panel-border);
+  border-radius: 2px;
+  background: #192329;
+  color: var(--color-text-primary);
+}
+
+/* Too long: the kit's error message, a 2 px rule down its side. */
+:root[data-theme='exile'] .app .parts-box {
+  border: 0;
+  border-left: 2px solid #D0A3A0;
+  background: #121B20;
+}
+
+/* ------------------------------------------------------ requested art */
+/* Each element the kit has no art for: a marked placeholder, dashed in the
+   kit palette, until its file arrives (theme/materials/requested/,
+   docs/waystone-roller/design/ASSET-REQUESTS.md); then the file, by the
+   `data-art-<id>` mark and `--art-<file>` URL the loader sets. */
+
+:root[data-theme='exile'] .choice-mark[data-art-placeholder='wr-mark-want'],
+:root[data-theme='exile'] .choice-mark[data-art-placeholder='wr-mark-avoid'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px dashed currentColor;
+  font-size: 13px;
+  line-height: 14px;
+}
+
+:root[data-theme='exile'] .part-what[data-art-placeholder='wr-mark-want']::before,
+:root[data-theme='exile'] .part-what[data-art-placeholder='wr-mark-avoid']::before {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border: 1px dashed currentColor;
+  vertical-align: -1px;
+  content: '';
+}
+
+:root[data-theme='exile'] .part-what[data-art-placeholder='wr-mark-want'] {
+  color: #D0BF94;
+}
+
+:root[data-theme='exile'] .part-what[data-art-placeholder='wr-mark-avoid'] {
+  color: #D0A3A0;
+}
+
+:root[data-theme='exile'] .dot[data-art-placeholder='wr-update-dot'] {
+  width: 8px;
+  height: 8px;
+  border: 1px dashed #D0BF94;
+  background: #424D54;
+}
+
+:root[data-theme='exile'][data-art-wr-mark-want] .choice-mark[data-art-placeholder='wr-mark-want'],
+:root[data-theme='exile'][data-art-wr-mark-want] .part-what[data-art-placeholder='wr-mark-want']::before {
+  border: 0;
+  background: var(--art-mark-want) center / contain no-repeat;
+}
+
+:root[data-theme='exile'][data-art-wr-mark-avoid] .choice-mark[data-art-placeholder='wr-mark-avoid'],
+:root[data-theme='exile'][data-art-wr-mark-avoid] .part-what[data-art-placeholder='wr-mark-avoid']::before {
+  border: 0;
+  background: var(--art-mark-avoid) center / contain no-repeat;
+}
+
+/* The delivered mark replaces the row's glyph; the glyph is clipped out of sight. */
+:root[data-theme='exile'][data-art-wr-mark-want] .choice-mark[data-art-placeholder='wr-mark-want'],
+:root[data-theme='exile'][data-art-wr-mark-avoid] .choice-mark[data-art-placeholder='wr-mark-avoid'] {
+  overflow: hidden;
+  text-indent: 200%;
+  white-space: nowrap;
+}
+
+:root[data-theme='exile'][data-art-wr-update-dot] .dot[data-art-placeholder='wr-update-dot'] {
+  border: 0;
+  background: var(--art-update-dot) center / contain no-repeat;
+}
+
+/* ------------------------------------------------- the Settings window */
+
+/* The ordinary Settings window: the same frame, flush with the window
+   edge, over the same masonry. The title and the credit sit between the
+   knots; the sections scroll between them. */
+:root[data-theme='exile'] .window {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: calc(100vh / var(--preview-scale, 1));
+  min-height: 0;
+  padding: 14px 20px 21px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  isolation: isolate;
+  background: var(--color-panel-bg);
+}
+
+:root[data-theme='exile'] .window > main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+:root[data-theme='exile'] .window .title {
+  flex: none;
+  min-height: 22px;
+  margin: 0 10px;
+  padding: 0;
+  color: var(--color-worth-gold);
+  font-size: 17px;
+  line-height: 22px;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px #000;
+}
+
+:root[data-theme='exile'] .window-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-top: 4px;
+  padding: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-padding: 4px;
+  border-top: 1px solid #7E898F;
+  border-bottom: 1px solid var(--color-panel-divider);
+}
+
+:root[data-theme='exile'] .window .section {
+  padding: 0 6px;
+}
+
+:root[data-theme='exile'] .window .section + .section {
+  border-top: 0;
+}
+
+:root[data-theme='exile'] .window .section + .section > .group-label {
+  border-top: 1px solid var(--color-panel-divider);
+}
+
+:root[data-theme='exile'] .window .group-label {
+  padding: 10px 0 4px;
+  color: var(--color-worth-gold);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+:root[data-theme='exile'] .window .credit {
+  flex: none;
+  min-height: 18px;
+  margin: 0 10px;
+  padding: 4px 0 0;
+  border: 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* The switch: the kit's pill, a steel-grey track when on. */
+:root[data-theme='exile'] input.toggle {
+  width: 38px;
+  height: 22px;
+  border: 1px solid var(--color-panel-border);
+  border-radius: 11px;
+  background: #151E24;
+}
+
+:root[data-theme='exile'] input.toggle::before {
+  left: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-hover-outline);
+}
+
+:root[data-theme='exile'] input.toggle:hover {
+  border-color: var(--color-hover-outline);
+}
+
+:root[data-theme='exile'] input.toggle:checked {
+  border-color: var(--color-panel-border);
+  background: #424D54;
+}
+
+:root[data-theme='exile'] input.toggle:checked::before {
+  left: calc(100% - 16px);
+  background: var(--color-hover-outline);
+}
+
+/* The download: the kit's progress bar, a steel fill on a slate track. */
+:root[data-theme='exile'] .window .bar {
+  height: 8px;
+  border: 1px solid var(--color-panel-divider);
+  background: #1E2931;
+}
+
+:root[data-theme='exile'] .window .bar::-webkit-progress-bar {
+  background: #1E2931;
+}
+
+:root[data-theme='exile'] .window .bar::-webkit-progress-value {
+  background: var(--color-panel-border);
+}
+
+:root[data-theme='exile'] .window .bar:indeterminate {
+  background: linear-gradient(var(--color-panel-border), var(--color-panel-border)) no-repeat #1E2931;
+  background-size: 25% 100%;
+}
+
+:root[data-theme='exile'] .window .bar:indeterminate::-webkit-progress-bar {
+  background: transparent;
+}
+
+/* ------------------------------------------------------- the controls */
+/* The kit's button, select, text field, checkbox and scrollbar, steel grey,
+   never gold or cyan fills. */
+
+:root[data-theme='exile'] :is(button, input, select) {
+  max-width: 100%;
+}
+
+:root[data-theme='exile'] .btn {
+  border-color: var(--color-panel-border);
+  background: #1E272D;
+  box-shadow: inset 0 2px 0 -1px #74818A;
+  color: var(--color-text-primary);
+}
+
+:root[data-theme='exile'] .btn:hover:not(:disabled) {
+  border-color: var(--color-hover-outline);
+  background: #536169;
+}
+
+:root[data-theme='exile'] .btn:active:not(:disabled) {
+  background: #424D54;
+}
+
+:root[data-theme='exile'] .btn.primary {
+  border-color: var(--color-panel-border);
+  background: #424D54;
+  color: var(--color-text-primary);
+}
+
+:root[data-theme='exile'] .btn.primary:hover:not(:disabled) {
+  border-color: var(--color-hover-outline);
+  background: #536169;
+}
+
+:root[data-theme='exile'] .btn.primary:active:not(:disabled) {
+  background: #3D474E;
+}
+
+:root[data-theme='exile'] .btn:disabled,
+:root[data-theme='exile'] .btn.primary:disabled {
+  border-color: var(--color-action-disabled-fg);
+  background: #1E272D;
+  box-shadow: none;
+  color: var(--color-action-disabled-fg);
+}
+
+/* Text fields: the kit's text input. */
+:root[data-theme='exile'] input.field {
+  border-color: var(--color-panel-border);
+  background: #151E24;
+  color: var(--color-text-primary);
+  caret-color: var(--color-edit-accent);
+}
+
+/* Selects: the kit's select, its chevron drawn in the edge colour. */
+:root[data-theme='exile'] select.field {
+  padding: 0 24px 0 8px;
+  border-color: var(--color-panel-border);
+  color: var(--color-text-primary);
+  appearance: none;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.6px), #B8C0C5 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) right 13px center / 5px 5px no-repeat,
+    linear-gradient(to bottom right, transparent calc(50% - 0.6px), #B8C0C5 calc(50% - 0.6px) calc(50% + 0.6px), transparent calc(50% + 0.6px)) right 8px center / 5px 5px no-repeat,
+    #172127;
+}
+
+:root[data-theme='exile'] select.field option {
+  background: #172127;
+  color: var(--color-text-primary);
+}
+
+:root[data-theme='exile'] .field:hover {
+  border-color: var(--color-hover-outline);
+}
+
+:root[data-theme='exile'] .field:focus-visible {
+  border-color: var(--color-edit-accent);
+}
+
+:root[data-theme='exile'] .field::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* Checkboxes: the kit's steel tick on the native box. */
+:root[data-theme='exile'] input[type='checkbox']:not(.toggle) {
+  accent-color: var(--color-panel-border);
+}
+
+/* Focus: a 2 px ivory ring drawn inside every focused control, so it never reaches the frame. */
+:root[data-theme='exile'] :is(button, input, select, textarea, a[href], [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-edit-accent) !important;
+  outline-offset: -2px !important;
+}
+
+:root[data-theme='exile'] .segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--color-edit-accent);
+  outline-offset: -2px;
+}
+
+/* Selection, from the kit palette rather than the browser's blue. */
+:root[data-theme='exile'] ::selection {
+  background: #424D54;
+  color: var(--color-text-primary);
+}
+
+/* Scrollbars: the kit's 8 px slate track and steel thumb. */
+:root[data-theme='exile'] * {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+
+:root[data-theme='exile'] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+:root[data-theme='exile'] ::-webkit-scrollbar-track {
+  background: #10171C;
+}
+
+:root[data-theme='exile'] ::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: #64727C;
+}
+
+:root[data-theme='exile'] ::-webkit-scrollbar-corner {
+  background: transparent;
+}

@@ -204,6 +204,36 @@ impl StatusLine {
     }
 }
 
+/// The look both windows draw: `exile`, the steel/masonry kit (the
+/// default), or `claude`, the look before it. Read leniently, as the Quest
+/// Tracker reads its own: any stored value but exactly `"claude"` is Exile,
+/// so a settings file written before the setting existed, or by hand, still
+/// loads. A patch is checked strictly ([`crate::updates::settings_patch`]).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Theme {
+    #[default]
+    Exile,
+    Claude,
+}
+
+impl Theme {
+    /// The theme a stored value names: exactly `"claude"` is Claude, and
+    /// anything else, `null` and a missing key included, is Exile.
+    pub fn from_value(value: Option<&serde_json::Value>) -> Theme {
+        match value.and_then(serde_json::Value::as_str) {
+            Some("claude") => Theme::Claude,
+            _ => Theme::Exile,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Theme {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Theme, D::Error> {
+        Ok(Theme::from_value(Some(&serde_json::Value::deserialize(d)?)))
+    }
+}
+
 /// Everything the window shows.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -220,6 +250,8 @@ pub struct View {
     /// The newer version a check found this run (`1.3.0`), which the
     /// header's *Settings* button names; `None` while none is known.
     pub update_available: Option<String>,
+    /// The look the page draws (`settings.json`'s `theme`).
+    pub theme: Theme,
 }
 
 /// The mod list of `builder`'s data, in the data's order, with each

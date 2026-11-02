@@ -118,6 +118,11 @@ export async function readBytes(path: string): Promise<Uint8Array> {
   return fs.readFileSync(new URL(path, import.meta.url));
 }
 
+/** A text file read from disk, `path` relative to `src/`, as UTF-8. */
+export async function readText(path: string): Promise<string> {
+  return new TextDecoder().decode(await readBytes(path));
+}
+
 /** The file names in a folder, `path` relative to `src/`, sorted. */
 export async function listFiles(path: string): Promise<string[]> {
   const fs = (await import(/* @vite-ignore */ 'node:fs' as string)) as { readdirSync(dir: URL): string[] };
