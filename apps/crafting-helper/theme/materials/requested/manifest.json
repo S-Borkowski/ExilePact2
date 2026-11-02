@@ -1,0 +1,35 @@
+{
+  "about": "Art the Exile theme requests and the steel/masonry kit does not have (docs/crafting-helper/design/ASSET-REQUESTS.md). Drop each file here under its listed name, set the entry's status to delivered, and rebuild: src/requested-art.ts finds it and the Exile rules in src/steel.css draw it in place of the placeholder.",
+  "requests": [
+    {
+      "id": "ch-radio",
+      "files": ["radio-off.svg", "radio-on.svg", "radio-focus.svg", "radio-disabled.svg"],
+      "element": "trade/TradePanel.svelte: the Match group's two radio buttons, input[type='radio'] in .choice",
+      "status": "placeholder"
+    },
+    {
+      "id": "ch-overlay-frame",
+      "files": ["frame-overlay-compact.png"],
+      "element": "overlay/Overlay.svelte: the step panel's border, .overlay .panel",
+      "status": "placeholder"
+    },
+    {
+      "id": "ch-item-card",
+      "files": ["item-card-frame.png"],
+      "element": "craft/ItemPanel.svelte: the grabbed item's card, section.item-panel",
+      "status": "placeholder"
+    },
+    {
+      "id": "ch-step-marker",
+      "files": ["step-marker.svg"],
+      "element": "craft/RoutePreview.svelte: the route's step number plate, ol.steps .number",
+      "status": "placeholder"
+    },
+    {
+      "id": "ch-update-dot",
+      "files": ["update-dot.svg"],
+      "element": "App.svelte: the header Settings button's update-available mark, .update-mark .dot",
+      "status": "placeholder"
+    }
+  ]
+}

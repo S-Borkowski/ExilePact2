@@ -78,6 +78,47 @@ impl StatusLine {
     }
 }
 
+/// The look every window draws (`theme` in the settings): Exile, the
+/// steel/masonry style, by default, or Claude, the app's earlier look. A
+/// saved value is read leniently, as the quest tracker reads its own: any
+/// value but `"claude"` (a missing key, `null`, a number, an unknown name)
+/// is Exile. A patch is read strictly by [`crate::settings::read_patch`].
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Theme {
+    #[default]
+    Exile,
+    Claude,
+}
+
+impl Theme {
+    /// Its name as the settings and the views write it (`exile`).
+    pub fn name(self) -> &'static str {
+        match self {
+            Theme::Exile => "exile",
+            Theme::Claude => "claude",
+        }
+    }
+
+    /// The theme `name` names exactly, or `None`.
+    pub fn from_name(name: &str) -> Option<Theme> {
+        match name {
+            "exile" => Some(Theme::Exile),
+            "claude" => Some(Theme::Claude),
+            _ => None,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Theme {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Theme, D::Error> {
+        Ok(match serde_json::Value::deserialize(d)?.as_str() {
+            Some("claude") => Theme::Claude,
+            _ => Theme::Exile,
+        })
+    }
+}
+
 /// Where the overlay sits inside the game's client area: an edge's middle
 /// or a corner (`overlay_position` in the settings, `top-center` by
 /// default).
@@ -182,6 +223,8 @@ pub struct WatchLineView {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct View {
+    /// The look the main window and the overlay draw.
+    pub theme: Theme,
     /// The global hotkey registered now (or wanted, when it was refused).
     pub hotkey: String,
     /// The last grab; `None` until one passes.
@@ -565,13 +608,15 @@ pub struct GuidingView {
 }
 
 /// Everything the Settings window shows: `ep-update`'s view of the update
-/// check and install, then the hotkey, the blocked currencies, the
-/// overlay's position, the screen watch and the trade search's league with
-/// the list offered for it.
+/// check and install, then the theme, the hotkey, the blocked currencies,
+/// the overlay's position, the screen watch and the trade search's league
+/// with the list offered for it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsView {
     #[serde(flatten)]
     pub updates: AppSettingsView,
+    /// The look every window draws; the Settings window's Theme select.
+    pub theme: Theme,
     pub hotkey: String,
     /// What the last hotkey change, or the start, said about the hotkey.
     pub hotkey_status: Option<StatusLine>,

@@ -1795,6 +1795,7 @@
     "kind": "error",
     "text": "Trade search not changed: Rings has no base type Iron Mitts."
   },
+  "theme": "exile",
   "trade": {
     "bases": [
       "Abyssal Signet",

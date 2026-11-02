@@ -32,6 +32,10 @@ export interface StatusLine {
   text: string;
 }
 
+export const THEMES = ['exile', 'claude'] as const;
+/** The look every window draws: Exile (the steel/masonry kit) by default, or Claude, the earlier look. */
+export type Theme = (typeof THEMES)[number];
+
 export const OVERLAY_POSITIONS = ['top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const;
 /** Where the overlay sits inside the game's client area: an edge's middle or a corner (`top-center` by default). */
 export type OverlayPosition = (typeof OVERLAY_POSITIONS)[number];
@@ -86,6 +90,8 @@ export interface WatchLineView {
 
 /** Everything the main window and the overlay show. */
 export interface View {
+  /** The look the main window and the overlay draw; a view without one (an older shell) is Exile. */
+  theme?: Theme;
   /** The global hotkey, e.g. `Ctrl+Alt+X`. */
   hotkey: string;
   /** The last grab; null until one passes. */
@@ -493,6 +499,11 @@ export const list =
     }
     v.forEach((item, i) => inner(item, `${p}[${i}]`, out));
   };
+/** A field an older shell may leave out: missing is fine, present must pass `inner`. */
+export const optional = (inner: Check): Check => Object.assign((v: unknown, p: string, out: string[]) => inner(v, p, out), { optional: true });
+const isOptional = (c: Check): boolean => (c as Check & { optional?: boolean }).optional === true;
+/** The theme field: `exile` or `claude`, and a missing one is Exile. */
+export const theme: Check = optional(oneOf(THEMES));
 export function record<T>(spec: Spec<T>): Check {
   return (v, p, out) => {
     if (!isObject(v)) {
@@ -501,8 +512,9 @@ export function record<T>(spec: Spec<T>): Check {
     }
     const s = spec as Record<string, Check>;
     for (const key of Object.keys(s)) {
-      if (!(key in v)) out.push(`${p}.${key}: missing`);
-      else s[key](v[key], `${p}.${key}`, out);
+      if (!(key in v)) {
+        if (!isOptional(s[key])) out.push(`${p}.${key}: missing`);
+      } else s[key](v[key], `${p}.${key}`, out);
     }
     for (const key of Object.keys(v)) {
       if (!(key in s)) out.push(`${p}.${key}: not in the TypeScript types`);
@@ -675,6 +687,7 @@ const trade = record<TradeView>({
 });
 
 const view = record<View>({
+  theme,
   hotkey: str,
   grab: nullable(grab),
   status: nullable(statusLine),

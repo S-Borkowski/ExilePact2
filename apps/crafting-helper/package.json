@@ -9,7 +9,8 @@
     "test": "vitest run",
     "tauri": "tauri",
     "start": "tauri dev",
-    "release": "tauri build --no-bundle"
+    "release": "tauri build --no-bundle",
+    "corner-safety": "node scripts/corner-safety.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.3"
@@ -18,6 +19,7 @@
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@tauri-apps/cli": "2.12.2",
     "jsdom": "30.1.2",
+    "playwright-core": "1.64.1",
     "svelte": "5.57.2",
     "svelte-check": "4.7.6",
     "typescript": "6.0.3",

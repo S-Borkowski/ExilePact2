@@ -16,6 +16,7 @@
     "kind": "error",
     "text": "Hotkey Ctrl+Alt+X is taken by another program. Choose another one in Settings."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

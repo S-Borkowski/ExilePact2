@@ -38,7 +38,7 @@
     );
 </script>
 
-<section class="item-panel" aria-labelledby="{uid}-title">
+<section class="item-panel" aria-labelledby="{uid}-title" data-art-placeholder="ch-item-card">
   <h2 class="item-title" id="{uid}-title" tabindex="-1" data-mode-heading={modeHeading ? '' : undefined}>
     {title}
   </h2>

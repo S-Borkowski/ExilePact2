@@ -75,7 +75,7 @@
     <ol class="steps">
       {#each route.steps as step (step.id)}
         <li>
-          <span class="number" aria-hidden="true">{step.number}</span>
+          <span class="number" aria-hidden="true" data-art-placeholder="ch-step-marker">{step.number}</span>
           <div class="step-body">
             <p class="instruction">{step.instruction}</p>
             <StepFacts {step} />

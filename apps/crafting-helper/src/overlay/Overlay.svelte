@@ -14,10 +14,18 @@
   // click-through and never takes focus, and the shell alone shows or hides
   // it (`view.overlay.visible`), so the page draws what the view holds
   // either way and sends no command.
+  //
+  // The view's theme marks the document (`../theme.ts`). Exile draws the
+  // panel in the kit's steel palette over the masonry well, with a steel
+  // edge standing in for the compact frame the owner was asked for
+  // (`ch-overlay-frame`, `../steel.css`); the kit's full frame does not fit
+  // a 168 px window. Claude draws today's panel.
   import { onDestroy, onMount } from 'svelte';
   import type { Bridge } from '../bridge';
   import type { View } from '../ipc';
   import { OUTCOME_LABELS, SOURCE_LABELS, STATUS_LABELS } from '../craft/words';
+  import masonry from '../../theme/materials/raster/masonry-charcoal.png';
+  import { applyTheme } from '../theme';
 
   let { bridge }: { bridge: Bridge } = $props();
 
@@ -25,6 +33,11 @@
   let stop: (() => void) | null = null;
 
   const guide = $derived(view?.overlay.guide ?? null);
+  const exile = $derived(view?.theme !== 'claude');
+
+  $effect(() => {
+    applyTheme(document.documentElement, view?.theme);
+  });
 
   onMount(() => {
     let live = true;
@@ -53,7 +66,12 @@
   {#if guide}
     {@const g = guide}
     {@const middle = g.why !== null || g.uses.length > 0 || g.odds !== null || g.on_hit !== null || g.on_miss !== null}
-    <div class="panel" data-status={g.status}>
+    <div
+      class="panel"
+      data-status={g.status}
+      data-art-placeholder="ch-overlay-frame"
+      style:--well-image={exile ? `url("${masonry}")` : null}
+    >
       <div class="group">
         <p class="row head">
           <span class="status-word caps" data-status={g.status}>{STATUS_LABELS[g.status]}</span>

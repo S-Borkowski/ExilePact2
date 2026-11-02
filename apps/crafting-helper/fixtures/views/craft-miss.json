@@ -118,6 +118,7 @@
     "kind": "info",
     "text": "Miss: +#% to Fire Resistance (T5) below its floor T3."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

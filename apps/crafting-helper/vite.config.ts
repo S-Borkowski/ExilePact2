@@ -29,6 +29,9 @@ export default defineConfig(({ mode }) => ({
     watch: {
       ignored: ['**/src-tauri/**', '**/crates/**', '**/target/**'],
     },
+    // The tests read the steel/masonry kit (its palette and component
+    // colours, `src/steel-kit.test.ts`) from the quest tracker's docs.
+    fs: mode === 'test' ? { allow: ['.', '../../docs/quest-tracker/design/steel-masonry-kit'] } : undefined,
   },
   test: {
     environment: 'jsdom',

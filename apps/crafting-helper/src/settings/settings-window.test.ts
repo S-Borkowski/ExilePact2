@@ -416,13 +416,20 @@ describe('the Settings window', () => {
 
   it('credit_reads_created_by_st4h', async () => {
     for (const name of ['idle', 'install-failed']) {
-      const root = await render(fakeBridge(fixture(name)));
+      // Claude: the window's own footer, as before the Exile theme.
+      const root = await render(fakeBridge({ ...fixture(name), theme: 'claude' }));
       const footer = root.querySelector('footer')!;
       expect(text(footer)).toBe('Created by ST4H');
       expect(footer.querySelector('a')).toBeNull();
       // The credit is the window's footer, outside its main region.
       expect(root.querySelector('main footer')).toBeNull();
       expect(root.querySelector('.window > footer')).toBe(footer);
+      // Exile: the same footer, inside the frame's content box, outside main.
+      const exile = await render(fakeBridge(fixture(name)));
+      const exileFooter = exile.querySelector('footer')!;
+      expect(text(exileFooter)).toBe('Created by ST4H');
+      expect(exile.querySelector('main footer')).toBeNull();
+      expect(exile.querySelector('.window > .window-content > footer')).toBe(exileFooter);
     }
 
     // Before the first view arrives: the title and the credit, no section.
@@ -647,7 +654,7 @@ describe('the Settings window', () => {
     const root = await render(bridge);
 
     // After Grab, before the blocked list, Trade and Updates.
-    expect(SECTIONS.map((s) => s.id)).toEqual(['grab', 'overlay', 'blocked', 'trade', 'updates']);
+    expect(SECTIONS.map((s) => s.id)).toEqual(['appearance', 'grab', 'overlay', 'blocked', 'trade', 'updates']);
     const region = overlaySection(root);
     expect(text(region.querySelector('h2'))).toBe('Overlay');
 
@@ -809,7 +816,7 @@ describe('the Settings window', () => {
     const root = await render(bridge);
 
     // After the blocked list, before Updates, which stays last.
-    expect(SECTIONS.map((s) => s.id)).toEqual(['grab', 'overlay', 'blocked', 'trade', 'updates']);
+    expect(SECTIONS.map((s) => s.id)).toEqual(['appearance', 'grab', 'overlay', 'blocked', 'trade', 'updates']);
     const region = tradeSection(root);
     expect(text(region.querySelector('h2'))).toBe('Trade');
 
@@ -1053,5 +1060,82 @@ describe('the Settings window', () => {
     expect(root.querySelectorAll('section[aria-labelledby="section-blocked"] input[data-id]')).toHaveLength(
       CATALOGUE.flatMap((group) => group.entries).length,
     );
+  });
+});
+
+describe('the Theme setting', () => {
+  afterEach(() => {
+    delete document.documentElement.dataset.theme;
+  });
+
+  const appearance = (root: HTMLElement): HTMLElement => root.querySelector('section[aria-labelledby="section-appearance"]') as HTMLElement;
+  const themeSelect = (root: HTMLElement): HTMLSelectElement => appearance(root).querySelector('select') as HTMLSelectElement;
+
+  it('appearance_comes_first_with_one_theme_select', async () => {
+    expect(SECTIONS[0]).toMatchObject({ id: 'appearance', title: 'Appearance' });
+    const root = await render(fakeBridge(fixture('idle')));
+    const region = appearance(root);
+    expect(region).not.toBeNull();
+    expect(text(region.querySelector('h2'))).toBe('Appearance');
+    // The section itself carries the marker the legacy comparison removes,
+    // heading and all; no other element does.
+    expect(region.matches('[data-theme-setting]')).toBe(true);
+    expect(root.querySelectorAll('[data-theme-setting]')).toHaveLength(1);
+    const select = themeSelect(root);
+    expect(select.closest('[data-theme-setting]')).toBe(region);
+    // A labelled select: "Theme", with Exile then Claude.
+    expect(text(select.closest('label')).startsWith('Theme')).toBe(true);
+    expect([...select.options].map((o) => [o.text, o.value])).toEqual([
+      ['Exile', 'exile'],
+      ['Claude', 'claude'],
+    ]);
+    expect(select.value).toBe('exile');
+  });
+
+  it('theme_select_sends_update_settings_and_follows_the_view', async () => {
+    const view = fixture('idle');
+    expect(view.theme).toBe('exile');
+    const bridge = fakeBridge(view);
+    const root = await render(bridge);
+    choose(themeSelect(root), 'claude');
+    flushSync();
+    // The same argument shape the Updates toggle uses, and nothing else.
+    expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { theme: 'claude' } } }]);
+    // The page follows the next view, not its own choice.
+    expect(document.documentElement.dataset.theme).toBe('exile');
+    bridge.push({ ...view, theme: 'claude' });
+    expect(themeSelect(root).value).toBe('claude');
+    expect(document.documentElement.dataset.theme).toBe('claude');
+    expect(root.querySelector('.material-art')).toBeNull();
+    bridge.push(view);
+    expect(themeSelect(root).value).toBe('exile');
+    expect(document.documentElement.dataset.theme).toBe('exile');
+    expect(root.querySelectorAll('.material-art')).toHaveLength(1);
+  });
+
+  it('a_view_without_a_theme_is_exile', async () => {
+    const view = fixture('idle') as Partial<SettingsView>;
+    delete view.theme;
+    expect(settingsProblems(view)).toEqual([]);
+    const root = await render(fakeBridge(view as SettingsView));
+    expect(document.documentElement.dataset.theme).toBe('exile');
+    expect(themeSelect(root).value).toBe('exile');
+    // An unknown theme is drift the checker reports.
+    expect(settingsProblems({ ...fixture('idle'), theme: 'sepia' })).not.toEqual([]);
+  });
+
+  it('exile_until_the_first_view_arrives', async () => {
+    document.documentElement.dataset.theme = 'claude';
+    const root = await render(fakeBridge(null), false);
+    expect(document.documentElement.dataset.theme).toBe('exile');
+    expect(appearance(root)).toBeNull();
+  });
+
+  it('preview_takes_the_theme_from_the_query', async () => {
+    const root = await render(previewSettingsBridge('?state=idle&theme=claude'));
+    expect(document.documentElement.dataset.theme).toBe('claude');
+    expect(themeSelect(root).value).toBe('claude');
+    const root2 = await render(previewSettingsBridge('?state=idle&theme=sideways'));
+    expect(themeSelect(root2).value).toBe('exile');
   });
 });

@@ -119,6 +119,7 @@
     "kind": "info",
     "text": "Hit: gained +#% to Fire Resistance (T3). Read from the screen."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

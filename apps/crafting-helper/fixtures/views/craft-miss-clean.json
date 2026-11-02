@@ -168,6 +168,7 @@
     "kind": "info",
     "text": "Miss: no target gained or lost."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

@@ -6,6 +6,7 @@ import type { Component } from 'svelte';
 import type { CatalogueGroup } from '../ipc';
 import type { SettingsSend } from './bridge';
 import type { SettingsView } from './view';
+import AppearanceSection from './AppearanceSection.svelte';
 import BlockedCurrenciesSection from './BlockedCurrenciesSection.svelte';
 import GrabSection from './GrabSection.svelte';
 import OverlaySection from './OverlaySection.svelte';
@@ -28,6 +29,7 @@ export interface SettingsSection {
 }
 
 export const SECTIONS: readonly SettingsSection[] = [
+  { id: 'appearance', title: 'Appearance', component: AppearanceSection },
   { id: 'grab', title: 'Grab', component: GrabSection },
   { id: 'overlay', title: 'Overlay', component: OverlaySection },
   { id: 'blocked', title: 'Blocked currencies', component: BlockedCurrenciesSection },

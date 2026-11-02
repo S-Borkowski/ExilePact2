@@ -21,6 +21,7 @@
     "kind": "error",
     "text": "Not grabbed: the clipboard is empty."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,
