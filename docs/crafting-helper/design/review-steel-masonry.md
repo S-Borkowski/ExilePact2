@@ -101,7 +101,10 @@ Today's elements, from the base tag, are under `reference/` (one
 
 ## Design pass
 
-Both skills judged the Exile screenshots above. Findings and what was done:
+Both skills judged the Exile screenshots above: `impeccable` (audit,
+detector and polish) and `taste-skill:design-taste-frontend` (its
+app-screen review, listed below as taste-skill). Findings and what was
+done:
 
 - **impeccable (audit):** the guide's End craft bar sat on a flat
   `#090D10` slab under the masonry, a visible seam the start bar does not
