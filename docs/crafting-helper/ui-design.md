@@ -129,18 +129,28 @@ The Quest Tracker's steel/masonry kit
   square checkbox and pill switch; the kit's keycap; 8 px slate scrollbars;
   a 2 px ivory `#E6E5DE` focus ring drawn inside the control. A wanted
   result (a hit, a target met, done) reads ivory.
-- **Overlay.** No raster frame (the kit's knots do not fit 168 px): the
-  panel takes the steel palette over the masonry well under the 0.92
-  ground, with a steel edge. Text too large for the window scrolls inside
-  the panel, which draws no scrollbar (the window is click-through).
-- **Requested art.** Five elements have no kit art: the trade panel's radio
-  buttons, a compact overlay frame, the grabbed item's card, the route's
-  step number plate and the update mark. Each draws a marked CSS
-  placeholder in the kit palette (`data-art-placeholder="<id>"`), and
-  [`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md) asks the owner for
-  the art. A delivered file goes in `theme/materials/requested/` under its
-  listed name and is drawn with no code change (`src/requested-art.ts`,
-  `theme/materials/requested/manifest.json`).
+- **Overlay.** Not the kit's window frame (its knots do not fit 168 px):
+  the panel takes the steel palette over the masonry well under the 0.92
+  ground, edged by the owner's compact steel frame (`ch-overlay-frame`,
+  below), whose art stays within 6 px of the panel's edge while the text
+  keeps its 8 px by 12 px inset. Text too large for the window scrolls
+  inside the panel, which draws no scrollbar (the window is click-through).
+- **Requested art, delivered.** Five elements have no kit art: the trade
+  panel's radio buttons, a compact overlay frame, the grabbed item's card,
+  the route's step number plate and the update mark.
+  [`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md) asked the owner for
+  them, and the owner delivered all eight files (2026-11-02), stored as
+  delivered in `theme/materials/requested/`. Exile draws them in place of
+  the marked kit-palette placeholders (`data-art-placeholder="<id>"`), which
+  stay as the fallback for a missing file: the radios from four 16 px SVGs
+  (off, on, focus, disabled; under keyboard focus the focus ring, clear in
+  the centre, is layered over the off or on base, so the selection stays
+  visible, which `scripts/radio-focus.mjs` checks), the overlay's step
+  panel in the compact steel frame (a nine-slice, 24 source px to a 12 px
+  border, no centre), the grabbed item's card in the card frame (32 source
+  px to 16 px), the step number on the steel plate, and the update mark as
+  a round ivory jewel. `src/requested-art.ts` finds each file and marks the
+  page (`theme/materials/requested/manifest.json`), with no code per file.
 - **Checks.** `npm run corner-safety` (`scripts/corner-safety.mjs`, adapted
   from the Quest Tracker's) renders every window's preview in headless Edge
   at device scales 0.75, 1, 1.33 and 2 and at text 200 %, every scroll

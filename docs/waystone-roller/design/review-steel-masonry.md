@@ -57,16 +57,47 @@ In [`frames/`](frames/), at device scale 1, written by `--screenshots`:
 
 ## Requested art
 
-Three elements have no counterpart in the kit; each is a marked CSS
-placeholder in Exile until the owner delivers its file
+Three elements have no counterpart in the kit; each was a marked CSS
+placeholder in Exile until the owner delivered its file
 ([`ASSET-REQUESTS.md`](ASSET-REQUESTS.md), with today's element in
 [`reference/`](reference/)):
 
 | Id | File | Element | Status |
 |---|---|---|---|
-| `wr-mark-want` | `mark-want.svg` | the Want mark of a row and of the parts list | placeholder |
-| `wr-mark-avoid` | `mark-avoid.svg` | the Avoid mark of a row and of the parts list | placeholder |
-| `wr-update-dot` | `update-dot.svg` | the header Settings button's update mark | placeholder |
+| `wr-mark-want` | `mark-want.svg` | the Want mark of a row and of the parts list | delivered |
+| `wr-mark-avoid` | `mark-avoid.svg` | the Avoid mark of a row and of the parts list | delivered |
+| `wr-update-dot` | `update-dot.svg` | the header Settings button's update mark | delivered |
+
+## Delivered art
+
+The owner delivered the three files on 2026-11-02. Each was checked against
+the SHA-256 the workorder recorded for it, then copied byte for byte to
+`apps/waystone-roller/theme/materials/requested/` (no other file of the
+delivery packet was copied); `.gitattributes` exempts the folder's SVGs from
+line-ending conversion, so a fresh checkout keeps the same bytes. Every
+entry of `manifest.json` and of `ASSET-REQUESTS.md` now reads `delivered`.
+
+| Id | File | What Exile draws |
+|---|---|---|
+| `wr-mark-want` | `mark-want.svg` | a 16 px gold plus, in the row's mark column and before a want part of the parts list |
+| `wr-mark-avoid` | `mark-avoid.svg` | a 16 px muted-red bar, in the same places for an avoid part |
+| `wr-update-dot` | `update-dot.svg` | a small solid gold diamond on the header's Settings button when an update is known |
+
+No CSS changed for them: the Exile rules written for a delivered file in
+round 1 draw each in place of its placeholder, and the placeholders stay
+as the fallback for a missing file. `src/steel-kit.test.ts` now pins the
+delivered state (every status `delivered`, the loader finding exactly
+these three files and marking every request) beside the fake-file-map
+test of the absent and present cases. The `exile-main-default.png` and
+`exile-main-min.png` frames above were regenerated with the marks drawn;
+the `claude-*.png` frames are byte-identical.
+
+What the checks printed after the delivery:
+
+```
+corner-safety: 80 cases, 0 failures, control detected, flush checked on 80 cases, readability checked on 80 cases
+legacy-pixels: 11 cases, 0 differ
+```
 
 ## Design pass
 

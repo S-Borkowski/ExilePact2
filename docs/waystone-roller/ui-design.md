@@ -88,12 +88,15 @@ draws it:
   cyan fill; Want and Avoid, when chosen, keep the steel fill with a 2 px
   rule of their colour under the word; focus is a 2 px ivory `#E6E5DE` ring
   drawn inside the control; the kit's 8 px scrollbar.
-- **Placeholders for requested art**: the Want and Avoid marks and the
-  update dot have no kit art. Exile draws each as a dashed outline in the kit
-  palette (`[data-art-placeholder="<id>"]`) until the owner delivers its
-  file; `design/ASSET-REQUESTS.md` describes each one, and a file dropped
-  into `theme/materials/requested/` under its listed name is drawn instead
-  with no code change (`src/requested-art.ts`).
+- **Requested art, delivered**: the Want and Avoid marks and the update
+  dot have no kit art, so `design/ASSET-REQUESTS.md` asked the owner for
+  them, and the owner delivered all three (2026-11-02):
+  `theme/materials/requested/mark-want.svg` (a gold plus),
+  `mark-avoid.svg` (a muted-red bar) and `update-dot.svg` (a gold diamond),
+  stored as delivered. Exile draws them in place of the dashed kit-palette
+  placeholders (`[data-art-placeholder="<id>"]`), which stay as the
+  fallback for a missing file; `src/requested-art.ts` finds each file and
+  marks the page, with no code per file.
 - `npm run corner-safety` proves, on rendered pixels, that no content
   paints over the frame art at either window size, device scales 0.75 to 2,
   text 200% and every scroll position, that the frame is flush, that text

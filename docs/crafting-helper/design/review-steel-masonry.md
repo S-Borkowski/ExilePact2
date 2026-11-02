@@ -20,7 +20,8 @@ The matrix: the main window's eight states at 960 x 680 and 600 x 480, the
 Settings window's six states at 440 x 720 and the overlay over a bright and
 a dark scene at 480 x 168, each at device scales 0.75, 1, 1.33 and 2 and at
 text 200 % at scale 1, at the top, middle and end of every scroller. The
-overlay carries no frame, so its 10 cases are not flush-checked. The
+overlay carries no window frame (`.material-art`; its compact frame is the
+panel's own border), so its 10 cases are not flush-checked. The
 `--self-check` (synthetic pages, no app) reports
 `corner-safety: 4 cases, 0 failures, control detected, flush checked on 4
 cases, readability checked on 4 cases`: at every scale the knot probe is
@@ -95,8 +96,9 @@ scale 1, under `frames/`:
 
 ## Requested art
 
-Five elements have no counterpart in the kit; each draws a marked CSS
-placeholder in the kit palette until its file arrives, and
+Five elements have no counterpart in the kit; each drew a marked CSS
+placeholder in the kit palette until its files arrived (all were delivered
+on 2026-11-02, § "Delivered art" below), and
 [`ASSET-REQUESTS.md`](ASSET-REQUESTS.md) holds the full request:
 
 | Id | Files | Element | Placeholder |
@@ -110,6 +112,62 @@ placeholder in the kit palette until its file arrives, and
 Today's elements, from the base tag, are under `reference/` (one
 `<id>.png` each), written by `--references docs/crafting-helper/design/reference
 --root ref:waystone-crafting-steel-masonry-base`.
+
+## Delivered art
+
+The owner delivered the eight files on 2026-11-02. Each was checked against
+the SHA-256 the workorder recorded for it, then copied byte for byte to
+`apps/crafting-helper/theme/materials/requested/` (none of the packet's
+supplemental, master or preview files was copied); `.gitattributes` exempts
+the folder's SVGs from line-ending conversion, so a fresh checkout keeps the
+same bytes. Every entry of `manifest.json` and of `ASSET-REQUESTS.md` now
+reads `delivered`.
+
+| Id | Files | What Exile draws, and the CSS it needed |
+|---|---|---|
+| `ch-radio` | `radio-off.svg`, `radio-on.svg`, `radio-focus.svg`, `radio-disabled.svg` | the Match radios as 16 px steel rings, an ivory dot when on. The focus rule was wrong: under `:focus-visible` it replaced the off or on image with the focus image alone, which is a ring with a clear centre, so a focused radio lost its selection. It now layers the ring over the off base, or over the on base when checked; the disabled rule and the 16 px geometry are unchanged |
+| `ch-overlay-frame` | `frame-overlay-compact.png` | the overlay's step panel inside the compact steel frame, a nine-slice (24 source px to a 12 px border, no centre, no outset) over the masonry. The panel now keeps a real 6 px transparent border, the art's painted reach, with the padding reduced by the same 6 px, so the text inset stays 8 px by 12 px and text scrolling inside the panel is clipped before it reaches the art (at text 200 % it ran under the frame's edge, contrast 1.52 to 2.86) |
+| `ch-item-card` | `item-card-frame.png` | the grabbed item's card in the card frame, a nine-slice (32 source px to 16 px, no centre) over the well, the text at its 10 px by 12 px inset; no CSS change |
+| `ch-step-marker` | `step-marker.svg` | each route step's number on the steel plate. Drawn as a 3 px nine-slice with its centre filled rather than stretched whole, so its edge keeps its width as the number grows (stretched, at text 200 % the number sat on the edge, contrast 2.73), and held to a 22 px square at the step's first line rather than a bar the step's height |
+| `ch-update-dot` | `update-dot.svg` | a 10 px round ivory jewel with a steel edge on the header's Settings button when an update is known; no CSS change |
+
+The radio focus check, `node apps/crafting-helper/scripts/radio-focus.mjs`
+(Exile, `trade-picking` at 960 x 680, scale 1; Tab onto the checked radio,
+a key press and `focus()` onto the unchecked one), run with the four radio
+files present against the round 1 focus rule, failed as it should:
+
+```
+radio-focus art: ok (data-art-ch-radio set)
+radio-focus control: ok (unfocused centres differ by 16px)
+radio-focus checked (both): FAIL centre differs from its unfocused render (16px): the selection is not kept
+radio-focus unchecked (one): FAIL centre differs from its unfocused render (16px): the selection is not kept
+radio-focus: 2 cases, 2 failures, control detected, art loaded
+```
+
+and with the layered rule:
+
+```
+radio-focus art: ok (data-art-ch-radio set)
+radio-focus control: ok (unfocused centres differ by 16px)
+radio-focus checked (both): ok (ring 68px, centre kept)
+radio-focus unchecked (one): ok (ring 68px, centre kept)
+radio-focus: 2 cases, 0 failures, control detected, art loaded
+```
+
+`src/steel-kit.test.ts` now pins the delivered state (every status
+`delivered`, the loader finding exactly these eight files and marking every
+request, the focus ring layered over its base) beside the fake-file-map
+test of the absent and present cases. The `exile-main-planning.png`,
+`exile-main-guiding.png`, `exile-overlay-bright.png` and
+`exile-overlay-dark.png` frames above were regenerated with the art drawn;
+the `claude-*.png` frames are byte-identical.
+
+What the checks printed after the delivery:
+
+```
+corner-safety: 120 cases, 0 failures, control detected, flush checked on 110 cases, readability checked on 120 cases
+legacy-pixels: 18 cases, 0 differ
+```
 
 ## Design pass
 

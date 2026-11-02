@@ -379,7 +379,7 @@ HTML, no value ranges. To refresh it, see "Working on the app".
 | `apps/waystone-roller/crates/wr-app/` | The app's logic without Tauri: the store, the selection, the view, the commands, the shortcut and copy path, the paste's decisions and timing (`tests/paste.rs`, through the same fake shell), and the update commands and ticker (`updates.rs`, over the shared `ep-update`; tested in `tests/updates.rs` with a recording fake transport). |
 | `apps/waystone-roller/src-tauri/` | The Tauri glue: the global shortcut, single instance, the Win32 clipboard writer and beep, the paste's key events, key-state read and window-title read (`src/paste.rs`, the app's only input code), the commands, the Settings window (label `settings`, its capability `capabilities/settings.json`, `core:event:default` alone), the update transport over the shared `ep-net`, and the restart into an installed update. |
 | `apps/waystone-roller/src/` | The Svelte page and `ipc.ts`, the view's types. The Settings window's page is `settings.html` with its own entry under `src/settings/` (`main.ts`, `SettingsWindow.svelte`, `AppearanceSection.svelte`, `UpdatesSection.svelte`, `sections.ts`, its view type `view.ts`, bridge and browser preview `settings.html?state=<state>`). The Exile theme's own rules are `steel.css`, its frame `components/MaterialFrame.svelte`, the `data-theme` switch `theme.ts` and the requested-art loader `requested-art.ts`. |
-| `apps/waystone-roller/theme/` | `tokens.css` and `fonts/` (the Claude theme's tokens, byte-identical to the quest tracker's), `exile.css` (the Exile palette, a byte copy of the quest tracker's), the kit's two rasters in `materials/raster/`, and `materials/requested/`, where requested art is dropped in by name beside its `manifest.json` ([`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md)). |
+| `apps/waystone-roller/theme/` | `tokens.css` and `fonts/` (the Claude theme's tokens, byte-identical to the quest tracker's), `exile.css` (the Exile palette, a byte copy of the quest tracker's), the kit's two rasters in `materials/raster/`, and `materials/requested/`, where requested art is dropped in by name beside its `manifest.json` ([`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md)); it holds the owner's three delivered files, stored byte for byte. |
 | `apps/waystone-roller/scripts/` | The corner-safety runner (`corner-safety.mjs`, with its pure checks in `corner-safety-core.mjs`; § "npm scripts"). |
 | `apps/waystone-roller/data/` | The mod data file. |
 | `apps/waystone-roller/fixtures/` | The invented mod set and item texts for `wr-regex`, the view fixtures shared by the page's tests and `wr-app`'s, and `app-settings/`, one Settings window view per update and install state. |
@@ -610,6 +610,9 @@ release already exists, only its assets are replaced.
   `settings.json`; a missing or unknown value opens Exile. Claude looks
   exactly as before. Nothing else changes: the same features, wording and
   window sizes.
+- In the Exile theme, the Want and Avoid marks (a gold plus, a muted-red
+  bar) and the update mark beside Settings (a small gold diamond) are drawn
+  from their own artwork rather than outlined stand-ins.
 - A build from source is now `Waystone Roller.exe` (in
   `target/release/`). A release download is still `waystone-roller.exe`, the same program;
   renaming it to `Waystone Roller.exe` is fine. An in-app update keeps the

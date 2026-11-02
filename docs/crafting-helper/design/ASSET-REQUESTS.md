@@ -3,10 +3,21 @@
 The Crafting Helper's Exile theme is drawn from the Quest Tracker's
 steel/masonry kit (`docs/quest-tracker/design/steel-masonry-kit/`): its
 neutral steel frame, its charcoal masonry, its palette and its control
-geometry. The elements below have no counterpart in the kit. Each is drawn
-today by a marked CSS placeholder in the kit palette
+geometry. The elements below have no counterpart in the kit. Until their
+art existed, each was drawn by a marked CSS placeholder in the kit palette
 (`[data-art-placeholder="<id>"]` in `apps/crafting-helper/src/steel.css`),
-so the app ships complete; this file asks for the real art.
+so the app shipped complete; the placeholder stays as the fallback for a
+missing file. This file asked for the real art.
+
+**Delivered.** The owner delivered all eight files on 2026-11-02. They sit
+in `apps/crafting-helper/theme/materials/requested/` exactly as delivered
+(byte for byte; `.gitattributes` keeps the SVGs' LF line endings, so the
+hashes the workorder's criteria pin hold on a fresh checkout), every
+manifest entry reads `delivered`, and the Exile theme draws the files in
+place of the placeholders. `radio-focus.svg` is a ring with a clear centre,
+layered over the off or on base under keyboard focus so the selection stays
+visible; `scripts/radio-focus.mjs` checks it. Each entry below ends with its
+`Status:` line.
 
 **Who makes it.** The owner generates each file outside this repository,
 from the entry alone: every entry names the exact size, slicing, format,
@@ -53,6 +64,7 @@ Current: `docs/crafting-helper/design/reference/ch-radio.png` (today's element, 
 Placeholder: a 16 x 16 CSS circle, 1 px steel `#8D979E` edge on `#151E24`, an ivory `#E6E5DE` 7 px dot when selected.
 Wiring: `apps/crafting-helper/theme/materials/requested/radio-off.svg`, `apps/crafting-helper/theme/materials/requested/radio-on.svg`, `apps/crafting-helper/theme/materials/requested/radio-focus.svg`, `apps/crafting-helper/theme/materials/requested/radio-disabled.svg`; manifest entry `ch-radio` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: each file a 16 x 16 viewBox SVG; corner alpha 0; all four present before the entry is marked; `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures and the trade cases' readability passes.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
 
 ## ch-overlay-frame — frame-overlay-compact.png
 
@@ -69,6 +81,7 @@ Current: `docs/crafting-helper/design/reference/ch-overlay-frame.png` (today's e
 Placeholder: a 3 px double steel border (`#8D979E`) around the panel, over the masonry well.
 Wiring: `apps/crafting-helper/theme/materials/requested/frame-overlay-compact.png`; manifest entry `ch-overlay-frame` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: 960 x 336 px RGBA; alpha 0 at every pixel more than 12 source px from an edge; `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures and the overlay's readability passes over both scenes.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
 
 ## ch-item-card — item-card-frame.png
 
@@ -85,6 +98,7 @@ Current: `docs/crafting-helper/design/reference/ch-item-card.png` (today's eleme
 Placeholder: a card of black at 45 % alpha over the masonry well, with a 1 px line `#5D686F` edge and 10 / 12 px padding.
 Wiring: `apps/crafting-helper/theme/materials/requested/item-card-frame.png`; manifest entry `ch-item-card` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: 512 x 512 px RGBA; centre alpha 0 (every pixel more than 32 source px from an edge); `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
 
 ## ch-step-marker — step-marker.svg
 
@@ -101,6 +115,7 @@ Current: `docs/crafting-helper/design/reference/ch-step-marker.png` (today's ele
 Placeholder: a 22 x 22 CSS square, `#1E272D` face, 1 px steel `#8D979E` edge, the number in ivory.
 Wiring: `apps/crafting-helper/theme/materials/requested/step-marker.svg`; manifest entry `ch-step-marker` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: a 22 x 22 viewBox SVG; alpha 0 outside the plate; `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures and the step numbers' contrast passes.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
 
 ## ch-update-dot — update-dot.svg
 
@@ -117,3 +132,4 @@ Current: `docs/crafting-helper/design/reference/ch-update-dot.png` (today's elem
 Placeholder: an 8 x 8 ivory `#E6E5DE` square with a 1 px steel edge.
 Wiring: `apps/crafting-helper/theme/materials/requested/update-dot.svg`; manifest entry `ch-update-dot` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: a 10 x 10 viewBox SVG; alpha 0 in its corners; `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)

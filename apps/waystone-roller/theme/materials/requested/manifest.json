@@ -5,19 +5,19 @@
       "id": "wr-mark-want",
       "files": ["mark-want.svg"],
       "element": "ModRow.svelte .choice-mark of a wanted row, and SearchFooter.svelte .part-what of a want part: [data-art-placeholder='wr-mark-want']",
-      "status": "placeholder"
+      "status": "delivered"
     },
     {
       "id": "wr-mark-avoid",
       "files": ["mark-avoid.svg"],
       "element": "ModRow.svelte .choice-mark of an avoided row, and SearchFooter.svelte .part-what of an avoid part: [data-art-placeholder='wr-mark-avoid']",
-      "status": "placeholder"
+      "status": "delivered"
     },
     {
       "id": "wr-update-dot",
       "files": ["update-dot.svg"],
       "element": "App.svelte header Settings button, .update-mark .dot: [data-art-placeholder='wr-update-dot']",
-      "status": "placeholder"
+      "status": "delivered"
     }
   ]
 }

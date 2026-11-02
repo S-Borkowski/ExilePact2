@@ -5,31 +5,31 @@
       "id": "ch-radio",
       "files": ["radio-off.svg", "radio-on.svg", "radio-focus.svg", "radio-disabled.svg"],
       "element": "trade/TradePanel.svelte: the Match group's two radio buttons, input[type='radio'] in .choice",
-      "status": "placeholder"
+      "status": "delivered"
     },
     {
       "id": "ch-overlay-frame",
       "files": ["frame-overlay-compact.png"],
       "element": "overlay/Overlay.svelte: the step panel's border, .overlay .panel",
-      "status": "placeholder"
+      "status": "delivered"
     },
     {
       "id": "ch-item-card",
       "files": ["item-card-frame.png"],
       "element": "craft/ItemPanel.svelte: the grabbed item's card, section.item-panel",
-      "status": "placeholder"
+      "status": "delivered"
     },
     {
       "id": "ch-step-marker",
       "files": ["step-marker.svg"],
       "element": "craft/RoutePreview.svelte: the route's step number plate, ol.steps .number",
-      "status": "placeholder"
+      "status": "delivered"
     },
     {
       "id": "ch-update-dot",
       "files": ["update-dot.svg"],
       "element": "App.svelte: the header Settings button's update-available mark, .update-mark .dot",
-      "status": "placeholder"
+      "status": "delivered"
     }
   ]
 }

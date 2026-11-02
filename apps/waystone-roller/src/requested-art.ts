@@ -34,6 +34,11 @@ const FILES = import.meta.glob(['../theme/materials/requested/*.png', '../theme/
   import: 'default',
 }) as Record<string, string>;
 
+/** The delivered files Vite found: path -> URL. */
+export function requestedFiles(): Record<string, string> {
+  return { ...FILES };
+}
+
 /**
  * Marks `root` for every request whose files are all present in `files`
  * (path -> URL), so the Exile rules draw the art instead of the

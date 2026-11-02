@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import PALETTE from '../../../docs/quest-tracker/design/steel-masonry-kit/palette.json';
 import MANIFEST from '../theme/materials/requested/manifest.json';
 import { previewBridge } from './bridge';
-import { applyRequestedArt, type ArtRequest } from './requested-art';
+import { applyRequestedArt, requestedFiles, type ArtRequest } from './requested-art';
 import { applyTheme, previewTheme, themeOf } from './theme';
 import { fixtureView, readBytes, readText, renderView, type Rendered } from './test-support';
 
@@ -240,13 +240,13 @@ describe('the steel/masonry kit in the Exile theme', () => {
 describe('the requested art', () => {
   const requests = MANIFEST.requests as ArtRequest[];
 
-  it('lists each request once, as a placeholder, with wr- ids and file names', () => {
+  it('lists each request once, delivered, with wr- ids and file names', () => {
     expect(requests.length).toBeGreaterThanOrEqual(3);
     const ids = requests.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const r of requests) {
       expect(r.id, r.id).toMatch(/^wr-[a-z0-9-]+$/);
-      expect(r.status, r.id).toBe('placeholder');
+      expect(r.status, r.id).toBe('delivered');
       expect(r.files.length, r.id).toBeGreaterThan(0);
       for (const f of r.files) expect(f, r.id).toMatch(/^[a-z0-9-]+\.(png|svg)$/);
       expect(r.element.length, r.id).toBeGreaterThan(10);
@@ -293,6 +293,20 @@ describe('the requested art', () => {
     expect(applyRequestedArt(half, { '../theme/materials/requested/a.svg': '/a.svg' }, pair)).toEqual([]);
     expect(half.hasAttribute('data-art-wr-pair')).toBe(false);
     expect(applyRequestedArt(half, { '../theme/materials/requested/a.svg': '/a.svg', '../theme/materials/requested/b.svg': '/b.svg' }, pair)).toEqual(['wr-pair']);
+  });
+
+  it('finds exactly the delivered files, and wires every request from them', () => {
+    // The shipped folder holds the owner's three files and the manifest.
+    const names = Object.keys(requestedFiles()).map((p) => p.replace(/^.*\//, '')).sort();
+    expect(names).toEqual(requests.flatMap((r) => r.files).sort());
+    expect(names).toEqual(['mark-avoid.svg', 'mark-want.svg', 'update-dot.svg']);
+    // With the real files, every request is wired and each file's URL is set.
+    const root = document.createElement('div');
+    expect(applyRequestedArt(root)).toEqual(requests.map((r) => r.id));
+    for (const r of requests) {
+      expect(root.hasAttribute(`data-art-${r.id}`), r.id).toBe(true);
+      for (const f of r.files) expect(root.style.getPropertyValue(`--art-${f.replace(/\.(png|svg)$/, '')}`), f).toMatch(/^url\(".+"\)$/);
+    }
   });
 
   it('draws the placeholder only in Exile, and the art over it once delivered', async () => {

@@ -298,13 +298,13 @@ describe('the steel/masonry kit in the Exile theme', () => {
 describe('requested art', () => {
   const manifest = MANIFEST as RequestedManifest;
 
-  it('lists each request once, every one a placeholder until its files arrive', () => {
+  it('lists each request once, every one delivered', () => {
     const ids = manifest.requests.map((r) => r.id);
     expect(ids).toEqual(['ch-radio', 'ch-overlay-frame', 'ch-item-card', 'ch-step-marker', 'ch-update-dot']);
     expect(new Set(ids).size).toBe(ids.length);
     for (const r of manifest.requests) {
       expect(r.id, r.id).toMatch(/^ch-[a-z0-9-]+$/);
-      expect(r.status, r.id).toBe('placeholder');
+      expect(r.status, r.id).toBe('delivered');
       expect(r.files.length, r.id).toBeGreaterThan(0);
       for (const f of r.files) expect(f, r.id).toMatch(/^[a-z0-9-]+\.(png|svg)$/);
       expect(r.element.length, r.id).toBeGreaterThan(10);
@@ -354,8 +354,29 @@ describe('requested art', () => {
     expect(root.hasAttribute('data-art-ch-update-dot')).toBe(true);
     expect(root.hasAttribute('data-art-ch-item-card')).toBe(true);
     expect(root.style.getPropertyValue('--art-update-dot')).toBe('url("/assets/update-dot.svg")');
-    // The shipped folder holds only the manifest: nothing is found.
-    expect(requestedFiles()).toEqual({});
+  });
+
+  it('finds exactly the delivered files, and marks every request from them', () => {
+    // The shipped folder holds the owner's eight files and the manifest.
+    const names = Object.keys(requestedFiles()).map((p) => p.replace(/^.*\//, '')).sort();
+    expect(names).toEqual(manifest.requests.flatMap((r) => r.files).sort());
+    expect(names).toHaveLength(8);
+    // With the real files, every request is marked and each file's URL is set.
+    const root = document.createElement('div');
+    expect(applyRequestedArt(root)).toEqual(manifest.requests.map((r) => r.id));
+    for (const r of manifest.requests) {
+      expect(root.hasAttribute(`data-art-${r.id}`), r.id).toBe(true);
+      for (const f of r.files) expect(root.style.getPropertyValue(`--art-${f.replace(/\.(png|svg)$/, '')}`), f).toMatch(/^url\(".+"\)$/);
+    }
+  });
+
+  it('layers the focus ring over the radio\'s off or on base, never in place of it', async () => {
+    const css = (await readText('./steel.css')).replace(/\s+/g, ' ');
+    const at = ":root[data-theme='exile'][data-art-ch-radio] [data-art-placeholder='ch-radio']";
+    expect(css).toContain(`${at}:focus-visible { background-image: var(--art-radio-focus), var(--art-radio-off);`);
+    expect(css).toContain(`${at}:checked:focus-visible { background-image: var(--art-radio-focus), var(--art-radio-on);`);
+    // Negative control: the focus image alone, which hid the selection, is gone.
+    expect(css).not.toMatch(/background-image: var\(--art-radio-focus\);/);
   });
 
   it('has Exile rules that draw each delivered file in place of its placeholder', async () => {

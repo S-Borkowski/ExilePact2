@@ -594,10 +594,10 @@
 /* --------------------------------------------------------------- overlay */
 
 /*
- * The overlay keeps no raster frame (the kit's knots do not fit 168 px):
- * the panel takes the steel palette, the masonry well under the existing
- * 0.92 ground and a kit steel edge, standing in for the compact frame the
- * owner was asked for (ch-overlay-frame, below).
+ * The overlay does not take the kit's window frame (its knots do not fit
+ * 168 px): the panel takes the steel palette, the masonry well under the
+ * existing 0.92 ground and a kit steel edge, which the owner's compact
+ * frame replaces once delivered (ch-overlay-frame, below).
  */
 :root[data-theme='exile'] .overlay .panel {
   position: relative;
@@ -658,9 +658,15 @@
   background-image: var(--art-radio-on);
 }
 
+/* Focus: the ring (clear centre) layered over the off or on base, so keyboard
+   focus never hides which choice is selected (scripts/radio-focus.mjs). */
 :root[data-theme='exile'][data-art-ch-radio] [data-art-placeholder='ch-radio']:focus-visible {
-  background-image: var(--art-radio-focus);
+  background-image: var(--art-radio-focus), var(--art-radio-off);
   outline: none;
+}
+
+:root[data-theme='exile'][data-art-ch-radio] [data-art-placeholder='ch-radio']:checked:focus-visible {
+  background-image: var(--art-radio-focus), var(--art-radio-on);
 }
 
 :root[data-theme='exile'][data-art-ch-radio] [data-art-placeholder='ch-radio']:disabled {
@@ -674,9 +680,13 @@
   border: 3px double var(--color-panel-border);
 }
 
-/* Delivered: the compact frame as a nine-slice over the panel's edge, its art within 6 px of it. */
+/* Delivered: the compact frame as a nine-slice over the panel's edge, its art
+   within 6 px of it. The 6 px border is real (and transparent), so text that
+   scrolls inside the panel is clipped before it reaches the art; the padding
+   gives back the rest of the 8 px by 12 px text inset. */
 :root[data-theme='exile'][data-art-ch-overlay-frame] [data-art-placeholder='ch-overlay-frame'] {
-  border: 0 solid transparent;
+  border: 6px solid transparent;
+  padding: calc(var(--space-panel-pad) - 6px) calc(var(--space-row-pad) - 6px);
   border-image: var(--art-frame-overlay-compact) 24 / 12px / 0 stretch;
   box-shadow: none;
 }
@@ -711,10 +721,17 @@
   color: var(--color-text-primary);
 }
 
-/* Delivered: the plate drawn behind the number. */
+/* Delivered: the plate behind the number, as a nine-slice, so its 3 px edge
+   (the steel stroke and the top highlight) keeps its width when the number
+   grows with the text size, and the number always sits on the flat centre.
+   The plate is a 22 px square at the step's first line, not a bar the
+   step's height. */
 :root[data-theme='exile'][data-art-ch-step-marker] [data-art-placeholder='ch-step-marker'] {
-  border-color: transparent;
-  background: var(--art-step-marker) center / 100% 100% no-repeat;
+  align-self: flex-start;
+  padding: 0 2px;
+  border: 3px solid transparent;
+  border-image: var(--art-step-marker) 3 fill / 3px stretch;
+  background: none;
 }
 
 /* ------------------------------------------- requested art: update dot */

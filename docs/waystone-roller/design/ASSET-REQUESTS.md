@@ -3,11 +3,19 @@
 Waystone Roller's default look, Exile, is the Quest Tracker's steel/masonry
 kit (`docs/quest-tracker/design/steel-masonry-kit/`): its neutral steel
 frame, its charcoal masonry and its control treatments drawn as CSS. The
-elements below have no counterpart in that kit. Until their art exists, the
-Exile theme draws each one as a marked placeholder: a dashed outline in the
+elements below have no counterpart in that kit. Until their art existed, the
+Exile theme drew each one as a marked placeholder: a dashed outline in the
 kit palette, `[data-art-placeholder="<id>"]` in
-`apps/waystone-roller/src/steel.css`. Nothing in this workorder generated,
-drew, cropped or recoloured art; every file below is for the owner to make.
+`apps/waystone-roller/src/steel.css`, which stays as the fallback for a
+missing file. Nothing in this workorder generated, drew, cropped or
+recoloured art; every file below was for the owner to make.
+
+**Delivered.** The owner delivered all three files on 2026-11-02. They sit
+in `apps/waystone-roller/theme/materials/requested/` exactly as delivered
+(byte for byte; `.gitattributes` keeps their LF line endings, so the hashes
+the workorder's criteria pin hold on a fresh checkout), every manifest entry
+reads `delivered`, and the Exile theme draws the files in place of the
+placeholders. Each entry below ends with its `Status:` line.
 
 **Who makes it.** The owner, from this page alone: each entry says where
 the element sits, its exact size, its states, its colours (hex values from
@@ -67,6 +75,7 @@ Current: `docs/waystone-roller/design/reference/wr-mark-want.png` (today's eleme
 Placeholder: a 16 × 16 px box with a 1 px dashed gold `#D0BF94` outline around the `+` glyph (13 px); in the parts list a 12 × 12 px dashed gold square before the word.
 Wiring: `apps/waystone-roller/theme/materials/requested/mark-want.svg`; manifest entry `wr-mark-want` in `apps/waystone-roller/theme/materials/requested/manifest.json`
 Acceptance: the SVG's `viewBox` is square (16 × 16 or a multiple); its background is transparent (no element covers the whole box); it uses only the colours listed above; dropped in and flipped to `delivered`, `npm --prefix apps/waystone-roller test` and `npm --prefix apps/waystone-roller run corner-safety` exit 0.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
 
 ## wr-mark-avoid — mark-avoid.svg
 
@@ -97,6 +106,7 @@ Current: `docs/waystone-roller/design/reference/wr-mark-avoid.png` (today's elem
 Placeholder: a 16 × 16 px box with a 1 px dashed `#D0A3A0` outline around the `−` glyph (13 px); in the parts list a 12 × 12 px dashed square before the word.
 Wiring: `apps/waystone-roller/theme/materials/requested/mark-avoid.svg`; manifest entry `wr-mark-avoid` in `apps/waystone-roller/theme/materials/requested/manifest.json`
 Acceptance: the SVG's `viewBox` is square; its background is transparent; it uses only the colours listed above; its shape differs from `mark-want.svg`; dropped in and flipped to `delivered`, `npm --prefix apps/waystone-roller test` and `npm --prefix apps/waystone-roller run corner-safety` exit 0.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)
 
 ## wr-update-dot — update-dot.svg
 
@@ -122,3 +132,4 @@ Current: `docs/waystone-roller/design/reference/wr-update-dot.png` (today's elem
 Placeholder: an 8 × 8 px square filled with control `#424D54` and outlined by a 1 px dashed gold `#D0BF94` line.
 Wiring: `apps/waystone-roller/theme/materials/requested/update-dot.svg`; manifest entry `wr-update-dot` in `apps/waystone-roller/theme/materials/requested/manifest.json`
 Acceptance: the SVG's `viewBox` is square (8 × 8 or a multiple); transparent outside the mark; uses only the colours listed above; dropped in and flipped to `delivered`, `npm --prefix apps/waystone-roller test` and `npm --prefix apps/waystone-roller run corner-safety` exit 0.
+Status: delivered (owner, 2026-11-02; the file is in place and the Exile theme draws it)

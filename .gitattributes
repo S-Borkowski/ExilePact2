@@ -16,3 +16,10 @@
 # tests/test_quest_tracker_outside_desktop.py fails on a CR byte in them.
 # Without this, `core.autocrlf` writes them back as CRLF on every checkout.
 tools/quest_tracker/outside/*.ps1   text eol=lf
+
+# The owner-delivered art for Waystone Roller and Crafting Helper is stored
+# byte for byte as delivered (LF SVGs), and the criteria pin each file's
+# SHA-256. `-text` stops `core.autocrlf` from rewriting them as CRLF on a
+# fresh checkout, which would change every hash.
+apps/waystone-roller/theme/materials/requested/*.svg   -text
+apps/crafting-helper/theme/materials/requested/*.svg   -text

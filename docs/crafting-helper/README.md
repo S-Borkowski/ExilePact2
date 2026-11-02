@@ -907,8 +907,8 @@ the research note:
 | `apps/crafting-helper/blueprints/` | The shipped blueprints, one TOML file each: how to write one is [`blueprints.md`](blueprints.md). |
 | `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start, moved where `ch-app` places it and shown without taking focus), the screen watch's real backend (`screen.rs`, over `qt-capture` and `ch-watch`'s reader) and the one file that reads the window in front and its title (`game_window.rs`), each window with its capability under `capabilities/`, opening Craft of Exile's address and the trade search's link through `tauri-plugin-opener` from Rust alone (registered without its link handler, no `opener:` permission in any capability), the update transport and the league list's fetch (`ep_net::fetch_trade_leagues`) over the shared `ep-net`, and the restart into an installed update. |
 | `apps/crafting-helper/src/` | The main page (`App.svelte`; the shared parts under `components/`: the grab prompt, the grabbed text, the status line and `CurrencyPicker.svelte`; the craft area under `craft/`, one component per part, from `CraftArea.svelte`; the trade panel under `trade/`, `TradePanel.svelte` and `TradeModifiers.svelte`; the commands `bridge.ts`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`, the league's `TradeSection.svelte` among them) and the overlay's under `src/overlay/` (`overlay.html`, `Overlay.svelte`: the step panel). |
-| `apps/crafting-helper/theme/` | The quest tracker's theme files, copied byte for byte (`theme.test.ts`, `steel-kit.test.ts`): `tokens.css` and `fonts/` (the Claude theme) and `exile.css` (the Exile palette); the kit's two rasters in `materials/raster/`; and `materials/requested/`, where requested art is dropped in by name beside its `manifest.json` ([`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md)). The Exile theme's own rules are `src/steel.css`, its frame `src/components/MaterialFrame.svelte`. |
-| `apps/crafting-helper/scripts/` | `scroll-height.mjs` (no view scrolls past its content) and the corner-safety runner (`corner-safety.mjs`, with its pure checks in `corner-safety-core.mjs`; § "npm scripts"). |
+| `apps/crafting-helper/theme/` | The quest tracker's theme files, copied byte for byte (`theme.test.ts`, `steel-kit.test.ts`): `tokens.css` and `fonts/` (the Claude theme) and `exile.css` (the Exile palette); the kit's two rasters in `materials/raster/`; and `materials/requested/`, where requested art is dropped in by name beside its `manifest.json` (it holds the owner's eight delivered files, stored byte for byte) ([`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md)). The Exile theme's own rules are `src/steel.css`, its frame `src/components/MaterialFrame.svelte`. |
+| `apps/crafting-helper/scripts/` | `scroll-height.mjs` (no view scrolls past its content), `radio-focus.mjs` (under Exile, keyboard focus on a Match radio keeps its selection visible) and the corner-safety runner (`corner-safety.mjs`, with its pure checks in `corner-safety-core.mjs`; § "npm scripts"). |
 | `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), embedded by `ch-data` when the app is built. |
 | `apps/crafting-helper/data/trade-stats.json` | The trade site's stat ids for every class's ordinary-pool modifiers, or why one is not searchable (`hybrid`, `no trade stat`), with the source URL and fetch date; written by `trade_stats.py map`, embedded by `ch-data` ([research note](crafting-helper-research.md#trade-stat-ids)). |
 | `apps/crafting-helper/fixtures/` | `views/`, one main window view per state (the craft window's included, [`views/README.md`](../../apps/crafting-helper/fixtures/views/README.md)), `app-settings/`, one Settings window view per update, install and settings state, and `catalogue.json`, the `get_catalogue` answer, shared by the page's tests and `ch-app`'s. |
@@ -960,6 +960,7 @@ npm --prefix apps/crafting-helper test                                          
 node apps/crafting-helper/scripts/scroll-height.mjs                                     # headless Edge: no view scrolls past its content
 npm --prefix apps/crafting-helper run corner-safety                                     # headless Edge: nothing paints over the Exile frame, readability, flush
 npm --prefix apps/crafting-helper run corner-safety -- --legacy-base <tag>              # the Claude theme against <tag>, pixel for pixel
+node apps/crafting-helper/scripts/radio-focus.mjs                                      # headless Edge: keyboard focus keeps the Exile Match radio's selection
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
 py -3 -m unittest tests.test_crafting_helper_release                                    # the release cutter and workflow
 py -3 -m unittest tests.test_crafting_helper_poe2db tests.test_crafting_helper_data     # the data extractor and the shipped data
@@ -2035,8 +2036,12 @@ release already exists, only its assets are replaced.
   masonry look, in the main window, the Settings window and the overlay: a
   steel frame along the main and Settings windows' edges, dark stone behind
   the content, grey text with a little gold and Cinzel headings; the
-  overlay takes the steel palette over the stone, with a steel edge and no
-  frame. The look it had before stays
+  overlay takes the steel palette over the stone, inside a slim steel
+  frame of its own. The trade panel's Match choices are steel radio
+  buttons that keep showing which one is selected while the keyboard is
+  on them, the grabbed item sits in a steel-edged card, each route step's
+  number sits on a steel plate, and the update mark beside Settings is a
+  small ivory jewel. The look it had before stays
   available as the Claude theme, chosen under *Appearance* → *Theme* in the
   Settings window and saved as `theme` in `settings.json`; a missing or
   unknown value opens Exile. Claude looks exactly as before. Nothing else

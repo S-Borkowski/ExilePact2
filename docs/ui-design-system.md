@@ -276,10 +276,14 @@ appearance, unchanged. Each carries a byte copy of the Quest Tracker's
 `exile.css` and of the kit's two rasters (`frame-neutral-steel.png`,
 `masonry-charcoal.png`) under `apps/<app>/theme/`, and its own steel rules in
 `src/steel.css`, every one scoped to the Exile theme. No art was made for
-them: an element with no kit counterpart draws a marked CSS placeholder, and
-`docs/<app>/design/ASSET-REQUESTS.md` asks the owner for the file, which is
+them: an element with no kit counterpart drew a marked CSS placeholder, and
+`docs/<app>/design/ASSET-REQUESTS.md` asked the owner for the file, which is
 dropped into `apps/<app>/theme/materials/requested/` beside its
-`manifest.json` and drawn with no code change. Each app's runner checks that
+`manifest.json` and drawn with no code change. The owner delivered every
+requested file on 2026-11-02 (Waystone Roller's Want and Avoid marks and
+update mark; Crafting Helper's radios, compact overlay frame, item card
+frame, step plate and update mark), stored byte for byte; the placeholders
+remain only as the fallback for a missing file. Each app's runner checks that
 no content paints over the frame art, that the frame is flush and that text
 meets the readability floors, and compares Claude with a base tag pixel for
 pixel (`--legacy-base`): `npm --prefix apps/waystone-roller run corner-safety`
