@@ -1,6 +1,6 @@
 # Quest tracker
 
-Design: the Exile theme is built from the [neutral steel/masonry kit](design/steel-masonry-kit/HANDOFF.md): its two finished rasters, its diamond status marks and its control treatments. The rejected warm palette is gone, and `npm --prefix apps/quest-tracker run corner-safety` measures that no text, mark or control paints over the frame artwork at any size, scale, text size or scroll position ([review](design/review-approved-ui.md)).
+Design: the Exile theme is built from the [neutral steel/masonry kit](design/steel-masonry-kit/HANDOFF.md): its two finished rasters, its diamond status marks and its control treatments. The Quest Tracker's Exile theme is wired to this kit (2026-11-01/02, see [review-approved-ui](design/review-approved-ui.md)); the handoff's "design assets only / deferred wiring" status and its next-session sections are kept unchanged as provenance. The rejected warm palette is gone, and `npm --prefix apps/quest-tracker run corner-safety` measures that no text, mark or control paints over the frame artwork at any size, scale, text size or scroll position ([review](design/review-approved-ui.md)).
 
 A small always-on-top overlay for Path of Exile 2 that lists the campaign
 quests, says which ones are worth doing and why, and keeps each character's
@@ -31,11 +31,11 @@ What it is:
   current Act bar, flat gold serif quest titles and white serif objectives.
   Character/class/level, worth headings and reward labels remain visible in play;
   six diamond fill/outline/pattern treatments show quest status without inner
-  icons: solid gold in progress, hollow double-outline gold available, thin muted
+  icons: in progress filled ivory inside its steel ring, hollow double-outline gold available, thin muted
   outline not yet available, silver-filled double outline done, hatched skipped,
   and dotted unknown. Existing status labels remain accessible and in tooltips.
   A small footer shows the
-  configured edit shortcut. Toggles and sliders use warm gold. Select
+  configured edit shortcut. Buttons, toggles, sliders and focus rings use the kit's steel greys. Select
   **Claude** to restore the previous visual theme. Use *Theme* in overlay
   Settings (edit mode), or *Appearance → Theme* in the tray's ordinary Settings
   window. The choice is saved and updates both windows; it changes no progress,
@@ -2181,7 +2181,8 @@ Exile adds a separate, manually paired `theme/exile.json` / `theme/exile.css`,
 scoped to the root's received theme, and `src/approved.css` for its material,
 type, layout and control states. Original component/shared CSS stays intact for
 Claude. `theme.ts` switches derived shadows too. Cinzel and original raster material
-provenance are in [harvest](design/harvest.md); the concept PNG is never runtime
+provenance are in [harvest](design/harvest.md), and the kit rasters' provenance is in
+[ART-PROVENANCE](design/steel-masonry-kit/ART-PROVENANCE.md); the concept PNG is never runtime
 art. The fixed material frame surrounds a separately scrolling inset content well,
 so lower rails do not float over text or controls. Exile removes the decorative
 Campaign journal/crest header and synthetic outer CSS ring/inset shadows; the

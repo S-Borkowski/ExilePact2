@@ -24,7 +24,7 @@ Roman Act bar precedes compact character/class/level context and existing edit
 controls. Next up retains Worth it / Optional headings and reward labels in play.
 Flat full-width quest sections have gold Georgia titles, white Georgia objectives,
 fine separators and six distinct diamond fill/outline/pattern status marks without
-inner icons. In progress is solid gold; available hollow gold with a double outline;
+inner icons. In progress is filled ivory inside its steel ring; available hollow gold with a double outline;
 not yet available a thin muted outline; done silver-filled with a double outline;
 skipped hatched; unknown dotted. Labels/tooltips and status meanings stay unchanged;
 Claude retains the original symbols. Only the
