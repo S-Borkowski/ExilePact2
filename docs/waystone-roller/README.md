@@ -601,7 +601,7 @@ release already exists, only its assets are replaced.
 
 ## Release notes
 
-### Unreleased
+### 1.0.0
 
 - The app now opens in the Exile theme, the Quest Tracker's steel and
   masonry look: a steel frame along each window's edge, dark stone behind

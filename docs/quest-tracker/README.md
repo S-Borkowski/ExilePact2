@@ -2671,7 +2671,7 @@ Revisit this feature when:
 
 ## Release notes
 
-### Unreleased
+### 1.0.0
 
 - The Exile theme now uses the finished steel/masonry kit: a neutral steel
   nine-slice frame (48 px corners, the same size on screen at every scale)

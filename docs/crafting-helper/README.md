@@ -2031,7 +2031,7 @@ release already exists, only its assets are replaced.
 
 ## Release notes
 
-### Unreleased
+### 1.0.0
 
 - The app now opens in the Exile theme, the Quest Tracker's steel and
   masonry look, in the main window, the Settings window and the overlay: a
