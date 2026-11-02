@@ -1,12 +1,15 @@
 // The Exile theme against the finished steel/masonry kit
 // (`docs/quest-tracker/design/steel-masonry-kit/HANDOFF.md`): the six status
 // diamonds drawn from the kit's own geometry, the two kit rasters adopted
-// byte for byte, the frame's nine-slice values, and a palette allowlist that
-// keeps the rejected warm prototype's colours out of every Exile style file.
+// byte for byte, the frame's nine-slice values, a palette allowlist that
+// keeps the rejected warm prototype's colours out of every Exile style file,
+// and Next up's worth sections (a labelled gold heading, the kit divider
+// between sections, a fine line between the quests of one).
 // Claude's presentation is pinned by the other suites and is not touched here.
 import { afterEach, describe, expect, it } from 'vitest';
-import { QUEST_STATUSES, type QuestStatus } from './ipc';
-import { STATUS_LABEL } from './labels';
+import { QUEST_STATUSES, type QuestStatus, type Worth } from './ipc';
+import { STATUS_LABEL, WORTH_ICON, WORTH_LABEL } from './labels';
+import { sectionsView } from './preview';
 import EXILE from '../theme/exile.json';
 import PALETTE from '../../../docs/quest-tracker/design/steel-masonry-kit/palette.json';
 import { fakeBridge, fixtureView, readText, renderApp, type Rendered } from './test-support';
@@ -340,5 +343,70 @@ describe('the steel/masonry kit in the Exile theme', () => {
     expect(css).not.toMatch(/data-mode='edit'[^{]*\{[^}]*scrollbar-width:\s*none/);
     // The scrollers themselves still scroll in play.
     expect(css).toMatch(/:root\[data-theme='exile'\] \.panel\[data-scroll='whole'\] \.panel-content \{[^}]*overflow-y: auto;/);
+  });
+
+  it('groups Next up into labelled worth-group sections with a section-break between them, and leaves claude flat', async () => {
+    // Owner, Live 3 (2026-11-02): which quests are worth it and which
+    // optional must read at a glance. The kit preview's order: the diamond
+    // divider breaks sections, a fine steel line separates quests inside one.
+    const view = sectionsView(fixtureView('panel-next-up', 'play'), fixtureView('panel-campaign'));
+    view.settings.theme = 'exile';
+    const bridge = fakeBridge(view);
+    rendered = await renderApp(bridge);
+    const sections = [...rendered.root.querySelectorAll('.body > section.worth-group')];
+    expect(sections.map((s) => s.getAttribute('data-worth'))).toEqual(['yes', 'optional', 'no']);
+    const ids = new Set<string>();
+    for (const section of sections) {
+      const worth = section.getAttribute('data-worth') as Worth;
+      const id = section.getAttribute('aria-labelledby')!;
+      expect(id, worth).toBeTruthy();
+      ids.add(id);
+      const heading = rendered.root.querySelector(`[id="${id}"]`)!;
+      expect(heading.classList.contains('group-label'), worth).toBe(true);
+      expect(section.contains(heading), worth).toBe(true);
+      expect(heading.textContent?.trim(), worth).toBe(WORTH_LABEL[worth]);
+      // The group's own worth icon before the label, decoration only.
+      const icon = heading.querySelector(':scope > .icon')!;
+      expect(icon.getAttribute('data-icon'), worth).toBe(WORTH_ICON[worth]);
+      expect(icon.getAttribute('aria-hidden'), worth).toBe('true');
+      expect(icon.compareDocumentPosition(heading.querySelector(':scope > span:not(.icon)')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      // Two quests each; the divider under the first only, never under a section's last quest.
+      const rows = [...section.querySelectorAll(':scope > .row[data-quest]')];
+      expect(rows, worth).toHaveLength(2);
+      expect(rows[0].querySelectorAll(':scope > .quest-divider'), worth).toHaveLength(1);
+      expect(rows[rows.length - 1].querySelector('.quest-divider'), `${worth} last row`).toBeNull();
+    }
+    expect(ids.size).toBe(3);
+    // One section break, above the second and third headings only.
+    expect(rendered.root.querySelectorAll('.section-break')).toHaveLength(2);
+    expect(sections[0].querySelector('.section-break')).toBeNull();
+    for (const section of sections.slice(1)) {
+      const breaks = section.querySelectorAll(':scope > .section-break');
+      expect(breaks).toHaveLength(1);
+      expect(breaks[0].getAttribute('aria-hidden')).toBe('true');
+      expect(breaks[0].compareDocumentPosition(section.querySelector('.group-label')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+
+    // The styles: the break is the kit divider as drawn (band, line, diamond);
+    // the separator inside a section is the line alone, no diamond, no band;
+    // the heading is kit gold.
+    const css = await readText('./approved.css');
+    const rule = (selector: RegExp) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => selector.test(m[1])).map((m) => m[2]).join(' ');
+    expect(rule(/\.section-break::before/)).toMatch(/transform: rotate\(45deg\)/);
+    expect(rule(/\.section-break(?!::)/)).toMatch(/#353E44/);
+    const separator = rule(/\.worth-group \.row\[data-quest\] > \.quest-divider(?!::)/);
+    expect(separator).toMatch(/height: 1px/);
+    expect(separator).not.toMatch(/#353E44/);
+    expect(rule(/\.worth-group \.row\[data-quest\] > \.quest-divider::before/)).toMatch(/display: none/);
+    expect(rule(/\.worth-group \.group-label(?!\s*>)/)).toMatch(/color: var\(--color-worth-gold\)/);
+    expect(bridge.calls).toEqual([]);
+
+    // Claude keeps today's flat list: no sections, no breaks, the same labels.
+    rendered.destroy();
+    const claude = sectionsView(fixtureView('panel-next-up', 'play'), fixtureView('panel-campaign'));
+    claude.settings.theme = 'claude';
+    rendered = await renderApp(fakeBridge(claude));
+    expect(rendered.root.querySelector('.worth-group, section, .section-break, .quest-divider')).toBeNull();
+    expect([...rendered.root.querySelectorAll('.body > p.group-label')].map((p) => p.textContent)).toEqual(['Worth it', 'Optional', 'Not worth it']);
   });
 });

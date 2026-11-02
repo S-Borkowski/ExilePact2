@@ -46,6 +46,16 @@
 // and both Settings surfaces each keeps one. Playwright hides scrollbars in
 // headless mode, so the browser is started without that switch.
 //
+// The sections check (owner, Live 3: which quests are worth it and which
+// optional must read at a glance), on every overlay case showing two or
+// more Next up sections (runs of one worth): each section is labelled by a
+// visible heading (`aria-labelledby`), no separator sits under a section's
+// last quest, every section after the first has exactly one `.section-break`
+// above its heading, a separator between two quests of one section draws no
+// diamond and is at most half a break's height, and no heading touches a
+// separator or a break. The overlay matrix includes the dev-only
+// three-section view, `/?frame=next-up-sections` (`src/preview.ts`).
+//
 // A control runs at every scale: a probe placed over the bottom-left knot of
 // the rendered frame must be reported, or the run fails. `--self-check` runs
 // only synthetic pages that draw the kit frame PNG as the 48 px nine-slice:
@@ -53,21 +63,24 @@
 // window that must be reported not flush, and one flush that must pass; plus
 // a page of four text runs (9 px, the disabled colour, small caps: each must
 // be reported; a compliant one must pass) and a play-marked scroller with
-// its bar shown (must be reported) and hidden (must pass). It needs no app,
+// its bar shown (must be reported) and hidden (must pass); and a two-section
+// Next up laid out as before the sections (must be reported) and as
+// sections (must pass). It needs no app,
 // so it shows the instrument works while the app is being changed.
 //
 // Flags:
 //   --root <app dir>     serve another checkout's app (the baseline)
 //   --only <substring>   run only the cases whose name contains it
-//   --screenshots <dir>  also save the seven review images there
+//   --screenshots <dir>  also save the eight review images there
 //   --self-check         the synthetic page only
 //   --full               also text 200% at every scale (not required to pass)
 //
 // Output: one line per case and position, `ok` or `FAIL <reasons>`, then
 // `corner-safety: <n> cases, <f> failures, control detected, flush checked
 // on <k> cases, readability checked on <r> cases, play scrollbar checked on
-// <p> cases` (r: cases with text runs read; p: play cases with an
-// overflowing scroller). Exit 0 only when nothing failed, every declared
+// <p> cases, sections checked on <s> cases` (r: cases with text runs read;
+// p: play cases with an overflowing scroller; s: cases with two or more Next
+// up sections). Exit 0 only when nothing failed, every declared
 // case ran and the control was detected.
 
 import fs from 'node:fs';
@@ -79,7 +92,7 @@ import zlib from 'node:zlib';
 import { chromium } from 'playwright-core';
 import {
   alphaMask, artPadding, artPixels, clipRect, contrastReasons, decodePng, findOverlaps, flushReasons, grow, parseColour,
-  scrollbarReasons, summaryLine, typeReasons, worstContrast,
+  scrollbarReasons, sectionReasons, summaryLine, typeReasons, worstContrast,
 } from './corner-safety-core.mjs';
 
 const APP = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -91,6 +104,8 @@ const SETTINGS_SIZE = [420, 328];
 /** The overlay surfaces: frame id and mode (null: the fixture's own mode). */
 const OVERLAY_SURFACES = [
   ['panel-next-up', 'play'], ['panel-next-up', 'edit'],
+  // The dev-only three-section Next up view (`src/preview.ts`).
+  ['next-up-sections', 'play'], ['next-up-sections', 'edit'],
   ['panel-campaign', 'play'], ['panel-campaign', 'edit'],
   ['quest-detail', 'play'], ['quest-detail', 'edit'],
   ['character-picker', 'edit'], ['settings', 'edit'],
@@ -184,7 +199,7 @@ function declareCases(full) {
   return cases;
 }
 
-/** The seven review images `--screenshots` writes. */
+/** The eight review images `--screenshots` writes. */
 const SCREENSHOTS = [
   ['play-default', '/?frame=panel-next-up&mode=play&scale=1&theme=exile', 364, 384],
   ['edit-all-default', '/?frame=panel-campaign&mode=edit&scale=1&theme=exile', 364, 384],
@@ -193,6 +208,7 @@ const SCREENSHOTS = [
   ['overlay-settings-default', '/?frame=settings&mode=edit&scale=1&theme=exile', 364, 384],
   ['ordinary-settings', '/settings.html?state=idle&scale=1&theme=exile', 420, 328],
   ['claude-play-default', '/?frame=panel-next-up&mode=play&scale=1&theme=claude', 364, 384],
+  ['sections-min', '/?frame=next-up-sections&mode=play&scale=1&theme=exile', 320, 240],
 ];
 
 // ----------------------------------------------------------- in-page probes
@@ -628,6 +644,61 @@ function scrollersInPage() {
   return out;
 }
 
+/**
+ * The Next up sections as drawn, for the sections check: the quest rows of
+ * a Next up panel in order, grouped by runs of one `data-worth` (the order
+ * the engine sends), whatever elements wrap them. For each: the heading its
+ * section element's `aria-labelledby` names, if visible; the separator under
+ * its last row, if one is displayed; the separators under its other rows,
+ * with whether each draws the centre diamond; and the visible
+ * `.section-break` elements between the previous run's last row and its
+ * first. Null on a page that is not a Next up panel.
+ */
+function sectionsInPage() {
+  const body = document.querySelector('.overlay[data-frame="panel-next-up"] .panel .body');
+  if (!body) return null;
+  const visible = (el) => {
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    if (cs.display === 'none' || cs.visibility === 'hidden' || r.width <= 0 || r.height <= 0) return null;
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+  };
+  const separatorOf = (row) => row.querySelector(':scope > .quest-divider');
+  const runs = [];
+  for (const row of body.querySelectorAll('.row[data-quest]')) {
+    const worth = row.getAttribute('data-worth') || '';
+    const last = runs[runs.length - 1];
+    if (last && last.worth === worth) last.rows.push(row);
+    else runs.push({ worth, rows: [row] });
+  }
+  const breaks = [...body.querySelectorAll('.section-break')];
+  const before = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+  return runs.map((run, i) => {
+    const first = run.rows[0];
+    const lastRow = run.rows[run.rows.length - 1];
+    const section = first.closest('section');
+    const id = section && body.contains(section) ? section.getAttribute('aria-labelledby') : null;
+    const label = id ? document.getElementById(id) : null;
+    const heading = label && section.contains(label) ? visible(label) : null;
+    const separators = run.rows.slice(0, -1).flatMap((row) => {
+      const sep = separatorOf(row);
+      const box = visible(sep);
+      if (!box) return [];
+      const after = getComputedStyle(sep, '::before');
+      return [{ box, diamond: after.content !== 'none' && after.display !== 'none' }];
+    });
+    const previous = i > 0 ? runs[i - 1].rows[runs[i - 1].rows.length - 1] : null;
+    return {
+      worth: run.worth,
+      heading,
+      lastSeparator: visible(separatorOf(lastRow)),
+      separators,
+      breaks: previous ? breaks.filter((b) => before(previous, b) && before(b, first)).map(visible).filter(Boolean) : [],
+    };
+  });
+}
+
 /** Places the knot probe and returns its box and clips, or removes it. */
 function probeInPage(options) {
   document.querySelectorAll('[data-cs-probe]').forEach((el) => el.remove());
@@ -962,6 +1033,7 @@ async function runCase(page, base, c, withControl, padding, print) {
   const unreadable = new Set();
   let runs = 0;
   let played = 0;
+  let sectioned = 0;
   for (const p of positions) {
     await page.evaluate(scrollInPage, p.target);
     await settle(page);
@@ -979,6 +1051,14 @@ async function runCase(page, base, c, withControl, padding, print) {
         const reasons = scrollbarReasons(mode, scrollers);
         if (mode === 'play') played = 1;
         print(`${c.name} @scrollbar: ${reasons.length ? `FAIL ${named(reasons)}` : `ok (${mode}, ${scrollers.length} scrollers)`}`);
+        if (reasons.length) failures++;
+      }
+      // Next up sections: the layout does not move with the scroll, so the top position stands for all.
+      const sections = c.kind === 'overlay' ? await page.evaluate(sectionsInPage) : null;
+      if (sections && sections.length >= 2) {
+        const reasons = sectionReasons(sections);
+        sectioned = 1;
+        print(`${c.name} @sections: ${reasons.length ? `FAIL ${named(reasons)}` : `ok (${sections.map((s) => s.worth).join(', ')})`}`);
         if (reasons.length) failures++;
       }
     }
@@ -1015,7 +1095,7 @@ async function runCase(page, base, c, withControl, padding, print) {
     print(`${c.name} @focus: ${reasons.length ? `FAIL ${named(reasons)}` : `ok (${count} stops)`}`);
     if (reasons.length) failures++;
   }
-  return { failures, control, flushed: 1, readable: runs > 0 ? 1 : 0, played };
+  return { failures, control, flushed: 1, readable: runs > 0 ? 1 : 0, played, sectioned };
 }
 
 // ---------------------------------------------------------------- self-check
@@ -1086,6 +1166,31 @@ function scrollbarPage(hidden) {
   </style></head><body><div class="overlay" data-mode="play"><div class="panel"><div class="body"><div style="height:600px">Tall</div></div></div></div></body></html>`;
 }
 
+/**
+ * The sections self-check's pages: a two-section Next up laid out as before
+ * Fix 3 (an unlabelled section, the full diamond divider under every quest
+ * including a group's last, no break), which must be reported, and the
+ * section layout (labelled sections, one break above the second heading, a
+ * 1 px line between two quests of one section), which must pass.
+ */
+function sectionsPage(compliant) {
+  const row = (id, worth, divider) => `<div class="row" data-quest="${id}" data-worth="${worth}">Quest ${id}${divider ? '<span class="quest-divider"></span>' : ''}</div>`;
+  const body = compliant
+    ? `<section aria-labelledby="h-yes"><p class="group-label" id="h-yes">Worth it</p>${row('a', 'yes', true)}${row('b', 'yes', false)}</section>
+       <section aria-labelledby="h-opt"><div class="section-break"></div><p class="group-label" id="h-opt">Optional</p>${row('c', 'optional', true)}${row('d', 'optional', false)}</section>`
+    : `<section><p class="group-label">Worth it</p>${row('a', 'yes', true)}${row('b', 'yes', true)}</section>
+       <p class="group-label">Optional</p>${row('c', 'optional', true)}${row('d', 'optional', false)}`;
+  return `<!doctype html><html><head><style>
+    html, body { margin: 0; background: #090D10; color: #E4E6E7; font: 16px Georgia, serif; }
+    .group-label { margin: 0; padding: 8px 4px 4px; }
+    .row { position: relative; padding: 4px 4px 14px; }
+    .quest-divider { position: absolute; right: 0; bottom: 0; left: 0; height: 10px; background: #353E44; }
+    .quest-divider::before { content: ''; position: absolute; top: 1.5px; left: calc(50% - 3.5px); width: 7px; height: 7px; background: #A6AEB3; }
+    .section-break { position: relative; height: 10px; background: #353E44; }
+    ${compliant ? '.quest-divider { height: 1px; background: #5D686F; } .quest-divider::before { display: none; }' : ''}
+  </style></head><body><div class="overlay" data-frame="panel-next-up" data-mode="play"><div class="panel"><div class="body">${body}</div></div></div></body></html>`;
+}
+
 /** The self-check's reading of one page: the knot box seen, the centre box clear. */
 function selfCheckReasons(m, mask) {
   const reasons = [];
@@ -1104,6 +1209,7 @@ async function selfCheck(page, padding, print) {
   let flushed = 0;
   let readable = 0;
   let played = 0;
+  let sectioned = 0;
   for (const scale of SCALES) {
     // The flush check: the 12 px margin must be reported, the flush frame must pass.
     await page.setViewportSize({ width: 364, height: 384 });
@@ -1170,8 +1276,27 @@ async function selfCheck(page, padding, print) {
     print(`self-check s${scale} @scrollbar: ${barProblems.length ? `FAIL ${barProblems.join('; ')}` : `ok (${named(shown.reasons)}; hidden bar passes)`}`);
     if (barProblems.length) failures++;
     played++;
+
+    // Sections: today's layout reported for each section rule it breaks, the section layout passes.
+    const pages = [];
+    for (const compliant of [false, true]) {
+      await page.setContent(sectionsPage(compliant));
+      await settle(page);
+      const sections = await page.evaluate(sectionsInPage);
+      pages.push({ sections, reasons: sections ? sectionReasons(sections) : [] });
+    }
+    const [flat, grouped] = pages;
+    const sectionProblems = [];
+    if (flat.sections?.length !== 2 || grouped.sections?.length !== 2) sectionProblems.push(`sections found: ${flat.sections?.length ?? 0} and ${grouped.sections?.length ?? 0}, expected 2 each`);
+    for (const want of ['section heading missing yes', 'section heading missing optional', 'separator before heading', 'section break missing optional', 'section break not distinct']) {
+      if (!flat.reasons.includes(want)) sectionProblems.push(`today's layout was not reported: ${want}`);
+    }
+    if (grouped.reasons.length) sectionProblems.push(`the section layout was reported: ${named(grouped.reasons)}`);
+    print(`self-check s${scale} @sections: ${sectionProblems.length ? `FAIL ${sectionProblems.join('; ')}` : `ok (${named(flat.reasons)}; section layout passes)`}`);
+    if (sectionProblems.length) failures++;
+    sectioned++;
   }
-  return { cases: SCALES.length, failures, control, flushed, readable, played };
+  return { cases: SCALES.length, failures, control, flushed, readable, played, sectioned };
 }
 
 // --------------------------------------------------------------------- main
@@ -1217,7 +1342,7 @@ async function main() {
     const padding = artPadding(alphaMask(decodePng(new Uint8Array(fs.readFileSync(KIT_FRAME)), inflate)));
     if (args.selfCheck) {
       const r = await selfCheck(page, padding, print);
-      console.log(summaryLine(r.cases, r.failures, r.control, r.flushed, r.readable, r.played));
+      console.log(summaryLine(r.cases, r.failures, r.control, r.flushed, r.readable, r.played, r.sectioned));
       return r.failures === 0 && r.control ? 0 : 1;
     }
 
@@ -1254,6 +1379,7 @@ async function main() {
     let flushed = 0;
     let readable = 0;
     let played = 0;
+    let sectioned = 0;
     const controlled = new Map();
     for (const c of declared) {
       const withControl = !controlled.has(c.scale);
@@ -1263,6 +1389,7 @@ async function main() {
         flushed += r.flushed;
         readable += r.readable;
         played += r.played;
+        sectioned += r.sectioned;
         if (withControl) controlled.set(c.scale, r.control === true);
         ran++;
       } catch (error) {
@@ -1286,7 +1413,7 @@ async function main() {
       console.log(`corner-safety: ${SCREENSHOTS.length} screenshots in ${args.screenshots}`);
     }
 
-    console.log(summaryLine(declared.length, failures, control, flushed, readable, played));
+    console.log(summaryLine(declared.length, failures, control, flushed, readable, played, sectioned));
     return failures === 0 && ran === declared.length && control ? 0 : 1;
   } finally {
     await browser.close();

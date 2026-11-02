@@ -165,19 +165,27 @@
 :root[data-theme='exile'] .row[data-quest].finished .step, :root[data-theme='exile'] .row[data-quest].finished .tip { color: var(--color-text-muted); }
 /* The kit's quest divider: a fine steel line with a centre diamond, inside the row's own bottom, between quests only. */
 :root[data-theme='exile'] .quest-divider,
-:root[data-theme='exile'] .footer-rail {
+:root[data-theme='exile'] .footer-rail,
+:root[data-theme='exile'] .section-break {
   position: relative; display: block; flex: none; box-sizing: border-box; height: 10px; pointer-events: none;
   background:
     linear-gradient(#879197, #879197) 0 4px / 100% 1px no-repeat,
     linear-gradient(#353E44, #353E44) 0 3px / 100% 3px no-repeat;
 }
 :root[data-theme='exile'] .quest-divider::before,
-:root[data-theme='exile'] .footer-rail::before {
+:root[data-theme='exile'] .footer-rail::before,
+:root[data-theme='exile'] .section-break::before {
   content: ''; position: absolute; top: 1.5px; left: calc(50% - 3.5px); box-sizing: border-box; width: 7px; height: 7px;
   border: 1px solid #A6AEB3; background: #20282D; transform: rotate(45deg);
 }
 :root[data-theme='exile'] .row[data-quest] > .quest-divider { position: absolute; right: 0; bottom: 0; left: 0; }
 :root[data-theme='exile'] .row[data-quest]:last-child > .quest-divider { display: none; }
+/* Next up's worth sections (owner, Live 3; the kit preview's order): the divider above as the
+   section break, the kit gold heading with its worth icon, and between two quests of one
+   section only the divider's fine steel line, no band and no diamond. */
+:root[data-theme='exile'] .worth-group .group-label { display: flex; align-items: center; gap: 6px; padding: 8px 4px 4px; color: var(--color-worth-gold); text-shadow: 0 1px 2px #000; }
+:root[data-theme='exile'] .worth-group .row[data-quest] > .quest-divider { top: auto; bottom: 6px; height: 1px; background: var(--color-panel-divider); }
+:root[data-theme='exile'] .worth-group .row[data-quest] > .quest-divider::before { display: none; }
 :root[data-theme='exile'] .act-header { flex-wrap: wrap; min-height: 32px; padding: 4px 4px; background: transparent; border-bottom: 1px solid var(--color-panel-divider); }
 :root[data-theme='exile'] .act-header .title { color: var(--color-worth-gold); font-size: max(13px, var(--min-caps)); font-weight: 600; }
 :root[data-theme='exile'] button.act-header:hover { background: #424D5433; box-shadow: none; }

@@ -19,6 +19,7 @@ import {
   contrastReasons,
   parseColour,
   scrollbarReasons,
+  sectionReasons,
   summaryLine,
   typeReasons,
   worstContrast,
@@ -109,11 +110,11 @@ describe('the corner-safety core', () => {
     expect(grow(box, 2)).toEqual({ left: 8, top: 8, right: 32, bottom: 32 });
     expect(containsRect({ left: 0, top: 0, right: 30, bottom: 30 }, box)).toBe(true);
     expect(containsRect({ left: 0, top: 0, right: 29, bottom: 30 }, box)).toBe(false);
-    expect(summaryLine(3, 0, true, 3, 3, 1)).toBe(
-      'corner-safety: 3 cases, 0 failures, control detected, flush checked on 3 cases, readability checked on 3 cases, play scrollbar checked on 1 cases',
+    expect(summaryLine(3, 0, true, 3, 3, 1, 2)).toBe(
+      'corner-safety: 3 cases, 0 failures, control detected, flush checked on 3 cases, readability checked on 3 cases, play scrollbar checked on 1 cases, sections checked on 2 cases',
     );
-    expect(summaryLine(3, 1, false, 0, 0, 0)).toBe(
-      'corner-safety: 3 cases, 1 failures, control not detected, flush checked on 0 cases, readability checked on 0 cases, play scrollbar checked on 0 cases',
+    expect(summaryLine(3, 1, false, 0, 0, 0, 0)).toBe(
+      'corner-safety: 3 cases, 1 failures, control not detected, flush checked on 0 cases, readability checked on 0 cases, play scrollbar checked on 0 cases, sections checked on 0 cases',
     );
   });
 });
@@ -258,5 +259,65 @@ describe('the play-scrollbar check', () => {
     expect(scrollbarReasons('play', [{ ...hidden, scrollable: false }])).toEqual(['play not scrollable: div.body']);
     expect(scrollbarReasons('edit', [shown])).toEqual([]);
     expect(scrollbarReasons('edit', [hidden])).toEqual(['edit scrollbar missing: div.body']);
+  });
+});
+
+// The Next up sections check (owner, Live 3): each worth group reads as a
+// section, with a heading, one section break above every heading but the
+// first, and only a fine line between the quests of one section.
+describe('the Next up sections check', () => {
+  const box = (top: number, bottom: number) => ({ left: 0, top, right: 300, bottom });
+  // Today's layout: a heading paragraph per group but no section element to
+  // label, the full divider (diamond) under every quest but the list's last,
+  // and nothing between the groups but that divider.
+  const today = [
+    { worth: 'yes', heading: null, lastSeparator: box(90, 100), separators: [{ box: box(40, 50), diamond: true }], breaks: [] },
+    { worth: 'optional', heading: null, lastSeparator: null, separators: [], breaks: [] },
+  ];
+  // The section layout: labelled headings, one 10 px break above the second
+  // heading, a 1 px line between two quests of one section, none after the last.
+  const sections = [
+    { worth: 'yes', heading: box(0, 20), lastSeparator: null, separators: [{ box: box(60, 61), diamond: false }], breaks: [] },
+    { worth: 'optional', heading: box(116, 136), lastSeparator: null, separators: [], breaks: [box(102, 112)] },
+    { worth: 'no', heading: box(220, 240), lastSeparator: null, separators: [], breaks: [box(206, 216)] },
+  ];
+
+  it('corner_safety_section_reports_today_layout', () => {
+    expect(sectionReasons(today)).toEqual([
+      'section heading missing yes',
+      'separator before heading',
+      'section break not distinct',
+      'section heading missing optional',
+      'section break missing optional',
+    ]);
+  });
+
+  it('corner_safety_section_passes_labelled_sections_with_a_break', () => {
+    expect(sectionReasons(sections)).toEqual([]);
+    // One section, or none, is no section layout to check.
+    expect(sectionReasons(today.slice(0, 1))).toEqual([]);
+    expect(sectionReasons([])).toEqual([]);
+  });
+
+  it('corner_safety_section_break_must_sit_above_its_heading_once', () => {
+    const [first, second, third] = sections;
+    // Two breaks, or one below the heading's top, are not one section break.
+    expect(sectionReasons([first, { ...second, breaks: [box(98, 108), box(102, 112)] }])).toEqual(['section break missing optional']);
+    expect(sectionReasons([first, { ...second, breaks: [box(120, 130)] }])).toContain('section break missing optional');
+    // A first section needs none, and a missing heading is named by its worth.
+    expect(sectionReasons([first, second, { ...third, heading: null }])).toEqual(['section heading missing no']);
+  });
+
+  it('corner_safety_section_separator_before_heading_and_not_distinct', () => {
+    const [first, second] = sections;
+    // The last quest of a section paints a separator: it sits right above the next heading.
+    expect(sectionReasons([{ ...first, lastSeparator: box(100, 101) }, second])).toEqual(['separator before heading']);
+    // An in-section separator with the diamond, or over half a break's height, is not distinct.
+    expect(sectionReasons([{ ...first, separators: [{ box: box(60, 61), diamond: true }] }, second])).toEqual(['section break not distinct']);
+    expect(sectionReasons([{ ...first, separators: [{ box: box(60, 66), diamond: false }] }, second])).toEqual(['section break not distinct']);
+    expect(sectionReasons([{ ...first, separators: [{ box: box(60, 65), diamond: false }] }, second])).toEqual([]);
+    // A heading touching a break or a separator overlaps it.
+    expect(sectionReasons([first, { ...second, breaks: [box(107, 117)] }])).toEqual(['section break missing optional', 'section heading overlaps']);
+    expect(sectionReasons([{ ...first, separators: [{ box: box(19, 20), diamond: false }] }, second])).toEqual(['section heading overlaps']);
   });
 });

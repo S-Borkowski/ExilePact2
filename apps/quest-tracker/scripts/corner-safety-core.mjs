@@ -522,11 +522,65 @@ export function scrollbarReasons(mode, scrollers) {
   return reasons;
 }
 
+// ------------------------------------------------------------ Next up sections
+
+/**
+ * One Next up section as the page draws it (owner, Live 3: which quests are
+ * worth it and which optional must read at a glance). `heading` is the box
+ * of the element the section's `aria-labelledby` names, null when there is
+ * no section element, the label resolves to nothing or that element is not
+ * visible. `lastSeparator` is the separator its last quest row paints (null
+ * when none is displayed); `separators` the ones between its quests, each
+ * with whether it draws the divider's centre diamond; `breaks` the visible
+ * `.section-break` boxes between the previous section's last quest and this
+ * section's first.
+ *
+ * @typedef {{ box: Rect, diamond: boolean }} Separator
+ * @typedef {{
+ *   worth: string, heading: Rect | null, lastSeparator: Rect | null,
+ *   separators: Separator[], breaks: Rect[],
+ * }} Section
+ */
+
+/**
+ * The section rules on one page's measured sections, in order: every
+ * section has a visible heading; no separator under a section's last quest
+ * (it would sit right above the next heading); every section after the
+ * first has exactly one section break, ending at or above its heading's top;
+ * a separator inside a section draws no diamond and is at most half as tall
+ * as a section break; a heading touches no separator or break. Fewer than
+ * two sections is no section layout to check.
+ *
+ * @param {Section[]} sections
+ * @returns {string[]}
+ */
+export function sectionReasons(sections) {
+  if (sections.length < 2) return [];
+  /** @type {Set<string>} */
+  const reasons = new Set();
+  const breakHeight = Math.max(0, ...sections.flatMap((s) => s.breaks.map((b) => b.bottom - b.top)));
+  const lines = sections.flatMap((s) => [...s.separators.map((x) => x.box), ...(s.lastSeparator ? [s.lastSeparator] : []), ...s.breaks]);
+  sections.forEach((s, i) => {
+    if (!s.heading) reasons.add(`section heading missing ${s.worth}`);
+    if (s.lastSeparator) reasons.add('separator before heading');
+    if (i > 0 && (s.breaks.length !== 1 || (s.heading && s.breaks[0].bottom > s.heading.top + 0.5))) {
+      reasons.add(`section break missing ${s.worth}`);
+    }
+    for (const x of s.separators) {
+      if (x.diamond || (breakHeight > 0 && x.box.bottom - x.box.top > breakHeight / 2 + 0.01)) reasons.add('section break not distinct');
+    }
+    const heading = s.heading;
+    if (heading && lines.some((line) => intersect(heading, line))) reasons.add('section heading overlaps');
+  });
+  return [...reasons];
+}
+
 /**
  * The runner's last line. `control` is whether the knot probe was reported
  * at every scale the run covered; `flushed` how many cases the flush check
- * ran on, `readable` how many had their text runs checked, and `played` how
- * many play cases had an overflowing scroller checked.
+ * ran on, `readable` how many had their text runs checked, `played` how
+ * many play cases had an overflowing scroller checked, and `sectioned` how
+ * many cases had two or more Next up sections checked.
  *
  * @param {number} cases
  * @param {number} failures
@@ -534,7 +588,8 @@ export function scrollbarReasons(mode, scrollers) {
  * @param {number} flushed
  * @param {number} readable
  * @param {number} played
+ * @param {number} sectioned
  */
-export function summaryLine(cases, failures, control, flushed, readable, played) {
-  return `corner-safety: ${cases} cases, ${failures} failures, ${control ? 'control detected' : 'control not detected'}, flush checked on ${flushed} cases, readability checked on ${readable} cases, play scrollbar checked on ${played} cases`;
+export function summaryLine(cases, failures, control, flushed, readable, played, sectioned) {
+  return `corner-safety: ${cases} cases, ${failures} failures, ${control ? 'control detected' : 'control not detected'}, flush checked on ${flushed} cases, readability checked on ${readable} cases, play scrollbar checked on ${played} cases, sections checked on ${sectioned} cases`;
 }

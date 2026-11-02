@@ -23,7 +23,7 @@
   // Play mode has none: the window is click-through there.
   import { RESIZE_DIRECTIONS, type ResizeDirection, type Send } from '../bridge';
   import type { QuestRow as Row, StatusKind, View, Worth } from '../ipc';
-  import { WORTH_LABEL } from '../labels';
+  import { WORTH_ICON, WORTH_LABEL } from '../labels';
   import ActSection from './ActSection.svelte';
   import CharacterPicker from './CharacterPicker.svelte';
   import EmptyState from './EmptyState.svelte';
@@ -101,6 +101,10 @@
 
   // Next up arrives sorted by worth (worth it, optional, not worth it). A
   // label goes above the first row of each run; the order stays the view's.
+  // In Exile each run is a section its label names (`uid` keeps the ids
+  // unique per panel).
+  const uid = $props.id();
+
   function byWorth(rows: Row[]): Array<{ worth: Worth; rows: Row[] }> {
     const groups: Array<{ worth: Worth; rows: Row[] }> = [];
     for (const row of rows) {
@@ -142,10 +146,23 @@
           <p class="note">Nothing available or in progress in this act.</p>
         {:else}
           {#each groups as group, i (i)}
-            <p class="group-label">{WORTH_LABEL[group.worth]}</p>
-            {#each group.rows as row (row.id)}
-              <QuestRow {row} {edit} {send} exile={journal} />
-            {/each}
+            {#if journal}
+              <!-- Exile: each worth group is a section, labelled by its heading,
+                   with the kit divider above every heading but the first and
+                   only a fine line between its own quests (owner, Live 3). -->
+              <section class="worth-group" data-worth={group.worth} aria-labelledby="{uid}-group-{i}">
+                {#if i > 0}<div class="section-break" aria-hidden="true"></div>{/if}
+                <p class="group-label" id="{uid}-group-{i}"><Icon id={WORTH_ICON[group.worth]} size="16px" /><span>{WORTH_LABEL[group.worth]}</span></p>
+                {#each group.rows as row, j (row.id)}
+                  <QuestRow {row} {edit} {send} exile divider={j < group.rows.length - 1} />
+                {/each}
+              </section>
+            {:else}
+              <p class="group-label">{WORTH_LABEL[group.worth]}</p>
+              {#each group.rows as row (row.id)}
+                <QuestRow {row} {edit} {send} exile={journal} />
+              {/each}
+            {/if}
           {/each}
         {/if}
       {:else if view.frame === 'quest-detail' && view.detail}

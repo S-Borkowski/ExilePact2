@@ -1,7 +1,15 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { SCALE_MIN } from './ipc';
-import { DEFAULT_PREVIEW_FRAME, PREVIEW_SCALES, parsePreviewQuery, previewBridge, previewFixture } from './preview';
+import {
+  DEFAULT_PREVIEW_FRAME,
+  PREVIEW_SCALES,
+  SECTION_ROWS,
+  SECTIONS_PREVIEW_FRAME,
+  parsePreviewQuery,
+  previewBridge,
+  previewFixture,
+} from './preview';
 import { parseSettingsPreviewQuery } from './settings/preview';
 import { type Rendered, renderApp } from './test-support';
 
@@ -75,5 +83,28 @@ describe('the browser preview', () => {
     rendered = await renderApp(previewBridge('?frame=panel-next-up&scale=0.5', root));
     expect(root.dataset.previewScale).toBeUndefined();
     expect(root.style.getPropertyValue('--preview-scale')).toBe('');
+  });
+
+  it('preview_shows_next_up_in_three_sections', async () => {
+    // The dev-only view the section layout is checked on: every worth group,
+    // two quests in each, from the campaign fixture's own rows.
+    const { view } = await previewFixture(SECTIONS_PREVIEW_FRAME, 'edit');
+    expect(view.frame).toBe('panel-next-up');
+    expect(view.mode).toBe('edit');
+    expect(view.status).toBeNull();
+    expect(view.next_up.map((row) => row.worth)).toEqual(['yes', 'yes', 'optional', 'optional', 'no', 'no']);
+    expect(view.next_up.map((row) => row.id)).toEqual(SECTION_ROWS.map(([id]) => id));
+    expect(new Set(view.next_up.map((row) => row.id)).size).toBe(6);
+    const campaign = (await previewFixture('panel-campaign', null)).view;
+    const king = campaign.acts.flatMap((act) => act.quests).find((quest) => quest.id === 'fixture-king')!;
+    expect(view.next_up.find((row) => row.id === 'fixture-king')).toEqual(king);
+    // Without a mode it keeps the Next up fixture's own.
+    expect((await previewFixture(SECTIONS_PREVIEW_FRAME, null)).view.mode).toBe('play');
+
+    rendered = await renderApp(previewBridge(`?frame=${SECTIONS_PREVIEW_FRAME}&mode=play&theme=exile`));
+    const overlay = rendered.root.querySelector('.overlay')!;
+    expect(overlay.getAttribute('data-frame')).toBe('panel-next-up');
+    expect(rendered.root.querySelectorAll('[data-quest]')).toHaveLength(6);
+    expect(rendered.root.textContent).not.toContain('Preview: no frame');
   });
 });
