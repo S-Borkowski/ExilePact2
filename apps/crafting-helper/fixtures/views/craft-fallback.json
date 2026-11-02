@@ -1790,6 +1790,7 @@
     "kind": "info",
     "text": "Blocked for this craft: 1."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

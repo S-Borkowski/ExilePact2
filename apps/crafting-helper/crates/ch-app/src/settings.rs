@@ -2,8 +2,9 @@
 //! the catalogue the blocked list picks from.
 //!
 //! The file: `schema` 1, `hotkey`, `check_updates`, `blocked_currencies`,
-//! `overlay_position`, `screen_watch` and `trade_league` (the league the
-//! trade search opens in, [`crate::league`]). `check_updates` is off unless it
+//! `overlay_position`, `screen_watch`, `trade_league` (the league the
+//! trade search opens in, [`crate::league`]) and `theme` (`exile` unless it
+//! is saved as `claude`, [`Theme`]). `check_updates` is off unless it
 //! is saved as `true`; `screen_watch` is on unless it is saved as `false`;
 //! `overlay_position` is one of [`OverlayPosition`]'s names, and anything
 //! else saved there is the default, `top-center`. The blocked currencies are ids of the engine's catalogue
@@ -16,8 +17,9 @@
 //!
 //! `update_settings` takes a patch of [`CHECK_UPDATES_KEY`],
 //! [`BLOCKED_CURRENCIES_KEY`], [`OVERLAY_POSITION_KEY`],
-//! [`SCREEN_WATCH_KEY`] and [`TRADE_LEAGUE_KEY`], any of the five and
-//! nothing else, read whole by [`read_patch`] before anything changes; a
+//! [`SCREEN_WATCH_KEY`], [`TRADE_LEAGUE_KEY`] and [`THEME_KEY`], any of the
+//! six and nothing else, read whole by [`read_patch`] before anything
+//! changes; a theme that is not exactly `exile` or `claude` is refused, a
 //! position that is not one of the six names, exactly, is refused, and a
 //! league is trimmed and refused when empty, over 64 characters or holding a
 //! control character ([`crate::league::patch_league`]). `blocked_currencies` replaces
@@ -38,7 +40,7 @@ use serde_json::Value;
 
 use crate::league::patch_league;
 pub use crate::league::TRADE_LEAGUE_KEY;
-use crate::view::OverlayPosition;
+use crate::view::{OverlayPosition, Theme};
 
 /// The `check_updates` key of a patch and of the file.
 pub const CHECK_UPDATES_KEY: &str = "check_updates";
@@ -48,13 +50,16 @@ pub const BLOCKED_CURRENCIES_KEY: &str = "blocked_currencies";
 pub const OVERLAY_POSITION_KEY: &str = "overlay_position";
 /// The `screen_watch` key of a patch and of the file.
 pub const SCREEN_WATCH_KEY: &str = "screen_watch";
+/// The `theme` key of a patch and of the file.
+pub const THEME_KEY: &str = "theme";
 /// The keys a patch may hold.
-const PATCH_KEYS: [&str; 5] = [
+const PATCH_KEYS: [&str; 6] = [
     CHECK_UPDATES_KEY,
     BLOCKED_CURRENCIES_KEY,
     OVERLAY_POSITION_KEY,
     SCREEN_WATCH_KEY,
     TRADE_LEAGUE_KEY,
+    THEME_KEY,
 ];
 /// The longest blocked currency id, in characters.
 pub const MAX_ID_CHARS: usize = 64;
@@ -68,9 +73,10 @@ pub struct Patch {
     pub screen_watch: Option<bool>,
     /// Trimmed.
     pub trade_league: Option<String>,
+    pub theme: Option<Theme>,
 }
 
-/// Reads an `update_settings` patch. Anything but an object of the five
+/// Reads an `update_settings` patch. Anything but an object of the six
 /// keys with values of the right shape is refused whole, with the reason.
 pub fn read_patch(patch: &Value) -> Result<Patch, String> {
     let patch = patch
@@ -108,13 +114,31 @@ pub fn read_patch(patch: &Value) -> Result<Patch, String> {
         None => None,
         Some(v) => Some(patch_league(v)?),
     };
+    let theme = match patch.get(THEME_KEY) {
+        None => None,
+        Some(v) => Some(
+            v.as_str()
+                .and_then(Theme::from_name)
+                .ok_or_else(|| format!("{THEME_KEY} must be exile or claude, not {v}"))?,
+        ),
+    };
     Ok(Patch {
         check_updates,
         blocked_currencies,
         overlay_position,
         screen_watch,
         trade_league,
+        theme,
     })
+}
+
+/// The theme a saved file holds: Claude only when it is saved `"claude"`;
+/// a missing key, `null`, a non-string or an unknown name is Exile.
+pub fn load_theme(saved: Option<&Value>) -> Theme {
+    saved
+        .and_then(Value::as_str)
+        .and_then(Theme::from_name)
+        .unwrap_or_default()
 }
 
 /// The overlay's position a saved file holds: the default unless it is one
@@ -309,6 +333,9 @@ mod tests {
             json!({ "overlay_position": " top-left" }),
             json!({ "overlay_position": null }),
             json!({ "screen_watch": "on" }),
+            json!({ "theme": "Claude" }),
+            json!({ "theme": null }),
+            json!({ "theme": "claude", "auto_install": true }),
             json!([true]),
         ] {
             assert!(read_patch(&bad).is_err(), "{bad}");

@@ -46,11 +46,16 @@ same exe as the **legacy assets** `crafting-helper.exe` and
 (`file:crafting-helper.exe`); a current copy never fetches them. The swap
 replaces the running file under its own name, so an updated 0.1.x copy
 stays `crafting-helper.exe` (and then looks up `Crafting.Helper.exe` like
-any 0.2.0). The quest tracker's and waystone roller's names are unchanged.
+any 0.2.0).
 
 Since 0.2.0 the quest tracker's build is `Quest Tracker.exe`; its release
 workflow publishes and signs it as `quest-tracker.exe`, and an update keeps
 the installed file's own name, whichever of the two it is.
+
+The waystone roller's build is likewise `Waystone Roller.exe` (since the
+release after 0.1.2); its release workflow publishes and signs it as
+`waystone-roller.exe`, the name every installed copy asks for, and an update
+keeps the installed file's own name, whichever of the two it is.
 
 The other assets (`SHA256SUMS.txt`, the quest tracker's
 `quest-tracker-replay.exe`, which is not updated in the app) stay as they

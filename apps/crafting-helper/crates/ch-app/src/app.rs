@@ -85,7 +85,7 @@
 //! window, a patch or an update check.
 //!
 //! The hotkey, `check_updates`, the blocked currencies, `overlay_position`,
-//! `screen_watch` and `trade_league` are saved to
+//! `screen_watch`, `trade_league` and `theme` are saved to
 //! `settings.json` by a saver thread, [`SAVE_DELAY`] after the last change
 //! (debounced), and at once on [`App::flush`] and [`App::shutdown`].
 //!
@@ -133,15 +133,15 @@ use crate::screen::{
 };
 use crate::settings::{
     blocked_list, catalogue_groups, load_blocked, load_overlay_position, load_screen_watch,
-    read_patch, CatalogueGroup, BLOCKED_CURRENCIES_KEY, CHECK_UPDATES_KEY, OVERLAY_POSITION_KEY,
-    SCREEN_WATCH_KEY,
+    load_theme, read_patch, CatalogueGroup, BLOCKED_CURRENCIES_KEY, CHECK_UPDATES_KEY,
+    OVERLAY_POSITION_KEY, SCREEN_WATCH_KEY, THEME_KEY,
 };
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
 use crate::trade::{Trade, TradeSelection};
 use crate::updates::{Clock, UpdateSetup};
 use crate::view::{
     CraftMode, GrabSource, GrabView, GuideStatusView, OutcomeWord, OverlayPosition, OverlayView,
-    SettingsView, StatusKind, StatusLine, View, WatchLineView,
+    SettingsView, StatusKind, StatusLine, Theme, View, WatchLineView,
 };
 
 /// How long after the last change the settings are written.
@@ -371,6 +371,8 @@ struct State {
     /// Read the hovered item from the screen while guiding; on unless the
     /// saved settings say `false`.
     screen_watch: bool,
+    /// The look every window draws; Exile unless saved `claude`.
+    theme: Theme,
     /// The craft window's state, in memory only.
     craft: Craft,
     /// The overlay window and the watch.
@@ -523,6 +525,7 @@ impl App {
         let mut blocked_currencies = Vec::new();
         let mut overlay_position = OverlayPosition::default();
         let mut screen_watch = true;
+        let mut theme = Theme::default();
         let mut trade_league = load_league(None);
         let store = match store {
             Ok(s) => Some(Arc::new(s)),
@@ -560,6 +563,7 @@ impl App {
                     }
                     overlay_position = load_overlay_position(saved.get(OVERLAY_POSITION_KEY));
                     screen_watch = load_screen_watch(saved.get(SCREEN_WATCH_KEY));
+                    theme = load_theme(saved.get(THEME_KEY));
                     trade_league = load_league(saved.get(TRADE_LEAGUE_KEY));
                     let (ids, dropped) = load_blocked(saved.get(BLOCKED_CURRENCIES_KEY));
                     blocked_currencies = ids;
@@ -614,6 +618,7 @@ impl App {
                 blocked_currencies,
                 overlay_position,
                 screen_watch,
+                theme,
                 craft: Craft::default(),
                 screen: ScreenState {
                     has_screen,
@@ -1142,9 +1147,19 @@ impl App {
 
     /// `get_app_settings`: what the Settings window shows.
     pub fn get_app_settings(&self) -> SettingsView {
-        let (on, hotkey, hotkey_status, blocked_currencies, overlay_position, screen_watch, trade) = {
+        let (
+            theme,
+            on,
+            hotkey,
+            hotkey_status,
+            blocked_currencies,
+            overlay_position,
+            screen_watch,
+            trade,
+        ) = {
             let st = self.lock();
             (
+                st.theme,
                 st.check_updates,
                 st.hotkey.clone(),
                 st.hotkey_status.clone(),
@@ -1162,6 +1177,7 @@ impl App {
         let (trade_league, trade_leagues, trade_leagues_refreshing, trade_league_note) = trade;
         SettingsView {
             updates: self.updater.view(on),
+            theme,
             hotkey,
             hotkey_status,
             blocked_currencies,
@@ -1183,8 +1199,9 @@ impl App {
     }
 
     /// `update_settings`: `check_updates`, `blocked_currencies`,
-    /// `overlay_position`, `screen_watch` and `trade_league`, any of them
-    /// (see [`crate::settings`]). Anything else, a value of the wrong shape, a
+    /// `overlay_position`, `screen_watch`, `trade_league` and `theme`, any of
+    /// them (see [`crate::settings`]). Anything else, a value of the wrong
+    /// shape, a theme other than `exile` or `claude`, a
     /// blocked id outside the catalogue, an unknown position or a league
     /// that is not a league name, is refused whole with nothing changed (a
     /// refused patch naming the league also says why in the Trade note).
@@ -1206,8 +1223,12 @@ impl App {
                 return Err(reason);
             }
         };
-        let (turned, blocked, moved, watch, league) = {
+        let (turned, blocked, moved, watch, league, themed) = {
             let mut st = self.lock();
+            let themed = patch.theme.filter(|t| *t != st.theme);
+            if let Some(t) = themed {
+                st.theme = t;
+            }
             let turned = patch.check_updates.filter(|on| *on != st.check_updates);
             if let Some(on) = turned {
                 st.check_updates = on;
@@ -1246,6 +1267,7 @@ impl App {
                 || moved.is_some()
                 || watch.is_some()
                 || league.is_some()
+                || themed.is_some()
             {
                 self.save(&st);
             }
@@ -1255,8 +1277,12 @@ impl App {
                 moved,
                 watch,
                 league.is_some(),
+                themed,
             )
         };
+        if let Some(t) = themed {
+            self.diag(&format!("theme: {}", t.name()));
+        }
         if league {
             // Logged nowhere: a league's name never reaches the log.
             self.settings_seq.fetch_add(1, Ordering::AcqRel);
@@ -1889,6 +1915,7 @@ impl App {
             "overlay_position": st.overlay_position.name(),
             "screen_watch": st.screen_watch,
             "trade_league": st.trade_league,
+            "theme": st.theme.name(),
         });
         let guard = self.saver.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(saver) = guard.as_ref() {
@@ -1911,6 +1938,7 @@ fn view_of(st: &State, engine: Option<&Engine>, update_available: Option<String>
     }
     let guide = craft.guiding.as_ref().map(overlay_guide);
     View {
+        theme: st.theme,
         craft,
         hotkey: st.hotkey.clone(),
         grab: st.grab.clone(),

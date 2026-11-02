@@ -5,7 +5,8 @@
 //   http://127.0.0.1:1422/settings.html?state=install-downloading&scale=2
 //
 // `state` is a fixture's name (default `idle`), `scale` zooms the page as
-// the webview zoom would (`1`|`1.33`|`2`). Commands are logged, not acted
+// the webview zoom would (`1`|`1.33`|`2`), and `theme` (`exile`|`claude`)
+// overrides the fixture's theme, as the quest tracker's previews do. Commands are logged, not acted
 // on: the preview shows a view, it does not run the app. The blocked
 // currencies' picker reads `fixtures/catalogue.json`, as the main window's
 // preview does.
@@ -14,6 +15,7 @@
 // in `vite build`, so the release bundle carries none of them.
 
 import { previewCatalogue } from '../bridge';
+import { previewTheme } from '../theme';
 import type { SettingsCommand, SettingsCommandArgs, SettingsWindowBridge } from './bridge';
 import type { SettingsView } from './view';
 
@@ -94,7 +96,10 @@ export function previewSettingsBridge(search: string, root: HTMLElement = docume
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
       }
-      onView(await settingsPreviewFixture(query.state));
+      const view = await settingsPreviewFixture(query.state);
+      const theme = previewTheme(search);
+      if (theme) view.theme = theme;
+      onView(view);
       return () => {};
     },
     async command<C extends SettingsCommand>(name: C, args: SettingsCommandArgs[C]) {

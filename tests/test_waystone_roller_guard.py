@@ -664,7 +664,10 @@ class Versions(unittest.TestCase):
     def test_names_are_pinned(self):
         conf = json.loads(read(TAURI / "tauri.conf.json"))
         self.assertEqual(conf["identifier"], "net.exilepact2.waystone-roller")
-        self.assertEqual(conf["mainBinaryName"], "waystone-roller")
+        # The build is `Waystone Roller.exe`; the crate, the identifier and
+        # the release asset keep the kebab name.
+        self.assertEqual(conf["productName"], "Waystone Roller")
+        self.assertEqual(conf["mainBinaryName"], "Waystone Roller")
         self.assertEqual(conf["app"]["windows"][0]["title"], "Waystone Roller")
         self.assertIs(conf["bundle"]["active"], False)
         tauri = tomllib.loads(read(TAURI / "Cargo.toml"))

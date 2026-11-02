@@ -390,7 +390,10 @@ from a bought base.
   until the app closes and is never saved; the league you chose is saved
   and always offered, even when a list lacks it.
 - **A Settings window**, opened from the *Settings* button at the right of
-  the main window's header, holds five sections, *Grab* (the hotkey),
+  the main window's header, holds six sections, *Appearance* (the
+  **Theme**: *Exile*, the Quest Tracker's steel and masonry look and the
+  default, or *Claude*, the look before it, which every window follows at
+  once), *Grab* (the hotkey),
   *Overlay* (where the overlay sits, and whether the app reads the item
   from the screen), *Blocked currencies*, *Trade* (the league) and
   *Updates*, and the line "Created by ST4H". While a
@@ -507,7 +510,9 @@ Takes no arguments. A 0.1.x copy updated in place keeps its old name,
   value but `false`, or none, loads it on) and `trade_league` (the league
   the trade search opens in, as the trade site writes it: 1 to 64
   characters once trimmed, with no control character; anything else, or
-  none, loads the default, `Forbidden Rites`). A craft's own changes to the
+  none, loads the default, `Forbidden Rites`) and `theme` (the Settings
+  window's *Theme*, `"exile"` or `"claude"`; any other value, or none,
+  loads Exile; [`ui-design.md`](ui-design.md) § "Theme"). A craft's own changes to the
   blocked list, the trade panel's selection and a refreshed league list
   are never saved. Written a
   moment after each change, through a temporary file renamed over the old
@@ -578,8 +583,9 @@ Takes no arguments. A 0.1.x copy updated in place keeps its old name,
       succeeds; `error: the watch thread did not start: <e>`; and `error:
       watch: did not end within <n> ms` when the app quits during a slow
       read.
-  - `overlay position: <position>` and `screen watch: on` or `screen watch:
-    off` when the Settings window changes them.
+  - `overlay position: <position>`, `screen watch: on` or `screen watch:
+    off`, and `theme: exile` or `theme: claude` when the Settings window
+    changes them.
   - `opened Craft of Exile` after the button, or `error: opening Craft of
     Exile: <e>` when the browser could not be asked to open it.
   - The trade panel's and the league list's `trade:` lines, counts and
@@ -720,9 +726,10 @@ shows, its position and, while guiding, the step it shows) and
 watch's line. The Settings window's commands are `get_app_settings`,
 `set_hotkey`,
 `update_settings` (an object of `check_updates`, `blocked_currencies`,
-`overlay_position`, `screen_watch` and `trade_league`, any of them, and
-nothing else; a position the app does not know, or a league name it
-would not load, is refused whole), `refresh_trade_leagues` (no argument;
+`overlay_position`, `screen_watch`, `trade_league` and `theme`, any of
+them, and nothing else; a position the app does not know, a league name it
+would not load, or a theme other than `"exile"` or `"claude"`, is refused
+whole), `refresh_trade_leagues` (no argument;
 the only way the league request is sent), `check_for_updates`, `install_update`
 (the only way an install starts) and `cancel_update`; it is sent
 `ch:app-settings`. The overlay listens to `ch:view` and sends nothing but
@@ -744,6 +751,7 @@ Run from `apps/crafting-helper/` (or with `npm --prefix apps/crafting-helper`).
 | `npm test` | The pages' tests, in jsdom. |
 | `npm run start` | The app under `tauri dev`. |
 | `npm run release` | `tauri build --no-bundle`: `target/release/Crafting Helper.exe` (Cargo builds `crafting-helper.exe`; Tauri names the result from `mainBinaryName`). |
+| `npm run corner-safety` | Renders the main, Settings and overlay previews in the installed Edge (headless, through `playwright-core`) across sizes, scales, text sizes, scroll positions and both themes, and fails when content paints over the Exile frame's art, the frame is not flush with the window, or text falls under the readability floors (12 px, contrast 4.5:1). `--self-check` runs its controls alone (synthetic pages, no app); `--legacy-base <tag>` compares the Claude theme with that tag's tree pixel for pixel; `--screenshots <dir>` also writes the review images (`docs/crafting-helper/design/frames/`). The options are in the script's header; [`ui-design.md`](ui-design.md) § "Theme". |
 
 The data extractor, `py -3 -m tools.crafting_helper.poe2db`, is described in
 the research note:
@@ -875,9 +883,9 @@ the research note:
   reference). The log holds the hotkey, the grabs' line counts, refusals,
   the blocked list's length, the `craft:` lines, the `overlay:` and
   `watch:` lines (states, counts and the game's client size), the Craft of
-  Exile line, the `trade:` lines (counts and reasons) and the `updates:`
-  lines; nothing about your account or character, no item text, no OCR
-  text, no window title, no image, no league, base, modifier or trade
+  Exile line, the `trade:` lines (counts and reasons), the `updates:`
+  lines and the `theme:` line; nothing about your account or character, no
+  item text, no OCR text, no window title, no image, no league, base, modifier or trade
   link, and nothing of GitHub's or the trade site's answers.
   `settings.json` holds the league you chose. An
   install also writes beside the exe, under the running exe's own name:
@@ -900,7 +908,8 @@ the research note:
 | `apps/crafting-helper/blueprints/` | The shipped blueprints, one TOML file each: how to write one is [`blueprints.md`](blueprints.md). |
 | `apps/crafting-helper/src-tauri/` | The Tauri glue: the global hotkey, single instance, the Win32 clipboard read and the refusal tone, the commands, the Settings window (label `settings`) and the overlay (label `overlay`, made click-through at start, moved where `ch-app` places it and shown without taking focus), the screen watch's real backend (`screen.rs`, over `qt-capture` and `ch-watch`'s reader) and the one file that reads the window in front and its title (`game_window.rs`), each window with its capability under `capabilities/`, opening Craft of Exile's address and the trade search's link through `tauri-plugin-opener` from Rust alone (registered without its link handler, no `opener:` permission in any capability), the update transport and the league list's fetch (`ep_net::fetch_trade_leagues`) over the shared `ep-net`, and the restart into an installed update. |
 | `apps/crafting-helper/src/` | The main page (`App.svelte`; the shared parts under `components/`: the grab prompt, the grabbed text, the status line and `CurrencyPicker.svelte`; the craft area under `craft/`, one component per part, from `CraftArea.svelte`; the trade panel under `trade/`, `TradePanel.svelte` and `TradeModifiers.svelte`; the commands `bridge.ts`, the paste route `paste.ts`, the view's types `ipc.ts`), the Settings window's page under `src/settings/` (`settings.html`, one component per section, listed in `sections.ts`, the league's `TradeSection.svelte` among them) and the overlay's under `src/overlay/` (`overlay.html`, `Overlay.svelte`: the step panel). |
-| `apps/crafting-helper/theme/` | The quest tracker's theme, copied byte for byte (`theme.test.ts`). |
+| `apps/crafting-helper/theme/` | The quest tracker's theme files, copied byte for byte (`theme.test.ts`, `steel-kit.test.ts`): `tokens.css` and `fonts/` (the Claude theme) and `exile.css` (the Exile palette); the kit's two rasters in `materials/raster/`; and `materials/requested/`, where requested art is dropped in by name beside its `manifest.json` (it holds the owner's eight delivered files, stored byte for byte) ([`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md)). The Exile theme's own rules are `src/steel.css`, its frame `src/components/MaterialFrame.svelte`. |
+| `apps/crafting-helper/scripts/` | `scroll-height.mjs` (no view scrolls past its content), `radio-focus.mjs` (under Exile, keyboard focus on a Match radio keeps its selection visible) and the corner-safety runner (`corner-safety.mjs`, with its pure checks in `corner-safety-core.mjs`; § "npm scripts"). |
 | `apps/crafting-helper/data/` | The modifier data the extractor writes ([research note](crafting-helper-research.md#data-files)), embedded by `ch-data` when the app is built. |
 | `apps/crafting-helper/data/trade-stats.json` | The trade site's stat ids for every class's ordinary-pool modifiers, or why one is not searchable (`hybrid`, `no trade stat`), with the source URL and fetch date; written by `trade_stats.py map`, embedded by `ch-data` ([research note](crafting-helper-research.md#trade-stat-ids)). |
 | `apps/crafting-helper/fixtures/` | `views/`, one main window view per state (the craft window's included, [`views/README.md`](../../apps/crafting-helper/fixtures/views/README.md)), `app-settings/`, one Settings window view per update, install and settings state, and `catalogue.json`, the `get_catalogue` answer, shared by the page's tests and `ch-app`'s. |
@@ -950,6 +959,9 @@ py -3 -m unittest tests.test_crafting_helper_mechanics_doc                      
 cargo run --manifest-path apps/crafting-helper/Cargo.toml -p ch-engine --locked --example check_blueprints -- apps/crafting-helper/blueprints  # check blueprints
 npm --prefix apps/crafting-helper test                                                  # the pages, in jsdom
 node apps/crafting-helper/scripts/scroll-height.mjs                                     # headless Edge: no view scrolls past its content
+npm --prefix apps/crafting-helper run corner-safety                                     # headless Edge: nothing paints over the Exile frame, readability, flush
+npm --prefix apps/crafting-helper run corner-safety -- --legacy-base <tag>              # the Claude theme against <tag>, pixel for pixel
+node apps/crafting-helper/scripts/radio-focus.mjs                                      # headless Edge: keyboard focus keeps the Exile Match radio's selection
 py -3 -m unittest tests.test_crafting_helper_guard                                      # the guard
 py -3 -m unittest tests.test_crafting_helper_release                                    # the release cutter and workflow
 py -3 -m unittest tests.test_crafting_helper_poe2db tests.test_crafting_helper_data     # the data extractor and the shipped data
@@ -2018,6 +2030,23 @@ release already exists, only its assets are replaced.
   built with the old key cannot install a release signed with the new one.
 
 ## Release notes
+
+### Unreleased
+
+- The app now opens in the Exile theme, the Quest Tracker's steel and
+  masonry look, in the main window, the Settings window and the overlay: a
+  steel frame along each window's edges (the overlay takes the main
+  window's frame, filling its window while it shows a step), dark stone
+  behind the content, grey text with a little gold and Cinzel headings.
+  The trade panel's Match choices are steel radio
+  buttons that keep showing which one is selected while the keyboard is
+  on them, the grabbed item sits in a steel-edged card, each route step's
+  number sits on a steel plate, and the update mark beside Settings is a
+  small ivory jewel. The look it had before stays
+  available as the Claude theme, chosen under *Appearance* → *Theme* in the
+  Settings window and saved as `theme` in `settings.json`; a missing or
+  unknown value opens Exile. Claude looks exactly as before. Nothing else
+  changes: the same features, wording, window sizes and overlay placement.
 
 ### 0.3.0
 

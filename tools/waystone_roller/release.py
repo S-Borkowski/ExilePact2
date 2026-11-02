@@ -2,8 +2,9 @@
 
 Developer-only. A release is one annotated tag, `waystone-roller-v<version>`;
 pushing it starts `.github/workflows/waystone-roller-release.yml`, which
-builds `waystone-roller.exe`, signs it with the release key (and fails
-without it) and attaches it, with `SHA256SUMS.txt` and
+builds `Waystone Roller.exe`, renames it to `waystone-roller.exe` (the
+asset name every installed copy's update asks for), signs it with the
+release key (and fails without it) and attaches it, with `SHA256SUMS.txt` and
 `waystone-roller.exe.minisig`, to a draft release for the owner to publish
 (and mark as latest) by hand:
 

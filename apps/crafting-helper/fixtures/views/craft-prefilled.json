@@ -1752,6 +1752,7 @@
     "kind": "info",
     "text": "Grabbed an item: 16 lines."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

@@ -10,6 +10,10 @@
 //
 //   http://127.0.0.1:1422/?state=grabbed-item
 //   http://127.0.0.1:1422/overlay.html?state=overlay-active&scene=bright
+//   http://127.0.0.1:1422/?state=craft-planning&theme=claude
+//
+// `theme` (`exile` or `claude`) overrides the fixture's own theme, as the
+// quest tracker's previews do.
 //
 // Commands are logged, not acted on: the preview has no app behind it, so a
 // paste is not shown as a grab, a target change does not re-plan, and the
@@ -21,7 +25,8 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { type CatalogueGroup, type OverlayPosition, type TradeSelection, type View, catalogueProblems, viewProblems } from './ipc';
+import { type CatalogueGroup, type OverlayPosition, type Theme, type TradeSelection, type View, catalogueProblems, viewProblems } from './ipc';
+import { previewTheme } from './theme';
 
 export const VIEW_EVENT = 'ch:view';
 
@@ -86,6 +91,8 @@ export interface SettingsPatch {
   screen_watch?: boolean;
   /** The league the trade search opens in; the app trims it and refuses an empty, overlong or control-character name. */
   trade_league?: string;
+  /** The look every window draws; the app refuses anything but `exile` or `claude`. */
+  theme?: Theme;
 }
 
 /**
@@ -249,7 +256,10 @@ export function previewBridge(
       const load = PREVIEW_FIXTURES[`../fixtures/views/${previewViewName(search, fallback)}.json`];
       if (!load) throw new Error('crafting-helper preview: no view fixtures (the preview runs on the dev server only)');
       // A fresh copy, so nothing leaks into the module's cached JSON.
-      onView(JSON.parse(JSON.stringify(await load())) as View);
+      const view = JSON.parse(JSON.stringify(await load())) as View;
+      const theme = previewTheme(search);
+      if (theme) view.theme = theme;
+      onView(view);
       return () => {};
     },
     async command<C extends Command>(name: C, args: CommandArgs[C]) {

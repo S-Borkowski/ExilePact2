@@ -1,0 +1,23 @@
+{
+  "about": "Art the steel/masonry kit has no counterpart for. Each entry is described in docs/waystone-roller/design/ASSET-REQUESTS.md; until its files are dropped into this folder under the names listed, the Exile theme draws a marked CSS placeholder. A delivery flips its status to delivered.",
+  "requests": [
+    {
+      "id": "wr-mark-want",
+      "files": ["mark-want.svg"],
+      "element": "ModRow.svelte .choice-mark of a wanted row, and SearchFooter.svelte .part-what of a want part: [data-art-placeholder='wr-mark-want']",
+      "status": "delivered"
+    },
+    {
+      "id": "wr-mark-avoid",
+      "files": ["mark-avoid.svg"],
+      "element": "ModRow.svelte .choice-mark of an avoided row, and SearchFooter.svelte .part-what of an avoid part: [data-art-placeholder='wr-mark-avoid']",
+      "status": "delivered"
+    },
+    {
+      "id": "wr-update-dot",
+      "files": ["update-dot.svg"],
+      "element": "App.svelte header Settings button, .update-mark .dot: [data-art-placeholder='wr-update-dot']",
+      "status": "delivered"
+    }
+  ]
+}

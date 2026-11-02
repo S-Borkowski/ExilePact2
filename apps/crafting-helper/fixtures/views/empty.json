@@ -13,6 +13,7 @@
     "visible": false
   },
   "status": null,
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

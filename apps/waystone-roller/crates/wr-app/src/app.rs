@@ -23,8 +23,8 @@
 //! held across a pause. Each ends in one `paste: ...`, `paste skipped: ...`
 //! or `paste failed: ...` line; the window's title is never written down.
 //!
-//! The selection, the shortcut, `auto_paste` and `check_updates` are saved
-//! to `settings.json` by a saver thread, [`SAVE_DELAY`] after the last
+//! The selection, the shortcut, `auto_paste`, `check_updates` and `theme`
+//! are saved to `settings.json` by a saver thread, [`SAVE_DELAY`] after the last
 //! change (debounced), and at once on [`App::flush`] and [`App::shutdown`].
 //!
 //! The update check and install (`ep-update`'s [`Updater`], behind a lock of
@@ -46,16 +46,19 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use ep_update::{
-    outcome_line, started_line, turned_line, Answer, AppSettingsView, Begin, InstallEvents,
-    TransportError, Updater, Version,
+    outcome_line, started_line, turned_line, Answer, Begin, InstallEvents, TransportError,
+    Updater, Version,
 };
 use serde_json::{json, Map, Value};
 use wr_regex::{Builder, ModData, Outcome, Selection, LIMIT, TIER_MAX, TIER_MIN};
 
 use crate::store::{Store, StoreError, SETTINGS_SCHEMA};
-use crate::updates::{check_updates_patch, Clock, UpdateSetup, CHECK_UPDATES_KEY};
+use crate::updates::{
+    settings_patch, AppSettingsView, Clock, UpdateSetup, CHECK_UPDATES_KEY, THEME_KEY,
+};
 use crate::view::{
-    mod_views, DataInfo, ModView, SearchResult, SelectionView, StatusKind, StatusLine, View,
+    mod_views, DataInfo, ModView, SearchResult, SelectionView, StatusKind, StatusLine, Theme,
+    View,
 };
 
 /// The shortcut on a first launch.
@@ -218,6 +221,9 @@ struct State {
     /// "Automatically check for updates"; off unless the saved settings say
     /// `true`.
     check_updates: bool,
+    /// The look both windows draw; Exile unless the saved settings say
+    /// exactly `"claude"`.
+    theme: Theme,
 }
 
 enum SaveMsg {
@@ -300,6 +306,7 @@ impl App {
         let mut selection = Selection::default();
         let mut hotkey = DEFAULT_HOTKEY.to_string();
         let mut check_updates = false;
+        let mut theme = Theme::Exile;
         let mut auto_paste = true;
         let store = match store {
             Ok(s) => Some(Arc::new(s)),
@@ -323,6 +330,8 @@ impl App {
                     // value but `true`, leaves it off.
                     check_updates = saved.get(CHECK_UPDATES_KEY).and_then(Value::as_bool)
                         == Some(true);
+                    // Missing, `null`, another type or another word is Exile.
+                    theme = Theme::from_value(saved.get(THEME_KEY));
                     // Missing, or any value but `false`, leaves it on.
                     auto_paste = saved.get("auto_paste").and_then(Value::as_bool) != Some(false);
                     if let Some(h) = saved.get("hotkey").and_then(Value::as_str) {
@@ -382,6 +391,7 @@ impl App {
                 auto_paste,
                 status,
                 check_updates,
+                theme,
             }),
             saver: Mutex::new(saver),
             updater,
@@ -534,38 +544,53 @@ impl App {
 
     /// `get_app_settings`: what the Settings window shows.
     pub fn get_app_settings(&self) -> AppSettingsView {
-        let on = self.lock().check_updates;
-        self.updater.view(on)
+        let (on, theme) = {
+            let st = self.lock();
+            (st.check_updates, st.theme)
+        };
+        AppSettingsView::with_theme(self.updater.view(on), theme)
     }
 
-    /// `update_settings`: the Settings window's one setting, exactly
-    /// `{"check_updates": <bool>}`. Anything else is refused whole, with the
-    /// setting unchanged. Turning it on ticks at once, so a first check
-    /// starts now when one is due.
+    /// `update_settings`: the Settings window's settings, `check_updates`
+    /// (`true` or `false`) and `theme` (`"exile"` or `"claude"`), either or
+    /// both. Anything else is refused whole, with every setting unchanged.
+    /// Turning checks on ticks at once, so a first check starts now when one
+    /// is due; a theme change starts none, and reaches both windows once.
     pub fn update_settings(&self, patch: &Value) -> Result<AppSettingsView, String> {
-        let on = match check_updates_patch(patch) {
-            Ok(on) => on,
+        let patch = match settings_patch(patch) {
+            Ok(p) => p,
             Err(reason) => {
                 self.diag(&format!("settings refused: {reason}"));
                 return Err(reason);
             }
         };
-        let changed = {
+        let (turned, themed) = {
             let mut st = self.lock();
-            let changed = st.check_updates != on;
-            if changed {
+            let turned = patch.check_updates.filter(|on| *on != st.check_updates);
+            let themed = patch.theme.filter(|t| *t != st.theme);
+            if let Some(on) = turned {
                 st.check_updates = on;
+            }
+            if let Some(t) = themed {
+                st.theme = t;
+            }
+            if turned.is_some() || themed.is_some() {
                 self.save(&st);
             }
-            changed
+            (turned, themed)
         };
-        if changed {
+        if let Some(on) = turned {
             self.diag(turned_line(on));
+        }
+        if turned.is_some() || themed.is_some() {
             self.updater.changed();
             self.emit_app_settings();
-            if on {
-                self.tick_updates(self.clock.now_ms());
-            }
+        }
+        if themed.is_some() {
+            self.emit();
+        }
+        if turned == Some(true) {
+            self.tick_updates(self.clock.now_ms());
         }
         Ok(self.get_app_settings())
     }
@@ -758,6 +783,7 @@ impl App {
             auto_paste: st.auto_paste,
             status: st.status.as_ref().map(|s| s.line.clone()),
             update_available: self.updater.newer().map(|v| v.to_string()),
+            theme: st.theme,
         }
     }
 
@@ -1013,6 +1039,7 @@ impl App {
             "auto_paste": st.auto_paste,
             "selection": SelectionView::from(&st.selection),
             "check_updates": st.check_updates,
+            "theme": st.theme,
         });
         let guard = self.saver.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(saver) = guard.as_ref() {

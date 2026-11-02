@@ -138,7 +138,7 @@ pub use view::{
     CraftView, CurrentStepView, FloorOption, GrabSource, GrabView, GuideStatusView, GuidingView,
     HistoryEntry, ItemModView, ModSide, OutcomeSource, OutcomeWord, OverlayGuide, OverlayPosition,
     OverlayView, PlanningView, PreviewView, RejectedLine, RelaxationView, RouteChoice, RouteView,
-    SettingsView, StatusKind, StatusLine, StepLineView, TargetChoice, TargetChoices, View,
+    SettingsView, StatusKind, StatusLine, StepLineView, TargetChoice, TargetChoices, Theme, View,
     WatchLineView,
 };
 

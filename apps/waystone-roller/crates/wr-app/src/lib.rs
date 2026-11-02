@@ -33,8 +33,8 @@
 //! - [`view`]: [`View`] and its parts, the IPC contract `src/ipc.ts`
 //!   mirrors (Context "The IPC contract").
 //! - [`store`]: the store folder (refused inside a git checkout),
-//!   `settings.json` (the shortcut, the selection, `auto_paste` and
-//!   `check_updates`) written atomically, and `diag.log`.
+//!   `settings.json` (the shortcut, the selection, `auto_paste`,
+//!   `check_updates` and `theme`) written atomically, and `diag.log`.
 
 pub mod app;
 pub mod store;
@@ -46,17 +46,17 @@ pub use app::{
     GAME_WINDOW_TITLE, KEY_GAP, RELEASE_POLL, RELEASE_TIMEOUT, SAVE_DELAY, SETTLE,
 };
 pub use store::{default_dir, resolve_dir, DiagLog, Store, StoreError, DIR_ENV};
-pub use updates::{Clock, SteadyClock, UpdateSetup, TICK_EVERY};
+pub use updates::{AppSettingsView, Clock, SteadyClock, UpdateSetup, TICK_EVERY};
 pub use view::{
     DataInfo, ModView, PartView, RarityView, ResultState, SearchResult, SelectionView, StatusKind,
-    StatusLine, View,
+    StatusLine, Theme, View,
 };
 
 /// The shared update crate, for the glue's transport and start-up cleanup.
 pub use ep_update;
 pub use ep_update::{
-    Answer, AppSettingsView, AssetKind, DownloadError, InstallState, Product, TransportError,
-    UpdateConfig, UpdateState, UpdateTransport, Version, WAYSTONE_ROLLER,
+    Answer, AssetKind, DownloadError, InstallState, Product, TransportError, UpdateConfig,
+    UpdateState, UpdateTransport, Version, WAYSTONE_ROLLER,
 };
 
 use wr_regex::ModData;

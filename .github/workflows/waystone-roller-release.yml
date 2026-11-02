@@ -93,10 +93,15 @@ jobs:
           npm --prefix apps/waystone-roller ci
           npm --prefix apps/waystone-roller run release
 
+      # The build is `Waystone Roller.exe` (tauri.conf.json's mainBinaryName).
+      # The copy renames it to waystone-roller.exe, the asset name every
+      # installed copy's update asks for and the one the sign step writes into
+      # the signature's trusted comment, which the app checks against the
+      # asset's name. Signing the spaced name would break every update.
       - name: Collect the assets
         run: |
           mkdir -p dist-release
-          cp apps/waystone-roller/target/release/waystone-roller.exe dist-release/
+          cp "apps/waystone-roller/target/release/Waystone Roller.exe" dist-release/waystone-roller.exe
           (cd dist-release && sha256sum waystone-roller.exe > SHA256SUMS.txt && cat SHA256SUMS.txt)
           python -m tools.waystone_roller.release notes "$VERSION" --out release-notes.md
 

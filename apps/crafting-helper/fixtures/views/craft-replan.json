@@ -91,6 +91,7 @@
     "kind": "error",
     "text": "Unexpected: Chaos Orb removes one modifier and adds one, but 2 modifier(s) went and 2 came; gained +#% to Fire Resistance (T3), +#% to Cold Resistance (T3)."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

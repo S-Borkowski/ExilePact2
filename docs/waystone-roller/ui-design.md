@@ -38,6 +38,73 @@ contracts remain authoritative; the proposal is not a shipped restyle.
 
 ## Theme
 
+Two looks, chosen in the Settings window's **Appearance** section (a
+**Theme** select, first in the window): **Exile**, the default, and
+**Claude**, the look the app had before it. The choice is `settings.json`'s
+`theme` (`"exile"` or `"claude"`); a missing, `null`, non-string or unknown
+value loads Exile, and `update_settings` refuses any other value whole. A
+change reaches both windows at once in their views (`View.theme`,
+`AppSettingsView.theme`), and each page sets `data-theme` on its root
+element from it, `exile` until the first view arrives. The browser previews
+take `theme=exile|claude` in the query over the fixture's own.
+
+**Exile** is the Quest Tracker's steel/masonry kit
+(`docs/quest-tracker/design/steel-masonry-kit/`), as its Settings window
+draws it:
+
+- `theme/exile.css`, a byte copy of the Quest Tracker's (the kit's palette
+  as token overrides scoped to `:root[data-theme='exile']`, and Cinzel), and
+  `src/steel.css`, this app's own rules, every selector scoped the same way.
+  `src/steel-kit.test.ts` holds both to the kit's colours (`palette.json`,
+  the component SVGs, the resistance colours `exile.css` carries, black and
+  white) and the copy to the original.
+- **Frame**: the kit's `frame-neutral-steel.png`, copied unchanged into
+  `theme/materials/raster/`, as a nine-slice border (`MaterialFrame.svelte`:
+  slice 224, 48 px wide, stretched, centre empty), fixed to the window, its
+  art flush with every window edge: each outset sits just under the PNG's own
+  transparent padding. Decorative only (`aria-hidden`, no pointer events).
+- **Masonry**: the kit's `masonry-charcoal.png`, one cover crop behind each
+  window's content at 38% over the well `#090D10`, no tint.
+- **Main window**: the header, filters and list sit in one area inset from
+  the frame (24 px from the sides, 16 px from the top), above the footer,
+  which stays pinned above the lower corner knots (33 px from the bottom) and
+  scrolls itself when it would take more than three fifths of the window.
+  While the window is tall enough for about three rows only the list scrolls;
+  on a shorter window or with larger text the list gives up its scroller and
+  the area above the footer scrolls instead, so no scroller is ever cut off by
+  another. The group headings scroll with their rows; a kit divider with its
+  centre diamond separates the groups.
+- **Settings window**: the title and the credit sit between the frame's
+  corner knots, and the sections scroll between them, as in the Quest
+  Tracker's; the tallest update states now scroll inside the window, whose
+  size is unchanged.
+- **Type**: Cinzel (SemiBold) for the window titles, the group headings and
+  the filter and section labels, never under 13 px; Alegreya Sans for
+  everything else; no text under 12 px. The search string, tokens and part
+  texts stay the system monospace.
+- **Colour**: gold `#D0BF94` for the window titles and the short headings
+  and as the want colour; `#D0A3A0` for avoid; controls in steel grey
+  (`#1E272D`, pressed and chosen `#424D54`, hover `#536169`), never a gold or
+  cyan fill; Want and Avoid, when chosen, keep the steel fill with a 2 px
+  rule of their colour under the word; focus is a 2 px ivory `#E6E5DE` ring
+  drawn inside the control; the kit's 8 px scrollbar.
+- **Requested art, delivered**: the Want and Avoid marks and the update
+  dot have no kit art, so `design/ASSET-REQUESTS.md` asked the owner for
+  them, and the owner delivered all three (2026-11-02):
+  `theme/materials/requested/mark-want.svg` (a gold plus),
+  `mark-avoid.svg` (a muted-red bar) and `update-dot.svg` (a gold diamond),
+  stored as delivered. Exile draws them in place of the dashed kit-palette
+  placeholders (`[data-art-placeholder="<id>"]`), which stay as the
+  fallback for a missing file; `src/requested-art.ts` finds each file and
+  marks the page, with no code per file.
+- `npm run corner-safety` proves, on rendered pixels, that no content
+  paints over the frame art at either window size, device scales 0.75 to 2,
+  text 200% and every scroll position, that the frame is flush, that text
+  meets the readability floors, and, with `--legacy-base <ref>`, that Claude
+  renders the same pixels as `<ref>`. Results and the screenshots:
+  `design/review-steel-masonry.md`, `design/frames/`.
+
+**Claude** is the table below: today's tokens and stylesheets, untouched.
 A byte-identical copy of the quest tracker's `theme/tokens.css` and
 `theme/fonts/` (Alegreya Sans, Alegreya Sans SC; SIL Open Font Licence), so
 the two apps read as one family. The test `theme_tokens_match_quest_tracker`
@@ -178,8 +245,14 @@ Its design review is [design/review-settings-window.md](design/review-settings-w
 
 From the top:
 
-- **Settings** (the window's `h1`, small caps), then the **Updates** section
-  (a region named by its group label).
+- **Settings** (the window's `h1`, small caps), then the **Appearance**
+  section, then the **Updates** section (each a region named by its group
+  label).
+- **Theme** (Appearance): a select, Exile or Claude, that sends
+  `update_settings` with `{ theme }` and shows what the next view says (see
+  § "Theme"). The section carries `data-theme-setting`, which the runner's
+  legacy comparison removes before comparing the window with the one before
+  it.
 - **Automatically check for updates**: a switch, off by default and saved,
   that sends `update_settings` with `{ check_updates }` and shows what the
   next view says. Under it, the help line: "Asks GitHub once a day whether a
@@ -249,7 +322,9 @@ page as the webview's scale would). Commands are logged, not acted on.
 ## Browser preview
 
 Outside Tauri (`npm run dev`, port 1421) the page renders a fixture chosen
-by the query, `http://127.0.0.1:1421/?view=too-long` (default `ok-any`).
+by the query, `http://127.0.0.1:1421/?view=too-long` (default `ok-any`);
+`&theme=exile` or `&theme=claude` draws it in that look, and the Settings
+window's preview (`settings.html?state=<name>`) takes the same parameter.
 Commands are logged; a selection patch is echoed into the shown selection,
 and the paste checkbox into the shown `auto_paste`, so the controls respond, but the string and the meter stay the fixture's — the
 preview has no engine.

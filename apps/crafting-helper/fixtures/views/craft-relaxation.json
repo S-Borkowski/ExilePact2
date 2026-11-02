@@ -1307,6 +1307,7 @@
     "kind": "info",
     "text": "3 targets chosen."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

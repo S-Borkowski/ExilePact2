@@ -1,6 +1,7 @@
 // The Settings window's view, mirrored from the `AppSettingsView` the
-// waystone roller sends (`ep-update`'s, `apps/shared/crates/ep-update/src/view.rs`,
-// re-exported by `crates/wr-app`), field names snake_case exactly as serde
+// waystone roller sends (`crates/wr-app/src/updates.rs`: `ep-update`'s
+// fields, `apps/shared/crates/ep-update/src/view.rs`, with the app's
+// `theme` beside them), field names snake_case exactly as serde
 // writes them in `wr:app-settings` and the answer to `get_app_settings`. The
 // window renders these values; whether a check runs, what it found, which
 // version is newer and where an install stands are the app's to say.
@@ -11,7 +12,9 @@
 // invents, fails them. It follows `../ipc.ts`'s checker for `View`, and the
 // quest tracker's copy of this file.
 
-export const UPDATE_STATES = ['idle', 'checking', 'up-to-date', 'available', 'no-release', 'failed'] as const;
+import { THEMES, type Theme } from '../ipc';
+
+export const UPDATE_STATES =['idle', 'checking', 'up-to-date', 'available', 'no-release', 'failed'] as const;
 export type UpdateState = (typeof UPDATE_STATES)[number];
 
 /** Where the update check stands. */
@@ -56,6 +59,8 @@ export interface AppSettingsView {
   check_updates: boolean;
   update: UpdateView;
   install: InstallView;
+  /** The look both windows draw (`settings.json`'s `theme`); a view without one is Exile. */
+  theme?: Theme;
 }
 
 // One field spec per type: `Spec<T>` makes the compiler refuse a spec that
@@ -86,7 +91,8 @@ const nullable =
   (v, p, out) => {
     if (v !== null) inner(v, p, out);
   };
-function record<T>(spec: Spec<T>): Check {
+/** `optional`: keys a value may leave out (an older shell's view), checked when present. */
+function record<T>(spec: Spec<T>, optional: readonly string[] = []): Check {
   return (v, p, out) => {
     if (!isObject(v)) {
       out.push(`${p}: expected an object`);
@@ -94,8 +100,9 @@ function record<T>(spec: Spec<T>): Check {
     }
     const s = spec as Record<string, Check>;
     for (const key of Object.keys(s)) {
-      if (!(key in v)) out.push(`${p}.${key}: missing`);
-      else s[key](v[key], `${p}.${key}`, out);
+      if (!(key in v)) {
+        if (!optional.includes(key)) out.push(`${p}.${key}: missing`);
+      } else s[key](v[key], `${p}.${key}`, out);
     }
     for (const key of Object.keys(v)) {
       if (!(key in s)) out.push(`${p}.${key}: not in the TypeScript types`);
@@ -106,7 +113,7 @@ function record<T>(spec: Spec<T>): Check {
 const update = record<UpdateView>({ state: oneOf(UPDATE_STATES), text: str, newer: nullable(str) });
 const progress = record<InstallProgress>({ bytes: count, total: nullable(count) });
 const install = record<InstallView>({ state: oneOf(INSTALL_STATES), text: str, progress: nullable(progress) });
-const appSettings = record<AppSettingsView>({ version: str, check_updates: bool, update, install });
+const appSettings = record<AppSettingsView>({ version: str, check_updates: bool, update, install, theme: oneOf(THEMES) }, ['theme']);
 
 /** Every way `value` differs from an `AppSettingsView`; empty when it is one. */
 export function appSettingsProblems(value: unknown): string[] {

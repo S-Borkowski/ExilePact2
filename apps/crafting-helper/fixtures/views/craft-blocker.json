@@ -1296,6 +1296,7 @@
     "kind": "info",
     "text": "Route chosen."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

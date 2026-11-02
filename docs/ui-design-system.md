@@ -1,13 +1,16 @@
 # ExilePact2 — Approved UI Design System
 
-**Latest status: Quest Tracker's Exile theme is wired to the neutral steel/masonry kit, 2026-11-01.**
+**Latest status: all three apps open in the Exile theme of the neutral steel/masonry kit; Waystone Roller and Crafting Helper adopted it on 2026-11-02, each keeping its original look as the selectable Claude theme.**
 The [finished artwork, component sheets and handoff](quest-tracker/design/steel-masonry-kit/HANDOFF.md) are the source: the app uses the kit's two rasters unchanged and reproduces its vector diamonds and controls as live markup and CSS. The Quest Tracker's Exile theme is wired to this kit (2026-11-01/02, see [review-approved-ui](quest-tracker/design/review-approved-ui.md)); the kit's "design assets only / deferred wiring" status (HANDOFF.md and the kit README) and its next-session sections are kept unchanged as provenance. The rejected warm prototype palette is replaced, and the minimum-size corner overlap is fixed and measured by `npm --prefix apps/quest-tracker run corner-safety` ([rendered review](quest-tracker/design/review-approved-ui.md)). Earlier notes below that describe the warm prototype are history.
 Quest Tracker is the primary example in a shared family with Waystone Roller
 and Crafting Helper. Quest Tracker uses its selected theme consistently across
 play, edit, Next up, All and Settings; Exile follows the compact steel tracker below.
 Quest Tracker implements this direction as its default **Exile** theme, with
 the original **Claude** theme selectable in both Settings surfaces. This is not
-a product rename. Waystone/Crafting retain their existing appearance.
+a product rename. Waystone Roller and Crafting Helper follow the same pattern:
+Exile is their default in every window, and each app's earlier look is its
+**Claude** theme, chosen in its Settings window and drawn pixel-identical to
+before (§ "Adoption boundaries").
 
 The apps remain separate tools. Existing behavior, native window limits,
 backend-owned state and export contracts remain authoritative:
@@ -262,9 +265,32 @@ all22 existing feature groups and native window contracts remain covered by the
 There is **no theme generator**. Baseline `theme/theme.json` and `tokens.css`
 retain Claude values; the CSS remains byte-identical in all three apps. QT-local
 `theme/exile.json` and root-scoped `exile.css` are maintained manually. Local Cinzel
-and its full license join the byte-identical font directories for parity; sibling
-apps continue selecting their original fonts/colors/layout. Original raster
-material artwork is Quest-Tracker-local; the concept PNG remains documentation only.
+and its full license join the byte-identical font directories for parity.
+The concept PNG remains documentation only.
+
+**Waystone Roller and Crafting Helper** adopt the same kit as **Exile**, their
+default, in every window (main and Settings, and Crafting Helper's overlay,
+which takes the same raster frame, flush with its window, by the owner's
+choice of 2026-11-02). **Claude** in each
+app's Settings window (*Appearance* → *Theme*) selects the app's original
+appearance, unchanged. Each carries a byte copy of the Quest Tracker's
+`exile.css` and of the kit's two rasters (`frame-neutral-steel.png`,
+`masonry-charcoal.png`) under `apps/<app>/theme/`, and its own steel rules in
+`src/steel.css`, every one scoped to the Exile theme. No art was made for
+them: an element with no kit counterpart drew a marked CSS placeholder, and
+`docs/<app>/design/ASSET-REQUESTS.md` asked the owner for the file, which is
+dropped into `apps/<app>/theme/materials/requested/` beside its
+`manifest.json` and drawn with no code change. The owner delivered every
+requested file on 2026-11-02 (Waystone Roller's Want and Avoid marks and
+update mark; Crafting Helper's radios, compact overlay frame, item card
+frame, step plate and update mark), stored byte for byte; the placeholders
+remain only as the fallback for a missing file. The compact overlay frame is
+kept but no longer drawn, superseded by the kit frame. Each app's runner checks that
+no content paints over the frame art, that the frame is flush and that text
+meets the readability floors, and compares Claude with a base tag pixel for
+pixel (`--legacy-base`): `npm --prefix apps/waystone-roller run corner-safety`
+and `npm --prefix apps/crafting-helper run corner-safety`, recorded in each
+app's `docs/<app>/design/review-steel-masonry.md`.
 
 The [rendered review](quest-tracker/design/review-approved-ui.md) records actual
 screens, checks and limitations. Content/token tests establish their stated

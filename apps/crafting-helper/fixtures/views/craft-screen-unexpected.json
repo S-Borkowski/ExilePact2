@@ -102,6 +102,7 @@
     "kind": "error",
     "text": "Read from the screen: the item changed in a way the guide did not expect. Grab it to check; the craft is unchanged."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

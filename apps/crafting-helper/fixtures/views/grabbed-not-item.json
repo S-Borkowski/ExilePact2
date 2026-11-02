@@ -21,6 +21,7 @@
     "kind": "error",
     "text": "Grabbed 3 lines, but they do not look like an item copied with Ctrl+Alt+C in the game."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

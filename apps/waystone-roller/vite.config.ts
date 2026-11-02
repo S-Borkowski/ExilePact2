@@ -25,6 +25,9 @@ export default defineConfig(({ mode }) => ({
     port: 1421,
     strictPort: true,
     host: '127.0.0.1',
+    // The tests read the steel/masonry kit's palette and component SVGs from
+    // docs/; the dev server keeps Vite's default (this folder only).
+    fs: mode === 'test' ? { allow: ['.', '../../docs/quest-tracker/design/steel-masonry-kit'] } : undefined,
     watch: {
       ignored: ['**/src-tauri/**', '**/crates/**', '**/target/**'],
     },

@@ -16,7 +16,9 @@
 //! The signed release is the shared signature fixture
 //! (`apps/shared/fixtures/signing/`): its exe asset is `payload.bin`, signed
 //! for 1.3.0 with the test key, so the product here is the waystone roller
-//! with that exe name, and the key is injected through `UpdateConfig`.
+//! with that exe name, and the key is injected through `UpdateConfig`. An
+//! install keeps the running exe's own name (`Waystone Roller.exe` for a
+//! build since the rename) while it downloads the release's asset.
 
 mod common;
 
@@ -253,6 +255,11 @@ struct Setup {
     saved: Option<Value>,
     /// The list's request starts held.
     list_held: bool,
+    /// The file name of the exe the app runs from; `None` is
+    /// `waystone-roller.exe`. A release's asset is always
+    /// `waystone-roller.exe`; a build since the rename is
+    /// `Waystone Roller.exe`.
+    exe_name: Option<&'static str>,
 }
 
 fn auto_on() -> Setup {
@@ -284,7 +291,7 @@ fn harness(setup: Setup) -> Harness {
     if let Some(saved) = &setup.saved {
         fs::write(store.join("settings.json"), serde_json::to_vec(saved).unwrap()).unwrap();
     }
-    let exe = bin.join("waystone-roller.exe");
+    let exe = bin.join(setup.exe_name.unwrap_or("waystone-roller.exe"));
     fs::write(&exe, RUNNING_BYTES).unwrap();
     let wire = Wire::new();
     wire.gate(|g| g.list_held = setup.list_held);
@@ -820,6 +827,40 @@ fn updates_install_restarts_through_the_quit_path_target() {
     );
     assert!(pos("updates: replaced the running exe with 1.3.0, restarting") < pos("stop"));
     assert!(h.app.restart_requested());
+}
+
+/// Baseline, before and after the build was renamed: an install keeps the
+/// running exe's own name. A build since the rename runs as
+/// `Waystone Roller.exe` while every release's asset stays
+/// `waystone-roller.exe`, signed under that name; the update downloads the
+/// asset and swaps it in at the running path.
+#[test]
+fn updates_install_keeps_the_running_exe_name() {
+    let h = harness(Setup {
+        exe_name: Some("Waystone Roller.exe"),
+        ..Setup::default()
+    });
+    h.app.start();
+    h.manual(signed_newer());
+    h.app.install_update().unwrap();
+    wait_until("the restart request", || h.restarts() == 1);
+    // The download asked for the release's signature and exe, by the
+    // product's asset name, not the running exe's.
+    assert_eq!(h.downloads(), vec![AssetKind::Signature, AssetKind::Exe]);
+    assert_eq!(WAYSTONE_ROLLER.exe_name, "waystone-roller.exe");
+    assert_eq!(WAYSTONE_ROLLER.signature_name(), "waystone-roller.exe.minisig");
+    // The new bytes sit under the installed name, the old ones beside it.
+    assert_eq!(h.exe.file_name().unwrap(), "Waystone Roller.exe");
+    assert_eq!(h.exe_bytes(), payload());
+    assert_eq!(
+        fs::read(h.exe.with_file_name("Waystone Roller.exe.old")).unwrap(),
+        RUNNING_BYTES
+    );
+    assert_eq!(
+        h.folder(),
+        lines(&["Waystone Roller.exe", "Waystone Roller.exe.old"])
+    );
+    h.app.shutdown();
 }
 
 #[test]

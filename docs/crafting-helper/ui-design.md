@@ -70,7 +70,108 @@ contracts remain authoritative; the proposal is not a shipped restyle.
 
 ## Theme
 
-A byte-identical copy of the quest tracker's `theme/tokens.css` and
+Two themes, chosen in the Settings window's Appearance section (one select,
+"Theme": **Exile** or **Claude**) and saved as `theme` in `settings.json`
+(`exile` or `claude`). A missing, `null`, non-text or unknown saved value
+loads Exile; `update_settings` takes exactly `exile` or `claude` and refuses
+anything else whole. A change is saved by the debounced saver and reaches
+all three windows once: the main window and the overlay through `ch:view`
+(`View.theme`), the Settings window through `ch:app-settings`
+(`SettingsView.theme`). Each page marks its document `data-theme` from the
+view it receives (`src/theme.ts`), Exile until the first view arrives; the
+browser previews take `theme=exile|claude` in the query, over the fixture's
+own.
+
+### Exile (the default)
+
+The Quest Tracker's steel/masonry kit
+([`docs/quest-tracker/design/steel-masonry-kit/`](../quest-tracker/design/steel-masonry-kit/HANDOFF.md)):
+
+- **Tokens.** `theme/exile.css` is a byte copy of the Quest Tracker's (the
+  kit palette scoped to `:root[data-theme='exile']`, the Cinzel face), and
+  `src/steel-kit.test.ts` holds the copy to the original. The app's own
+  Exile rules are `src/steel.css`, imported after each page's stylesheet,
+  every selector scoped to `:root[data-theme='exile']`; the test holds every
+  colour in them to the kit palette, the kit components' colours, black and
+  white.
+- **Frame.** The kit's neutral steel PNG, unchanged
+  (`theme/materials/raster/frame-neutral-steel.png`), drawn by
+  `src/components/MaterialFrame.svelte` as the Quest Tracker draws it: a
+  nine-slice of 224 source px a side at 48 px, the centre empty, fixed to
+  the window, its art meeting every window edge (flush). The main window,
+  the Settings window and the overlay (while it shows a step) carry it.
+- **Masonry.** The kit's charcoal masonry
+  (`theme/materials/raster/masonry-charcoal.png`), one cover crop per well
+  at 38 % over `#090D10`, behind the live content of each window. The
+  section panels on it (the grabbed item's card, the chosen targets, the
+  modifier and trade lists, the currency list, blocked for this craft, the
+  current step's card)
+  are black at 45 % with a fine steel edge, so the stone shows through
+  them; the modifier lists keep that edge at every window width.
+- **Corner safety.** No content paints over the frame's art: the content
+  sits 20 px in from the sides, 14 px down and 21 px up; the title bar and
+  the status line keep 10 px further in, between the corner knots; only the
+  panes scroll, inside the rails. When the text is so large that the panes
+  would keep under 160 px, the main window's content scrolls as a whole
+  instead (`.app-body[data-scroll='whole']`), held clear of the knots. The
+  Settings window's sections scroll between its title and its credit.
+- **Type.** Cinzel (600) for the window titles and section headings, at
+  13 px and up, in antique gold `#D0BF94` for the titles and the main
+  sections' headings only; group labels in Cinzel, muted. Everything else
+  in Alegreya Sans, at least 12 px; caption-sized labels (status words,
+  outcome words, tags) in Alegreya Sans bold, never small caps. The grabbed
+  text and the hotkey keep the system monospace; in Exile the grabbed text
+  wraps and grows with its pane rather than scrolling in its own block.
+- **Controls.** The kit's treatments on the existing controls: slate
+  buttons with a steel edge and a fine top highlight, steel grey `#424D54`
+  when primary or pressed and `#536169` when hovered (never gold or cyan
+  fills); sunken slate fields and selects with the kit's chevron; the kit's
+  square checkbox and pill switch; the kit's keycap; 8 px slate scrollbars;
+  a 2 px ivory `#E6E5DE` focus ring drawn inside the control. A wanted
+  result (a hit, a target met, done) reads ivory.
+- **Overlay.** The main window's kit frame, as the Quest Tracker's overlay
+  is framed (the owner's choice, 2026-11-02, over the compact frame he had
+  been asked for): while a step shows, the frame and the 0.92 ground with
+  the masonry well behind it fill the whole 480 × 168 window, flush with
+  its edge. The rows sit inside the frame's reading inset (14 px top, 20 px
+  sides, 21 px bottom), anchored to the top or the bottom as the position
+  says, 18 px apart with 3 px between groups, so the seven rows of an
+  active guide fit at text 100 %; the first and last rows keep a further
+  10 px from each side, between the corner knots. When the rows outgrow the
+  inset (large text), they scroll as a whole (`.panel[data-scroll='whole']`)
+  in the well inset (16 px top, 24 px sides, 33 px bottom), clear of the
+  knots, with no scrollbar (the window is click-through). The window's
+  size, place and click-through are unchanged.
+- **Requested art, delivered.** Five elements have no kit art: the trade
+  panel's radio buttons, a compact overlay frame, the grabbed item's card,
+  the route's step number plate and the update mark.
+  [`design/ASSET-REQUESTS.md`](design/ASSET-REQUESTS.md) asked the owner for
+  them, and the owner delivered all eight files (2026-11-02), stored as
+  delivered in `theme/materials/requested/`. Exile draws them in place of
+  the marked kit-palette placeholders (`data-art-placeholder="<id>"`), which
+  stay as the fallback for a missing file: the radios from four 16 px SVGs
+  (off, on, focus, disabled; under keyboard focus the focus ring, clear in
+  the centre, is layered over the off or on base, so the selection stays
+  visible, which `scripts/radio-focus.mjs` checks), the grabbed item's
+  card in the card frame (32 source px to 16 px), the step number on the
+  steel plate, and the update mark as a round ivory jewel. The compact
+  overlay frame (`frame-overlay-compact.png`) stays delivered but is not
+  drawn, superseded by the kit frame (above). `src/requested-art.ts` finds
+  each file and marks the page (`theme/materials/requested/manifest.json`),
+  with no code per file.
+- **Checks.** `npm run corner-safety` (`scripts/corner-safety.mjs`, adapted
+  from the Quest Tracker's) renders every window's preview in headless Edge
+  at device scales 0.75, 1, 1.33 and 2 and at text 200 %, every scroll
+  position, and fails on content over frame art, sideways overflow, a box
+  never fully visible, a focus ring cut or over art, a frame not flush, text
+  under 12 px, Cinzel under 13 px, faux small caps, a weight under 400, wide
+  tracking or contrast under 4.5:1. `--legacy-base <ref>` compares Claude
+  with a git ref pixel for pixel. The review:
+  [`design/review-steel-masonry.md`](design/review-steel-masonry.md).
+
+### Claude
+
+Today's look, pixel for pixel. A byte-identical copy of the quest tracker's `theme/tokens.css` and
 `theme/fonts/` (Alegreya Sans, Alegreya Sans SC; SIL Open Font Licence), so
 the three apps read as one family. The test `theme_tokens_match_quest_tracker`
 (`src/theme.test.ts`) holds the copy to the original. The pages use the
@@ -94,7 +195,9 @@ Monospace (the grabbed text, the hotkey): the system's
 `ui-monospace, "Cascadia Mono", Consolas, monospace`; no font is added.
 Spacing on the 4 px grid (`--space-unit`). Odds, tiers, try counts and the
 trade panel's weights use tabular figures (`font-variant-numeric: tabular-nums`) so a column of them
-lines up.
+lines up. The Claude look draws no frame and no masonry; every Exile rule is
+scoped away from it, and `npm run corner-safety -- --legacy-base <ref>`
+compares it with the base tag pixel for pixel.
 
 ## Windows
 
@@ -181,7 +284,9 @@ muted text is kept to labels and the source words. Square
 corners, `--space-panel-pad` (8 px) above and below and `--space-row-pad`
 (12 px) at the sides, so no line starts at the panel's edge over a busy
 scene (the audit's finding 1), no shadow (the window has none to draw it
-in).
+in). That is the Claude theme's panel; under Exile the ground and the kit's
+window frame fill the whole window instead, and the rows keep the frame's
+reading inset (§ "Theme", Overlay).
 
 **The rows**, top to bottom, at most seven, each one line high and cut
 with an ellipsis at its end when too long (the page never wraps a row, so
@@ -987,6 +1092,10 @@ the divider before it; a later setting is a new entry there.
 From the top:
 
 - **Settings** (the window's `h1`, small caps).
+- **Appearance**: one native select labelled "Theme", "Exile" or "Claude",
+  sending `update_settings { theme }` with `exile` or `claude` (§ "Theme");
+  the view's value is selected (`exile` by default). The section carries
+  `data-theme-setting`, which the legacy pixel comparison removes.
 - **Grab**: the current hotkey in a `kbd`, the help line "Press Ctrl+Alt+C
   in the game to copy an item, then this hotkey to grab it. It cannot be
   Ctrl+Alt+C, the game's own copy.", a text field ("e.g. Ctrl+Alt+G") with

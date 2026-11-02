@@ -5,6 +5,15 @@
   // catalogue the currency picker lists is read once, at the start. While
   // the view's trade part is open, the trade panel takes the craft area's
   // place; the craft goes on underneath, untouched.
+  //
+  // The view's theme marks the document (`theme.ts`); Exile also draws the
+  // steel/masonry kit's frame over the window and the kit's masonry in the
+  // well behind the content (`steel.css`), and Claude draws neither. Under
+  // Exile the header, the craft area and the status line sit in one box
+  // inside the frame (`.app-body`); when the text is so large that the
+  // panes would keep under `MIN_PANE` px, that box scrolls as a whole
+  // instead (`data-scroll="whole"`), inside the frame's clear interior.
+  // Claude renders today's markup, with no such box.
   import { onDestroy, onMount, tick } from 'svelte';
   import type { Bridge, Command, CommandArgs } from './bridge';
   import type { CatalogueGroup, View } from './ipc';
@@ -12,6 +21,9 @@
   import CraftArea from './craft/CraftArea.svelte';
   import StatusLine from './components/StatusLine.svelte';
   import TradePanel from './trade/TradePanel.svelte';
+  import MaterialFrame from './components/MaterialFrame.svelte';
+  import masonry from '../theme/materials/raster/masonry-charcoal.png';
+  import { applyTheme } from './theme';
 
   let { bridge }: { bridge: Bridge } = $props();
 
@@ -21,9 +33,40 @@
   let catalogue = $state<CatalogueGroup[]>([]);
   let stop: (() => void) | null = null;
   let page = $state<HTMLElement | null>(null);
+  let body = $state<HTMLElement | null>(null);
+  let whole = $state(false);
   let findButton = $state<HTMLButtonElement | null>(null);
 
   const tradeOpen = $derived(view?.trade.selection.open ?? false);
+  const exile = $derived(view?.theme !== 'claude');
+
+  $effect(() => {
+    applyTheme(document.documentElement, view?.theme);
+  });
+
+  /** Under this many px left for the panes, Exile scrolls the window's whole content. */
+  const MIN_PANE = 160;
+
+  // The fixed parts' heights (the header, the status line, the trade
+  // panel's head and the bars) do not depend on the mode, so the choice
+  // never flips back and forth.
+  $effect(() => {
+    const el = body;
+    void view;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const fixedParts = () => [
+      ...el.querySelectorAll<HTMLElement>(':scope > .top, :scope > .status, :scope > .craft > .bar, :scope > .trade > .head, :scope > .trade > .bar'),
+    ];
+    const measure = () => {
+      const fixed = fixedParts().reduce((sum, part) => sum + part.offsetHeight, 0);
+      whole = el.clientHeight - fixed < MIN_PANE;
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    for (const part of fixedParts()) observer.observe(part);
+    measure();
+    return () => observer.disconnect();
+  });
   let shownOpen: boolean | null = null;
 
   // Opening the panel moves focus to its heading; closing it, either way,
@@ -98,46 +141,61 @@
 
 <svelte:window onpaste={onPaste} />
 
+{#snippet appContents(view: View)}
+  <header class="top">
+    <h1 class="caps">Crafting Helper</h1>
+    <!-- Opens a panel in this window, not the browser: no outward mark. -->
+    <button
+      type="button"
+      class="btn find"
+      aria-pressed={tradeOpen ? 'true' : 'false'}
+      bind:this={findButton}
+      onclick={toggleTrade}>Find a base on trade</button
+    >
+    <!-- Sends the command alone: the app holds the one address it opens
+         in the default browser, and this page holds none. -->
+    <button type="button" class="btn coe" aria-describedby="{uid}-coe" onclick={() => send('open_craft_of_exile', {})}>
+      <span>Explore more crafting on Craft of Exile</span>
+      <svg class="out" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+        <path d="M4.5 2.5h5v5M9.5 2.5 3 9" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+    </button>
+    <span class="visually-hidden" id="{uid}-coe">Opens Craft of Exile in your web browser</span>
+    <!-- Opens the Settings window; names a newer version a check found, in words. -->
+    <button
+      type="button"
+      class="btn settings"
+      aria-label={view.update_available ? `Settings, update ${view.update_available} available` : undefined}
+      onclick={() => send('open_settings', {})}
+    >
+      <span>Settings</span>
+      {#if view.update_available}
+        <span class="update-mark"><span class="dot" aria-hidden="true" data-art-placeholder="ch-update-dot"></span>Update {view.update_available}</span>
+      {/if}
+    </button>
+  </header>
+  {#if tradeOpen}
+    <TradePanel trade={view.trade} {send} />
+  {:else}
+    <CraftArea {view} {catalogue} {send} />
+  {/if}
+  <StatusLine status={view.status} />
+{/snippet}
+
 {#if view}
-  <div class="app" data-state={view.grab ? 'grabbed' : 'empty'} data-mode={view.craft.mode} bind:this={page}>
-    <header class="top">
-      <h1 class="caps">Crafting Helper</h1>
-      <!-- Opens a panel in this window, not the browser: no outward mark. -->
-      <button
-        type="button"
-        class="btn find"
-        aria-pressed={tradeOpen ? 'true' : 'false'}
-        bind:this={findButton}
-        onclick={toggleTrade}>Find a base on trade</button
-      >
-      <!-- Sends the command alone: the app holds the one address it opens
-           in the default browser, and this page holds none. -->
-      <button type="button" class="btn coe" aria-describedby="{uid}-coe" onclick={() => send('open_craft_of_exile', {})}>
-        <span>Explore more crafting on Craft of Exile</span>
-        <svg class="out" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-          <path d="M4.5 2.5h5v5M9.5 2.5 3 9" fill="none" stroke="currentColor" stroke-width="1.5" />
-        </svg>
-      </button>
-      <span class="visually-hidden" id="{uid}-coe">Opens Craft of Exile in your web browser</span>
-      <!-- Opens the Settings window; names a newer version a check found, in words. -->
-      <button
-        type="button"
-        class="btn settings"
-        aria-label={view.update_available ? `Settings, update ${view.update_available} available` : undefined}
-        onclick={() => send('open_settings', {})}
-      >
-        <span>Settings</span>
-        {#if view.update_available}
-          <span class="update-mark"><span class="dot" aria-hidden="true"></span>Update {view.update_available}</span>
-        {/if}
-      </button>
-    </header>
-    {#if tradeOpen}
-      <TradePanel trade={view.trade} {send} />
+  <div
+    class="app"
+    data-state={view.grab ? 'grabbed' : 'empty'}
+    data-mode={view.craft.mode}
+    style:--well-image={exile ? `url("${masonry}")` : null}
+    bind:this={page}
+  >
+    {#if exile}
+      <MaterialFrame />
+      <div class="app-body" data-scroll={whole ? 'whole' : 'panes'} bind:this={body}>{@render appContents(view)}</div>
     {:else}
-      <CraftArea {view} {catalogue} {send} />
+      {@render appContents(view)}
     {/if}
-    <StatusLine status={view.status} />
   </div>
 {:else}
   <div class="app loading" aria-busy="true"></div>

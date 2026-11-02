@@ -172,5 +172,6 @@
   "hotkey": "Ctrl+Alt+W",
   "auto_paste": true,
   "status": null,
-  "update_available": "0.2.0"
+  "update_available": "0.2.0",
+  "theme": "exile"
 }

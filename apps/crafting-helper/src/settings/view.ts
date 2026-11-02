@@ -1,7 +1,7 @@
 // The Settings window's view, mirrored from `ch-app`'s `SettingsView`
 // (`crates/ch-app/src/view.rs`): `ep-update`'s `AppSettingsView`
 // (`apps/shared/crates/ep-update/src/view.rs`) flattened in, then the
-// hotkey, what the last hotkey change said, the blocked currencies, the
+// theme, the hotkey, what the last hotkey change said, the blocked currencies, the
 // overlay's position, the screen watch, and the trade search's league with
 // the leagues offered for it.
 // Field names are snake_case exactly as serde writes them in
@@ -21,12 +21,14 @@ import {
   OVERLAY_POSITIONS,
   type OverlayPosition,
   type StatusLine,
+  type Theme,
   list,
   nullable,
   oneOf,
   record,
   statusLine,
   str,
+  theme,
 } from '../ipc';
 
 export const UPDATE_STATES = ['idle', 'checking', 'up-to-date', 'available', 'no-release', 'failed'] as const;
@@ -78,6 +80,8 @@ export interface AppSettingsView {
 
 /** What the Settings window renders: `ep-update`'s fields, then the app's own. */
 export interface SettingsView extends AppSettingsView {
+  /** The look every window draws, the Theme select's value; a view without one is Exile. */
+  theme?: Theme;
   /** The global hotkey registered now, e.g. `Ctrl+Alt+X`. */
   hotkey: string;
   /** What the last hotkey change, or the start, said about the hotkey; null when nothing. */
@@ -120,6 +124,7 @@ const settings = record<SettingsView>({
   check_updates: bool,
   update,
   install,
+  theme,
   hotkey: str,
   hotkey_status: nullable(statusLine),
   blocked_currencies: list(str),

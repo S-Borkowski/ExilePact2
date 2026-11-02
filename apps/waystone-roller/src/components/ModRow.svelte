@@ -17,6 +17,9 @@
     { value: 'avoid', text: 'Avoid', name: 'Avoid' },
   ];
   const MARKS: Record<Choice, string> = { want: '+', none: '', avoid: '−' };
+  // The Exile placeholder each mark stands in for until its requested art
+  // arrives (`theme/materials/requested/manifest.json`); Claude draws the glyph.
+  const ART: Record<Choice, string | undefined> = { want: 'wr-mark-want', none: undefined, avoid: 'wr-mark-avoid' };
 
   function pick(to: Choice, event: Event & { currentTarget: HTMLInputElement }): void {
     restoreGroup(event.currentTarget, current);
@@ -25,7 +28,7 @@
 </script>
 
 <li class="mod" data-mod-id={mod.id} data-choice={current} data-unmatchable={unmatchable}>
-  <span class="choice-mark" aria-hidden="true">{MARKS[current]}</span>
+  <span class="choice-mark" aria-hidden="true" data-art-placeholder={ART[current]}>{MARKS[current]}</span>
   <div class="text">
     <span class="label">{mod.label}</span>
     {#each mod.lines.slice(1) as line, i (i)}

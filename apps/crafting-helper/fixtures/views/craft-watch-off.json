@@ -102,6 +102,7 @@
     "kind": "info",
     "text": "Craft started."
   },
+  "theme": "exile",
   "trade": {
     "bases": [],
     "can_pick": true,

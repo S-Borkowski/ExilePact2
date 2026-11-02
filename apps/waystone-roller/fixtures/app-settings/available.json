@@ -5,6 +5,7 @@
     "state": "ready",
     "text": "Install 1.3.0 and restart"
   },
+  "theme": "exile",
   "update": {
     "newer": "1.3.0",
     "state": "available",

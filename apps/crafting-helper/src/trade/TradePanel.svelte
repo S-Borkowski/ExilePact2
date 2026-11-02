@@ -178,14 +178,14 @@
       <fieldset class="group match" aria-describedby={trade.count_line ? `${uid}-count` : undefined}>
         <legend class="section-title caps">Match</legend>
         <label class="choice">
-          <input type="radio" name="{uid}-match" value="both" checked={sel.both_slots} onchange={(e) => setBothSlots(e, true)} />
+          <input type="radio" data-art-placeholder="ch-radio" name="{uid}-match" value="both" checked={sel.both_slots} onchange={(e) => setBothSlots(e, true)} />
           <span class="choice-text">
             <span class="choice-name">Both slots</span>
             <span class="hint">A prefix and a suffix from your picks.</span>
           </span>
         </label>
         <label class="choice">
-          <input type="radio" name="{uid}-match" value="one" checked={!sel.both_slots} onchange={(e) => setBothSlots(e, false)} />
+          <input type="radio" data-art-placeholder="ch-radio" name="{uid}-match" value="one" checked={!sel.both_slots} onchange={(e) => setBothSlots(e, false)} />
           <span class="choice-text">
             <span class="choice-name">At least one</span>
             <span class="hint">Any one of your picks.</span>

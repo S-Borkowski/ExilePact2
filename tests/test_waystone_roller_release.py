@@ -16,8 +16,17 @@ version and is not read. `Workflow` reads
 `.github/workflows/waystone-roller-release.yml` as text (no YAML parser is
 installed) and checks the properties the release path relies on, signing
 included, with a mutated copy of the file as each check's negative control.
+`CollectStep` runs the workflow's "Collect the assets" lines with bash on a
+fake build, `Waystone Roller.exe` since the rename, and checks that the
+release still gets `waystone-roller.exe`; its negative control is the copy
+line from before the rename. `TauriConf` pins the build's name and the
+identifier that must not follow it.
 """
+import hashlib
 import json
+import os
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -303,6 +312,14 @@ class Cut(unittest.TestCase):
 
 SIGN_STEP = "Sign the exe"
 RELEASE_STEP = "Create or update the draft release"
+COLLECT_STEP = "Collect the assets"
+# The build is `Waystone Roller.exe` (tauri.conf.json's `mainBinaryName`);
+# the release asset stays `waystone-roller.exe`, the name every install asks
+# for and the one its signature names, so the Collect step copies it under that.
+COLLECT_EXE = 'cp "apps/waystone-roller/target/release/Waystone Roller.exe" dist-release/waystone-roller.exe'
+# What the Collect step copied before the rename, when the build had the
+# asset's name. Split, so a grep for the old build path finds no live use.
+COLLECT_EXE_BEFORE = "cp apps/waystone-roller/target/release/" + "waystone-roller.exe dist-release/"
 
 
 def workflow_steps(text: str) -> list[tuple[str, list[str]]]:
@@ -354,7 +371,7 @@ def workflow_problems(text: str) -> list[str]:
         "windows runner": "runs-on: windows-latest" in lines,
         "checks the tag": 'python -m tools.waystone_roller.release check "$version"' in lines,
         "builds the app": "npm --prefix apps/waystone-roller run release" in lines,
-        "takes the exe": any("apps/waystone-roller/target/release/waystone-roller.exe" in line for line in lines),
+        "takes the exe": COLLECT_EXE in lines,
         "hashes it": any(line.startswith("(cd dist-release && sha256sum waystone-roller.exe > SHA256SUMS.txt")
                          for line in lines),
         "notes from the guide": any(line.startswith("python -m tools.waystone_roller.release notes")
@@ -415,6 +432,94 @@ class Workflow(unittest.TestCase):
         end = self.text.index("      - name: " + RELEASE_STEP)
         moved = self.text[:start] + self.text[end:] + "\n" + self.text[start:end]
         self.assertIn("signs before the release", workflow_problems(moved))
+
+
+class TauriConf(unittest.TestCase):
+    def test_tauri_conf_names_the_build_waystone_roller(self):
+        # `mainBinaryName` names the built exe, `Waystone Roller.exe`. The
+        # identifier keys the WebView2 data folder and the single instance,
+        # so it must not follow the product name.
+        conf = json.loads((ROOT / "apps" / "waystone-roller" / "src-tauri" / "tauri.conf.json")
+                          .read_text(encoding="utf-8"))
+        main = [w for w in conf["app"]["windows"] if w["label"] == "main"]
+        self.assertEqual(len(main), 1)
+        self.assertEqual(
+            (conf["productName"], conf["mainBinaryName"], conf["identifier"], main[0]["title"]),
+            ("Waystone Roller", "Waystone Roller", "net.exilepact2.waystone-roller", "Waystone Roller"))
+
+
+def find_bash() -> str:
+    """Git for Windows' bash on Windows (never WSL's System32 one), else `bash` on PATH."""
+    if os.name != "nt":
+        found = shutil.which("bash")
+        if not found:
+            raise AssertionError("no bash on PATH: the Collect-step dry run needs one")
+        return found
+    roots = []
+    exec_path = subprocess.run(["git", "--exec-path"], capture_output=True, text=True).stdout.strip()
+    if exec_path:
+        roots += list(Path(exec_path).parents)
+    git_exe = shutil.which("git")
+    if git_exe:
+        roots += list(Path(git_exe).resolve().parents)
+    for root in roots:
+        for candidate in (root / "bin" / "bash.exe", root / "usr" / "bin" / "bash.exe"):
+            if candidate.is_file() and "system32" not in str(candidate).lower():
+                return str(candidate)
+    raise AssertionError("no Git for Windows bash found from `git --exec-path` or the git on PATH: "
+                         "the Collect-step dry run needs one")
+
+
+def collect_script(text: str) -> list[str]:
+    """The Collect step's run lines, without the release-notes line (`Notes` covers it)."""
+    body = next((body for name, body in workflow_steps(text) if name == COLLECT_STEP), [])
+    run = body[body.index("run: |") + 1:] if "run: |" in body else []
+    return [line for line in run if not line.startswith("python -m tools.waystone_roller.release notes")]
+
+
+class CollectStep(unittest.TestCase):
+    """The Collect step run with bash on a fake build output.
+
+    The `.minisig` cannot be made here (it needs the release key);
+    `signing_problems` pins that the sign step signs
+    `dist-release/waystone-roller.exe`.
+    """
+    EXE = b"the built Waystone Roller.exe of the test"
+
+    def run_collect(self, lines: list[str], root: Path) -> subprocess.CompletedProcess:
+        release_dir = root / "apps" / "waystone-roller" / "target" / "release"
+        release_dir.mkdir(parents=True)
+        (release_dir / "Waystone Roller.exe").write_bytes(self.EXE)
+        script = "\n".join(lines) + "\n"
+        if os.name == "nt":
+            script = 'export PATH="/usr/bin:$PATH"\n' + script
+        # The flags GitHub Actions runs a `shell: bash` step with.
+        return subprocess.run([find_bash(), "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
+                              cwd=root, capture_output=True, text=True)
+
+    def test_collect_step_dry_run(self):
+        lines = collect_script(WORKFLOW.read_text(encoding="utf-8"))
+        self.assertIn(COLLECT_EXE, lines)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            done = self.run_collect(lines, root)
+            self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+            dist = root / "dist-release"
+            self.assertEqual(sorted(p.name for p in dist.iterdir()), ["SHA256SUMS.txt", "waystone-roller.exe"])
+            self.assertEqual((dist / "waystone-roller.exe").read_bytes(), self.EXE)
+            sums = [re.fullmatch(r"([0-9a-f]{64}) [ *](.+)", line)
+                    for line in (dist / "SHA256SUMS.txt").read_text(encoding="utf-8").splitlines()]
+            self.assertTrue(all(sums), (dist / "SHA256SUMS.txt").read_text(encoding="utf-8"))
+            self.assertEqual([(m.group(1), m.group(2)) for m in sums],
+                             [(hashlib.sha256(self.EXE).hexdigest(), "waystone-roller.exe")])
+        # Negative control: the copy from before the rename finds no
+        # `waystone-roller.exe` in a build that is `Waystone Roller.exe`.
+        before = [COLLECT_EXE_BEFORE if line == COLLECT_EXE else line for line in lines]
+        self.assertNotEqual(before, lines)
+        with tempfile.TemporaryDirectory() as d:
+            done = self.run_collect(before, Path(d))
+            self.assertNotEqual(done.returncode, 0, done.stdout + done.stderr)
+            self.assertFalse((Path(d) / "dist-release" / "SHA256SUMS.txt").exists())
 
 
 if __name__ == "__main__":
