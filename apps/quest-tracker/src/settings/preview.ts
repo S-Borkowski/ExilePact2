@@ -7,8 +7,9 @@
 //
 // `state` is an update state (default `idle`); `install` is an install state
 // and shows its `install/` fixture instead, whatever `state` says; `scale`
-// zooms the page as the webview zoom would (`1`|`1.33`|`2`). Commands are
-// logged, not acted on: the preview shows a view, it does not run the app.
+// zooms the page as the webview zoom would (`0.75`|`1`|`1.33`|`2`, the
+// overlay preview's `PREVIEW_SCALES`; any other value is ignored). Commands
+// are logged, not acted on: the preview shows a view, it does not run the app.
 //
 // The fixtures are reached only behind `import.meta.env.DEV`, which is false
 // in `vite build`, so the release bundle carries none of them.
@@ -68,7 +69,10 @@ export function previewSettingsBridge(search: string, root: HTMLElement = docume
         root.dataset.previewScale = query.scale;
         root.style.setProperty('--preview-scale', query.scale);
       }
-      onView(await settingsPreviewFixture(query.install ? `install/${query.install}` : query.state));
+      const view = await settingsPreviewFixture(query.install ? `install/${query.install}` : query.state);
+      const theme = new URLSearchParams(search).get('theme');
+      if (theme === 'exile' || theme === 'claude') view.theme = theme;
+      onView(view);
       return () => {};
     },
     async command<C extends SettingsCommand>(name: C, args: SettingsCommandArgs[C]) {

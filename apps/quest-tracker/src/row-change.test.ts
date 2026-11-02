@@ -211,7 +211,7 @@ describe('the row transition', () => {
 
     // Play mode: "New character" as the name, level 1.
     let { root } = await render(provisional('play', ''));
-    expect(root.querySelector('h1')?.textContent?.trim()).toBe(NEW_CHARACTER);
+    expect(root.querySelector('.header .name')?.textContent?.trim()).toBe(NEW_CHARACTER);
     expect(NEW_CHARACTER).toBe('New character');
     expect(root.querySelector('.meta')?.textContent?.trim()).toBe('Level 1');
     // Its Act 1 rows show at once.
@@ -238,7 +238,7 @@ describe('the row transition', () => {
 
     // Negative control: a named character shows its name, never the label.
     ({ root } = await render(fixtureView('panel-campaign', 'play')));
-    expect(root.querySelector('h1')?.textContent?.trim()).toBe('Corisande_Fell');
+    expect(root.querySelector('.header .name')?.textContent?.trim()).toBe('Corisande_Fell');
     expect(root.textContent).not.toContain(NEW_CHARACTER);
   });
 });

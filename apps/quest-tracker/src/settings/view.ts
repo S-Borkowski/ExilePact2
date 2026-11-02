@@ -1,6 +1,6 @@
 // The Settings window's view, mirrored from the `AppSettingsView` the quest
-// tracker sends (`ep-update`'s, `apps/shared/crates/ep-update/src/view.rs`,
-// re-exported by `crates/qt-app/src/updates.rs`), field names snake_case
+// tracker sends (`crates/qt-app/src/updates.rs` adds its local theme to
+// the shared updater snapshot), field names snake_case
 // exactly as serde writes them in `qt:app-settings` and the answer to
 // `get_app_settings`. The window renders these values; whether a check runs,
 // what it found, which version is newer and where an install stands are the
@@ -10,6 +10,8 @@
 // window's tests can hold every fixture under `fixtures/app-settings/`
 // against it: a field the Rust side adds, drops or renames, or a state it
 // invents, fails them. It follows `../ipc.ts`'s checker for `View`.
+
+import { THEMES, type Theme } from '../ipc';
 
 export const UPDATE_STATES = ['idle', 'checking', 'up-to-date', 'available', 'no-release', 'failed'] as const;
 export type UpdateState = (typeof UPDATE_STATES)[number];
@@ -50,6 +52,7 @@ export interface InstallView {
 
 /** What the Settings window renders. */
 export interface AppSettingsView {
+  theme: Theme;
   /** The running build's version. */
   version: string;
   /** "Automatically check for updates" (off by default). */
@@ -106,7 +109,7 @@ function record<T>(spec: Spec<T>): Check {
 const update = record<UpdateView>({ state: oneOf(UPDATE_STATES), text: str, newer: nullable(str) });
 const progress = record<InstallProgress>({ bytes: count, total: nullable(count) });
 const install = record<InstallView>({ state: oneOf(INSTALL_STATES), text: str, progress: nullable(progress) });
-const appSettings = record<AppSettingsView>({ version: str, check_updates: bool, update, install });
+const appSettings = record<AppSettingsView>({ version: str, check_updates: bool, update, install, theme: oneOf(THEMES) });
 
 /** Every way `value` differs from an `AppSettingsView`; empty when it is one. */
 export function appSettingsProblems(value: unknown): string[] {

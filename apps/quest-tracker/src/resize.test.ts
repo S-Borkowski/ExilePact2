@@ -230,7 +230,9 @@ describe('resizing the window by its edges', () => {
   it('panel_fills_the_window', async () => {
     // The overlay is the window's height (in the preview, divided by the CSS
     // zoom that stands in for the webview's), its 12 px margin inside it,
-    // divided by the page's zoom so that it stays 12 window pixels.
+    // divided by the page's zoom so that it stays 12 window pixels. This is
+    // the base rule, Claude's; Exile drops the margin in approved.css so its
+    // frame is flush with the window (steel-kit.test.ts pins that rule).
     const overlay = rule(appSource, '.overlay');
     expect(overlay).toMatch(/height:\s*calc\(100vh \/ var\(--preview-scale, 1\)\)/);
     expect(overlay).toMatch(/box-sizing:\s*border-box/);
@@ -257,7 +259,9 @@ describe('resizing the window by its edges', () => {
     // back to play.
     const { root } = await render(fixtureView('panel-campaign', 'edit'));
     const panelEl = root.querySelector('.panel')!;
-    const kids = [...panelEl.children].map((c) => c.className.split(' ')[0]);
+    // Decorative Exile relief/plaque has no reading or control-order role.
+    const content = panelEl.querySelector('.panel-content') ?? panelEl;
+    const kids = [...content.children].filter((c) => c.getAttribute('aria-hidden') !== 'true').map((c) => c.className.split(' ')[0]);
     expect(kids[0]).toBe('header');
     expect(kids.at(-1)).toBe('back-to-play');
     expect(panelEl.querySelector('.body section.act')).not.toBeNull();

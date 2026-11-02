@@ -14,6 +14,10 @@ This document is the direction the components follow. The critique of it is
 in [design/review-direction.md](design/review-direction.md), the audit of the
 built page in [design/review-ui.md](design/review-ui.md).
 
+The [proposed shared UI design system](../ui-design-system.md) explores a
+future visual direction. This document's app-specific behavior and export
+contracts remain authoritative; the proposal is not a shipped restyle.
+
 ## Principles
 
 - **Rust decides, the UI renders.** The shell sends one `View` (event

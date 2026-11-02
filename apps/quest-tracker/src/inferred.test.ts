@@ -7,7 +7,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Mode, View } from './ipc';
-import { INFERRED_LABEL } from './labels';
+import { INFERRED_LABEL, STATUS_LABEL } from './labels';
 import { CONTROL_SELECTOR, type Rendered, fakeBridge, fixtureView, renderApp } from './test-support';
 
 let rendered: Rendered | null = null;
@@ -72,7 +72,8 @@ describe('the "probably done" mark', () => {
       const row = el(campaign.root, '.row[data-quest="test-inferred"]');
       expect(marks(row), `inferred row, ${mode}`).toHaveLength(1);
       const status = el(row, '.status-mark');
-      expect(status.querySelector('[data-icon]')?.getAttribute('data-icon'), 'the status mark stays done').toBe('status-done');
+      expect(status.getAttribute('data-status'), 'the status mark stays done').toBe('done');
+      expect(status.getAttribute('aria-label')).toBe(STATUS_LABEL.done);
       expect(status.compareDocumentPosition(marks(row)[0]) & Node.DOCUMENT_POSITION_FOLLOWING, 'after the status mark').toBeTruthy();
       expect(marks(row)[0].compareDocumentPosition(el(row, '.name')) & Node.DOCUMENT_POSITION_FOLLOWING, 'before the name').toBeTruthy();
       // Negative control: a row done by its own signal has no mark.

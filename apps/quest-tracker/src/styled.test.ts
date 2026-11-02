@@ -6,6 +6,7 @@ import defaults from './defaults.css?raw';
 import Icon from './components/Icon.svelte';
 import { contractList, cssName, rootProperties } from './contract';
 import { THEME, applyDerivedTokens, dropShadowFilter, iconGlyph, iconSvg } from './theme';
+import EXILE from '../theme/exile.json';
 import { readText } from './test-support';
 
 // The styled layer's sources, as text. Svelte and TypeScript `?raw` imports
@@ -20,7 +21,7 @@ const FONT_FILES = Object.keys(import.meta.glob('../theme/fonts/*', { query: '?u
 
 /** The CSS the app ships besides the components: the plain defaults and the styled layer's shared rules. */
 async function appCss(): Promise<Record<string, string>> {
-  return { './defaults.css': defaults, './styled.css': await readText('./styled.css') };
+  return { './defaults.css': defaults, './styled.css': await readText('./styled.css'), './approved.css': await readText('./approved.css'), '../theme/exile.css': await readText('../theme/exile.css') };
 }
 
 /** Every custom property a text reads through `var(--name)` with no fallback of its own. */
@@ -90,7 +91,7 @@ describe('the styled layer', () => {
     const sources = { ...SVELTE, ...TS, ...(await appCss()) };
     const local = new Set<string>();
     for (const [path, text] of Object.entries(sources)) if (path !== './defaults.css') for (const n of varsSet(text)) local.add(n);
-    const allowed = new Set([...Object.keys(theme).map(cssName), ...optional.map(cssName), '--drop-panel']);
+    const allowed = new Set([...Object.keys(theme).map(cssName), ...Object.keys(EXILE).map(cssName), ...optional.map(cssName), '--drop-panel']);
     const invented: string[] = [];
     for (const [path, text] of Object.entries(sources)) {
       if (path === './defaults.css') continue;

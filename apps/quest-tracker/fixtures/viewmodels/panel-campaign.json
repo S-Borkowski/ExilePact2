@@ -226,7 +226,8 @@
     "opacity": 0.9,
     "scale": "auto",
     "screen_reading": false,
-    "show_skipped": true
+    "show_skipped": true,
+    "theme": "exile"
   },
   "status": null,
   "view_kind": "campaign"

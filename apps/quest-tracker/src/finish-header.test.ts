@@ -23,6 +23,7 @@ async function render(view: View): Promise<HTMLElement> {
 /** A panel view with an invented character, in `mode`. */
 function panelView(mode: Mode): View {
   const view = fixtureView('panel-campaign', mode);
+  view.settings.theme = 'claude';
   if (!view.character) throw new Error('panel-campaign has no character');
   view.character = { ...view.character, name: 'Header_Probe' };
   view.status = null;
@@ -32,6 +33,7 @@ function panelView(mode: Mode): View {
 /** An empty frame's view with `status` set, in `mode`. */
 function emptyView(frame: Frame, status: StatusLine | null, mode: Mode = 'play'): View {
   const view = fixtureView(frame, mode);
+  view.settings.theme = 'claude';
   view.frame = frame;
   view.status = status;
   return view;

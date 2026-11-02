@@ -643,6 +643,29 @@ fn assert_no_request_unless_asked(h: &Harness, readable_log: bool) {
     assert!(h.app.shutdown(SHUTDOWN_TIMEOUT));
 }
 
+#[test]
+fn theme_patch_updates_both_views_without_starting_updater_work() {
+    let h = harness(Setup::default());
+    h.app.start();
+    let before = h.app.get_app_settings();
+    let overlay = h.app.update_settings(&json!({"theme":"claude"})).unwrap();
+    let ordinary = h.app.get_app_settings();
+    assert_eq!(serde_json::to_value(overlay.settings).unwrap()["theme"], json!("claude"));
+    assert_eq!(serde_json::to_value(&ordinary).unwrap()["theme"], json!("claude"));
+    assert_eq!(ordinary.update, before.update);
+    assert_eq!(ordinary.install, before.install);
+    assert_eq!(ordinary.check_updates, before.check_updates);
+    assert_eq!(h.emitted().last(), Some(&ordinary));
+    let count = h.emitted().len();
+    assert!(h.app.update_settings(&json!({"theme":null})).is_err());
+    assert_eq!(h.emitted().len(), count);
+    assert_eq!(h.app.get_app_settings(), ordinary);
+    h.ticks(0, 48 * HOUR);
+    assert_eq!(h.calls(), 0);
+    assert!(h.downloads().is_empty());
+    assert!(h.update_lines().is_empty());
+}
+
 // ---------------------------------------------------------------------------
 // Baseline.
 

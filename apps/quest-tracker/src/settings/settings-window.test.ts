@@ -76,6 +76,24 @@ function fakeBridge(initial: AppSettingsView): FakeSettingsBridge {
 
 let destroyers: Array<() => void> = [];
 
+it('theme preference sends one patch and follows received views in both directions', async () => {
+  const view = fixture('idle');
+  const bridge = fakeBridge(view);
+  const root = await render(bridge);
+  const select = root.querySelector('.theme-row select') as HTMLSelectElement;
+  expect([...select.options].map((o) => o.text)).toEqual(['Exile', 'Claude']);
+  select.value = 'claude';
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  expect(bridge.calls).toEqual([{ name: 'update_settings', args: { patch: { theme: 'claude' } } }]);
+  expect(root.querySelector('.window')?.getAttribute('data-theme')).toBe('exile');
+  bridge.push({ ...view, theme: 'claude' });
+  expect(root.querySelector('.window')?.getAttribute('data-theme')).toBe('claude');
+  expect(root.querySelector('.material-art')).toBeNull();
+  bridge.push(view);
+  expect(root.querySelector('.window')?.getAttribute('data-theme')).toBe('exile');
+  expect(root.querySelector('.material-art')).not.toBeNull();
+});
+
 /** Mounts the window on `bridge` and lets it take its first view. */
 async function render(bridge: SettingsBridge): Promise<HTMLElement> {
   const target = document.createElement('div');

@@ -24,6 +24,10 @@ for the craft window, [`design/review-overlay.md`](design/review-overlay.md)
 for the overlay, the screen watch's lines and the Settings window's
 Overlay section.
 
+The [proposed shared UI design system](../ui-design-system.md) explores a
+future visual direction. This document's app-specific behavior and export
+contracts remain authoritative; the proposal is not a shipped restyle.
+
 ## Principles
 
 - **Rust decides, the UI renders.** The shell sends one `View` (event

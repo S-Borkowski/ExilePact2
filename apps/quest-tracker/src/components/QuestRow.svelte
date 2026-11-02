@@ -37,7 +37,15 @@
   import StatusMark from './StatusMark.svelte';
   import WorthMark from './WorthMark.svelte';
 
-  let { row, edit, send }: { row: QuestRow; edit: boolean; send: Send } = $props();
+  // `divider: false` leaves out Exile's quest divider: Next up's sections do
+  // so under a section's last quest, right above the next section's heading.
+  let {
+    row,
+    edit,
+    send,
+    exile = false,
+    divider = true,
+  }: { row: QuestRow; edit: boolean; send: Send; exile?: boolean; divider?: boolean } = $props();
 
   // The column shows the short labels; the game's full text is the title.
   const rewardShort = $derived(rewardShortText(row.rewards));
@@ -98,7 +106,7 @@
 </script>
 
 {#snippet content()}
-  <StatusMark status={row.status} />
+  <StatusMark status={row.status} {exile} />
   <span class="title" class:entering={phase === 'in' && !row.current_step}>
     {#if row.inferred}<InferredMark />{/if}
     <span class="name">{row.name}</span>
@@ -138,6 +146,7 @@
     onclick={() => send('open_detail', { questId: row.id })}
   >
     {@render body()}
+    {#if exile && divider}<span class="quest-divider" aria-hidden="true"></span>{/if}
   </button>
 {:else}
   <div
@@ -153,6 +162,7 @@
     style:--row-highlight-out-ms={`${ROW_HIGHLIGHT_OUT_MS}ms`}
   >
     {@render body()}
+    {#if exile && divider}<span class="quest-divider" aria-hidden="true"></span>{/if}
   </div>
 {/if}
 

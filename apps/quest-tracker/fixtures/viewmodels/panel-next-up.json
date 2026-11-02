@@ -188,7 +188,8 @@
     "opacity": 0.9,
     "scale": "auto",
     "screen_reading": false,
-    "show_skipped": false
+    "show_skipped": false,
+    "theme": "exile"
   },
   "status": null,
   "view_kind": "next_up"

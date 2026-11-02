@@ -1,10 +1,16 @@
 <script lang="ts">
   // The expanded panel: header, the status line, the body the view's frame
-  // names, and in edit mode the way back to play mode. Cut corners (6 px), the
-  // background at the opacity setting while text and icons stay opaque, a
-  // 1 px border that edit mode turns into the 2 px accent. At opacity 0 the
-  // background is gone and the border and accent still draw: they are the
-  // ring (`.cut::after`), which the setting does not touch.
+  // names, and in edit mode the way back to play mode. Claude keeps its
+  // cut-corner ring and edit accent; Exile uses only its custom art frame
+  // (the steel/masonry kit's neutral steel nine-slice) over a masonry well.
+  // Background opacity never fades text, icons or the visible frame.
+  //
+  // Exile keeps every painted line off the frame's artwork (`approved.css`):
+  // the compact title bar and the footer sit between the corner knots in
+  // the frame's top and bottom bands, and only the body scrolls, its clip
+  // inside the rails. When the fixed chrome leaves the body too little room
+  // (a small window, a large scale, enlarged text), the whole content scrolls
+  // instead, in a well inset below and above the knots' reach.
   //
   // The panel fills the window inside its shadow margin, in both directions,
   // and its body scrolls: the player sizes the window, the scale only zooms
@@ -17,12 +23,14 @@
   // Play mode has none: the window is click-through there.
   import { RESIZE_DIRECTIONS, type ResizeDirection, type Send } from '../bridge';
   import type { QuestRow as Row, StatusKind, View, Worth } from '../ipc';
-  import { WORTH_LABEL } from '../labels';
+  import { WORTH_ICON, WORTH_LABEL } from '../labels';
   import ActSection from './ActSection.svelte';
   import CharacterPicker from './CharacterPicker.svelte';
   import EmptyState from './EmptyState.svelte';
   import Header from './Header.svelte';
   import Icon from './Icon.svelte';
+  import MaterialFrame from './MaterialFrame.svelte';
+  import masonry from '../../theme/materials/raster/masonry-charcoal.png';
   import QuestDetail from './QuestDetail.svelte';
   import QuestRow from './QuestRow.svelte';
   import Settings from './Settings.svelte';
@@ -35,16 +43,68 @@
   }: { view: View; send: Send; drag?: () => void; resize?: (direction: ResizeDirection) => void } = $props();
 
   const edit = $derived(view.mode === 'edit');
+  // Modes change input and controls; only the saved theme chooses the material.
+  const journal = $derived(view.settings.theme !== 'claude');
+  let panelElement = $state<HTMLDivElement>();
+  let wholeScroll = $state(false);
+  // What the fixed-chrome layout spends besides the chrome and the body (the
+  // content's insets): whole-content scrolling moves them into margins, and
+  // the test below must not depend on the layout it chooses, or it would flip
+  // back and forth. Measured as drawn, like every height here, so the units
+  // agree under the preview's CSS zoom as under the app's webview zoom.
+  let insets = 0;
+
+  // Text enlargement can make the fixed chrome taller than the window.
+  // Keep all content reachable in one scroll area in that case. This affects
+  // presentation only; native bounds and the received view never change.
+  // Exile also scrolls the whole content when the body would be shorter than
+  // its tallest row or control, which it could then never show at once.
+  $effect(() => {
+    view.frame; view.mode; view.status; view.settings.theme; view.next_up; view.acts; view.detail; view.characters;
+    if (!panelElement || typeof ResizeObserver === 'undefined') return;
+    const panel = panelElement.querySelector<HTMLDivElement>(':scope > .panel-content') ?? panelElement;
+    const measure = () => {
+      const drawn = (element: Element | null) => element?.getBoundingClientRect().height ?? 0;
+      const total = drawn(panelElement!);
+      // Drawn pixels per CSS pixel: the preview's CSS zoom; 1 under the webview zoom.
+      const ratio = panelElement!.offsetHeight > 0 ? total / panelElement!.offsetHeight : 1;
+      const chrome = [...panel.children]
+        .filter((child) => !child.classList.contains('body'))
+        .reduce((height, child) => height + drawn(child), 0);
+      if (!wholeScroll || panel === panelElement) insets = total - chrome - drawn(panel.querySelector(':scope > .body'));
+      const remaining = total - insets - chrome;
+      const tallest = items().reduce((height, item) => Math.max(height, drawn(item)), 0);
+      wholeScroll = remaining < Math.max(72 * ratio, tallest + 8 * ratio);
+    };
+    const items = () => (journal ? [...panel.querySelectorAll(':scope > .body :is(button, .row, input, select)')] : []);
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel);
+    for (const child of panel.children) observer.observe(child);
+    // A row grows when the web fonts arrive, inside a body whose own size stays.
+    for (const item of items()) observer.observe(item);
+    measure();
+    return () => observer.disconnect();
+  });
 
   function pressEdge(event: PointerEvent, direction: ResizeDirection): void {
     if (event.button !== 0) return;
     event.preventDefault();
     resize(direction);
   }
+
+  function pressDragSurface(event: PointerEvent): void {
+    if (!edit || event.button !== 0) return;
+    if (event.target instanceof Element && event.target.closest('button, input, select, textarea, a, [role="button"]')) return;
+    drag();
+  }
   const STATUS_ICON = { ok: 'ui-check', info: null, warn: 'ui-warning', error: 'ui-warning' } as const;
 
   // Next up arrives sorted by worth (worth it, optional, not worth it). A
   // label goes above the first row of each run; the order stays the view's.
+  // In Exile each run is a section its label names (`uid` keeps the ids
+  // unique per panel).
+  const uid = $props.id();
+
   function byWorth(rows: Row[]): Array<{ worth: Worth; rows: Row[] }> {
     const groups: Array<{ worth: Worth; rows: Row[] }> = [];
     for (const row of rows) {
@@ -67,8 +127,7 @@
   const status = $derived(view.status && STATED_BY_BODY[view.frame] === view.status.kind ? null : view.status);
 </script>
 
-<div class="panel-shadow">
-  <div class="panel cut" class:edit>
+{#snippet panelContents()}
     <Header {view} {send} {drag} />
     {#if status}
       {@const icon = STATUS_ICON[status.kind]}
@@ -80,21 +139,34 @@
     <div class="body">
       {#if view.frame === 'panel-campaign'}
         {#each view.acts as act (act.act)}
-          <ActSection {act} {edit} {send} />
+          <ActSection {act} {edit} {send} exile={journal} />
         {/each}
       {:else if view.frame === 'panel-next-up'}
         {#if view.next_up.length === 0}
           <p class="note">Nothing available or in progress in this act.</p>
         {:else}
           {#each groups as group, i (i)}
-            <p class="group-label">{WORTH_LABEL[group.worth]}</p>
-            {#each group.rows as row (row.id)}
-              <QuestRow {row} {edit} {send} />
-            {/each}
+            {#if journal}
+              <!-- Exile: each worth group is a section, labelled by its heading,
+                   with the kit divider above every heading but the first and
+                   only a fine line between its own quests (owner, Live 3). -->
+              <section class="worth-group" data-worth={group.worth} aria-labelledby="{uid}-group-{i}">
+                {#if i > 0}<div class="section-break" aria-hidden="true"></div>{/if}
+                <p class="group-label" id="{uid}-group-{i}"><Icon id={WORTH_ICON[group.worth]} size="16px" /><span>{WORTH_LABEL[group.worth]}</span></p>
+                {#each group.rows as row, j (row.id)}
+                  <QuestRow {row} {edit} {send} exile divider={j < group.rows.length - 1} />
+                {/each}
+              </section>
+            {:else}
+              <p class="group-label">{WORTH_LABEL[group.worth]}</p>
+              {#each group.rows as row (row.id)}
+                <QuestRow {row} {edit} {send} exile={journal} />
+              {/each}
+            {/if}
           {/each}
         {/if}
       {:else if view.frame === 'quest-detail' && view.detail}
-        <QuestDetail detail={view.detail} {edit} {send} />
+        <QuestDetail detail={view.detail} {edit} {send} exile={journal} />
       {:else if view.frame === 'character-picker'}
         <CharacterPicker {view} {send} />
       {:else if view.frame === 'settings'}
@@ -103,11 +175,31 @@
         <EmptyState {view} {send} />
       {/if}
     </div>
+    {#if journal}<div class="footer-rail" aria-hidden="true"></div>{/if}
     {#if edit}
-      <button type="button" class="back-to-play" onclick={() => send('set_mode', { mode: 'play' })}>
+      <button type="button" class="back-to-play" aria-label={journal ? `${view.settings.hotkey} returns to play mode (click-through)` : undefined} onclick={() => send('set_mode', { mode: 'play' })}>
+        {#if journal}<span>{view.settings.hotkey} · Play</span>{:else}
         <Icon id="ui-click-through" size="12px" />
         <span><span class="key">{view.settings.hotkey}</span> returns to play mode (click-through)</span>
+        {/if}
       </button>
+    {:else if journal}
+      <div class="play-footer">{view.settings.hotkey} · Edit</div>
+    {/if}
+{/snippet}
+
+<div class="panel-shadow" data-material={journal ? 'journal' : 'compact'}>
+  {#if journal}<MaterialFrame />{/if}
+  {#if edit && journal}
+    <!-- Fixed inside the top rail, outside the scroll well and resize bands. -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="frame-drag-region" aria-hidden="true" title="Drag to move Quest Tracker" onpointerdown={pressDragSurface}></div>
+  {/if}
+  <div bind:this={panelElement} class="panel cut" class:edit style:--well-image={journal ? `url("${masonry}")` : null} data-scroll={wholeScroll ? 'whole' : 'body'} data-material={view.settings.theme === 'claude' ? 'claude' : journal ? 'journal' : 'compact'}>
+    {#if view.settings.theme !== 'claude'}
+      <div class="panel-content">{@render panelContents()}</div>
+    {:else}
+      {@render panelContents()}
     {/if}
   </div>
   {#if edit}
@@ -231,7 +323,9 @@
 
   /* Edit mode's resize handles: an 8 px band straddling each edge (half in
      the shadow margin, half over the border) and a 14 px square on each
-     corner, above the edges. Nothing is drawn: the cursor is the affordance. */
+     corner, above the edges. Nothing is drawn: the cursor is the affordance.
+     Exile has no margin, so `approved.css` puts them wholly inside the
+     window's edge instead. */
   .resize-edge {
     --band: 8px;
     --corner: 14px;

@@ -16,8 +16,8 @@
       {
         "label": "overlay",
         "title": "Quest Tracker",
-        "width": 344,
-        "height": 408,
+        "width": 364,
+        "height": 384,
         "resizable": false,
         "transparent": true,
         "decorations": false,

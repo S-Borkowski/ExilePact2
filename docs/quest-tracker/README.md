@@ -1,5 +1,7 @@
 # Quest tracker
 
+Design: the Exile theme is built from the [neutral steel/masonry kit](design/steel-masonry-kit/HANDOFF.md): its two finished rasters, its diamond status marks and its control treatments. The Quest Tracker's Exile theme is wired to this kit (2026-11-01/02, see [review-approved-ui](design/review-approved-ui.md)); the kit's "design assets only / deferred wiring" status (HANDOFF.md and the kit README) and its next-session sections are kept unchanged as provenance. The rejected warm palette is gone, and `npm --prefix apps/quest-tracker run corner-safety` measures that no text, mark or control paints over the frame artwork at any size, scale, text size or scroll position ([review](design/review-approved-ui.md)).
+
 A small always-on-top overlay for Path of Exile 2 that lists the campaign
 quests, says which ones are worth doing and why, and keeps each character's
 progress. It learns that progress from the game's `Client.txt` log and from
@@ -23,6 +25,28 @@ works" › "Hiding under game panels"); that is always on since 0.1.1.
 ## Overview
 
 What it is:
+
+- **Two visual themes, the same tracker.** Exile is the default: thin weathered
+  steel rails and knot corners around a quiet dark field, a compact Quest Tracker /
+  current Act bar, flat gold serif quest titles and white serif objectives.
+  Character/class/level, worth headings and reward labels remain visible in play;
+  six diamond fill/outline/pattern treatments show quest status without inner
+  icons: in progress filled ivory inside its steel ring, hollow double-outline gold available, thin muted
+  outline not yet available, silver-filled double outline done, hatched skipped,
+  and dotted unknown. Existing status labels remain accessible and in tooltips.
+  A small footer shows the
+  configured edit shortcut. Buttons, toggles and sliders use the kit's steel greys; keyboard focus is a 2 px inset ivory ring. Select
+  **Claude** to restore the previous visual theme. Use *Theme* in overlay
+  Settings (edit mode), or *Appearance → Theme* in the tray's ordinary Settings
+  window. The choice is saved and updates both windows; it changes no progress,
+  mode, open frame, opacity, scale or saved window bounds. Switching modes
+  changes interaction and controls, never the selected theme or its material. See the
+  [22-feature preservation map](design/approved-ui-preservation.md) and
+  [rendered review](design/review-approved-ui.md). In edit/settings mode, drag
+  the functional header to move it; a fixed top-rail grab area stays
+  available while the inset Settings content scrolls. Controls and resize edges
+  keep their own actions. Exile has no separate Campaign journal artwork/header;
+  its custom art frame is the only outer border, without the legacy CSS ring.
 
 - **One window, `Quest Tracker.exe`.** The build's name since 0.2.0; a
   release download is `quest-tracker.exe`, the same program. A Tauri app:
@@ -74,10 +98,10 @@ What it is:
   available: X*, sits at the top and opens the Settings window, where the
   install button is.
 - **A Settings window of its own**, opened from the tray, separate from
-  the panel's settings frame. For now it holds one setting, *Automatically
-  check for updates*, off by default, a *Check now* button with what the
-  last check said, the install of a newer version, and the line "Created
-  by ST4H".
+  the panel's settings frame. *Appearance → Theme* selects Exile or Claude.
+  It also holds *Automatically check for updates*, off by default, a
+  *Check now* button with the last check result, installation of a newer
+  version, and the line "Created by ST4H".
 - **An update check, only when you ask.** *Check for updates* in the tray,
   or *Check now* in the Settings window, asks GitHub once whether a newer
   Quest Tracker release is published; with *Automatically check for
@@ -329,6 +353,10 @@ shows the "no log found" state.
 
 Settings (edit mode, the settings frame) and their defaults:
 
+- **Theme** `exile`: Exile (new UI) or Claude (previous UI), in both Settings
+  surfaces, saved as `settings.json`'s `"theme"`. Missing/invalid stored values
+  use Exile without discarding other preferences. Invalid theme patches are
+  refused as a unit. Theme changes no game setting.
 - **Opacity** `0.9`, a slider from 0 to 1 in 0.05 steps. It is the panel
   background's opacity only: at 0 the background is gone, while text,
   icons, the panel's border and the edit-mode accent stay fully opaque,
@@ -385,19 +413,22 @@ each of the panel's four edges and four corners is a resize handle, a
 band a few pixels wide straddling its border that shows the matching
 resize cursor and draws nothing, and a left-button press on it resizes
 the window from that edge or corner, as any Windows window. The panel
-fills the window, minus the 12 px transparent margin that holds its
-shadow, and its body scrolls. In play mode the window is not resizable
+fills the window and its body scrolls. In the Claude theme a 12 px
+transparent margin around it holds its shadow, and each handle straddles
+the panel's border; in the Exile theme the panel and its steel frame reach
+the window's edge, with no margin, and each handle lies just inside that
+edge. In play mode the window is not resizable
 and no handle is there, so the whole window stays click-through; the
 collapsed badge has none. A resize made in edit mode is kept like a move,
 in `settings.json`'s `"window"` object beside `"x"` and `"y"`, as
 `"width"` and `"height"` in whole logical pixels, so a DPI change keeps
 the panel's apparent size; it is applied at the next start. A resize in
 play mode is not kept. The smallest window is 320 by 240 logical pixels,
-whatever the zoom, at which the edit-mode header and the way back to
-play mode each still fit on one line at zoom 1; a saved size below it
-loads as that minimum. With no saved size, as for every 0.1.0 user, the
-window opens at 344 by 408 logical pixels (the panel's 320 by 384 plus
-the margin) times the starting zoom, never below the minimum, and that
+whatever the zoom; content and controls remain reachable by scrolling. A
+saved size below it loads as that minimum. With no saved size, the
+window opens at 364 by 384 logical pixels (in Claude, 340 by 360 paint
+plus the 12 px margin on each side; in Exile, all of it paint) times the
+starting zoom, never below the minimum, and that
 size is not saved until you resize. Seen live (Live 14, 2026-10-28): the
 resize cursor at the left edge, the bottom edge and the bottom-left
 corner, the window resized from each, its size and place kept across a
@@ -790,12 +821,16 @@ Run as `npm --prefix apps/quest-tracker run <script>` (`test` also as
 | `tauri` | The Tauri CLI. |
 | `start` | `tauri dev`: the real overlay against the dev server, rebuilt on change. |
 | `release` | `tauri build --no-bundle`, then `cargo build --release -p qt-replay --locked`: `apps/quest-tracker/target/release/Quest Tracker.exe` and `quest-tracker-replay.exe`. |
+| `corner-safety` | `node scripts/corner-safety.mjs`: renders every Exile preview in the installed Microsoft Edge (headless, through `playwright-core`; no browser download) at 364×384 and 320×240 (Settings 420×328), scales 0.75, 1, 1.33 and 2 and text 200%, at the top, middle and end of each scroller, and fails when any text, mark or control covers a frame pixel, a box can never be fully seen, play has a control, edit's drag strip is covered or a focused control is clipped. It also checks that the frame is flush: its art within 2 px of every window edge, no art pixel cut off by the window, and in edit each of the eight resize handles hit 2 px inside its edge or corner (the summary line counts these cases). Readability: every text run on screen must render at least 14 px for quest names and titles, 13 px for objectives, tips and detail text and 12 px for everything else, reach 4.5:1 contrast against the worst pixel behind it (read from a render with the text made transparent; a disabled control's text is exempt), and use no faux small caps, no caps face under 13 px, no weight under 400 and no wide tracking at small sizes. Play scrollbar: in play every overflowing scroller shows no scrollbar and still scrolls, while edit and both Settings surfaces keep theirs; the browser is started without Playwright's headless `--hide-scrollbars` switch so scrollbars are drawn as in the app. Sections: on every Exile case showing two or more Next up sections, each section must be labelled by a visible heading, no separator may sit under a section's last quest, every section after the first needs exactly one section break above its heading, a separator between two quests of one section must draw no diamond and stay at most half a break's height, and is reported `separator not inset` when it starts left of its row's quest name (0.5 px tolerance), its row shows no name, or it is not narrower than the narrowest section break, and no heading may touch a separator or break; the overlay matrix includes the dev-only three-section view `/?frame=next-up-sections` (`src/preview.ts`) in play and edit, and the summary line ends `sections checked on <s> cases`. The summary line counts the cases each of these ran on. A probe over a real frame knot must be detected on every run. `--self-check` runs the kit frame alone (no app), including a 12 px-margin frame that must be reported not flush and a flush one that must pass, four text runs (9 px, the disabled colour, small caps: each must be reported; a compliant one must pass), a play scroller with its bar shown (reported) and hidden (passes), and a two-section Next up laid out as the old flat list (reported), as sections with a full-width line between two quests of one section (reported `separator not inset`) and as sections with that line inset to the quest name (passes); `--only <text>`, `--root <app dir>`, `--screenshots <dir>` and `--full` are described at the top of the script. Limitation: an edit-mode quest row whose wrapped text is taller than the reading well is checked line by line (each line and mark must fit), not as a whole. |
 
 **Browser preview.** Outside Tauri, `npm --prefix apps/quest-tracker run dev`
 serves the UI over one of the serialised views in `fixtures/viewmodels/`,
 chosen by query: `http://127.0.0.1:1420/?frame=quest-detail&mode=play&scale=2`.
 `frame` is a frame id of the brief (default `panel-next-up`), `mode` is
-`play`|`edit`, `scale` is `1`|`1.33`|`2`. Commands are logged to the console,
+`play`|`edit`, `scale` is `0.75`|`1`|`1.33`|`2` (any other value is ignored;
+the Settings window's preview, `/settings.html`, takes the same scales). `frame=next-up-sections`
+is a dev-only Next up with all three worth sections and two quests in each, built from the
+campaign fixture's rows, for checking the section layout. Commands are logged to the console,
 not acted on. The fixtures are reached only in the dev server; the release
 bundle carries none of them.
 
@@ -2044,12 +2079,15 @@ Commands, UI to Rust: `get_view`, `set_mode`, `set_view_kind`,
 `select_character`, `pin_character`, `confirm_character`, `update_settings`,
 `open_source`. The Settings window has its own: it is sent
 `qt:app-settings` with an `AppSettingsView` (the running version, the
-`check_updates` setting, the update state, text and newer version, and the
-install's state, text and progress; `ep-update`'s type, serialised in
+`check_updates` setting, the update state, text and newer version, the theme, and the
+install's state, text and progress; Quest Tracker's local flat type, serialised in
 `fixtures/app-settings/`), and calls `get_app_settings`,
 `check_for_updates` (starts a check and answers at once),
 `install_update` (starts the install and answers at once; the only way one
-starts), `cancel_update` and `update_settings` (for `check_updates`). Field names in events are snake_case exactly as `serde`
+starts), `cancel_update` and `update_settings` (for `check_updates` or `theme`). The
+flat Settings snapshot is Quest-Tracker-local; the shared updater type stays
+unchanged. A theme patch emits both existing views without starting update work.
+Field names in events are snake_case exactly as `serde`
 writes them; command argument keys are camelCase on the JavaScript side
 (`questId`, `stepId`), Tauri's default. `src/ipc.ts` mirrors the Rust types,
 and `src/ipc.test.ts` holds every file in `fixtures/viewmodels/` against
@@ -2101,12 +2139,12 @@ allows WinHTTP names only in `ep-net`'s sources, and a network crate in a
 manifest or in the compiled graph fails it, so turning on a network
 feature (Tauri's HTTP client, Winsock) is a decision for the guard too.
 
-**The look.** The design is the owner's, made in Figma from
+**The look.** The original Claude design is the owner's, made in Figma from
 [`ui-design-brief.md`](ui-design-brief.md) and harvested once into `theme/`
 and [`design/`](design/). UI work reads those files, never Figma, and uses
 only the brief's icon ids, frame ids and token keys, plus the extras the
 harvest lists in [`design/harvest.md`](design/harvest.md). The picture to
-match is `design/frames/` and `design/component-spec.md`;
+match for Claude is `design/frames/` and `design/component-spec.md`;
 `design/reference/*.tsx` is reference only and never imported.
 
 The UI's CSS comes in three layers, loaded by `src/main.ts` in this order:
@@ -2116,8 +2154,8 @@ The UI's CSS comes in three layers, loaded by `src/main.ts` in this order:
   `theme/tokens.css`, or with a key missing from it, the UI renders from
   these; a missing icon SVG falls back to a text glyph (`src/theme.ts`).
 - `theme/tokens.css`: the harvested values and the `@font-face` rules for
-  the bundled Alegreya Sans faces. Generated from `theme/theme.json`; never
-  edited by hand.
+  the bundled Alegreya Sans faces. Paired manually with `theme/theme.json`;
+  there is no generator. Its values remain identical across all three apps.
 - `src/styled.css`: the shared rules every component uses: the cut-corner
   shape (`.cut`: a `clip-path` plus an `::after` ring for the border), the
   buttons, toggles, slider, dropdowns, keycaps, group labels and countdown
@@ -2139,9 +2177,26 @@ harvested, that every custom property the UI reads has a plain default and
 comes from the harvest (no token invented in code), and that fonts and
 assets load only from the bundle.
 
+Exile adds a separate, manually paired `theme/exile.json` / `theme/exile.css`,
+scoped to the root's received theme, and `src/approved.css` for its material,
+type, layout and control states. Original component/shared CSS stays intact for
+Claude. `theme.ts` switches derived shadows too. Cinzel and original raster material
+provenance are in [harvest](design/harvest.md), and the kit rasters' provenance is in
+[ART-PROVENANCE](design/steel-masonry-kit/ART-PROVENANCE.md); the concept PNG is never runtime
+art. The fixed material frame surrounds a separately scrolling inset content well,
+so lower rails do not float over text or controls. Exile removes the decorative
+Campaign journal/crest header and synthetic outer CSS ring/inset shadows; the
+functional header and fixed edit-mode drag rail remain. The custom art frame is
+the only outer border. New stores start at364×384 native pixels before existing first-start zoom;
+in Exile the panel paints the whole window, its frame flush with the window edge
+(Claude keeps340×360 paint inside a 12 px transparent margin). Saved bounds and the
+320×240 minimum are preserved; selecting a theme never resizes the window.
+
 To preview a frame in a browser, run `npm --prefix apps/quest-tracker run
 dev` and open `http://127.0.0.1:1420/?frame=<frame id>&mode=play|edit`
-(`&scale=2` for the 2× zoom); see `src/preview.ts`.
+(`&scale=2` for the 2× zoom, `&theme=exile` or `&theme=claude` for the theme);
+the ordinary Settings preview accepts the same theme query. Commands log only;
+use a fake bridge or the local app to verify persistence. See `src/preview.ts`.
 
 **Cutting a release.** A release is the annotated tag
 `quest-tracker-v<version>` on the tip of `main`. The version is the one in
@@ -2615,6 +2670,53 @@ Revisit this feature when:
   game: record it under "Known limitations".
 
 ## Release notes
+
+### Unreleased
+
+- The Exile theme now uses the finished steel/masonry kit: a neutral steel
+  nine-slice frame (48 px corners, the same size on screen at every scale)
+  that reaches the window's edge in the overlay and the Settings window,
+  with no transparent margin, around a charcoal masonry well, a neutral grey palette with
+  gold kept for the title bar, quest titles and worth headings, and the kit's
+  six diamond status marks (in progress, available, locked, done, skipped,
+  unknown) in rows and quest detail. Buttons, toggles, selects, sliders,
+  checkboxes, text fields, scrollbars and focus rings in the overlay and the
+  Settings window follow the kit. Claude keeps its look and its status icons;
+  status names and meanings are unchanged.
+- Corner-safe scrolling: the compact title bar and the footer sit between the
+  frame's corner knots and only the quest list scrolls, inside the rails, so
+  no text, mark or control slides under the frame's corners at any scroll
+  position. When the window is small, the scale large or the text enlarged,
+  the whole content scrolls instead, in a well that stays clear of the knots.
+  The edit drag strip stays fixed and reachable, and the eight resize
+  handles lie along the window's outer edge.
+- Readable at every scale: text no longer shrinks below 14 px on screen for
+  quest names and titles, 13 px for objectives, tips and detail text, and
+  12 px for everything else, whatever the scale setting; the caps face is
+  kept to 13 px and up; every text run keeps at least 4.5:1 contrast over the
+  masonry well.
+- Status diamonds: the in-progress and done colours fill only the inside of
+  the diamond, inside its steel ring, with a gap of the well between them.
+- No scrollbar in play: play is click-through, so its scrollbar is hidden
+  there (the list still scrolls to follow the game); edit and Settings keep
+  the kit's scrollbar.
+- Next up sections: in Exile, Worth it, Optional and Not worth it each read as
+  one section, under a gold heading led by that group's worth icon. The kit's
+  diamond divider now separates the sections, and quests inside one section
+  are separated only by a fine steel line, so no divider sits right above a
+  heading. That line is inset: it starts under the quest name, after the
+  status diamond, and stops at the row's right padding, so only the section
+  break runs the full width. Claude's Next up and the All view's act
+  sections are unchanged.
+- Character/class/level, worth headings and reward labels remain visible in
+  play; the footer shows the configured hotkey.
+- Switching play/edit or opening Settings keeps the selected Exile/Claude
+  theme. Mode changes controls and click-through behavior, not materials.
+- Theme in overlay Settings and ordinary Settings Appearance selects Exile or
+  the previous Claude UI, persists, and updates both windows without changing
+  quest behavior, other preferences or saved bounds. All22 existing feature
+  groups remain; new-store native size is364×384, existing saved size wins.
+- No game-setting, native quest-list, detection or updater behavior change.
 
 ### 0.2.0
 

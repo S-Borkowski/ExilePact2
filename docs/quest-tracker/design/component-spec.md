@@ -1,5 +1,23 @@
 # Quest tracker component spec
 
+## Exile and Claude adoption
+
+**Exile is the default theme**; **Claude** preserves the original specifications below. Both overlay Settings and the ordinary Settings window offer Theme → Exile / Claude. The preference is saved by Rust, sent to both windows and applied without changing mode, open frame, progress, opacity, zoom or saved geometry.
+
+Exile follows the [approved compact steel close-up](../../ui-design-system/quest-tracker-overlay-approved.png). Thin weathered double steel rails and intertwined corner knots surround a quiet charcoal field. A narrow Cinzel Quest Tracker / actual Roman Act bar precedes compact character/class/level context. Act is shown only for exactly one received act; it remains truthful when Next up is empty. There is no current-player-zone field. Existing edit controls follow the context line. Flat full-width quest sections use gold mixed-case Georgia titles (19/25px), white Georgia current objectives (16/22px), secondary tips (14/20px), fine dividers with small center diamonds (in Exile Next up, the full divider only between worth sections; a fine inset line between quests of one section) and diamond status marks. Character details, Worth it / Optional headings and reward labels remain visible in play by the owner's explicit decision. No boxed card fills, bevels, rounded card wells, gold architectural surround or crest are used.
+
+The owner's latest status choice uses no inner icons in Exile rows or detail headings: in-progress ivory inner fill / single steel ring; available hollow gold/double outline; locked hollow/thin muted single outline; done silver-filled/double outline; skipped diagonal hatch/single outline; unknown hollow/dotted outline. Fill and edge pattern distinguish every pair beyond colour alone. Each mark exposes its exact existing status label once and repeats it as a hover title. Status meanings and separate worth/manual/inferred marks are unchanged. Claude retains all six original icons. Since Live 2 (owner, 2026-11-02) a status colour fills only the inside of the diamond: every outer ring keeps the kit's steel stroke and is never filled, and in progress (ivory) and done (silver) carry the kit's fill on an inner diamond (radius 7 of the ring's 10), with a gap of the well between the two; in progress keeps its upper-facet highlight inside that fill and done its inner line.
+
+Every expanded Exile frame and ordinary Settings retains this same steel family. Mode changes controls/input only. Play has a noninteractive configured-hotkey · Edit footer; edit retains the original return-to-play command and full accessible description in a compact footer. Small metadata/rewards/forms retain Alegreya Sans; toggles/sliders use the kit's steel greys; focus is a 2 px inset ivory ring (`color.edit-accent`). The collapsed badge keeps its small shape and selected palette. Decorative art is hidden from assistive technology and takes no input. All controls/actions and 22 feature groups remain: [preservation map](approved-ui-preservation.md).
+
+The Exile custom art frame stays fixed and is the only outer border: the legacy CSS ring and synthetic inset frame shadows are disabled. Its content scrolls in a separately inset, clipped well. The existing functional header and a fixed noninteractive top-rail grab area use the existing header-drag bridge in edit mode. The rail remains reachable after scrolling Settings to the end. Buttons, selects, fields, right clicks and passive play start no drag; all eight resize edges remain separate. Control focus outlines and Claude's original border/header gesture remain unchanged.
+
+Exile wraps titles/steps/tips and permits vertical scrolling. The title bar and footer sit between the frame's corner knots and only the body scrolls, its clip inside the rails; when the body would be shorter than 72 px, or than its tallest row or control plus 8 px, the whole content scrolls instead, in a well inset 24 px from the sides, 16 px from the top and 33 px from the bottom, clear of the knots. Controls wrap at narrow effective widths. The frame is the kit's `frame-neutral-steel.png`: nine-slice 224, drawn 48 px, flush with the window edge: per-side outsets of 9 / 8 / 13.5 / 8.5 px (top, right, bottom, left), just under the PNG's own transparent padding, carry only that padding past the edge, all constant on screen at every scale; the reading inset is 20 px at the sides, 14 px top and 21 px bottom, in the overlay and the ordinary Settings window alike. `npm --prefix apps/quest-tracker run corner-safety` checks every case against the rendered art, and that the frame is flush. Native default364×384 is all paint in Exile, with no transparent margin (Claude keeps its12px margin around340×360 paint); saved sizes win, minimum320×240 remains. Theme selection never changes native bounds. [Rendered review](review-approved-ui.md) records evidence and limits. This UI adoption introduces no new game behavior.
+
+Exile readability (owner, Live 2, 2026-11-02), checked by `corner-safety` on every case, scale and scroll position: text renders at least 14 px on screen for quest names and frame or window titles, 13 px for objectives, tips and detail text, and 12 px for everything else, at every scale; each size is the larger of its scale-1 size and the floor divided by the scale's zoom, so the floor only bites below scale 1. Every text run reaches 4.5:1 contrast against the worst pixel behind it, over the masonry well at the default opacity (a disabled control's text is exempt, as in WCAG). No faux small caps; the caps face (Cinzel) only at 13 px rendered and up; weight 400 or more; tracking at most 0.05em under 13 px and 0.1em above. Play-mode scrollbar: play is click-through, so in Exile play every scroller of the panel hides its scrollbar and still scrolls (a new view or a restored position moves it); edit, the overlay Settings frame, the character picker and the ordinary Settings window keep the kit's 8 px scrollbar.
+
+Exile Next up sections (owner, Live 3, 2026-11-02; the kit's `previews/play.png` order), checked by `corner-safety`: each worth group (Worth it, Optional, Not worth it) is one section element labelled by its section heading through `aria-labelledby`. The section heading is the existing label in Cinzel caps (13 px rendered or more, 0.08em tracking) in kit gold `color.worth-gold`, led by that group's worth icon at 16 px (decoration; the text names the section), with 8 px above and 4 px below at scale 1. The section break is the kit quest divider as drawn elsewhere (3 px dark band, 1 px steel line, 7 px centre diamond, 10 px high, full width), once above the heading of every section but the first. Between two quests of one section only the divider's fine 1 px steel line (`color.panel-divider`) is drawn, with no band and no diamond, and it is inset (owner, after Live 4): it starts at the quest name's left edge, after the status diamond (38 px in at scale 1: the row's 4 px padding, the 24 px mark column and the 10 px gap), and ends at the row's 4 px right padding, so only the section break spans the width; there is none under a section's last quest, so no divider sits right above a heading. Claude's Next up keeps its flat list, and the All view's act sections keep the full divider between quests.
+
 Harvested from the Figma comps on 2026-10-25. Sizes are px at 1× (1920×1080);
 the app scales them by Auto (from the monitor) or a fixed factor from 0.75×
 to 2× the player sets. Token names are the keys of
@@ -13,8 +31,9 @@ use the same name with the dot as a dash: `color.panel-bg` →
 - **Grid:** 4 px (`space.unit`). Panel width 320 (`size.panel-width`) in
   the comps. Since 0.1.1 the panel fills the window inside its 12 px
   shadow margin, in both directions, and its body scrolls: the player sizes
-  the window by the panel's edges in edit mode (320×384 by default, the
-  window at least 320×240), and the scale only zooms the content.
+  the window by the panel's edges in edit mode. The original comp paint was
+  320×384; current new-store paint is340×360 in a364×384 native window.
+  Saved sizes win, minimum320×240 remains, and scale only zooms content.
 - **Shape:** radius 0 everywhere (`radius`, `radius.row`, `radius.button`).
   Corners are cut at 45° on the top-left and bottom-right only: panel 6 px
   (`chamfer.panel`), buttons 3 px, the badge 4 px. In CSS, a
@@ -172,6 +191,8 @@ Square (radius 0). On = `color.edit-accent` track. Slider track
 `color.panel-divider`, fill `color.edit-accent`, thumb `color.text-primary`.
 
 ### SettingRow — 320×40
+Both themes add Theme first in overlay Settings: Exile (default) / Claude,
+using the existing saved settings command. All previous settings follow.
 Padding 0/12; label (Label) left, control right. Helper text below a row
 (Caption, `color.text-muted`, padding 0/12/6): under opacity "Text and icons
 always stay fully opaque."; under "Read the screen" "Reads the game's

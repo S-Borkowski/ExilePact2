@@ -5,6 +5,7 @@
     "state": "restarting",
     "text": "Quest Tracker 1.3.0 is installed. Restarting…"
   },
+  "theme": "exile",
   "update": {
     "newer": "1.3.0",
     "state": "available",

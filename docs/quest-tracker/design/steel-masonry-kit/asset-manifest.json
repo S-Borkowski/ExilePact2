@@ -1,0 +1,620 @@
+{
+  "version": "design-only-2026-11-01",
+  "files": [
+    {
+      "path": "ART-PROVENANCE.md",
+      "bytes": 3511,
+      "sha256": "303f7307e96cb67e98b025250972f834a3155c9eac7479cf576757b451221167"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-Bold.woff2",
+      "bytes": 89248,
+      "sha256": "d67adfcd8b52630ed2c119c15c264b79f05fbac2ee09245010675f0f218afcc8"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-ExtraBold.woff2",
+      "bytes": 89716,
+      "sha256": "151731e8f4c1fc6e323b3822d103bbf35a4340c047521ca69cebed34cef1c39f"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-Medium.woff2",
+      "bytes": 88404,
+      "sha256": "a1ff2e107c2ed7e61524159ae82828286d36a67098fb25cc66c25fe76fb7cef1"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSans-Regular.woff2",
+      "bytes": 88480,
+      "sha256": "f95b569a20685d04c571319cd950845776bf9b38ce31314d1ea4125c1044e9fd"
+    },
+    {
+      "path": "assets/fonts/AlegreyaSansSC-Bold.woff2",
+      "bytes": 83400,
+      "sha256": "e04e726e0889123ef04f4d6ec7181c78b91817bedd8d9e4eed92dec2ca60c187"
+    },
+    {
+      "path": "assets/fonts/Cinzel-OFL.txt",
+      "bytes": 4382,
+      "sha256": "f5a242cf68ad6ebd0603b3359a74c593ca080318a681035be5296ba2c6b04ae6"
+    },
+    {
+      "path": "assets/fonts/Cinzel-SemiBold.woff2",
+      "bytes": 15204,
+      "sha256": "61efc27ceb7d08bb841652fa8979c0b6833b92548b7f9544c07968a6c02f28e4"
+    },
+    {
+      "path": "assets/fonts/OFL.txt",
+      "bytes": 4498,
+      "sha256": "6222b580f51d93a72ea22ff97eec4b03279016545b5b2bebb2ea76519372eb85"
+    },
+    {
+      "path": "assets/frame-neutral-steel.png",
+      "bytes": 541808,
+      "sha256": "5a716ea986840137e56890dba462be91fb17c119c4584c88d8b2002579249413"
+    },
+    {
+      "path": "assets/icons/manual-tick.svg",
+      "bytes": 467,
+      "sha256": "fb49afa8cdf47e6a12c6488138566b7e3e70c13ab7d955b0739853b9a0d98718"
+    },
+    {
+      "path": "assets/icons/reward-ascendancy.svg",
+      "bytes": 450,
+      "sha256": "9dcc813bb44782275737e6cf1852045bddc913f338ed890b7fb1fc60aa171757"
+    },
+    {
+      "path": "assets/icons/reward-attribute.svg",
+      "bytes": 478,
+      "sha256": "12eda7ccf0fe6749eb035a5058ae8a47a0691262a7c2a98cb6f0eb2917bdf802"
+    },
+    {
+      "path": "assets/icons/reward-charm.svg",
+      "bytes": 413,
+      "sha256": "eaaadc11f29886455ea29ad6051e2d7395928ca404971e7642e31621dab582c2"
+    },
+    {
+      "path": "assets/icons/reward-defences.svg",
+      "bytes": 404,
+      "sha256": "89f248121c6d255effe9b3d48ced97c84951b2ec9520c8ec62e3c3f8e429f9c2"
+    },
+    {
+      "path": "assets/icons/reward-flask.svg",
+      "bytes": 467,
+      "sha256": "da98c2cde44ae6f9f7c213381b83cf0ad59661e2009b1a1a4a1e9677dadd7fb9"
+    },
+    {
+      "path": "assets/icons/reward-item.svg",
+      "bytes": 539,
+      "sha256": "d547c3587e65b8e13e1948fb3169cfcfbd5746505390f834720b5c3b3ea96437"
+    },
+    {
+      "path": "assets/icons/reward-life.svg",
+      "bytes": 390,
+      "sha256": "9d46e6fca271e504cd6f69fc4800e1ef0e3c8f71974556d2f4ffa25b4381b357"
+    },
+    {
+      "path": "assets/icons/reward-mana.svg",
+      "bytes": 404,
+      "sha256": "14dc372825cf56086d61df57abf01f05f8adcfdb9eeb1f3460151a91860fe56b"
+    },
+    {
+      "path": "assets/icons/reward-other.svg",
+      "bytes": 393,
+      "sha256": "f9ac66ef273ae128201c34aea52f64753aa346cbfc66a7a3608ad7ad7f4e62ff"
+    },
+    {
+      "path": "assets/icons/reward-passive.svg",
+      "bytes": 484,
+      "sha256": "b2f60452cfbe0c3e130376cfeb0fda203677863a0afe859d1e4b1112c3255995"
+    },
+    {
+      "path": "assets/icons/reward-res-all.svg",
+      "bytes": 506,
+      "sha256": "ba2fa9e2496c091f14ba37638e08cfa00ee91dec9c4ffd392f7c621797a44eb5"
+    },
+    {
+      "path": "assets/icons/reward-res-chaos.svg",
+      "bytes": 482,
+      "sha256": "69111f97f0b5ffcc562e082a078298f9e828f6bad33dd67d73d04467ab4abf89"
+    },
+    {
+      "path": "assets/icons/reward-res-cold.svg",
+      "bytes": 423,
+      "sha256": "4f3dbb740dafe3d1ca7ab1e6d2e9b8297eb86a47b605c2e7f6801a3da6db5e0d"
+    },
+    {
+      "path": "assets/icons/reward-res-fire.svg",
+      "bytes": 445,
+      "sha256": "4c77113ec7b79344f446ebe51cc4451db9585ddb9c171849b73673156ad5bd9a"
+    },
+    {
+      "path": "assets/icons/reward-res-lightning.svg",
+      "bytes": 470,
+      "sha256": "8183c0a7124620b48aa88b33558741a7a5ed79dc9b81642e89d9d3ebdca741ff"
+    },
+    {
+      "path": "assets/icons/reward-skill-gem.svg",
+      "bytes": 459,
+      "sha256": "9a1806e24af0f546345917aa9cb695542dc4eb96318abf0295f990969cdcf181"
+    },
+    {
+      "path": "assets/icons/reward-spirit.svg",
+      "bytes": 512,
+      "sha256": "ac10a08bb661ff523703521f342b00b235079dd725f4ebd68161dd9bb04a2bca"
+    },
+    {
+      "path": "assets/icons/reward-story.svg",
+      "bytes": 392,
+      "sha256": "a35daa17b05f53324eba4e834575055a8d0cc2aa41daebaec2d7e3c6578baf60"
+    },
+    {
+      "path": "assets/icons/reward-support-gem.svg",
+      "bytes": 462,
+      "sha256": "8846b59c8e23ec2a0fcbd044ad48c70f7461004b42b8eb256e52ac54a3c43ae2"
+    },
+    {
+      "path": "assets/icons/reward-unlock.svg",
+      "bytes": 393,
+      "sha256": "bd3d71c4df1293984fa2dc068767f2456dc72e2ee568284bc85dcc9e733b23f9"
+    },
+    {
+      "path": "assets/icons/reward-weapon-set.svg",
+      "bytes": 438,
+      "sha256": "060b8fd092df973b9dfcffe877b9440bca38ea5a8cd01630ca2e0657010456ca"
+    },
+    {
+      "path": "assets/icons/status-available.svg",
+      "bytes": 433,
+      "sha256": "0d3e1511eb329e33dad965fe8a194687e3d6d3cb219ed749bd80659f19222ab6"
+    },
+    {
+      "path": "assets/icons/status-done.svg",
+      "bytes": 382,
+      "sha256": "ab67e88b1beb5cfa9cdc1fe60d0317a9fe6754e845b63556ed86cfda2dedd340"
+    },
+    {
+      "path": "assets/icons/status-in-progress.svg",
+      "bytes": 448,
+      "sha256": "5805c6987124b691ed4d37d1d148a1f9bdff0f086759f8dc77eb938c3374277a"
+    },
+    {
+      "path": "assets/icons/status-locked.svg",
+      "bytes": 465,
+      "sha256": "7ea211235bf48e331f5cfe7c0813c670dfe3a180b525022683a7165dfba028f3"
+    },
+    {
+      "path": "assets/icons/status-skipped.svg",
+      "bytes": 354,
+      "sha256": "2ef5fcd22b753ae37c04493bc65049194eb0a1031ee588f18c353714982dfa9f"
+    },
+    {
+      "path": "assets/icons/status-unknown.svg",
+      "bytes": 520,
+      "sha256": "a854e76c0284506cd8bbb4295bf9846cc17f6be4fc347da8fd0fc4287baece31"
+    },
+    {
+      "path": "assets/icons/ui-character.svg",
+      "bytes": 399,
+      "sha256": "a647d6d161233216c32c4a259220224f228d29706fa094708966c035c9873a11"
+    },
+    {
+      "path": "assets/icons/ui-check.svg",
+      "bytes": 327,
+      "sha256": "513a661b4774f0615af1fbe4724b69ecf0067db3d9e54c8b898bff1ed73a7cd4"
+    },
+    {
+      "path": "assets/icons/ui-chevron-down.svg",
+      "bytes": 336,
+      "sha256": "eb37214a0e60ded95ff813e18392ecd23f4a37b946af2663ebda036ae5ac5e24"
+    },
+    {
+      "path": "assets/icons/ui-chevron-left.svg",
+      "bytes": 337,
+      "sha256": "e592aa649061d6e6c0a9d5102b4b9b303b63a57bc640e62170e54db23f85c2c9"
+    },
+    {
+      "path": "assets/icons/ui-chevron-up.svg",
+      "bytes": 331,
+      "sha256": "7b068a1ff6119c5db9af31e2217ba539491a55d727e5b60f1f5a1cc6f31ae48e"
+    },
+    {
+      "path": "assets/icons/ui-chevron.svg",
+      "bytes": 327,
+      "sha256": "66026bf9ec82c6f8ebc9959af76a03916df7004c33cf964feb2d70f6f38ab1ec"
+    },
+    {
+      "path": "assets/icons/ui-click-through.svg",
+      "bytes": 389,
+      "sha256": "6a3314d9940557038eb3b0a9cbd4235c520a735e700597b8fbd582af006a0211"
+    },
+    {
+      "path": "assets/icons/ui-close.svg",
+      "bytes": 323,
+      "sha256": "c6d8f2d712917839b27ce0b836ce351f641cce643d488dee3c950cf5431ca17c"
+    },
+    {
+      "path": "assets/icons/ui-collapse.svg",
+      "bytes": 360,
+      "sha256": "2bd2ce266f6c304707a82dc1d9d47611a7cdbb656e924c28b12f87f5c7ef4f25"
+    },
+    {
+      "path": "assets/icons/ui-edit.svg",
+      "bytes": 343,
+      "sha256": "8c716891b57e279b638eb6ca61aea89829e9b5bdcedd40299aca4d9360fb6b46"
+    },
+    {
+      "path": "assets/icons/ui-expand.svg",
+      "bytes": 356,
+      "sha256": "081cafd03aff23461aeed751529f95a550ed049f93a5e3fb4e4a0f9b1fe07ced"
+    },
+    {
+      "path": "assets/icons/ui-external-link.svg",
+      "bytes": 379,
+      "sha256": "71a3475a7c295076594e251826ca24627bd92a3deb5f77a711062d07b26957c9"
+    },
+    {
+      "path": "assets/icons/ui-refresh.svg",
+      "bytes": 390,
+      "sha256": "c574789943918f7af60bed138e4a5a4f9432a6090b9becd108b1d07643fadc17"
+    },
+    {
+      "path": "assets/icons/ui-settings.svg",
+      "bytes": 456,
+      "sha256": "ac294613d60a28eb89719cc8043e9a2aff707e61fb56bf5c54005fc4f1fc3469"
+    },
+    {
+      "path": "assets/icons/ui-warning.svg",
+      "bytes": 421,
+      "sha256": "3f44367ca90064f0ed1a159832d9867b9757fc1d2dcee8276251d9848cb36030"
+    },
+    {
+      "path": "assets/icons/worth-no.svg",
+      "bytes": 318,
+      "sha256": "e03a43e0f0f43c91cd8df67fc371c71d5e76a568025b67a028b680bc2a49658b"
+    },
+    {
+      "path": "assets/icons/worth-optional.svg",
+      "bytes": 391,
+      "sha256": "a900fbd5df74408968d777a25ef4e6ac5d1d9405c8a0e7dabee6a28829b83217"
+    },
+    {
+      "path": "assets/icons/worth-yes.svg",
+      "bytes": 395,
+      "sha256": "b9020d2861328ee63682ce58edcaccb324faca4ec9723f320d6b49fbe5996ed8"
+    },
+    {
+      "path": "assets/masonry-charcoal.png",
+      "bytes": 2627387,
+      "sha256": "b0618d6f87b90e115c8f6a7521ab14353be71a0d7f91daa6cfe501d08d254114"
+    },
+    {
+      "path": "components/button-default.svg",
+      "bytes": 672,
+      "sha256": "fa803ca71e36f94e4606840779ec3e3b62aadad9985babe6c458492b7e7210de"
+    },
+    {
+      "path": "components/button-disabled.svg",
+      "bytes": 672,
+      "sha256": "8ffe2e6f820e66cc094b35982d155ef07783ed7fd602f8516d6a5c5507f6cc77"
+    },
+    {
+      "path": "components/button-focus.svg",
+      "bytes": 750,
+      "sha256": "f96f257a79c3a0090e183c13707382200acb1c27731732814cf47da6cd9a8034"
+    },
+    {
+      "path": "components/button-hover.svg",
+      "bytes": 672,
+      "sha256": "1cac834e7d935ccc369dfcf869d2d551096cbeceab9edb168f9ef5dbb1ad06db"
+    },
+    {
+      "path": "components/button-pressed.svg",
+      "bytes": 672,
+      "sha256": "d169ebe9972a75b35548b4c93a883921fdfa2c22fb332f6a01e9f9814192ead1"
+    },
+    {
+      "path": "components/checkbox-disabled.svg",
+      "bytes": 559,
+      "sha256": "194a819a3dbb3a2a897fa8584e1e9cfea3530fdf423ada779fcfcc3d2a378ebd"
+    },
+    {
+      "path": "components/checkbox-focus.svg",
+      "bytes": 641,
+      "sha256": "fabb12456e5553b21def7ba1bcdfd78babcba92fd266fa9dc35774b5322b3c2d"
+    },
+    {
+      "path": "components/checkbox-mixed.svg",
+      "bytes": 552,
+      "sha256": "156892e380d8a19adc4d532183ae1b45ab257da6f059179553b266cd257152a5"
+    },
+    {
+      "path": "components/checkbox-off.svg",
+      "bytes": 486,
+      "sha256": "2210d208c0f03533738e50ad49d0994f1bde1979dd125a3cc93f5765d5364fde"
+    },
+    {
+      "path": "components/checkbox-on.svg",
+      "bytes": 559,
+      "sha256": "86ec9462cf51de88604edbd4dd0a47f2955afdc31560e5d6e83eab99c8a8ff05"
+    },
+    {
+      "path": "components/collapsed-badge.svg",
+      "bytes": 720,
+      "sha256": "8cd19af5dd968888975549eac6a2e6387a3e5d59fb3636779f1471296b8a3a57"
+    },
+    {
+      "path": "components/header-rail.svg",
+      "bytes": 537,
+      "sha256": "5e13b92ad59b6978b8a290f944c7b12245e890c8e8b4de9a133499f626cde3ba"
+    },
+    {
+      "path": "components/keycap.svg",
+      "bytes": 611,
+      "sha256": "461dd6bb8f6c709fda79b14f95330b42c1a5b2adf682b25c742fdc5d798ab135"
+    },
+    {
+      "path": "components/loading.svg",
+      "bytes": 559,
+      "sha256": "513937199aeceaefa7096d511a32b0cd3de8394e51722a91b28d5895010c3cd1"
+    },
+    {
+      "path": "components/message-error.svg",
+      "bytes": 826,
+      "sha256": "18b6b96d4587c2b2eb44b2649f6619a7a3fd8ecde2c1b359692f12a133f5b9a6"
+    },
+    {
+      "path": "components/message-info.svg",
+      "bytes": 831,
+      "sha256": "9c1aa7040b603898af1725146dd2ad88682cc742f4c5ed36476b09e32bcf45d2"
+    },
+    {
+      "path": "components/message-warning.svg",
+      "bytes": 826,
+      "sha256": "1794397fd7c7f8945e470140f62765d6482a0e75d24bc56506e643bcca1b98fc"
+    },
+    {
+      "path": "components/progressbar.svg",
+      "bytes": 566,
+      "sha256": "f6b88f2b7f0ad529fa26b83a5e61d537d602bdb88625ead6e4f36b9c6f829247"
+    },
+    {
+      "path": "components/quest-divider.svg",
+      "bytes": 604,
+      "sha256": "831fe0c8b3dadbd2302c398642e115abd14a24502863b044364ea3f2b18da0be"
+    },
+    {
+      "path": "components/resize-grip.svg",
+      "bytes": 454,
+      "sha256": "0370916e5e87149042a55c4b916f72656dd07ba1aed9e218f5886a3376d64877"
+    },
+    {
+      "path": "components/scrollbar.svg",
+      "bytes": 563,
+      "sha256": "29195f8a8b682ced507a693eaa5c4523be037b1834b4d937b92a13035f7673d4"
+    },
+    {
+      "path": "components/segmented-all.svg",
+      "bytes": 795,
+      "sha256": "20f5244e756467d67ffe128da6ed70a0769460706a04014a43577deb0cb741c9"
+    },
+    {
+      "path": "components/segmented-next-up.svg",
+      "bytes": 794,
+      "sha256": "5c53df30981d30f054cd356846bb236f94989da02c2b70ac2f19d150de80b9c5"
+    },
+    {
+      "path": "components/select-default.svg",
+      "bytes": 657,
+      "sha256": "da82eee658bea3abe3f12004fd9cb4905922be505ce481a5959c1745630b0d11"
+    },
+    {
+      "path": "components/select-focus.svg",
+      "bytes": 657,
+      "sha256": "f2b00c793e6ba9f062901af3a2a3563a40139d1cf215056adcd5721750799deb"
+    },
+    {
+      "path": "components/select-open.svg",
+      "bytes": 1045,
+      "sha256": "b65f36c1d4f9c070a9f5b3d3d39a4ee273a43515ea99446240446e3dd8621065"
+    },
+    {
+      "path": "components/slider.svg",
+      "bytes": 629,
+      "sha256": "8870a9919bd8368e9793721ba7c40e316aa91c0942c67e54d5dced9056b8c322"
+    },
+    {
+      "path": "components/status-available.svg",
+      "bytes": 650,
+      "sha256": "e3af4283f632b49418a04f9d82ab5d80d87971873f15105f484a242ce5194031"
+    },
+    {
+      "path": "components/status-done.svg",
+      "bytes": 648,
+      "sha256": "9370aa4513addff89f48e2c10b80e350d6a07f367d19ab86090d1fb41826e007"
+    },
+    {
+      "path": "components/status-in-progress.svg",
+      "bytes": 637,
+      "sha256": "3bd23c22d8c633c179e05e8dd2b656bafc837f915ca9b460c561885b3dfea3fd"
+    },
+    {
+      "path": "components/status-locked.svg",
+      "bytes": 565,
+      "sha256": "d6a3ce8b1672e0517c2b7be963463eba63674658f1fa9a48437c71a0020da73d"
+    },
+    {
+      "path": "components/status-skipped.svg",
+      "bytes": 1019,
+      "sha256": "7525a1df3a08b28875d664af6d06be86399c223f4ba550e0cd40dac8c9c5cfe8"
+    },
+    {
+      "path": "components/status-unknown.svg",
+      "bytes": 631,
+      "sha256": "4cc9888fa70341565e996b57a8ab8ffdbc5ccf747e4249f81ec2ede8ab925b0c"
+    },
+    {
+      "path": "components/text-input-default.svg",
+      "bytes": 610,
+      "sha256": "7875425cd65086fb92b3e6645ffd8b0091a629ee7b1078d04bd235bee540f011"
+    },
+    {
+      "path": "components/text-input-disabled.svg",
+      "bytes": 610,
+      "sha256": "b59e8198e1f211273618cacaae26a4c181f9cb0ef215db8bdb2b439b8b7bccfb"
+    },
+    {
+      "path": "components/text-input-focus.svg",
+      "bytes": 610,
+      "sha256": "6750e021ad92fbb1af1d39748c1c106132df2ce17b0e5a5bdd079632df74cee6"
+    },
+    {
+      "path": "components/text-input-invalid.svg",
+      "bytes": 610,
+      "sha256": "0b09e9cbe583a647a3b8b11435b04e6afafe761ed290dd47cd4d8a730a977808"
+    },
+    {
+      "path": "components/toggle-disabled.svg",
+      "bytes": 532,
+      "sha256": "ababd3ad301518d2c6b926e19b71f471004da4d50ac9552dfe3cadc3a12a0a86"
+    },
+    {
+      "path": "components/toggle-focus.svg",
+      "bytes": 615,
+      "sha256": "61f258d59b5ac142f00b2444f12e1c533d31280ac04dbfa78ad64f1dcea361ef"
+    },
+    {
+      "path": "components/toggle-off.svg",
+      "bytes": 532,
+      "sha256": "9ab2adbeea4ad59cb6ffc385abfd883ccb34ac85b2210631e3f6f1d1c54804d4"
+    },
+    {
+      "path": "components/toggle-on.svg",
+      "bytes": 532,
+      "sha256": "190973838ac6cfec880a2edec9868b4abb722195b24d32f54e2c622d9ab53a6f"
+    },
+    {
+      "path": "components/tooltip.svg",
+      "bytes": 678,
+      "sha256": "59a5df7a21c7a5c8129dc36e07a04c55067bc7e838e91c540c73912d05b1b382"
+    },
+    {
+      "path": "HANDOFF.md",
+      "bytes": 16175,
+      "sha256": "50566ea05a4ab02d817838fff87d7f6f47ecfc9fd181eca3e30027c554aa0c5d"
+    },
+    {
+      "path": "palette.json",
+      "bytes": 327,
+      "sha256": "cd3b10b7c9d81d04419ec1135e0a2cddfac729761fda871cca8f2abf41dcaa65"
+    },
+    {
+      "path": "previews/character-picker.png",
+      "bytes": 133284,
+      "sha256": "a89a665379ee248f1d21c5abdca1e8b87a78099a9cd2a0ee65436f6ceb694f79"
+    },
+    {
+      "path": "previews/character-picker.svg",
+      "bytes": 4683,
+      "sha256": "38ce7e8e0606868da0a4fe7bd7afd72959f095f2bf9b4e467db1a90ec3a59aa2"
+    },
+    {
+      "path": "previews/components.png",
+      "bytes": 136982,
+      "sha256": "6487c4104777c92febc6c4c4bfc1ab6f1897fe2fb77ccd8e14cf6fb7f07781ca"
+    },
+    {
+      "path": "previews/components.svg",
+      "bytes": 17727,
+      "sha256": "b0cc5ad081811b0e5100391dfdb1751274cba1d6ef8a79a53d38b4b47519c5ad"
+    },
+    {
+      "path": "previews/detail.png",
+      "bytes": 149976,
+      "sha256": "3a40e98d9b81f0c1053b89f5fc86bc7b56d32c1f5814fca857261a4c19466518"
+    },
+    {
+      "path": "previews/detail.svg",
+      "bytes": 5277,
+      "sha256": "1c5db62fc66edc29e31830161263bddb161a503a1a222e5e5d62492aac54de86"
+    },
+    {
+      "path": "previews/edit.png",
+      "bytes": 151339,
+      "sha256": "2523227824173ab7421d6218b1bf54a289e4eb61097ebf6fbde572f9fe582b3e"
+    },
+    {
+      "path": "previews/edit.svg",
+      "bytes": 6112,
+      "sha256": "73a7528d3087055687e3e5161089a5e5e495d9e23245648446fc647581e71979"
+    },
+    {
+      "path": "previews/ordinary-settings.png",
+      "bytes": 174628,
+      "sha256": "3d681644158f96f51cbf45568e9e307c5ef22631b302f4d8139e491c2d5b43f4"
+    },
+    {
+      "path": "previews/ordinary-settings.svg",
+      "bytes": 4119,
+      "sha256": "994b9f37c6598cd299f81ceb0dace2d40733881061d478f0ff519f0d5cbb6ae1"
+    },
+    {
+      "path": "previews/overlay-settings.png",
+      "bytes": 139822,
+      "sha256": "28fde9ee6b836bcc03a332b032e65782f31ccca2480f0f5b3aa9ab33320870f7"
+    },
+    {
+      "path": "previews/overlay-settings.svg",
+      "bytes": 5123,
+      "sha256": "22c8ae21929217d916430c63d704e13af607e55e754ab3eb488052a30cbd58ec"
+    },
+    {
+      "path": "previews/overview.png",
+      "bytes": 420269,
+      "sha256": "a76bffe57229af9ba98a0a5255e9e1c89501cc8ad09567e977ed9239690398f4"
+    },
+    {
+      "path": "previews/overview.svg",
+      "bytes": 18774,
+      "sha256": "0e505adb9b55a413936060711a607f96700d1f1c7e147a7899c3f63973161e59"
+    },
+    {
+      "path": "previews/play.png",
+      "bytes": 154206,
+      "sha256": "3bca42315cd7419f92e9eaa218dd1b702a451fa5068503a6b7b8cd46b0e94c4e"
+    },
+    {
+      "path": "previews/play.svg",
+      "bytes": 5396,
+      "sha256": "a822d8b586b2f42bf3f35b501a6591e6397365104b2aba2ffd68cd10a5ab7947"
+    },
+    {
+      "path": "previews/safe-areas.png",
+      "bytes": 104649,
+      "sha256": "58199253d078e4aed8fd7cadccf52ee6947ee762724adfd2f5cc33f236289b72"
+    },
+    {
+      "path": "previews/safe-areas.svg",
+      "bytes": 3126,
+      "sha256": "762593270a9daca1b34b4cf815effa859de4973aaac2c1f1beabcf8cbb45e9c3"
+    },
+    {
+      "path": "previews/secondary-views.png",
+      "bytes": 248622,
+      "sha256": "4e68dc81864efc3b2c94a9d4c34e244c10f46b87e4990aafd43e1e96c1ab489e"
+    },
+    {
+      "path": "previews/secondary-views.svg",
+      "bytes": 17690,
+      "sha256": "3ce4b7e8db6ea7f103a6dc8aa2f4d18072c3d98d6a27dfcb78a91233a3f6fe52"
+    },
+    {
+      "path": "README.md",
+      "bytes": 754,
+      "sha256": "0d1c471cf6e343ab5bb661a2c88bbd6264e53cad37411d1c54733af7b07d8c86"
+    },
+    {
+      "path": "reference/approved-close-up.png",
+      "bytes": 2428865,
+      "sha256": "ec36548bdbf2dcd33ef41cf984c84ffc3a8b51ffba04202963faa7c65cbdd874"
+    }
+  ]
+}

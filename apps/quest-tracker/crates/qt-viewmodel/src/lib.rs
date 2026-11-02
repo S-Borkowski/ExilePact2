@@ -360,6 +360,24 @@ impl<'de> Deserialize<'de> for Scale {
     }
 }
 
+/// Unknown stored choices use the default; command patches validate strictly.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Theme {
+    #[default]
+    Exile,
+    Claude,
+}
+
+impl<'de> Deserialize<'de> for Theme {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Ok(match Value::deserialize(d)?.as_str() {
+            Some("claude") => Theme::Claude,
+            _ => Theme::Exile,
+        })
+    }
+}
+
 /// The user's settings, as `settings.json` stores them and the settings
 /// frame shows them. A missing field takes its default; a key this struct
 /// does not have, such as the `dock` side files written before Live 2
@@ -369,6 +387,7 @@ impl<'de> Deserialize<'de> for Scale {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    pub theme: Theme,
     /// The panel background's opacity, 0-1. At 0 the background is gone;
     /// text, icons, the border and the edit-mode accent stay opaque.
     pub opacity: f64,
@@ -394,6 +413,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Settings {
         Settings {
+            theme: Theme::Exile,
             opacity: Settings::DEFAULT_OPACITY,
             scale: Scale::Auto,
             show_skipped: false,
@@ -444,6 +464,9 @@ impl Settings {
         for (key, value) in fields {
             if !obj.contains_key(key) {
                 return Err(format!("unknown setting {key:?}"));
+            }
+            if key == "theme" && !matches!(value.as_str(), Some("exile" | "claude")) {
+                return Err("bad settings patch: theme must be exile or claude".to_string());
             }
             obj.insert(key.clone(), value.clone());
         }

@@ -25,6 +25,8 @@
   }
 
   const edit = $derived(view.mode === 'edit');
+  const steel = $derived(view.settings.theme !== 'claude');
+  const act = $derived(view.acts.length === 1 ? ['I', 'II', 'III', 'IV', 'V', 'VI'][view.acts[0].act - 1] : undefined);
   const character = $derived(view.character);
   const who = $derived(character?.provisional ? NEW_CHARACTER : (character?.name ?? ''));
   const meta = $derived(character ? `${character.class || 'Level'} ${character.level}${character.pinned ? ' · pinned' : ''}` : '');
@@ -36,8 +38,40 @@
 <!-- The drag is a mouse gesture on the window's own title bar, which the
      keyboard has no use for; the bar's controls stay buttons. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<header class="header" class:edit onpointerdown={edit ? press : undefined}>
-  {#if edit}
+<header class="header" class:edit class:steel onpointerdown={edit ? press : undefined}>
+  {#if steel}
+    <div class="tracker-bar">
+      <h1 class="tracker-title">Quest Tracker</h1>
+      {#if act}<span class="tracker-act">Act {act}</span>{/if}
+    </div>
+    <!-- The kit's header rail: two fine steel lines under the bar, below the corner knots. -->
+    <div class="tracker-rail" aria-hidden="true"></div>
+    {#if character}
+      <div class="character-context">
+        {#if edit}
+          <button type="button" class="who" title="Characters" aria-label={`${who}: choose the character`} onclick={() => send('open_frame', { frame: 'character-picker' })}>
+            <span class="name" class:provisional={character.provisional}>{who}</span><Icon id="ui-chevron-down" size="12px" />
+          </button>
+        {:else}<span class="name" class:provisional={character.provisional}>{who}</span>{/if}
+        <span class="meta">{meta}</span>
+        {#if !edit}<span class="kind">{kind}</span>{/if}
+      </div>
+    {/if}
+    {#if edit}
+      <div class="tracker-tools">
+        <span class="chip"><Icon id="ui-edit" size="12px" /><span class="mode-tag">Edit</span></span>
+        <span class="spacer"></span>
+        {#if character}
+          <div class="switch" role="group" aria-label="View">
+            <button type="button" aria-pressed={view.view_kind === 'next_up'} onclick={() => send('set_view_kind', { kind: 'next_up' })}>Next up</button>
+            <button type="button" aria-pressed={view.view_kind === 'campaign'} onclick={() => send('set_view_kind', { kind: 'campaign' })}>All</button>
+          </div>
+        {/if}
+        <button type="button" class="icon-btn" title="Collapse" aria-label="Collapse" onclick={() => send('set_collapsed', { collapsed: true })}><Icon id="ui-collapse" size="16px" /></button>
+        <button type="button" class="icon-btn" title="Settings" aria-label="Settings" onclick={() => send('open_frame', { frame: 'settings' })}><Icon id="ui-settings" size="16px" /></button>
+      </div>
+    {/if}
+  {:else if edit}
     <span class="chip"><Icon id="ui-edit" size="12px" /><span class="mode-tag">Edit</span></span>
     {#if character}
       <h1 class="title">

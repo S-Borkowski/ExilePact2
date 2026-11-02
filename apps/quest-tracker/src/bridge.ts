@@ -12,6 +12,7 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   type Mode,
+  type Theme,
   type QuestAction,
   type Scale,
   type RowChange,
@@ -45,6 +46,7 @@ export type OverlayFrame = 'character-picker' | 'settings';
 
 /** A partial settings object for `update_settings`; Rust refuses unknown keys (`dock` among them since Live 2, and the hide-under-panels switch since 0.1.1). */
 export interface SettingsPatch {
+  theme?: Theme;
   opacity?: number;
   scale?: Scale;
   show_skipped?: boolean;

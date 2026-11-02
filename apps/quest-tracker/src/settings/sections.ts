@@ -6,6 +6,7 @@ import type { Component } from 'svelte';
 import type { SettingsSend } from './bridge';
 import type { AppSettingsView } from './view';
 import UpdatesSection from './UpdatesSection.svelte';
+import AppearanceSection from './AppearanceSection.svelte';
 
 export interface SectionProps {
   view: AppSettingsView;
@@ -20,4 +21,7 @@ export interface SettingsSection {
   component: Component<SectionProps>;
 }
 
-export const SECTIONS: readonly SettingsSection[] = [{ id: 'updates', title: 'Updates', component: UpdatesSection }];
+export const SECTIONS: readonly SettingsSection[] = [
+  { id: 'appearance', title: 'Appearance', component: AppearanceSection },
+  { id: 'updates', title: 'Updates', component: UpdatesSection },
+];

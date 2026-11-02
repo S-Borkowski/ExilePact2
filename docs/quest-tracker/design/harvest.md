@@ -1,5 +1,63 @@
 # Figma harvest
 
+## Exile adoption, 2026-10-31
+
+The owner's 2026-11-01 status revision replaces inner icons with live CSS diamonds in Exile rows and detail headings: solid gold/single outline in progress (superseded by the kit: ivory inner fill; see component-spec); hollow gold/double outline available; thin muted hollow outline locked; silver fill/double outline done; diagonal hatch skipped; dotted hollow outline unknown. These need no bitmap asset. Each mark keeps one exact status accessible name and tooltip. Claude icons and separate worth/manual/inferred marks remain unchanged.
+
+The original harvest below is retained as the **Claude** theme. The default **Exile** theme pairs QT-local `theme/exile.json` and `theme/exile.css` manually; no theme generator exists. Its selectors are scoped to the received theme. The current authority is the [approved compact steel close-up](../../ui-design-system/quest-tracker-overlay-approved.png), copied byte-for-byte from the owner's original AI design (SHA256 `ec36548bdbf2dcd33ef41cf984c84ffc3a8b51ffba04202963faa7c65cbdd874`). The separate ornate journal concept was our earlier wrong reference choice and is historical. Runtime uses the steel frame and quiet stone texture, with live text and controls. Quest titles and objective prose use system Georgia/serif; Cinzel is the compact bar face and Alegreya Sans remains secondary metadata/forms. No Georgia font file is redistributed. Historical original assets/prompts remain below; the strict curated PNG inventory contains exactly four files.
+
+Cinzel SemiBold is bundled unmodified as `fonts/Cinzel-SemiBold.woff2`: Fontsource's [complete family ZIP](https://api.fontsource.org/v1/download/cinzel), fetched2026-10-31 from the [family download page](https://fontsource.org/fonts/cinzel/use), entry `static/cinzel-latin-600-normal.woff2`. Family ZIP companion TTF name table reports **Cinzel SemiBold, Version2.000**; OS/2 weight600; bundled file begins `wOF2`, length15204bytes, SHA256 `61efc27ceb7d08bb841652fa8979c0b6833b92548b7f9544c07968a6c02f28e4`. Latin coverage is the source subset; other characters use the serif fallback.
+
+The ZIP's original full license ships as `fonts/Cinzel-OFL.txt`: copyright2020 The Cinzel Project Authors, SIL Open Font License1.1, matching [upstream OFL](https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/OFL.txt). Existing Alegreya fonts/license remain. Cinzel/font-license copies are byte-identical in all three app font directories for the shared-resource contract; sibling apps continue selecting their original fonts and palette. Exile artwork/token overrides stay Quest-Tracker-local.
+
+## Original production material assets
+
+The first three assets were generated2026-10-31 UTC from the historical original AI journal concept. The steel frame was generated2026-11-01 UTC from the approved tracker close-up. All used the built-in image-generation tool; no model identifier was exposed. Selected outputs were copied byte-for-byte without pixel edits, resizing or conversion. No game composite, extracted asset, letters or controls are baked in.
+
+| Asset under `apps/quest-tracker/theme/materials/raster/` | Dimensions / mode | Bytes | SHA-256 |
+|---|---|---:|---|
+| `journal-frame.png` | 1254×1254 RGBA | 1237083 | `0745d20818040cf3b5796acab4d54de981b38ddf53b47a611437992dae57a3c2` |
+| `lantern-astrolabe-crest.png` | 1983×793 RGBA | 1811176 | `1ff2e55ca20f94f2614b929543f7148f3a997261e1d51660974ebcae3ca443d6` |
+| `charcoal-stone-well.png` | 1254×1254 RGB | 3736261 | `72cdd6a41d7f5f7ea89dc76de917407c3533f12df8733cddc4e41bee6f7cb225` |
+| `tracker-steel-frame.png` | 1189×1323 RGBA | 532634 | `438cc3a542d639ef948243f45d6a6870970bc7d5cf3bc18779e44c244beda796` |
+
+Current `tracker-steel-frame.png` reproduces thin weathered silver double rails, intertwined pointed corner knots and tiny aged-gold accents. It was a reference-derived generative extraction/reconstruction, not a deterministic crop. Alpha spans0–255; center/perimeter samples are transparent; alpha bbox31,38–1157,1298 (exclusive end). Midrail samples: x53–92/1096–1136 and y54–87/1217–1248. The central opening has at most1/255 generated matte; non-filled nine-slicing does not paint that cell. Runtime uses slice224 on every side, destination64px, stretch and12px outset (ordinary Settings outset0). Source transparent margins make corner width different from visible rail thickness. Reading content is independently clipped inside the fixed frame. No runtime import of the historical gold `journal-frame.png` or crest remains. Stone is darkened by CSS; seamlessness was requested, not mathematically established. Artwork is decorative, unfocusable and pointer-transparent.
+
+### Approved steel frame prompt
+
+Edit target: the original AI approved tracker close-up, now the documentation PNG linked above. Built-in image generation used `transparent_background=true`; the chosen output was copied unchanged. Original generation output: `exec-cfc6efc2-ef4b-47b7-995b-b5b09f7ecd0e.png`, same hash as the runtime file.
+
+```text
+Use case: background-extraction / precise-object-edit. Asset type: reusable production UI outer frame PNG, not a mockup. Edit target: the supplied ORIGINAL APPROVED Quest Tracker artwork. Extract/reconstruct ONLY its exact OUTER rectangular frame: thin weathered silver/steel double rails and the four intertwined, pointed corner ornaments with tiny aged-gold rivet accents. Preserve this reference's actual frame shape, proportions, silver/charcoal colors, material texture, scuffs and corner geometry as faithfully as possible. Do not redesign or embellish it. Delete all text, all quest/status/objective diamonds, all interior black stone field, and the internal header/footer/quest separator bars. Those will be live UI. The central opening and all space outside the outer frame must be genuinely transparent alpha. Keep every part of all four corner ornaments intact, with a small transparent safety margin. Straight front-on orthographic view, portrait rectangle matching the reference, no perspective. No statues, pillars, lantern, crest, astrolabe, gold architectural surround, additional motifs, lettering, labels, watermark, shadow backdrop or opaque padding. Deliver the isolated frame only at high detail; the same approved artwork, with everything except the outer frame removed.
+```
+
+Historical journal-generation prompts (frame/crest no longer imported):
+
+### Frame prompt
+
+```text
+Use case: stylized-concept. Asset type: production nine-slice UI border PNG, not a mockup.
+Use the attached ORIGINAL AI concept only as a material and sculpture reference, especially the RIGHT journal window. Create a new original front-facing square rectangular gothic UI surround, 1024 by 1024 pixels, real transparent alpha outside AND throughout the large empty central rectangular opening. Center must be totally transparent. No text, letters, icons, controls, interface content, landscapes or background.
+The border should occupy about 9 percent of the canvas on each side: straight horizontal and vertical rails joining four architectural corner caps, with a large rectangular empty opening about 80 percent canvas width and height. Keep long rails geometrically straight so CSS nine-slice can stretch the central segments. No perspective.
+Match the reference's tactile sculptural depth: chipped dark charcoal carved masonry, weathered black steel interior rail, worn warm antique-gold inlay and restrained filigree, gothic stone ribs, small carved recesses and layered bevels. Richly rendered original physical material, photorealistic 3D relief with raking warm light and deep recess shadows. Four substantial corners and continuous edges; ornament stays entirely inside image bounds. The rails can have shallow carved vertical niche details but must remain narrow. Old stone must be richly textured and nearly black, gold worn and warm, no glossy chrome, no flat vector strokes, no modern sci-fi outline. Uniform dimensional detail around all four sides. Transparent isolated object, no drop-shadow rectangle or checkerboard painted into the image.
+```
+
+### Crest prompt
+
+```text
+Use case: stylized-concept. Asset type: production UI decorative header crest transparent PNG, not a mockup.
+Use the attached ORIGINAL AI concept as material reference, especially its LEFT lantern in an astrolabe ring and architectural top gables. Create a new original centered ornamental crest for a dark gothic journal UI. Transparent alpha everywhere outside the single isolated object. No lettering, UI controls, cards, scene, background, landscape, people or logos.
+A warmly glowing amber lantern hangs inside a beautifully etched worn antique-gold astrolabe/compass spoked ring, seated above a low broad black carved-stone architectural title-plate crown. Subtle Gothic stone gables/niches, deeply carved weathered charcoal stone, black steel inner trim and worn gold inlay. Broad horizontal footprint with central lantern-ring rising modestly above, approximately 2.5 to 1 width-to-height object proportions, fully inside image bounds with small transparent margin. It will be displayed around 160 by 65 CSS pixels, so the central lantern and ring must be clean and readable with no hairline-only structure.
+Highly tactile sculptural 3D relief, aged black stone pores, chipped ridges, hammered gold, restrained warm rim lighting and deep recessed shadows, matching the lush original concept's physical material depth. Not a flat vector logo, not a modern minimalist outline, no large opaque rectangular backdrop. Keep the lower title-plate crown narrow so live HTML text can be placed below separately.
+```
+
+### Stone prompt
+
+```text
+Use case: stylized-concept. Asset type: seamless repeating dark stone UI well texture, 1024 square, opaque.
+Use the attached original AI journal concept as a MATERIAL reference only: the rich near-black rough carved stone in the journal/card recesses. Generate a subtle seamless/tileable charcoal-black weathered masonry surface for live text to sit over. Straight-on orthographic material sample only. Low-contrast fine pores, faint erosion and tiny chisel marks, black mineral flecks and restrained subdued warm edge glints. Overall nearly uniform dark charcoal (#141414 to #242321), no large cracks, no borders, no ornaments, no writing, no symbols, no scenery, no objects, no bright highlights, no vignettes, no directional gradient, no perspective. Physical tactile aged stone at an appropriate small scale, quiet enough for legible ivory text, not a flat vector fill and not noisy high-contrast gravel. Opposite edges must join without visible seams.
+```
+
 Harvested once, on 2026-10-25. Nothing after this reads Figma.
 
 - **File:** https://www.figma.com/design/OCm0ix5nud2HU18LNYKf3g
@@ -15,7 +73,7 @@ Harvested once, on 2026-10-25. Nothing after this reads Figma.
 | Output | Source |
 |---|---|
 | `apps/quest-tracker/theme/theme.json` | Figma variables (74 + 3 added in review) and text styles, mapped to the contract's token keys; extras listed below |
-| `apps/quest-tracker/theme/tokens.css` | Generated from `theme.json`, plus `@font-face` for the five bundled faces (local URLs only) |
+| `apps/quest-tracker/theme/tokens.css` | Original values paired manually with `theme.json`, plus `@font-face` for the five original bundled faces (local URLs only); there is no generator |
 | `apps/quest-tracker/theme/icons/*.svg` | The 41 contract ids copied from `docs/quest-tracker/icons/` per the brief's `Icon sources:` table (the Figma icons are imports of the same files), title ids made unique; 5 extras |
 | `apps/quest-tracker/theme/fonts/` | Alegreya Sans Regular, Medium, Bold, ExtraBold and Alegreya Sans SC Bold, TTF from google/fonts (`ofl/alegreyasans`, `ofl/alegreyasanssc`) converted to WOFF2; `OFL.txt` |
 | `docs/quest-tracker/design/frames/` | One PNG per frame id at 1× over the bright backdrop, `--dark` twins over the dark one; panel-level ids cropped from the "modes" and "empty-states" frames |

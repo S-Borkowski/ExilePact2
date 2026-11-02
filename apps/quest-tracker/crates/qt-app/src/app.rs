@@ -129,10 +129,10 @@ pub enum Placement {
 }
 
 /// The window's size at zoom 1 when none was saved, in logical pixels: the
-/// panel's 320 × 384 CSS px (0.1.0's width and its old `60vh` cap) plus the
-/// 12 px transparent margin on each side that holds its shadow. A first
-/// start multiplies it by the starting zoom.
-pub const DEFAULT_WINDOW_SIZE: (f64, f64) = (344.0, 408.0);
+/// panel's 340 × 360 CSS px plus the 12 px transparent margin on each side
+/// that holds its shadow, giving 364 × 384 before first-start zoom.
+/// A first start multiplies it by the starting zoom.
+pub const DEFAULT_WINDOW_SIZE: (f64, f64) = (364.0, 384.0);
 
 /// The smallest window, in logical pixels, whatever the zoom: at zoom 1 the
 /// edit-mode header (the EDIT chip, the name shortened to about five
@@ -609,6 +609,7 @@ struct After {
     screen: Option<bool>,
     /// Automatic update checks were turned on (`true`) or off (`false`).
     updates: Option<bool>,
+    theme_changed: bool,
 }
 
 struct Tailer {
@@ -2120,6 +2121,7 @@ impl App {
             if new.check_updates != old.check_updates {
                 after.updates = Some(new.check_updates);
             }
+            after.theme_changed = new.theme != old.theme;
             Ok(after)
         })
     }
@@ -2147,8 +2149,11 @@ impl App {
 
     /// `get_app_settings`: what the Settings window shows.
     pub fn get_app_settings(&self) -> AppSettingsView {
-        let on = self.lock().settings.check_updates;
-        self.updates.view(on)
+        let (on, theme) = {
+            let st = self.lock();
+            (st.settings.check_updates, st.settings.theme)
+        };
+        AppSettingsView::with_theme(self.updates.view(on), theme)
     }
 
     /// `check_for_updates`: starts a manual check and returns the view at
@@ -2416,6 +2421,9 @@ impl App {
         if let Some(on) = after.updates {
             self.diag(updates::turned_line(on));
             self.updates.changed();
+            self.emit_app_settings();
+        }
+        if after.theme_changed && after.updates.is_none() {
             self.emit_app_settings();
         }
         if again {
