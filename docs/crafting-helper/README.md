@@ -583,8 +583,9 @@ Takes no arguments. A 0.1.x copy updated in place keeps its old name,
       succeeds; `error: the watch thread did not start: <e>`; and `error:
       watch: did not end within <n> ms` when the app quits during a slow
       read.
-  - `overlay position: <position>` and `screen watch: on` or `screen watch:
-    off` when the Settings window changes them.
+  - `overlay position: <position>`, `screen watch: on` or `screen watch:
+    off`, and `theme: exile` or `theme: claude` when the Settings window
+    changes them.
   - `opened Craft of Exile` after the button, or `error: opening Craft of
     Exile: <e>` when the browser could not be asked to open it.
   - The trade panel's and the league list's `trade:` lines, counts and
@@ -882,9 +883,9 @@ the research note:
   reference). The log holds the hotkey, the grabs' line counts, refusals,
   the blocked list's length, the `craft:` lines, the `overlay:` and
   `watch:` lines (states, counts and the game's client size), the Craft of
-  Exile line, the `trade:` lines (counts and reasons) and the `updates:`
-  lines; nothing about your account or character, no item text, no OCR
-  text, no window title, no image, no league, base, modifier or trade
+  Exile line, the `trade:` lines (counts and reasons), the `updates:`
+  lines and the `theme:` line; nothing about your account or character, no
+  item text, no OCR text, no window title, no image, no league, base, modifier or trade
   link, and nothing of GitHub's or the trade site's answers.
   `settings.json` holds the league you chose. An
   install also writes beside the exe, under the running exe's own name:

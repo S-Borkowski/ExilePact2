@@ -465,8 +465,9 @@ and "Release notes" below needs a `### <version>` section for it:
    command.
 3. The pushed tag starts `.github/workflows/waystone-roller-release.yml`. It
    checks the tag against the files, builds with Rust 1.98.1 and Node
-   24.19.0 on a Windows runner, signs the exe with the release key, and
-   creates a **draft** release. The draft holds `waystone-roller.exe`,
+   24.19.0 on a Windows runner, copies the build `Waystone Roller.exe` to
+   the asset name `waystone-roller.exe`, signs that copy with the release
+   key, and creates a **draft** release. The draft holds `waystone-roller.exe`,
    `SHA256SUMS.txt`, `waystone-roller.exe.minisig` (the signature the app
    checks before it installs an update) and the body from step 2. Without
    the `TAURI_SIGNING_PRIVATE_KEY` secret the sign step fails the run and
@@ -610,9 +611,9 @@ release already exists, only its assets are replaced.
   `settings.json`; a missing or unknown value opens Exile. Claude looks
   exactly as before. Nothing else changes: the same features, wording and
   window sizes.
-- In the Exile theme, the Want and Avoid marks (a gold plus, a muted-red
-  bar) and the update mark beside Settings (a small gold diamond) are drawn
-  from their own artwork rather than outlined stand-ins.
+- In the Exile theme, the Want and Avoid marks are a gold plus and a
+  muted-red bar, and the update mark beside Settings is a small gold
+  diamond.
 - A build from source is now `Waystone Roller.exe` (in
   `target/release/`). A release download is still `waystone-roller.exe`, the same program;
   renaming it to `Waystone Roller.exe` is fine. An in-app update keeps the
