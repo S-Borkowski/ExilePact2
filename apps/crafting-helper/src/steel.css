@@ -29,6 +29,9 @@
   --want: var(--color-edit-accent);
   --error: var(--color-warning);
   --focus: var(--color-edit-accent);
+  /* The section panels' ground: black with alpha, so the masonry well shows
+     through them instead of an opaque slate slab. */
+  --section-fill: rgba(0, 0, 0, 0.45);
 }
 
 :root[data-theme='exile'] body {
@@ -453,23 +456,27 @@
   background: transparent;
 }
 
-/* Raised boxes (the chosen targets, blocked for this craft, the current step's card): slate panels with a fine steel edge. */
+/* Raised boxes (the chosen targets, blocked for this craft, the current step's card): the well through a black veil, with a fine steel edge. */
 :root[data-theme='exile'] .chosen,
 :root[data-theme='exile'] .blocked,
 :root[data-theme='exile'] .card {
   border-color: var(--color-panel-divider);
-  background: #121B20;
+  background: var(--section-fill);
 }
 
 :root[data-theme='exile'] .blocked summary:hover {
   background: var(--color-action-secondary-hover);
 }
 
-/* Sunken lists (the modifier choices, the currency picker): the kit's slate field. */
+/* Sunken lists (the modifier choices, the trade modifiers, the currency
+   picker): the same veil and steel edge as the boxes beside them, at every
+   width, not only where the list scrolls on its own below 880 px. */
 :root[data-theme='exile'] .choice-list,
+:root[data-theme='exile'] .mod-list,
 :root[data-theme='exile'] .picker .list {
-  border-color: var(--color-panel-divider);
-  background: #10171C;
+  padding: var(--space-unit) calc(var(--space-unit) * 2);
+  border: 1px solid var(--color-panel-divider);
+  background: var(--section-fill);
 }
 
 /* The trade panel's own scroller and bar, inside the rails. */
@@ -676,11 +683,11 @@
 
 /* -------------------------------------------- requested art: item card */
 
-/* Placeholder: a slate card with a fine steel edge and the kit's reading inset. */
+/* Placeholder: the well through a black veil, a fine steel edge and the kit's reading inset. */
 :root[data-theme='exile'] [data-art-placeholder='ch-item-card'] {
   padding: 10px 12px;
   border: 1px solid var(--color-panel-divider);
-  background: #121B20;
+  background: var(--section-fill);
 }
 
 /* Delivered: the card frame as a nine-slice, the centre left to the well. */

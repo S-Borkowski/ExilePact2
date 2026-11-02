@@ -102,7 +102,12 @@ The Quest Tracker's steel/masonry kit
   and the Settings window carry it; the overlay does not (below).
 - **Masonry.** The kit's charcoal masonry
   (`theme/materials/raster/masonry-charcoal.png`), one cover crop per well
-  at 38 % over `#090D10`, behind the live content of each window.
+  at 38 % over `#090D10`, behind the live content of each window. The
+  section panels on it (the grabbed item's card, the chosen targets, the
+  modifier and trade lists, the currency list, blocked for this craft, the
+  current step's card)
+  are black at 45 % with a fine steel edge, so the stone shows through
+  them; the modifier lists keep that edge at every window width.
 - **Corner safety.** No content paints over the frame's art: the content
   sits 20 px in from the sides, 14 px down and 21 px up; the title bar and
   the status line keep 10 px further in, between the corner knots; only the

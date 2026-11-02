@@ -55,6 +55,18 @@ Layout choices the runner drove, all under Exile only:
 - A chosen target's floor and Remove wrap below its text when they do not
   fit beside it.
 
+After the owner's live look check (2026-11-02: the grabbed item's sections
+read as opaque slabs, and the modifier list under "Filter modifiers" had no
+border), every section panel on the main window (the item card, the chosen
+targets, blocked for this craft, the current step's card, the modifier
+choices, the trade modifiers and the currency list) is filled with black at
+45 % (`--section-fill` in `steel.css`) instead of an opaque slate, so the
+masonry shows through, and the two modifier lists carry the same 1 px steel
+edge as their sibling boxes at every window width, not only below 880 px.
+The matrix, legacy comparison and `scripts/scroll-height.mjs` were re-run
+on that tree with the results above, and the Exile screenshots were
+regenerated.
+
 ## The previous theme
 
 `npm --prefix apps/crafting-helper run corner-safety -- --legacy-base
@@ -91,7 +103,7 @@ placeholder in the kit palette until its file arrives, and
 |---|---|---|---|
 | `ch-radio` | `radio-off.svg`, `radio-on.svg`, `radio-focus.svg`, `radio-disabled.svg` | the trade panel's Match radios | a 16 px steel ring, an ivory dot when on |
 | `ch-overlay-frame` | `frame-overlay-compact.png` | the overlay panel's edge | a 3 px double steel border |
-| `ch-item-card` | `item-card-frame.png` | the grabbed item's card | a slate card with a fine steel line |
+| `ch-item-card` | `item-card-frame.png` | the grabbed item's card | black at 45 % over the well, a fine steel line |
 | `ch-step-marker` | `step-marker.svg` | the route's step number plate | a slate square with a steel edge |
 | `ch-update-dot` | `update-dot.svg` | the header's update mark | an 8 px ivory square, steel edge |
 

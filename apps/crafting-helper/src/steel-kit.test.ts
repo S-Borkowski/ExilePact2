@@ -71,7 +71,29 @@ function selectors(css: string): string[] {
   return out;
 }
 
-let rendered: (Rendered & { bridge: FakeBridge }) | null = null;
+const EXILE = ":root[data-theme='exile']";
+
+/** The declarations of every top-level steel.css rule naming `EXILE target` (or `EXILE` alone), the last one winning. */
+function declared(css: string, target: string): Record<string, string> {
+  const want = target ? `${EXILE} ${target}` : EXILE;
+  const out: Record<string, string> = {};
+  for (const m of css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (!selectors(`${m[1]}{`).includes(want)) continue;
+    for (const d of m[2].split(';')) {
+      const i = d.indexOf(':');
+      if (i > 0) out[d.slice(0, i).trim()] = d.slice(i + 1).trim();
+    }
+  }
+  return out;
+}
+
+/** The alpha of a translucent black `rgba(0, 0, 0, a)`, or null for anything else. */
+function blackAlpha(value: string | undefined): number | null {
+  const a = value?.match(/^rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*([0-9.]+)\s*\)$/)?.[1];
+  return a === undefined ? null : Number(a);
+}
+
+let rendered:(Rendered & { bridge: FakeBridge }) | null = null;
 let others: Array<() => void> = [];
 
 afterEach(() => {
@@ -194,6 +216,30 @@ describe('the steel/masonry kit in the Exile theme', () => {
     // Controls take steel-grey fills, never gold: no `background` of the gold token.
     const css = files['./steel.css'];
     expect(css).not.toMatch(/background(-color)?:[^;]*(--color-worth-gold|#D0BF94)/i);
+  });
+
+  it('lets the masonry show through every section panel, and edges each modifier list in steel', async () => {
+    // The owner's Live 2 look check: the grabbed item's sections read as
+    // opaque slabs and the modifier checklist had no border.
+    const css = await readText('./steel.css');
+    const alpha = blackAlpha(declared(css, '')['--section-fill']);
+    expect(alpha, '--section-fill is translucent black').not.toBeNull();
+    expect(alpha!).toBeGreaterThan(0);
+    expect(alpha!).toBeLessThan(1);
+    const panels = ['.chosen', '.blocked', '.card', "[data-art-placeholder='ch-item-card']", '.choice-list', '.mod-list', '.picker .list'];
+    for (const panel of panels) {
+      expect(declared(css, panel).background, panel).toBe('var(--section-fill)');
+    }
+    // The lists carry the steel edge at every width, not only below 880 px.
+    for (const list of ['.choice-list', '.mod-list', '.picker .list']) {
+      expect(declared(css, list).border, list).toBe('1px solid var(--color-panel-divider)');
+    }
+    for (const box of ['.chosen', '.blocked', '.card']) {
+      expect(declared(css, box)['border-color'], box).toBe('var(--color-panel-divider)');
+    }
+    // Negative controls: the opaque slate fill, and a rule for another panel, are not taken.
+    expect(blackAlpha('#121B20')).toBeNull();
+    expect(declared(`${EXILE} .other { background: var(--section-fill); }`, '.card').background).toBeUndefined();
   });
 
   it('takes the theme from each view on all three pages, exile before the first', async () => {

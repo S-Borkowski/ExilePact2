@@ -82,7 +82,7 @@ Material: steel; light from the top; edges: a plain forged border with small cor
 Safe area: the card's text sits 10 px from its top and bottom and 12 px from its sides at scale 1; the art must stay within the outer 8 px (16 source px) of every edge.
 References: `docs/quest-tracker/design/steel-masonry-kit/assets/frame-neutral-steel.png` (material), `docs/quest-tracker/design/steel-masonry-kit/previews/detail.png` (the quest detail's reading block: the weight a card within a window should have), `docs/quest-tracker/design/steel-masonry-kit/components/message-info.svg` (the slate panel colour behind text).
 Current: `docs/crafting-helper/design/reference/ch-item-card.png` (today's element, from the base tag)
-Placeholder: a `#121B20` card with a 1 px line `#5D686F` edge and 10 / 12 px padding.
+Placeholder: a card of black at 45 % alpha over the masonry well, with a 1 px line `#5D686F` edge and 10 / 12 px padding.
 Wiring: `apps/crafting-helper/theme/materials/requested/item-card-frame.png`; manifest entry `ch-item-card` in `apps/crafting-helper/theme/materials/requested/manifest.json`
 Acceptance: 512 x 512 px RGBA; centre alpha 0 (every pixel more than 32 source px from an edge); `npm --prefix apps/crafting-helper run corner-safety` reports 0 failures.
 
