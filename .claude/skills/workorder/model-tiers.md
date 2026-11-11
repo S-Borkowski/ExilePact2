@@ -100,7 +100,7 @@ miss there shows up in `--calibrate` and in the AI review that follows every
 pull request, and `decompile-output-guard` has the mechanical
 `decompiled_output.py` hook behind it.
 
-**Haiku max reviewers, measured (`arena-slot-table`, 2026-11-11).** The
+**Haiku max reviewers, measured (MegaBolt's `arena-slot-table`, 2026-11-11).** The
 forecast above repriced other models' token counts; Haiku spent its own, and
 the forecast did not hold:
 

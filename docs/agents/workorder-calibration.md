@@ -1422,6 +1422,10 @@ runs on 2026-10-07 (Claude Code 2.1.294).
 - A patch round (an implementer applying a reviewer's written `fix`) is a
   candidate for Haiku 5.5 at `high` or `xhigh`; not tried.
 
+> The sections from here on were ported on 2026-11-11 from the sibling
+> project MegaBolt, which shares this tooling; workorder slugs such as
+> `arena-slot-table` are MegaBolt's runs, not this repository's.
+
 # Fable back, opus as the fallback (2026-11-09)
 
 The owner moved the two top tiers back to Fable (5.2, through the `fable`
