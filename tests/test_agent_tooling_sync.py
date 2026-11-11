@@ -67,20 +67,67 @@ class TestDerivedCopiesAreCurrent(unittest.TestCase):
                 self.assertEqual(data["sandbox_mode"], "read-only")
 
     def test_effort_variants_are_their_source_at_another_effort(self):
-        """A variant differs from its source in name, effort and description
-        only; the body is the same instructions, byte for byte."""
-        variants = [p for p in sorted(sync.CLAUDE_AGENTS.glob("*.md")) if sync.is_generated_variant(p)]
+        """A variant differs from its source in name, model, effort and
+        description only; the body is the same instructions, byte for byte."""
+        variants = {p.stem: p for p in sorted(sync.CLAUDE_AGENTS.glob("*.md")) if sync.is_generated_variant(p)}
         self.assertTrue(variants, "the /workorder tier tables name effort variants; none were generated")
-        for path in variants:
+        specs = {}
+        for src in sync.CLAUDE_AGENTS.glob("*.md"):
+            if sync.is_generated_variant(src):
+                continue
+            src_fields, src_body = sync.parse_frontmatter(src.read_text(encoding="utf-8"))
+            for name, model, effort, _ in sync.variant_specs(src_fields):
+                specs[name] = (src_fields, src_body, model, effort)
+        self.assertEqual(set(variants), set(specs), "every generated agent has a source entry, and back")
+        for name, path in variants.items():
             fields, body = sync.parse_frontmatter(path.read_text(encoding="utf-8"))
-            base, _, level = fields["name"].rpartition("-")
-            src_fields, src_body = sync.parse_frontmatter((sync.CLAUDE_AGENTS / f"{base}.md").read_text(encoding="utf-8"))
-            self.assertIn(level, src_fields["effort-variants"], path.name)
-            self.assertEqual(fields["effort"], level, path.name)
-            self.assertEqual(fields["model"], src_fields["model"], path.name)
+            src_fields, src_body, model, effort = specs[name]
+            self.assertEqual((fields["model"], fields["effort"]), (model, effort), path.name)
             self.assertEqual(fields["tools"], src_fields["tools"], path.name)
             self.assertEqual(body, src_body, path.name)
             self.assertNotIn("effort-variants", fields, path.name)
+            self.assertNotIn("fallback", fields, path.name)
+
+    def test_the_owners_fable_tiers_and_their_opus_fallbacks(self):
+        """Owner, 2026-11-09 and 2026-11-10: every tier but haiku on fable,
+        each with an opus twin at the tier it replaced."""
+        # Owner, 2026-11-10: tiers read off the Artificial Analysis
+        # Engineering Index against cost per task; each fable agent keeps an
+        # opus twin at the tier it replaced.
+        want = {
+            "planner": ("fable", "medium"), "planner-opus": ("opus", "high"),
+            "planner-medium": ("opus", "medium"),
+            "planner-xhigh": ("fable", "high"), "planner-xhigh-opus": ("opus", "xhigh"),
+            "planner-max": ("fable", "high"), "planner-max-opus": ("opus", "max"),
+            "implementer": ("fable", "medium"), "implementer-opus": ("opus", "high"),
+            "implementer-medium": ("opus", "medium"),
+            "consultant": ("fable", "medium"), "consultant-opus": ("opus", "xhigh"),
+            "consultant-max": ("fable", "high"), "consultant-max-opus": ("opus", "max"),
+            "instrument-blindness-reviewer": ("fable", "medium"),
+            "instrument-blindness-reviewer-opus": ("opus", "high"),
+            "docs-sync-reviewer": ("opus", "medium"), "decompile-output-guard": ("opus", "medium"),
+            "live-operator": ("opus", "medium"),
+            "verifier": ("haiku", "medium"), "scribe": ("haiku", "low"),
+        }
+        for name in ("planner-medium", "implementer-medium", "docs-sync-reviewer", "decompile-output-guard",
+                     "live-operator", "verifier", "scribe"):
+            self.assertFalse((sync.CLAUDE_AGENTS / f"{name}-opus.md").exists(), f"{name} is not on fable: no twin")
+        for name, tier in want.items():
+            fields, _ = sync.parse_frontmatter((sync.CLAUDE_AGENTS / f"{name}.md").read_text(encoding="utf-8"))
+            self.assertEqual((fields["model"], fields["effort"]), tier, name)
+
+    def test_variant_spec_grammar(self):
+        fields = {"name": "a", "model": "fable", "effort": "medium",
+                  "effort-variants": "medium=opus, max=fable/high|opus/max", "fallback": "opus/high"}
+        got = [(n, m, e) for n, m, e, _ in sync.variant_specs(fields)]
+        self.assertEqual(got, [("a-medium", "opus", "medium"), ("a-max", "fable", "high"),
+                               ("a-max-opus", "opus", "max"), ("a-opus", "opus", "high")])
+        for bad in ({"effort-variants": "medium"},           # the source's own tier
+                    {"effort-variants": "max=gpt"},          # unknown model
+                    {"fallback": "fable/high"},              # a fallback on its own model
+                    {"effort-variants": "max|opus/extreme"}):  # unknown effort
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                sync.variant_specs({**fields, "effort-variants": "", "fallback": "", **bad})
 
     def test_codex_mcp_servers_match_mcp_json(self):
         claude = json.loads((REPO / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]
@@ -223,20 +270,22 @@ class TestTheCheckerItself(unittest.TestCase):
 
     def test_hand_edited_effort_variant_is_caught(self):
         variant = self.tmp / ".claude" / "agents" / "planner-max.md"
-        variant.write_text(variant.read_text(encoding="utf-8").replace("effort: max", "effort: high"), encoding="utf-8")
+        variant.write_text(variant.read_text(encoding="utf-8").replace("model: fable", "model: opus"), encoding="utf-8")
         rc, out = run_check()
         self.assertEqual(rc, 1)
         self.assertIn("planner-max.md", out)
 
     def test_dropped_effort_variant_is_caught_and_removed(self):
         src = self.tmp / ".claude" / "agents" / "consultant.md"
-        src.write_text(src.read_text(encoding="utf-8").replace("effort-variants: max\n", ""), encoding="utf-8")
+        src.write_text(src.read_text(encoding="utf-8").replace("effort-variants: max=fable/high|opus/max\n", ""), encoding="utf-8")
         rc, out = run_check()
         self.assertEqual(rc, 1)
         self.assertIn("consultant-max.md", out)
+        self.assertIn("consultant-max-opus.md", out)
         with redirect_stdout(io.StringIO()):
             sync.main([])
         self.assertFalse((self.tmp / ".claude" / "agents" / "consultant-max.md").exists())
+        self.assertFalse((self.tmp / ".claude" / "agents" / "consultant-max-opus.md").exists())
         self.assertFalse((self.tmp / ".codex" / "agents" / "consultant-max.toml").exists())
         self.assertEqual(run_check()[0], 0)
 

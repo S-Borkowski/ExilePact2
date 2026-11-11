@@ -27,7 +27,9 @@ export const meta = {
 //   checkoutRoot,                       // this session's `git rev-parse --show-toplevel`; carried into the result's
 //                                       // `record` so `workorder_record.py` resolves relative paths in this checkout
 //   goalExcerpt,                        // '## Goal' + '## Out of scope', pasted by the driver
-//   implementerModel,                   // 'opus' (the default) | 'sonnet', from step 0.5 triage. 'fable' is BAD-ARGS
+//   implementerModel,                   // unset (the default: the agent's pin, `implementer` fable, `implementer-medium` opus,
+//                                       // with the opus fallback) | 'fable' | 'opus' | 'sonnet', from step 0.5 triage;
+//                                       // a named model skips the fallback
 //                                       // since 2026-10-05: the owner's license no longer carries it
 //   implementerEffort,                  // 'high' (the default, `implementer`) | 'medium' (`implementer-medium`), from
 //                                       // step 0.5 triage. A patch round (2i) always runs `implementer-medium`
@@ -101,7 +103,47 @@ const underRoot = p => isAbsolutePath(p) ? p : `${REPO_ROOT.replace(/[\\/]+$/, '
 // that is never used (repoRoot absent) would change today's exact strings.
 const DELTA = `py -3 .claude/skills/workorder/round_delta.py`
 const DELTA_ROOT_ARG = REPO_ROOT ? ` --root "${REPO_ROOT}"` : ''
-const MODELS = { 'instrument-blindness-reviewer': 'opus' }
+// No reviewer's model is overridden: each runs on its own pin, so the fable
+// agents keep their opus fallback below (an explicit `model` skips it).
+const MODELS = {}
+// Model fallback. Each fable-pinned agent has a generated `<name>-opus` twin
+// at the opus tier it replaced (owner, 2026-11-09 and 2026-11-10). A spawn whose error says its model is unavailable is re-run
+// once as that twin; any other thrown failure is thrown as before.
+// The Workflow API's `agent()` does not throw on a terminal API error such as
+// an unavailable model: it returns null, with no reason attached (PR #58
+// review). A null is therefore also re-run once as the twin, and logged. That
+// is deliberate: a null cannot be told apart from a user's skip or a death
+// mid-task, and the alternative is a fallback that never fires. The twin's
+// own null is returned as before, so the caller still ends AGENT-FAILED.
+// The fable-pinned agents (tiers chosen 2026-11-10 from the Artificial
+// Analysis Engineering Index against cost per task). The opus and sonnet
+// agents have no twin and never fall back.
+const FALLBACK_TWIN = Object.fromEntries([
+  'planner', 'planner-xhigh', 'planner-max',
+  'implementer',
+  'consultant', 'consultant-max',
+  'instrument-blindness-reviewer',
+].map(name => [name, `${name}-opus`]))
+// Only an error that says the model itself cannot be used: naming the model
+// is not enough (`claude-fable-5-2: overloaded` is a failure, not
+// unavailability), and the two halves must sit in one clause.
+const MODEL_UNAVAILABLE = /\bmodel\b[^.;\n]{0,80}?\b(?:unavailable|not available|not found|not allowed|not supported|no access|access denied|permission denied|not entitled)\b|\b(?:unavailable|not available|not found|not allowed|not supported|no access|access denied|permission denied|not entitled)\b[^.;\n]{0,80}?\bmodel\b/i
+const runAgent = async (prompt, opts) => {
+  const twin = opts && !opts.model && FALLBACK_TWIN[opts.agentType]
+  if (!twin) return agent(prompt, opts)
+  let why
+  try {
+    const out = await agent(prompt, opts)
+    if (out !== null && out !== undefined) return out
+    why = 'returned nothing (a terminal API error such as an unavailable model, or a skip)'
+  } catch (e) {
+    why = String((e && e.message) || e)
+    if (!MODEL_UNAVAILABLE.test(why)) throw e
+    why = `could not start (${why.slice(0, 200)})`
+  }
+  log(`${opts.label}: ${opts.agentType} ${why}; re-running once as ${twin}`)
+  return agent(prompt, { ...opts, agentType: twin })
+}
 
 // Hook/installer source (any file whose name says hook, install or probe) and
 // a recorded research finding: the paths instrument-blindness-reviewer owns,
@@ -468,9 +510,9 @@ if (!SLUG || !A.planPath || !A.contextPath || !A.goalExcerpt || !A.reviewers) {
 // `tools/sync_agent_tooling.py` from implementer.md's `effort-variants:`) is
 // the one spelling that both runs at medium and shows in the audit.
 const IMPLEMENTER_BY_EFFORT = { high: 'implementer', medium: 'implementer-medium' }
-const IMPLEMENTER_MODELS = ['opus', 'sonnet']
+const IMPLEMENTER_MODELS = ['fable', 'opus', 'sonnet']
 if (A.implementerModel !== undefined && !IMPLEMENTER_MODELS.includes(A.implementerModel)) {
-  return { outcome: 'BAD-ARGS', detail: `implementerModel must be one of ${IMPLEMENTER_MODELS.join(', ')} (default opus), not ${JSON.stringify(A.implementerModel)}` }
+  return { outcome: 'BAD-ARGS', detail: `implementerModel must be one of ${IMPLEMENTER_MODELS.join(', ')} (default: the agent's own pin), not ${JSON.stringify(A.implementerModel)}` }
 }
 if (A.implementerEffort !== undefined && !IMPLEMENTER_BY_EFFORT[A.implementerEffort]) {
   return { outcome: 'BAD-ARGS', detail: `implementerEffort must be one of ${Object.keys(IMPLEMENTER_BY_EFFORT).join(', ')} (default high), not ${JSON.stringify(A.implementerEffort)}` }
@@ -907,7 +949,7 @@ const implPrompt = (n, amended = false) => workorderLine(n) +
   briefLine(amendedSel(`--round ${n}${n > 0 ? ` --since-round ${n - 1}` : ''}`, amended)) + inlineRecord() +
   reentry(n, { log: true, criteria: true }) + (LANES.length && (n > START || amended) ? LANED_LATER_NOTE : '') +
   (amended ? AMENDED_NOTE : '') + bookkeepingLast(n) + VERDICT_ASK
-const implOpts = (label, schema, agentType = IMPLEMENTER) => ({ label, phase: 'Implement', agentType, model: A.implementerModel || 'opus', schema })
+const implOpts = (label, schema, agentType = IMPLEMENTER) => ({ label, phase: 'Implement', agentType, model: A.implementerModel, schema })
 const lanePrompt = (n, lane) => workorderLine(n) + briefLine(`--lane ${lane.name}`) + reentry(n) +
   `You are lane '${lane.name}', one of ${LANES.length} lanes (${LANE_NAMES}) running at the same time in separate implementers: follow your "When you are one lane, or the join" section. ` +
   `Carry out only the steps under '### Lane: ${lane.name}' in '## Steps', after the preconditions written above the first '### Lane:'; the '### Join' steps and every other lane's steps are not yours. ` +
@@ -1083,13 +1125,13 @@ async function amendOnce(spawnFn, tag, who, correction, evidence) {
     `Record what you changed, and the evidence it answers, under a new '### Amendment <k>' heading in the context file's '## Log', run \`py -3 tools/plan_lint.py "${A.planPath}"\`, and return verdict PLAN-READY. ` +
     `If the correction cannot be made without touching '## Goal', '## Out of scope' or '## Needs human judgement', adding or removing a section, or changing more than 20 lines -- or the stated fix is wrong -- make no edit and return verdict NOT AN AMENDMENT with why in 'reason'. ` +
     `Other implementers may be working in this checkout: edit only the plan and the context file. amend_check.py check runs after you, from the files.`,
-    // Always opus at medium effort (`planner-medium`), never escalated, named
-    // here rather than left to the planner's frontmatter default. The one
-    // amendment measured on fable (2026-10-03 audit) was a driver spawn that
-    // carried the workorder's escalated planner tier over to a job that
-    // applies one stated correction. `workorder_audit.py` R27 fails an
-    // amendment planner on fable or as `planner-xhigh`/`planner-max`.
-    { label: `amendment: ${SLUG} ${tag}`, phase: 'Amend', agentType: 'planner-medium', model: 'opus', schema: AMEND_PLANNER_SCHEMA })
+    // Always `planner-medium`, never escalated, named here rather than left
+    // to the planner's default. The one bad amendment measured (2026-10-03
+    // audit) was a driver spawn that carried the workorder's escalated
+    // planner tier over to a job that applies one stated correction.
+    // `workorder_audit.py` R27 fails one run as `planner-xhigh`/`planner-max`.
+    // No `model`: `planner-medium` runs its own pin, opus/medium.
+    { label: `amendment: ${SLUG} ${tag}`, phase: 'Amend', agentType: 'planner-medium', schema: AMEND_PLANNER_SCHEMA })
   const check = await spawnFn(
     `Run exactly: ${amendCmd('check')}  — report its exit code, its whole output in 'raw_output', and its last line (\`AMENDMENT\`, \`SCOPE: ...\` or \`REPLAN: ...\`) verbatim in 'verdict_line'. Run nothing else, and edit nothing.`,
     { label: `amend-check:${tag}`, phase: 'Amend', model: 'haiku', effort: 'low', schema: AMEND_CMD_SCHEMA })
@@ -1256,7 +1298,7 @@ async function runItems(n) {
   const tokenStart = (typeof budget !== 'undefined' && budget && budget.spent) ? budget.spent() : 0
   const overCeiling = () => agents >= MAX_AGENTS ||
     !!(A.tokenCeiling && typeof budget !== 'undefined' && budget && budget.spent && budget.spent() - tokenStart >= A.tokenCeiling)
-  const spawn = (prompt, opts) => { agents++; return agent(prompt, opts) }
+  const spawn = (prompt, opts) => { agents++; return runAgent(prompt, opts) }
 
   const snap = await spawn(
     `Run exactly: ${DELTA} snapshot ${SLUG} ${n}${DELTA_ROOT_ARG}  — then report its exit code and output. ` +
@@ -1332,6 +1374,8 @@ async function runItems(n) {
     `Report each check as a criterion, judged from what the runner printed. Other items are being edited in this checkout while you run: a failure you can trace to a file outside this item's set (${fileWords(it)}) goes in 'other_defects' naming that file, not in a criterion.` +
     VERIFIER_CONTEXT_NOTE
 
+  const writtenFix = it => it.kind === 'fix' && it.findings.length > 0 && it.findings.every(f => typeof f.fix === 'string' && f.fix.trim())
+
   async function runItem(it) {
     const s = st[it.id]
     for (;;) {
@@ -1340,7 +1384,11 @@ async function runItems(n) {
       // this one starts from (a check retry, or a re-run after an amendment).
       s.stale = false
       const label = it.kind === 'item' ? `item-implementer:${it.id}:a${s.attempts}:r${n}` : `fix-implementer:${it.id}:r${n}`
-      const impl = await spawn(it.kind === 'item' ? itemPrompt(it, s) : fixPrompt(it, s), { label, phase: 'Implement', agentType: IMPLEMENTER, model: A.implementerModel || 'opus', schema: ITEM_IMPL_SCHEMA })
+      // A fixer whose every finding carries the reviewer's exact `fix` applies a
+      // written correction, the job a patch round's implementer does (2i), so it
+      // runs at that tier; a gate-fix or a finding without one still needs diagnosis.
+      const agentType = writtenFix(it) ? PATCH_IMPLEMENTER : IMPLEMENTER
+      const impl = await spawn(it.kind === 'item' ? itemPrompt(it, s) : fixPrompt(it, s), { label, phase: 'Implement', agentType, model: A.implementerModel, schema: ITEM_IMPL_SCHEMA })
       if (!impl) return { park: 'the implementer returned nothing' }
       if (impl.commits && impl.commits.length) {
         s.commits.push(...impl.commits)
@@ -1838,14 +1886,14 @@ async function runRounds() {
       // 2h, 2m: the lanes cannot each take the round's snapshot -- they would
       // race on one file, and a lane's edits must not be in it -- so one haiku
       // agent still takes it before they start; the join reports the delta.
-      snap = await agent(
+      snap = await runAgent(
         `Run exactly: ${DELTA} snapshot ${SLUG} ${n}${DELTA_ROOT_ARG}  — then report its exit code and output. ` +
         `Then run exactly: ${DELTA} heads ${SLUG} ${n}${DELTA_ROOT_ARG}  — report its exit code (3 if either command exited 3) and each printed line, split into repo and sha at the first tab, as heads: [{repo, sha}]. ` +
         `The snapshot command's \`taken_utc: <time>\` line, if it printed one, goes in taken_utc verbatim. Edit nothing.`,
         { label: `snapshot:r${n}`, phase: 'Record', model: 'haiku', effort: 'low', schema: SNAPSHOT_SCHEMA })
       setRoundStarted(snap)
       // 2h: every lane at once, then -- only if all of them are done -- the join.
-      const laneResults = await parallel(LANES.map(lane => () => agent(lanePrompt(n, lane), implOpts(`implementer:${lane.name}:r${n}`, LANE_SCHEMA))))
+      const laneResults = await parallel(LANES.map(lane => () => runAgent(lanePrompt(n, lane), implOpts(`implementer:${lane.name}:r${n}`, LANE_SCHEMA))))
       const lanes = LANES.map((lane, i) => laneResults[i] ? { ...laneResults[i], name: lane.name } : { name: lane.name, verdict: null })
       const silent = lanes.filter(l => !l.verdict)
       if (silent.length) return { outcome: 'AGENT-FAILED', round: n, detail: silent.map(l => `lane ${l.name} returned nothing`).join('; '), lanes, rounds }
@@ -1854,17 +1902,17 @@ async function runRounds() {
         record(n, laneBlock(n, outcome, lanes), `round: ${n}\nphase: blocked`, { replan: outcome === 'PLAN-DEFECT' })
         return { outcome, round: n, lanes, rounds }
       }
-      impl = await agent(joinPrompt(n, lanes), implOpts(`implementer:join:r${n}`, IMPL_SCHEMA))
+      impl = await runAgent(joinPrompt(n, lanes), implOpts(`implementer:join:r${n}`, IMPL_SCHEMA))
       if (!impl) return { outcome: 'AGENT-FAILED', round: n, detail: 'the join implementer returned nothing', lanes, rounds }
     } else if (isPatch) {
       // Labelled apart from `implementer:<lane>:r<n>` so the audit never reads a patch as a lane.
       // Medium effort: the fixes are written out already, so the work is
       // applying them, and `round_delta.py size` measures afterwards whether it
       // stayed that small.
-      impl = await agent(patchPrompt(n, patchFindings), implOpts(`patch-implementer:r${n}`, IMPL_SCHEMA, PATCH_IMPLEMENTER))
+      impl = await runAgent(patchPrompt(n, patchFindings), implOpts(`patch-implementer:r${n}`, IMPL_SCHEMA, PATCH_IMPLEMENTER))
       if (!impl) return { outcome: 'AGENT-FAILED', round: n, detail: 'patch implementer returned nothing', rounds }
     } else {
-      impl = await agent(implPrompt(n), implOpts(`implementer:r${n}`, IMPL_SCHEMA))
+      impl = await runAgent(implPrompt(n), implOpts(`implementer:r${n}`, IMPL_SCHEMA))
       if (!impl) return { outcome: 'AGENT-FAILED', round: n, detail: 'implementer returned nothing', rounds }
     }
     // 2m: the round's snapshot is the first attempt's, kept across an
@@ -1888,8 +1936,8 @@ async function runRounds() {
         amendment = { amended: am.confirmed, why: am.why, verdict: am.verdict }
         if (am.confirmed) {
           impl = isPatch
-            ? await agent(patchPrompt(n, patchFindings, true), implOpts(`patch-implementer:r${n}`, IMPL_SCHEMA, PATCH_IMPLEMENTER))
-            : await agent(implPrompt(n, true), implOpts(`implementer:r${n}`, IMPL_SCHEMA))
+            ? await runAgent(patchPrompt(n, patchFindings, true), implOpts(`patch-implementer:r${n}`, IMPL_SCHEMA, PATCH_IMPLEMENTER))
+            : await runAgent(implPrompt(n, true), implOpts(`implementer:r${n}`, IMPL_SCHEMA))
           if (!impl) return { outcome: 'AGENT-FAILED', round: n, detail: 'the implementer re-run after an amendment returned nothing', amendment, rounds }
           if (impl.verdict === 'PLAN-DEFECT') amendment.why = 'PLAN-DEFECT again after its amendment in this launch, with no IMPL-DONE between'
         }
@@ -1961,9 +2009,9 @@ async function runRounds() {
     // edit the tree this verifier is reading. Streaming findings into fixes is
     // the driver's procedure outside a round (SKILL.md "Spend each check once").
     const results = await parallel([
-      () => nothingChanged ? Promise.resolve(lastVerifier) : agent(`Workorder: ${A.planPath}. Run its acceptance criteria and report what they printed.${reach ? verifierCriteriaNote(reach.extra + reuseArg(impl)) + VERIFIER_REACH_NOTE : (reuseArg(impl) ? verifierCriteriaNote(' --dev' + reuseArg(impl)) + VERIFIER_DEV_NOTE : devCriteriaNote())}${reuseArg(impl) ? VERIFIER_REUSE_NOTE : ''}${VERIFIER_CONTEXT_NOTE}`,
+      () => nothingChanged ? Promise.resolve(lastVerifier) : runAgent(`Workorder: ${A.planPath}. Run its acceptance criteria and report what they printed.${reach ? verifierCriteriaNote(reach.extra + reuseArg(impl)) + VERIFIER_REACH_NOTE : (reuseArg(impl) ? verifierCriteriaNote(' --dev' + reuseArg(impl)) + VERIFIER_DEV_NOTE : devCriteriaNote())}${reuseArg(impl) ? VERIFIER_REUSE_NOTE : ''}${VERIFIER_CONTEXT_NOTE}`,
         { label: `verifier:r${n}`, phase: 'Verify', agentType: 'verifier', schema: VERIFIER_SCHEMA }),
-      ...toRun.map(name => () => agent(
+      ...toRun.map(name => () => runAgent(
         reviewerPrompt(name, scope(name),
           reviewerState[name] === 'blocking' ? priorNote(lastFindings[name], emptyDelta ? 'This is the finding the implementer disputes.' : PRIOR_ASK) + nothingChangedNote : ''),
         { label: `${name}:r${n}`, phase: 'Verify', agentType: name, model: MODELS[name], schema: REVIEW_SCHEMA })
@@ -2037,9 +2085,9 @@ async function runFinalGate(n) {
   const scopeText = base ? `Read the whole change since this workorder began. ${wholeChangeScope(base)}` : `${HEADS_UNKNOWN} Read the whole change: ${diffCommands}`
   log(`final gate ${n}: full verifier; reviewers ${toRun.join(', ') || 'none'}; not run: ${skipped.join(', ') || 'none'}${bp ? `; branch ${bp.length} paths` : '; branch paths unknown'}`)
   const results = await parallel([
-    () => agent(`Workorder: ${A.planPath}. This is the final gate before the pull request: run its acceptance criteria, the full set, and report what they printed.${VERIFIER_CRITERIA_NOTE}${VERIFIER_CONTEXT_NOTE}`,
+    () => runAgent(`Workorder: ${A.planPath}. This is the final gate before the pull request: run its acceptance criteria, the full set, and report what they printed.${VERIFIER_CRITERIA_NOTE}${VERIFIER_CONTEXT_NOTE}`,
       { label: `verifier:final:r${n}`, phase: 'Verify', agentType: 'verifier', schema: VERIFIER_SCHEMA }),
-    ...toRun.map(name => () => agent(
+    ...toRun.map(name => () => runAgent(
       reviewerPrompt(name, scopeText, reviewerState[name] === 'blocking' ? priorNote(lastFindings[name], PRIOR_ASK) : ''),
       { label: `${name}:final:r${n}`, phase: 'Verify', agentType: name, model: MODELS[name], schema: REVIEW_SCHEMA })
       .then(r => ({ name, r }))),

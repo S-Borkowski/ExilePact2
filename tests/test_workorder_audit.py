@@ -1767,6 +1767,29 @@ class ModelAndCostTests(TempDirMixin, unittest.TestCase):
         row = [r for r in wa.build_table(session) if r["agent_type"] == "docs-sync-reviewer"][0]
         self.assertAlmostEqual(row["cost_usd"], 0.20, places=2)
 
+    def test_fable_5_2_is_priced(self):
+        records = with_model(make_turns(1, input_tokens=0, cache_read=1_000_000, output_tokens=1_000_000), "claude-fable-5-2")
+        b = SessionBuilder(self.tmp_path).driver([turn(0, 9000)]).subagent("implementer", "implementer:r0", records)
+        session, _ = b.evaluate()
+        row = [r for r in wa.build_table(session) if r["agent_type"] == "implementer"][0]
+        self.assertAlmostEqual(row["cost_usd"], 40.20, places=2)  # 1M cache reads at $0.20 + 1M output at $40
+
+    def test_the_effort_column_is_the_one_the_requests_ran_at(self):
+        # `planner-xhigh` is a tier label: the agent runs fable at high, and
+        # the transcript's own API requests say so.
+        blob = lambda effort: {"type": "api-request-blob", "message": {"output_config": {"effort": effort}}}
+        records = [blob("high")] + make_turns(2) + [blob("high"), blob("max")]
+        b = SessionBuilder(self.tmp_path).driver([turn(0, 9000)])
+        b.subagent("planner-xhigh", "Plan x", records)
+        b.subagent("verifier", "verifier:r0", make_turns(1, start_idx=50))
+        session, _ = b.evaluate()
+        rows = {r["label"]: r for r in wa.build_table(session)}
+        self.assertEqual(rows["Plan x"]["effort"], "high")
+        # Control: no request blobs falls back to the name's tier, else "-".
+        self.assertEqual(rows["verifier:r0"]["effort"], "-")
+        planner = [a for a in wa.all_subagents(session) if a.agent_type == "planner"][0]
+        self.assertEqual(planner.effort, "xhigh", "the tier label is kept for the rules that read it")
+
     def test_haiku_5_5_picks_its_rate_card_per_turn_by_prompt_length(self):
         # One turn at a 100K prompt (short card, $0.01/M cache reads) and one
         # just over it (long card, $0.05/M): the split is per turn, at > 100K.
@@ -1834,6 +1857,9 @@ class CalibrationTests(TempDirMixin, unittest.TestCase):
         # in a level.
         self.assertEqual(wa.split_effort_variant("docs-sync-reviewer"), ("docs-sync-reviewer", None))
         self.assertEqual(wa.split_effort_variant("planner"), ("planner", None))
+        # A fallback twin counts as its primary.
+        self.assertEqual(wa.split_effort_variant("planner-opus"), ("planner", None))
+        self.assertEqual(wa.split_effort_variant("planner-max-opus"), ("planner", "max"))
         s = SessionBuilder(self.tmp_path, session_id="cccc0000-0000")
         s.driver([turn(0, 0)]).subagent("implementer-medium", "patch r1", make_turns(3, start_idx=100))
         s.subagent("implementer", "Implement x", make_turns(2, start_idx=200))
@@ -2259,9 +2285,9 @@ class LaneTests(TempDirMixin, unittest.TestCase):
 # --------------------------------------------------------------------------
 
 class R27Tests(TempDirMixin, unittest.TestCase):
-    """An amendment planner always runs on opus, never fable: the one fable
-    amendment on record came from a driver that carried the workorder's
-    escalated planner tier over to it."""
+    """An amendment planner is never escalated: the one bad amendment on
+    record came from a driver that carried the workorder's escalated planner
+    tier over to it."""
 
     def _rule(self, label, model, sub, workflow=False, agent_type="planner"):
         b = SessionBuilder(self.tmp_path / sub).driver([turn(0, 9000)])

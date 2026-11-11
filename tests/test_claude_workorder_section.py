@@ -344,7 +344,7 @@ class TestThePipelineSaysSo(unittest.TestCase):
         # Since 2026-10-11 the skill is SKILL.md plus the path files it sends
         # the driver to (amendments.md, model-tiers.md, ...): read them all.
         lines = self.skill().splitlines()
-        sentence = "An amendment planner always runs as planner-medium on opus, never escalated"
+        sentence = "An amendment planner always runs as planner-medium, never escalated"
         self.assertGreaterEqual(sum(sentence in line for line in lines), 3)
         self.assertIn("R27", " ".join(self.skill().split()))
         self.assertNotIn("spawn `planner` fresh at its default tier", " ".join(self.skill().split()))

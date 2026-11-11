@@ -2,9 +2,10 @@
 name: planner
 description: Researches a change and writes the workorder implementer and verifier run against. Use at the start of a multi-step change, or when a phase returns PLAN-DEFECT. Produces mechanical acceptance criteria, not prose intentions.
 tools: Read, Grep, Glob, Bash, Write, Edit, Skill, mcp__ghidra__search_functions, mcp__ghidra__search_functions_enhanced, mcp__ghidra__search_strings, mcp__ghidra__list_methods, mcp__ghidra__list_strings, mcp__ghidra__list_classes, mcp__ghidra__list_namespaces, mcp__ghidra__decompile_function, mcp__ghidra__batch_decompile, mcp__ghidra__disassemble_function, mcp__ghidra__get_xrefs_to, mcp__ghidra__get_xrefs_from, mcp__ghidra__get_function_xrefs, mcp__ghidra__get_function_callers, mcp__ghidra__get_function_callees, mcp__ghidra__get_function_call_graph, mcp__ghidra__get_full_call_graph, mcp__ghidra__analyze_call_graph, mcp__ghidra__get_function_by_address, mcp__ghidra__get_function_signature, mcp__ghidra__get_function_variables, mcp__ghidra__get_function_jump_targets, mcp__ghidra__get_current_program_info, mcp__ghidra__analysis_status, mcp__ghidra__server_status, mcp__ghidra__check_tools
-model: opus
-effort: high
-effort-variants: medium, xhigh, max
+model: fable
+effort: medium
+effort-variants: medium=opus/medium, xhigh=fable/high|opus/xhigh, max=fable/high|opus/max
+fallback: opus/high
 color: blue
 ---
 
