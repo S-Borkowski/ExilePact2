@@ -651,7 +651,11 @@ test('fallback: a fable spawn that fails for its model re-runs once as the -opus
 })
 
 test('fallback: any other failure is not retried, and a named model never falls back', async () => {
-  for (const [args, err] of [[{ implementerModel: undefined }, 'tool crashed'], [{ implementerModel: 'opus' }, 'fable unavailable']]) {
+  for (const [args, err] of [[{ implementerModel: undefined }, 'tool crashed'],
+    // Naming the model is not unavailability: an overload or a timeout is a failure.
+    [{ implementerModel: undefined }, 'API error from claude-fable-5-2: overloaded'],
+    [{ implementerModel: undefined }, 'claude-fable-5-2 request timed out'],
+    [{ implementerModel: 'opus' }, 'fable unavailable']]) {
     const types = []
     const reply = (label, prompt, opts) => {
       if (label === 'implementer:r0') { types.push(opts.agentType); throw new Error(err) }

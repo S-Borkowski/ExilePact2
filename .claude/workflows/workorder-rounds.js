@@ -119,7 +119,10 @@ const FALLBACK_TWIN = Object.fromEntries([
   'consultant', 'consultant-max',
   'instrument-blindness-reviewer',
 ].map(name => [name, `${name}-opus`]))
-const MODEL_UNAVAILABLE = /\bfable\b|\bmodel\b.*\b(unavailable|not available|not found|not allowed|not supported|access|permission|entitle)|\b(unavailable|not available|not found|not allowed|not supported|no access)\b.*\bmodel\b/i
+// Only an error that says the model itself cannot be used: naming the model
+// is not enough (`claude-fable-5-2: overloaded` is a failure, not
+// unavailability), and the two halves must sit in one clause.
+const MODEL_UNAVAILABLE = /\bmodel\b[^.;\n]{0,80}?\b(?:unavailable|not available|not found|not allowed|not supported|no access|access denied|permission denied|not entitled)\b|\b(?:unavailable|not available|not found|not allowed|not supported|no access|access denied|permission denied|not entitled)\b[^.;\n]{0,80}?\bmodel\b/i
 const runAgent = async (prompt, opts) => {
   const twin = opts && !opts.model && FALLBACK_TWIN[opts.agentType]
   if (!twin) return agent(prompt, opts)

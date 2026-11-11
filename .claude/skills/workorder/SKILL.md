@@ -49,7 +49,7 @@ never a plan, just a conversation someone was still holding in their head.
 ```
 planner(fable) → implementer(fable) → verifier+reviewers(haiku,fable) → PASS ─→ report
   ▲ PLAN-DEFECT ◄───────┘ ◄──────────────────── IMPL-DEFECT / BLOCKING
-                                    PASS-PENDING-HUMAN → live-operator(fable) → report
+                                    PASS-PENDING-HUMAN → live-operator(opus) → report
 ```
 
 ### Step 0 — decide whether this is worth a workorder
@@ -449,7 +449,7 @@ goes back unforwarded — an asker with no view hasn't thought about the
 problem, and answering it turns consultation into delegation: the weaker model
 stops deciding and the pipeline pays two tiers for one phase.
 
-**Spawn `consultant`** (fable/high) by default. For a question in the
+**Spawn `consultant`** (fable/medium) by default. For a question in the
 `planner-xhigh` rows of the triage table, spawn `consultant-max` (fable/high,
 `consultant-max-opus` on fallback) — one
 focused question is the cheapest place in this pipeline to buy the most
