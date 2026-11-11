@@ -122,7 +122,8 @@ The verifier never sees the implementer's reasoning, because sharing that
 context would mean sharing its blind spots.
 
 The `planner` (and its variants), `implementer`, `implementer-medium`,
-`consultant` and `consultant-max` reach the `ghidra` MCP server's read tools,
+`consultant`, `consultant-max` and their `-opus` fallback twins
+(`implementer-opus`, `consultant-opus`, `consultant-max-opus`) reach the `ghidra` MCP server's read tools,
 named `mcp__ghidra__<tool>` in their `tools:` lines: search, list, decompile,
 xrefs, callers, callees, call graph and function info. The read set is
 `AGENT_READ_TOOLS` in `tools/ghidra_mcp.py`, and

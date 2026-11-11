@@ -261,7 +261,8 @@ mechanism, check what this machine can read, and say what you found.
   list functions and strings, decompile, xrefs, callers, callees and call
   graph, function info). It serves a copy of the research project, so it never
   locks the original. The planner and its effort variants, `implementer`,
-  `implementer-medium`, `consultant` and `consultant-max` carry those read tools
+  `implementer-medium`, `consultant`, `consultant-max` and the `-opus` fallback
+  twins of these carry those read tools
   and no write or debugger tool; the ban on writes and debugging through a
   Bash `curl` to the REST port or under Codex is a prompt rule, not something
   the tooling enforces ([docs/tools/ghidra-mcp.md](docs/tools/ghidra-mcp.md)).

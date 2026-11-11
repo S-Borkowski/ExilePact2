@@ -1452,6 +1452,11 @@ planner is still opus, and R27 still fails one that ran fable).
   (the amendment planner, `implementerModel`) never falls back. The rounds
   implementer no longer has `model: 'opus'` forced on it, and the
   instrument-blindness reviewer no longer has its model overridden.
+  Corrected 2026-11-11 (PR #58 review): the Workflow API's `agent()` returns
+  null on a terminal API error instead of throwing, so the catch alone never
+  fired for an unavailable model. A null from a twinned agent is now re-run
+  once as the twin too, accepting that a skip or a mid-task death looks the
+  same.
 - `workorder_audit.py` counts a twin as its primary's role
   (`split_effort_variant`).
 

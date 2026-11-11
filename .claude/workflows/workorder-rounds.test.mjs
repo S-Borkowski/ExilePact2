@@ -650,6 +650,35 @@ test('fallback: a fable spawn that fails for its model re-runs once as the -opus
   assert.deepEqual(seen.filter(s => s.startsWith('implementer:r0')), ['implementer:r0=implementer', 'implementer:r0=implementer-opus'])
 })
 
+// PR #58 review: the real `agent()` returns null on a terminal API error (an
+// unavailable model among them) instead of throwing, so a null must also
+// reach the twin -- once, and only for an agent that has one.
+test('fallback: a fable spawn that returns null re-runs once as the -opus twin', async () => {
+  const seen = []
+  const reply = (label, prompt, opts) => {
+    seen.push(`${label}=${opts.agentType}`)
+    if (opts.agentType === 'implementer') return null
+    return standard()(label)
+  }
+  const { result } = await run({ ...BASE, implementerModel: undefined }, reply)
+  assert.equal(result.outcome, 'PASS')
+  assert.deepEqual(seen.filter(s => s.startsWith('implementer:r0')), ['implementer:r0=implementer', 'implementer:r0=implementer-opus'])
+})
+
+test('fallback: a null twin is not retried again, and a named model never falls back on null', async () => {
+  for (const [args, expected] of [[{ implementerModel: undefined }, ['implementer', 'implementer-opus']],
+    [{ implementerModel: 'opus' }, ['implementer']]]) {
+    const types = []
+    const reply = (label, prompt, opts) => {
+      if (label === 'implementer:r0') { types.push(opts.agentType); return null }
+      return standard()(label)
+    }
+    const { result } = await run({ ...BASE, ...args }, reply)
+    assert.equal(result.outcome, 'AGENT-FAILED', JSON.stringify(args))
+    assert.deepEqual(types, expected, JSON.stringify(args))
+  }
+})
+
 test('fallback: any other failure is not retried, and a named model never falls back', async () => {
   for (const [args, err] of [[{ implementerModel: undefined }, 'tool crashed'],
     // Naming the model is not unavailability: an overload or a timeout is a failure.

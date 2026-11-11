@@ -108,8 +108,13 @@ const DELTA_ROOT_ARG = REPO_ROOT ? ` --root "${REPO_ROOT}"` : ''
 const MODELS = {}
 // Model fallback. Each fable-pinned agent has a generated `<name>-opus` twin
 // at the opus tier it replaced (owner, 2026-11-09 and 2026-11-10). A spawn whose error says its model is unavailable is re-run
-// once as that twin; any other failure is thrown as before, so a crashed
-// implementer is never silently run twice.
+// once as that twin; any other thrown failure is thrown as before.
+// The Workflow API's `agent()` does not throw on a terminal API error such as
+// an unavailable model: it returns null, with no reason attached (PR #58
+// review). A null is therefore also re-run once as the twin, and logged. That
+// is deliberate: a null cannot be told apart from a user's skip or a death
+// mid-task, and the alternative is a fallback that never fires. The twin's
+// own null is returned as before, so the caller still ends AGENT-FAILED.
 // The fable-pinned agents (tiers chosen 2026-11-10 from the Artificial
 // Analysis Engineering Index against cost per task). The opus and sonnet
 // agents have no twin and never fall back.
@@ -126,14 +131,18 @@ const MODEL_UNAVAILABLE = /\bmodel\b[^.;\n]{0,80}?\b(?:unavailable|not available
 const runAgent = async (prompt, opts) => {
   const twin = opts && !opts.model && FALLBACK_TWIN[opts.agentType]
   if (!twin) return agent(prompt, opts)
+  let why
   try {
-    return await agent(prompt, opts)
+    const out = await agent(prompt, opts)
+    if (out !== null && out !== undefined) return out
+    why = 'returned nothing (a terminal API error such as an unavailable model, or a skip)'
   } catch (e) {
-    const why = String((e && e.message) || e)
+    why = String((e && e.message) || e)
     if (!MODEL_UNAVAILABLE.test(why)) throw e
-    log(`${opts.label}: ${opts.agentType} could not start (${why.slice(0, 200)}); re-running as ${twin}`)
-    return agent(prompt, { ...opts, agentType: twin })
+    why = `could not start (${why.slice(0, 200)})`
   }
+  log(`${opts.label}: ${opts.agentType} ${why}; re-running once as ${twin}`)
+  return agent(prompt, { ...opts, agentType: twin })
 }
 
 // Hook/installer source (any file whose name says hook, install or probe) and

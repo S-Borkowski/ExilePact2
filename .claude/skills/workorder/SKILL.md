@@ -1089,6 +1089,9 @@ with the same prompt, once, and record `<agent> fell back to <agent>-opus:
 <error>` under the round's `## Log` heading; any other failure is handled
 as it was. `workorder-rounds.js` does the same for its own spawns
 (`runAgent`), and a spawn given an explicit `model` never falls back.
+Inside a workflow, `agent()` returns null on a terminal API error rather
+than throwing, with no reason, so `runAgent` also re-runs a null once as the
+twin and logs it; the twin's own null still ends the round `AGENT-FAILED`.
 
 **Read [`model-tiers.md`](model-tiers.md)** before changing a tier, adding an
 effort level, or answering a cost question: the prices, the measurements

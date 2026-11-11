@@ -127,7 +127,8 @@ reboot, or is never written when a launcher dies mid-start.
 
 The `/workorder` phase agents that research or decide (`planner` and its
 effort variants, `implementer`, `implementer-medium`, `consultant`,
-`consultant-max`) list the server's read tools, the set `AGENT_READ_TOOLS`
+`consultant-max`, and the `-opus` fallback twins `implementer-opus`,
+`consultant-opus` and `consultant-max-opus`) list the server's read tools, the set `AGENT_READ_TOOLS`
 names, in their `tools:` lines, as `mcp__ghidra__<tool>`: search, list, decompile, xrefs, callers, callees, call
 graph, function info and status. The verifier, the scribe, `live-operator`
 and the reviewers get none.
