@@ -1421,3 +1421,123 @@ runs on 2026-10-07 (Claude Code 2.1.294).
   after the alias moves compares verifier runs before and after.
 - A patch round (an implementer applying a reviewer's written `fix`) is a
   candidate for Haiku 5.5 at `high` or `xhigh`; not tried.
+
+# Fable back, opus as the fallback (2026-11-09)
+
+The owner moved the two top tiers back to Fable (5.2, through the `fable`
+alias), one effort level down from the opus tier each replaces, and kept
+opus as the fallback:
+
+| Spawn | Was | Now | Fallback twin |
+|---|---|---|---|
+| `planner-max`, `consultant-max` | opus / max | fable / high | `planner-max-opus`, `consultant-max-opus` (opus / max) |
+| `planner`, `implementer`, `instrument-blindness-reviewer` | opus / high | fable / medium | `planner-opus`, `implementer-opus`, `instrument-blindness-reviewer-opus` (opus / high) |
+
+Every other tier is unchanged, including `planner-medium` (so the amendment
+planner is still opus, and R27 still fails one that ran fable).
+
+## What changed
+
+- `tools/sync_agent_tooling.py`: an `effort-variants:` entry may name its own
+  model and effort and a fallback tier (`max=fable/high|opus/max`), and a
+  source's `fallback:` line generates its own twin. Twins are generated like
+  any variant, Codex copies included.
+- `workorder-rounds.js` spawns through `runAgent`: a spawn of one of the five
+  whose error names the model is re-run once as its twin, and logged. Any
+  other failure is thrown as before, and a spawn with an explicit `model`
+  (the amendment planner, `implementerModel`) never falls back. The rounds
+  implementer no longer has `model: 'opus'` forced on it, and the
+  instrument-blindness reviewer no longer has its model overridden.
+- `workorder_audit.py` counts a twin as its primary's role
+  (`split_effort_variant`).
+
+## Not yet measured
+
+- Whether fable at one effort level down matches opus at the old level, per
+  role. `--calibrate` reports per role and model.
+- Fable 5.2's price: it was not in the `claude-api` model table on
+  2026-11-09, so `MODEL_PRICES` has no row and those transcripts go unpriced
+  until one is added.
+
+# Tiers from score against cost (2026-11-10)
+
+The owner briefly moved every opus agent to Fable 5.2 while a free Fable
+token reset lasted, then reverted it the same day and asked for tiers read
+off the Artificial Analysis Engineering Index against cost per task instead.
+Read from the chart (approximate): Fable 5.2 high ~69.5 at ~$6.6 a task,
+medium ~64.5 at ~$2.75, low ~61.5 at ~$2.3; Opus 5.5 medium ~53.5 at ~$1.85;
+Sonnet 5.5 high ~46 at ~$1.3; Haiku 5.5 from ~27 at ~$0.03 (low) to ~42.5 at
+~$0.31 (max).
+
+| Role | Was (2026-11-09) | Now |
+|---|---|---|
+| `planner`, `implementer`, `instrument-blindness-reviewer` | fable / medium | unchanged |
+| `planner-max`, `consultant-max` | fable / high | unchanged |
+| `planner-xhigh` | opus / xhigh | fable / high |
+| `consultant` | opus / xhigh | fable / medium |
+| `planner-medium`, `implementer-medium`, the driver | opus / medium | unchanged |
+| `docs-sync-reviewer`, `decompile-output-guard` | opus / medium | haiku / max (sonnet / high for one session first) |
+| `live-operator` | opus / medium | unchanged (sonnet / high for one session first) |
+| `verifier`, `scribe` | haiku / medium, low | unchanged |
+
+Judgement roles buy score, roles that apply a written correction or follow
+a written procedure buy the cheapest adequate point. The reasoning per row
+is in `.claude/skills/workorder/model-tiers.md` § "Tiers from score against
+cost". Each fable agent keeps an `-opus` fallback twin; R27 again fails an
+amendment planner that ran fable.
+
+## Not yet measured
+
+- Whether Sonnet 5.5 at `high` misses findings the reviewers caught on Opus
+  5.5 at `medium`. The last move the other way (2026-10-06) was also chosen
+  from a benchmark, not a measured miss.
+- Fable 5.2's per-token price: added 2026-11-11 (below).
+
+## The two reviewers on Haiku 5.5 max (2026-11-10)
+
+Checked before moving them: across 919 `docs-sync-reviewer` and 891
+`decompile-output-guard` runs on this machine (all three projects), 4.8% and
+5.6% of turns had a prompt over Haiku 5.5's 100K long-prompt line, and 6% of
+runs touched it; repriced at list, a run costs $0.015 and $0.012 on Haiku
+(the long card included) against $0.237 and $0.175 on Sonnet 5.5.
+`live-operator` (178 runs) is the opposite case: 63% of its turns are over
+100K, p50 127K, so it stays on Sonnet. Detail and the not-established part
+in `.claude/skills/workorder/model-tiers.md` § "Tiers from score against
+cost".
+
+## No Sonnet: the Intelligence Index comparison (2026-11-10)
+
+Artificial Analysis's release comparison (Intelligence Index v5.0.1 against
+cost per task, every effort of the four models) shows four of Sonnet 5.5's
+five levels beaten on both score and cost by another point, and Sonnet high
+(42 at $1.64) six points under Opus 5.5 medium (48 at $2.45). Repriced on
+`live-operator`'s 178 measured runs, Opus costs 1.26x Sonnet (97.6% of the
+prompt tokens are cache reads, billed alike), so `live-operator` went back
+to opus/medium and no agent runs Sonnet. The table is in
+`.claude/skills/workorder/model-tiers.md` § "Tiers from score against cost".
+
+## First workorder on the new tiers: `arena-slot-table` (2026-11-11)
+
+Every spawn ran the model and effort its frontmatter pins (read from the
+transcripts' request parameters); no fable fallback was needed. Cost at list,
+Fable 5.2 at $8 / $40 / $0.20 per MTok (official pricing page): $82.85,
+of which fable is about 75% (item and fix implementers ~$39, the
+`planner-xhigh` plan ~$16, `instrument-blindness-reviewer` ~$6), the driver
+$9.8, the Haiku max reviewers $10.2, everything else under $2.
+
+Three corrections came out of it:
+
+- **The two reviewers are back on opus/medium.** Haiku max ran 71% and 50%
+  of turns past the 100K long-prompt line (forecast ~5%), spent 2.4x the
+  turns and ~4x the tokens of their Opus-medium averages, broke R7 on 14 of
+  17 runs and cost $0.79 and $0.29 a run against ~$0.35 and ~$0.26 on
+  Opus medium. Detail: `.claude/skills/workorder/model-tiers.md` §
+  "Haiku max reviewers, measured".
+- **Per-finding fixers in an item-streaming round now run
+  `implementer-medium`**, like a patch round's implementer: both apply a fix
+  a reviewer already wrote down. They had been spawned as `implementer`
+  (fable/medium).
+- **The audit prices Fable 5.2 and reads effort from the transcript.**
+  Before, it left every fable transcript unpriced (it printed $20 for this
+  workorder) and named effort from the agent's name, so `planner-xhigh`
+  (fable/high) showed as `xhigh` and workflow spawns showed none.

@@ -628,10 +628,38 @@ test('the verifier is handed the criteria extraction, not left to read the plan 
   assert.match(prompts['verifier:r0'], /do not Read the plan whole/)
 })
 
-test('the implementer runs at opus unless triage says otherwise', async () => {
+test('the implementer runs on its own pin (fable) unless triage names a model', async () => {
   const models = {}
   await run({ ...BASE, implementerModel: undefined }, (label, prompt, opts) => { models[label] = opts && opts.model; return standard()(label) })
+  assert.equal(models['implementer:r0'], undefined, 'no override: `implementer` runs on its frontmatter pin')
+  await run({ ...BASE, implementerModel: 'opus' }, (label, prompt, opts) => { models[label] = opts && opts.model; return standard()(label) })
   assert.equal(models['implementer:r0'], 'opus')
+})
+
+// Owner, 2026-11-09: the fable-pinned agents fall back to their `-opus` twin
+// when fable is unavailable, and only then.
+test('fallback: a fable spawn that fails for its model re-runs once as the -opus twin', async () => {
+  const seen = []
+  const reply = (label, prompt, opts) => {
+    seen.push(`${label}=${opts.agentType}`)
+    if (opts.agentType === 'implementer') throw new Error('model claude-fable-5-2 is not available on this plan')
+    return standard()(label)
+  }
+  const { result } = await run({ ...BASE, implementerModel: undefined }, reply)
+  assert.equal(result.outcome, 'PASS')
+  assert.deepEqual(seen.filter(s => s.startsWith('implementer:r0')), ['implementer:r0=implementer', 'implementer:r0=implementer-opus'])
+})
+
+test('fallback: any other failure is not retried, and a named model never falls back', async () => {
+  for (const [args, err] of [[{ implementerModel: undefined }, 'tool crashed'], [{ implementerModel: 'opus' }, 'fable unavailable']]) {
+    const types = []
+    const reply = (label, prompt, opts) => {
+      if (label === 'implementer:r0') { types.push(opts.agentType); throw new Error(err) }
+      return standard()(label)
+    }
+    await run({ ...BASE, ...args }, reply).catch(() => null)
+    assert.deepEqual(types, ['implementer'], JSON.stringify(args))
+  }
 })
 
 // --- 2e: State is merged, never replaced ------------------------------------
@@ -1082,7 +1110,7 @@ test('effort: implementerEffort picks the implementer variant, and bad tiers are
   await run({ ...BASE, reviewers: { 'docs-sync-reviewer': 'blocking', 'decompile-output-guard': 'never' } }, patchReply)
   assert.equal(seen['patch-implementer:r1'].agentType, 'implementer-medium')
   assert.equal(seen['implementer:r0'].agentType, 'implementer')
-  for (const bad of [{ implementerEffort: 'max' }, { implementerModel: 'fable' }]) {
+  for (const bad of [{ implementerEffort: 'max' }, { implementerModel: 'haiku' }]) {
     const { result, calls } = await run({ ...BASE, ...bad }, standard())
     assert.equal(result.outcome, 'BAD-ARGS', JSON.stringify(bad))
     assert.deepEqual(calls, [], 'nothing spawned')
@@ -1455,6 +1483,20 @@ test('items: a BLOCKING review finding becomes a fix on its file, re-reviewed, t
   const lastReview = calls.filter(c => c.startsWith('docs-sync-reviewer:')).pop()
   assert.ok(calls.indexOf(lastReview) > calls.indexOf('fix-implementer:fix-1:r0'), 'the reviewer never re-read the fix')
   assert.deepEqual(calls.filter(c => /^verifier:/.test(c)), ['verifier:r0'])
+})
+
+test('items: a fixer applying the reviewer\'s written fix runs implementer-medium; one without a fix stays on implementer', async () => {
+  for (const [fix, want] of [['use --accent', 'implementer-medium'], [undefined, 'implementer']]) {
+    let passes = 0
+    const docs = () => (passes++ === 0
+      ? { ...CLEAN, blocking: [{ where: 'panel/a.css:12', problem: 'wrong token', evidence: 'x', ...(fix ? { fix } : {}) }], reviewed_heads: [{ repo: '.', sha: 'h1' }] }
+      : { ...CLEAN, reviewed_heads: [{ repo: '.', sha: 'h2' }] })
+    const types = {}
+    const base = itemsReply({ 'docs-sync-reviewer': docs })
+    await runTimed(ITEMS_BASE, (label, prompt, opts) => { types[label] = opts.agentType; return base(label, prompt, opts) })
+    assert.equal(types['fix-implementer:fix-1:r0'], want, `fix ${JSON.stringify(fix)}`)
+    assert.equal(types[Object.keys(types).find(l => l.startsWith('item-implementer:'))], 'implementer', 'control: an item keeps the pinned implementer')
+  }
 })
 
 test('items: reviewers read pinned commits and are told what is still in flight', async () => {
@@ -2051,7 +2093,7 @@ test('amend: items mode -- a stated CORRECTION is saved, amended, checked, the t
   assert.match(prompts['amend-save:a:r0'], /Run exactly: py -3 tools\/amend_check\.py save "p\.md" "c\.md"/)
   assert.match(prompts['amend-check:a:r0'], /Run exactly: py -3 tools\/amend_check\.py check "p\.md" "c\.md"/)
   assert.equal(opts['amendment: zz a:r0'].agentType, 'planner-medium', 'the amendment planner is never escalated')
-  assert.equal(opts['amendment: zz a:r0'].model, 'opus', 'the amendment planner always runs on opus, never fable')
+  assert.equal(opts['amendment: zz a:r0'].model, undefined, 'the amendment planner runs its own pin (opus/medium)')
   assert.deepEqual(opts['amendment: zz a:r0'].schema.properties.verdict.enum, ['PLAN-READY', 'NOT AN AMENDMENT'])
   // The correction verbatim, and only its own field; the whole evidence block follows it.
   assert.equal(between(prompts['amendment: zz a:r0'], 'Apply this correction and nothing else:\n\n', '\n\nThe PLAN-DEFECT evidence'), FIX_TEXT)

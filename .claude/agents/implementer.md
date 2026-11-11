@@ -2,9 +2,10 @@
 name: implementer
 description: Executes one workorder's steps and writes the code. Use after the planner has produced a workorder with status READY, or when the verifier returns IMPL-DEFECT. Stops and returns PLAN-DEFECT rather than improvising around a plan that turns out to be wrong.
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill, Monitor, mcp__ghidra__search_functions, mcp__ghidra__search_functions_enhanced, mcp__ghidra__search_strings, mcp__ghidra__list_methods, mcp__ghidra__list_strings, mcp__ghidra__list_classes, mcp__ghidra__list_namespaces, mcp__ghidra__decompile_function, mcp__ghidra__batch_decompile, mcp__ghidra__disassemble_function, mcp__ghidra__get_xrefs_to, mcp__ghidra__get_xrefs_from, mcp__ghidra__get_function_xrefs, mcp__ghidra__get_function_callers, mcp__ghidra__get_function_callees, mcp__ghidra__get_function_call_graph, mcp__ghidra__get_full_call_graph, mcp__ghidra__analyze_call_graph, mcp__ghidra__get_function_by_address, mcp__ghidra__get_function_signature, mcp__ghidra__get_function_variables, mcp__ghidra__get_function_jump_targets, mcp__ghidra__get_current_program_info, mcp__ghidra__analysis_status, mcp__ghidra__server_status, mcp__ghidra__check_tools
-model: opus
-effort: high
-effort-variants: medium
+model: fable
+effort: medium
+effort-variants: medium=opus/medium
+fallback: opus/high
 color: green
 ---
 

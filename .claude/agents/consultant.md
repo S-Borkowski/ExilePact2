@@ -2,9 +2,10 @@
 name: consultant
 description: Answers one narrow, specific question from a phase agent that has hit something above its tier — a design decision with named alternatives, a mechanism it cannot pin down, a rule it cannot tell how to apply. Use when a phase returns ADVICE-NEEDED. Answers the question and stops; it does not implement, plan or review.
 tools: Read, Grep, Glob, Bash, mcp__ghidra__search_functions, mcp__ghidra__search_functions_enhanced, mcp__ghidra__search_strings, mcp__ghidra__list_methods, mcp__ghidra__list_strings, mcp__ghidra__list_classes, mcp__ghidra__list_namespaces, mcp__ghidra__decompile_function, mcp__ghidra__batch_decompile, mcp__ghidra__disassemble_function, mcp__ghidra__get_xrefs_to, mcp__ghidra__get_xrefs_from, mcp__ghidra__get_function_xrefs, mcp__ghidra__get_function_callers, mcp__ghidra__get_function_callees, mcp__ghidra__get_function_call_graph, mcp__ghidra__get_full_call_graph, mcp__ghidra__analyze_call_graph, mcp__ghidra__get_function_by_address, mcp__ghidra__get_function_signature, mcp__ghidra__get_function_variables, mcp__ghidra__get_function_jump_targets, mcp__ghidra__get_current_program_info, mcp__ghidra__analysis_status, mcp__ghidra__server_status, mcp__ghidra__check_tools
-model: opus
-effort: xhigh
-effort-variants: max
+model: fable
+effort: medium
+effort-variants: max=fable/high|opus/max
+fallback: opus/xhigh
 color: purple
 ---
 

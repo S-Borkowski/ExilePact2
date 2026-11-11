@@ -89,10 +89,10 @@ next one a document rather than a conversation. They are driven by
 
 | Agent | Model / effort | Does |
 |---|---|---|
-| `planner` | opus / high | researches the change and writes `.claude/workorders/<slug>-plan.md`, whose acceptance criteria are commands and files, never prose |
-| `implementer` | opus / high | executes the steps; returns `PLAN-DEFECT` with evidence rather than improvising around a plan that turns out to be wrong |
+| `planner` | fable / medium (fallback `planner-opus`, opus / high) | researches the change and writes `.claude/workorders/<slug>-plan.md`, whose acceptance criteria are commands and files, never prose |
+| `implementer` | fable / medium (fallback `implementer-opus`, opus / high) | executes the steps; returns `PLAN-DEFECT` with evidence rather than improvising around a plan that turns out to be wrong |
 | `verifier` | haiku / medium | runs the acceptance criteria (first through `tools/run_criteria.py --jobs auto`, which runs every command-shaped criterion in one call, independent ones at once; after a fix, only the criteria the fix reaches plus the failed ones), or one item's `checks:` in a streamed plan, and reports what they actually printed; read-only, and judges nothing it cannot execute |
-| `consultant` | opus / xhigh | answers **one** narrow question from a phase that hit a decision above its tier, then stops; never implements, plans or reviews |
+| `consultant` | fable / medium (fallback `-opus`, opus / xhigh) | answers **one** narrow question from a phase that hit a decision above its tier, then stops; never implements, plans or reviews |
 | `live-operator` | opus / medium | runs a workorder's written `### Live procedure <n>` against the real game — the positive control first, raw output to `<slug>-live-<n>.md` — under the machine-wide game lease, and hands every in-game action a person must take back to the driver; never installs a build, never judges the mechanism |
 | `scribe` | haiku / low | **retired from the round loop.** No path spawns it now: `tools/workorder_record.py` applies State/Log from the run record. It used to paste a precomputed round Log entry and State lines into the workorder files, with `Read`/`Grep`/`Edit` only (no shell). The file stays until a follow-up removes it with its pinned-tier test and audit fixtures |
 
@@ -109,9 +109,14 @@ pins `model:` — left out, it silently follows the session.
 Where `/workorder` runs one agent at more than one effort, the agent lists the
 extra levels in `effort-variants:` and `tools/sync_agent_tooling.py` generates
 `<agent>-<level>.md` for each: `planner-medium`, `planner-xhigh`,
-`planner-max`, `implementer-medium` and `consultant-max`. The `Agent` tool
-takes a model per call but no effort, so the agent's name is how a spawn picks
-one. Never edit a variant; edit its source and re-run the sync.
+`planner-max`, `implementer-medium` and `consultant-max`. An entry may also
+name its own model and effort (`max=fable/high`), and a `|` tier or the
+source's `fallback:` line generates an opus twin (`planner-max-opus`,
+`planner-opus`, `implementer-opus`, `consultant-max-opus`,
+`instrument-blindness-reviewer-opus`) that `/workorder` spawns when a fable
+spawn fails because fable is unavailable. The `Agent` tool takes a model per
+call but no effort, so the agent's name is how a spawn picks one. Never edit
+a variant; edit its source and re-run the sync.
 
 The verifier never sees the implementer's reasoning, because sharing that
 context would mean sharing its blind spots.
@@ -244,7 +249,7 @@ class. Wall-clock is one agent; only tokens add up.
 |---|---|---|
 | `decompile-output-guard` | opus / medium | whether a change carries the game's own expression rather than facts about it — the judgement half of `decompiled_output.py` |
 | `docs-sync-reviewer` | opus / medium | which README, guide, index entry or ADR the change just made wrong |
-| `instrument-blindness-reviewer` | opus / high | table-only hook installs, hand-resolved addresses, struct-layout assumptions, and negatives recorded without a positive control |
+| `instrument-blindness-reviewer` | fable / medium (fallback `-opus`, opus / high) | table-only hook installs, hand-resolved addresses, struct-layout assumptions, and negatives recorded without a positive control |
 
 `instrument-blindness-reviewer` exists because the sister project once had 34
 hooks reporting zero calls against a game that was calling them; its file

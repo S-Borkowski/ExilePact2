@@ -14,10 +14,10 @@ criterion's command or anchor, a path that moved, or one wrong fact in
 `## Context`. Then it is an **amendment**:
 
 1. `py -3 tools/amend_check.py save <plan> <context>`;
-2. spawn `planner-medium` fresh with `model: opus`, with the description
+2. spawn `planner-medium` fresh (its own pin, opus/medium), with the description
    `amendment: <slug> <what>` and the correction verbatim (planner.md "When
    you are spawned as an amendment").
-   An amendment planner always runs as planner-medium on opus, never escalated.
+   An amendment planner always runs as planner-medium, never escalated.
    That holds whatever `planner-tier=` the State records and whatever tier
    the last replan ran at: an amendment applies one stated correction, and
    the escalation ladder (`SKILL.md` Step 2) is for replans. `tools/workorder_audit.py`
@@ -64,8 +64,8 @@ pipeline failing, and it spends neither the cap nor the tier ladder:
 - **A plan change:** run `tools/amend_check.py save`, *then* record the
   owner's answer under `### Decisions` as `owner, <YYYY-MM-DD>: "<their
   words>"`, then spawn the planner (labelled `amendment: <slug> owner
-  scope ...`, as `planner-medium` with `model: opus`), then `check`.
-  An amendment planner always runs as planner-medium on opus, never escalated.
+  scope ...`, as `planner-medium`), then `check`.
+  An amendment planner always runs as planner-medium, never escalated.
   Never pass the workorder's escalated `planner-tier=` here: the one fable
   amendment measured (forgepact-74, 2026-10-02) came by this route, and R27
   now fails it, and an amendment run as `planner-xhigh` or `planner-max`. When the change would otherwise be a replan

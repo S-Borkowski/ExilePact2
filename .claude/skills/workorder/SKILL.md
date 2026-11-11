@@ -47,9 +47,9 @@ never a plan, just a conversation someone was still holding in their head.
 ## The loop
 
 ```
-planner(opus) → implementer(opus) → verifier+reviewers(haiku,opus) → PASS ─→ report
+planner(fable) → implementer(fable) → verifier+reviewers(haiku,fable) → PASS ─→ report
   ▲ PLAN-DEFECT ◄───────┘ ◄──────────────────── IMPL-DEFECT / BLOCKING
-                                    PASS-PENDING-HUMAN → live-operator(opus) → report
+                                    PASS-PENDING-HUMAN → live-operator(fable) → report
 ```
 
 ### Step 0 — decide whether this is worth a workorder
@@ -102,7 +102,7 @@ about whether it can. These are checkable:
 | must **establish an unknown game mechanism**, not verify a suspected one — the "which of N candidates does X" shape | planner `planner-xhigh`, implementer `implementer` |
 | falls in the **suspend-the-game-loop class** (`AGENTS.md`) | stop — read `AGENTS.md` § "Don't Suspend the Game's Own Runtime" and [`docs/agents/dont-suspend-runtime.md`](../../../docs/agents/dont-suspend-runtime.md) with the user before planning at all |
 | touches **only docs, tests or config** — no product source, no hook, no binding | planner `planner-medium`, implementer `implementer-medium` |
-| everything else — including hook attachment and three-binding contracts, which had their own `opus`/`opus` rows when the default implementer was `sonnet` | the agents' own pins (`planner` and `implementer`, both opus/high) |
+| everything else — including hook attachment and three-binding contracts, which had their own `opus`/`opus` rows when the default implementer was `sonnet` | the agents' own pins (`planner` and `implementer`, both fable/medium, opus/high on fallback) |
 
 **A tier is an agent name, and sometimes a model.** The names are effort
 variants: `planner-xhigh` is `planner` at `xhigh` effort, generated from
@@ -111,12 +111,14 @@ same instructions word for word. Spawn the variant as the `subagent_type`;
 the `Agent` tool takes a `model` per call but no effort, so the name is the
 only way to choose one. In workflow mode the args carry `implementerEffort`
 (`high` or `medium`) and `implementerModel`, set with `--launch-args`'
-`--implementer-effort` and `--implementer-model`. Every variant runs on `opus`
-unless a row names another model. `fable` is not a tier: the owner's
-license dropped it on 2026-10-05, so the pipeline escalates effort on
-`opus` wherever it once escalated to `fable` (§ "Model tiers").
+`--implementer-effort` and `--implementer-model`. Each name runs the model
+the § "Model tiers" table gives it, chosen from score against cost per
+task; each one on `fable` has an `-opus` twin to fall back to (§ "Model
+tiers").
 
-The implementer's default is `opus` since 2026-09-22 (see "Model tiers"):
+The implementer's default is `fable` at medium since 2026-11-09, with
+`implementer-opus` (opus/high) as its fallback; before that it was `opus`
+from 2026-09-22 (see "Model tiers"):
 Opus 5.5 reads cache at Sonnet 5's price, and 99% of an implementer's tokens
 are cache reads, so the tier costs about the same per token while the Sonnet
 tail (p90 46.8M tokens, max 78.9M) was what hit the round caps. The docs row
@@ -367,9 +369,9 @@ plan and context files were the two most-read files of the pipeline: 915
   all: it does not when the evidence names what is wrong *and* states the
   correction (the implementer's `CORRECTION:` line, or a reviewer's
   `plan_defect` finding carrying a `fix`). Then it is an **amendment**:
-  `amend_check.py save`, a fresh `planner-medium` on opus labelled
+  `amend_check.py save`, a fresh `planner-medium` labelled
   `amendment: <slug> <what>`, `amend_check.py check`. An amendment planner
-  always runs as planner-medium on opus, never escalated. A confirmed
+  always runs as planner-medium, never escalated. A confirmed
   amendment is not a replan: take the one `replans:` the launch added back
   off (`replans: <k-1>`). In workflow mode the launch runs this route itself
   for an implementer's `CORRECTION:`, so a `PLAN-DEFECT` whose result carries
@@ -395,8 +397,10 @@ plan and context files were the two most-read files of the pipeline: 915
   2026-09-19..22 the planner was 22% of list-price spend, and a planner
   writes more output than any other phase, so more thinking per turn costs
   most here. This ladder escalated to Fable 5.1 until 2026-10-05, when the
-  owner's license dropped it; `max` effort on `opus` takes its place, and is
-  the *second* replan's tier rather than the first plan's for the same
+  owner's license dropped it; `max` effort on `opus` took its place, and
+  since 2026-11-09 `planner-max` is fable at high again, with
+  `planner-max-opus` (opus/max) as its fallback. It is the *second* replan's
+  tier rather than the first plan's for the same
   reason Fable was: one expensive replan costs less than the round it saves,
   but not less than a plan that needed no escalation.
 
@@ -445,8 +449,9 @@ goes back unforwarded — an asker with no view hasn't thought about the
 problem, and answering it turns consultation into delegation: the weaker model
 stops deciding and the pipeline pays two tiers for one phase.
 
-**Spawn `consultant`** (opus/xhigh) by default. For a question in the
-`planner-xhigh` rows of the triage table, spawn `consultant-max` — one
+**Spawn `consultant`** (fable/high) by default. For a question in the
+`planner-xhigh` rows of the triage table, spawn `consultant-max` (fable/high,
+`consultant-max-opus` on fallback) — one
 focused question is the cheapest place in this pipeline to buy the most
 thinking, far cheaper than running a whole phase at `max`.
 
@@ -637,7 +642,7 @@ The line, when a reviewer's label looks wrong to you:
   tier ladder: a plan change goes through `amend_check.py` (which prints
   `SCOPE:` for it), and a relaunch that only carries owner decisions adds one
   to State's `scope rounds:` (at most 3). An amendment planner always runs as
-  planner-medium on opus, never escalated, here too. The exact procedure and
+  planner-medium, never escalated, here too. The exact procedure and
   the R25 audit are in [`amendments.md`](amendments.md) § "Owner scope is
   not a failure".
 
@@ -1047,23 +1052,43 @@ an effort variant (`planner-xhigh`, `implementer-medium`, ...) is the same
 agent at another effort, generated by `tools/sync_agent_tooling.py` from the
 source's `effort-variants:` line. Spawn the variant by name, in a driver's
 `Agent` call and in `workorder-rounds.js` alike: the `Agent` tool takes no
-effort, and the name is the one spelling the audit can see. `fable` is not a
-tier (the owner's license dropped it on 2026-10-05). Fixed tiers:
-`verifier` haiku/medium, `instrument-blindness-reviewer` opus/high, the other
-reviewers and `live-operator` opus/medium. The driver is the session itself:
-run it on `opus` at `medium`, `high` for a session whose product is the
-driver's own judgement.
+effort, and the name is the one spelling the audit can see. A variant may
+also name another model than its source (`planner-max` is fable/high), so
+read the tier off this table, not off the name. Fixed tiers:
+`verifier` haiku/medium, `instrument-blindness-reviewer` fable/medium
+(`instrument-blindness-reviewer-opus`, opus/high, on fallback), the other
+reviewers (`docs-sync-reviewer`, `decompile-output-guard`) opus/medium,
+`live-operator` opus/medium, `scribe` haiku/low. The driver is the session
+itself: run it on `opus` at `medium`, `high` for a session whose product is
+the driver's own judgement.
 
-| Spawn | Model / effort | When |
-|---|---|---|
-| `planner-medium` | opus / medium | every amendment; the docs/tests/config triage row |
-| `planner` | opus / high | the default first plan and first replan |
-| `planner-xhigh` | opus / xhigh | the concurrency and unknown-mechanism triage rows |
-| `planner-max` | opus / max | the second replan |
-| `implementer-medium` | opus / medium | every patch round; the docs/tests/config triage row |
-| `implementer` | opus / high | everything else |
-| `consultant` | opus / xhigh | the default consultation |
-| `consultant-max` | opus / max | a question from a `planner-xhigh` triage row |
+| Spawn | Model / effort | Fallback twin | When |
+|---|---|---|---|
+| `planner-medium` | opus / medium | — | every amendment; the docs/tests/config triage row |
+| `planner` | fable / medium | `planner-opus`, opus / high | the default first plan and first replan |
+| `planner-xhigh` | fable / high | `planner-xhigh-opus`, opus / xhigh | the concurrency and unknown-mechanism triage rows |
+| `planner-max` | fable / high | `planner-max-opus`, opus / max | the second replan |
+| `implementer-medium` | opus / medium | — | every patch round; an item-streaming fixer whose findings all carry the reviewer's `fix`; the docs/tests/config triage row |
+| `implementer` | fable / medium | `implementer-opus`, opus / high | everything else |
+| `consultant` | fable / medium | `consultant-opus`, opus / xhigh | the default consultation |
+| `consultant-max` | fable / high | `consultant-max-opus`, opus / max | a question from a `planner-xhigh` triage row |
+
+**Tiers from score against cost (owner, 2026-11-10).** Each tier is read off
+the Artificial Analysis Engineering Index against cost per task
+([`model-tiers.md`](model-tiers.md) § "Tiers from score against cost"):
+work that applies a written correction or follows a written rule takes the
+cheapest point that does it (Opus 5.5 medium or Haiku 5.5; no Sonnet,
+which the Intelligence Index shows beaten on score and cost),
+and work whose product is judgement takes Fable 5.2 (medium by default,
+high only on the hard rows and the second replan). `planner-xhigh` and
+`planner-max` are the same tier today (the chart shows no Fable above
+`high`): the names stay, because the escalation they record and their
+fallbacks differ. **When a fable spawn fails because fable is unavailable**
+(the error names the model, a license or access), spawn its `-opus` twin
+with the same prompt, once, and record `<agent> fell back to <agent>-opus:
+<error>` under the round's `## Log` heading; any other failure is handled
+as it was. `workorder-rounds.js` does the same for its own spawns
+(`runAgent`), and a spawn given an explicit `model` never falls back.
 
 **Read [`model-tiers.md`](model-tiers.md)** before changing a tier, adding an
 effort level, or answering a cost question: the prices, the measurements

@@ -56,6 +56,13 @@ PHASE_AGENTS = {
     "implementer-medium",
     "consultant",
     "consultant-max",
+    # the opus fallback twins of the fable-pinned ones
+    "planner-opus",
+    "planner-xhigh-opus",
+    "planner-max-opus",
+    "implementer-opus",
+    "consultant-opus",
+    "consultant-max-opus",
 }
 
 # A tool name that writes to the program or project, changes the session, or

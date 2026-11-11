@@ -2,9 +2,10 @@
 name: instrument-blindness-reviewer
 description: Reviews hooks, probes, research conclusions and anything that measures the running game — for table-only installs, hand-resolved addresses, struct-layout assumptions, and negatives accepted without a positive control. Use when a change touches a mod's native plugin code, installs or modifies a hook, calls through a resolved pointer, or records a research finding in docs/.
 tools: Read, Grep, Glob, Bash
-model: opus
-effort: high
+model: fable
+effort: medium
 color: orange
+fallback: opus/high
 omitClaudeMd: true
 ---
 

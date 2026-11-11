@@ -329,6 +329,8 @@ EDIT_TOOLS = {"Edit", "Write"}
 # why the tiers are where they are -- 92-99% of every role's tokens here are
 # cache reads, and Opus 5.5 reads cache at Sonnet 5's price.
 MODEL_PRICES = {
+    # Fable 5.2 from the official pricing page, read 2026-11-11.
+    "claude-fable-5-2": (8.0, 40.0, 0.20),
     "claude-fable-5-1": (10.0, 50.0, 0.25),
     "claude-opus-5-5": (4.0, 20.0, 0.20),
     "claude-opus-5": (5.0, 25.0, 0.50),
@@ -500,6 +502,10 @@ class AgentTranscript:
     effort: Optional[str] = None
     workflow_id: Optional[str] = None
     is_driver: bool = False
+    # Effort levels the transcript's own API requests asked for
+    # (`api-request-blob` records, `output_config.effort`): what actually ran,
+    # where `effort` above is the tier the name stands for.
+    request_efforts: dict = field(default_factory=lambda: defaultdict(int))
 
     turns: dict = field(default_factory=dict)          # message_id -> TurnUsage
     models: dict = field(default_factory=lambda: defaultdict(int))  # model id -> assistant records
@@ -538,6 +544,12 @@ class AgentTranscript:
         """The model that produced most of this transcript's turns: what a
         tier alias (`opus`, `sonnet`) actually resolved to on the day."""
         return max(self.models, key=self.models.get) if self.models else None
+
+    @property
+    def ran_effort(self) -> Optional[str]:
+        """The effort most of this transcript's API requests ran at, or None
+        when it recorded none."""
+        return max(self.request_efforts, key=self.request_efforts.get) if self.request_efforts else None
 
     @property
     def cost_usd(self) -> Optional[float]:
@@ -611,11 +623,20 @@ CHECK_FAILURE_RE = re.compile(r"\bFAIL:|\bERROR:|\bFAILED\b|\bEXIT=(?!0\b)-?\d+|
 # its level beside it.
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 EFFORT_VARIANT_RE = re.compile(r"^(?P<base>[\w:-]+?)-(?P<effort>" + "|".join(EFFORT_LEVELS) + r")$")
+# A fallback twin (`planner-opus`, `planner-max-opus`; the sync's `fallback:`)
+# is its primary run on another model, which the transcript already records,
+# so it counts as its primary's role and level.
+FALLBACK_TWIN_RE = re.compile(r"^(?P<primary>[\w:-]+?)-(?:fable|opus|sonnet|haiku)$")
 
 
 def split_effort_variant(agent_type: str) -> tuple:
     """(base agent type, effort) for a generated variant name, else
-    (agent_type, None)."""
+    (agent_type, None). The level is the name's, which since 2026-11-09 is
+    a tier label rather than the effort itself where a variant names
+    another model (`planner-max` runs fable at high)."""
+    twin = FALLBACK_TWIN_RE.match(agent_type or "")
+    if twin:
+        agent_type = twin.group("primary")
     m = EFFORT_VARIANT_RE.match(agent_type or "")
     return (m.group("base"), m.group("effort")) if m else (agent_type, None)
 
@@ -649,6 +670,12 @@ def parse_transcript(path: Path, agent_type: str, label: str, session_id: str,
                 agent.ts_first = ts
             if agent.ts_last is None or ts > agent.ts_last:
                 agent.ts_last = ts
+
+        if rec_type == "api-request-blob":
+            config = (rec.get("message") or {}).get("output_config") or {}
+            if isinstance(config, dict) and config.get("effort"):
+                agent.request_efforts[config["effort"]] += 1
+            continue
 
         if rec_type == "assistant":
             message = rec.get("message") or {}
@@ -1886,7 +1913,7 @@ def rule_r27_amendment_tier(session: Session) -> RuleResult:
             continue
         if "fable" in model.lower():
             evidence.append(f"{agent.label}: ran on {model}; an amendment planner always runs on opus, "
-                            f"never fable -- spawn it with model: opus whatever planner-tier the State records")
+                            f"never fable -- spawn planner-medium whatever planner-tier the State records")
         elif agent.effort in AMENDMENT_TOO_HIGH:
             evidence.append(f"{agent.label}: ran as planner-{agent.effort}; an amendment planner is never "
                             f"escalated -- spawn planner-medium whatever planner-tier the State records")
@@ -1940,7 +1967,7 @@ def _agent_row(agent: AgentTranscript) -> dict:
         "round": agent.round if agent.round is not None else "-",
         "lane": lane_of(agent.label) or "-",
         "model": (agent.model or "-").replace("claude-", ""),
-        "effort": agent.effort or "-",
+        "effort": agent.ran_effort or agent.effort or "-",
         "turns": agent.turn_count,
         "tokens": agent.total_tokens,
         "output_tokens": agent.total_output_tokens,
