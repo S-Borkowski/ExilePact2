@@ -123,7 +123,8 @@ context would mean sharing its blind spots.
 
 The `planner` (and its variants), `implementer`, `implementer-medium`,
 `consultant`, `consultant-max` and their `-opus` fallback twins
-(`implementer-opus`, `consultant-opus`, `consultant-max-opus`) reach the `ghidra` MCP server's read tools,
+(`planner-opus`, `planner-xhigh-opus`, `planner-max-opus`,
+`implementer-opus`, `consultant-opus`, `consultant-max-opus`) reach the `ghidra` MCP server's read tools,
 named `mcp__ghidra__<tool>` in their `tools:` lines: search, list, decompile,
 xrefs, callers, callees, call graph and function info. The read set is
 `AGENT_READ_TOOLS` in `tools/ghidra_mcp.py`, and
